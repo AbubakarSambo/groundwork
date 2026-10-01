@@ -120,7 +120,9 @@ function ForAnAdmin({ page }: { page: SuitesForAnAdmin }) {
     <>
       {page.groups.map(g => (
         <Section key={g.name} heading={g.name}>
-          <div className="gwui-cards-3">
+          {/* A group of one suite (suites-admin.jpg: "Money", "Spending and budgets" alone) takes
+              the full width, rather than sitting narrow in one third of a three-column grid. */}
+          <div className={g.suites.length === 1 ? undefined : 'gwui-cards-3'}>
             {g.suites.map(s => <ASuite key={s.key} s={s} people={page.people} />)}
           </div>
         </Section>
