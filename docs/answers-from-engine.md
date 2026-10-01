@@ -1486,3 +1486,14 @@ In "N of M people ...", the verb now goes with N and the noun with M. Every sent
 The opening's "One of the 5 people has answered so far." was already right and is unchanged.
 
 Tests: `reports/some-of-them-has-or-have.spec.ts`. The mvnext case in `board/request-105-each-kind-gets-its-own-board.spec.ts` now expects "1 of 2 people has answered.".
+
+## Request 106: the kind of work can be set back to none (2 October)
+
+The route already takes it, so nothing on the server had to change, and a test now holds it. Send `{ "kind": null }` to `PATCH /grounds/:id/kind-of-work`. The check-in then has no kind of work, and the board sends `kindOfWork: null` and the records say "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind." The client's `setKindOfWork(id, { kind: null })` already sends it.
+
+- Who may clear it is exactly who may set it: the lead, or an admin of the organisation (on an evaluation check-in, only an admin with access). Anybody else is refused with "Only the lead of this check-in, or an admin in this organisation, can change this.", and nothing changes.
+- A none the lead chose is the lead's own choice, like a kind they chose. A later read of the setup words never puts a kind back over it.
+- Sending only `stages` leaves the kind as it is.
+- A word that is not one of the eleven, "none" included, is still refused in a plain sentence. Please send `null` for "None of these".
+
+Tests: `grounds/request-106-the-kind-of-work-can-be-cleared.spec.ts` (6 cases), including one that passes `{ "kind": null }` through the app's own validation, as the route receives it. They pass on the code before this test, because the route already allowed it.
