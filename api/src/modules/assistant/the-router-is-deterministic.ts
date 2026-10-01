@@ -46,6 +46,10 @@ export type Lane =
   | 'questions_for_people'
   /** Time off said in chat: said back, and sent through the leave suite on a yes (week 20). */
   | 'ask_for_leave'
+  /** Hours said in chat, for billing only: said back, and sent to the approver on a yes (week 21). */
+  | 'log_hours'
+  /** A request to spend said in chat, checked against the budget and the rule, sent on a yes (week 22). */
+  | 'ask_to_spend'
   | 'unplaced';
 
 export interface Routed {
