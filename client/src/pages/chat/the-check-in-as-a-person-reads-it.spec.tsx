@@ -423,7 +423,13 @@ describe('the Done page, after “That’s right, finish”', () => {
      * block - heading and body together - is found as one named region instead.
      */
     const saved = screen.getByRole('region', { name: 'That’s saved' })
-    expect(saved.textContent).toBe('That’s savedWhy answering matters: Wairimu also answers a check-in. The report puts the answers side by side. It does not decide who is right.')
+    /*
+     * GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 11: "Why answering matters:" is a heading now,
+     * not a bolded word glued to the front of a sentence with a colon - the same fix TheEndCard.tsx
+     * already had, applied here. Updated to the heading-then-sentence shape; the words themselves
+     * are unchanged.
+     */
+    expect(saved.textContent).toBe('That’s savedWhy answering mattersWairimu also answers a check-in. The report puts the answers side by side. It does not decide who is right.')
     const checkable = screen.getByRole('region', { name: 'How checkable today’s check-in was' })
     /**
      * "4 of 5" no longer shows (U.8 re-review, request 45 to the engine workspace): it is a score
@@ -449,7 +455,11 @@ describe('the Done page, after “That’s right, finish”', () => {
 
   it('one thing for next time is the sentence the session wrote, once it arrives', async () => {
     await finish({ carry: 'Get Green Mart’s January date in writing.' })
-    expect(await findByText('One thing for next time: Get Green Mart’s January date in writing.', {}, { timeout: 6000 })).toBeTruthy()
+    /* GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 11: "One thing for next time" is its own
+       heading now, with the sentence under it, not joined to it by a colon. Both are already in
+       the DOM together once the sentence arrives, so only the one wait is needed. */
+    expect(await findByText('Get Green Mart’s January date in writing.', {}, { timeout: 6000 })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'One thing for next time' })).toBeTruthy()
   })
 
   it('once everyone has answered, the team’s report is there to read', async () => {
