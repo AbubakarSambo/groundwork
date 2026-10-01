@@ -7079,4 +7079,9 @@ Two things kept as they are now, for you to know:
 
 Not yet compared with the prototype's pictures: the conversation itself, while it is going. On this Mac every check-in that is not finished has not started yet, and opening one would start a real session. Done screens and finished check-ins were pictured as Amani and Rukia. Group 3's review will picture the conversation from a preview page drawn with test data, the way the reports already have one, so no session is started.
 
+**Group 3, fourth piece, starting a check-in, is split in three.** The save card is rebuilt from the shared parts, word for word. It turned out to be drawn by no page, though: the live entry chat draws its own save card. The other two files are far bigger than one piece. CreateGroundPage is an eight-step setup with 76 inline styles, and the entry chat is 4,500 lines with 271. The builder stopped and said so, rather than pushing them through unchecked. They now go in parts:
+- CreateGroundPage's picker, coach and billing steps (under way);
+- its timeline, people and brief steps;
+- the entry chat.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
