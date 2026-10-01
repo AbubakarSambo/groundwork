@@ -18,6 +18,20 @@ describe('an at-a-glance tile reads as full sentences, not stacked pieces', () =
       .toBe('People see one thing differently. The main obstacle to signing new shops is seen differently.')
   })
 
+  /*
+   * BOARD REVIEW, 1 OCTOBER, ITEM 2: NEVER ADD WORDS AFTER A FULL SENTENCE. The server can send a
+   * whole sentence of its own under `sub`, not a bare topic - "People said different things. There
+   * is no shared understanding of the production line's new data structure." used to come out
+   * "…data structure. is seen differently.", with four words tacked on after a sentence that had
+   * already finished.
+   */
+  it('Differences, when the topic is already a full sentence of its own', () => {
+    expect(tileSentence({
+      label: 'Differences', value: '1',
+      sub: 'People said different things. There is no shared understanding of the production line’s new data structure.',
+    })).toBe('People see one thing differently. People said different things. There is no shared understanding of the production line’s new data structure.')
+  })
+
   it('Differences, with only the generic count', () => {
     expect(tileSentence({ label: 'Differences', value: '2', sub: 'still open, as the written report reads it' }))
       .toBe('People see two things differently. Still open, as the written report reads it.')
@@ -75,9 +89,22 @@ describe('an at-a-glance tile reads as full sentences, not stacked pieces', () =
       .toBe('Nothing has moved yet. One target is set, and no session has closed to measure it against.')
   })
 
-  it('Movement, one target moved', () => {
+  /*
+   * BOARD REVIEW, 1 OCTOBER, ITEM 2: "N TARGETS MOVED" READ A MOVEMENT AMOUNT AS A COUNT OF
+   * TARGETS. The server only sends this "+N" shape (what-this-session-holds.ts) for a single
+   * target that moved BY N - a count over one target sends "N targets" as the value instead, a
+   * different shape entirely. "96 targets moved this session" for `value: "+96"` claimed ninety-six
+   * targets moved when only one did, by ninety-six. This can only say the size of the move, so it
+   * no longer invents a count: "A target moved by 96 this session."
+   */
+  it('Movement, one target moved, by a small amount', () => {
     expect(tileSentence({ label: 'Movement', value: '+1', sub: 'targets moved this session' }))
-      .toBe('One target moved this session.')
+      .toBe('A target moved by one this session.')
+  })
+
+  it('Movement, one target moved, by a figure too large to say as a word', () => {
+    expect(tileSentence({ label: 'Movement', value: '+96', sub: 'Targets moved this session.' }))
+      .toBe('A target moved by 96 this session.')
   })
 
   it('Blockers, with the thing itself named', () => {
@@ -94,10 +121,15 @@ describe('an at-a-glance tile reads as full sentences, not stacked pieces', () =
    * GROUP 3'S REVIEW, BATCH A FAULT 6: "ONE THING IS BLOCKING WORK, WORK IS HELD UP BY THE
    * DISCOUNT DECISION.." - a bare "." was appended even when `sub` (which `blockerAsASentence` on
    * the server already ends with a period) already had one.
+   *
+   * BOARD REVIEW, 1 OCTOBER, ITEM 2: THAT FIX STILL JOINED TWO SENTENCES WITH A COMMA. "One thing
+   * is blocking work, work is held up by the discount decision." reads as one run-on sentence; `sub`
+   * here is already its own complete sentence from the server, so it now follows a full stop of its
+   * own, capitalised.
    */
-  it('Blockers, with a sentence already ending in its own period, never doubled', () => {
+  it('Blockers, with a sentence already ending in its own period, said as two sentences', () => {
     expect(tileSentence({ label: 'Blockers', value: '1', sub: 'Work is held up by the discount decision.' }))
-      .toBe('One thing is blocking work, work is held up by the discount decision.')
+      .toBe('One thing is blocking work. Work is held up by the discount decision.')
   })
 
   it('How much was said, a percentage documented', () => {

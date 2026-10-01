@@ -319,6 +319,12 @@ function withPeriod(s: string): string {
   return /[.!?]["'”’)\]]*$/.test(t) ? t : `${t}.`
 }
 
+/** True once `s` already ends in sentence-ending punctuation, so it is a full sentence on its own
+    and never a bare fragment to be joined onto another sentence with a comma. */
+function isAFullSentence(s: string): boolean {
+  return /[.!?]["'”’)\]]*$/.test(s.trim())
+}
+
 /*
  * U.9 RE-REVIEW: "IS SEEN DIFFERENTLY" ONLY WHEN THE TOPIC DOES NOT ALREADY SAY SO.
  * `differencesSentence` used to append "is seen differently" to the topic unconditionally, so a
@@ -344,6 +350,15 @@ function differencesSentence(value: string, sub: string): string {
       const topicSentence = endsSeenDifferently(topic) ? withPeriod(topic) : `${topic} is seen differently.`
       return `${lead} ${topicSentence.replace(/\.$/, '')}, and ${smallWord(extra)} more thing${extra === 1 ? '' : 's'} ${extra === 1 ? 'is' : 'are'} too.`
     }
+    /*
+     * BOARD REVIEW, 1 OCTOBER, ITEM 2: NEVER ADD WORDS AFTER A FULL SENTENCE.
+     * The server sometimes sends `sub` as a whole sentence of its own (for example "People said
+     * different things. There is no shared understanding of the production line's new data
+     * structure."), not a bare topic. `generic` above only caught three fixed phrasings; anything
+     * else fell through here and had " is seen differently." appended after a sentence that was
+     * already complete. Once `sub` already ends in sentence punctuation, it is read as written.
+     */
+    if (isAFullSentence(sub)) return `${lead} ${withPeriod(capitalize(sub))}`
     const topic = capitalize(sub)
     return endsSeenDifferently(topic) ? `${lead} ${withPeriod(topic)}` : `${lead} ${topic} is seen differently.`
   }
@@ -354,8 +369,17 @@ function differencesSentence(value: string, sub: string): string {
 function movementSentence(value: string, sub: string): string {
   const gained = value.match(/^\+(\d+)$/)
   if (gained) {
+    /*
+     * BOARD REVIEW, 1 OCTOBER, ITEM 2: "96 TARGETS MOVED" WHEN ONE TARGET MOVED BY 96.
+     * The server only sends `value: "+96"` as a numeric movement in this shape when a single
+     * target moved (what-this-session-holds.ts: a count over one target sends "N targets" as the
+     * value instead, which does not match this pattern at all). Reading the "96" here as a COUNT
+     * of targets said something the server never claimed - ninety-six different targets moving,
+     * rather than one target moving by ninety-six. This cannot say how many targets moved from
+     * this value alone, so it says what it can: the size of the move, not an invented count.
+     */
     const n = Number(gained[1])
-    return `${capitalize(smallWord(n))} target${n === 1 ? '' : 's'} moved this session.`
+    return `A target moved by ${n < 10 ? smallWord(n) : n} this session.`
   }
   if (value === 'None' && /no target moved this session/.test(sub)) return 'No target moved this session.'
   /*
@@ -388,7 +412,15 @@ function blockersSentence(value: string, sub: string): string {
      * GROUP 3'S REVIEW, BATCH A FAULT 6: "ONE THING IS BLOCKING WORK, WORK IS HELD UP BY THE
      * DISCOUNT DECISION.." - a bare "." was appended even when `sub` already ended in one, giving
      * two full stops on one sentence. `withPeriod` only adds one when none is already there.
+     *
+     * BOARD REVIEW, 1 OCTOBER, ITEM 2: TWO SENTENCES, NOT ONE JOINED BY A COMMA. `sub` here is
+     * often already a complete sentence of its own from the server (`blockerAsASentence`, "Work is
+     * held up by owners with dates."). Joining it onto `lead` with a comma and a lower-cased first
+     * letter read as one run-on sentence pretending to be two ("One thing is blocking work, work
+     * is held up by owners with dates."). Once `sub` already ends in sentence punctuation, it
+     * stays its own sentence, capitalised, after a full stop.
      */
+    if (isAFullSentence(sub)) return `${lead}. ${withPeriod(capitalize(sub))}`
     return withPeriod(`${lead}, ${lowerFirst(sub)}`)
   }
   const waiting = value.match(/^(\d+) waiting$/)
