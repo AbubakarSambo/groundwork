@@ -6988,4 +6988,13 @@ The faults in what the server sends for Today and the check-ins list are the eng
 - starting a check-in labelled as a decision;
 - the check-ins list's summaries for a participant.
 
+The screens workspace's faults are fixed, and the review is checking them again:
+- The You board's goals are sentences: "You have 0 of 4 shops." and "Success is two shop visits together each week in October."
+- To-dos read as actions with a capital letter, show only the fuller copy of a promise said twice, and say where they came from: "From Amani's check-in in Sales team, Q3, on 29 September."
+- The To-dos board was already holding back to-dos from check-ins a reader may not read, such as performance plans. A test now proves it.
+- The admin welcome card is four sentences, and Today greets "Morning, Rukia".
+- The Reviews board opens "A review happens every 6 months.", and Company reads "6 people work here, and there were 21 check-ins this week."
+
+The whole screen suite passes, except the known wording guard (request 95). The API tests for the changed parts pass (1,478 for check-ins, 146 for suites and the You board), and so does the button test (26 of 26).
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
