@@ -1,6 +1,7 @@
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
 import { aPartyOutside } from './a-thing-is-not-somebody';
 import { whatEachSessionSays } from './one-count-for-the-sessions';
+import { theShareSays } from './your-share';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
@@ -1041,6 +1042,27 @@ export class BoardService {
         const named = withNames(inLabels, visibleNames, labels.values(), { viewerLabel: readerLabel });
         return { ...o, name: yourOwnWhereYouAreTheSubject(named, othersNames) };
       });
+    }
+
+    /*
+     * YOUR SHARE, ON A PARTICIPANT'S OWN BOARD (request 107 c; the prototype's B5: "Your share. 4 of
+     * your 5 sales so far; 3 paid. Only you and Wairimu see your share."). Only the reader's own
+     * targets, from the targets this reader may already read (targetsFor, above), so nothing new is
+     * shown: the person running the check-in and an admin get no field, and a goal the lead has not
+     * told them about is not here. Who else sees it is said by the check-in's own setting.
+     */
+    if (!isInitiator && me?.id && Array.isArray(out.objectives)) {
+      const mine = (out.objectives as any[]).filter((o) => o.ownerParticipantId === me.id && o.target != null);
+      if (mine.length) {
+        const leadName = theLeadsRow ? nameOf(theLeadsRow) : null;
+        out.yourShare = mine.map((o) => ({
+          objectiveId: o.id,
+          says: theShareSays(o.name, o.count, o.target, o.direction),
+          whoSees: (ground as any).whoSeesTargets === 'EVERYBODY'
+            ? 'Everybody in this check-in sees your share.'
+            : `Only you and ${leadName ?? 'the person running this check-in'} see your share.`,
+        }));
+      }
     }
 
     if (has('divergence') && reportSafe) {
