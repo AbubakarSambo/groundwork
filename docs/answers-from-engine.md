@@ -702,6 +702,16 @@ What an admin who reads it reads: "Bisi Adeyemi needs to get back to Kwame Mensa
 
 Test: `lead-actions-on-the-board-as-each-reader-reads-them.spec.ts`.
 
+#### Obligations: `obligations`
+
+`[{ participantId, who, promised: [sentence], othersWaitFor: [sentence] }]`. What each side promised, and what somebody here is still waiting on that side for. One side per person in the order of the check-in, then each party outside it that somebody is waiting on (`participantId: null`, `who` is the name they were given, for example "Mr. Adebayo"). `promised` holds the work plan's own sentences for that person, so it is under the work plan's wall; `othersWaitFor` holds the open waits the reader may read. A side with nothing in it is left out. What a contract's own clauses require is still not in the record, so it is not served.
+
+Who reads it. Whoever runs the check-in, the admin who set it up, and an admin of the organisation on an ordinary check-in read every side. A participant where people see each other reads every side; where they do not, only their own side and the lead's, and only the waits they are in. The person reviewed on an evaluation check-in reads their own side and the lead's side without the lead's promises.
+
+What Bisi reads, for her own side: promised "In session 2, you said, "I'll follow up directly with the committee members." Nobody has said yet whether it happened." and othersWaitFor "Kwame Mensah is waiting on you for the approval of five applications." For the party outside: "Ngozi Eze is waiting on Mr. Adebayo for a date for the credit decision." Kwame, where people do not see each other, reads on Bisi's side "You are waiting on Bisi Adeyemi for the approval of five applications."
+
+Test: `obligations-on-the-board-as-each-reader-reads-them.spec.ts`.
+
 ## Week 11: the ending page's suggestion, signals and questions, and reviews that fall due from inside the product
 
 ### The ending page (`GET /grounds/:groundId/resolution`)

@@ -105,7 +105,7 @@ import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
-import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, theLeadActions, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
+import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, theLeadActions, theObligations, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { eachLineInTheirName, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
 import { theRecordAQuoteMayComeFromByParticipant } from '../reports/a-quote-built-at-the-read';
@@ -1944,6 +1944,8 @@ export class BoardService {
       const untoldGoals = isInitiator ? await this.goalsNotToldYetByParticipant(groundId) : [];
       const leadActions = theLeadActions(mine.commitments, handoffs, sessions, untoldGoals, reader);
       if (leadActions.length) out.leadActions = leadActions;
+      const obligations = theObligations(people, mine.commitments, handoffs, sessions, reader);
+      if (obligations.length) out.obligations = obligations;
     }
 
     /*

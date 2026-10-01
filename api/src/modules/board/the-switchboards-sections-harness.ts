@@ -146,7 +146,7 @@ export const SALES_RUN: Setup = {
     commitment('k-kwame', 'p-kwame', 'I\'ll be following up with each client directly over the next week to chase down the missing documents.', { statedInSession: 1, whenSaid: 'over the next week', saidWordForWord: true, status: 'DONE', settledBy: 'SAID', settledAt: new Date('2026-09-16T18:00:00Z'), createdAt: new Date('2026-09-02T18:00:00Z') }),
   ],
   dependencies: [
-    handoff('d-ngozi', 'p-ngozi', 'a reply from Mr. Adebayo', { onLabel: 'Mr. Adebayo', status: 'WAITING', dueSaid: null, sourceCheckInId: 'c2-p-ngozi', createdAt: new Date('2026-09-16T17:00:00Z') }),
+    handoff('d-ngozi', 'p-ngozi', 'a date for the credit decision', { onLabel: 'Mr. Adebayo', status: 'WAITING', dueSaid: null, sourceCheckInId: 'c2-p-ngozi', createdAt: new Date('2026-09-16T17:00:00Z') }),
     handoff('d-femi', 'p-femi', 'the bank statements', { status: 'BLOCKING', sourceCheckInId: 'c2-p-femi', createdAt: new Date('2026-09-16T16:00:00Z') }),
     handoff('d-kwame', 'p-kwame', 'the approval of five applications', { onParticipantId: 'p-bisi', status: 'WAITING', createdAt: new Date('2026-09-16T18:00:00Z') }),
   ],

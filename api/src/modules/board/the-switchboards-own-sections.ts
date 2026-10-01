@@ -638,3 +638,55 @@ export function theLeadActions(
 
   return out.slice(0, MOST_LEAD_ACTIONS);
 }
+
+/* ------------------------------------------------------------------------------------------------
+ * OBLIGATIONS: what each side promised, and what the others are waiting on them for
+ * ---------------------------------------------------------------------------------------------- */
+
+export interface AnObligationSide {
+  /** The person, or null for somebody outside the check-in named for a wait (a team, a firm, a person). */
+  participantId: string | null;
+  who: string;
+  /** What this side committed to, each in the sentence the work plan writes for it. */
+  promised: string[];
+  /** What somebody here is waiting on this side for, still open, each as a full sentence. */
+  othersWaitFor: string[];
+}
+
+/**
+ * One side per person, in the order of the check-in, then each party outside it that somebody named.
+ * Built from the work plan and the open waits, so every line is under the same wall as those: a reader
+ * sees only the commitments and the waits they may read, and a side with nothing in it is left out.
+ */
+export function theObligations(
+  people: { id: string; managingOnly: boolean }[],
+  commitments: ACommitment[],
+  handoffs: AHandoff[],
+  sessions: ASession[],
+  r: WhoIsReading,
+): AnObligationSide[] {
+  const plan = theWorkPlan(commitments, sessions, r);
+  const open = handoffs.filter((d) => isOpen(d) && r.handoffMayBeRead(d) && d.onParticipantId !== d.fromParticipantId);
+  const waitSaid = (d: AHandoff) => {
+    const who = whoIs(r, d.fromParticipantId);
+    const on = whoIsWaitedOn(r, d);
+    return `${who} ${isAre(who)} waiting on ${on} for ${inASentence(d.what)}.`;
+  };
+  const out: AnObligationSide[] = [];
+  for (const p of people) {
+    if (!r.personMayBeRead(p.id)) continue;
+    const promised = plan.filter((row) => row.participantId === p.id).map((row) => row.says);
+    const othersWaitFor = open.filter((d) => d.onParticipantId === p.id).map(waitSaid);
+    if (!promised.length && !othersWaitFor.length) continue;
+    out.push({ participantId: p.id, who: whoIs(r, p.id), promised, othersWaitFor });
+  }
+  const outside = new Map<string, string[]>();
+  for (const d of open) {
+    const label = !d.onParticipantId ? d.onLabel?.trim() : null;
+    if (!label) continue;
+    const key = label.toLowerCase();
+    outside.set(key, [...(outside.get(key) ?? [label]), waitSaid(d)]);
+  }
+  for (const [, [label, ...lines]] of outside) out.push({ participantId: null, who: label, promised: [], othersWaitFor: lines });
+  return out;
+}
