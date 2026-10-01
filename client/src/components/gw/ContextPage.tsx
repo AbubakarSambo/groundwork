@@ -1121,37 +1121,36 @@ export function ContextPage({
               <>
                 <Section heading="What people are down as doing" note="Nobody is marked as having done these. The check-ins ask about them." />
                 {isTheLead && contextEnabled && commitments.length === 0 && (
-                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 14, maxWidth: 720, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                    Nothing yet. Anything somebody says they will do in a check-in lands here on its
-                    own. Something agreed on a call goes in by saying it in the conversation above.
-                    <div style={{ marginTop: 8 }}>
-                      <button
-                        onClick={() => changeThisInTheChat('On the call today, ')}
-                        style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 20, padding: '5px 11px', cursor: 'pointer', fontFamily: 'inherit' }}
-                      >
+                  <Panel>
+                    <p className="gwui-panel-text-muted">
+                      Nothing yet. Anything somebody says they will do in a check-in lands here on its
+                      own. Something agreed on a call goes in by saying it in the conversation above.
+                    </p>
+                    <div className="gwui-mt-8">
+                      <Button kind="secondary" size="small" onClick={() => changeThisInTheChat('On the call today, ')}>
                         Something agreed on a call
-                      </button>
+                      </Button>
                     </div>
-                  </div>
+                  </Panel>
                 )}
-                <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '4px 0', marginBottom: 14, maxWidth: 720 }}>
+                <Panel pad={false}>
                   <ShowAFew rows={commitments} few={8} what="things people are down as doing">
-                  {(c: any, i: number) => {
+                  {(c: any) => {
                     const p = c.participantId ? ground.participants.find((x: any) => x.id === c.participantId) : null
                     return (
-                      <div key={c.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: c.participantId ? 'var(--gw-dark)' : 'var(--gw-amber-t)', minWidth: 120 }}>
+                      <div key={c.id} className="gwui-panel-row gwui-line-row">
+                        <Tag tone={c.participantId ? 'plain' : 'attention'}>
                           {c.participantId ? (p && p.id === myParticipant?.id ? 'You' : atTheStart((p && labelsHere.get(p.id)) ?? 'a colleague')) : 'Nobody owns this'}
-                        </span>
-                        <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 200 }}>{c.text}</span>
-                        {c.whenSaid && <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>{c.whenSaid}</span>}
+                        </Tag>
+                        <span className="gwui-panel-text">{c.text}</span>
+                        {c.whenSaid && <Note>{c.whenSaid}</Note>}
                         {/* Whose words, to whoever is reading: it said "your words" to everyone (U.7 review). */}
-                        {!c.explicit && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>{isTheLead ? 'These are your words, not theirs.' : p && p.id === myParticipant?.id ? `These are ${theLeadMidSentence}\u2019s words, not yours.` : `These are ${theLeadMidSentence}\u2019s words, not theirs.`}</span>}
+                        {!c.explicit && <Note>{isTheLead ? 'These are your words, not theirs.' : p && p.id === myParticipant?.id ? `These are ${theLeadMidSentence}’s words, not yours.` : `These are ${theLeadMidSentence}’s words, not theirs.`}</Note>}
                       </div>
                     )
                   }}
                   </ShowAFew>
-                </div>
+                </Panel>
               </>
             )}
 
@@ -1205,33 +1204,23 @@ export function ContextPage({
                   who knows exactly what the line is and does not want a conversation about it.
                 */}
                 {isTheLead && (
-                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 10, maxWidth: 720 }}>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                  <Panel>
+                    <p className="gwui-panel-text-muted">
                       {theBuckets.some((b) => b.lines.length > 0)
                         ? 'Add a line. Every check-in is guided by what is here.'
                         : 'Nothing here yet. Put anything the check-ins should know in the right place, and every check-in is guided by it.'}
-                    </div>
-                    <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
-                      {BUCKETS.map((b) => (
-                        <button
-                          key={b.kind}
-                          onClick={() => { setTypingInto(typingInto === b.kind ? null : b.kind); setLineDraft('') }}
-                          title={b.sub}
-                          style={{
-                            fontSize: 12, fontWeight: 600, borderRadius: 20, padding: '5px 11px', cursor: 'pointer', fontFamily: 'inherit',
-                            border: `1px solid ${typingInto === b.kind ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                            background: typingInto === b.kind ? 'var(--gw-blue-bg)' : 'var(--gw-bg)',
-                            color: 'var(--gw-navy)',
-                          }}
-                        >
-                          {b.title}
-                        </button>
-                      ))}
+                    </p>
+                    <div className="gwui-mt-8">
+                      <Choices
+                        label="Which kind of line"
+                        value={typingInto ?? ''}
+                        onChange={(kind) => { setTypingInto(typingInto === kind ? null : kind); setLineDraft('') }}
+                        options={BUCKETS.map((b) => ({ key: b.kind, label: b.title, description: b.sub }))}
+                      />
                     </div>
                     {typingInto && (
-                      <div style={{ marginTop: 10 }}>
-                        <textarea
-                          className="gw-ta"
+                      <div className="gwui-mt-10">
+                        <TextArea
                           autoFocus
                           rows={3}
                           maxLength={2000}
@@ -1239,20 +1228,25 @@ export function ContextPage({
                           onChange={(e) => setLineDraft(e.target.value)}
                           placeholder={THE_WAY_IN[typingInto] ?? ''}
                         />
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                          <button
+                        <div className="gwui-button-row gwui-mt-8">
+                          {/*
+                            SECONDARY, NOT PRIMARY: at most one navy button per screen, and the
+                            brief's own "Save" above is the page's one primary action. This and that
+                            one can be open at the same time (the brief editor and this bucket
+                            editor are independent state), so they are never "two branches of one
+                            either/or" - a genuine second navy button, not a false positive.
+                          */}
+                          <Button
+                            kind="secondary"
+                            size="small"
                             onClick={() => addLine.mutate({ kind: typingInto, text: lineDraft })}
                             disabled={!lineDraft.trim() || addLine.isPending}
-                            style={{ padding: '7px 13px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: lineDraft.trim() ? 1 : 0.4 }}
                           >
-                            {addLine.isPending ? 'Saving\u2026' : 'Everyone here reads this'}
-                          </button>
-                          <button
-                            onClick={() => { setTypingInto(null); setLineDraft('') }}
-                            style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12.5, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                          >
+                            {addLine.isPending ? 'Saving…' : 'Everyone here reads this'}
+                          </Button>
+                          <Button kind="secondary" size="small" onClick={() => { setTypingInto(null); setLineDraft('') }}>
                             Cancel
-                          </button>
+                          </Button>
                           {/*
                             AND THE CONVERSATION, WHICH IS STILL THE BETTER ROUTE.
 
@@ -1264,7 +1258,7 @@ export function ContextPage({
                           {contextEnabled && (
                             <button
                               onClick={() => { changeThisInTheChat(lineDraft.trim() || (THE_WAY_IN[typingInto] ?? '')); setTypingInto(null); setLineDraft('') }}
-                              style={{ background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                              className="gwui-plain-link"
                             >
                               Say it in the conversation instead
                             </button>
@@ -1272,62 +1266,52 @@ export function ContextPage({
                         </div>
                       </div>
                     )}
-                  </div>
+                  </Panel>
                 )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, maxWidth: 720 }}>
+                <div className="gwui-stack-10">
                   {theBuckets.filter((b) => b.lines.length > 0).map((b) => (
-                    <div key={b.kind} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
-                      <div style={{ padding: '8px 13px 6px', background: 'var(--gw-bg)', display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{b.title}</span>
-                        <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>{b.sub}</span>
+                    <Panel key={b.kind} pad={false}>
+                      <div className="gwui-group-head">
+                        <span className="gwui-fs-13 gwui-ink-dark"><strong>{b.title}</strong></span>
+                        <Note>{b.sub}</Note>
                       </div>
                       <ShowAFew rows={b.lines} few={6} what={`lines under ${b.title.toLowerCase()}`}>
-                      {(l: any, i: number) => (
-                        <div key={l.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                          <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 220 }}>{l.text}</span>
+                      {(l: any) => (
+                        <div key={l.id} className="gwui-panel-row gwui-line-row">
+                          <span className="gwui-panel-text">{l.text}</span>
                           {l.audience !== 'EVERYONE' && (
-                            <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-sub)', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)' }}>Only you</span>
+                            <Tag tone="plain">Only you</Tag>
                           )}
                           {isTheLead && l.legacy && l.audience !== 'EVERYONE' && (
-                            <button
-                              onClick={() => shareOlderNote.mutate(l.id)}
-                              disabled={shareOlderNote.isPending}
-                              style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
-                            >
+                            <Button kind="quiet" size="small" onClick={() => shareOlderNote.mutate(l.id)} disabled={shareOlderNote.isPending}>
                               Share with the team
-                            </button>
+                            </Button>
                           )}
                           {isTheLead && !l.legacy && (
                             <>
-                              <button
+                              <Button
+                                kind="quiet"
+                                size="small"
                                 onClick={() => changeLine.mutate({ itemId: l.id, audience: l.audience === 'EVERYONE' ? 'LEAD_ONLY' : 'EVERYONE' })}
                                 disabled={changeLine.isPending}
-                                style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
                               >
                                 {l.audience === 'EVERYONE' ? 'Make it yours only' : 'Share with the team'}
-                              </button>
+                              </Button>
                               {contextEnabled && (
-                                <button
-                                  onClick={() => changeThisInTheChat(`Change the line "${l.text}" to `)}
-                                  style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
-                                >
+                                <Button kind="quiet" size="small" onClick={() => changeThisInTheChat(`Change the line "${l.text}" to `)}>
                                   Change this
-                                </button>
+                                </Button>
                               )}
                               {/* Retired, not deleted: a decision that was made is not one that never existed. */}
-                              <button
-                                onClick={() => changeLine.mutate({ itemId: l.id, closed: true })}
-                                disabled={changeLine.isPending}
-                                style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
-                              >
+                              <Button kind="quiet" size="small" onClick={() => changeLine.mutate({ itemId: l.id, closed: true })} disabled={changeLine.isPending}>
                                 Done with it
-                              </button>
+                              </Button>
                             </>
                           )}
                         </div>
                       )}
                       </ShowAFew>
-                    </div>
+                    </Panel>
                   ))}
                 </div>
               </>
@@ -1375,9 +1359,7 @@ export function ContextPage({
               nothing on screen said so.
             */}
             {!contextEnabled && !isLead && (
-              <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 16, fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                {LEAD_HOLDS_MORE}
-              </div>
+              <Callout>{LEAD_HOLDS_MORE}</Callout>
             )}
 
             {/*
