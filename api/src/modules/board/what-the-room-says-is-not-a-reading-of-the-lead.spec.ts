@@ -21,8 +21,13 @@ describe('The shared read of the answers, on the board', () => {
     const b = await boardAs(RECORD, ...RUKIA);
     expect(b.whatTheAnswersSay.thePicture).toBe('Most people are behind on payments. Only one person is repaying on time.');
   });
-  it('Amina reads all of it', async () => {
+  /*
+   * Amina reads all of it, and the sentence about her reads "You", since c86af26f (the reader's own
+   * name is served as "you"). This used to expect her to read her own name in the third person, which
+   * the 1 October review rules out.
+   */
+  it('Amina reads all of it, the sentence about her as "you"', async () => {
     const b = await boardAs(RECORD, ...AMINA);
-    expect(b.whatTheAnswersSay.thePicture).toBe(PICTURE);
+    expect(b.whatTheAnswersSay.thePicture).toBe('Most people are behind on payments. You have no visibility of these facts, and so have understood the problem as one of individual repayment. Only one person is repaying on time.');
   });
 });

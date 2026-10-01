@@ -1,6 +1,9 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from './whose-number-is-whose-business';
+import { ReportsService } from '../reports/reports.service';
+import { BoardService } from './board.service';
+import { prismaFor } from './__fixtures__/a-page-that-contradicts-itself';
 
 /**
  * THE RULE WAS RIGHT, WRITTEN ONCE, AND USED ONCE.
@@ -87,6 +90,11 @@ describe('every surface that hands out whose number it is', () => {
     'modules/reports/reports.service.ts': 'adds per-person figures up for the synthesis; its own reader wall decides what renders',
     /* Week 16: rows a test hands the report and the board, which then go through targetsFor there. */
     'modules/reports/__fixtures__/today-sales-team.ts': 'test rows for the week 16 specs; what-today-reads-from-the-record asks targetsFor',
+    /* 1 October (ece6f8cd): joins rows that are one thing. It reads the owner only to keep two people's
+       numbers apart, and it is handed `out.objectives` after the board has asked targetsFor, so it
+       only ever sees what this reader may read. Proved below on the real board, as each reader. */
+    'modules/board/one-count-per-thing.ts': 'joins rows the board already passed through targetsFor; it reads the owner only to keep two people apart',
+    'modules/board/__fixtures__/a-page-that-contradicts-itself.ts': 'test rows for a-board-that-does-not-contradict-itself; the board asks targetsFor',
   };
 
   it('goes through the one rule, or says why it is not a reader', () => {
@@ -134,5 +142,34 @@ describe('every surface that hands out whose number it is', () => {
     const at = src.indexOf('objectives: targetsFor(');
     expect(at).toBeGreaterThan(-1);
     expect(src.slice(at, at + 420)).toMatch(/\{ isLead: viewerIsInitiator \}/);
+  });
+});
+
+/*
+ * AND THE STEP THAT JOINS ONE THING'S ROWS ONLY EVER SEES WHAT THE READER MAY READ (1 October 2026).
+ * `oneCountPerThing` runs after `targetsFor` on the board, so nobody reads a colleague's number
+ * through a row it joined. Read on the sales board of api/journey/all-24/re-a, where Ngozi and Kwame
+ * each hold 14 approved facilities and the lead holds the team's 40.
+ */
+describe('one count per thing, as each reader reads it', () => {
+  async function boardFor(userId: string, role = 'MEMBER') {
+    const { prisma } = prismaFor('sales', role);
+    const reports = Object.create(ReportsService.prototype) as ReportsService;
+    const svc = new BoardService(prisma, { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, reports);
+    return (await svc.get('g-credit', userId)) as any;
+  }
+  const owners = (b: any) => (b.objectives as any[]).filter((o) => o.target === 14).map((o) => o.ownerParticipantId).sort();
+
+  it('the lead, Bisi, reads both people\'s 14', async () => {
+    expect(owners(await boardFor('u-bisi'))).toEqual(['p-kwame', 'p-ngozi']);
+  });
+  it('Kwame reads his own 14 and not Ngozi\'s', async () => {
+    expect(owners(await boardFor('u-kwame'))).toEqual(['p-kwame']);
+  });
+  it('Femi, who holds no 14, reads neither', async () => {
+    expect(owners(await boardFor('u-femi'))).toEqual([]);
+  });
+  it('an admin not in the check-in reads neither', async () => {
+    expect(owners(await boardFor('u-admin', 'ADMIN'))).toEqual([]);
   });
 });
