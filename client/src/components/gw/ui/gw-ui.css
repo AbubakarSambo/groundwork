@@ -1062,3 +1062,24 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* Company context's card bodies (the handbook, resources, and what the company has learned) keep
    their own line breaks, as the product's `gw-company-body` already did. */
 .gwui-pre-line { white-space: pre-line; }
+
+/* ── SUITES (E, group 2 piece 4: docs/prototype/screens/E-suites). New parts this piece added -
+   see docs/the-parts-against-the-prototype.md for the full note. Every value here is carried over
+   unchanged from this product's own prior classes (`gw-suite-*`), which already matched the
+   prototype's own sizes; only the names moved into the shared kit. ─────────────────────────────── */
+.gwui-suite-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.gwui-suite-switch { display: flex; gap: 10px; align-items: center; }
+.gwui-suite-ask { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--gw-border); display: flex; flex-direction: column; gap: 12px; }
+.gwui-suite-q { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* A record table (time sheets, equipment, spending, customers, the role map): the product's own
+   shape, no dedicated prototype class - the prototype draws each of these by hand per screen. */
+.gwui-record-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.gwui-record-table th, .gwui-record-table td { text-align: left; vertical-align: top; padding: 12px 16px; border-top: 1px solid var(--gw-border); }
+.gwui-record-table thead th { border-top: 0; font-weight: 500; font-size: 13px; color: var(--gw-sub); }
+.gwui-record-table tbody th { font-weight: 600; }
+.gwui-record-table .gwui-nobody { color: var(--gw-red-t); }
+.gwui-record-table select, .gwui-record-table input { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--gw-border); border-radius: 7px; background: var(--gw-card); color: var(--gw-text); max-width: 100%; }
+@media (max-width: 860px) {
+  .gwui-record-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .gwui-record-table, .gwui-record-table tbody, .gwui-record-table tr, .gwui-record-table th, .gwui-record-table td { display: block; width: auto; }
+}

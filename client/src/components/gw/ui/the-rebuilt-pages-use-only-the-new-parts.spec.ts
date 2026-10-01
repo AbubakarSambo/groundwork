@@ -339,6 +339,8 @@ describe('a rebuilt page never falls back to the old parts', () => {
       /* Group 2, piece 3: the Company page and company context (D2-company). */
       'pages/company/CompanyPage.tsx',
       'pages/company/CompanyContextPage.tsx',
+      /* Group 2, piece 4: the Suites page and each suite's board (E-suites). */
+      'pages/suites/SuitesPage.tsx',
     ])
   })
 

@@ -3,15 +3,24 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { suitesApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Button, Tag } from '@/components/gw/kit'
+import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select } from '@/components/gw/ui'
 
 /**
- * THE SUITES PAGE (E, #/settings/suites, U.17). The wording is copied from
+ * THE SUITES PAGE (E, #/settings/suites, group 2 piece 4). The wording is copied from
  * docs/prototype/screens/E-suites/suites-admin.txt and suites-lead.txt.
  *
  * WHAT EACH READER IS GIVEN IS THE SERVER'S (GET /suites). An admin reads every suite, in three
  * groups, with its switch; a lead reads only the suites that are on, with no switches; the server
  * refuses everybody else. The page adds nothing to what it is given.
+ *
+ * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` for the frame (the organisation's name as the
+ * eyebrow), `Section` for each of "People"/"Money"/"Work" and "Already part of Groundwork", `Panel`
+ * (`as="section"`) for each suite card, `Toggle` for its switch, `FieldLabel`/`TextField`/`TextArea`/
+ * `Select` for a suite's own questions, and `RowList`/`Row` for "Already part of Groundwork"'s list.
+ * Two small parts were missing and are now in `gw-ui.css` (see
+ * docs/the-parts-against-the-prototype.md): `.gwui-suite-head`/`.gwui-suite-switch` (a suite card's
+ * own two-column layout, title and body to the left, the On/Off tag and its switch to the right)
+ * and `.gwui-suite-ask`/`.gwui-suite-q` (the small form a suite's own questions open into).
  *
  * "OPEN ITS BOARD" ONLY FOR A BOARD THAT EXISTS (docs/morning-report-ui.md, item 28): a door that
  * leads nowhere is worse than none, so each suite's board brings its own door, one at a time, in
@@ -61,43 +70,46 @@ export function SuitesPage() {
   const orgName = user?.organization?.name?.trim() || user?.organizationName || ''
 
   return (
-    <div className="gw-you gw-suites">
-      {orgName && <p className="gw-suites-org">{orgName}</p>}
-      <h1 className="gw-t-title gw-suites-h1">Suites</h1>
-      {data?.reader === 'admin' && (
-        <p className="gw-you-sub">Ready-made tools for other kinds of team work. Switch on only what you need. Each one adds a single board, and people use it by talking to Groundwork, not by filling in forms. Only admins see this page.</p>
-      )}
-      {data?.reader === 'lead' && (
-        <p className="gw-you-sub">The team tools your organisation has switched on. An admin switches them on or off.</p>
-      )}
+    <Page>
+      <PageTitle
+        eyebrow={orgName || undefined}
+        title="Suites"
+        subtitle={
+          data?.reader === 'admin'
+            ? 'Ready-made tools for other kinds of team work. Switch on only what you need. Each one adds a single board, and people use it by talking to Groundwork, not by filling in forms. Only admins see this page.'
+            : data?.reader === 'lead'
+              ? 'The team tools your organisation has switched on. An admin switches them on or off.'
+              : undefined
+        }
+      />
 
-      {isLoading && <p className="gw-t-body gw-you-quiet">Loading…</p>}
+      {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 ? (
-          <p role="alert" className="gw-t-body">{refused.data?.message ?? 'Only an admin or a lead can open the suites.'}</p>
+          <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open the suites.'}</Note>
         ) : (
-          <div role="alert" className="gw-you-quiet">
-            <p className="gw-t-body">The suites did not load.</p>
+          <div>
+            <Note tone="error">The suites did not load.</Note>
             <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
           </div>
         )
       )}
       {data?.reader === 'admin' && <ForAnAdmin page={data} />}
       {data?.reader === 'lead' && <ForALead page={data} />}
-    </div>
+    </Page>
   )
 }
 
 function ForALead({ page }: { page: SuitesForALead }) {
-  if (page.suites.length === 0) return <p className="gw-t-body gw-you-quiet">None are switched on yet.</p>
+  if (page.suites.length === 0) return <Empty>None are switched on yet.</Empty>
   return (
-    <div className="gw-you-grid">
+    <div className="gwui-cards-3">
       {page.suites.map(s => (
-        <section key={s.key} className="gw-you-card gw-suite-card" aria-labelledby={`suite-${s.key}`}>
-          <h3 id={`suite-${s.key}`} className="gw-t-h3">{s.name}</h3>
-          <p>{s.line}</p>
-          {BOARDS[s.key] && <Link to={BOARDS[s.key].to} className="gw-suite-open">Open its board</Link>}
-        </section>
+        <Panel as="section" key={s.key} aria-label={s.name}>
+          <h3 className="gwui-panel-heading">{s.name}</h3>
+          <p className="gwui-panel-text">{s.line}</p>
+          {BOARDS[s.key] && <Link className="gwui-plain-link" to={BOARDS[s.key].to}>Open its board</Link>}
+        </Panel>
       ))}
     </div>
   )
@@ -107,27 +119,24 @@ function ForAnAdmin({ page }: { page: SuitesForAnAdmin }) {
   return (
     <>
       {page.groups.map(g => (
-        <section key={g.name} className="gw-suites-group" aria-labelledby={`suites-${g.name}`}>
-          <h2 id={`suites-${g.name}`} className="gw-t-h2">{g.name}</h2>
-          <div className={g.suites.length === 1 ? 'gw-suites-one' : 'gw-you-grid'}>
+        <Section key={g.name} heading={g.name}>
+          <div className="gwui-cards-3">
             {g.suites.map(s => <ASuite key={s.key} s={s} people={page.people} />)}
           </div>
-        </section>
+        </Section>
       ))}
 
-      <section className="gw-suites-group" aria-labelledby="suites-already">
-        <h2 id="suites-already" className="gw-t-h2">Already part of Groundwork</h2>
-        <p className="gw-you-sub">These don’t need switching on. Here is where each one lives.</p>
-        <ul className="gw-you-card gw-suites-already">
+      <Section heading="Already part of Groundwork" note="These don’t need switching on. Here is where each one lives.">
+        <RowList label="Already part of Groundwork">
           {ALREADY_PART.map(a => (
-            <li key={a.name}>
+            <Row key={a.name} columns="minmax(0, 220px) minmax(0, 1fr) auto">
               <b>{a.name}</b>
               <span>{a.line}</span>
               <Link to={a.to}>{a.where}</Link>
-            </li>
+            </Row>
           ))}
-        </ul>
-      </section>
+        </RowList>
+      </Section>
     </>
   )
 }
@@ -153,47 +162,37 @@ function ASuite({ s, people }: { s: AdminSuite; people: SuitesForAnAdmin['people
   const allAnswered = s.questions.every(q => (answers[q.id] ?? '').trim() !== '')
 
   return (
-    <section className="gw-you-card gw-suite-card" aria-labelledby={`suite-${s.key}`}>
-      <div className="gw-suite-head">
+    <Panel as="section" aria-label={s.name}>
+      <div className="gwui-suite-head">
         <div>
-          <h3 id={`suite-${s.key}`} className="gw-t-h3">{s.name}</h3>
-          <p>{s.line}</p>
-          {s.on && BOARDS[s.key] && <Button kind="secondary" size="small" to={BOARDS[s.key].to}>Open its board</Button>}
+          <h3 className="gwui-panel-heading">{s.name}</h3>
+          <p className="gwui-panel-text">{s.line}</p>
+          {s.on && BOARDS[s.key] && <Link className="gwui-plain-link" to={BOARDS[s.key].to}>Open its board</Link>}
         </div>
-        <div className="gw-suite-switch">
-          <Tag tone="plain">{s.on ? 'On' : 'Off'}</Tag>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={s.on}
-            aria-labelledby={`suite-${s.key}`}
-            className={`gw-switch${s.on ? ' on' : ''}`}
-            onClick={pressed}
-            disabled={flip.isPending || asking}
-          >
-            <span aria-hidden />
-          </button>
+        <div className="gwui-suite-switch">
+          <Tag>{s.on ? 'On' : 'Off'}</Tag>
+          <Toggle on={s.on} onChange={pressed} label={s.name} disabled={flip.isPending || asking} />
         </div>
       </div>
 
       {asking && (
         <form
-          className="gw-suite-ask"
+          className="gwui-suite-ask"
           onSubmit={e => { e.preventDefault(); if (allAnswered) flip.mutate({ on: true, given: answers }) }}
         >
-          <p>Answer these first, and it switches on.</p>
+          <p className="gwui-panel-text">Answer these first, and it switches on.</p>
           {s.questions.map(q => (
             <AQuestion key={q.id} suite={s.key} q={q} value={answers[q.id] ?? ''} people={people}
               onChange={v => setAnswers(a => ({ ...a, [q.id]: v }))} />
           ))}
-          <div className="gw-suite-ask-actions">
+          <div className="gwui-edge-acts">
             <Button kind="primary" size="small" type="submit" disabled={!allAnswered || flip.isPending}>Switch it on</Button>
             <Button kind="quiet" size="small" onClick={() => { setAsking(false); setProblem(null) }}>Cancel</Button>
           </div>
         </form>
       )}
-      {problem && <p className="gw-auth-error" role="alert">{problem}</p>}
-    </section>
+      {problem && <Note tone="error">{problem}</Note>}
+    </Panel>
   )
 }
 
@@ -202,25 +201,25 @@ function AQuestion({ suite, q, value, people, onChange }: {
 }) {
   const id = `suite-${suite}-${q.id}`
   return (
-    <div className="gw-suite-q">
-      <label htmlFor={id}>{q.ask}</label>
+    <div className="gwui-suite-q">
+      <FieldLabel htmlFor={id}>{q.ask}</FieldLabel>
       {q.kind === 'person' && (
-        <select id={id} value={value} onChange={e => onChange(e.target.value)}>
+        <Select id={id} value={value} onChange={e => onChange(e.target.value)}>
           <option value="">Choose somebody</option>
           {people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+        </Select>
       )}
       {q.kind === 'choice' && (
-        <select id={id} value={value} onChange={e => onChange(e.target.value)}>
+        <Select id={id} value={value} onChange={e => onChange(e.target.value)}>
           <option value="" disabled>Choose one</option>
           {q.options.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
+        </Select>
       )}
       {q.kind === 'number' && (
-        <input id={id} type="number" inputMode="numeric" min={q.min} max={q.max} value={value} onChange={e => onChange(e.target.value)} />
+        <TextField id={id} type="number" inputMode="numeric" min={q.min} max={q.max} value={value} onChange={e => onChange(e.target.value)} />
       )}
       {q.kind === 'lines' && (
-        <textarea id={id} rows={4} value={value} onChange={e => onChange(e.target.value)} />
+        <TextArea id={id} rows={4} value={value} onChange={e => onChange(e.target.value)} />
       )}
     </div>
   )

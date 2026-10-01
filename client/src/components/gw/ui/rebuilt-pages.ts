@@ -87,4 +87,11 @@ export const REBUILT_PAGES: string[] = [
    */
   'pages/company/CompanyPage.tsx',
   'pages/company/CompanyContextPage.tsx',
+  /*
+   * GROUP 2, PIECE 4 (E-suites, docs/prototype/screens/E-suites): the Suites page and each suite's
+   * board. New shared parts this piece added: `.gwui-suite-head`/`.gwui-suite-switch`,
+   * `.gwui-suite-ask`/`.gwui-suite-q` and `.gwui-record-table` in `gw-ui.css` - see
+   * docs/the-parts-against-the-prototype.md.
+   */
+  'pages/suites/SuitesPage.tsx',
 ]
