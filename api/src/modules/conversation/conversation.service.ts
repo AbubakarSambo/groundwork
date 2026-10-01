@@ -123,6 +123,7 @@ import { theSetTheySpokeToPartOf, whatTheyToldWithoutWhen, askForWhatTheyLeftOut
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
+import { theNextStepIsStillOwed, theCloseQuestionFor, whereTheCheckInIs } from './what-they-will-do-is-asked-before-the-end';
 import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, hasAGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
 import { withoutARecordClaimNobodyHolds } from './a-record-claim-nobody-holds';
@@ -2780,7 +2781,7 @@ export class ConversationService {
    */
   private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string; sayFirst?: string }> {
     const [row, turns] = await Promise.all([
-      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true, ground: { select: { cadence: true, scenario: true } } } }),
+      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true, isClarification: true, ground: { select: { cadence: true, scenario: true } } } }),
       this.prisma.conversationTurn.findMany({
         where: { checkInId },
         orderBy: { createdAt: 'asc' },
@@ -2854,6 +2855,26 @@ export class ConversationService {
      * the owed list's own words, so the model cannot soften it into a fourth question about
      * something else. A one-time session has no owed list to hold on.
      */
+    /*
+     * AND NOT WITHOUT ASKING WHAT THEY WILL DO, AND BY WHEN. The prompt has said for weeks that the close
+     * is attached to this question, and nothing here checked it: six check-ins in re-c and re-d closed
+     * with no next step and no date, and the one hold went to the owed list instead. The model is told
+     * where it is from the sixth answer (whereTheCheckInIs); this is only for the close it reached
+     * without asking. It takes the one hold, so it is asked once and the next close lands. Never in a
+     * one-time session, a correction, a clarification or a team update, and never after a decline.
+     */
+    if (!justDeclined && theNextStepIsStillOwed({
+      personTurns: personSaid,
+      aiTurns: turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? ''),
+      oneTime,
+      isLead,
+      notACheckIn: isSelfCorrection || !!(row as any)?.isClarification || (row as any)?.ground?.scenario === 'TEAM_UPDATES',
+      askedToFinish: false,
+    })) {
+      await this.prisma.checkIn.update({ where: { id: checkInId }, data: { closeHeldAt: new Date() } });
+      this.logger.log(`Holding the close once on ${checkInId}: they were never asked what they will do, and by when.`);
+      return { ready: false, ask: theCloseQuestionFor(isLead, personSaid) };
+    }
     if (!oneTime && !justDeclined) {
       const neverAsked = await this.whatThisSessionNeverAsked(checkInId).catch(() => [] as string[]);
       if (neverAsked.length) {
@@ -4426,6 +4447,21 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
     /* Asking for proof kindly: task 2.5, week 4. Not in the opener, which has nothing of theirs yet. */
     const proofKindly = how?.forTheOpener ? '' : askForProofKindly(aClaimNothingShowsYet(turnsThisSession as any));
 
+    /*
+     * WHERE THIS CHECK-IN IS, AND WHETHER THEY HAVE BEEN ASKED WHAT THEY WILL DO. Context, never the
+     * question itself: from the sixth answer, while it is still unasked, the model is told how far in
+     * it is and that the next session can only test what is said here. See
+     * what-they-will-do-is-asked-before-the-end.
+     */
+    const whereItIs = how?.forTheOpener ? '' : whereTheCheckInIs({
+      personTurns: turnsThisSession.filter((t) => t.role === 'PERSON').map((t) => t.content),
+      aiTurns: turnsThisSession.filter((t) => t.role === 'AI').map((t) => t.content),
+      oneTime: (ground as any).cadence === Cadence.ONE_TIME,
+      isLead: isTheLead,
+      notACheckIn: !!checkIn.isSelfCorrection || !!checkIn.isClarification || ground.scenario === 'TEAM_UPDATES',
+      askedToFinish: askedToFinish(latestMessage ? [latestMessage] : []),
+    });
+
     // FINAL SESSION: same conversation, flagged closing. The block adds the
     // four closing probes and the thoroughness framing; assessment targets are
     // the pre-agreed resolutionState when set, else the party's own session-1
@@ -4839,7 +4875,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['roleConfirm', roleConfirmationBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
       ['floorGiveBack', theFloorGiveBack], ['whoCarries', numbersAndOwners.whoCarries], ['whereItStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
-      ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
+      ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem], ['whereItIs', whereItIs],
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
@@ -4970,7 +5006,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed],
       ['rhythmNow', rhythmNow], ['dynamicContext', dynamicContext], ['docContext', docContext],
       ['docPromptHint', docPromptHint], ['notesBlock', notesBlock], ['deliveriesBlock', deliveriesBlock],
-      ['burden', burden], ['putThisToThem', putThisToThem], ['askedWhenThisEnds', askedWhenThisEnds], ['theirHedge', theirHedge], ['heldBack', heldBack],
+      ['burden', burden], ['putThisToThem', putThisToThem], ['askedWhenThisEnds', askedWhenThisEnds], ['theirHedge', theirHedge], ['heldBack', heldBack], ['whereItIs', whereItIs],
       ['theirCommitments', theirCommitments], ['nobodyOwns', nobodyOwns], ['notSettledBlock', notSettledBlock],
       ['leadsQuestions', leadsQuestions], ['betweenBlock', betweenBlock], ['howWeWork', howWeWork],
     ].map(([name, text]) => ({ name: String(name), text: text as any }));
@@ -5015,7 +5051,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**
