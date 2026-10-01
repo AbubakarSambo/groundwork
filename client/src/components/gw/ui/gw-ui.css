@@ -1139,9 +1139,17 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-strength-ok { font-size: 14.5px; font-weight: 700; color: var(--gw-green-t); margin: 0; }
 
 /* THE SIGN-IN SCREEN'S SPLIT LAYOUT (SplitPage.tsx; signin.jpg, the one A2 screen drawn this way). */
-.gwui-split { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--gw-bg); }
+/* The left half is the page colour (signin.jpg), not --gw-bg's soft-fill beige - that was the one
+   real fault a picture check found here (coordinator, after the first pass): rgb(247, 241, 229)
+   painted over #FDFBF6. */
+.gwui-split { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); background: var(--gw-page); }
 .gwui-split-form { padding: clamp(24px, 6vw, 96px); display: flex; flex-direction: column; }
 .gwui-split-body { max-width: 420px; width: 100%; margin: auto 0; padding-top: 32px; }
+/* The split form's own top-level rhythm (signin.jpg's source, s1.js: the form's outer column is
+   `gap:24px` between its heading, its fields and the line under them) - clear space between the
+   subtitle and the first field, the fault a picture check found here (coordinator, after the
+   first pass): the heading and the form used to sit with no gap at all. */
+.gwui-split-body > * + * { margin-top: 24px; }
 .gwui-split-panel { background: var(--gw-dark); color: #fff; padding: clamp(24px, 5vw, 72px); display: flex; flex-direction: column; justify-content: center; }
 .gwui-split-panel-line { font-family: var(--gw-font-name); font-size: 28px; line-height: 1.35; margin: 0 0 22px; max-width: 540px; }
 .gwui-split-panel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; font-size: 16px; }
