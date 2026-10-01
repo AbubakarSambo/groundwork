@@ -1146,3 +1146,18 @@ Draw `figure` large with `of` under it, as the prototype's tiles do; `says` is t
 
 - A person in the check-in reads aims and limits in the weekly report only where the check-in's `whoSeesTargets` is `EVERYBODY`, as on the board. With `THEIR_OWN` they read the counts alone.
 - `GET /grounds/:groundId/report/week?week=2026-09-21` reads an earlier week by the date of its Monday, as it was kept. Without `week`, the latest week. A week with no report returns `saying: "There is no weekly report for that week."`; a value that is not a date in that form is refused with "Pick a week by the date of its Monday, for example 2026-09-21."
+
+
+## Request 95, part (b), again: the wording guard (1 October, evening)
+
+On the combined code the guard counted 63 against 60. I went through every match by the commit that wrote it. Seven were added by the engine today, and I have dealt with all seven:
+
+1. **One was copy-shaped and is rewritten** (`what-they-will-do-is-asked-before-the-end.ts`): "This is the last question you should ask before you close. Ask it now. Make it the one question in this turn. Use words from what they have told you, about the thing in the way or the thing that is due. ..."
+2. **Five are instructions to the pattern detector, read by no person** (what counts for each wavering pattern). I moved them word for word out of `pattern-library.ts`, which also holds pattern names people read, into a file of their own, `api/src/modules/patterns/what-counts-for-each-pattern.ts`. What the detector is given is unchanged (I checked its fingerprint before and after). I did not reword them, because a pattern steadiness measurement is running against exactly this wording.
+3. **One is a test fixture**, `api/src/modules/board/__fixtures__/a-page-that-contradicts-itself.ts`: the words a board was built from in a run, kept as they were on purpose, so a test can prove the faults in them are fixed. It is not copy anybody reads.
+
+**What the guard needs, in `client/src/lib/copy-does-not-sound-like-yoda.spec.ts`, two lines, the limit untouched:**
+- Add `'what-counts-for-each-pattern.ts'` to `NOT_COPY`, with the same reason as `prompt-library.ts`: every line in it is addressed to a model.
+- Skip test data the way `.spec.` files are skipped: in `everyFile`, also pass over any path containing `/__fixtures__/` (for example `if (name === 'node_modules' || name === 'dist' || name === '__fixtures__') continue`).
+
+With both, the count on the combined code is 56. Without them it is 62. The other matches are older than today and were inside the 60 already.
