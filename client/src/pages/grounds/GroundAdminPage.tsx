@@ -1819,6 +1819,9 @@ export function GroundAdminPage() {
                      colleague", "another colleague". Never the lead's note, which is shown below
                      as theirs. */
                   const name = personLabel(p)
+                  /* GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 10: used below so the reader's own
+                     row says "Your expectation", not "They have seen it" about the reader herself. */
+                  const isSelfRow = p.userId === user?.id
 
                   /*
                    * WHAT THIS ROW NEEDS YOU TO KNOW BEFORE IT NEEDS YOU TO ACT (group 3, piece 5).
@@ -2105,11 +2108,20 @@ export function GroundAdminPage() {
                                 EXPECTATION, so it says so.
                                 REVIEW ROUND 3, ITEM 5: A SENTENCE, CAPITALISED, WITH A FULL STOP -
                                 it read as a lowercase fragment trailing off the row above it. */}
+                            {/*
+                              GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 10: ON THE READER'S OWN
+                              ROW, "THEY" IS HER. Rukia's own row on this roster (she is a
+                              participant in her own check-in, same as anybody else) read
+                              "Expectation set. They have seen it." about herself - a third person
+                              where the reader is the first. It now reads "Your expectation is set."
+                              on her own row, the same rule YourWork already uses for a reader's own
+                              line (batch A, fault 6).
+                            */}
                             {!p.objective?.text?.trim()
-                              ? 'No expectation set for them yet.'
+                              ? (isSelfRow ? 'No expectation set for you yet.' : 'No expectation set for them yet.')
                               : p.objective.seenBySubject
-                                ? 'Expectation set. They have seen it.'
-                                : 'Expectation set. Not seen yet.'}
+                                ? (isSelfRow ? 'Your expectation is set. You have seen it.' : 'Expectation set. They have seen it.')
+                                : (isSelfRow ? 'Your expectation is set. You have not seen it yet.' : 'Expectation set. Not seen yet.')}
                           </Button>
                         </div>
                       )}
