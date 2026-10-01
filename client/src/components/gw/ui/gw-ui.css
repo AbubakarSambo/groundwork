@@ -1083,3 +1083,8 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-record-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .gwui-record-table, .gwui-record-table tbody, .gwui-record-table tr, .gwui-record-table th, .gwui-record-table td { display: block; width: auto; }
 }
+/* A progress bar against an agreed amount (time sheets' "Hours against what each client agreed"):
+   the product's own shape, carried over unchanged from gw-time-bar. */
+.gwui-time-bar { display: block; height: 8px; border-radius: 4px; background: var(--gw-rule-2); overflow: hidden; }
+.gwui-time-bar span { display: block; height: 100%; background: var(--gw-navy); }
+.gwui-time-bar span.gwui-time-bar-over { background: var(--gw-red-t); }

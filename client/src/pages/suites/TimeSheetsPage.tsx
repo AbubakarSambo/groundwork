@@ -1,18 +1,23 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { timeSheetsApi, type TimeAgreement, type TimeWeek } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Button, Tag } from '@/components/gw/kit'
+import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty } from '@/components/gw/ui'
 
 /**
- * TIME SHEETS (E3, #/suite/time, U.17). The wording is copied from
+ * TIME SHEETS (E3, #/suite/time, group 2 piece 4). The wording is copied from
  * docs/prototype/screens/E-suites/suite-time.txt. HOURS ARE FOR BILLING ONLY (decisions rule 10).
  *
  * WHAT EACH READER IS GIVEN IS THE SERVER'S (GET /suites/time/board): an admin reads everybody's
  * hours and the hours against what each client agreed; a lead only their own team's hours; only while
  * the suite is on. Approve is offered only where the server says this reader approves.
+ *
+ * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (crumbs, subtitle), `Panel` for "Hours are for
+ * billing only", `Section` for each week (its "Week of ..." is `Section`'s own `note`) and "Hours
+ * against what each client agreed", `.gwui-record-table` (added to `gw-ui.css` for this piece - see
+ * docs/the-parts-against-the-prototype.md) for the hours table, `Tag`/`Button` for Approved/Approve,
+ * and `Note`/`Empty` for the loading, error and empty states.
  *
  * NOT DRAWN HERE, ON PURPOSE (docs/morning-report-ui.md, item 28):
  *   - "How people use it", with its example chat: nobody can give hours by talking to Groundwork until
@@ -40,23 +45,25 @@ export function TimeSheetsPage() {
   const earlier = data?.weeks.filter(w => w.weekOf !== data.thisWeek) ?? []
 
   return (
-    <div className="gw-you gw-suites">
-      <nav className="gw-people-crumb" aria-label="Breadcrumb"><Link to="/settings/suites">Suites</Link> / Time sheets</nav>
-      <h1 className="gw-t-title gw-suites-h1">Time sheets</h1>
-      <p className="gw-you-sub">Hours spent on each client or project, ready for billing. People tell Groundwork their hours in their check-in or in chat. There is no grid to fill in.</p>
+    <Page>
+      <PageTitle
+        crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Time sheets' }]}
+        title="Time sheets"
+        subtitle="Hours spent on each client or project, ready for billing. People tell Groundwork their hours in their check-in or in chat. There is no grid to fill in."
+      />
 
-      <div className="gw-you-card gw-time-rule">
-        <b>Hours are for billing only.</b>
-        <p>They never appear in anyone’s check-in report, their signals or a review. Being busy is not the same as making progress.</p>
-      </div>
+      <Panel>
+        <p className="gwui-panel-text"><b>Hours are for billing only.</b></p>
+        <p className="gwui-panel-text">They never appear in anyone’s check-in report, their signals or a review. Being busy is not the same as making progress.</p>
+      </Panel>
 
-      {isLoading && <p className="gw-t-body gw-you-quiet">Loading…</p>}
+      {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <p role="alert" className="gw-t-body">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</p>
+          <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</Note>
         ) : (
-          <div role="alert" className="gw-you-quiet">
-            <p className="gw-t-body">The board did not load.</p>
+          <div>
+            <Note tone="error">The board did not load.</Note>
             <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
           </div>
         )
@@ -69,7 +76,7 @@ export function TimeSheetsPage() {
           {!!data.agreements?.length && <Agreements list={data.agreements} />}
         </>
       )}
-    </div>
+    </Page>
   )
 }
 
@@ -81,24 +88,19 @@ function AWeek({ heading, week, empty }: { heading: string; week: TimeWeek; empt
     onSuccess: (board) => { setProblem(null); qc.setQueryData(['suite-time'], board) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
-  const id = `time-${week.weekOf}`
   return (
-    <section className="gw-suites-group" aria-labelledby={id}>
-      <div className="gw-suite-head">
-        <h2 id={id} className="gw-t-h2">{heading}</h2>
-        <span className="gw-you-quiet">{weekOf(week.weekOf)}</span>
-      </div>
+    <Section heading={heading} note={weekOf(week.weekOf)}>
       {week.people.length === 0 ? (
-        empty && <p className="gw-t-body gw-you-quiet">{empty}</p>
+        empty && <Empty>{empty}</Empty>
       ) : (
-        <div className="gw-you-card gw-time-table-wrap">
-          <table className="gw-time-table">
+        <Panel>
+          <table className="gwui-record-table">
             <thead>
               <tr>
                 <th scope="col">Person</th>
                 {week.clients.map(c => <th key={c} scope="col">{c}</th>)}
                 <th scope="col">Total</th>
-                <th scope="col"><span className="gw-sr-only">Approval</span></th>
+                <th scope="col"><span className="gwui-sr-only">Approval</span></th>
               </tr>
             </thead>
             <tbody>
@@ -109,7 +111,7 @@ function AWeek({ heading, week, empty }: { heading: string; week: TimeWeek; empt
                   <td><b>{inHours(p.total)} h</b></td>
                   <td>
                     {p.approved
-                      ? <Tag tone="plain">Approved</Tag>
+                      ? <Tag>Approved</Tag>
                       : p.mayApprove && (
                         <Button kind="secondary" size="small" onClick={() => approve.mutate(p.personId)} disabled={approve.isPending}
                           aria-label={`Approve ${p.name}’s hours`}>Approve</Button>
@@ -119,34 +121,35 @@ function AWeek({ heading, week, empty }: { heading: string; week: TimeWeek; empt
               ))}
             </tbody>
           </table>
-        </div>
+        </Panel>
       )}
-      {problem && <p className="gw-auth-error" role="alert">{problem}</p>}
-    </section>
+      {problem && <Note tone="error">{problem}</Note>}
+    </Section>
   )
 }
 
 function Agreements({ list }: { list: TimeAgreement[] }) {
   const over = list.filter(a => a.usedMinutes > a.hours * 60)
   return (
-    <section className="gw-suites-group gw-you-card" aria-labelledby="time-agreed">
-      <h2 id="time-agreed" className="gw-t-h3">Hours against what each client agreed</h2>
-      <ul className="gw-time-agreed">
-        {list.map(a => {
-          const used = Number(inHours(a.usedMinutes))
-          const isOver = a.usedMinutes > a.hours * 60
-          return (
-            <li key={`${a.client}-${a.work}`}>
-              <b>{`${a.client}: ${a.work} (${a.span === 'month' ? 'this month' : 'whole job'})`}</b>
-              <span className="gw-time-bar" aria-hidden><span className={isOver ? 'over' : ''} style={{ width: `${Math.min(100, (a.usedMinutes / (a.hours * 60)) * 100)}%` }} /></span>
-              <span>{`${used} of ${a.hours} hours${isOver ? ', over' : ''}`}</span>
-            </li>
-          )
-        })}
-      </ul>
-      {over.map(a => (
-        <p key={`over-${a.client}-${a.work}`}>{`${a.client} is ${Math.round((a.usedMinutes / 60 - a.hours) * 10) / 10} hours over the ${a.hours} the client agreed. Somebody should talk to them before more work is done.`}</p>
-      ))}
-    </section>
+    <Section heading="Hours against what each client agreed">
+      <Panel>
+        <ul className="gwui-rows">
+          {list.map(a => {
+            const used = Number(inHours(a.usedMinutes))
+            const isOver = a.usedMinutes > a.hours * 60
+            return (
+              <li key={`${a.client}-${a.work}`} className="gwui-row">
+                <b>{`${a.client}: ${a.work} (${a.span === 'month' ? 'this month' : 'whole job'})`}</b>
+                <span className="gwui-time-bar" aria-hidden><span className={isOver ? 'gwui-time-bar-over' : ''} style={{ width: `${Math.min(100, (a.usedMinutes / (a.hours * 60)) * 100)}%` }} /></span>
+                <span>{`${used} of ${a.hours} hours${isOver ? ', over' : ''}`}</span>
+              </li>
+            )
+          })}
+        </ul>
+        {over.map(a => (
+          <p key={`over-${a.client}-${a.work}`} className="gwui-panel-text">{`${a.client} is ${Math.round((a.usedMinutes / 60 - a.hours) * 10) / 10} hours over the ${a.hours} the client agreed. Somebody should talk to them before more work is done.`}</p>
+        ))}
+      </Panel>
+    </Section>
   )
 }
