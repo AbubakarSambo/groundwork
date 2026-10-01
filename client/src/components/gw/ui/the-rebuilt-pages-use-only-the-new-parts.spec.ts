@@ -384,6 +384,9 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/grounds/GroundAdminPage.tsx',
       'components/gw/ContextPage.tsx',
       'pages/grounds/GroundParticipantPage.tsx',
+      /* Board task, batch 3 (Hafsah, 1 October): "the board's one-off classes become shared
+         parts". See the comment on REBUILT_PAGES in rebuilt-pages.ts. */
+      'pages/board/CheckInLinks.tsx',
     ])
   })
 
