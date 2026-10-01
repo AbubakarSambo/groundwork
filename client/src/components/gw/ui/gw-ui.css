@@ -1162,6 +1162,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* CALLOUT'S WARNING TONE (NoteEmpty.tsx): a passwordless account told it has been emailed a link,
    a session that expired. Amber, like every other "something to know, not an error" surface. */
 .gwui-callout-warning { background: var(--gw-amber-bg); color: var(--gw-amber-t); }
+/* CALLOUT'S INFO TONE (group 3, piece 4, B1-starting-a-check-in): an instruction that matters now,
+   e.g. "Save this to receive the report." Blue, the same tone the prototype's own invite and save
+   screens use for an instruction rather than a fact just confirmed (gwui-callout-success) or a
+   warning (gwui-callout-warning). */
+.gwui-callout-info { background: var(--gw-blue-bg); color: var(--gw-blue-t); }
 /* AuthNotice's own two-line shape, inside the same tinted box: a title above the sentence under
    it (signin.jpg's passwordless notice, "Check your email" over the sentence that follows). */
 .gwui-callout-title { font-weight: 700; margin: 0 0 2px; }

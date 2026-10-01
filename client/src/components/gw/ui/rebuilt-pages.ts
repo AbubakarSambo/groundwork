@@ -151,4 +151,14 @@ export const REBUILT_PAGES: string[] = [
   'pages/chat/ChatPage.tsx',
   'components/gw/checkin/TheCheckInHeader.tsx',
   'components/gw/checkin/TheEndCard.tsx',
+  /*
+   * GROUP 3, PIECE 4 (starting a check-in, docs/prototype/screens/B1-starting-a-check-in):
+   * `SaveCard.tsx` so far - the anonymous entry chat's own "keep this conversation" card. New
+   * shared parts this piece added: `Callout`'s `title` prop (so a tinted banner can carry a bold
+   * first line in any tone, not only warning) and its new `tone="info"` (blue, for an instruction
+   * rather than a fact just confirmed or a warning) - see docs/the-parts-against-the-prototype.md.
+   * `CreateGroundPage.tsx` and `EntryChatPage.tsx` are the rest of this piece and are not on this
+   * list yet - see the morning report for why.
+   */
+  'pages/home/SaveCard.tsx',
 ]
