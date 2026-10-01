@@ -30,7 +30,8 @@ describe('the same promise, written twice', () => {
       new Date('2026-09-29T12:00:00Z'),
     );
     const texts = JSON.stringify(board);
-    expect(texts.split('follow up with Mr. Adebayo again').length - 1).toBe(1);
+    /* Request 98: the You board now writes a promise as an action with a capital letter, so count the promise whatever its first letter. */
+    expect(texts.toLowerCase().split('follow up with mr. adebayo again').length - 1).toBe(1);
   });
 });
 
