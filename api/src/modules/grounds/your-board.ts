@@ -3,7 +3,6 @@ import { whatNeedsYou, type ListedCheckIn, type Need } from './what-needs-you';
 import type { AServedPattern } from '../patterns/who-reads-a-pattern';
 import { aStepSaidToYou } from './a-step-said-to-you';
 import { asAnAction, asASentence } from './a-promise-as-an-action';
-import { sameRequest } from './a-fuller-promise-wins';
 import { aCommitmentKey } from '../conversation/what-happened-to-what-they-said';
 
 /**
@@ -379,30 +378,39 @@ export function yourBoard(
      self-authored PersonObjective both saying "I will plan shorter routes", one of them fuller and
      dated - so the two sources below are merged through the one `addSaid`, never kept apart.
      Merged (1 October) with the engine's own request 96 work: one form for every date
-     (whenInOneForm), the same promise matched by aCommitmentKey or theFullerOf as well as
-     sameRequest, and settled beating open. Matching reads the person's own words; what is shown is
+     (whenInOneForm), the same promise matched by aCommitmentKey or theFullerOf, and settled
+     beating open. Matching reads the person's own words; what is shown is
      the action form (asAnAction). */
   const said: (SomethingYouSaid & { t: number; open: boolean; groundId: string })[] = [];
   const rawOf: string[] = [];
   const mineCommitments: GroundCommitmentRow[] = [];
-  /* Settled beats open, and between two the same way settled (or both open) the fuller words win -
-     the dated, fuller copy of the same promise (request 96), never the shorter of the two. */
-  const saidScore = (state: SaidState, text: string) => (state === 'open' ? 0 : 1000) + text.length;
+  const keysOf: string[] = [];
+  /* The engine's rules for one promise said twice (request 96), applied across both places a
+     promise is kept: the same words with the same time are one promise, and the settled copy wins;
+     a short open copy inside a fuller open copy, with no different time, is the fuller one, with
+     the short one's time if it has none. Two different promises are never merged, and a settled
+     promise is never folded into an open one. Matching reads the person's own words. */
   const addSaid = (item: SomethingYouSaid & { t: number; open: boolean; groundId: string }, raw: string, whenSaid?: string | null) => {
-    const key = aCommitmentKey(raw, whenSaid ?? undefined);
-    const at = said.findIndex((s, i) => s.groundId === item.groundId && (
-      sameRequest(rawOf[i], raw)
-      || aCommitmentKey(rawOf[i], undefined) === aCommitmentKey(raw, undefined)
-      || keysOf[i] === key
-      || !!theFullerOf({ ...s, text: rawOf[i] }, { ...item, text: raw })
-    ));
-    if (at !== -1) {
-      if (saidScore(item.state, raw) > saidScore(said[at].state, rawOf[at])) { said[at] = item; rawOf[at] = raw; keysOf[at] = key; }
+    const key = `${item.groundId}\u0000${aCommitmentKey(raw, whenSaid)}`;
+    const same = keysOf.indexOf(key);
+    if (same !== -1) {
+      const settledBeatsOpen = said[same].state === 'open' && item.state !== 'open';
+      const sameWayFuller = (said[same].state === 'open') === (item.state === 'open') && raw.length > rawOf[same].length;
+      if (settledBeatsOpen || sameWayFuller) { said[same] = { ...item, when: item.when ?? said[same].when }; rawOf[same] = raw; }
+      return;
+    }
+    const fuller = said.findIndex((s, i) => !!theFullerOf({ ...s, text: rawOf[i] }, { ...item, text: raw }));
+    if (fuller !== -1) {
+      const one = theFullerOf({ ...said[fuller], text: rawOf[fuller] }, { ...item, text: raw })!;
+      const fromNew = one.id === item.id;
+      const base = fromNew ? item : said[fuller];
+      said[fuller] = { ...base, when: one.when };
+      rawOf[fuller] = fromNew ? raw : rawOf[fuller];
+      keysOf[fuller] = key;
       return;
     }
     said.push(item); rawOf.push(raw); keysOf.push(key);
   };
-  const keysOf: string[] = [];
   for (const c of rows.commitments) {
     if (!isMine(c.groundId, c.participantId)) continue;
     mineCommitments.push(c);
@@ -420,7 +428,7 @@ export function yourBoard(
     const state: SaidState | null = (o.status ?? 'OPEN') === 'OPEN' ? 'open' : o.status === 'MET' ? 'kept' : null;
     const rawText = (o.text ?? '').trim();
     if (!state || !rawText) continue;
-    addSaid({ id: o.id, text: asAnAction(rawText), when: whenInOneForm(o.dueSaid), checkIn: labelOf.get(o.groundId)!, state, stateSays: STATE_SAYS[state], t: time(o.createdAt), open: false, groundId: o.groundId }, rawText, o.dueSaid);
+    addSaid({ id: o.id, text: asAnAction(rawText), when: whenInOneForm(o.dueSaid), checkIn: labelOf.get(o.groundId)!, state, stateSays: STATE_SAYS[state], t: time(o.createdAt), open: state === 'open', groundId: o.groundId }, rawText, o.dueSaid);
   }
   const order: Record<SaidState, number> = { open: 0, kept: 1, not_done: 2 };
   said.sort((a, b) => order[a.state] - order[b.state] || a.t - b.t);

@@ -93,13 +93,21 @@ describe('what you said you’d do', () => {
     expect(b.saidYoudDo.map((s) => s.text)).toEqual(['Plan shorter routes starting Monday 5 October']);
   });
 
-  it('a settled copy always wins over an open one, whichever is fuller', () => {
+  it('a settled copy wins over an open copy of the same words, and a different settled one is kept apart', () => {
     const b = board({
       commitments: [
         c('k1', 'I will call the client on Wednesday 30 September to get the statement signed', 'Wednesday 30 September', new Date('2026-09-20')),
         { ...c('k2', 'I will call the client', null, new Date('2026-09-20T00:00:01Z')), status: 'DONE' },
       ],
     });
-    expect(b.saidYoudDo.map((s) => [s.text, s.stateSays])).toEqual([['Call the client', 'Kept']]);
+    /* Changed at the merge of 1 October to the engine's own rule for one promise said twice
+       (request 96, one-promise-is-served-once-on-the-you-board.spec.ts, "does not fold a settled
+       promise into an open one"): which promises are the same is the engine's to decide. A settled
+       copy wins over an open copy of the very same words and time; a short settled promise and a
+       fuller open one are kept as two. */
+    expect(b.saidYoudDo.map((s) => [s.text, s.stateSays])).toEqual([
+      ['Call the client on Wednesday 30 September to get the statement signed', 'Open'],
+      ['Call the client', 'Kept'],
+    ]);
   });
 });
