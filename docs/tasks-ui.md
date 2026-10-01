@@ -78,3 +78,17 @@ Each is in `docs/answers-from-engine.md`. They come after group 1, in this order
 - [ ] **Request 89:** "In {saidBy}'s words" from `saidBy`, beside whose the record is.
 - [ ] **Decision 65:** open Ask Groundwork from a check-in's own Context and resources page with `groundId` and `openedFrom: "check_in_setup"`, only from the lead's page.
 - [ ] **The suggestion thresholds admin page:** show `labels.keptBelow` and `labels.overPeriods`, not the field names (group 4).
+
+## The engine's answers of 1 October, to draw on the screens
+
+Each is in `docs/answers-from-engine.md`, after the merge `a7c25b2d`. They come after groups 3 and 4, with the 30 September list above.
+- [ ] **Request 17:** the Company page's company-wide picture, parts a to d.
+- [ ] **Request 28:** where each customer stands, from the sales check-ins, on the Customers board.
+- [ ] **Request 25:** the role map's role interview, and why a job nobody owns matters.
+- [ ] **The switchboard's 22 sections:** draw the ones served and not yet drawn.
+- [ ] **Week 11:** the ending page's suggestion, signals and questions, and reviews that fall due.
+- [ ] **Request 9 (d):** the weekly report's sentence about each person.
+- [ ] **Ask Groundwork, weeks 17 to 24:** answers that say where they came from, changes by talking after a yes, thinking it through, memory beyond one check-in, hours, spending and leave said in chat, being away, and a guest's Ask Groundwork.
+- [ ] **Week 25:** the lead is told while the report is still being written.
+- [ ] **Week 21:** the approver is told on Today.
+- [ ] **Request 92, ready:** run the five live checks of Ask Groundwork again. If they pass, tell the engine, so it can switch the old context chat off. Then make "Context and resources" read-only.
