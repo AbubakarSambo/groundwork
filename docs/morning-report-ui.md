@@ -7042,4 +7042,13 @@ A push of mine was refused once, because I had chained it with another command. 
 - The session report shows 7 buttons against the prototype's 5. That is being fixed now, without losing any of the controls.
 - The whole screen suite passes (3,669 tests).
 
+The session report now has 2 buttons, inside the prototype's 5, with nothing lost:
+- "Your check-in" and "Ask" are quiet links, because they only go elsewhere or open a panel.
+- "Inferences we made" is a fold, and its note says "There is one for you to check."
+- "Group by person" and "Something here is not what I said" are quiet text links.
+- "Correct this", which sends something, stays a button.
+- The same header on the round report page got the same fix.
+
+The button test passes on all 27 screens, and the page-colour test passes 4 of 4. The whole screen suite passes (3,671 tests).
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
