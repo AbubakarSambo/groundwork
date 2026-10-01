@@ -7313,4 +7313,15 @@ All 503 board and privacy tests pass. On the running product, a participant neve
 
 **Phase 2 has started:** all eleven kinds pictured as the lead and a participant at both widths, compared section by section with their prototype examples, and the screen's own differences fixed. The new sections' one-off classes become shared parts. For the MarketView Q4 board, a duplicate test check-in is borrowed, as explained under "Decided for Hafsah to confirm".
 
+**Phase 2 is done.**
+- All 22 boards are pictured, at both widths, with what the API sent, in the scratchpad's `pictures/boards3/`.
+- The section-by-section comparison is in `docs/the-boards-against-their-prototype-examples.md`.
+- Two fixes. A sentence about nobody being named to decide made the government programme's board scroll sideways on a phone. The engineering board's records heading now matches its prototype.
+- The builder's findings, being checked now by the review:
+  - Six kinds draw the same sections as their prototype examples: engineering release, founder, distribution operations, trader training programme, sales team and support desk.
+  - Five kinds have prototype examples drawn as boards of their own shape, which the engine does not serve: the government programme, asset loans, the law firm matter, and both MarketView kinds. That is request 105.
+  - Every participant gets the full board, where the prototype's participant example is a narrow personal view. That is request 105 too.
+- The borrowed MarketView Q4 check-in cannot be set back to no kind of work through the product. That is request 106.
+- The board's one-off classes were not yet replaced. The review will list them, and the fixes will do it.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
