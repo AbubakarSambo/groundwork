@@ -279,8 +279,14 @@ async function countButtons(page: Page): Promise<{ total: number; primary: numbe
          role="switch", the prototype's a checkbox); like a chosen chip, it is not counted. */
       if (e.getAttribute('role') === 'switch' || e.getAttribute('role') === 'checkbox') return false;
       /* A tab is the check-in page's own navigation between its views, like the sidebar this count
-         already leaves out (1 October): not a button on the screen being compared. */
+         already leaves out (1 October): not a button on the screen being compared.
+         Board review, 1 October, item 8: this only ever matched the PRODUCT's own tabs
+         (role="tab"), so a screen's tab row was excluded on one side and counted on the other -
+         never a fair comparison. The prototype draws its own tab row as `<a class="tab">` inside
+         `nav.tabs`/`.views` (groundwork-prototype.html: `.tabs{...}`, `.tab{...}`), with no ARIA
+         role at all, so it needs its own test, excluded here the same way. */
       if (e.getAttribute('role') === 'tab' || e.closest('[role="tablist"]')) return false;
+      if (e.classList.contains('tab') && e.closest('.tabs, .views')) return false;
       /* A quiet text link is a link, not a button (Hafsah, 30 September: the no-seat warning's
          action is "a quiet text link inside the warning, not a second button"). Ours is drawn
          by `.gwui-plain-link`, underlined words with no box, sometimes on a <button> because it
@@ -325,6 +331,55 @@ async function countButtons(page: Page): Promise<{ total: number; primary: numbe
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
+/**
+ * ONE SCREEN, BOTH SIDES, CHECKED THE SAME WAY (pulled out so the board-by-kind loop below, item 8,
+ * does not have to repeat it). Signs in as `readerEmail`, opens `productPath`, counts its buttons,
+ * then does the same for the prototype at `hash` with `persona` selected, and fails with the exact
+ * labels on both sides when either rule breaks.
+ */
+async function checkButtons(
+  page: Page,
+  context: import('@playwright/test').BrowserContext,
+  name: string,
+  productPath: string,
+  readerEmail: string,
+  hash: string,
+  persona: string,
+  mustShow?: string,
+) {
+  await signIn(page, readerEmail);
+  await page.goto(`${APP}${productPath}`);
+  await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(2000);
+  const product = await countButtons(page);
+  /* A page that did not load, or an address that does not exist, shows almost nothing and would
+     pass every count. It must show the page itself: its own words inside #main. */
+  const mainText = await page.evaluate(() => (document.querySelector('#main') as HTMLElement | null)?.innerText.trim() ?? '');
+  if (mustShow) expect(mainText.replace(/[’]/g, "'"), `${productPath} shows its page`).toContain(mustShow);
+  else expect(mainText.length, `${productPath} shows its page (not an empty or missing one)`).toBeGreaterThan(300);
+
+  const proto = await context.newPage();
+  await proto.goto(PROTOTYPE_FILE);
+  await proto.selectOption('#d-persona', persona).catch(() => {});
+  await proto.evaluate(() => { (window as any).dispatchEvent?.(new Event('hashchange')); });
+  await proto.goto(`${PROTOTYPE_FILE}${hash}`);
+  await proto.waitForTimeout(1000);
+  const prototype = await countButtons(proto);
+  await proto.close();
+
+  const problems: string[] = [];
+  if (product.primary > 1) {
+    problems.push(`${product.primary} primary buttons, not 1: ${product.labels.slice(0, 10).join(' | ')}`);
+  }
+  if (product.total > prototype.total) {
+    problems.push(`${product.total} buttons, vs the prototype's ${prototype.total} (product: ${product.labels.join(' | ')}) (prototype: ${prototype.labels.join(' | ')})`);
+  }
+  if (problems.length) {
+    console.log(`${name}: ${problems.join(' -- ')}`);
+  }
+  expect(problems, `${name} (product ${productPath} vs prototype ${hash})`).toEqual([]);
+}
+
 test.describe('the two button rules, screen by screen', () => {
   const entries = Object.entries(SCREENS);
   const withCounterpart = entries.filter(([, c]) => c !== null) as [string, NonNullable<Counterpart>][];
@@ -340,37 +395,54 @@ test.describe('the two button rules, screen by screen', () => {
   for (const [page404, counterpart] of withCounterpart) {
     test(`${page404}: at most one primary, and no more buttons than the prototype`, async ({ page, context }) => {
       const reader = READERS[counterpart.reader];
-      await signIn(page, reader.email);
-      await page.goto(`${APP}${counterpart.productPath}`);
-      await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
-      await page.waitForTimeout(2000);
-      const product = await countButtons(page);
-      /* A page that did not load, or an address that does not exist, shows almost nothing and would
-         pass every count. It must show the page itself: its own words inside #main. */
-      const mainText = await page.evaluate(() => (document.querySelector('#main') as HTMLElement | null)?.innerText.trim() ?? '');
-      if (counterpart.mustShow) expect(mainText.replace(/[’]/g, "'"), `${counterpart.productPath} shows its page`).toContain(counterpart.mustShow);
-      else expect(mainText.length, `${counterpart.productPath} shows its page (not an empty or missing one)`).toBeGreaterThan(300);
-
-      const proto = await context.newPage();
-      await proto.goto(PROTOTYPE_FILE);
-      await proto.selectOption('#d-persona', counterpart.persona).catch(() => {});
-      await proto.evaluate(() => { (window as any).dispatchEvent?.(new Event('hashchange')); });
-      await proto.goto(`${PROTOTYPE_FILE}${counterpart.hash}`);
-      await proto.waitForTimeout(1000);
-      const prototype = await countButtons(proto);
-      await proto.close();
-
-      const problems: string[] = [];
-      if (product.primary > 1) {
-        problems.push(`${product.primary} primary buttons, not 1: ${product.labels.slice(0, 10).join(' | ')}`);
-      }
-      if (product.total > prototype.total) {
-        problems.push(`${product.total} buttons, vs the prototype's ${prototype.total} (product: ${product.labels.join(' | ')}) (prototype: ${prototype.labels.join(' | ')})`);
-      }
-      if (problems.length) {
-        console.log(`${page404}: ${problems.join(' -- ')}`);
-      }
-      expect(problems, `${page404} (product ${counterpart.productPath} vs prototype ${counterpart.hash})`).toEqual([]);
+      await checkButtons(page, context, page404, counterpart.productPath, reader.email, counterpart.hash, counterpart.persona, counterpart.mustShow);
     });
+  }
+});
+
+/**
+ * BOARD REVIEW, 1 OCTOBER, ITEM 8: EVERY KIND'S BOARD, AS THE LEAD AND AS A PARTICIPANT.
+ *
+ * The table above opens the board ONLY ONCE (sales, "Sales team, Q3", as the lead). The switchboard
+ * draws a different board for each of the 24 situations (`the-switchboard-g2-table.ts`), so a fault
+ * only one kind's own sections trip can hide behind the one kind this file already opened. This
+ * opens every kind's own board, as both readers who actually have one (10 July check-ins own test
+ * data, `kinds.json`/`product-jobs.json` from the board review's picture round), against that same
+ * kind's own prototype example (`#/c/<kind>/board`, docs/prototype/screens/index.json).
+ *
+ * TWO ARE LEFT OUT, BOTH NOTED RATHER THAN SILENTLY SKIPPED:
+ *   - founder, AS A PARTICIPANT: this check-in has no second person on it at all (kinds.json: one
+ *     participant, the lead, five answers, complete) - there is no participant account to sign in
+ *     as.
+ *   - mvq4, EITHER READER: `kinds.json` records its own creation failing outright - `POST
+ *     /grounds` returned 400, "Your free plan includes 10 check-ins. Subscribe to open more." -
+ *     so no ground exists for it on this Mac at all. The prototype's own mvq4 example can still be
+ *     pictured (the board review did, `jobs.json`), but there is no product board to compare it
+ *     against without first clearing check-ins to make room under the plan limit, which this
+ *     workspace does not do. Left for Hafsah in the morning report rather than guessed at.
+ */
+const BOARD_KINDS: { kind: string; groundId: string; lead: string; participant: string | null }[] = [
+  { kind: 'founder', groundId: '3ca11603-8fd8-4027-ac6f-ef180585927c', lead: 'u7lead@example.test', participant: null },
+  { kind: 'eng', groundId: '555ac67d-44ad-4520-8717-54979e9d4f00', lead: 'u7lead@example.test', participant: 'u7aisha@example.test' },
+  { kind: 'support', groundId: '48896035-9edd-47bc-8b53-8bd83587fc8d', lead: 'u7lead@example.test', participant: 'u7aisha@example.test' },
+  { kind: 'ops', groundId: 'f76b7a18-f22a-4ecd-9df1-8d7e21bfb87a', lead: 'u7lead@example.test', participant: 'u7aisha@example.test' },
+  { kind: 'programme', groundId: '46cfcb15-1ed6-497d-a724-d063925d1127', lead: 'u7lead@example.test', participant: 'u7aisha@example.test' },
+  { kind: 'gov', groundId: 'ee96f03c-8be5-442e-9c3f-0f84d277192b', lead: 'u7lead@example.test', participant: 'u7aisha@example.test' },
+  { kind: 'loans', groundId: '4e89d79c-cc60-42f6-b622-95c8467aad9e', lead: 'rukia.u8lead@example.test', participant: 'amani.u8@example.test' },
+  { kind: 'matter', groundId: '92625659-b766-4587-8bef-cbd6b704ea2f', lead: 'rukia.u8lead@example.test', participant: 'amani.u8@example.test' },
+  { kind: 'mvnext', groundId: 'a6ec96f6-1aad-40ed-82ac-5b9ecb5cb95f', lead: 'rukia.u8lead@example.test', participant: 'amani.u8@example.test' },
+  { kind: 'sales', groundId: '9028f0ad-293b-4592-9a4e-25b680dd91cd', lead: 'rukia.u8lead@example.test', participant: 'amani.u8@example.test' },
+];
+
+test.describe('the two button rules, every kind of board', () => {
+  for (const { kind, groundId, lead, participant } of BOARD_KINDS) {
+    test(`${kind}: as the lead`, async ({ page, context }) => {
+      await checkButtons(page, context, `${kind} board (lead)`, `/grounds/${groundId}/board`, lead, `#/c/${kind}/board`, 'lead');
+    });
+    if (participant) {
+      test(`${kind}: as a participant`, async ({ page, context }) => {
+        await checkButtons(page, context, `${kind} board (participant)`, `/grounds/${groundId}/board`, participant, `#/c/${kind}/board`, 'part');
+      });
+    }
   }
 });
