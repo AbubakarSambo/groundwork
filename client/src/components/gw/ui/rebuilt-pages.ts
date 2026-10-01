@@ -171,4 +171,6 @@ export const REBUILT_PAGES: string[] = [
    * dead code rather than anything a person can open.
    */
   'pages/enter/EntryChatPage.tsx',
+  'pages/grounds/GroundAdminPage.tsx',
+  'components/gw/ContextPage.tsx',
 ]

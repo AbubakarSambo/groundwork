@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { toast } from 'sonner'
-import { Sec } from '@/components/gw/kit'
+import { Section } from '@/components/gw/ui'
 
 /**
  * WHAT YOU SAY YOU DELIVERED. The half of the record that did not exist.
@@ -73,7 +73,7 @@ export function DeliveredPanel({
       {/* REVIEW ROUND 3, "YOUR WORK": THE PROTOTYPE'S OWN WORDS (my-record.txt) - "say" matters
           here (see the comment at the top of this file: this is a claim waiting to be asked
           about, never the record itself), which "What you delivered" alone dropped. */}
-      <Sec title="What you say you delivered" src="Your list, with what shows each one" />
+      <Section heading="What you say you delivered" note="Your list, with what shows each one" />
 
       {/*
         THE CONTENT COMES FIRST AND THE FORM FOLDS AWAY.
