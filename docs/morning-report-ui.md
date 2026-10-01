@@ -7288,4 +7288,15 @@ One thing to know: the builder's chained "wait then print" command was refused b
 
 **Next: the board for all eleven kinds of work.**
 
+**The fifth merge of the engine's work (1 October, night).** 41 new commits, among them the switchboard's sections on the board, a weekly report, and leave and spending said in chat. It merged with no conflicts. No database change was needed. The API was rebuilt and restarted on this latest work, so the boards are pictured against it, and the API tests are running.
+
+**The board for every kind of work, phase 1, has started:** drawing the engine's new board fields. Those are:
+- both parts of "What keeps coming up", with the lead's "coach towards" and "one step";
+- who said each record;
+- someone an admin did not let in;
+- "in 1 session";
+- the switchboard's sections.
+
+Phase 2 pictures all eleven kinds as the lead and a participant at both widths against their prototype examples. Phase 3 is the review and its fixes.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
