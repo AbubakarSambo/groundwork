@@ -67,8 +67,10 @@ describe('the board of the next reviews', () => {
   it('reads the prototype’s heading, sentence and box, with the organisation’s own cycle', async () => {
     ;(reviewsApi.board as any).mockResolvedValue(BOARD)
     open(WAIRIMU, '/suite/reviews')
-    expect(await screen.findByText('A review every 6 months. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: 'Breadcrumb' }).textContent).toBe('Suites / Performance reviews')
+    expect(await screen.findByText('A review happens every 6 months. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
+    /* "Where you are" is the shared PageTitle crumb's own aria-label (group 2, piece 4 rebuild),
+       in place of the page's prior "Breadcrumb". */
+    expect(screen.getByRole('navigation', { name: 'Where you are' }).textContent).toBe('Suites/Performance reviews')
     expect(screen.getByText('How a review is built')).toBeInTheDocument()
     expect(screen.getByText('From proof in each person’s check-ins, their own view of their work, and their manager’s view. A person decides, not Groundwork.')).toBeInTheDocument()
   })
@@ -108,6 +110,23 @@ describe('the board of the next reviews', () => {
     open(AISHA, '/suite/reviews')
     expect(await screen.findByRole('alert')).toHaveTextContent('Only an admin or a lead can open this board.')
     expect(document.querySelectorAll('tr')).toHaveLength(0)
+  })
+
+  /* Group 2's review, fault E: the subtitle used to read "It is built from..." alone, with nothing
+     before "It", whenever the organisation had not answered "How often is each person reviewed?" -
+     every time the suite was off, and the first moment it was switched on. A true sentence - the
+     product's own default cadence - is read instead, never a sentence with nothing before "it". */
+  it('while the organisation has not said how often, still reads a true sentence, never "It is built..." alone', async () => {
+    ;(reviewsApi.board as any).mockResolvedValue({ every: null, next: [] })
+    open(GRACE, '/suite/reviews')
+    expect(await screen.findByText('A review happens every 6 months. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
+  })
+
+  it('while the suite is off, still reads a true sentence above the server’s refusal, never "It is built..." alone', async () => {
+    ;(reviewsApi.board as any).mockRejectedValue(refusal(404, 'The performance reviews suite is not switched on.'))
+    open(GRACE, '/suite/reviews')
+    expect(await screen.findByRole('alert')).toHaveTextContent('The performance reviews suite is not switched on.')
+    expect(screen.getByText('A review happens every 6 months. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
   })
 })
 

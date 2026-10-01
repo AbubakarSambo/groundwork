@@ -7,7 +7,7 @@ import { thePasswordKey, forgetThePasswordKey } from './the-password-key'
 import { takeJustSignedIn } from '@/lib/choose-an-organisation'
 import { entryApi } from '@/api/entry'
 import { groundsApi } from '@/api/grounds'
-import { Arrival } from '@/components/gw/Arrival'
+import { Page, Mark, PageTitle, Panel, SubHeading, Stack, Button, Note, Callout } from '@/components/gw/ui'
 import { useAuthStore } from '@/stores/auth'
 import { whatTheLinkDid, WE_SENT_A_NEW_ONE } from './a-link-that-has-expired'
 import { LinkExpired, LinkAlreadyResent, LinkDidNotWork } from './LinkExpired'
@@ -49,6 +49,14 @@ function aCheckInIsBeingMade(): boolean {
   try { return !!localStorage.getItem(COMMIT_KEY) || !!localStorage.getItem('gw_draft_token') } catch { return false }
 }
 
+/**
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: this component has several mutually exclusive `return`s, one per
+ * outcome of opening the link - the welcome card for a first check-in, "we couldn't find your
+ * session", "still being saved", "wasn't saved", and the rest below them - and only one is ever on
+ * screen for a given link. Each writes at most one primary (navy) button of its own ("Go to your
+ * check-in", "Go to my check-ins", "Try again" twice, in two states that cannot both be open at
+ * once); none of them appears beside another.
+ */
 export function MagicVerifyPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -486,91 +494,98 @@ export function MagicVerifyPage() {
 
   if (nextGroundId) {
     return (
-      <Arrival wide>
-        <div style={{ maxWidth: 380, width: '100%' }}>
-          <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'center' }}>
-            <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Your check-in is set up.</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-green-t-soft)', lineHeight: 1.6 }}>Your session is saved and you are signed in.</div>
-          </div>
+      <Page narrow>
+        <Mark />
+        <Stack gap={18}>
+          <Callout tone="success" role="status">
+            Your check-in is set up. Your session is saved and you are signed in.
+          </Callout>
+
           {joinUrl && (
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-sub)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Share this link to invite participants</div>
-              <div style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--gw-dark)', background: 'var(--gw-paper-2)', borderRadius: 6, padding: '8px 10px', wordBreak: 'break-all', marginBottom: 8 }}>{joinUrl}</div>
-              <button
-                onClick={async () => { if (!(await copy(joinUrl))) toast.error('Copying is not available here. Select the link and copy it yourself.') }}
-                style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-dark)', background: 'none', border: '1px solid #C8C5C0', borderRadius: 5, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Copy link
-              </button>
-            </div>
+            <Panel heading="Share this link to invite participants">
+              <span className="gwui-invite-link-row">
+                <span className="gwui-invite-link-address">{joinUrl}</span>
+                <Button
+                  kind="secondary"
+                  size="small"
+                  onClick={async () => { if (!(await copy(joinUrl))) toast.error('Copying is not available here. Select the link and copy it yourself.') }}
+                >
+                  Copy link
+                </Button>
+              </span>
+            </Panel>
           )}
+
           {invited.length > 0 && (
-            <div style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 6 }}>Invited ({invited.length}) ✓</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.55, marginBottom: 6 }}>Each of these people has been emailed a private link to add their own version:</div>
-              {invited.map(e => (
-                <div key={e} style={{ fontSize: 12, color: 'var(--gw-green-t)', fontFamily: 'monospace' }}>{e}</div>
-              ))}
-              <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
-                Track who has checked in on your check-in page - each person shows as invited, in progress, or completed, and you can send a reminder from there.
+            <Panel heading={`Invited (${invited.length}) ✓`}>
+              <div className="gwui-subheading-list">
+                <p className="gwui-panel-text">Each of these people has been emailed a private link to add their own version:</p>
+                {invited.map(e => <p key={e} className="gwui-panel-text">{e}</p>)}
+                <Note>
+                  Track who has checked in on your check-in page. Each person shows as invited, in
+                  progress or completed, and you can send a reminder from there.
+                </Note>
               </div>
-            </div>
+            </Panel>
           )}
+
           {waitingInvites.length > 0 && (
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Not invited yet ({waitingInvites.length})</div>
-              {waitingInvites.map(w => (
-                <div key={w.email} style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 5, lineHeight: 1.5 }}>
-                  <span style={{ fontFamily: 'monospace', color: 'var(--gw-text)' }}>{w.email}</span>
-                  <div>{w.because}</div>
-                </div>
-              ))}
-            </div>
+            <Panel heading={`Not invited yet (${waitingInvites.length})`}>
+              <div className="gwui-subheading-list">
+                {waitingInvites.map(w => (
+                  <div key={w.email}>
+                    <p className="gwui-panel-text">{w.email}</p>
+                    <Note>{w.because}</Note>
+                  </div>
+                ))}
+              </div>
+            </Panel>
           )}
+
           {failedInvites.length > 0 && (
-            <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>{invited.length === 0 ? 'None of your invites could be sent.' : 'Some invites did not send.'}</div>
-              {/*
-                * SAYS WHY, PER PERSON. This read "these addresses were not reached, you can resend
-                * from your check-in page", which is right for a bounced email and wrong for the
-                * commonest cause: the free plan covers five people including you, so an admin who
-                * names five colleagues here loses one. Resending will never fix a seat limit, and
-                * being told to retry something that cannot work is worse than being told the limit.
-                */}
-              <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55, marginBottom: 8 }}>
-                {whyInvitesFailed.length > 0
-                  ? 'These did not go out:'
-                  : 'These addresses were not reached. You can resend from your check-in page:'}
+            <Panel heading={invited.length === 0 ? 'None of your invites could be sent' : 'Some invites did not send'}>
+              <div className="gwui-subheading-list">
+                {/*
+                  * SAYS WHY, PER PERSON. This read "these addresses were not reached, you can resend
+                  * from your check-in page", which is right for a bounced email and wrong for the
+                  * commonest cause: the free plan covers five people including you, so an admin who
+                  * names five colleagues here loses one. Resending will never fix a seat limit, and
+                  * being told to retry something that cannot work is worse than being told the limit.
+                  */}
+                <p className="gwui-panel-text">
+                  {whyInvitesFailed.length > 0
+                    ? 'These did not go out:'
+                    : 'These addresses were not reached. You can resend from your check-in page:'}
+                </p>
+                {failedInvites.map(e => (
+                  <div key={e}>
+                    <p className="gwui-panel-text">{e}</p>
+                    {whyInvitesFailed.find(w => w.email === e) && (
+                      <Note>{whyInvitesFailed.find(w => w.email === e)!.because}</Note>
+                    )}
+                  </div>
+                ))}
               </div>
-              {failedInvites.map(e => (
-                <div key={e} style={{ fontSize: 12, color: '#5A3A00', marginBottom: 5 }}>
-                  <span style={{ fontFamily: 'monospace' }}>{e}</span>
-                  {whyInvitesFailed.find(w => w.email === e) && (
-                    <div style={{ fontFamily: 'inherit', lineHeight: 1.5, marginTop: 1 }}>
-                      {whyInvitesFailed.find(w => w.email === e)!.because}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            </Panel>
           )}
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '18px 20px', marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 14 }}>What happens next</div>
-            {[
-              { n: '1', title: 'Participants get their invite', body: 'Anyone you added will receive an email with a private link. They check in independently.' },
-              { n: '2', title: 'Their answers come in', body: 'Once they submit, Groundwork builds a picture from what everyone said. The report shows where people agree and where they differ.' },
-              { n: '3', title: 'You release the report', body: 'When you are ready, you release the report to everybody in it.' },
-            ].map(s => (
-              <div key={s.n} style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
-                <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{s.n}</div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{s.title}</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{s.body}</div>
-                </div>
+
+          <Panel heading="What happens next">
+            <div className="gwui-subheading-list">
+              <div>
+                <SubHeading>Participants get their invite</SubHeading>
+                <p className="gwui-panel-text">Anyone you added will receive an email with a private link. They check in independently.</p>
               </div>
-            ))}
-          </div>
+              <div>
+                <SubHeading>Their answers come in</SubHeading>
+                <p className="gwui-panel-text">Once they submit, Groundwork builds a picture from what everyone said. The report shows where people agree and where they differ.</p>
+              </div>
+              <div>
+                <SubHeading>You release the report</SubHeading>
+                <p className="gwui-panel-text">When you are ready, you release the report to everybody in it.</p>
+              </div>
+            </div>
+          </Panel>
+
           {/*
             NOTHING EVER MENTIONED THE CONTEXT TAB.
             It holds document upload and context notes, and Hafsah finished a
@@ -580,60 +595,60 @@ export function MagicVerifyPage() {
             that makes it findable, at the one moment somebody is looking at
             what to do next.
           */}
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginBottom: 8, lineHeight: 1.6 }}>
+          <p className="gwui-fine" style={{ textAlign: 'center' }}>
             Track their check-ins on your check-in page, and add documents or notes
             for everyone to work from under <strong>Context and resources</strong>.
-          </div>
-          <button
+          </p>
+
+          <Button
+            size="big"
+            wide
             onClick={() => navigate(
               passwordSetupToken
                 ? `/set-password?token=${encodeURIComponent(passwordSetupToken)}&next=${encodeURIComponent(`/grounds/${nextGroundId}`)}`
                 : `/grounds/${nextGroundId}`,
               { replace: true },
             )}
-            style={{ width: '100%', padding: '13px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
           >
-            Go to your check-in →
-          </button>
-        </div>
-      </Arrival>
+            Go to your check-in
+          </Button>
+        </Stack>
+      </Page>
     )
   }
 
   if (noSession) {
     return (
-      <Arrival wide>
-        <div style={{ maxWidth: 400, width: '100%', textAlign: 'center' }}>
-          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20, textAlign: 'left' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>We couldn't find your session on this device.</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
-              Your account is active, but the session you saved isn't on this device and we don't have a copy of it.
-              If you finished your session in a different browser or on another device, open this link there - your session is still saved on that device.
-            </div>
-          </div>
-          <button className="gw-btn" style={{ marginBottom: 10 }} onClick={() => navigate('/grounds', { replace: true })}>
-            Go to my check-ins →
-          </button>
-          <button className="gw-btn" style={{ background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)' }} onClick={() => navigate('/start', { replace: true })}>
-            Start a new check-in
-          </button>
-        </div>
-      </Arrival>
+      <Page narrow>
+        <Mark />
+        <Stack gap={18}>
+          <PageTitle
+            title="We couldn’t find your session on this device"
+            subtitle="Your account is active, but we have no copy here of the session you saved. Open this link on the browser or device where you finished it. Your session is still saved there."
+            subtitleTone="ink"
+          />
+          <Stack gap={10}>
+            <Button wide onClick={() => navigate('/grounds', { replace: true })}>Go to my check-ins</Button>
+            <Button kind="secondary" wide onClick={() => navigate('/start', { replace: true })}>Start a new check-in</Button>
+          </Stack>
+        </Stack>
+      </Page>
     )
   }
 
   if (stillSaving) {
     return (
-      <Arrival wide>
-        <div style={{ maxWidth: 380, width: '100%', textAlign: 'center' }}>
-          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>Your check-in is still being saved.</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>Another tab or device is saving it right now. Nothing is lost. Give it a moment, then try again.</div>
-          </div>
-          <button
-            className="gw-btn"
+      <Page narrow>
+        <Mark />
+        <Stack gap={18}>
+          <PageTitle
+            title="Your check-in is still being saved."
+            subtitle="Another tab or device is saving it right now. Nothing is lost. Give it a moment, then try again."
+            subtitleTone="ink"
+          />
+          <Button
+            wide
             disabled={retrying}
-            style={{ opacity: retrying ? 0.6 : 1 }}
             onClick={async () => {
               if (!lastAttempt.current) { navigate('/grounds', { replace: true }); return }
               setRetrying(true)
@@ -642,42 +657,43 @@ export function MagicVerifyPage() {
               setRetrying(false)
             }}
           >
-            {retrying ? 'Trying again...' : 'Try again'}
-          </button>
-        </div>
-      </Arrival>
+            {retrying ? 'Trying again…' : 'Try again'}
+          </Button>
+        </Stack>
+      </Page>
     )
   }
 
   if (commitError) {
     return (
-      <Arrival wide>
-        <div style={{ maxWidth: 380, width: '100%', textAlign: 'center' }}>
-          <div style={{ background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b-soft)', borderRadius: 12, padding: '20px 22px', marginBottom: 20 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>You are signed in, but the check-in wasn't saved.</div>
-            <div style={{ fontSize: 13, color: '#7A3030', lineHeight: 1.6 }}>{commitErrorMessage || 'Something went wrong saving your session. Your sign-in is ready - go to your check-ins page and start again from there.'}</div>
-          </div>
-          <button
-            className="gw-btn"
-            disabled={retrying}
-            style={{ marginBottom: 10, opacity: retrying ? 0.6 : 1 }}
-            onClick={async () => {
-              if (!lastAttempt.current) return
-              setRetrying(true)
-              setCommitError(false)
-              // Safe to retry: the draft persists server-side and commit is
-              // idempotent (a replay returns the existing ground).
-              applyOutcome(await commitFlow(lastAttempt.current.payload, true))
-              setRetrying(false)
-            }}
-          >
-            {retrying ? 'Retrying...' : 'Try again'}
-          </button>
-          <button className="gw-btn" onClick={() => navigate('/grounds', { replace: true })}>
-            Go to check-ins →
-          </button>
-        </div>
-      </Arrival>
+      <Page narrow>
+        <Mark />
+        <Stack gap={18}>
+          <PageTitle
+            title="You are signed in, but the check-in wasn’t saved"
+            subtitle={commitErrorMessage || 'Something went wrong saving your session. Your sign-in is ready, so go to your check-ins page and start again from there.'}
+            subtitleTone="ink"
+          />
+          <Stack gap={10}>
+            <Button
+              wide
+              disabled={retrying}
+              onClick={async () => {
+                if (!lastAttempt.current) return
+                setRetrying(true)
+                setCommitError(false)
+                // Safe to retry: the draft persists server-side and commit is
+                // idempotent (a replay returns the existing ground).
+                applyOutcome(await commitFlow(lastAttempt.current.payload, true))
+                setRetrying(false)
+              }}
+            >
+              {retrying ? 'Retrying…' : 'Try again'}
+            </Button>
+            <Button kind="secondary" wide onClick={() => navigate('/grounds', { replace: true })}>Go to check-ins</Button>
+          </Stack>
+        </Stack>
+      </Page>
     )
   }
 
@@ -690,13 +706,13 @@ export function MagicVerifyPage() {
   if (error) return <LinkDidNotWork kind="sign-in" />
 
   return (
-    <Arrival>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ width: 40, height: 40, border: '3px solid var(--gw-navy)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-        {/* Only somebody who described a check-in before giving their address has one being made
-            (U.2 re-review). Everybody else is only having their address confirmed. */}
-        <div style={{ fontSize: 14, color: 'var(--gw-sub)' }}>{aCheckInIsBeingMade() ? 'Setting up your check-in…' : 'Confirming your email…'}</div>
-      </div>
-    </Arrival>
+    <Page narrow>
+      <Mark />
+      {/* Only somebody who described a check-in before giving their address has one being made
+          (U.2 re-review). Everybody else is only having their address confirmed. */}
+      <p role="status" className="gwui-pt-sub" style={{ textAlign: 'center' }}>
+        {aCheckInIsBeingMade() ? 'Setting up your check-in…' : 'Confirming your email…'}
+      </p>
+    </Page>
   )
 }

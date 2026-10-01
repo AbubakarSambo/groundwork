@@ -72,11 +72,26 @@ const READERS: Record<string, Reader> = {
  * screen. Those are marked `null`: this test does not open them separately (they are covered when
  * their parent screen is opened), and says so in the report rather than silently skipping them.
  */
-type Counterpart = { productPath: string; reader: keyof typeof READERS; hash: string; persona: string } | null;
+/* `mustShow`: for a page whose true state on this Mac's test data is short (an empty state), the
+   exact sentence it must show instead of 300 characters, so a page that did not load still fails. */
+type Counterpart = { productPath: string; reader: keyof typeof READERS; hash: string; persona: string; mustShow?: string } | null;
 const SCREENS: Record<string, Counterpart> = {
   'pages/invite/InvitePage.tsx': null, // needs an unauthenticated invite token; not opened by reader sign-in
   'pages/invite/InvitationExpired.tsx': null, // same
   'pages/join/WaitingForAnAdminPage.tsx': null, // same
+  /*
+   * GROUP 3, PIECE 1 (signing in and joining, A2/A3): all four are signed-OUT screens, and this
+   * test signs a reader in before opening anything - opening them here would mean signing out
+   * first, which no other entry in this table does, and `signIn` keeps a signed-in session across
+   * the whole run deliberately (its own comment). So the one-primary-button rule for these four is
+   * checked statically instead, by `primaryButtonCount` in
+   * components/gw/ui/the-rebuilt-pages-use-only-the-new-parts.spec.ts, which runs for every entry
+   * on REBUILT_PAGES including these.
+   */
+  'pages/auth/auth-kit.tsx': null, // a kit of parts, not a screen of its own
+  'pages/auth/AuthPage.tsx': null, // signed out; see above
+  'pages/auth/MagicVerifyPage.tsx': null, // signed out; see above
+  'pages/join/JoinPage.tsx': null, // signed out; see above
   'pages/grounds/OutOfTime.tsx': null, // needs a check-in that has actually run out of time
   'pages/org/OrgMembersPage.tsx': { productPath: '/org/members', reader: 'admin', hash: '#/settings/people', persona: 'admin' },
   'pages/org/WaitingToBeLetIn.tsx': null, // a panel of the people screen above, not its own prototype screen
@@ -121,6 +136,41 @@ const SCREENS: Record<string, Counterpart> = {
      prototype's own Miriam - the same shape of person, a participant across a few check-ins - so
      her persona here is "part", as docs/prototype/screens/index.json has you-board-miriam. */
   'pages/you/YouPage.tsx': { productPath: '/you', reader: 'participant', hash: '#/you', persona: 'part' },
+  /* Group 2, piece 3 (D2-company). Both screens are drawn for the prototype's "ceo" persona
+     (docs/prototype/source/data.js: "Amani, CEO", admin:true) - the closest of our own readers is
+     Juma, an admin. */
+  /* No organisation on this Mac has company priorities, so the page shows its true empty state;
+     adding them needs a database write, which the safety check refused (1 October). */
+  'pages/company/CompanyPage.tsx': { productPath: '/company', reader: 'admin', hash: '#/company', persona: 'ceo', mustShow: "No priorities have come in from your organisation's own systems yet." },
+  'pages/company/CompanyContextPage.tsx': { productPath: '/company/context', reader: 'admin', hash: '#/company/kijani/context', persona: 'ceo' },
+  /*
+   * GROUP 2, PIECE 4 (E-suites). Every suite board's prototype screen is drawn for the "admin"
+   * persona (docs/prototype/screens/index.json) - Juma here. The hub itself has two prototype
+   * screens (suites-admin, suites-lead, both at the same hash, picked by persona); admin's is used,
+   * since every board below needs its suite switched on, which only an admin's own page offers.
+   */
+  'pages/suites/SuitesPage.tsx': { productPath: '/settings/suites', reader: 'admin', hash: '#/settings/suites', persona: 'admin' },
+  /* None of Kilima Traders U8's ten suites is switched on, so every board below shows its own true
+     "not switched on" sentence - the same reason the Company page needed `mustShow` (1 October);
+     turning a suite on would be adding data, which this piece was told not to do. */
+  'pages/suites/OnboardingBoardPage.tsx': { productPath: '/suite/onboard', reader: 'admin', hash: '#/suite/onboard', persona: 'admin', mustShow: 'The onboarding suite is not switched on.' },
+  'pages/suites/LeaveBoardPage.tsx': { productPath: '/suite/leave', reader: 'admin', hash: '#/suite/leave', persona: 'admin', mustShow: 'The leave suite is not switched on.' },
+  'pages/suites/TimeSheetsPage.tsx': { productPath: '/suite/time', reader: 'admin', hash: '#/suite/time', persona: 'admin' },
+  'pages/suites/ReviewsBoardPage.tsx': { productPath: '/suite/reviews', reader: 'admin', hash: '#/suite/reviews', persona: 'admin' },
+  'pages/suites/ReviewPage.tsx': null, // needs a real review id, started from the board above; not opened separately
+  'pages/suites/LeavingBoardPage.tsx': { productPath: '/suite/leaving', reader: 'admin', hash: '#/suite/leaving', persona: 'admin', mustShow: 'The suite for when someone leaves is not switched on.' },
+  'pages/suites/RoleMapPage.tsx': { productPath: '/suite/roles', reader: 'admin', hash: '#/suite/roles', persona: 'admin', mustShow: 'The role map suite is not switched on.' },
+  'pages/suites/SpendingPage.tsx': { productPath: '/suite/spend', reader: 'admin', hash: '#/suite/spend', persona: 'admin', mustShow: 'The spending suite is not switched on.' },
+  'pages/suites/TodosPage.tsx': { productPath: '/suite/todos', reader: 'admin', hash: '#/suite/todos', persona: 'admin', mustShow: 'The to-dos suite is not switched on.' },
+  'pages/suites/CustomersPage.tsx': { productPath: '/suite/customers', reader: 'admin', hash: '#/suite/customers', persona: 'admin', mustShow: 'The customers and deals suite is not switched on.' },
+  'pages/suites/EquipmentPage.tsx': { productPath: '/suite/equipment', reader: 'admin', hash: '#/suite/equipment', persona: 'admin', mustShow: 'The equipment suite is not switched on.' },
+  /* Group 3, piece 2 (the reports). The lead's own completed session on "Sales team, Q3"
+     (9028f0ad-293b-4592-9a4e-25b680dd91cd) - the prototype's closest counterpart is B4's
+     "one-session" screen (#/c/sales/session/37), read as the lead. This one product page also
+     serves a participant their own session report (own-report.txt's wording) and refuses anyone
+     who is not a party to that session - both checked live by the picture round and by
+     your-report-as-each-reader-reads-it.spec.tsx, not by this static count. */
+  'pages/report/SessionReportPage.tsx': { productPath: '/checkin/92ae925e-90b5-42f6-a0d4-6187724049dc/report', reader: 'lead', hash: '#/c/sales/session/37', persona: 'lead' },
 };
 
 /* Sign-in is by the emailed link, through the one mail catcher every browser test shares
@@ -246,8 +296,9 @@ test.describe('the two button rules, screen by screen', () => {
       const product = await countButtons(page);
       /* A page that did not load, or an address that does not exist, shows almost nothing and would
          pass every count. It must show the page itself: its own words inside #main. */
-      const shown = await page.evaluate(() => (document.querySelector('#main') as HTMLElement | null)?.innerText.trim().length ?? 0);
-      expect(shown, `${counterpart.productPath} shows its page (not an empty or missing one)`).toBeGreaterThan(300);
+      const mainText = await page.evaluate(() => (document.querySelector('#main') as HTMLElement | null)?.innerText.trim() ?? '');
+      if (counterpart.mustShow) expect(mainText.replace(/[’]/g, "'"), `${counterpart.productPath} shows its page`).toContain(counterpart.mustShow);
+      else expect(mainText.length, `${counterpart.productPath} shows its page (not an empty or missing one)`).toBeGreaterThan(300);
 
       const proto = await context.newPage();
       await proto.goto(PROTOTYPE_FILE);

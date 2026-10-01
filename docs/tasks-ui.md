@@ -65,7 +65,7 @@ F3, the public site, is a separate project. Leave it.
 
 Rebuilt from the shared parts in four groups, each with a picture check per screen, and the full screen suite, the page-colour test and the reviewer once per group.
 - [x] **Group 1, settings and account:** Settings (SettingsPage), Plan and billing (BillingPage and settings/billing), Connections (ConnectionsPage, WhatsAppSetupPage), the developer page (IntegrationsPage), More (MorePage).
-- [ ] **Group 2, your own pages:** Today, You, Company and company context, Suites and each suite's board (review, leaving, spending, equipment, time sheets, leave, reviews, onboarding), the check-ins list (GroundsListPage).
+- [x] **Group 2, your own pages:** Today, You, Company and company context, Suites and each suite's board (review, leaving, spending, equipment, time sheets, leave, reviews, onboarding), the check-ins list (GroundsListPage).
 - [ ] **Group 3, check-ins and signing in:** the rest of GroundAdminPage, ChatPage, CreateGroundPage, EntryChatPage and SaveCard, ReportPage and SessionReportPage, the sign-in pages (AuthPage, auth-kit, MagicVerifyPage), JoinPage.
 - [ ] **Group 4, the back office:** AdminPage, AdminDashboardPage, the ops pages, the prompt pages.
 
@@ -78,3 +78,23 @@ Each is in `docs/answers-from-engine.md`. They come after group 1, in this order
 - [ ] **Request 89:** "In {saidBy}'s words" from `saidBy`, beside whose the record is.
 - [ ] **Decision 65:** open Ask Groundwork from a check-in's own Context and resources page with `groundId` and `openedFrom: "check_in_setup"`, only from the lead's page.
 - [ ] **The suggestion thresholds admin page:** show `labels.keptBelow` and `labels.overPeriods`, not the field names (group 4).
+
+## The engine's answers of 1 October, to draw on the screens
+
+Each is in `docs/answers-from-engine.md`, after the merge `a7c25b2d`. They come after groups 3 and 4, with the 30 September list above.
+- [ ] **Request 17:** the Company page's company-wide picture, parts a to d.
+- [ ] **Request 28:** where each customer stands, from the sales check-ins, on the Customers board.
+- [ ] **Request 25:** the role map's role interview, and why a job nobody owns matters.
+- [ ] **The switchboard's 22 sections:** draw the ones served and not yet drawn.
+- [ ] **Week 11:** the ending page's suggestion, signals and questions, and reviews that fall due.
+- [ ] **Request 9 (d):** the weekly report's sentence about each person.
+- [ ] **Ask Groundwork, weeks 17 to 24:** answers that say where they came from, changes by talking after a yes, thinking it through, memory beyond one check-in, hours, spending and leave said in chat, being away, and a guest's Ask Groundwork.
+- [ ] **Week 25:** the lead is told while the report is still being written.
+- [ ] **Week 21:** the approver is told on Today.
+- [ ] **Request 92, ready:** run the five live checks of Ask Groundwork again. If they pass, tell the engine, so it can switch the old context chat off. Then make "Context and resources" read-only.
+
+## Clean-ups found on the way
+- [x] No new one-off style class (Hafsah, 1 October): the guard `the-one-off-style-classes-only-go.spec.ts` freezes the 199 that are left, in `one-off-style-classes.ts`, and lets the list only shrink.
+- [ ] Replace the one-off style classes on each group's pages with the proper shared parts, as part of that group's review, from group 3 on. Each page then gets its picture check against the prototype.
+- [ ] Go back over the pages already reviewed, group by group, and do the same: U.1 to U.8, the people group, the board, group 1 and group 2.
+- [ ] The old team report (`ReportBody` in `client/src/pages/report/ReportPage.tsx`): compare it with the rebuilt Report tab. Move any section the tab lacks into it, from the shared parts, especially anything about patterns, coaching, roles or probes. Then remove the old page and the tests that lock only it, and say in the report what was moved.

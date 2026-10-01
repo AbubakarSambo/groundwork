@@ -53,7 +53,12 @@ function open(user: any, served: SpendBoard | Error) {
   )
 }
 const refusal = (status: number, message: string) => Object.assign(new Error(String(status)), { response: { status, data: { message } } })
-const requests = () => [...document.querySelectorAll('.gw-leave-row')].map(li => [li.querySelector('b')?.textContent, li.querySelector('p')?.textContent])
+/* "Waiting for a yes or no" is now the shared RowList's own list (group 2, piece 4 rebuild), in
+   place of the page's prior .gw-leave-row class - found by its list's accessible name instead. */
+const requests = () => {
+  const list = screen.queryByRole('list', { name: 'Waiting for a yes or no' })
+  return list ? [...list.querySelectorAll('li')].map(li => [li.querySelector('b')?.textContent, li.querySelector('p')?.textContent]) : []
+}
 const rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(c => c.textContent))
 
 beforeEach(() => { vi.clearAllMocks() })
@@ -62,7 +67,9 @@ describe('Grace, an admin', () => {
   it('reads the way back, the heading and the prototype’s sentence', async () => {
     open(GRACE, GRACES)
     expect(await screen.findByRole('heading', { level: 2, name: 'Waiting for a yes or no' })).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: 'Breadcrumb' }).textContent).toBe('Suites / Spending and budgets')
+    /* "Where you are" is the shared PageTitle crumb's own aria-label (group 2, piece 4 rebuild),
+       in place of the page's prior "Breadcrumb". */
+    expect(screen.getByRole('navigation', { name: 'Where you are' }).textContent).toBe('Suites/Spending and budgets')
     expect(screen.getByRole('heading', { level: 1, name: 'Spending and budgets' })).toBeInTheDocument()
     expect(screen.getByText('People ask to spend by telling Groundwork. It checks the budget and the rules, then sends the request to the right person.')).toBeInTheDocument()
   })

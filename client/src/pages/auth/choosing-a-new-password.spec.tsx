@@ -31,7 +31,10 @@ function renderAt(path: string) {
 
 function readable(container: HTMLElement) {
   const copy = container.cloneNode(true) as HTMLElement
-  copy.querySelectorAll('[aria-hidden], .gw-sr-only').forEach(n => n.remove())
+  /* Group 3, piece 1: the rebuilt screen-reader-only text uses the shared .gwui-sr-only class
+     (gw-ui.css), not the old .gw-sr-only - strip both, since neither belongs in what a sighted
+     reader reads. */
+  copy.querySelectorAll('[aria-hidden], .gw-sr-only, .gwui-sr-only').forEach(n => n.remove())
   return (copy.textContent ?? '').replace(/\s+/g, ' ').trim()
 }
 
@@ -132,7 +135,9 @@ describe('"Choose a password", the first password from a set-up link (A2, #/pass
 
   it('the bar fills one part per rule met, and says "Strong enough" only when every rule is', () => {
     const { container } = renderAt('/set-password?token=tok')
-    const parts = () => [...container.querySelectorAll('.gw-auth-strength-bar span')].map(s => s.className === 'on')
+    /* Group 3, piece 1: the strength bar's CSS moved to the shared gwui-strength-bar/gwui-strength-on
+       classes (gw-ui.css). */
+    const parts = () => [...container.querySelectorAll('.gwui-strength-bar span')].map(s => s.className === 'gwui-strength-on')
     expect(parts()).toEqual([false, false, false])
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'harbourlamp' } })
     expect(parts()).toEqual([true, false, true])

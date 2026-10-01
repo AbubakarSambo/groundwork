@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useAuthStore } from '@/stores/auth'
 import { MARKETING_URL } from '@/lib/marketing'
-import { Button } from '@/components/gw/kit'
+import { Button, Stack } from '@/components/gw/ui'
 import { AuthCard } from './auth-kit'
 
 /**
@@ -35,10 +35,10 @@ export function SignOutPage() {
        session on another device lasts until it ends there, or until a password reset raises the
        account's token epoch. */
     <AuthCard title="You’re signed out" sub="You are still signed in on your other devices.">
-      <div className="gw-auth-actions">
+      <Stack gap={10}>
         <Button wide to="/auth">Sign in again</Button>
-        <a href={MARKETING_URL} className="gw-b gw-b-quiet gw-b-wide">Go to the home page</a>
-      </div>
+        <a href={MARKETING_URL} className="gwui-btn gwui-btn-quiet gwui-btn-wide">Go to the home page</a>
+      </Stack>
     </AuthCard>
   )
 }

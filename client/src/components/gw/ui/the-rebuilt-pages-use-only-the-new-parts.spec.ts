@@ -60,8 +60,18 @@ export function namesImportedFromKit(stripped: string): string[] {
   return found
 }
 
+/**
+ * GROUP 3, PIECE 2 FIX: A CSS CUSTOM PROPERTY IS NOT A CLASS.
+ *
+ * Plain substring matching flagged `var(--gw-card)` - a real, shared colour token several
+ * already-rebuilt components reference (`HowSpecificThisSessionWas.tsx`, `WhatToWorkOnNext.tsx`
+ * and others `SessionReportPage.tsx` draws) - as the old class `gw-card`, because `--gw-card`
+ * contains that exact substring. A token is never a class, so a match preceded by `-` (the custom
+ * property's own leading dashes) is not one. Nothing is checked after the name: an old class with
+ * a longer name built on it (`gw-card-head`) is still the old kit, and is still caught.
+ */
 export function oldClassesUsed(stripped: string): string[] {
-  const found = OLD_CSS_CLASSES.filter(c => stripped.includes(c))
+  const found = OLD_CSS_CLASSES.filter(c => new RegExp(`(?<!-)${c}`).test(stripped))
   if (/\bcg-[\w-]+/.test(stripped)) found.push('cg-*')
   return found
 }
@@ -336,6 +346,30 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/grounds/an-admin-lands-on-a-check-in-list.tsx',
       /* Group 2, piece 2: the You board (C2-the-you-board). */
       'pages/you/YouPage.tsx',
+      /* Group 2, piece 3: the Company page and company context (D2-company). */
+      'pages/company/CompanyPage.tsx',
+      'pages/company/CompanyContextPage.tsx',
+      /* Group 2, piece 4: the Suites page and each suite's board (E-suites). */
+      'pages/suites/SuitesPage.tsx',
+      'pages/suites/OnboardingBoardPage.tsx',
+      'pages/suites/LeaveBoardPage.tsx',
+      'pages/suites/TimeSheetsPage.tsx',
+      'pages/suites/ReviewsBoardPage.tsx',
+      'pages/suites/ReviewPage.tsx',
+      'pages/suites/LeavingBoardPage.tsx',
+      'pages/suites/RoleMapPage.tsx',
+      'pages/suites/SpendingPage.tsx',
+      'pages/suites/TodosPage.tsx',
+      'pages/suites/CustomersPage.tsx',
+      'pages/suites/EquipmentPage.tsx',
+      /* Group 3's first piece: signing in and joining (A2, A3). See the comment on
+         REBUILT_PAGES in rebuilt-pages.ts. */
+      'pages/auth/auth-kit.tsx',
+      'pages/auth/AuthPage.tsx',
+      'pages/auth/MagicVerifyPage.tsx',
+      'pages/join/JoinPage.tsx',
+      'pages/report/SessionReportPage.tsx',
+      'pages/report/ReportPage.tsx',
     ])
   })
 

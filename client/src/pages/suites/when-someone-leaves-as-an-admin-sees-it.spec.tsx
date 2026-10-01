@@ -55,7 +55,9 @@ describe('Grace, an admin', () => {
   it('reads the way back, the heading and the prototype’s sentence', async () => {
     open(GRACE, BOARD)
     expect(await screen.findByRole('heading', { level: 2, name: 'Tom Odhiambo leaves on 9 October' })).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: 'Breadcrumb' }).textContent).toBe('Suites / When someone leaves')
+    /* "Where you are" is the shared PageTitle crumb's own aria-label (group 2, piece 4 rebuild),
+       in place of the page's prior "Breadcrumb". */
+    expect(screen.getByRole('navigation', { name: 'Where you are' }).textContent).toBe('Suites/When someone leaves')
     expect(screen.getByRole('heading', { level: 1, name: 'When someone leaves' })).toBeInTheDocument()
     expect(screen.getByText('Everything that has to happen when someone leaves, each with an owner, so nothing is forgotten.')).toBeInTheDocument()
   })

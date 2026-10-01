@@ -1,17 +1,24 @@
-import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { todosApi } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Button } from '@/components/gw/kit'
+import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row } from '@/components/gw/ui'
 
 /**
- * TO-DOS (E8, #/suite/todos, U.17). What each reader is given is the server's (GET
+ * TO-DOS (E8, #/suite/todos, group 2 piece 4). What each reader is given is the server's (GET
  * /suites/todos/board): only lines they may already read in the check-in each came from, for an admin
  * everybody, for a lead their own team and themselves, and nobody else. The wording follows
- * docs/prototype/screens/E-suites/suite-todos.txt: each person's name, each line, and "From her
- * check-in, 24 September", with "a check-in" for "her check-in" because the product does not know
- * anybody's pronouns.
+ * docs/prototype/screens/E-suites/suite-todos.txt: each person's name and each line. Group 2's review
+ * (fault B) changed the source line from "From her check-in, 24 September" to "From {first name}'s
+ * check-in in {check-in}, on {date}.": the prototype's "her" assumes a pronoun nothing in the product
+ * records, so the person's own first name is used instead, and the check-in itself is now named,
+ * since a person is often in more than one. Where the check-in's own name already ends with that
+ * date ("Help a new hire get started, from 27 September"), ", on 27 September" is left off rather
+ * than said twice (sourceLine, below).
+ *
+ * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (crumbs, subtitle), `Section` for each person,
+ * `RowList`/`Row` for their lines, and `Note`/`Empty` for loading, error and empty states. No new
+ * parts were needed.
  *
  * ONE PROTOTYPE LINE IS CHANGED, because it would not be true (item 28): "Everything people said they
  * will do, from every check-in and chat, in one list for each person." says "in their check-ins", since
@@ -26,6 +33,16 @@ import { Button } from '@/components/gw/kit'
  */
 const onDay = (day: string) => whenItWas(new Date(`${day}T00:00:00.000Z`), 'dayAndMonthLong', 'UTC')
 
+/** "From Juma's check-in in Sales team, Q3, on 27 September.", unless the check-in's own name
+ *  already ends with that date ("Help a new hire get started, from 27 September"), in which case
+ *  the date is not said twice. */
+const sourceLine = (firstName: string, checkIn: string, on: string) => {
+  const day = onDay(on)
+  return checkIn.trim().endsWith(day)
+    ? `From ${firstName}’s check-in in ${checkIn}.`
+    : `From ${firstName}’s check-in in ${checkIn}, on ${day}.`
+}
+
 export function TodosPage() {
   const user = useAuthStore(s => s.user)
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -37,39 +54,40 @@ export function TodosPage() {
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
 
   return (
-    <div className="gw-you gw-suites">
-      <nav className="gw-people-crumb" aria-label="Breadcrumb"><Link to="/settings/suites">Suites</Link> / To-dos</nav>
-      <h1 className="gw-t-title gw-suites-h1">To-dos</h1>
-      <p className="gw-you-sub">Everything people said they will do in their check-ins, in one list for each person. Nobody has to write it down twice.</p>
+    <Page>
+      <PageTitle
+        crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'To-dos' }]}
+        title="To-dos"
+        subtitle="Everything people said they will do in their check-ins, in one list for each person. Nobody has to write it down twice."
+      />
 
-      {isLoading && <p className="gw-t-body gw-you-quiet">Loading…</p>}
+      {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <p role="alert" className="gw-t-body">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</p>
+          <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</Note>
         ) : (
-          <div role="alert" className="gw-you-quiet">
-            <p className="gw-t-body">The board did not load.</p>
+          <div>
+            <Note tone="error">The board did not load.</Note>
             <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
           </div>
         )
       )}
 
-      {data && data.people.length === 0 && <p className="gw-t-body gw-you-quiet">Nobody has anything on their list yet.</p>}
-      {data && data.people.map((p, i) => (
-        <section key={p.name} className="gw-suites-group" aria-labelledby={`todos-${i}`}>
-          <h2 id={`todos-${i}`} className="gw-t-h3">{p.name}</h2>
-          <ul className="gw-leave-list">
+      {data && data.people.length === 0 && <Empty>Nobody has anything on their list yet.</Empty>}
+      {data && data.people.map(p => (
+        <Section key={p.name} heading={p.name}>
+          <RowList label={p.name}>
             {p.todos.map(t => (
-              <li key={t.id} className="gw-leave-row">
+              <Row key={t.id} columns="minmax(0, 1fr)">
                 <div>
                   <b>{t.text}</b>
-                  <p className="gw-you-quiet">{`From a check-in, ${onDay(t.on)}`}</p>
+                  <p className="gwui-panel-text-muted">{sourceLine(p.firstName, t.checkIn, t.on)}</p>
                 </div>
-              </li>
+              </Row>
             ))}
-          </ul>
-        </section>
+          </RowList>
+        </Section>
       ))}
-    </div>
+    </Page>
   )
 }

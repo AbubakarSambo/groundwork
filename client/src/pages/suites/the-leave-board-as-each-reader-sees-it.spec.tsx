@@ -43,7 +43,12 @@ function open(user: any, served: LeaveBoard | Error) {
   )
 }
 const refusal = (status: number, message: string) => Object.assign(new Error(String(status)), { response: { status, data: { message } } })
-const rows = () => [...document.querySelectorAll('.gw-leave-row')] as HTMLElement[]
+/* "Waiting for approval" is now the shared RowList's own list (group 2, piece 4 rebuild), in place
+   of the page's prior .gw-leave-row class - found by its list's accessible name instead. */
+const rows = () => {
+  const list = screen.queryByRole('list', { name: 'Waiting for approval' })
+  return list ? ([...list.querySelectorAll('li')] as HTMLElement[]) : []
+}
 const text = () => document.body.textContent ?? ''
 
 beforeEach(() => { vi.clearAllMocks() })
@@ -52,7 +57,9 @@ describe('Wairimu, the lead who approves, reads the leave board', () => {
   it('reads the way back, the heading and the prototype’s sentence', async () => {
     open(WAIRIMU, WAIRIMUS)
     expect(await screen.findByRole('heading', { level: 2, name: 'Waiting for approval' })).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: 'Breadcrumb' }).textContent).toBe('Suites / Leave requests')
+    /* "Where you are" is the shared PageTitle crumb's own aria-label (group 2, piece 4 rebuild),
+       in place of the page's prior "Breadcrumb". */
+    expect(screen.getByRole('navigation', { name: 'Where you are' }).textContent).toBe('Suites/Leave requests')
     expect(screen.getByRole('heading', { level: 1, name: 'Leave requests' })).toBeInTheDocument()
     expect(screen.getByText('People ask for time off in their check-in or chat. Groundwork checks their balance and who else is off, and sends it to the right approver.')).toBeInTheDocument()
   })

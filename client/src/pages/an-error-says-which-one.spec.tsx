@@ -50,8 +50,12 @@ describe('the screens', () => {
     const invite = read('invite/InvitePage.tsx')
     expect(invite).toMatch(/\{failed && <Note tone="error">\{failed\}<\/Note>\}/)
     expect(invite).not.toContain('gw-er')
+    /* Group 3, piece 1: the join page is rebuilt the same way now, so its failure moved to the same
+       shared Note tone="error" the invite page already uses - still kept on the page, still an
+       alert, no longer the old gw-er class. */
     const join = read('join/JoinPage.tsx')
-    expect(join).toMatch(/\{failure && <div className="gw-er" role="alert">\{failure\}<\/div>\}/)
+    expect(join).toMatch(/\{failure && <Note tone="error">\{failure\}<\/Note>\}/)
+    expect(join).not.toContain('gw-er')
     expect(join).not.toContain('toast.error(')
   })
   it('the join-confirm page puts the server\'s sentence where the generic one was', () => {

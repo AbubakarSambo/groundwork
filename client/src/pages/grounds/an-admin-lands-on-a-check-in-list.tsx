@@ -69,13 +69,21 @@ export function getItGoing(f: RolloutFacts): Step[] {
   return steps
 }
 
-/** The welcome card's doors, in the prototype's words. Connections names WhatsApp only while it is on. */
+/**
+ * THE WELCOME CARD'S DOORS, AS PLAIN SENTENCES (group 2's review, fault C). Each line used to be a
+ * fragment ("Invite people, set roles and teams, let guests in"); each is now one full sentence that
+ * says what is true, with no piece joined on by a comma standing in for a missing word.
+ */
 export function doorsFor(f: Pick<RolloutFacts, 'whatsappOn'>): { title: string; line: string; to: string }[] {
   return [
-    { title: 'People', line: 'Invite people, set roles and teams, let guests in', to: '/org/members' },
-    { title: 'Connections', line: f.whatsappOn ? 'WhatsApp, your numbers, your own address' : 'Your numbers, your own address', to: '/settings/connections' },
-    { title: 'Suites', line: 'Leave, spending and onboarding, switched on as needed', to: '/settings/suites' },
-    { title: 'Plan and billing', line: 'Seats, the card and invoices', to: '/billing' },
+    { title: 'People', line: 'Invite people, set their roles and teams, and let guests in.', to: '/org/members' },
+    {
+      title: 'Connections',
+      line: f.whatsappOn ? 'Connect WhatsApp, bring in your numbers, and use your own address.' : 'Bring in your numbers, and use your own address.',
+      to: '/settings/connections',
+    },
+    { title: 'Suites', line: 'Switch on leave, spending and onboarding when you need them.', to: '/settings/suites' },
+    { title: 'Plan and billing', line: 'Your seats, your card and your invoices.', to: '/billing' },
   ]
 }
 

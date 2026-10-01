@@ -52,7 +52,9 @@ describe('Grace, an admin, reads the onboarding board', () => {
     expect(await screen.findByRole('heading', { level: 2, name: 'Faith Kerubo is getting set up' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 2, name: 'Otieno Ouma is getting set up' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'Onboarding' })).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: 'Breadcrumb' }).textContent).toBe('Suites / Onboarding')
+    /* "Where you are" is the shared PageTitle crumb's own aria-label (group 2, piece 4 rebuild),
+       in place of the page's prior "Breadcrumb". */
+    expect(screen.getByRole('navigation', { name: 'Where you are' }).textContent).toBe('Suites/Onboarding')
     expect(screen.getByRole('link', { name: 'Suites' })).toHaveAttribute('href', '/settings/suites')
   })
 
@@ -88,9 +90,13 @@ describe('Grace, an admin, reads the onboarding board', () => {
     expect(await screen.findByText('Nobody is being set up right now.')).toBeInTheDocument()
   })
 
-  it('while the suite is off, reads the server’s sentence and nothing else', async () => {
+  /* Group 2's review, fault F: while off, this page used to show only "Onboarding / Onboarding" and
+     the server's refusal, with nothing saying what the board is for - every other board carries that
+     line regardless of whether it loaded. It now reads the same here. */
+  it('while the suite is off, still reads what the board is for, above the server’s sentence', async () => {
     open(GRACE, refusal(404, 'The onboarding suite is not switched on.'))
     expect(await screen.findByRole('alert')).toHaveTextContent('The onboarding suite is not switched on.')
+    expect(screen.getByText('This board is only about getting new people set up, with their papers, equipment and training, and the people they need to meet. It is never used to judge anyone’s work.')).toBeInTheDocument()
     expect(screen.queryAllByRole('heading', { level: 2 })).toHaveLength(0)
   })
 })

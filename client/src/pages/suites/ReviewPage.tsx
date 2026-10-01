@@ -1,22 +1,29 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { reviewsApi, type AReview } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Button, Mark } from '@/components/gw/kit'
+import { Page, PageTitle, Section, Button, Note, ProofMark, FieldLabel, TextArea, TextField, RowList, Row } from '@/components/gw/ui'
 
 /**
- * ONE PERFORMANCE REVIEW (E4, #/suite/reviews/:id, U.17). The wording is copied from the review in
- * docs/prototype/screens/E-suites/suite-reviews.txt: "What Groundwork noticed", "Proof first.
- * Anything only said is marked.", "What Wairimu writes", "Aisha’s own view" and "No scores. Wairimu
- * and Aisha talk it through, and Wairimu decides." The decision uses the words of the suggestions
- * part (U.13): "Your decision", "Your reasons, in a sentence or two", "Save my decision".
+ * ONE PERFORMANCE REVIEW (E4, #/suite/reviews/:id, group 2 piece 4). The wording is copied from the
+ * review in docs/prototype/screens/E-suites/suite-reviews.txt: "What Groundwork noticed", "Proof
+ * first. Anything only said is marked.", "What Wairimu writes", "Aisha’s own view" and "No scores.
+ * Wairimu and Aisha talk it through, and Wairimu decides." The decision uses the words of the
+ * suggestions part (U.13): "Your decision", "Your reasons, in a sentence or two", "Save my decision".
  *
  * WHAT EACH READER IS GIVEN IS THE SERVER'S (GET /suites/reviews/:id). The person it is about reads
  * the facts, their own view and the decision with its reasons, never the manager's words (item 28),
  * and writes their own view. The person who writes it with them writes their own words and decides.
  * An admin or a lead of the team reads it. Everybody else is refused by the server.
+ *
+ * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (its own `crumbs`), `Section` (`.gwui-cards-3`,
+ * the review's own three-column row, the prototype's own shape) for "What Groundwork noticed",
+ * "What ... writes" and "... own view", the new `ProofMark` (brought over from kit.tsx's `Mark`,
+ * renamed so it is never confused with this kit's own `Mark` wordmark - see
+ * docs/the-parts-against-the-prototype.md) for each noticed line, `FieldLabel`/`TextArea`/
+ * `TextField` for what a person writes, and `Note`/`Empty` for loading, error and empty states.
  *
  * NOT DRAWN HERE, ON PURPOSE: Groundwork's suggestion ("Groundwork suggests recognising Aisha’s
  * work"). A suggestion belongs to a check-in today, not to a review; the engine is asked for one
@@ -42,25 +49,26 @@ export function ReviewPage() {
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
 
   return (
-    <div className="gw-you gw-suites">
+    <Page>
       {data && data.reader !== 'person' && (
-        <nav className="gw-people-crumb" aria-label="Breadcrumb">
-          <Link to="/settings/suites">Suites</Link> / <Link to="/suite/reviews">Performance reviews</Link> / {data.name}
-        </nav>
+        <PageTitle
+          crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Performance reviews', to: '/suite/reviews' }, { label: data.name }]}
+          title={`${data.firstName}’s review, ${monthOf(data.dueOn)}`}
+        />
       )}
-      {isLoading && <p className="gw-t-body gw-you-quiet">Loading…</p>}
+      {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <p role="alert" className="gw-t-body">{refused.data?.message ?? 'You cannot open this review.'}</p>
+          <Note tone="error">{refused.data?.message ?? 'You cannot open this review.'}</Note>
         ) : (
-          <div role="alert" className="gw-you-quiet">
-            <p className="gw-t-body">The review did not load.</p>
+          <div>
+            <Note tone="error">The review did not load.</Note>
             <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
           </div>
         )
       )}
       {data && <TheReview r={data} />}
-    </div>
+    </Page>
   )
 }
 
@@ -77,24 +85,26 @@ function TheReview({ r }: { r: AReview }) {
 
   return (
     <>
-      <h1 className="gw-t-title gw-suites-h1">{title}</h1>
+      {person && <PageTitle title={title} />}
 
-      <div className="gw-review-grid">
-        <section className="gw-you-card" aria-labelledby="rv-noticed">
-          <h2 id="rv-noticed" className="gw-t-h3">What Groundwork noticed</h2>
-          <p className="gw-you-quiet">Proof first. Anything only said is marked.</p>
+      <div className="gwui-cards-3">
+        <Section heading="What Groundwork noticed" note="Proof first. Anything only said is marked.">
           {r.noticed.length === 0
-            ? <p className="gw-you-quiet">Groundwork has not written this part yet.</p>
+            ? <p className="gwui-panel-text-muted">Groundwork has not written this part yet.</p>
             : (
-              <ul className="gw-review-noticed">
-                {r.noticed.map((n, i) => <li key={i}><Mark mark={n.mark} /><span>{n.says}</span></li>)}
-              </ul>
+              <RowList label="What Groundwork noticed">
+                {r.noticed.map((n, i) => (
+                  <Row key={i} columns="auto minmax(0, 1fr)">
+                    <ProofMark mark={n.mark} />
+                    <span>{n.says}</span>
+                  </Row>
+                ))}
+              </RowList>
             )}
-        </section>
+        </Section>
 
         {!person && (
           <Words
-            id="rv-words"
             heading={writer ? 'What you write' : `What ${manager ?? 'the manager'} writes`}
             text={r.managersWords}
             empty={`${writer ? 'You have' : `${manager ?? 'The manager'} has`} not written anything yet.`}
@@ -105,7 +115,6 @@ function TheReview({ r }: { r: AReview }) {
         )}
 
         <Words
-          id="rv-view"
           heading={person ? 'Your own view' : `${r.firstName}’s own view`}
           text={r.theirView}
           empty={person ? 'You have not written your view yet.' : `${r.firstName} has not written their view yet.`}
@@ -117,13 +126,13 @@ function TheReview({ r }: { r: AReview }) {
 
       <Decision r={r} />
 
-      <p className="gw-you-quiet">{footer}</p>
+      <p className="gwui-panel-text-muted">{footer}</p>
     </>
   )
 }
 
-function Words({ id, heading, text, empty, editable, save, reviewId }: {
-  id: string; heading: string; text: string | null; empty: string; editable: boolean; save: (t: string) => Promise<AReview>; reviewId: string
+function Words({ heading, text, empty, editable, save, reviewId }: {
+  heading: string; text: string | null; empty: string; editable: boolean; save: (t: string) => Promise<AReview>; reviewId: string
 }) {
   const qc = useQueryClient()
   const [draft, setDraft] = useState(text ?? '')
@@ -133,18 +142,18 @@ function Words({ id, heading, text, empty, editable, save, reviewId }: {
     onSuccess: (r) => { setProblem(null); qc.setQueryData(['suite-review', reviewId], r) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
+  const fieldId = `review-words-${heading.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
   return (
-    <section className="gw-you-card" aria-labelledby={id}>
-      <h2 id={id} className="gw-t-h3">{heading}</h2>
+    <Section heading={heading}>
       {editable ? (
-        <form className="gw-suite-q" onSubmit={e => { e.preventDefault(); if (draft.trim()) saving.mutate() }}>
-          <label htmlFor={`${id}-text`} className="gw-sr-only">{heading}</label>
-          <textarea id={`${id}-text`} rows={5} value={draft} onChange={e => setDraft(e.target.value)} maxLength={4000} />
+        <form className="gwui-suite-q" onSubmit={e => { e.preventDefault(); if (draft.trim()) saving.mutate() }}>
+          <FieldLabel htmlFor={fieldId}>{heading}</FieldLabel>
+          <TextArea id={fieldId} rows={5} value={draft} onChange={e => setDraft(e.target.value)} maxLength={4000} />
           <div><Button kind="secondary" size="small" type="submit" disabled={!draft.trim() || saving.isPending}>Save</Button></div>
-          {problem && <p className="gw-auth-error" role="alert">{problem}</p>}
+          {problem && <Note tone="error">{problem}</Note>}
         </form>
-      ) : text ? <p className="gw-review-said">“{text}”</p> : <p className="gw-you-quiet">{empty}</p>}
-    </section>
+      ) : text ? <p className="gwui-quoted-text">“{text}”</p> : <p className="gwui-panel-text-muted">{empty}</p>}
+    </Section>
   )
 }
 
@@ -162,31 +171,29 @@ function Decision({ r }: { r: AReview }) {
 
   if (r.decision) {
     return (
-      <section className="gw-you-card" aria-labelledby="rv-decision">
-        <h2 id="rv-decision" className="gw-t-h3">{writer ? 'Your decision' : 'The decision'}</h2>
-        <p>{r.decision.says}</p>
-        <h3 className="gw-t-h3">{writer ? 'Your reasons' : 'The reasons'}</h3>
-        <p>{r.decision.reasons}</p>
-        {writer && <p className="gw-you-quiet">{r.firstName} sees your decision and your reasons.</p>}
-      </section>
+      <Section heading={writer ? 'Your decision' : 'The decision'}>
+        <p className="gwui-panel-text">{r.decision.says}</p>
+        <h3 className="gwui-panel-heading">{writer ? 'Your reasons' : 'The reasons'}</h3>
+        <p className="gwui-panel-text">{r.decision.reasons}</p>
+        {writer && <p className="gwui-panel-text-muted">{r.firstName} sees your decision and your reasons.</p>}
+      </Section>
     )
   }
   if (!writer) return null
   return (
-    <section className="gw-you-card" aria-labelledby="rv-decision">
-      <h2 id="rv-decision" className="gw-t-h3">Your decision</h2>
-      <form className="gw-suite-ask" onSubmit={e => { e.preventDefault(); if (says.trim() && reasons.trim()) saving.mutate() }}>
-        <div className="gw-suite-q">
-          <label htmlFor="rv-says">Your decision</label>
-          <input id="rv-says" value={says} onChange={e => setSays(e.target.value)} maxLength={1000} />
+    <Section heading="Your decision">
+      <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); if (says.trim() && reasons.trim()) saving.mutate() }}>
+        <div className="gwui-suite-q">
+          <FieldLabel htmlFor="rv-says">Your decision</FieldLabel>
+          <TextField id="rv-says" value={says} onChange={e => setSays(e.target.value)} maxLength={1000} />
         </div>
-        <div className="gw-suite-q">
-          <label htmlFor="rv-reasons">Your reasons, in a sentence or two</label>
-          <textarea id="rv-reasons" rows={3} value={reasons} onChange={e => setReasons(e.target.value)} maxLength={2000} />
+        <div className="gwui-suite-q">
+          <FieldLabel htmlFor="rv-reasons">Your reasons, in a sentence or two</FieldLabel>
+          <TextArea id="rv-reasons" rows={3} value={reasons} onChange={e => setReasons(e.target.value)} maxLength={2000} />
         </div>
         <div><Button type="submit" disabled={!says.trim() || !reasons.trim() || saving.isPending}>Save my decision</Button></div>
-        {problem && <p className="gw-auth-error" role="alert">{problem}</p>}
+        {problem && <Note tone="error">{problem}</Note>}
       </form>
-    </section>
+    </Section>
   )
 }

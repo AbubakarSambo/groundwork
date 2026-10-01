@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
-import { Button } from '@/components/gw/kit'
+import { Button, Stack } from '@/components/gw/ui'
 import { AuthCard, AuthError, PasswordField, PasswordRules, PasswordStrength } from './auth-kit'
 import { whatTheLinkDid } from './a-link-that-has-expired'
 import { LinkExpired, LinkDidNotWork } from './LinkExpired'
@@ -179,59 +179,58 @@ export function ChoosePasswordPage() {
       */}
       {/* A form, so Enter submits from the first field too, and the password manager is told what these are. */}
       <form noValidate onSubmit={e => { e.preventDefault(); submit() }}>
-        <PasswordField
-          id="new-password"
-          label={kind === 'set' ? 'Password' : 'New password'}
-          autoComplete="new-password"
-          value={password}
-          onChange={setPassword}
-          autoFocus
-        />
-        {kind === 'reset' ? (
-          <>
-            <PasswordField
-              id="confirm-password"
-              label="Type it again"
-              spokenAs="password you typed again"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={setConfirm}
-            />
-            <PasswordRules password={password} confirm={confirm} />
-          </>
-        ) : (
-          <>
-            <PasswordStrength password={password} email={theirEmail} />
-            <p className="gw-auth-small" style={{ margin: '0 0 16px' }}>
-              Use one you don’t use anywhere else. A few unrelated words are easier to remember than symbols.
-            </p>
-          </>
-        )}
-        {error && <AuthError>{error}</AuthError>}
-        <div className="gw-auth-actions">
+        <Stack gap={10}>
+          <PasswordField
+            id="new-password"
+            label={kind === 'set' ? 'Password' : 'New password'}
+            autoComplete="new-password"
+            value={password}
+            onChange={setPassword}
+            autoFocus
+          />
+          {kind === 'reset' ? (
+            <>
+              <PasswordField
+                id="confirm-password"
+                label="Type it again"
+                spokenAs="password you typed again"
+                autoComplete="new-password"
+                value={confirm}
+                onChange={setConfirm}
+              />
+              <PasswordRules password={password} confirm={confirm} />
+            </>
+          ) : (
+            <>
+              <PasswordStrength password={password} email={theirEmail} />
+              <p className="gwui-fine">
+                Use one you don’t use anywhere else. A few unrelated words are easier to remember than symbols.
+              </p>
+            </>
+          )}
+          {error && <AuthError>{error}</AuthError>}
           <Button type="submit" wide disabled={save.isPending}>
             {save.isPending ? 'Saving…' : 'Save password'}
           </Button>
-        </div>
+        </Stack>
       </form>
       {kind === 'set' && (
-        <div className="gw-auth-links">
+        <div className="gwui-auth-links">
           {/*
             NO PASSWORD, AND THAT IS FINE. Opening the email link has signed this person in, so
             skipping goes on to where they were going. Somebody here without a session (a set-up
             link from an invitation) is sent to ask for a sign-in link instead, which is what
             "email links" means for them. The unused set-up link simply runs out.
           */}
-          <button
-            type="button"
-            className="gw-auth-link"
+          <Button
+            kind="quiet"
             onClick={() => {
               try { sessionStorage.removeItem('gw_next') } catch { /* */ }
               navigate(signedIn ? next : '/auth?mode=member', { replace: true })
             }}
           >
             Keep using email links instead
-          </button>
+          </Button>
         </div>
       )}
     </AuthCard>

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
-import { Button } from '@/components/gw/kit'
+import { Button, Stack } from '@/components/gw/ui'
 import { AuthCard } from './auth-kit'
 
 /**
@@ -36,7 +36,7 @@ export function GoogleFailedPage() {
       title="Google sign-in didn’t finish"
       sub="Google did not finish signing you in. It usually works if you try again. You can also sign in with an email link instead."
     >
-      <div className="gw-auth-actions">
+      <Stack gap={10}>
         {methods?.google && (
           <Button wide onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google` }}>
             Try Google again
@@ -45,7 +45,7 @@ export function GoogleFailedPage() {
         <Button kind={methods?.google ? 'quiet' : 'primary'} wide to="/auth?mode=member">
           Email me a sign-in link
         </Button>
-      </div>
+      </Stack>
     </AuthCard>
   )
 }

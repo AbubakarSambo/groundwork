@@ -125,7 +125,7 @@ describe('Grace, an admin, reads the whole company page', () => {
     const { read } = setup();
     const page = await read('grace');
     expect(page.name).toBe('Baridi Appliances');
-    expect(page.line).toBe('2 teams, 5 people, 3 check-ins this week.');
+    expect(page.line).toBe('2 teams and 5 people work here, and there were 3 check-ins this week.');
     expect(page.readsTargets).toBe(true);
     expect(page.priorities).toEqual([
       { id: 's1', number: 1, title: 'Grow revenue 50%, enterprise first', owner: 'Wairimu Kamau', tag: null, fedBy: 'Fed by Sales team, Q3', staleSays: null, reading: null, measure: 'Qualified enterprise deals', target: '12 this quarter' },
@@ -166,7 +166,7 @@ describe('Miriam, a member, reads the priorities and only what she may open', ()
   });
 
   it('is given no count of check-ins: she reads her own, not the organisation\'s', async () => {
-    expect((await setup().read('miriam')).line).toBe('2 teams, 5 people.');
+    expect((await setup().read('miriam')).line).toBe('2 teams and 5 people work here.');
   });
 });
 
@@ -174,7 +174,7 @@ describe('Wairimu, a lead, reads what a lead may open', () => {
   it('reads her own check-in as feeding priority 1, no targets, and no count of check-ins', async () => {
     const page = await setup().read('wairimu');
     expect(page.readsTargets).toBe(false);
-    expect(page.line).toBe('2 teams, 5 people.');
+    expect(page.line).toBe('2 teams and 5 people work here.');
     expect(page.priorities.map((p) => p.fedBy)).toEqual(['Fed by Sales team, Q3', null, 'No team feeds it']);
   });
 });

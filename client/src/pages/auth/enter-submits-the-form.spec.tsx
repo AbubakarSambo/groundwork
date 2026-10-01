@@ -30,7 +30,12 @@ describe('forms behave like forms', () => {
        the box by its id. U.2. */
     expect(a).toContain('id="link-email"')
     expect(a).toContain('id="forgot-email"')
-    expect(read('auth-kit.tsx').match(/htmlFor=\{id\}/g)?.length).toBe(2)
+    /* Group 3, piece 1: PasswordField moved out of auth-kit.tsx into the shared
+       components/gw/ui/PasswordField.tsx (every sign-in screen that asks for a password now draws
+       the same one part), so its own `htmlFor={id}` lives there now; AuthField's is still in
+       auth-kit.tsx. One each. */
+    expect(read('auth-kit.tsx').match(/htmlFor=\{id\}/g)?.length).toBe(1)
+    expect(read('../../components/gw/ui/PasswordField.tsx').match(/htmlFor=\{id\}/g)?.length).toBe(1)
     expect(read('../join/JoinPage.tsx')).toContain('autoComplete="email"')
   })
   it('the setup composer is a textarea with the check-in composer\'s rule', () => {

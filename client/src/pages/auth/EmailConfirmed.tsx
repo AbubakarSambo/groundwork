@@ -1,4 +1,4 @@
-import { Button } from '@/components/gw/kit'
+import { Button, Stack } from '@/components/gw/ui'
 import { AuthCard } from './auth-kit'
 
 /**
@@ -17,9 +17,9 @@ export function EmailConfirmed({ email, onContinue }: { email: string | null; on
         ? <>We’ll send sign-in links and reports to <strong>{email}</strong>.</>
         : 'We’ll send sign-in links and reports to this address.'}
     >
-      <div className="gw-auth-actions">
+      <Stack gap={10}>
         <Button wide size="big" onClick={onContinue}>Continue</Button>
-      </div>
+      </Stack>
     </AuthCard>
   )
 }

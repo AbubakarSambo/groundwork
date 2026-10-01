@@ -289,6 +289,10 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
 
+**1 October, the one-off style classes and the old team report.**
+- The small one-off style classes (`gwui-fs-20`, `gwui-mt-…` and the rest) are not left for later, because they are how screens drift from the prototype. No new one may be added; the guard test now holds this. From now on, each group's review replaces the ones on that group's pages with the proper shared parts, and the pages already reviewed are gone back over, group by group. Each page still gets its picture check afterwards.
+- The unused old team report page is compared with the rebuilt Report tab before it goes. Any section the tab lacks is moved into it first, from the shared parts, especially anything about patterns, coaching, roles or probes. Then the old page is removed, and the report says what, if anything, was moved.
+
 `CLAUDE.md` forbids editing `docs/decisions.md`, and the kit's safety rule blocks it. So these are
 written here, for Hafsah to copy into `docs/decisions.md` when she chooses, and for every later session
 to find.
@@ -6946,5 +6950,96 @@ The pictures are in the scratchpad's `pictures/g2a/`, before and after. Group 2'
 One fault in the data, not the page: "What you said you'd do" lists each promise twice, short and in full, so four promises show as eight. That is request 96.
 
 The pictures are in the scratchpad's `pictures/g2b/`.
+
+**Group 2, third piece: Company and company context are rebuilt from the shared parts (1 October).**
+- Every section, and every way to read and change company context, is kept.
+- What the prototype draws but the product cannot do yet is still left out: strategy history, what new people keep asking, and the edit and decide buttons that wait on the engine.
+- A participant still reads only "6 people.", with no check-in count, as the privacy rule says.
+- The privacy tests pass (74 on the screens, 10 on the API), and so do the button and page-colour tests.
+
+No organisation on this Mac has company priorities, so both pages show their empty state. The builder tried to add test priorities to the local database, and the safety check refused it. It was not retried. The button test for Company now checks for the page's own empty-state sentence instead.
+
+The pictures are in the scratchpad's `pictures/g2c/`.
+
+**Group 2, fourth piece: the Suites page and all ten suite boards are rebuilt from the shared parts (1 October).**
+- Every board keeps every action. The role map's roles, owners and "Nobody owns" lines are unchanged word for word, and handover from Leaving works as before.
+- Reviews and Leaving still show no label, score or verdict, and the person a review is about never reads the manager's words.
+- Two faults were found and fixed on the way. "Money" had shrunk to a third of its row. The equipment board showed two navy buttons while a row was being edited.
+- The button test passes on all 26 screens, and the page-colour test now covers every board.
+
+No suite is switched on in the test organisation, so every board has only been seen empty so far. The review is switching suites on through the Suites page itself, as the admin, to see real rows. It will switch every one back off afterwards.
+
+The pictures are in the scratchpad's `pictures/g2d/`. The review of all of group 2 is under way.
+
+**Group 2's review sent back Today, the check-ins list, You and the To-dos board.** The background, the phone width and the one-navy rule held on every page.
+- The API sent no rating, score, judgement, private note or label to anyone.
+- A participant is refused the admin boards by the server itself.
+- Nothing protected was lost.
+- The review switched Role map, To-dos and Customers on through the Suites page, as the admin, to see real rows, then switched all three off again. All ten suites read off afterwards.
+
+The faults in the screens workspace's own part are being fixed now:
+- goals on the You board that are not sentences ("shops. You have 0 of 4.");
+- to-dos written as raw first-person words with no name ("ask Chandarana for the signed agreement");
+- the admin welcome card's fragments;
+- "Morning, Rukia Otieno";
+- the Reviews intro;
+- small Company and Equipment lines;
+- the You board's layout.
+
+The faults in what the server sends for Today and the check-ins list are the engine's, as request 97:
+- one check-in shown with three different session numbers;
+- "All three people have answered" for a check-in of six;
+- starting a check-in labelled as a decision;
+- the check-ins list's summaries for a participant.
+
+The screens workspace's faults are fixed, and the review is checking them again:
+- The You board's goals are sentences: "You have 0 of 4 shops." and "Success is two shop visits together each week in October."
+- To-dos read as actions with a capital letter, show only the fuller copy of a promise said twice, and say where they came from: "From Amani's check-in in Sales team, Q3, on 29 September."
+- The To-dos board was already holding back to-dos from check-ins a reader may not read, such as performance plans. A test now proves it.
+- The admin welcome card is four sentences, and Today greets "Morning, Rukia".
+- The Reviews board opens "A review happens every 6 months.", and Company reads "6 people work here, and there were 21 check-ins this week."
+
+The whole screen suite passes, except the known wording guard (request 95). The API tests for the changed parts pass (1,478 for check-ins, 146 for suites and the You board), and so does the button test (26 of 26).
+
+The second review passed all of that, except one fault. The To-dos board still showed the short copy of each promise ("File the bundle") where the You board shows the fuller one, because it does not read where the fuller copies are kept. That is being fixed now.
+
+The whole API suite after these changes: 12,117 of 12,119 pass. One failure is the engine's comment guard (request 94). The other is an engine test that looks for a promise in lowercase. Our fix now writes it with a capital letter, and it is still listed once. That is request 98.
+
+**Group 2 is finished and passed its review (1 October).**
+- The To-dos board now shows the fuller copy of every promise, the same as the You board.
+- Its source line no longer repeats a date.
+- Every to-do comes from a check-in the reader may read. A test also covers performance plans, promotions and renewals, which this organisation does not have.
+- All ten suites are off again.
+
+The review's pictures are in the scratchpad's `pictures/review-g2c/`.
+
+**The third merge of the engine's work (1 October, early morning).** 101 new commits. Two files conflicted, and both were resolved by keeping both sides:
+- `your-board.ts`: the engine's own fix for promises shown twice and this workspace's group 2 fix now run together.
+- The requests file.
+
+The local database has the new changes, and the API was rebuilt and restarted. The engine has also answered request 92, the five Ask Groundwork checks. It asks for them to be run again before the old context chat is switched off. That, and the engine's many new answers (the Company picture, customers, the role interview, the ending page, and Ask Groundwork's weeks 17 to 25), are now tasks in `docs/tasks-ui.md`, after groups 3 and 4.
+
+**Group 3 has started:** signing in and joining, first.
+
+**The merge's own fault, fixed.** Combining the engine's fix for promises shown twice with this workspace's first did it too loosely. The engine's new tests caught it merging two different promises, folding a settled promise into an open one, and losing a date. The You board now follows the engine's own rules for which promises are the same, across both places a promise is kept. Two of the engine's tests still expect the person's raw "I will…" words, where the board now shows the action, as the prototype does. That is request 98. The API is rebuilt and restarted with the fix.
+
+**Group 3, first piece: signing in and joining are rebuilt from the shared parts.**
+- Every state is kept, and every way to sign in works as before. Signing in by emailed link was proved end to end by the browser tests, 3 of 3.
+- No route, link, check or redirect was changed.
+- My own picture check found the left half of the sign-in screen painted a beige that is not the page colour (#F7F1E5), and the fields pressed too close together. Both are being fixed, and the page-colour test will now cover the signed-out pages too.
+- The prototype's "Your work email" label still waits for your decision (U.2), so it reads "Email".
+
+Both faults are fixed. The sign-in screen's left half is the page colour now, and its fields have the prototype's space between them. The page-colour test now opens the signed-out pages too, and passes 4 of 4. The whole screen suite passes (3,671 tests), and the wording guard is back under its limit after the engine's latest work.
+
+**Group 3, second piece, the reports, is with a builder now.** It has the strictest rules in the brief: each person's own report stays private, a participant never reads the lead's judgement, leads never see how answers were rated, and only what the server sends is drawn.
+
+A push of mine was refused once, because I had chained it with another command. It was run again on its own, as the check's message allows.
+
+**Group 3, second piece: the reports.**
+- The session report (`/checkin/…/report`) is rebuilt from the shared parts. Rukia, the lead, reads her own private report, the team's report and "What to ask each person". Amani reads the same two cards, but the server never sends her the lead's questions. Juma, an admin who was not in that session, is refused by the server with a plain sentence.
+- The old team report page turned out to be unused: it only sends people on to the check-in's Report tab, which was rebuilt earlier. Its styling was moved over anyway, and whether to delete it is under "Decided for Hafsah to confirm".
+- I undid one change the builder made to the guard test. It had stopped catching old classes with longer names.
+- The session report shows 7 buttons against the prototype's 5. That is being fixed now, without losing any of the controls.
+- The whole screen suite passes (3,669 tests).
 
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.

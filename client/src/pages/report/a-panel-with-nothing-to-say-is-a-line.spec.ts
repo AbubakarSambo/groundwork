@@ -37,7 +37,13 @@ describe('a panel with nothing to say is a line', () => {
 
   it('resolution is one line until there is a resolution', () => {
     expect(REPORT).toMatch(/if \(!resolutionState && !data\?\.resolution\) \{/)
-    expect(REPORT).toMatch(/Resolution · not set yet/)
+    /*
+     * GROUP 3, PIECE 2: "Resolution · not set yet" is two fragments joined by a middle dot, which
+     * the wording rule in CLAUDE.md refuses ("No pieces joined with colons, dots or arrows"). It
+     * is the screen's own line, not the engine's, so it is this piece's to fix: rewritten as two
+     * short, plain sentences with the same meaning and the same one-line footprint.
+     */
+    expect(REPORT).toMatch(/Resolution\. Not set yet\./)
     /* The section it replaced, which announced its own emptiness at full size. */
     expect(REPORT).not.toMatch(/>No resolution state set yet\.</)
   })
@@ -46,7 +52,12 @@ describe('a panel with nothing to say is a line', () => {
     /* The early return is guarded on BOTH being absent, so any resolution renders the section. */
     const early = REPORT.slice(REPORT.indexOf('if (!resolutionState && !data?.resolution)'), REPORT.indexOf('if (!resolutionState && !data?.resolution)') + 400)
     expect(early).toMatch(/return \(/)
-    expect(REPORT).toMatch(/<div style=\{\{[^}]*\}\}>Resolution<\/div>/)
+    /*
+     * GROUP 3, PIECE 2: the "Resolution" eyebrow moved off an inline `style={{...}}` onto the
+     * shared kit's utility classes (gwui-fs-13/gwui-ink-muted/gwui-mb-10), inside a `Panel` rather
+     * than a hand-rolled bordered div - a rename, not a wording or behaviour change.
+     */
+    expect(REPORT).toMatch(/<div className="gwui-fs-13 gwui-ink-muted gwui-mb-10"[^>]*>Resolution<\/div>/)
   })
 
   it('the reveal row shows who to chase, and says nothing extra when there is nobody', () => {

@@ -21,6 +21,9 @@
  *
  * ONE PERSON (design-audit.md section 3, "One person (the admin's view)") is the third entry:
  * `OnePersonPage.tsx`, at `/org/members/:id`.
+ *
+ * GROUP 2, PIECE 3 (D2-company, docs/prototype/screens/D2-company): the Company page and company
+ * context. See the comment near the end of this list for what it added.
  */
 export const REBUILT_PAGES: string[] = [
   'pages/invite/InvitePage.tsx',
@@ -77,4 +80,65 @@ export const REBUILT_PAGES: string[] = [
    * row-lists) - see docs/the-parts-against-the-prototype.md.
    */
   'pages/you/YouPage.tsx',
+  /*
+   * GROUP 2, PIECE 3 (D2-company, docs/prototype/screens/D2-company): the Company page and company
+   * context. New shared parts this piece added: `.gwui-priority-top`, `.gwui-team-col` and
+   * `.gwui-compare-table` in `gw-ui.css` - see docs/the-parts-against-the-prototype.md.
+   */
+  'pages/company/CompanyPage.tsx',
+  'pages/company/CompanyContextPage.tsx',
+  /*
+   * GROUP 2, PIECE 4 (E-suites, docs/prototype/screens/E-suites): the Suites page and each suite's
+   * board. New shared parts this piece added: `.gwui-suite-head`/`.gwui-suite-switch`,
+   * `.gwui-suite-ask`/`.gwui-suite-q` and `.gwui-record-table` in `gw-ui.css` - see
+   * docs/the-parts-against-the-prototype.md.
+   */
+  'pages/suites/SuitesPage.tsx',
+  'pages/suites/OnboardingBoardPage.tsx',
+  'pages/suites/LeaveBoardPage.tsx',
+  'pages/suites/TimeSheetsPage.tsx',
+  'pages/suites/ReviewsBoardPage.tsx',
+  'pages/suites/ReviewPage.tsx',
+  'pages/suites/LeavingBoardPage.tsx',
+  'pages/suites/RoleMapPage.tsx',
+  'pages/suites/SpendingPage.tsx',
+  'pages/suites/TodosPage.tsx',
+  'pages/suites/CustomersPage.tsx',
+  'pages/suites/EquipmentPage.tsx',
+  /*
+   * GROUP 3's FIRST PIECE (signing in and joining, docs/prototype/screens/A2-accounts-and-signing-in
+   * and A3-organisations-and-joining): the sign-in family and the broadcast join landing. New shared
+   * parts this piece added: `PasswordField` (the "Show"/"Hide" box every password screen needs),
+   * `SplitPage`/`SplitPanelLine`/`SplitPanelList` (the sign-in screen's own two-column layout, the
+   * only A2 screen drawn that way), `Callout`'s `tone="warning"`, and `PageTitle`'s `subtitle`
+   * widened to take a sentence with a bold address in it, not only a plain string - see
+   * docs/the-parts-against-the-prototype.md. `auth-kit.tsx` keeps every other auth page's import
+   * (`AuthCard`, `AuthField`, `AuthError`, and the rest) unchanged, so `LinkExpired.tsx`,
+   * `EmailConfirmed.tsx`, `LinkSentPanel.tsx`, `GoogleFailedPage.tsx`, `SignOutPage.tsx` and
+   * `ChoosePasswordPage.tsx` draw the new parts too without being rewritten from nothing.
+   */
+  'pages/auth/auth-kit.tsx',
+  'pages/auth/AuthPage.tsx',
+  'pages/auth/MagicVerifyPage.tsx',
+  'pages/join/JoinPage.tsx',
+  /*
+   * GROUP 3, PIECE 2 (the reports, docs/prototype/screens/B4-reports-and-sharing):
+   * `SessionReportPage.tsx`, the live per-session report page (`/checkin/:checkInId/report`).
+   * `ReportPage.tsx`'s default export is a three-line redirect to the Report tab and draws
+   * nothing itself; the page's own chrome now draws `Page`/`Panel`/`Button` from the shared kit,
+   * with every button reduced to the page's one true primary action ("Start a new check-in") -
+   * see docs/the-parts-against-the-prototype.md for what this piece found and added.
+   */
+  'pages/report/SessionReportPage.tsx',
+  /*
+   * GROUP 3, PIECE 2 (continued): `ReportPage.tsx`. Its default export, `ReportPage`, is a
+   * three-line redirect to the Report tab and draws nothing itself. The rest of the file,
+   * `ReportBody`, is not mounted by any route today (confirmed against the file's own regression
+   * tests - the-sharp-part-first.spec.ts, no-label-is-the-leads-note.spec.tsx,
+   * one-report-not-two.spec.ts and others each say so in their own comment) - its logic, text and
+   * every conditional are unchanged; only its styling moved off inline fontSize/color/margin/
+   * padding/border onto the shared kit and gw-ui.css's utility classes, so it stops carrying old
+   * style debt even though nobody reads it today. See docs/the-parts-against-the-prototype.md.
+   */
+  'pages/report/ReportPage.tsx',
 ]

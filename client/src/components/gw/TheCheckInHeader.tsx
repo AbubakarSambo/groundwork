@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
@@ -135,7 +135,7 @@ export function TheCheckInHeader({
             go to the same place - the same the "Check-in" tab opens.
           */}
           {(canRunThisCheckIn || isAParty) && (
-            <Link to={`/grounds/${id}`} style={{ ...linkAsBtn }}>
+            <Link to={`/grounds/${id}`} className="gwui-ci-link-btn">
               {isAParty && !canRunThisCheckIn ? 'Start my check-in' : 'Your check-in'}
             </Link>
           )}
@@ -155,15 +155,9 @@ export function TheCheckInHeader({
       >
         <div style={{ display: 'flex', gap: 20 }}>
           {tabs.map((t) => {
-            const tabStyle: CSSProperties = {
-              padding: '0 0 10px', fontSize: 13.5, fontWeight: t.key === active ? 700 : 500,
-              color: t.key === active ? 'var(--gw-text)' : 'var(--gw-sub)', textDecoration: 'none',
-              borderBottom: t.key === active ? '2px solid var(--gw-navy)' : '2px solid transparent',
-              whiteSpace: 'nowrap', background: 'none', border: 'none', borderBottomWidth: 2, borderBottomStyle: 'solid',
-              cursor: 'pointer', fontFamily: 'inherit',
-            }
+            const tabClass = `gwui-ci-tab${t.key === active ? ' gwui-ci-tab-on' : ''}`
             return t.to ? (
-              <Link key={t.key} to={t.to} aria-current={t.key === active ? 'page' : undefined} style={tabStyle}>
+              <Link key={t.key} to={t.to} aria-current={t.key === active ? 'page' : undefined} className={tabClass}>
                 {t.label}
               </Link>
             ) : (
@@ -172,7 +166,7 @@ export function TheCheckInHeader({
                 type="button"
                 aria-current={t.key === active ? 'page' : undefined}
                 onClick={() => onSelectTab?.(t.key)}
-                style={tabStyle}
+                className={tabClass}
               >
                 {t.label}
               </button>
@@ -183,9 +177,4 @@ export function TheCheckInHeader({
       </nav>
     </header>
   )
-}
-
-const linkAsBtn: CSSProperties = {
-  padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white',
-  fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit',
 }

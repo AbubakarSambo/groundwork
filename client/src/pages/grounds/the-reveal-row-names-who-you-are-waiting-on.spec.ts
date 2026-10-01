@@ -77,6 +77,9 @@ describe('who the report is counting', () => {
        (Hafsah, requests 56 and 69); it still leaves out a lead who only manages. */
     expect(strip(API)).toContain('const counting = whoIsInTheRound(')
     const theRule = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'api', 'src', 'modules', 'reports', 'how-many-have-answered.ts'), 'utf8'))
-    expect(theRule).toContain('return (people ?? []).filter((p) => !p.managingOnly || waitsOnTheLead);')
+    /* The engine rewrote this rule at the 1 October merge (it now also leaves out someone who is
+       away); the promise is unchanged: a lead who only manages is never counted, unless the round
+       waits on the lead. */
+    expect(theRule).toContain('return (people ?? []).filter((p) => (!p.managingOnly || waitsOnTheLead)')
   })
 })

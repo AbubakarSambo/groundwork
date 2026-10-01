@@ -19,6 +19,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
+import { Page, Button, Panel } from '@/components/gw/ui'
 
 /**
  * U.9 RE-REVIEW: "WHAT YOU SHARED:" IS A LABEL BOLTED ONTO A SENTENCE WITH A COLON.
@@ -48,6 +49,14 @@ export function withoutTheColonOpening(summary: string): string {
  *
  * Read-only on purpose. Correcting it is a session of its own - it asks you questions and changes
  * the record - so it starts a check-in rather than editing a page.
+ *
+ * GROUP 3, PIECE 2: REBUILT FROM THE SHARED PARTS. The page's own chrome (the wrap, the two report
+ * panels, the correction box and "What now?") now draws from `components/gw/ui` - `Page` for the
+ * frame, `Panel` for the two report cards, `Button` for every real action - with no inline
+ * fontSize/color/margin/padding/border, and the buttons reduced to the one true primary action of
+ * this page, "Start a new check-in". `TheCheckInHeader` and every component this page hands the
+ * report to (`TheSessionsReport`, `TheCheckInYouJustFinished`, `WhatToWorkOnNext` and the rest) are
+ * unchanged - none of them uses an old kit part, so none of them needed to move.
  */
 export default function SessionReportPage() {
   const { checkInId } = useParams<{ checkInId: string }>()
@@ -132,13 +141,13 @@ export default function SessionReportPage() {
   const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
 
   return (
-    <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 60px' }}>
+    <Page>
       {/*
         U.10 PICTURE-CHECK ROUND 6, ITEM I: THE SHARED HEADER, ONCE THE PAGE HAS SOMETHING TO
         SHOW. Matching U.9 RE-REVIEW ITEM A just below (neither the old heading nor this one is
         drawn on a page that refused you): the header needs `data.groundId`, which only exists
         once the session report itself has loaded, so it is gated the same way. Loading and error
-        states keep the plain "← Back" they already had. This is always the viewer's own report
+        states keep the plain "Back" link they already had. This is always the viewer's own report
         (the server refuses anyone else's), so `isAParty` is always true here.
       */}
       {!isLoading && !isError && data?.groundId ? (
@@ -160,11 +169,8 @@ export default function SessionReportPage() {
           ]}
         />
       ) : (
-        <button
-          onClick={() => navigate(-1)}
-          style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}
-        >
-          &larr; Back
+        <button type="button" onClick={() => navigate(-1)} className="gwui-plain-link gwui-fs-13-5">
+          Back
         </button>
       )}
 
@@ -176,8 +182,8 @@ export default function SessionReportPage() {
         refused. Both are now only drawn once the page actually has something to show.
       */}
       {!isError && (
-        <>
-          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2, marginTop: 20 }}>
+        <div className="gwui-mt-20">
+          <div className="gwui-fs-20 gwui-ink-text gwui-mb-2" style={{ fontWeight: 800 }}>
             {data?.sessionNumber ? `Session ${data.sessionNumber}` : 'Your session'}
           </div>
           {/*
@@ -186,37 +192,36 @@ export default function SessionReportPage() {
             below it, so read as the page's subtitle it was a privacy claim over a shared document. It
             says what the page holds; each half now carries its own line about who reads it.
           */}
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 18 }}>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mb-18">
             {data?.finishedAt
               ? `Everything about this session, on ${whenItWas(data.finishedAt, 'dayAndMonthLong')}. Your report first, then the team’s report.`
               : 'Everything about this session. Your report first, then the team’s report.'}
           </div>
-        </>
+        </div>
       )}
 
       {isLoading && (
-        <div role="status" aria-live="polite" style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Getting your report...</div>
+        <div role="status" aria-live="polite" className="gwui-fs-13 gwui-ink-muted">Getting your report...</div>
       )}
 
       {isError && (
-        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 20 }}>
+        <Panel>
           {/*
             "WHY SHOULD ME THAT WE COULDN'T OPEN A REPORT AND IT MAY BELONG TO SOMEONE ELSE."
-
             Fair. The old line guessed at the cause and picked the one that accuses the reader of
             opening somebody else's record - on a page reached by clicking their own session. The
             status says which of the three things actually happened, so it can say the true one,
             and the fallback offers the retry rather than a theory.
           */}
           {/* Three things, three sentences: 404 is "no longer here", only 403 accuses, everything else offers the retry. */}
-          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 5 }}>
+          <div className="gwui-fs-13-5 gwui-ink-text gwui-mb-5" style={{ fontWeight: 700 }}>
             {(error as any)?.response?.status === 403
               ? 'This session is not yours to open'
               : (error as any)?.response?.status === 404
                 ? 'This session is no longer here'
                 : 'This did not load'}
           </div>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+          <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.6 }}>
             {(error as any)?.response?.status === 403
               ? 'A session report is only ever readable by the person who wrote it.'
               : (error as any)?.response?.status === 404
@@ -224,17 +229,16 @@ export default function SessionReportPage() {
                 : 'Nothing is wrong with the report - the request did not get through. Try again.'}
           </div>
           {(error as any)?.response?.status === 404 && (
-            <a href="/grounds" style={{ display: 'inline-block', marginTop: 12, fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>Back to check-ins</a>
+            <div className="gwui-mt-12">
+              <a href="/grounds" className="gwui-plain-link">Back to check-ins</a>
+            </div>
           )}
           {!((error as any)?.response?.status === 403 || (error as any)?.response?.status === 404) && (
-            <button
-              onClick={() => refetch()}
-              style={{ marginTop: 12, padding: '9px 14px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              Try again
-            </button>
+            <div className="gwui-mt-12">
+              <Button kind="secondary" onClick={() => refetch()}>Try again</Button>
+            </div>
           )}
-        </div>
+        </Panel>
       )}
 
       {/*
@@ -252,60 +256,55 @@ export default function SessionReportPage() {
         yours, and never repeats it per card.
       */}
       {!isLoading && !isError && (
-        <section
-          style={{
-            background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 14,
-            padding: '18px 20px', marginBottom: 34,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <section className="gwui-rule gwui-pt-18 gwui-pb-18 gwui-pl-20 gwui-pr-20 gwui-mb-34" style={{ background: 'var(--gw-paper-2)', borderRadius: 14 }}>
+          <div className="gwui-sentence-row">
             {/* U.9: the prototype's words for this report, "Your report" and "Only you" (own-report.txt). */}
-            <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>Your report</h2>
-            <span style={{ fontSize: 12, color: 'var(--gw-sub)', flexShrink: 0 }}>Only you</span>
+            <h2 className="gwui-fs-15 gwui-m-0" style={{ fontWeight: 800 }}>Your report</h2>
+            <span className="gwui-fs-13 gwui-ink-sub" style={{ flexShrink: 0 }}>Only you</span>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '2px 0 16px', lineHeight: 1.55, maxWidth: '68ch' }}>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mt-2 gwui-mb-16" style={{ lineHeight: 1.55, maxWidth: '68ch' }}>
             What you said this session, and what to do with it.
           </div>
 
-      {/* Simple and visual, and only on this half. See the component's own note for why. */}
-      <HowSpecificThisSessionWas level={shape?.howClearThisWas?.level} />
+          {/* Simple and visual, and only on this half. See the component's own note for why. */}
+          <HowSpecificThisSessionWas level={shape?.howClearThisWas?.level} />
 
-      {/*
-        THE TOP HALF WAS A SECOND COPY OF THE BOTTOM HALF.
+          {/*
+            THE TOP HALF WAS A SECOND COPY OF THE BOTTOM HALF.
 
-        `SessionReportCard` draws whatever state the ground's report is in, and once a round closes
-        that state is the cross reference. So on this page, under a band saying "My report", a
-        participant read "WHERE THIS STANDS, ACROSS EVERYONE" and a summary of all three people -
-        and then read the same thing again forty lines down under "The shared report". "I have no
-        fucking clue what is happening" is the correct response to that page.
+            `SessionReportCard` draws whatever state the ground's report is in, and once a round closes
+            that state is the cross reference. So on this page, under a band saying "My report", a
+            participant read "WHERE THIS STANDS, ACROSS EVERYONE" and a summary of all three people -
+            and then read the same thing again forty lines down under "The shared report". "I have no
+            fucking clue what is happening" is the correct response to that page.
 
-        The card is right where it is used at the end of a session, which is a screen with only one
-        report on it. Here there are two, so the private half draws the one private thing this
-        session produced: the solo record, written for this person alone when their own check-in
-        completed. Never the cross reference, which is what the half below is for.
-      */}
-      {/* A heading and a promise above an empty tinted box read as the product having lost the answers. Say the true thing. */}
-      {!isLoading && !isError && !data?.report && !(groundReport as any)?.soloArtifact && (
-        <div role="status" style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-          Your report is still being written. Your answers are saved; this fills in as soon as it is ready.
-        </div>
-      )}
-      {!isLoading && !isError && !data?.report && (groundReport as any)?.soloArtifact && (
-        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'var(--gw-paper)', padding: '14px 16px', marginBottom: 16 }}>
-          <div style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--gw-text)' }}>
-            {withoutTheColonOpening((groundReport as any).soloArtifact.summary ?? '')}
-          </div>
-          {(groundReport as any).soloArtifact.whatToCarry && (
-            <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)', marginTop: 8, borderTop: '1px solid var(--gw-border)', paddingTop: 8 }}>
-              {/* U.9 THIRD REVIEW, ITEM 4: "WHAT TO CARRY INTO THE NEXT ONE" IS A HEADING, NOT AN
-                  INSTRUCTION TO THE READER. It described the section rather than telling them what
-                  to do with it, which the prototype's own wording does instead. */}
-              <b style={{ color: 'var(--gw-text)' }}>Carry this into your next check-in. </b>
-              {(groundReport as any).soloArtifact.whatToCarry}
+            The card is right where it is used at the end of a session, which is a screen with only one
+            report on it. Here there are two, so the private half draws the one private thing this
+            session produced: the solo record, written for this person alone when their own check-in
+            completed. Never the cross reference, which is what the half below is for.
+          */}
+          {/* A heading and a promise above an empty tinted box read as the product having lost the answers. Say the true thing. */}
+          {!isLoading && !isError && !data?.report && !(groundReport as any)?.soloArtifact && (
+            <div role="status" className="gwui-rule gwui-pt-14 gwui-pb-14 gwui-pl-16 gwui-pr-16 gwui-mb-16 gwui-fs-13 gwui-ink-sub" style={{ borderRadius: 10, lineHeight: 1.6 }}>
+              Your report is still being written. Your answers are saved; this fills in as soon as it is ready.
             </div>
           )}
-        </div>
-      )}
+          {!isLoading && !isError && !data?.report && (groundReport as any)?.soloArtifact && (
+            <div className="gwui-rule gwui-pt-14 gwui-pb-14 gwui-pl-16 gwui-pr-16 gwui-mb-16" style={{ borderRadius: 10, background: 'var(--gw-paper)' }}>
+              <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.65 }}>
+                {withoutTheColonOpening((groundReport as any).soloArtifact.summary ?? '')}
+              </div>
+              {(groundReport as any).soloArtifact.whatToCarry && (
+                <div className="gwui-rule-top gwui-fs-13 gwui-ink-sub gwui-mt-8 gwui-pt-8" style={{ lineHeight: 1.6 }}>
+                  {/* U.9 THIRD REVIEW, ITEM 4: "WHAT TO CARRY INTO THE NEXT ONE" IS A HEADING, NOT AN
+                      INSTRUCTION TO THE READER. It described the section rather than telling them what
+                      to do with it, which the prototype's own wording does instead. */}
+                  <b className="gwui-ink-text">Carry this into your next check-in. </b>
+                  {(groundReport as any).soloArtifact.whatToCarry}
+                </div>
+              )}
+            </div>
+          )}
 
           {data?.report
             ? (
@@ -341,129 +340,107 @@ export default function SessionReportPage() {
               />
             )}
 
-      {data?.report && (
-        <>
-          {/*
-            THE COACHING NOTE, ON THE HALF OF THE PAGE THAT IS ACTUALLY YOURS.
+          {data?.report && (
+            <>
+              {/*
+                THE COACHING NOTE, ON THE HALF OF THE PAGE THAT IS ACTUALLY YOURS.
 
-            "My report can have a coaching note." It already exists and is already paid for:
-            `postReportGuide` is three lines written for one person at each release - a way to
-            open, a question worth carrying, and something the other side said worth taking
-            seriously - sanitised so it can never name or quote anybody. It was rendered on My
-            record and on the shared report page and not here, which is the page somebody lands on
-            straight after finishing.
+                "My report can have a coaching note." It already exists and is already paid for:
+                `postReportGuide` is three lines written for one person at each release - a way to
+                open, a question worth carrying, and something the other side said worth taking
+                seriously - sanitised so it can never name or quote anybody. It was rendered on My
+                record and on the shared report page and not here, which is the page somebody lands on
+                straight after finishing.
 
-            It goes above the record rather than below it, because it is the part you act on and
-            the record is the part you refer back to.
-          */}
-          {/*
-            THE REBUILT A-SESSION, WHICH IS WHAT THIS SURFACE WAS ALWAYS MEANT TO BE.
-            The preview page carried the note for months: "not rebuilt yet, and the surface with the
-            real problem under it - one cell, two shapes, two fetches, depending on which door you
-            came through." The other eight surfaces were rebuilt to the template and this one was
-            left, then the page that said so was deleted.
-            It has everything this page needs: a check-in, a ground and a session. So it draws the
-            same component the end of a signed-in check-in draws, which is the template - and gains
-            the coaching note, what you carry, and the way to correct the record, none of which the
-            old one had.
-            The entry chat keeps the old component, and that is not drift: at the end of the entry
-            chat there is no ground and no check-in to fetch, so the rebuilt one cannot run there.
-            Two shapes because two moments, rather than two shapes by accident.
-          */}
+                It goes above the record rather than below it, because it is the part you act on and
+                the record is the part you refer back to.
+              */}
+              {/*
+                AND WHAT THIS CHECK-IN STILL NEEDS, drawn by the page rather than handed to the report.
+                It was a prop on the old component, so a straight swap would have dropped it - the
+                cadence, the start date, the length and the standard, for the lead, on the page they
+                land on straight after finishing.
+              */}
+              {(() => {
+                  /*
+                   * THE GATE WAS THE CADENCE, AND THE CADENCE IS ALWAYS SET.
+                   *
+                   * "Meeting cadence at the end of the report does not show up and does not have start
+                   * dates." The whole block was gated on `cadenceChosen === false`, and the opening
+                   * conversation picks a rhythm, so on any check-in born through the door this never
+                   * rendered once - including the two answers it never asked about at all.
+                   *
+                   * The gate is now whether ANYTHING about how this runs is unset. The component still
+                   * disappears when nothing is, which was always the rule; it just asks the whole
+                   * question now.
+                   */
+                  (ground as any) && amTheInitiator ? (
+                    <WhatThisCheckInStillNeeds
+                      cadenceUnset={(ground as any).cadenceChosen === false}
+                      cadence={(ground as any).cadence ?? 'FORTNIGHTLY'}
+                      onPickCadence={(c) => setCadence.mutate(c)}
+                      startDateUnset={(ground as any).startDateChosen === false}
+                      timelineUnset={(ground as any).timelineChosen === false}
+                      timelineDays={(ground as any).timelineDays ?? null}
+                      briefStandard={(shape as any)?.briefStandard ?? null}
+                      alreadyStarted
+                      nextOpens={(() => {
+                        const mine = ((ground as any).participants ?? []).find((p: any) => p.userId === viewerUserId)
+                        const next = (((mine as any)?.checkIns ?? []) as any[]).filter((c) => c.status !== 'COMPLETED' && c.availableFrom && new Date(c.availableFrom).getTime() > Date.now()).sort((a, b) => new Date(a.availableFrom).getTime() - new Date(b.availableFrom).getTime())[0]
+                        return next?.availableFrom ?? null
+                      })()}
+                      saidDate={(shape as any)?.myTimeframe ?? null}
+                      /* The board already says the standard is unset and links to Setup; what was
+                         missing was any route to Setup from here at all. */
+                      standardUnset={((ground as any).objectives ?? []).length === 0}
+                      onGoToSetup={() => navigate(`/grounds/${data.groundId}?tab=settings`)}
+                    />
+                  ) : null
+              })()}
 
+              {/*
+                THE CORRECTION CONTROL SAYS WHETHER IT IS STILL OPEN, BEFORE IT IS PRESSED.
 
-          {/*
-            AND WHAT THIS CHECK-IN STILL NEEDS, drawn by the page rather than handed to the report.
-            It was a prop on the old component, so a straight swap would have dropped it - the
-            cadence, the start date, the length and the standard, for the lead, on the page they
-            land on straight after finishing.
-          */}
-          {(() => {
-              /*
-               * THE GATE WAS THE CADENCE, AND THE CADENCE IS ALWAYS SET.
-               *
-               * "Meeting cadence at the end of the report does not show up and does not have start
-               * dates." The whole block was gated on `cadenceChosen === false`, and the opening
-               * conversation picks a rhythm, so on any check-in born through the door this never
-               * rendered once - including the two answers it never asked about at all.
-               *
-               * The gate is now whether ANYTHING about how this runs is unset. The component still
-               * disappears when nothing is, which was always the rule; it just asks the whole
-               * question now.
-               */
-              (ground as any) && amTheInitiator ? (
-                <WhatThisCheckInStillNeeds
-                  cadenceUnset={(ground as any).cadenceChosen === false}
-                  cadence={(ground as any).cadence ?? 'FORTNIGHTLY'}
-                  onPickCadence={(c) => setCadence.mutate(c)}
-                  startDateUnset={(ground as any).startDateChosen === false}
-                  timelineUnset={(ground as any).timelineChosen === false}
-                  timelineDays={(ground as any).timelineDays ?? null}
-                  briefStandard={(shape as any)?.briefStandard ?? null}
-                  alreadyStarted
-                  nextOpens={(() => {
-                    const mine = ((ground as any).participants ?? []).find((p: any) => p.userId === viewerUserId)
-                    const next = (((mine as any)?.checkIns ?? []) as any[]).filter((c) => c.status !== 'COMPLETED' && c.availableFrom && new Date(c.availableFrom).getTime() > Date.now()).sort((a, b) => new Date(a.availableFrom).getTime() - new Date(b.availableFrom).getTime())[0]
-                    return next?.availableFrom ?? null
-                  })()}
-                  saidDate={(shape as any)?.myTimeframe ?? null}
-                  /* The board already says the standard is unset and links to Setup; what was
-                     missing was any route to Setup from here at all. */
-                  standardUnset={((ground as any).objectives ?? []).length === 0}
-                  onGoToSetup={() => navigate(`/grounds/${data.groundId}?tab=settings`)}
-                />
-              ) : null
-          })()}
+                "It seems you can still correct a report when it's final." The server refuses it now -
+                a released report stays correctable for a short window and then stops - and a button
+                that offers something the server will refuse teaches a person the product is
+                unreliable. So the same fact arrives here, where they can act on it: what the window
+                was, when it closed, and where what they wanted to say can still go.
 
-
-          {/*
-            THE CORRECTION CONTROL SAYS WHETHER IT IS STILL OPEN, BEFORE IT IS PRESSED.
-
-            "It seems you can still correct a report when it's final." The server refuses it now -
-            a released report stays correctable for a short window and then stops - and a button
-            that offers something the server will refuse teaches a person the product is
-            unreliable. So the same fact arrives here, where they can act on it: what the window
-            was, when it closed, and where what they wanted to say can still go.
-
-            `shape` carries it because the report is what the window is about.
-          */}
-          <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 15px', marginTop: 6 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>Something here isn’t right</div>
-            {/* The inferred claims themselves, each with its own "Correct this". */}
-            {Array.isArray((groundReport as any)?.inferences) && (groundReport as any).inferences.length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <InferenceReviewPanel groundId={data!.groundId as string} inferences={(groundReport as any).inferences} />
+                `shape` carries it because the report is what the window is about.
+              */}
+              <div className="gwui-rule gwui-pt-13 gwui-pb-13 gwui-pl-15 gwui-pr-15 gwui-mt-6" style={{ borderRadius: 10 }}>
+                <div className="gwui-fs-13 gwui-ink-text gwui-mb-3" style={{ fontWeight: 700 }}>Something here isn’t right</div>
+                {/* The inferred claims themselves, each with its own "Correct this". */}
+                {Array.isArray((groundReport as any)?.inferences) && (groundReport as any).inferences.length > 0 && (
+                  <div className="gwui-mb-14">
+                    <InferenceReviewPanel groundId={data!.groundId as string} inferences={(groundReport as any).inferences} />
+                  </div>
+                )}
+                {shape && shape.correctable === false ? (
+                  <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.6 }}>
+                    {shape.whyNotCorrectable}
+                  </div>
+                ) : (
+                  <>
+                    <div className="gwui-fs-13 gwui-ink-sub gwui-mb-10" style={{ lineHeight: 1.6 }}>
+                      Correcting it is a short check-in of its own. It asks you what it got wrong. Nothing
+                      is overwritten; the change is shown alongside the original, and it closes a short
+                      while after the shared report goes out.
+                    </div>
+                    <Button kind="secondary" onClick={() => correct.mutate()} disabled={correct.isPending || !data.groundId || !data.sessionNumber}>
+                      <span role="status">{correct.isPending ? 'Starting...' : 'Correct it'}</span>
+                    </Button>
+                  </>
+                )}
               </div>
-            )}
-            {shape && shape.correctable === false ? (
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                {shape.whyNotCorrectable}
-              </div>
-            ) : (
-              <>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                  Correcting it is a short check-in of its own. It asks you what it got wrong. Nothing
-                  is overwritten; the change is shown alongside the original, and it closes a short
-                  while after the shared report goes out.
-                </div>
-                <button
-                  onClick={() => correct.mutate()}
-                  disabled={correct.isPending || !data.groundId || !data.sessionNumber}
-                  style={{ padding: '9px 14px', borderRadius: 8, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', fontSize: 13, fontWeight: 700, cursor: correct.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
-                >
-                  <span role="status">{correct.isPending ? 'Starting...' : 'Correct it'}</span>
+              <div className="gwui-mt-10">
+                <button type="button" onClick={() => navigate(`/checkin/${checkInId}`)} className="gwui-plain-link gwui-fs-13">
+                  Read the conversation this came from
                 </button>
-              </>
-            )}
-          </div>
-          <button
-            onClick={() => navigate(`/checkin/${checkInId}`)}
-            style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-          >
-            Read the conversation this came from
-          </button>
-        </>
-      )}
+              </div>
+            </>
+          )}
 
           {/* Your own rows, before the coaching that is built from them. */}
           {data?.groundId && data?.sessionNumber && (
@@ -497,15 +474,10 @@ export default function SessionReportPage() {
         read as a thing and the other as leftovers under it. Two boxes, two headers, same grammar.
       */}
       {data?.groundId && data?.sessionNumber && (
-        <section
-          style={{
-            border: '1px solid var(--gw-border)', borderRadius: 14, background: 'var(--gw-card)',
-            padding: '18px 20px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <Panel as="section">
+          <div className="gwui-sentence-row">
             {/* U.9: "The team’s report", the prototype's name for it (own-report.txt, team-report.txt). */}
-            <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>The team’s report</h2>
+            <h2 className="gwui-fs-15 gwui-m-0" style={{ fontWeight: 800 }}>The team’s report</h2>
           </div>
           {/*
             "IT NEVER QUOTES ANYONE" SAT DIRECTLY ABOVE VERBATIM SENTENCES FROM THREE PEOPLE.
@@ -521,7 +493,7 @@ export default function SessionReportPage() {
             opposite about the same report. It now says the same true thing `shape` already knows,
             in a sentence, with the date through the one shared formatter every other page uses.
           */}
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.55 }}>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mb-14" style={{ lineHeight: 1.55 }}>
             {shape?.state === 'final'
               ? `Closed${shape.takenAt ? ` ${whenItWas(shape.takenAt, 'day')}` : ''}. This does not change. What each person said about their own work can appear here. What anyone said about somebody else never does.`
               : 'Everybody’s side of this session, together, and it updates as people check in. What each person said about their own work can appear here. What anyone said about somebody else never does.'}
@@ -531,7 +503,7 @@ export default function SessionReportPage() {
             sessionNumber={data.sessionNumber}
             totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), data.sessionNumber, (ground as any).scenario).length : null}
           />
-        </section>
+        </Panel>
       )}
       {/*
         AND THE LEAD'S OWN SECTION, AFTER THE SHARED REPORT.
@@ -542,10 +514,10 @@ export default function SessionReportPage() {
         from not being lead-only.
       */}
       <WhatToProbeThemOn
-            reads={(groundReport as any)?.probes}
-            weigh={(groundReport as any)?.whatTheGroundCanTellYou}
-            weighNote={(groundReport as any)?.whatTheGroundCanTellYouNote}
-          />
+        reads={(groundReport as any)?.probes}
+        weigh={(groundReport as any)?.whatTheGroundCanTellYou}
+        weighNote={(groundReport as any)?.whatTheGroundCanTellYouNote}
+      />
 
       {/*
         15. ACTION, AFTER BOTH HALVES.
@@ -565,36 +537,31 @@ export default function SessionReportPage() {
         There is nothing here for a page that has nothing to show.
       */}
       {!isLoading && !isError && (
-      <div className="gw-print-none" style={{ marginTop: 30, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>What now?</div>
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 11, maxWidth: '68ch' }}>
-          Pick the open thing that matters most and agree who owns it. Nobody can do that part for
-          you, and a follow-up is where it gets a date.
+        <div className="gw-print-none gwui-rule-top gwui-mt-30 gwui-pt-18">
+          <div className="gwui-fs-13-5 gwui-ink-text gwui-mb-3" style={{ fontWeight: 700 }}>What now?</div>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mb-11" style={{ lineHeight: 1.6, maxWidth: '68ch' }}>
+            Pick the open thing that matters most and agree who owns it. Nobody can do that part for
+            you, and a follow-up is where it gets a date.
+          </div>
+          <div className="gwui-sentence-row" style={{ justifyContent: 'flex-start' }}>
+            <Button onClick={() => navigate('/grounds/new')}>Start a new check-in</Button>
+            <button
+              type="button"
+              onClick={async () => {
+                /* The .catch below used to be unreachable: `clipboard?.writeText(...)` is undefined where the API is absent, and `.then` on undefined throws. */
+                if (await copy(`${window.location.origin}/checkin/${checkInId}/report`)) toast.success('Link copied')
+                else toast.error('Could not copy it. Select the address bar instead.')
+              }}
+              className="gwui-plain-link gwui-fs-13"
+            >
+              Copy the link
+            </button>
+          </div>
+          <div className="gwui-fs-13 gwui-ink-muted gwui-mt-9" style={{ lineHeight: 1.6 }}>
+            The link opens only for people already entitled to read this.
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <button
-            onClick={() => navigate('/grounds/new')}
-            style={{ padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            Start a new check-in
-          </button>
-          <button
-            onClick={async () => {
-              /* The .catch below used to be unreachable: `clipboard?.writeText(...)` is undefined where the API is absent, and `.then` on undefined throws. */
-              if (await copy(`${window.location.origin}/checkin/${checkInId}/report`)) toast.success('Link copied')
-              else toast.error('Could not copy it. Select the address bar instead.')
-            }}
-            style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            Copy the link
-          </button>
-        </div>
-        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 9 }}>
-          The link opens only for people already entitled to read this.
-        </div>
-      </div>
       )}
-
-    </div>
+    </Page>
   )
 }

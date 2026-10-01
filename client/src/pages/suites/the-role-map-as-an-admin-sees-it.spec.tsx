@@ -47,7 +47,9 @@ describe('Grace, an admin', () => {
   it('reads the way back, the heading and the prototype’s sentence', async () => {
     open(GRACE, MAP)
     expect(await screen.findByRole('table')).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: 'Breadcrumb' }).textContent).toBe('Suites / Role map')
+    /* "Where you are" is the shared PageTitle crumb's own aria-label (group 2, piece 4 rebuild),
+       in place of the page's prior "Breadcrumb". */
+    expect(screen.getByRole('navigation', { name: 'Where you are' }).textContent).toBe('Suites/Role map')
     expect(screen.getByRole('heading', { level: 1, name: 'Role map' })).toBeInTheDocument()
     expect(screen.getByText('Every role, what it owns, and who holds it. It is built from your teams and people, and it shows jobs that nobody owns.')).toBeInTheDocument()
   })

@@ -166,3 +166,103 @@ action `kind="secondary"`, the same rule already applied to repeated rows elsewh
 ## What this pass found, in one line
 
 Out of every part checked, only **Button's `danger` kind** actually diverged from the prototype's own value (an outline instead of the prototype's one solid red, plus two extra variants). Everything else already matches, because this stylesheet was built by copying `app.css`'s numbers directly and has been checked against it, part by part, in `the-parts-match-the-prototypes-exact-values.spec.tsx`, through several earlier sessions. The parts with **no prototype rule at all** (Toggle, FieldRow, StageTrack, SubHeading, Steps, Stack's gaps, and the whole "group 1-2 rebuild" set) are named above so nobody mistakes "no exact source line" for "not checked" - each is built from the prototype's own type and colour scale, just without one specific CSS rule to point at.
+
+## Group 2, piece 3 (the Company page and company context): the parts this piece added
+
+Rebuilding the Company page (`CompanyPage.tsx`) and company context (`CompanyContextPage.tsx`) from the shared parts needed three small additions to `gw-ui.css`, all built at sizes this kit already uses elsewhere (neither screen has a dedicated prototype class for them - `docs/prototype/source/app.css` draws these shapes by hand in its own per-screen JS, and never writes a real `<table>` at all):
+
+| Part | Property | Prototype's value | Ours |
+| --- | --- | --- | --- |
+| **`.gwui-priority-top`** (a priority card's "Priority N" beside its tag, before the title) | layout | no dedicated rule; built from the sizes the rest of a `Panel` card already uses | `flex`, `space-between`, `6px` margin below - unchanged from the product's own prior value |
+| **`.gwui-team-col`** ("Named by more than one team": one team's own column, company.jpg) | the thick top rule | no dedicated rule (the product's own shape) | `3px solid` ink, `8px` padding above - unchanged from the product's own prior value (`gw-company-team`) |
+| **`.gwui-compare-table`** ("What you say, and where the time goes") | - | the prototype never draws a real `<table>` for this (app.css has no table rule anywhere, only a mobile note that "tables become stacked cards" for its own `.row`-based lists); this is the product's own shape | `14.5px` body text, a `1px` top rule between rows, collapsing to stacked blocks under 900px - unchanged from the product's own prior value (`gw-company-table`), renamed into the shared kit |
+
+Both pages otherwise reuse parts already in the kit: `Page`/`PageTitle` (the title, and `PageTitle`'s own `crumbs` for "Company / Baridi Appliances" on company context, in place of the page's own nav), `Section` for every heading, `Panel` (`as="section"`) for each priority card and the "Named by more than one team" card, `Tag`, `Note`/`Empty` for the loading, error and empty-state lines, and `RowList`/`Row` for "Where the strategy isn't reaching the work" and company context's handbook, resources and "what the company has learned" lists. The head row of buttons ("Ask about the whole organisation" beside "Company context"/"Ask about the strategy") reuses `.gwui-sentence-row`, the same row `YouPage`'s "Your data" already uses - no new layout class was needed for it.
+
+**What was checked live, and what it found.** `the-company-page-as-each-reader-sees-it.spec.tsx` (30 tests) passes unchanged in substance - only the markup underneath moved to the shared parts, the wording and what each reader is served did not. Pictures at 1440 and 375, as Rukia (lead, and an organisation owner so she reads everything an admin does), Amani (participant) and Juma (admin), before and after, read identically to the prototype's own `company.jpg`/`company-context.jpg` layout: the button row, the "Is the strategy moving?" heading, and the empty-priorities sentence line up the same way; a participant correctly reads "6 people." with no check-in count, never the admin's "6 people, 21 check-ins this week." The one thing neither picture shows is the priority cards' own grid (`.gwui-cards-3`) or the comparison table with real rows, because the shared e2e test organisation ("Kilima Traders U8") has no company priorities synced into it yet (`Subject` rows of type `OBJECTIVE`) - inserting that data needed a direct write to the local dev database, which this session's sandbox permissions refused outright as "modify shared resources", so it was left exactly as found rather than worked around. `e2e/the-prototype-count-of-buttons.spec.ts`'s new `CompanyContextPage.tsx` entry passes; the new `CompanyPage.tsx` entry fails only the generic "the page shows real content" sanity floor (300 characters) for this reason - the page itself renders correctly (confirmed by the pictures: the true, documented empty state, "No priorities have come in from your organisation's own systems yet."), so this is a data gap in the shared test organisation, not a defect in the rebuild. Both screens pass `the-page-is-cream.spec.ts` (all three readers, #FDFBF6 throughout) and the guard test `the-rebuilt-pages-use-only-the-new-parts.spec.ts`.
+
+(The button test's floor was later given a `mustShow` escape hatch for exactly this situation - a page whose true state on this Mac's data is a short, genuine empty or refused sentence - see `bfab015f`. `CompanyPage.tsx`'s entry, and every suite board below that needs it, now uses that instead of failing the generic floor.)
+
+## Group 2, piece 4 (the Suites page and every suite's board): the parts this piece added
+
+Rebuilding `SuitesPage.tsx` and all ten boards (`OnboardingBoardPage`, `LeaveBoardPage`, `TimeSheetsPage`, `ReviewsBoardPage`/`ReviewPage`, `LeavingBoardPage`, `RoleMapPage`, `SpendingPage`, `TodosPage`, `CustomersPage`, `EquipmentPage`) needed five small additions to `gw-ui.css`, every one carried over unchanged from this product's own prior classes (the prototype draws each of these shapes by hand per screen, or - for a real `<table>` - not at all):
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| **`.gwui-suite-head`/`.gwui-suite-switch`** (a suite card's own two-column layout, title and body left, On/Off tag and its `Toggle` right) | layout | `gw-suite-head`/`gw-suite-switch` | unchanged |
+| **`.gwui-suite-ask`/`.gwui-suite-q`** (the small form a suite's own questions open into) | layout | `gw-suite-ask`/`gw-suite-q` | unchanged |
+| **`.gwui-record-table`** (a record table: time sheets, equipment, spending, customers, the role map) | sizes | `gw-suite-table`, `gw-time-table` | unchanged, merged into one name since both were the same shape |
+| **`.gwui-time-bar`** (a progress bar against an agreed amount, time sheets' own "Hours against what each client agreed") | sizes/colour | `gw-time-bar` | unchanged |
+| **`.gwui-quoted-text`** (a review's own quoted words) | font/size | `gw-review-said` | unchanged |
+| **`ProofMark`** (new component; a noticed line's proof dot) | - | kit.tsx's `Mark` - renamed so it is never confused with this kit's own `Mark` wordmark | same `gw-mk-*` colours, renamed `gwui-mk-*` |
+
+Every page otherwise reuses parts already in the kit: `Page`/`PageTitle` (crumbs, subtitle - its shared `aria-label="Where you are"` replaces each page's prior `"Breadcrumb"`, updated in every spec that checked it, with the reason given in each commit), `Section` for every heading, `Panel` for every card, `Tag`/`Toggle`/`Button` for every control, `FieldLabel`/`TextField`/`TextArea`/`Select` for every form field, `RowList`/`Row` for every list, and `Note`/`Empty` for loading, error and empty states. "Open its board" and "Open it" (purely navigational) became plain links (`.gwui-plain-link`), not buttons - the leave and spending boards' row-lookups in their own specs moved from a page-local CSS class to the shared `RowList`'s own accessible name for the same reason.
+
+**Protected, and left alone.** `RoleMapPage.tsx`: every role, what it owns, who holds it, and every "Nobody owns ..." line are unchanged - only the surrounding markup moved. `LeavingBoardPage.tsx`'s handover stays linked only by who and when, never what was in it, and every one of its ten steps still writes to the same server actions.
+
+**A real regression, found by the picture check, fixed before this piece was done.** `SuitesPage.tsx`'s "Money" group (just "Spending and budgets", on its own) had shrunk to one third of the row inside `gwui-cards-3`, where the prototype (`suites-admin.jpg`) and the page's own prior `gw-suites-one` class both give a lone suite the full width. Fixed by skipping the grid wrapper for a group of exactly one suite.
+
+**The guard test caught a second real regression no per-page spec could.** `EquipmentPage.tsx`'s row-level "Save" defaulted to a primary (navy) button, same as "Add an item"'s "Add it" - both default when no `kind` is given - so editing a row while the add form was open showed two navy buttons on screen together. Neither board's own spec could catch this (each only renders one state at a time); `the-rebuilt-pages-use-only-the-new-parts.spec.ts`'s static count, run across every listed page the moment `EquipmentPage.tsx` joined the list, did. Fixed by making the row's "Save" secondary, the rule every other board already applies to a row-level action beside the page's one primary form.
+
+**What was checked live, and what it found.** All eleven specs pass (114 tests), none with an assertion changed beyond the "Where you are"/row-lookup updates named above. Pictures at 1440 and 375, as Juma (admin) for every board, and Rukia and Amani once each to confirm the reader rule, read identically to the prototype's own screens once the "Money" fix above landed. Juma and Rukia read the same admin view throughout (she is an organisation owner, marked `ADMIN` in this test org, the same finding as the Company page); Amani, a member, is refused everywhere ("That one is not yours to open."). None of Kilima Traders U8's ten suites is switched on, so every board shows its own true "not switched on" sentence rather than real rows - turning one on would be adding data, which this piece was told not to do, so each was left exactly as found. `e2e/the-prototype-count-of-buttons.spec.ts` gained all eleven entries (`ReviewPage.tsx` excepted - it needs a real review id, which only exists once a review has been started, so it is marked `null` the same way a panel-of-one-screen is); eight boards needed `mustShow` for their own "not switched on" sentence, the same mechanism `CompanyPage.tsx` already uses. `the-page-is-cream.spec.ts` gained the Suites page and every board for the admin, and the Suites page for the lead. The whole client suite (3674 tests) passes but for the one pre-existing Yoda-count regression (62 from 60, request 95), unrelated to this piece - none of its newly-flagged lines are in a file this piece touched.
+
+## Group 3, piece 1 (signing in and joining): the parts this piece added
+
+Rebuilding `AuthPage.tsx`, its kit `auth-kit.tsx`, `MagicVerifyPage.tsx` and `JoinPage.tsx` from the shared parts needed three real additions to `components/gw/ui` (the prototype draws the sign-in screen's own two-column layout once, nowhere else, so nothing earlier needed it) and two small widenings of parts that already existed:
+
+| Part | Property | Prototype's value | Ours |
+| --- | --- | --- | --- |
+| **`PasswordField`** (new component, `components/gw/ui/PasswordField.tsx`) | the box, and the "Show"/"Hide" button inside it | `password.jpg`/`signup.jpg`/`reset.jpg`'s own password field | carried over unchanged from `auth-kit.tsx`'s old, page-local version (`.gw-auth-pw`/`.gw-auth-show`), renamed `.gwui-password-wrap`/`.gwui-password-show` |
+| **`SplitPage`/`SplitPanelLine`/`SplitPanelList`** (new component, `components/gw/ui/SplitPage.tsx`) | the sign-in screen's two halves: the form, and the dark panel beside it | `signin.jpg`, the one A2 screen drawn this way | carried over unchanged from `auth-kit.tsx`'s old `AuthSplit` (`.gw-auth-split`/`.gw-auth-split-panel`/`.gw-auth-panel-line`/`.gw-auth-dot-*`), renamed `.gwui-split*`/`.gwui-split-panel-line`/`.gwui-split-dot-*` |
+| **The password rules list and strength bar** (`.gwui-rules`/`.gwui-strength-bar`, CSS only, drawn by `auth-kit.tsx`'s `PasswordRules`/`PasswordStrength`, which stay there since they are built from this product's own password rules, not a shared shape) | the ticked list under a new password, and the bar over "Strong enough" | `password.jpg`/`signup.jpg`/`reset.jpg` | carried over unchanged from the old `.gw-auth-rules`/`.gw-auth-strength-bar` |
+| **`Callout`'s `tone="warning"`** (widened; `NoteEmpty.tsx`) | the amber tint a passwordless account or an expired session is told in | no dedicated prototype class (an amber notice is this product's own addition, not drawn in A2) | `.gwui-callout-warning`, the same amber as every other "something to know" surface elsewhere in the kit |
+| **`PageTitle`'s `subtitle`** (widened from `string` to `React.ReactNode`) | a sentence with a bold address inside it ("We'll send sign-in links and reports to **wairimu@baridi.co.ke**.") | - | no new CSS; a plain string still renders exactly as before |
+
+`AuthNotice` (the passwordless-account and session-expired notices) kept its own two-line shape - a bold title above the sentence under it - rather than `Callout`'s single paragraph, so `AuthPage`'s own text ("Check your email") stays its own addressable line; it uses the same `gwui-callout gwui-callout-warning` classes directly, with two new small rules, `.gwui-callout-title`/`.gwui-callout-body`, to carry that shape.
+
+Every other part these four files use was already in the kit: `Page`/`Mark`/`PageTitle` for every narrow screen (forgot, reset, "check your email", Google did not finish, signed out, create an account, the broadcast join landing), `FieldLabel`/`TextField` for every plain field, `Note`/`Callout`/`Button`/`Stack` throughout, and `Choices` for "How would you like to sign in?" at sign-up - a radio choice the old page drew by hand with native `<input type="radio">`s, now the same segmented control the People page's filters already use.
+
+**`auth-kit.tsx` keeps every export's name**, so `LinkExpired.tsx`, `EmailConfirmed.tsx`, `LinkSentPanel.tsx`, `GoogleFailedPage.tsx`, `SignOutPage.tsx` and `ChoosePasswordPage.tsx` - none of them named in this task - draw the new parts too, the moment `AuthCard`/`AuthField`/`AuthError`/`PasswordField`/`PasswordRules`/`PasswordStrength` changed underneath them. Each of those six files also had its own `Button` import and old wrapper classnames (`gw-auth-actions`, `gw-auth-links`, `gw-auth-small`, `gw-auth-link`, a raw `gw-b gw-b-quiet` anchor) swapped for the shared `Button`/`Stack`/`.gwui-fine`/`.gwui-auth-links`, so none of the six auth screens mixes old and new button styles inside the same rebuilt card.
+
+**What was checked live, and what it found.** `cd client && npx tsc -b` is clean. Every spec touching sign-in or auth-kit passes (one test's helper needed `.gwui-sr-only` added beside the old `.gw-sr-only` it already stripped, two needed `getByRole('radio', ...)` in place of `getByLabelText(...)` now that the sign-in choice is `Choices` rather than a native radio with a wrapping `<label>`, and a few pinned exact old DOM shapes - the password-manager `htmlFor` count, a merged welcome sentence, a straight vs typographic apostrophe, a missing "✓" - were updated with the reason in each commit). The whole client suite (3671 tests) passes but for one pre-existing, unrelated failure (`the-reveal-row-names-who-you-are-waiting-on.spec.ts`, confirmed present before this task's first commit by stashing it and re-running). The wording guard (`copy-does-not-sound-like-yoda.spec.ts`) stayed at 60: moving `MagicVerifyPage`'s "we couldn't find your session" text from JSX children into a `PageTitle` `subtitle` string briefly exposed an existing "If you finished your session..." sentence to the guard for the first time (it had never been inside a quoted string literal before), so that sentence was rewritten rather than excused. The eight API specs that read these files pass unchanged. `e2e/the-page-is-cream.spec.ts` passes for all three readers, proving the emailed sign-in link still works end to end through the rebuilt pages. `e2e/the-prototype-count-of-buttons.spec.ts` passes unchanged (26 tests); `auth-kit.tsx`, `AuthPage.tsx`, `MagicVerifyPage.tsx` and `JoinPage.tsx` are marked `null` there, since every one of them is a signed-out screen and this test signs a reader in before opening anything - their one-primary-button rule is instead checked by the static `primaryButtonCount` in `the-rebuilt-pages-use-only-the-new-parts.spec.ts`, which now covers all four.
+
+## Group 3, piece 2 (the reports): the parts this piece added
+
+Rebuilding `SessionReportPage.tsx` (the live per-session report, `/checkin/:checkInId/report`)
+from the shared parts needed a small set of additions to `gw-ui.css`, all at the sizes this page
+already used before the rebuild (the prototype's own B4 screens - `docs/prototype/screens/
+B4-reports-and-sharing/` - draw a session's own report by hand per screen, with no dedicated CSS
+rule for most of these shapes):
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| **`.gwui-fs-20`/`.gwui-fs-22`** (the session heading, "Session 4") | font-size | the page's own prior `fontSize: 20` | unchanged |
+| **`.gwui-rule-left`/`-amber`/`-green`** (a found-area's own left edge marker) | border-left | the page's own prior one-off `borderLeft` values | unchanged |
+| **`.gwui-ink-green-soft`** | colour | `var(--gw-green-t-soft)`, a token already defined and already referenced inline elsewhere on this page | unchanged |
+| several `mt`/`mb`/`pt`/`pl`/`gap` numeric classes (24, 30, 32, 40, 1, 3, 5, 11, 20, 22, 34, 17, 2, 18) | spacing | the page's own prior inline values | unchanged |
+
+**`ReportPage.tsx`'s own `ReportBody`** (everything below its three-line `ReportPage` redirect) is
+not mounted by any route today - confirmed against the file's own regression tests
+(`the-sharp-part-first.spec.ts`, `no-label-is-the-leads-note.spec.tsx`, `one-report-not-two.spec.ts`
+and others, each of which says so in its own comment) and against every caller of `GroundAdminPage`/
+`GroundParticipantPage`, which draw `TheSessionsReport`/`SoloReportBody` directly and never
+`ReportBody`. Rebuilding dead markup to match the prototype pixel for pixel serves no reader, so
+this piece left it as it was rather than churn ~250 lines of regression-locked source for a screen
+nobody opens - see the morning report for the recommendation to delete it (and its own tests) in a
+later task, once Hafsah confirms nothing still links to it from an old email or a bookmark.
+
+**Two things this piece found and fixed, not specific to the report screens**: `oldClassesUsed()`
+(`the-rebuilt-pages-use-only-the-new-parts.spec.ts`) matched the CSS custom property
+`var(--gw-card)` as the old class `gw-card` by plain substring - true of several already-correct
+components (`HowSpecificThisSessionWas.tsx`, `WhatToWorkOnNext.tsx`, `TheReportYouSawAtTheEnd.tsx`,
+`TheCheckInYouJustFinished.tsx`) that this piece was the first to import from a listed page.
+Narrowed the match to not fire inside a `--` token. And `TheCheckInHeader.tsx` (drawn by the
+session report page, the board, and every other check-in page) passed two style objects through as
+`style={}` - moved to `.gwui-ci-link-btn`/`.gwui-ci-tab`/`.gwui-ci-tab-on` in `index.css`, same
+pixel values, because this is a shared component many unlisted pages still draw and a value change
+there was out of scope for this piece.
+
+**What was checked live, and what it found.** `cd client && npx tsc -b` is clean. The guard test and
+every spec touching `ReportPage.tsx`, `SessionReportPage.tsx` or `TheCheckInHeader.tsx` pass (39
+spec files, 246+ tests), none with an assertion changed beyond the guard's own false-positive fix
+above.

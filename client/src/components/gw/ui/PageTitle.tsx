@@ -29,7 +29,12 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, su
   title: string
   /** Shows a 56px avatar to the left of the title when given. */
   avatarInitials?: string
-  subtitle?: string
+  /**
+   * A plain string in nearly every caller; `React.ReactNode` too (group 3, piece 1, sign-in and
+   * joining) for the few screens that name an address inside the sentence - "We'll send sign-in
+   * links and reports to **wairimu@baridi.co.ke**." - and need the address itself bold.
+   */
+  subtitle?: React.ReactNode
   /** 'ink' for the prototype's darker line under "Almost in", "Out of time" and expired-link. */
   subtitleTone?: 'muted' | 'ink'
   action?: React.ReactNode
