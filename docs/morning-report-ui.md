@@ -7009,4 +7009,12 @@ The whole API suite after these changes: 12,117 of 12,119 pass. One failure is t
 
 The review's pictures are in the scratchpad's `pictures/review-g2c/`.
 
+**The third merge of the engine's work (1 October, early morning).** 101 new commits. Two files conflicted, and both were resolved by keeping both sides:
+- `your-board.ts`: the engine's own fix for promises shown twice and this workspace's group 2 fix now run together.
+- The requests file.
+
+The local database has the new changes, and the API was rebuilt and restarted. The engine has also answered request 92, the five Ask Groundwork checks. It asks for them to be run again before the old context chat is switched off. That, and the engine's many new answers (the Company picture, customers, the role interview, the ending page, and Ask Groundwork's weeks 17 to 25), are now tasks in `docs/tasks-ui.md`, after groups 3 and 4.
+
+**Group 3 has started:** signing in and joining, first.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
