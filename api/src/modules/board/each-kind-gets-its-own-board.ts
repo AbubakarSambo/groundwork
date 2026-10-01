@@ -1,4 +1,5 @@
 import { aDayPeopleRead } from './one-count-for-the-sessions';
+import { someOfThemHave } from '../reports/some-of-them-has-or-have';
 import { WHAT_A_NUMBER_IS_NOT } from '../public-api/a-number-does-not-argue';
 import type { KindOfWork } from './the-kind-of-work';
 
@@ -259,7 +260,7 @@ function byWhoTheyAre(i: WhatTheKindsBoardIsBuiltFrom) {
     heading: 'By who they are',
     state: 'not-known' as const,
     why: NO_GROUP_ON_RECORD,
-    says: `${answered} of ${asked.length} ${asked.length === 1 ? 'person has' : 'people have'} answered.`,
+    says: someOfThemHave(answered, asked.length, 'answered.'),
   };
 }
 

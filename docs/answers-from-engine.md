@@ -1474,3 +1474,15 @@ Before and after, on the sales run (re-f), where Femi's wait for the bank statem
 - On the list, where people see only themselves, Miriam used to be given 0 things in the way, her own included. Now she is given 1, "the delivery van". On a performance plan the list used to give her and Omar the whole team, 2 things, the oldest being Omar's "the new price list". Now each is given only their own. An admin without access is given 0 and no name.
 
 Tests: `board/request-105-the-glance-names-nobody-walled.spec.ts` (10 cases) and `grounds/request-105-the-list-glance-names-nobody-walled.spec.ts` (6 cases). One older list test expected a walled participant to be given no blocker at all, her own included. It now expects her own wait, still with no name: "A colleague's login for the order system".
+
+## Request 105: "1 of 2 people has answered" (2 October)
+
+In "N of M people ...", the verb now goes with N and the noun with M. Every sentence of that shape on the board and in the reports is said through one helper, `someOfThemHave` (`reports/some-of-them-has-or-have.ts`).
+- By who they are (mvnext): "1 of 2 people have answered." is now "1 of 2 people has answered."
+- The report's basis line: "1 of 3 people have answered this session." is now "1 of 3 people has answered this session." It used to say "has" only when M was 1.
+- Over time: "1 of 4 people have not answered yet, so anything about them is missing rather than absent." is now "1 of 4 people has not answered yet, so ...". It used to always say "have".
+- Do the parts add up: "1 of 3 people have a number of their own, so ..." is now "1 of 3 people has a number of their own, so ...". It used to always say "have".
+- How much there is to go on: it was already right ("1 of 4 people has not answered yet."), and it now goes through the same helper.
+The opening's "One of the 5 people has answered so far." was already right and is unchanged.
+
+Tests: `reports/some-of-them-has-or-have.spec.ts`. The mvnext case in `board/request-105-each-kind-gets-its-own-board.spec.ts` now expects "1 of 2 people has answered.".

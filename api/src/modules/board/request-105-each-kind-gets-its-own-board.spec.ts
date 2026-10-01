@@ -209,7 +209,7 @@ const WHERE_NEXT: Setup = {
 describe('MarketView where next', () => {
   it('Julia, who runs it, reads that no group is on record, how many answered, and where they disagree', async () => {
     const b = await boardAs(WHERE_NEXT, ...LEAD);
-    expect(b.byWhoTheyAre).toEqual({ heading: 'By who they are', state: 'not-known', why: NO_GROUP_ON_RECORD, says: '1 of 2 people have answered.' });
+    expect(b.byWhoTheyAre).toEqual({ heading: 'By who they are', state: 'not-known', why: NO_GROUP_ON_RECORD, says: '1 of 2 people has answered.' });
     expect(b.whereTheyDisagree.heading).toBe('Where they disagree');
     expect(b.whereTheyDisagree.items).toHaveLength(1);
     expect(JSON.stringify(b.whereTheyDisagree)).toContain('They cannot hire enough analysts.');

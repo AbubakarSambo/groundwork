@@ -1,4 +1,5 @@
 import { aPartyOutside, theSameThing } from '../board/a-thing-is-not-somebody';
+import { someOfThemHave } from './some-of-them-has-or-have';
 /**
  * THE LONGITUDINAL READ: WHAT THE RECORD SHOWS ACROSS EVERY SESSION, WRITTEN BY THE PRODUCT.
  *
@@ -708,7 +709,7 @@ export function whatThisCannotTellYou(o: {
     out.push('Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.');
   }
   if (o.peopleWhoAnswered < o.peopleInvited) {
-    out.push(`${o.peopleInvited - o.peopleWhoAnswered} of ${o.peopleInvited} people have not answered yet, so anything about them is missing rather than absent.`);
+    out.push(someOfThemHave(o.peopleInvited - o.peopleWhoAnswered, o.peopleInvited, 'not answered yet, so anything about them is missing rather than absent.'));
   }
   if (!o.anybodyAskedWhoArrangedThings) {
     out.push('Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.');
