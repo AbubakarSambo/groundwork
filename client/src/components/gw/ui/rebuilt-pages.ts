@@ -121,4 +121,13 @@ export const REBUILT_PAGES: string[] = [
   'pages/auth/AuthPage.tsx',
   'pages/auth/MagicVerifyPage.tsx',
   'pages/join/JoinPage.tsx',
+  /*
+   * GROUP 3, PIECE 2 (the reports, docs/prototype/screens/B4-reports-and-sharing):
+   * `SessionReportPage.tsx`, the live per-session report page (`/checkin/:checkInId/report`).
+   * `ReportPage.tsx`'s default export is a three-line redirect to the Report tab and draws
+   * nothing itself; the page's own chrome now draws `Page`/`Panel`/`Button` from the shared kit,
+   * with every button reduced to the page's one true primary action ("Start a new check-in") -
+   * see docs/the-parts-against-the-prototype.md for what this piece found and added.
+   */
+  'pages/report/SessionReportPage.tsx',
 ]

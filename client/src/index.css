@@ -2104,3 +2104,18 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-suite-table tbody th { font-weight: 600; }
 .gw-suite-table .gw-nobody { color: var(--gw-red-t); }
 .gw-suite-table select, .gw-suite-table input { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--gw-border); border-radius: 7px; background: var(--gw-card); color: var(--gw-text); max-width: 100%; }
+/* GROUP 3, PIECE 2 (the reports): TheCheckInHeader's own "Your check-in" link-button and tab row,
+   moved out of two inline style objects (`linkAsBtn`/`tabStyle`) into classes, same pixel values,
+   because a listed page (SessionReportPage.tsx) now imports this component and the guard
+   (components/gw/ui/the-rebuilt-pages-use-only-the-new-parts.spec.ts) checks one level deep for a
+   style object passed through as `style={}` - not a value change, a rename. */
+.gwui-ci-link-btn {
+  padding: 8px 14px; border-radius: 7px; background: var(--gw-navy); color: white;
+  font-size: 13px; font-weight: 700; text-decoration: none; font-family: inherit;
+}
+.gwui-ci-tab {
+  padding: 0 0 10px; font-size: 13.5px; font-weight: 500; color: var(--gw-sub);
+  text-decoration: none; white-space: nowrap; background: none; border: none;
+  border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit;
+}
+.gwui-ci-tab-on { font-weight: 700; color: var(--gw-text); border-bottom-color: var(--gw-navy); }

@@ -696,6 +696,26 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-rule-bottom { border-bottom: 1px solid var(--gw-border); }
 .gwui-rule-bottom-none { border-bottom: none; }
 .gwui-rule-square { border: 1.5px solid var(--gw-border); }
+
+/* GROUP 3, PIECE 2 (the reports, ReportPage.tsx/SessionReportPage.tsx): additional box-model and
+   ink values generated from those two files' own former inline styles - the same numeric scale,
+   no new design. `.gwui-rule-left*` is the left-edge marker a found-area or agreed-area block
+   draws (report.jpg's own left rule); `.gwui-ink-green-soft` is the softer green `--gw-green-t-soft`
+   token the feedback and resolution panels already referenced inline. */
+.gwui-fs-20 { font-size: 20px; }
+.gwui-fs-22 { font-size: 22px; }
+.gwui-ink-green-soft { color: var(--gw-green-t-soft); }
+.gwui-mt-24 { margin-top: 24px; } .gwui-mt-30 { margin-top: 30px; } .gwui-mt-32 { margin-top: 32px; }
+.gwui-mt-40 { margin-top: 40px; }
+.gwui-mb-1  { margin-bottom: 1px; } .gwui-mb-3  { margin-bottom: 3px; } .gwui-mb-5  { margin-bottom: 5px; }
+.gwui-mb-11 { margin-bottom: 11px; } .gwui-mb-20 { margin-bottom: 20px; } .gwui-mb-22 { margin-bottom: 22px; }
+.gwui-mb-34 { margin-bottom: 34px; }
+.gwui-pt-24 { padding-top: 24px; }
+.gwui-pl-17 { padding-left: 17px; }
+.gwui-gap-2 { gap: 2px; } .gwui-gap-18 { gap: 18px; }
+.gwui-rule-left       { border-left: 3px solid var(--gw-border); }
+.gwui-rule-left-amber { border-left: 3px solid var(--gw-amber-b); }
+.gwui-rule-left-green { border-left: 3px solid var(--gw-green-b); }
 /* "In their own voice" quote box (board): their own words when given, else a muted placeholder. */
 /* A colour picked from data at render time (WhatSuccessLooksLike's moving/stuck/unspoken tone),
    never a fixed design value - `color` still has to come from a class (the guard bans the inline

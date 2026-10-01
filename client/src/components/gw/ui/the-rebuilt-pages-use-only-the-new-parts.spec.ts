@@ -60,8 +60,18 @@ export function namesImportedFromKit(stripped: string): string[] {
   return found
 }
 
+/**
+ * GROUP 3, PIECE 2 FIX: A CSS CUSTOM PROPERTY IS NOT A CLASS.
+ *
+ * Plain substring matching flagged `var(--gw-card)` - a real, shared colour token several
+ * already-rebuilt components reference (`HowSpecificThisSessionWas.tsx`, `WhatToWorkOnNext.tsx`
+ * and others `SessionReportPage.tsx` draws) - as the old class `gw-card`, because `--gw-card`
+ * contains that exact substring. A token is never a class, so a match preceded by `-` (the custom
+ * property's own leading dashes) is not one; `(?![\w-])` keeps it from matching a longer class
+ * name's prefix either (not needed by any name in this list today, kept for the next one).
+ */
 export function oldClassesUsed(stripped: string): string[] {
-  const found = OLD_CSS_CLASSES.filter(c => stripped.includes(c))
+  const found = OLD_CSS_CLASSES.filter(c => new RegExp(`(?<!-)${c}(?![\\w-])`).test(stripped))
   if (/\bcg-[\w-]+/.test(stripped)) found.push('cg-*')
   return found
 }
@@ -358,6 +368,7 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/auth/AuthPage.tsx',
       'pages/auth/MagicVerifyPage.tsx',
       'pages/join/JoinPage.tsx',
+      'pages/report/SessionReportPage.tsx',
     ])
   })
 
