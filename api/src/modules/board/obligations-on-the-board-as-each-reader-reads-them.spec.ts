@@ -24,22 +24,28 @@ describe('Obligations, as each person reads them', () => {
     expect(side(b, 'Mr. Adebayo')).toEqual({ participantId: null, who: 'Mr. Adebayo', promised: [], othersWaitFor: ['Ngozi Eze is waiting on Mr. Adebayo for a date for the credit decision.'] });
   });
 
-  it('Femi, where people see each other, reads every side, and his own as "You"', async () => {
+  /*
+   * A PERSON WHO CHECKS IN READS ONLY THEIR OWN SIDE (request 105; the prototype's B5, "Only yours"). Before,
+   * Femi read every side where people see each other, and the lead's where they do not. A wait he is in on
+   * somebody else's side is in his blockers, said to him as his.
+   */
+  it('Femi, where people see each other, reads only his own side, as "You"', async () => {
     const b = await boardAs(SALES_RUN, ...FEMI);
-    expect(sides(b)).toEqual(['Bisi Adeyemi', 'You', 'Ngozi Eze', 'Kwame Mensah', 'Mr. Adebayo']);
+    expect(sides(b)).toEqual(['You']);
     expect(side(b, 'You').promised[0]).toMatch(/^In session 2, you said, "I will visit/);
+    expect(JSON.stringify(b.obligations)).not.toMatch(/Bisi|Kwame|Ngozi|Adebayo|committee members/);
   });
 
-  it('where people do not see each other, Femi reads only his side and the lead\'s, without a wait he is not in', async () => {
+  it('where people do not see each other, Femi reads only his own side too, without a wait he is not in', async () => {
     const b = await boardAs({ ...SALES_RUN, peersVisibleToEachOther: false }, ...FEMI);
-    expect(sides(b)).toEqual(['Bisi Adeyemi', 'You']);
-    expect(side(b, 'Bisi Adeyemi').othersWaitFor).toEqual([]);
+    expect(sides(b)).toEqual(['You']);
     expect(JSON.stringify(b.obligations)).not.toMatch(/Kwame|Ngozi|Adebayo/);
   });
 
-  it('and Kwame reads the wait on the lead he is in, as "You"', async () => {
+  it('and Kwame reads the wait on the lead he is in, as "You", among his own blockers', async () => {
     const b = await boardAs({ ...SALES_RUN, peersVisibleToEachOther: false }, ...KWAME);
-    expect(side(b, 'Bisi Adeyemi').othersWaitFor).toEqual(['You are waiting on Bisi Adeyemi for the approval of five applications.']);
+    expect(side(b, 'Bisi Adeyemi')).toBeUndefined();
+    expect(b.blockers.map((x: any) => x.says)).toEqual(['You are waiting on Bisi Adeyemi for the approval of five applications.']);
   });
 
   it('an admin who only reads an ordinary check-in reads every side, with names', async () => {
@@ -49,8 +55,8 @@ describe('Obligations, as each person reads them', () => {
   it('on an evaluation check-in the person reviewed never reads the lead\'s promises or a colleague\'s, the admin who set it up reads all, and an admin with no access reads nothing', async () => {
     const evaluation: Setup = { ...SALES_RUN, scenario: GroundScenario.PIP, createdByUserId: 'u-setup' };
     const asKwame = await boardAs(evaluation, ...KWAME);
-    expect(sides(asKwame)).toEqual(['Bisi Adeyemi', 'You']);
-    expect(side(asKwame, 'Bisi Adeyemi').promised).toEqual([]);
+    /* A colleague giving a view reads only their own side (request 105). */
+    expect(sides(asKwame)).toEqual(['You']);
     expect(JSON.stringify(asKwame.obligations)).not.toMatch(/committee members|Femi|Ngozi/);
     expect(sides(await boardAs(evaluation, ...SETUP_ADMIN))).toHaveLength(5);
     const asJuma = await boardAs(evaluation, ...JUMA).then((b) => b, (e) => e);

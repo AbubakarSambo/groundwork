@@ -55,7 +55,23 @@ export interface Setup {
   snapshots?: { objectiveId: string; count: number }[];
   /** Rows of checkInGap: what a check-in asked twice and did not get (request 107 a). */
   gaps?: any[];
+  /** The kind of work (request 76), and its records (WorkItem rows). */
+  kindOfWork?: string | null;
+  items?: any[];
+  /** Numbers from another system about what this check-in is about (ProductMetric rows), and its subject. */
+  metrics?: any[];
+  subjectExternalId?: string | null;
 }
+
+/**
+ * A REPORT THAT HAS BEEN RELEASED TO THE PEOPLE IN THE CHECK-IN. A person who checks in reads the team's
+ * picture (the quick read, where people differ, the forecast) only once it is shared (request 105).
+ */
+export const A_RELEASED_REPORT = {
+  releasedAt: new Date('2026-09-23T17:00:00Z'), sharedAs: null, theOpening: 'Everybody has checked in.', networkPicture: null,
+  sharedPicture: 'Everybody has checked in.', agreements: [], divergences: [], centralQuestion: null, engagement: {}, findings: [],
+  createdAt: new Date('2026-09-20T09:00:00Z'), updatedAt: new Date('2026-09-23T15:02:00Z'),
+};
 
 export const commitment = (id: string, participantId: string | null, text: string, more: Record<string, any> = {}) => ({
   id, groundId: 'g-1', participantId, text, outcome: null, whenSaid: null, explicit: true, status: 'UNKNOWN', source: 'CHECK_IN',
@@ -82,7 +98,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     peopleWorkTogether: true, peersVisibleToEachOther: setup.peersVisibleToEachOther ?? true, timelineDays: 28, cadence: 'WEEKLY',
     whoSeesTargets: setup.whoSeesTargets ?? 'THEIR_OWN', label: setup.label ?? 'The team, Q3', participants: setup.people ?? PEOPLE, checkIns, report: setup.report ?? null,
     dependencies: setup.dependencies ?? [], poll: null, objectives: setup.objectives ?? [], closedAt: setup.closedAt ?? null,
-    kindOfWork: null, workStages: null,
+    kindOfWork: setup.kindOfWork ?? null, workStages: null, subjectExternalId: setup.subjectExternalId ?? null,
   };
   const reads = {
     findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null), findUnique: jest.fn(async () => null),
@@ -99,6 +115,8 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     personObjective: model({ findMany: jest.fn(async (args: any) => clone((setup.personObjectives ?? []).filter((o: any) => !args?.where?.awareness || o.awareness === args.where.awareness))) }),
     groundCommitment: model({ findMany: jest.fn(async () => clone(setup.commitments ?? [])) }),
     checkInGap: model({ findMany: jest.fn(async () => clone(setup.gaps ?? [])) }),
+    workItem: model({ findMany: jest.fn(async () => clone(setup.items ?? [])) }),
+    productMetric: model({ findMany: jest.fn(async (args: any) => clone((setup.metrics ?? []).filter((m: any) => !args?.where?.subjectExternalId || m.subjectExternalId === args.where.subjectExternalId))) }),
     recordEntry: model({ findMany: jest.fn(async (args: any) => {
       if (args?.where?.id?.in) return [];
       return clone(setup.lines ?? []);

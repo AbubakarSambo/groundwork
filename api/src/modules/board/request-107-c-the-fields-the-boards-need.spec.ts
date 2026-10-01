@@ -108,7 +108,9 @@ describe('1. each record says what happens next and how it is known', () => {
   it('Baraka reads his own next step as his', async () => {
     const b = await boardAs(SALES, ...BARAKA);
     expect(row(b, 'Eastside Foods').next).toBe('You committed to send Eastside Foods the quote with a photo on Friday.');
-    expect(row(b, 'Karen Butchery').knownSays).toBe('It was added on the board, not said in a check-in.');
+    /* Since request 105 (the prototype's B5, "Only yours") the lead's own record is not on his board. Before, he read
+       "It was added on the board, not said in a check-in." under it; whoever runs the check-in still reads it. */
+    expect(row(b, 'Karen Butchery')).toBeUndefined();
   });
 
   it('where people see only themselves, Rukia reads no row of Baraka\'s and none of his next steps', async () => {

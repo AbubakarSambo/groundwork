@@ -1375,3 +1375,46 @@ What each reader reads on the sales run (re-f):
 - An admin with no access to a performance plan is not served that board at all, as before.
 
 Tests: `board/request-105-blockers-as-each-reader-reads-them.spec.ts` (13 cases). All of them fail without this change.
+
+## Request 105, part 3: a participant's board is their own (2 October)
+
+`GET /grounds/:id/board` now sends a person who checks in a narrower board, as in the prototype's B5. It is also the more private choice. Decided for Hafsah to confirm.
+
+**Who it is for.** Anybody who checks in and does not run the check-in. That includes a colleague giving a view on an evaluation check-in. The lead, the admin who set it up and an admin of the organisation read the board as before. The person reviewed on an evaluation check-in keeps the board they had, which their own rules had already narrowed.
+
+**What they are sent.** The board is built from a list of what a participant may have, so a field added to the board later reaches a participant only when somebody adds it to that list (`board/a-participants-board-is-their-own.ts`).
+- The frame: the title, the sessions, the list of people, `howItIsGoing`, who is away, when the board last changed, and the poll.
+- Their own work, row by row. `workRecords` holds only the records that are theirs, and each section has `onlyYours: "Only yours."`. Please draw it under "Your deals, day by day". `objectives` holds their own targets and the team's (a target with nobody's name on it), and never anybody else's. `yourShare` is as before.
+- Their own commitments, waits and history. Before these sections are built, the board's reader is set to "only you" for a participant, so `workPlan`, `risks`, `timeline`, `personHistory`, `blockerCheck`, `whoWaitedOnWhom`, `obligations`, `evidenceIndex` and `contradictions` hold only their own rows. `blockers` holds the waits they are in, whichever side they are on. `whoOwnsWhat`, `contribution`, `coverage` and `stillUnanswered` hold only their own row.
+- The team's picture, only once the report has been released. That means `divergence`, `quickRead`, `forecast`, `whatTheAnswersSay`, `whatTheRoomIsAbout` and the opening in `howItIsGoing.latestSummary`. Before release they are not sent, and `teamPicture` is `{ shared: false, says: "Today's team picture is not shared yet.", yourOwnReport: "Your own report is ready now." }`. The `yourOwnReport` line is sent only when they have finished a check-in. Once the report is released, `teamPicture` is `{ shared: true }`.
+- `theJudgement`, `theTable` and `overTime` are sent as null, as before.
+- They are no longer sent `decisions`, `checkInGrid` or `cascade`. They never got `eachPerson`, `leadActions` or `questionsForTheLead`.
+
+What Femi reads on the sales run (re-f), before the team picture is shared, where people see each other:
+- "Today's team picture is not shared yet." and "Your own report is ready now."
+- His own deal only, under "Only yours."
+- "Only you and Bisi Adeyemi see your share."
+- "In session 2, you said, "I will visit a few of them again this week to see if I can collect the statements myself." The time you gave for it was "this week". Nobody has said yet whether it happened."
+- "You are waiting for the bank statements."
+- Nothing of Kwame's or Ngozi's: not their deals, numbers, waits or words. Their names are only in the list of people.
+
+Where people see only themselves, Ngozi reads "You are waiting on Mr. Adebayo for a date for the credit decision." and nothing about Femi or Kwame. On a performance plan, Kwame, a colleague giving a view, reads only his own deal and is told the team picture is not shared yet. Femi, the person reviewed, reads what he read before.
+
+A blocker's `wouldClearIt` is still shown to both people in the wait: Rukia, who is waiting on Baraka, reads "Baraka Otieno committed to ship the pipeline fix on Monday." A promise from anybody else, the lead included, is not on her board.
+
+**Tests changed, and why.** These tests read a participant's board for sections a lead gets, which was the behaviour this changes. Each now checks the narrower board, and that nothing of anybody else reaches the participant. No privacy check was removed: where a test said a participant reads something without a hidden thing in it, it now says the participant is not served it at all.
+- `the-movement-tile-tells-the-same-story` and `a-worry-on-the-tile-is-said-as-theirs`: a participant gets no tile before release. Their own report still tells them what moved.
+- `a-forecast-on-the-board`: a participant reads the team's forecast only once the report is released.
+- `obligations-on-the-board`, `a-work-plan-on-the-board`, `a-goal-the-lead-has-not-told...` and `the-handoff-quote-is-their-words`: only their own side, own lines and own waits. The lead's commitments are not on their board.
+- `each-kind-of-work-has-its-records`, `who-said-a-record...` and `request-107-c`: only their own records.
+- `their-own-words-stay`, `what-each-person-said-is-in-their-name`, `what-the-lead-has-not-shared-reaches-nobody` and `reports/the-four-marks-as-each-reader-is-served`: only their own row of who owns what.
+- `request-107-b`: a participant is not sent the lead's list of decisions. Their wait is in their blockers.
+- `reports/decision-17-wins-over-the-leads-switch`: who is on the check-in is read from the list of people, not from the grid of who checked in.
+- `__fixtures__/a-page-that-contradicts-itself`: both reports are marked released, as they were on the run, so the participant checks there still read the team picture.
+
+Decided for Hafsah to confirm:
+- Records with nobody's name on them, such as a matter's parties or a deal the lead added, are not on a participant's board. Only theirs are.
+- The quick read and the forecast count as the team's picture, so a participant gets them only once the report is released.
+- `howItIsGoing.glance` (rounds, how many have answered, how many things are in the way) stays for everybody, as on the list of check-ins.
+
+Tests: `board/request-105-a-participants-board-is-their-own.spec.ts` (13 cases).

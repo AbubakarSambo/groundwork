@@ -126,6 +126,13 @@ describe('the board: each line in who owns what carries its mark', () => {
   it.each(READERS)('%s', async (_who, userId, role) => {
     const board = await boardAs(userId, role);
     const aisha = (board.whoOwnsWhat ?? []).find((r: any) => r.participantId === 'p-aisha');
+    /* Since request 105 (the prototype's B5, "Only yours") a person who checks in is served only their own row, so
+       Miriam reads none of Aisha's lines; before, she read them with their marks. */
+    if (userId === 'u-miriam') {
+      expect(aisha).toBeUndefined();
+      expect(JSON.stringify(board)).not.toContain(AISHAS_PHOTO);
+      return;
+    }
     expect(aisha).toBeTruthy();
     for (const item of aisha.items) expect(item.text).toMatch(SAID_AS_THEIRS);
     expect(marksIn(aisha.items)).toEqual(EXPECTED);

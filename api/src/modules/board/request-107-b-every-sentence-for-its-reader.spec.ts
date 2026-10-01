@@ -70,13 +70,14 @@ describe('a wait on a thing is not said as a wait on somebody', () => {
     ]));
   });
 
-  it('the person waiting reads it as theirs, and the owner as the lead by name', async () => {
+  /* Request 105 (the prototype's B5): what needs deciding is the lead's agenda, so a person who checks in is no
+     longer served the list; their own waits are in their risks and blockers, as theirs. Before, Rukia read
+     "You are waiting on the pipeline fix, so it needs deciding." among the decisions. */
+  it('the person waiting reads it as theirs, and is not served the lead\'s list of decisions', async () => {
     const b = await boardAs({ dependencies: WAITS, report: REPORT }, ...RUKIA);
     expect(b.risks.map((r: any) => r.says)).toContain('You cannot move on the data structure decision, and nobody has been named to provide it.');
-    expect(b.decisions).toEqual(expect.arrayContaining([
-      expect.objectContaining({ question: 'You are waiting on the pipeline fix, so it needs deciding.', why: 'You cannot move until this is decided.' }),
-      expect.objectContaining({ owner: 'Amina Wanjiru' }),
-    ]));
+    expect(b.blockers.map((x: any) => x.says)).toEqual(expect.arrayContaining([expect.stringMatching(/^You are waiting for the pipeline fix\./)]));
+    expect(b.decisions).toBeUndefined();
   });
 
   it('where people see only themselves, a colleague never reads another person\'s wait among the decisions', async () => {

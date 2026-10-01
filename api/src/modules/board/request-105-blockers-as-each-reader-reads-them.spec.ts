@@ -124,8 +124,14 @@ describe('a blocker raised in three sessions, with a document behind one line an
   });
 
   it('a promise about the thing is what would clear it, and only then', async () => {
-    const b = byWhat(await boardAs({ ...SETUP, commitments: [commitment('k-1', 'p-baraka', 'I will ship the pipeline fix on Monday.')] }, ...RUKIA));
-    expect(b['the pipeline fix'].wouldClearIt).toBe('Baraka Otieno committed to ship the pipeline fix on Monday.');
+    const withAPromise = { ...SETUP, commitments: [commitment('k-1', 'p-baraka', 'I will ship the pipeline fix on Monday.')] };
+    expect(byWhat(await boardAs(withAPromise, ...AMINA))['the pipeline fix'].wouldClearIt).toBe('Baraka Otieno committed to ship the pipeline fix on Monday.');
+    /* Baraka reads his own promise as his. Rukia, who is waiting on him for it, reads what he promised about it. */
+    expect(byWhat(await boardAs(withAPromise, ...BARAKA))['the pipeline fix'].wouldClearIt).toBe('You committed to ship the pipeline fix on Monday.');
+    expect(byWhat(await boardAs(withAPromise, ...RUKIA))['the pipeline fix'].wouldClearIt).toBe('Baraka Otieno committed to ship the pipeline fix on Monday.');
+    /* A promise from somebody who is not in the wait is not hers to read on her own board. */
+    const fromSomebodyElse = { ...SETUP, commitments: [commitment('k-1', 'p-amina', 'I will ship the pipeline fix on Monday.')] };
+    expect(byWhat(await boardAs(fromSomebodyElse, ...RUKIA))['the pipeline fix'].wouldClearIt).toBeNull();
   });
 });
 

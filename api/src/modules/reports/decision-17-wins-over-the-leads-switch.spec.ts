@@ -142,7 +142,10 @@ describe.each(EVALUATIONS)('on %s, with the lead\'s switch "people see each othe
       scenario: (GroundScenario as any)[scenario], peersVisibleToEachOther: true,
       commitments: [commitment('k-1', 'p-baraka', 'I will send the pricing sheet.'), commitment('k-2', 'p-rukia', 'I will send the Westgate quote.')],
     }, ...BARAKA);
-    expect((b.checkInGrid.rows as any[]).map((r) => r.name)).toEqual(['Amina Wanjiru', 'Rukia Mwangi', 'Baraka Otieno']);
+    /* Who is on it is read from the list of people. Since request 105 (the prototype's B5) a person who checks in
+       is not served the grid of who checked in, which is the lead's; before, Baraka read the names there. */
+    expect((b.participants as any[]).map((r) => r.name)).toEqual(['Amina Wanjiru', 'Rukia Mwangi', 'Baraka Otieno']);
+    expect(b.checkInGrid).toBeUndefined();
     /* What each person said they would do stays with them on an evaluation check-in (request 78), whatever the switch. */
     expect(served(b)).not.toContain('Westgate quote');
   });

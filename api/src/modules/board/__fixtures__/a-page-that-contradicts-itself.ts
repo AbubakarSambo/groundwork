@@ -34,7 +34,9 @@ const SALES: any = {
   whoSeesTargets: 'EVERYONE', label: 'Credit sales, Q4',
   participants: [BISI, FEMI, NGOZI, KWAME],
   checkIns: salesCheckIns,
+  /* Released, as it was on the run once everybody had answered: a participant reads the team's picture only once it is shared (request 105). */
   report: {
+    releasedAt: daysAgo(1),
     sharedPicture: 'All four people have answered. They disagree on three things: the definition of an "approved" sale is not the same for everyone, there is a disconnect about whether individual targets are in place, and the deadline for the work is not known by everyone.\n\nYour target for the team is 40 approved facilities. You report that the team has 11 approved facilities so far.',
     agreements: ['Everyone is working toward the team goal of 40 approved facilities.'],
     divergences: [
@@ -85,7 +87,9 @@ const CONTRACT: any = {
     id: `c-${pid}-1`, participantId: pid, sessionNumber: 1, status: 'COMPLETED', isSetup: false,
     completedAt: daysAgo(1), createdAt: daysAgo(1), specificityLevel: 'specific', specificityDimensions: { checkable: 'specific' },
   })),
+  /* Released, as it was on the run once both had answered: a participant reads the team's picture only once it is shared (request 105). */
   report: {
+    releasedAt: daysAgo(1),
     sharedPicture: 'Both people have answered. They disagree on what the service agreement means. You say it is for resolving critical issues within four hours, and Frank Mbeki says it is for acknowledging all tickets within four hours.',
     agreements: [
       'Both agree the goal is to ensure the company gets the service promised in the contract.',

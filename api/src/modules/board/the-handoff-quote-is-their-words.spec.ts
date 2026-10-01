@@ -16,9 +16,18 @@ const record = (tried: string | null, due: string | null): Setup => ({
 });
 const because = (b: any) => b.risks[0].because as string;
 const checks = (b: any) => (b.blockerCheck[0].checks as string[]).join(' ');
-const readers = [['Amina', AMINA], ['Rukia', RUKIA], ['Baraka', BARAKA], ['Juma', JUMA]] as const;
+/* Baraka is not among these: since request 105 (the prototype's B5, "Only yours") a person who checks in reads
+   only the waits they are in, and this one is Rukia's on Finance. */
+const readers = [['Amina', AMINA], ['Rukia', RUKIA], ['Juma', JUMA]] as const;
 
 describe('the board quotes only exact words, as each reader reads it', () => {
+  it('Baraka, who is not in the wait, is served none of it, quoted or not', async () => {
+    const b = await boardAs(record("I've chased the committee four times in writing", 'by Friday'), ...BARAKA);
+    expect(b.risks).toBeUndefined();
+    expect(b.blockerCheck).toBeUndefined();
+    expect(JSON.stringify(b)).not.toMatch(/chased the committee|by Friday/);
+  });
+
   it.each(readers)('%s: an exact quote stays quoted', async (_n, who) => {
     const b = await boardAs(record("I've chased the committee four times in writing", 'by Friday'), who[0], who[1]);
     for (const text of [because(b), checks(b)]) {

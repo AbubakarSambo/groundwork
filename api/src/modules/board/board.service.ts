@@ -3,6 +3,7 @@ import { aPartyOutside } from './a-thing-is-not-somebody';
 import { whatEachSessionSays } from './one-count-for-the-sessions';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
+import { aParticipantsOwnBoard } from './a-participants-board-is-their-own';
 import { howARecordIsKnown, whatHappensNext } from './what-happens-next-to-a-record';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
 import { theShareSays } from './your-share';
@@ -529,6 +530,19 @@ export class BoardService {
       participants: ground.participants as any,
     }) || (adminHere && !runsItForAPattern(ground as any, requestingUserId) && isEvaluationCheckIn((ground as any).scenario));
     const theMovementsReader = { participantId: me?.id ?? null, isLead: isInitiator, colleaguesWordsWalled };
+    /*
+     * WHETHER THIS READER IS A PARTICIPANT WHOSE BOARD IS THEIR OWN (request 105; the prototype's B5): somebody
+     * who checks in and does not run the check-in. Not the lead, the admin who set it up, or an admin of the
+     * organisation; and not the person reviewed on an evaluation check-in, whose board its own rules already
+     * narrowed. See a-participants-board-is-their-own.
+     */
+    const aParticipantOnly = !!me?.id && !runsThisGround && !runsItForAPattern(ground as any, requestingUserId)
+      && !viewerIsTheSubjectOfAnEvaluationCheckIn({
+        scenario: ground.scenario,
+        isLead: isInitiator || runsItForAPattern(ground as any, requestingUserId),
+        viewerParticipantId: me?.id ?? null,
+        participants: ground.participants as any,
+      });
     const sessionShape: any = await this.everySessionThroughTheReportEngines(groundId, ground as any, checkIns as any[], openRound, theMovementsReader).catch((err: any) => {
       this.logger.warn(`Board could not run the report engines over ${groundId}: ${err?.message}`);
       return null;
@@ -2000,11 +2014,19 @@ export class BoardService {
         .filter((n) => n.length > 1)
         .map((n) => new RegExp(`(?<![\\p{L}\\p{N}])${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'iu'));
       const namesAnyone = (text: string | null | undefined) => !!text && namesOfThePeople.some((re) => re.test(text));
+      /*
+       * A PARTICIPANT READS ONLY THEIR OWN HERE (request 105; the prototype's B5, "Only yours"). Somebody who
+       * checks in and does not run the check-in reads their own commitments, the waits they are in and their own
+       * history, and nobody else's, whether or not people see each other. The person reviewed on an evaluation
+       * check-in keeps the rules that already narrowed their board. See a-participants-board-is-their-own.
+       */
+      const onlyTheirOwn = aParticipantOnly;
       const reader: WhoIsReading = {
         meId: me?.id ?? null,
         mayReadEveryone,
         theLeadsId: theLeadsRow,
         personMayBeRead: (pid) => {
+          if (onlyTheirOwn) return !!pid && pid === me?.id;
           if (adminWithoutAccess) return false;
           if (mayReadEveryone) return true;
           if (!pid) return !peersWalled;
@@ -2012,6 +2034,7 @@ export class BoardService {
         },
         handoffMayBeRead: (d) => {
           if (adminWithoutAccess) return false;
+          if (onlyTheirOwn && !(!!me?.id && (d.fromParticipantId === me.id || d.onParticipantId === me.id))) return false;
           if (mayReadEveryone) return true;
           /* What the lead said they are waiting on, about people, is the lead's (decisions 4 and 30). */
           if (d.fromParticipantId && d.fromParticipantId === theLeadsRow && (evaluation || namesAnyone(d.what))) return false;
@@ -2019,6 +2042,7 @@ export class BoardService {
           return !!me?.id && (d.fromParticipantId === me.id || d.onParticipantId === me.id);
         },
         commitmentMayBeRead: (c) => {
+          if (onlyTheirOwn) return !!c.participantId && c.participantId === me?.id;
           if (adminWithoutAccess) return false;
           if (mayReadEveryone || !c.participantId || c.participantId === me?.id) return true;
           /* The lead's own commitments are the lead's intentions: never read by a person in an evaluation check-in, nor, anywhere, when they name somebody. */
@@ -2216,6 +2240,19 @@ export class BoardService {
             return { ...sec, rows, state: rows.length ? 'filled' : 'none-yet' };
           })()
           : sec));
+      }
+      /*
+       * A PARTICIPANT'S BOARD IS THEIR OWN (request 105; the prototype's B5). After every wall above, so the
+       * walls have all run first: a person who checks in and does not run the check-in is served the frame,
+       * their own rows, and the team's picture once it is released, and nothing else a lead gets. See
+       * a-participants-board-is-their-own.
+       */
+      if (aParticipantOnly && me?.id) {
+        walled = aParticipantsOwnBoard(walled, {
+          meId: me.id,
+          released: !!(ground as any).report?.releasedAt,
+          hasOwnReport: (checkIns as any[]).some((c) => c.participantId === me.id && String(c.status).toUpperCase() === 'COMPLETED'),
+        });
       }
       /*
        * BY AREA OF WORK, AND WHAT WAS REPORTED AT EACH SALES STAGE (request 107 c). Read last, from the

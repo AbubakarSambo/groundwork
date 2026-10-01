@@ -33,6 +33,9 @@ export interface ABlocker {
   id: string;
   /** Who is waiting, as this reader reads them: "You", a name, or "A colleague". */
   who: string;
+  /** The same two people as the handoff row on this board, so a reader's own blockers can be told apart. */
+  fromParticipantId: string;
+  onParticipantId: string | null;
   /** The thing waited for, as it was stored, for a heading: "the bank statements". */
   name: string;
   /** "blocking" where it stops the work, "waiting" where the work can go on meanwhile. */
@@ -155,8 +158,11 @@ export function theBlockers(
     if (due && last && last.getTime() > due.getTime()) timeGiven += ` It was raised again after ${aDayPeopleRead(due, now)}, the day it was due.`;
 
     /* What would clear it: only what somebody said they would do about it. */
+    /* Somebody this reader may read about, or the person who holds it (never the lead, whose commitments are the
+       lead's own): both people in a wait read what the one holding it promised to do about it. */
+    const theHolderPromised = (c: ACommitment) => !!c.participantId && c.participantId === d.onParticipantId && c.participantId !== r.theLeadsId;
     const promise = commitments.find((c) => String(c.status ?? '').toUpperCase() === 'UNKNOWN'
-      && r.personMayBeRead(c.participantId) && r.commitmentMayBeRead(c)
+      && ((r.personMayBeRead(c.participantId) && r.commitmentMayBeRead(c)) || theHolderPromised(c))
       && isAboutTheThing(c.text, d.what));
     let wouldClearIt: string | null = null;
     if (promise) {
@@ -179,6 +185,8 @@ export function theBlockers(
     out.push({
       id: d.id,
       who,
+      fromParticipantId: d.fromParticipantId,
+      onParticipantId: d.onParticipantId ?? null,
       name: d.what,
       state: String(d.status).toUpperCase() === 'BLOCKING' ? 'blocking' : 'waiting',
       says,

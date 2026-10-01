@@ -144,15 +144,20 @@ describe('a sales check-in: deals and their stages', () => {
     expect(section(board, 'Deal grid').rows.map((r: any) => r.owner)).toEqual(['Rukia Mwangi', 'Baraka Otieno', null]);
   });
 
-  it('Baraka, who checks in, is served every deal where people see each other', async () => {
+  /* Request 105 (the prototype's B5, "Your deals, day by day. Only yours."): a person who checks in is served
+     only their own records. Before, Baraka was served every deal where people see each other, and his own and
+     the lead's where they do not. */
+  it('Baraka, who checks in, is served only his own deal, even where people see each other', async () => {
     const board = await boardAs(SALES, ...BARAKA);
-    expect(names(section(board, 'Deal grid'))).toEqual(['Nyama Choma Palace', 'Eastside Foods', 'Karen Butchery']);
+    expect(names(section(board, 'Deal grid'))).toEqual(['Eastside Foods']);
+    expect(section(board, 'Deal grid').onlyYours).toBe('Only yours.');
+    expect(JSON.stringify(board.workRecords)).not.toMatch(/Nyama|Karen|Rukia/);
   });
 
-  it('where people see only themselves, Baraka is served his own deal and the lead\'s, and nothing of Rukia\'s', async () => {
+  it('where people see only themselves, Baraka is served his own deal, and nothing of Rukia\'s', async () => {
     const walled = { ...SALES, peersVisibleToEachOther: false };
     const board = await boardAs(walled, ...BARAKA);
-    expect(names(section(board, 'Deal grid'))).toEqual(['Eastside Foods', 'Karen Butchery']);
+    expect(names(section(board, 'Deal grid'))).toEqual(['Eastside Foods']);
     expect(JSON.stringify(board.workRecords)).not.toMatch(/Nyama|Rukia/);
     /* The lead and the admin still read every deal. */
     expect(names(section(await boardAs(walled, ...AMINA), 'Deal grid'))).toHaveLength(3);
@@ -210,10 +215,10 @@ describe('an engineering check-in: releases and tasks', () => {
     }]);
   });
 
-  it('Juma and Baraka are served the same release', async () => {
-    for (const reader of [JUMA, BARAKA] as const) {
-      expect(names(section(await boardAs(ENGINEERING, reader[0], reader[1]), 'Deal grid'))).toEqual(['Release 2.4']);
-    }
+  /* Request 105: the release is Rukia's, so Baraka, who checks in, is served none of it; before, he was served it. */
+  it('Juma is served the release, and Baraka, whose it is not, is not', async () => {
+    expect(names(section(await boardAs(ENGINEERING, ...JUMA), 'Deal grid'))).toEqual(['Release 2.4']);
+    expect(names(section(await boardAs(ENGINEERING, ...BARAKA), 'Deal grid'))).toEqual([]);
   });
 });
 
@@ -249,12 +254,13 @@ describe('a law firm matter: deadlines and parties', () => {
     expect(names(section(await boardAs(MATTER, ...JUMA), 'Timeline'))).toEqual(['reply to the defence', 'Original contract from the client']);
   });
 
-  it('Baraka, where people see only themselves, is served his own deadline and the parties, and not Rukia\'s deadline', async () => {
+  /* Request 105: only his own records, so the parties the lead added, which are nobody's, are not on his board; before, they were. */
+  it('Baraka, where people see only themselves, is served his own deadline, and not Rukia\'s deadline', async () => {
     const board = await boardAs(MATTER, ...BARAKA);
     expect(section(board, 'Timeline').rows.map((r: any) => [r.name, r.owner, r.said])).toEqual([
       ['reply to the defence', 'Baraka Otieno', 'Our reply to the defence is due on Friday 2 October.'],
     ]);
-    expect(names(section(board, 'Obligations'))).toEqual(['Pwani Mills']);
+    expect(names(section(board, 'Obligations'))).toEqual([]);
     expect(JSON.stringify(board.workRecords)).not.toMatch(/Original contract|Rukia/);
   });
 });

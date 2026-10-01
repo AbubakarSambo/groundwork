@@ -101,12 +101,12 @@ describe('what Rukia said in her check-in, read by each person', () => {
     expect(JSON.stringify(board)).not.toMatch(/team-plan/);
   });
 
-  it('Baraka, a colleague, reads the same, with only the file name hidden', async () => {
-    expect(whatRukiaSaid(await boardAs('u-baraka', 'MEMBER'))).toEqual([
-      'Four shops for me.',
-      'Baraka has four shops in Westlands and Neema has four in Karen.',
-      'As a document says, four shops each by Friday.',
-    ]);
+  /* Request 105 (the prototype's B5, "Only yours"): a person who checks in is served only their own row of
+     who owns what. Before, Baraka read Rukia's lines here too. The file name is still nowhere on his board. */
+  it('Baraka, a colleague, is served none of her lines on his own board, and never the file name', async () => {
+    const board = await boardAs('u-baraka', 'MEMBER');
+    expect(whatRukiaSaid(board)).toEqual([]);
+    expect(JSON.stringify(board)).not.toMatch(/team-plan/);
   });
 
   it('Amina, who runs it and owns the file, reads every line exactly as Rukia said it', async () => {
