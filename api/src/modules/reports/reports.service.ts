@@ -3208,6 +3208,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       movedOnTargets: held.movedOnTargets,
       /* And how many exist, so "no target set" is only ever said where none is. */
       targetsSet: held.targetsSet,
+      targetsMoved: held.targetsMoved,
       blocked: held.blocked,
       waiting: held.waiting,
       /* So the Blockers tile names the thing instead of repeating its own label. */

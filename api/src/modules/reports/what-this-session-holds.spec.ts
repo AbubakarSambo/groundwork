@@ -142,3 +142,18 @@ describe('movement before a round has closed', () => {
     expect(tile({ targetsSet: 1 }).sub).toContain('1 target is set');
   });
 });
+
+describe('the Movement tile says a number a person can read (re-d, sales, session 3)', () => {
+  const base = { agreed: 0, stillOpen: 0, blocked: 0, waiting: 0, backedPct: null, numberWasSaid: false, targetsSet: 2 };
+  const movement = (t: ReturnType<typeof atAGlanceTiles>) => t.find((x) => x.label === 'Movement')!;
+  it('one target that moved by 31 million reads "+31 million", never "+31000000"', () => {
+    const m = movement(atAGlanceTiles({ ...base, movedOnTargets: 31000000, targetsMoved: 1 }));
+    expect(m.value).toBe('+31 million');
+    expect(m.value).not.toMatch(/\d{5,}/);
+  });
+  it('two targets counted in different things are said as how many moved, never added together', () => {
+    const m = movement(atAGlanceTiles({ ...base, movedOnTargets: 31000011, targetsMoved: 2 }));
+    expect(m.value).toBe('2 targets');
+    expect(m.sub).toBe('2 targets went up this session.');
+  });
+});

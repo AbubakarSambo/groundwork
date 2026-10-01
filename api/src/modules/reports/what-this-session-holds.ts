@@ -1,3 +1,4 @@
+import { aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
 import { cleanText } from './what-the-record-actually-holds';
 import { PrismaService } from '../prisma/prisma.service';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
@@ -109,6 +110,12 @@ export interface WhatThisSessionHolds {
    * is null before there are two snapshots to subtract, and null was being read as "none exist".
    */
   targetsSet: number;
+  /**
+   * HOW MANY TARGETS MOVED, because a sum across them is not a number anybody can read. Run re-d,
+   * sales, session 3: 11 approved facilities and 31 million naira moved, and the tile read "+31000000".
+   * Two targets counted in two different things are said as how many moved, never added together.
+   */
+  targetsMoved?: number;
 }
 
 export async function whatThisSessionHolds(prisma: PrismaService, groundId: string, sessionNumber: number): Promise<WhatThisSessionHolds> {
@@ -161,16 +168,19 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
   /* Movement is the difference between two snapshots, and nothing at all when there is only one. A
      session still in play has no snapshot of its own yet, so its live count stands in for it. */
   let movedOnTargets: number | null = null;
+  let targetsMoved = 0;
   if (objectives.length && before.length) {
     const prev = new Map(before.map((b) => [b.objectiveId, b.count]));
     const current = new Map(now.map((n) => [n.objectiveId, n.count]));
     movedOnTargets = objectives.reduce((sum, o) => {
       const from = prev.get(o.id);
       if (from == null) return sum;
-      return sum + ((current.get(o.id) ?? o.count) - from);
+      const moved = (current.get(o.id) ?? o.count) - from;
+      if (moved > 0) targetsMoved += 1;
+      return sum + moved;
     }, 0);
   }
-  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, targetsSet: objectives.length };
+  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, targetsSet: objectives.length, targetsMoved };
 }
 
 /** The four tiles, from the counts. The one builder both the report and the board call. */
@@ -178,6 +188,8 @@ export function atAGlanceTiles(a: {
   agreed: number; stillOpen: number; movedOnTargets: number | null; blocked: number; waiting: number;
   /** How many targets this check-in holds. Nought is "none set"; anything else is "none moved yet". */
   targetsSet?: number;
+  /** How many targets went up this session. More than one is said as how many, never as their sum. */
+  targetsMoved?: number;
   backedPct: number | null; numberWasSaid: boolean;
   /**
    * WHETHER ANYBODY IS STILL TO ANSWER, because the Differences tile was guessing.
@@ -268,7 +280,7 @@ export function atAGlanceTiles(a: {
       value: a.movedOnTargets == null
         ? (a.targetsSet ?? 0) > 0 ? 'Nothing yet'
           : a.numberWasSaid ? 'Not tracked' : 'No target set'
-        : a.movedOnTargets > 0 ? `+${a.movedOnTargets}` : 'None',
+        : a.movedOnTargets > 0 ? ((a.targetsMoved ?? 0) > 1 ? `${a.targetsMoved} targets` : `+${aNumberPeopleCanRead(a.movedOnTargets)}`) : 'None',
       sub: a.movedOnTargets == null
         ? (a.targetsSet ?? 0) > 0
           /* Set, and nothing to subtract from yet: a round has to close before movement exists. */
@@ -276,7 +288,7 @@ export function atAGlanceTiles(a: {
           : a.numberWasSaid
             ? 'Somebody named a number, and nothing is tracking it.'
             : 'Nobody has set anything to measure this against.'
-        : a.movedOnTargets > 0 ? 'Targets moved this session.' : 'No target moved this session.',
+        : a.movedOnTargets > 0 ? ((a.targetsMoved ?? 0) > 1 ? `${a.targetsMoved} targets went up this session.` : 'Targets moved this session.') : 'No target moved this session.',
       tone: a.movedOnTargets == null
         ? a.numberWasSaid && !(a.targetsSet ?? 0) ? 'warn' : 'flat'
         : a.movedOnTargets > 0 ? 'good' : 'flat',

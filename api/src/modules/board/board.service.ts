@@ -1459,6 +1459,7 @@ export class BoardService {
           agreed: agreedCount, stillOpen: divCount, movedOnTargets: held.movedOnTargets, blocked: held.blocked, waiting: held.waiting,
           /* How many exist, so "no target set" is only said where none is - see whatThisSessionHolds. */
           targetsSet: held.targetsSet,
+          targetsMoved: held.targetsMoved,
           /* How many have still to answer, from the one counter - the tile said "not everybody has
              answered yet" on every board because this was never passed and undefined is not zero. */
           stillToAnswer: Math.max(0, (out.howItIsGoing?.glance?.progress?.ofPeople ?? 0) - (out.howItIsGoing?.glance?.progress?.answeredThisRound ?? 0)),
@@ -2883,6 +2884,7 @@ export class BoardService {
       /* From the one owner, over the round in play - not a lifetime delta and not every dependency ever raised. */
       movedOnTargets: held.movedOnTargets,
       targetsSet: held.targetsSet,
+      targetsMoved: held.targetsMoved,
       blocked: held.blocked,
       waiting: held.waiting,
       /* And the blocker itself, so the board's tile names it exactly as the report's does. */
