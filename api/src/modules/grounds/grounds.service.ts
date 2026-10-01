@@ -1549,7 +1549,14 @@ export class GroundsService {
          * finding are report text; somebody who does not run the check-in is given them only after
          * the report has been released, the same as the report itself.
          */
-        const mayReadTheReport = runsIt || !!fullReport?.releasedAt;
+        /*
+         * AND NOT WHERE PEOPLE ARE NOT NAMED TO EACH OTHER (request 97e). The latest round's summary and
+         * finding are the team's picture, written about the people in it, and a participant on a check-in
+         * where colleagues are unnamed (a review, a cohort, or where the lead chose it) is given only
+         * themselves everywhere else on this row, so is given none of the team's picture here either.
+         * Their own report is read on their own check-in, never through these two fields.
+         */
+        const mayReadTheReport = runsIt || (!!fullReport?.releasedAt && peersVisibleEffective);
         /* And no sentence with a colleague's hidden target, in the brief or the report's words (as get()). */
         return this.withoutTheTargetsHiddenFrom(g as any, userId, {
           ...safe,
