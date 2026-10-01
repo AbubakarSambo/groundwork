@@ -39,8 +39,19 @@ describe('forms behave like forms', () => {
     expect(read('../join/JoinPage.tsx')).toContain('autoComplete="email"')
   })
   it('the setup composer is a textarea with the check-in composer\'s rule', () => {
+    /*
+     * Group 3, piece 4d-1 moved the onboarding composer onto the shared `Composer` part
+     * (components/gw/ui/Composer.tsx), which is the check-in composer's own textarea - so the
+     * literal `<textarea>` now lives there, not in EntryChatPage.tsx. What this test protects -
+     * Enter sends unless Shift is held, never on every Enter regardless - still has to hold, read
+     * off the handler EntryChatPage.tsx passes in and the textarea Composer actually renders.
+     */
     const e = read('../enter/EntryChatPage.tsx')
-    expect(e).not.toContain('placeholder="Type your response, or add a document with + Doc"\n                      value={input}\n                      onChange={e => setInput(e.target.value)}\n                      onKeyDown={e => { if (e.key === \'Enter\' && input.trim())')
-    expect(e).toMatch(/<textarea\s*placeholder="Type your response, or add a document with \+ Doc"/)
+    expect(e).not.toMatch(/onKeyDown=\{e => \{ if \(e\.key === 'Enter' && input\.trim\(\)\)/)
+    expect(e).toMatch(/onKeyDown=\{e => \{ if \(e\.key === 'Enter' && !e\.shiftKey\) \{ e\.preventDefault\(\); if \(input\.trim\(\)\) sendOnboarding\(input\) \} \}\}/)
+    expect(e).toContain('placeholder="Type your response, or add a document with + Doc"')
+    const composer = read('../../components/gw/ui/Composer.tsx')
+    expect(composer).toMatch(/<textarea\s/)
+    expect(composer).toContain('placeholder={placeholder}')
   })
 })

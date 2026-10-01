@@ -88,8 +88,11 @@ describe('a glyph carries a name', () => {
     expect(read('pages/grounds/GroundAdminPage.tsx')).toMatch(/aria-label=\{`Session \$\{ci\.sessionNumber\}:/)
   })
   it('the session chip has a space in the string, not in the CSS', () => {
-    /* U.6 review: the number is plannedNow (it follows how often it runs); the space rule is unchanged. */
-    expect(read('pages/enter/EntryChatPage.tsx')).toMatch(/\{' '\}\{plannedNow === 1 \? 'session planned' : 'sessions planned'\}/)
+    /* U.6 review: the number is plannedNow (it follows how often it runs); the space rule is
+       unchanged. Was `{plannedNow}</span><span>{' '}{...}</span>` across two spans (group 3, piece
+       4d-1 moved this onto the shared `Button`, which renders plain text); a literal space between
+       two expressions on the same JSX line is still real text, not a CSS gap. */
+    expect(read('pages/enter/EntryChatPage.tsx')).toMatch(/\{plannedNow\} \{plannedNow === 1 \? 'session planned' : 'sessions planned'\}/)
   })
   it('TextAction lives in the kit and AuthPage does not keep its own', () => {
     expect(read('components/gw/kit.tsx')).toMatch(/export function TextAction\(/)
