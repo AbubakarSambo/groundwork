@@ -69,7 +69,7 @@ describe('what Ngozi\'s check-in is given', () => {
     expect(objectivesLine(prompt)).toBe(
       'OBJECTIVES: Each is written as it is said to the person you are talking to, so "you" in them is that person. '
       + 'Bisi is aiming for 120 million naira disbursed this quarter. '
-      + 'Spending on field visits. The number 180,000 is a limit not to go over. '
+      + 'The team is keeping spending on field visits to no more than 180,000. '
       + 'You are aiming for 14 approved facilities.',
     );
     expect(prompt).toContain('Theirs, said by them: You are aiming for 14 approved facilities, 0 of 14');
@@ -92,7 +92,7 @@ describe('what Ngozi\'s check-in is given', () => {
     const brief = await theCheckIn(STORED).briefFor(NGOZI);
     expect(brief.objectives).toEqual([
       { name: 'Bisi is aiming for 120 million naira disbursed this quarter.', target: 120000000, direction: 'AIM' },
-      { name: 'Spending on field visits. The number 180,000 is a limit not to go over.', target: 180000, direction: 'LIMIT' },
+      { name: 'The team is keeping spending on field visits to no more than 180,000.', target: 180000, direction: 'LIMIT' },
       { name: 'You are aiming for 14 approved facilities.', target: 14, direction: null },
     ]);
     expect(JSON.stringify(brief)).not.toMatch(/ownerParticipantId|setByParticipantId|p2|22/);
@@ -115,7 +115,7 @@ describe('what Bisi\'s check-in is given', () => {
       + 'You are aiming for 120 million naira disbursed this quarter. '
       + 'Ngozi is aiming for 14 approved facilities. '
       + 'Kwame is aiming for 22 approved facilities. '
-      + 'Spending on field visits. The number 180,000 is a limit not to go over.',
+      + 'The team is keeping spending on field visits to no more than 180,000.',
     );
   });
 
