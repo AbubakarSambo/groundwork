@@ -81,7 +81,7 @@ import {
   whoIsBeingWaitedOn,
 } from './what-the-whole-place-is-waiting-on';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
-import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern } from '../patterns/who-reads-a-pattern';
+import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, readsHowTheLeadingIsLanding } from '../patterns/who-reads-a-pattern';
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { theShortNameOf } from '../reports/a-title-is-not-a-first-name';
@@ -1628,7 +1628,7 @@ export class BoardService {
      * or an admin who set the check-in up for them - never a participant, never an admin without that
      * access, even one who can otherwise read the rest of this board (decision 64).
      */
-    if (has('contribution') && PATTERNS_ARE_SERVED && runsItForAPattern(ground as any, requestingUserId)) {
+    if (has('contribution') && PATTERNS_ARE_SERVED && readsHowTheLeadingIsLanding(ground as any, requestingUserId)) {
       // Only meaningful where someone actually manages someone: needs a manager
       // and at least one report, both with accounts on record.
       // The forbidden-name list is built from THIS ground's participants. See

@@ -1,3 +1,4 @@
+import { setPatternReachInForce as theReachForThisFile } from '../patterns/who-reads-a-pattern';
 import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
 import { BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES } from '../patterns/pattern-library';
 
@@ -271,4 +272,74 @@ describe('and with the switch off, none of the three pages carries one, for anyb
       expect(served.writes).toEqual([]);
     });
   }
+});
+
+/*
+ * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
+ * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
+ * puts that reach in force for the whole file. Its last block puts the person-only reach in force
+ * and reads the same surfaces again, so both settings are checked here.
+ */
+beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+afterAll(() => theReachForThisFile('PERSON_ONLY'));
+
+/*
+ * DECISION 74, ITEM 2: THE PERSON-ONLY REACH, THE DEFAULT. The same three pages, the same readers.
+ * The person reads their own pattern, with the answer box, and is told that only they see it. The
+ * lead, the admin who set the check-in up, any other admin and every colleague read none.
+ */
+describe('with the person-only reach, a pattern reaches only the person it is about', () => {
+  beforeAll(() => theReachForThisFile('PERSON_ONLY'));
+  afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+
+  const PERSON_ONLY: [string, string, { board: string[]; page: string[]; record: string[] | null }][] = [
+    ['the lead, although Ngozi answered hers days ago', 'u-tunde', { board: [], page: [], record: [] }],
+    ['Ngozi, the person pd1 is about', 'u-ngozi', { board: ['pd1'], page: ['pd1'], record: ['pd1'] }],
+    ['Femi, a colleague, reading only his own', 'u-femi', { board: ['pd2'], page: ['pd2'], record: ['pd2'] }],
+    ['an organisation admin who is not in the check-in', 'u-admin', { board: [], page: [], record: null }],
+    ['a guest from another organisation, reading only her own', 'u-amaka', { board: ['pd6'], page: ['pd6'], record: ['pd6'] }],
+  ];
+
+  for (const [groundIs, shape] of GROUNDS) {
+    for (const [reader, userId, expected] of PERSON_ONLY) {
+      it(`as ${reader}, when ${groundIs}`, async () => {
+        const served = await everyPageAs(withTheSwitch(true), userId, groundWith(shape));
+        expect(idsOn(served)).toEqual(expected);
+        expect(whatBreaksARule(served.board.patterns)).toEqual([]);
+        expect(whatBreaksARule(served.page.signals)).toEqual([]);
+        /* Nothing a lead reads anywhere on the board names a pattern's heading. */
+        if (userId === 'u-tunde' || userId === 'u-admin') {
+          const all = JSON.stringify([served.board, served.page, served.record]);
+          expect(all).not.toContain('Problems are mostly put down to things outside the team');
+          expect(all).not.toContain('Others describe doing work they described as theirs');
+          expect(all).not.toContain(NGOZI_ANSWERED);
+        }
+      });
+    }
+  }
+
+  it('the admin who set this check-in up for its lead reads none either', async () => {
+    USERS['u-setup-admin'] = { role: 'ADMIN', organizationId: 'org-1' };
+    const ground = { ...groundWith(GROUNDS[0][1]), createdByUserId: 'u-setup-admin' };
+    const served = await everyPageAs(withTheSwitch(true), 'u-setup-admin', ground);
+    expect(idsOn(served)).toEqual({ board: [], page: [], record: null });
+  });
+
+  it('the person reads it with the answer box, and is told that only they see it', async () => {
+    const served = await everyPageAs(withTheSwitch(true), 'u-femi', groundWith(GROUNDS[0][1]));
+    const [mine] = served.record.patterns;
+    expect(mine.id).toBe('pd2');
+    expect(mine.heading).toBe('Others describe doing work they described as theirs');
+    expect(mine.canAnswer).toBe(true);
+    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    /* Being shown it is still recorded, so the clock is right if the reach is widened later. */
+    expect(served.writes.some((w) => w.where.id.in.includes('pd2') && w.data.shownToPersonAt)).toBe(true);
+  });
+
+  it('Ngozi, who answered, reads her own words beside it and the same sentence', async () => {
+    const served = await everyPageAs(withTheSwitch(true), 'u-ngozi', groundWith(GROUNDS[0][1]));
+    const [mine] = served.record.patterns;
+    expect(mine.theirWords).toBe(NGOZI_ANSWERED);
+    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+  });
 });

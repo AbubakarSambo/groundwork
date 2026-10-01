@@ -48,6 +48,92 @@ import { whatAPatternIsAbout, type WhatAPatternIsAbout } from './what-a-pattern-
  */
 
 export const PERIODS_BEFORE_A_PATTERN_IS_SHOWN = 3;
+
+/**
+ * WHO A SERVED PATTERN REACHES (decision 74, item 2). PATTERNS ARE NEVER SWITCHED OFF: detection,
+ * storage, the periods, coaching for the person and the probes in their own check-in all run the
+ * same either way. Only who reads a pattern changes.
+ *
+ *   - 'PERSON_FIRST_THEN_LEAD': as rules 3 and 5 above say. The person it is about reads it first,
+ *     with a way to answer, and whoever runs the check-in reads it after the person has had their turn.
+ *   - 'PERSON_ONLY': the person it is about reads it, with their answer box, and nobody else does.
+ *     Not the lead, not the admin who set the check-in up, not any other admin, not a colleague: on no
+ *     board, report, weekly report, Today, coaching note, probe list or judgement.
+ *
+ * The default is 'PERSON_ONLY', because the patterns a person is shown are not yet the same on a
+ * second reading at least 8 times in 10 (decision 68). It stays so until Hafsah or the release says
+ * otherwise. The setting is one `platform_settings` row, `patterns.reach`, whose value is the string
+ * 'PERSON_FIRST_THEN_LEAD' or 'PERSON_ONLY'. A missing row, or a row holding anything else, reads as
+ * 'PERSON_ONLY', so a mistake can only ever make patterns more private. A platform admin changes it
+ * at PATCH /admin/pattern-reach.
+ *
+ * WHY A VALUE HELD HERE, NOT A READ ON EVERY CALL. Every road from `pattern_detections` to a page goes
+ * through `patternRowsThisReaderMayRead`, which is synchronous and is called from places that cannot
+ * be handed a database (`patterns.service.ts`, the judgement's material, the coaching note). So the
+ * value in force is held in this module: it starts as 'PERSON_ONLY' before anything is read, and
+ * `WhoAPatternReachesService` reads the row when the API starts and again every 30 seconds, and the
+ * admin route sets it at once. A failed read sets 'PERSON_ONLY'.
+ */
+export type PatternReach = 'PERSON_FIRST_THEN_LEAD' | 'PERSON_ONLY';
+export const PATTERN_REACHES = ['PERSON_FIRST_THEN_LEAD', 'PERSON_ONLY'] as const;
+export const PATTERN_REACH_KEY = 'patterns.reach';
+export const DEFAULT_PATTERN_REACH: PatternReach = 'PERSON_ONLY';
+
+/* One value per process, kept on the global object so that every copy of this module (a test that
+   loads modules afresh, for example) reads the same reach. Absent means the default. */
+const REACH_IN_FORCE = Symbol.for('groundwork.patterns.reachInForce');
+const holder = globalThis as unknown as Record<symbol, PatternReach | undefined>;
+
+/** The stored row, read the forgiving way: only the exact word for the wider reach widens it. */
+export function patternReachFrom(row: { value: unknown } | null | undefined): PatternReach {
+  if (!row) return DEFAULT_PATTERN_REACH;
+  const v = row.value as any;
+  const word = typeof v === 'string' ? v : (v && typeof v === 'object' ? v.reach : null);
+  return word === 'PERSON_FIRST_THEN_LEAD' ? 'PERSON_FIRST_THEN_LEAD' : 'PERSON_ONLY';
+}
+
+export function isAPatternReach(v: unknown): v is PatternReach {
+  return typeof v === 'string' && (PATTERN_REACHES as readonly string[]).includes(v);
+}
+
+/** The reach every reader is served under right now. */
+export function patternReachInForce(): PatternReach {
+  return holder[REACH_IN_FORCE] === 'PERSON_FIRST_THEN_LEAD' ? 'PERSON_FIRST_THEN_LEAD' : DEFAULT_PATTERN_REACH;
+}
+
+/** Set the reach in force. Called by the reader below, the admin route, and tests. */
+export function setPatternReachInForce(reach: PatternReach): void {
+  holder[REACH_IN_FORCE] = reach === 'PERSON_FIRST_THEN_LEAD' ? 'PERSON_FIRST_THEN_LEAD' : 'PERSON_ONLY';
+}
+
+/** Read the row and put it in force. Never throws; a failed read puts the person-only reach in force. */
+export async function readPatternReach(
+  prisma: { platformSetting?: { findUnique?: (args: any) => Promise<{ value: unknown } | null> } } | null | undefined,
+): Promise<PatternReach> {
+  try {
+    const row = await prisma?.platformSetting?.findUnique?.({ where: { key: PATTERN_REACH_KEY } });
+    setPatternReachInForce(patternReachFrom(row ?? null));
+  } catch {
+    setPatternReachInForce('PERSON_ONLY');
+  }
+  return patternReachInForce();
+}
+
+/**
+ * WHO READS "HOW THE LEADING IS LANDING" (board.service.ts, `managerAlignment`). It is a pattern
+ * about the lead's own leading, so the lead is the person it is about. With the wider reach, the
+ * admin who set the check-in up for them reads it too (decision 58); with the person-only reach,
+ * only the lead does.
+ */
+export function readsHowTheLeadingIsLanding(
+  checkIn: CheckInForPatternAccess,
+  userId: string | null | undefined,
+  reach: PatternReach = patternReachInForce(),
+): boolean {
+  if (!userId) return false;
+  if (reach === 'PERSON_ONLY') return checkIn.initiatorId === userId;
+  return runsItForAPattern(checkIn, userId);
+}
 /** How long the person has to answer after they were first shown it, before the lead reads it. */
 export const DAYS_THE_PERSON_HAS_TO_ANSWER = 3;
 /** How long after it was ready the lead reads it anyway, when the person never opened it. */
@@ -306,23 +392,28 @@ export function thePersonHasHadTheirTurn(row: APatternRow, now: Date = new Date(
 export function patternRowsThisReaderMayRead<T extends APatternRow>(
   rows: readonly T[] | null | undefined,
   reader: APatternReader,
-  opts: { on?: boolean; now?: Date } = {},
+  opts: { on?: boolean; now?: Date; reach?: PatternReach } = {},
 ): T[] {
   if (!(opts.on ?? PATTERNS_ARE_SERVED)) return [];
   const now = opts.now ?? new Date();
+  /* Decision 74, item 2: with the person-only reach, nobody but the person it is about reads it. */
+  const personOnly = (opts.reach ?? patternReachInForce()) === 'PERSON_ONLY';
   return (rows ?? []).filter((row) => {
     if (!row?.participantId || ALIGNMENT_FEED_ONLY_CODES.has(row.code)) return false;
     if (!plainNameOf(row.code)) return false;
     if (!hasBeenSeenInThreePeriods(row)) return false;
     const yours = !!reader.participantId && row.participantId === reader.participantId;
     if (yours) return true;
+    if (personOnly) return false;
     /* A participant reads their own and nobody else's; whoever runs it, only after the person's turn. */
     return reader.runsIt && thePersonHasHadTheirTurn(row, now);
   });
 }
 
-function whoSeesIt(row: APatternRow, yours: boolean, names: WhoIsWho, now: Date): string {
+function whoSeesIt(row: APatternRow, yours: boolean, names: WhoIsWho, now: Date, reach: PatternReach): string {
   if (yours) {
+    /* Decision 74, item 2: with the person-only reach, nobody else reads it, so the sentence says so. */
+    if (reach === 'PERSON_ONLY') return 'Only you see this. Nothing is decided from it.';
     /* Hafsah, 29 September 2026: when the person it is about is the lead themselves, the sentence
        must not name the lead as if they were someone else reading it back to them. */
     const isTheLeadsOwn = !!names.leadParticipantId && row.participantId === names.leadParticipantId;
@@ -344,10 +435,11 @@ function whoSeesIt(row: APatternRow, yours: boolean, names: WhoIsWho, now: Date)
 export function servedPatterns(
   rows: readonly APatternRow[] | null | undefined,
   reader: APatternReader,
-  opts: { on?: boolean; now?: Date } & WhoIsWho = {},
+  opts: { on?: boolean; now?: Date; reach?: PatternReach } & WhoIsWho = {},
 ): AServedPattern[] {
   const now = opts.now ?? new Date();
-  return patternRowsThisReaderMayRead(rows, reader, opts)
+  const reach = opts.reach ?? patternReachInForce();
+  return patternRowsThisReaderMayRead(rows, reader, { ...opts, reach })
     .map((row) => {
       const plain = plainNameOf(row.code)!;
       const yours = !!reader.participantId && row.participantId === reader.participantId;
@@ -365,7 +457,7 @@ export function servedPatterns(
         askThem: yours ? null : whatToAskAbout(row.code),
         theirWords: (row.personAnswer ?? '').trim() || null,
         canAnswer: yours,
-        whoSeesIt: whoSeesIt(row, yours, opts, now),
+        whoSeesIt: whoSeesIt(row, yours, opts, now, reach),
         leadMark: yours ? null : (row.leadMark ?? null),
         talkedAbout: !!row.talkedAboutAt,
         secondReadNote: !yours && row.evidenceSource === 'both' ? TWO_SEPARATE_READS_NOTE : null,

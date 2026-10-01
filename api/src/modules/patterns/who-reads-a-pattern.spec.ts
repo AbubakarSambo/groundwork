@@ -1,3 +1,4 @@
+import { setPatternReachInForce as theReachForThisFile } from './who-reads-a-pattern';
 import { BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES } from './pattern-library';
 import { servedPatterns, whatHappenedIn, periodsSeen, thePersonHasHadTheirTurn, theOnesTheyAreSeeingFirst, whoIsWhoIn, patternRowAsOfSession, runsItForAPattern, type APatternRow } from './who-reads-a-pattern';
 
@@ -242,5 +243,86 @@ describe('runsItForAPattern (decision 58, screens request 84): only the lead, or
   it('is false when nobody set the check-in up (createdByUserId null), for anyone but the lead', () => {
     expect(runsItForAPattern({ initiatorId: 'u-lead', createdByUserId: null }, 'u-other-admin')).toBe(false);
     expect(runsItForAPattern({ initiatorId: 'u-lead', createdByUserId: null }, 'u-lead')).toBe(true);
+  });
+});
+
+/*
+ * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
+ * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
+ * puts that reach in force for the whole file. Its last block puts the person-only reach in force
+ * and reads the same surfaces again, so both settings are checked here.
+ */
+beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+afterAll(() => theReachForThisFile('PERSON_ONLY'));
+
+/*
+ * DECISION 74, ITEM 2: WHO A PATTERN REACHES IS A SETTING, AND ITS DEFAULT IS THE PERSON ONLY.
+ * Detection, the three periods and the answer box are the same; only who reads changes.
+ */
+describe('with the person-only reach, a pattern reaches only the person it is about', () => {
+  const {
+    patternRowsThisReaderMayRead, patternReachFrom, patternReachInForce, readPatternReach,
+    readsHowTheLeadingIsLanding, DEFAULT_PATTERN_REACH, PATTERN_REACH_KEY,
+  } = require('./who-reads-a-pattern');
+  beforeAll(() => theReachForThisFile('PERSON_ONLY'));
+  afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+
+  it('the default, in code, is the person only', () => {
+    expect(DEFAULT_PATTERN_REACH).toBe('PERSON_ONLY');
+    expect(PATTERN_REACH_KEY).toBe('patterns.reach');
+  });
+
+  it('each person reads their own, under the same three-period rule; the lead, an admin and a stranger read none', () => {
+    expect(servedPatterns(ROWS, NGOZI, on).map((p) => p.id)).toEqual(['pd1']);
+    expect(servedPatterns(ROWS, FEMI, on).map((p) => p.id)).toEqual(['pd2']);
+    for (const r of [LEAD, ADMIN, STRANGER]) {
+      expect(servedPatterns(ROWS, r, on)).toEqual([]);
+      expect(patternRowsThisReaderMayRead(ROWS, r, on)).toEqual([]);
+    }
+  });
+
+  it('the lead who also takes part reads their own, and nobody else’s', () => {
+    const leadsOwn: APatternRow = { id: 'pd9', participantId: 'p-lead', code: 'B11', observationText: null, seenInSessions: [1, 2, 3], periodsObserved: 3 };
+    expect(servedPatterns([...ROWS, leadsOwn], LEAD, on).map((p) => p.id)).toEqual(['pd9']);
+  });
+
+  it('the person is told that only they see it, and can still answer it', () => {
+    const [mine] = servedPatterns(ROWS, FEMI, on);
+    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    expect(mine.canAnswer).toBe(true);
+    expect(mine.secondReadNote).toBeNull();
+    expect(mine.coachTowards).toBeNull();
+  });
+
+  it('a call can still ask for the wider reach by name, and then the lead reads it after the person’s turn', () => {
+    expect(servedPatterns(ROWS, LEAD, { ...on, reach: 'PERSON_FIRST_THEN_LEAD' }).map((p) => p.id).sort()).toEqual(['pd1', 'pd2']);
+  });
+
+  it('the stored row widens it only with the exact word; anything else, or nothing, is the person only', () => {
+    expect(patternReachFrom(null)).toBe('PERSON_ONLY');
+    expect(patternReachFrom({ value: 'PERSON_FIRST_THEN_LEAD' })).toBe('PERSON_FIRST_THEN_LEAD');
+    expect(patternReachFrom({ value: { reach: 'PERSON_FIRST_THEN_LEAD' } })).toBe('PERSON_FIRST_THEN_LEAD');
+    expect(patternReachFrom({ value: 'person_first_then_lead' })).toBe('PERSON_ONLY');
+    expect(patternReachFrom({ value: true })).toBe('PERSON_ONLY');
+    expect(patternReachFrom({ value: 'PERSON_ONLY' })).toBe('PERSON_ONLY');
+  });
+
+  it('reading the row puts it in force, and a failed read puts the person only in force', async () => {
+    await readPatternReach({ platformSetting: { findUnique: async () => ({ value: 'PERSON_FIRST_THEN_LEAD' }) } });
+    expect(patternReachInForce()).toBe('PERSON_FIRST_THEN_LEAD');
+    await readPatternReach({ platformSetting: { findUnique: async () => { throw new Error('the database is away'); } } });
+    expect(patternReachInForce()).toBe('PERSON_ONLY');
+    await readPatternReach({ platformSetting: { findUnique: async () => ({ value: 'PERSON_FIRST_THEN_LEAD' }) } });
+    await readPatternReach({ platformSetting: { findUnique: async () => null } });
+    expect(patternReachInForce()).toBe('PERSON_ONLY');
+  });
+
+  it('"how the leading is landing" reaches only the lead, never the admin who set the check-in up', () => {
+    const checkIn = { initiatorId: 'u-tunde', createdByUserId: 'u-setup-admin' };
+    expect(readsHowTheLeadingIsLanding(checkIn, 'u-tunde')).toBe(true);
+    expect(readsHowTheLeadingIsLanding(checkIn, 'u-setup-admin')).toBe(false);
+    expect(readsHowTheLeadingIsLanding(checkIn, 'u-ngozi')).toBe(false);
+    expect(readsHowTheLeadingIsLanding(checkIn, 'u-setup-admin', 'PERSON_FIRST_THEN_LEAD')).toBe(true);
+    expect(readsHowTheLeadingIsLanding(checkIn, 'u-ngozi', 'PERSON_FIRST_THEN_LEAD')).toBe(false);
   });
 });

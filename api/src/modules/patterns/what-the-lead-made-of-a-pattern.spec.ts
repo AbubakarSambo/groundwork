@@ -1,3 +1,4 @@
+import { setPatternReachInForce as theReachForThisFile } from './who-reads-a-pattern';
 /**
  * WHAT THE LEAD MADE OF A PATTERN (decision 57, items 2 and 3).
  *
@@ -156,5 +157,44 @@ describe('the nudge to talk it through, once, in plain words (decision 57, item 
     const [served] = servedPatterns([unanswered], { participantId: 'p-tunde', runsIt: true }, { on: true, now: new Date(NOW) });
     const nudge = patternTalkNudge(served, 'Femi');
     expect(nudge.why).toBe('Femi has seen this and has not answered yet.');
+  });
+});
+
+/*
+ * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
+ * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
+ * puts that reach in force for the whole file. Its last block puts the person-only reach in force
+ * and reads the same surfaces again, so both settings are checked here.
+ */
+beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+afterAll(() => theReachForThisFile('PERSON_ONLY'));
+
+/*
+ * DECISION 74, ITEM 2: THE PERSON-ONLY REACH, THE DEFAULT. The lead never reads the pattern, so the
+ * lead cannot mark it or say they talked it through, and nothing is written.
+ */
+describe('with the person-only reach, the lead cannot mark a pattern they do not read', () => {
+  beforeAll(() => theReachForThisFile('PERSON_ONLY'));
+  afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+
+  it('marking it right, wrong or not sure is refused, and nothing is written', async () => {
+    const { svc, update } = serviceWith();
+    await expect(svc.markAsTheLead('pd2', 'u-tunde', 'RIGHT')).rejects.toHaveProperty('status', 403);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('marking that they talked it through is refused, and nothing is written', async () => {
+    const { svc, update } = serviceWith();
+    await expect(svc.markTalkedAbout('pd2', 'u-tunde')).rejects.toHaveProperty('status', 403);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('the lead is served nothing, and Femi is served his own without any mark', () => {
+    const marked = { ...ROW, leadMark: 'WRONG' as ALeadPatternMark };
+    expect(servedPatterns([marked], { participantId: 'p-tunde', runsIt: true }, { on: true, now: new Date(NOW) })).toEqual([]);
+    const asFemi = servedPatterns([marked], { participantId: 'p-femi', runsIt: false }, { on: true, now: new Date(NOW) });
+    expect(asFemi).toHaveLength(1);
+    expect(asFemi[0].leadMark).toBeNull();
+    expect(asFemi[0].whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
   });
 });

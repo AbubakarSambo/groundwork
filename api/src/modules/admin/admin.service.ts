@@ -22,6 +22,7 @@ import {
   SUGGESTION_THRESHOLDS_KEY, SUGGESTION_THRESHOLD_LABELS, isValidSuggestionThresholds,
   thresholdsInForce, type SuggestionThresholds,
 } from '../suggestions/thresholds';
+import { PATTERN_REACH_KEY, isAPatternReach, patternReachFrom, setPatternReachInForce, type PatternReach } from '../patterns/who-reads-a-pattern';
 
 @Injectable()
 export class AdminService implements OnApplicationBootstrap {
@@ -198,6 +199,34 @@ export class AdminService implements OnApplicationBootstrap {
       update: { value: thresholds as any, updatedBy: adminUserId },
     });
     return { thresholds };
+  }
+
+  /**
+   * WHO A SERVED PATTERN REACHES (decision 74, item 2). 'PERSON_ONLY' is the default: only the
+   * person a pattern is about reads it, with their answer box. 'PERSON_FIRST_THEN_LEAD' lets whoever
+   * runs the check-in read it after the person has had their turn. Detection, coaching for the person
+   * and the probes run the same either way. See who-reads-a-pattern.ts.
+   */
+  async getPatternReach(): Promise<{ reach: PatternReach; says: string }> {
+    const row = await this.prisma.platformSetting.findUnique({ where: { key: PATTERN_REACH_KEY } }).catch(() => null);
+    const reach = patternReachFrom(row);
+    return { reach, says: whatThePatternReachSays(reach) };
+  }
+
+  async setPatternReach(reach: unknown, adminUserId: string): Promise<{ reach: PatternReach; says: string }> {
+    if (!isAPatternReach(reach)) {
+      throw new BadRequestException(
+        'Send reach as PERSON_ONLY, so a pattern reaches only the person it is about, or as PERSON_FIRST_THEN_LEAD, so the lead reads it after the person has had their turn.',
+      );
+    }
+    await this.prisma.platformSetting.upsert({
+      where: { key: PATTERN_REACH_KEY },
+      create: { key: PATTERN_REACH_KEY, value: reach as any, updatedBy: adminUserId },
+      update: { value: reach as any, updatedBy: adminUserId },
+    });
+    /* This copy of the API serves the new reach at once; any other copy reads it within 30 seconds. */
+    setPatternReachInForce(reach);
+    return { reach, says: whatThePatternReachSays(reach) };
   }
 
   /**
@@ -926,4 +955,11 @@ export class AdminService implements OnApplicationBootstrap {
 
     return true;
   }
+}
+
+/** The setting in one plain sentence, for the admin page. */
+export function whatThePatternReachSays(reach: PatternReach): string {
+  return reach === 'PERSON_FIRST_THEN_LEAD'
+    ? 'A pattern reaches the person it is about first. The lead reads it after the person has answered, or a few days later.'
+    : 'A pattern reaches only the person it is about. Nobody else reads it, not the lead and not an admin.';
 }

@@ -36,4 +36,9 @@
  * the-board-serves-no-pattern.spec.ts checks every board while it is off (kept as a test of the `on:
  * false` path, via the `opts.on` override, now that the real constant is true).
  */
+/*
+ * WHO A SERVED PATTERN REACHES is a separate setting (decision 74, item 2): `patterns.reach`, read in
+ * who-reads-a-pattern.ts. Its default is the person only. This switch stays on either way: patterns
+ * are never switched off.
+ */
 export const PATTERNS_ARE_SERVED = true;

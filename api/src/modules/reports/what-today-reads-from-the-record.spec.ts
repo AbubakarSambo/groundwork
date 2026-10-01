@@ -1,3 +1,4 @@
+import { setPatternReachInForce as theReachForThisFile } from '../patterns/who-reads-a-pattern';
 import { Logger } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { prismaFor } from './__fixtures__/today-sales-team';
@@ -177,4 +178,29 @@ describe('week 16 / decision 57 item 3: the pattern nudge in Today', () => {
     const ids = ((r.forTheLead as any[]) ?? []).map((x) => x.id);
     expect(ids).not.toContain('pattern-talk-pd-brian-b3');
   });
+
+  /* Decision 74, item 2: with the person-only reach, the lead is never nudged about Brian's pattern,
+     although Brian answered it, because the lead never reads it. */
+  describe('with the person-only reach', () => {
+    beforeAll(() => theReachForThisFile('PERSON_ONLY'));
+    afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+
+    it('the lead’s Today has no nudge, no heading and none of Brian’s words', async () => {
+      const r = await withPattern(PATTERN_ROW).report;
+      const ids = ((r.forTheLead as any[]) ?? []).map((x) => x.id);
+      expect(ids).not.toContain('pattern-talk-pd-brian-b3');
+      const all = JSON.stringify(r);
+      expect(all).not.toContain('Others describe doing work they described as theirs');
+      expect(all).not.toContain('I ran the call, Miriam built the numbers.');
+    });
+  });
 });
+
+/*
+ * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
+ * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
+ * puts that reach in force for the whole file. Its last block puts the person-only reach in force
+ * and reads the same surfaces again, so both settings are checked here.
+ */
+beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+afterAll(() => theReachForThisFile('PERSON_ONLY'));
