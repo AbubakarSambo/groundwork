@@ -40,7 +40,13 @@ const LISTS: { key: keyof TheDirectionOnThePage; title: string }[] = [
   { key: 'nextTwelveMonths', title: 'Their own next twelve months' },
 ]
 
-const label = { fontSize: 10.5, textTransform: 'uppercase' as const, letterSpacing: '.3px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 4 }
+/*
+ * GROUP 3, PIECE 2: the `label` style constant (fontSize/color/marginBottom, spread by reference
+ * into four spots) moved to this one class - a listed page (ReportPage.tsx) now imports this
+ * component through `@/components/gw/where-to-focus`, and the guard refuses a banned prop passed
+ * through a style constant one import deep, same as a literal. Same values, now shared.
+ */
+const LABEL_CLASS = 'gwui-fs-13 gwui-ink-muted gwui-mb-4'
 
 export function WhereToFocus({ direction }: { direction: TheDirectionOnThePage | null | undefined }) {
   if (!direction) return null
@@ -48,35 +54,35 @@ export function WhereToFocus({ direction }: { direction: TheDirectionOnThePage |
   if (!lists.length) return null
   const outOf = direction.outOf ?? 0
   return (
-    <div style={{ marginBottom: 16, border: '1px solid var(--gw-border)', borderRadius: 8, padding: '14px 16px', background: 'var(--gw-card)' }}>
-      <div style={label}>Where to focus</div>
-      <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch', marginBottom: 12 }}>
+    <div className="gwui-rule gwui-pt-14 gwui-pb-14 gwui-pl-16 gwui-pr-16 gwui-mb-16" style={{ borderRadius: 8, background: 'var(--gw-card)' }}>
+      <div className={LABEL_CLASS} style={{ textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700 }}>Where to focus</div>
+      <div className="gwui-fs-13 gwui-ink-text gwui-mb-12" style={{ lineHeight: 1.6, maxWidth: '68ch' }}>
         {direction.saying?.trim() || `What ${outOf || 'the'} account${outOf === 1 ? '' : 's'} named, most-named first. The number is how many named it.`}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px 20px' }}>
+      <div className="gwui-gap-12-20" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
         {lists.map((l) => (
           <div key={l.key}>
-            <div style={label}>{l.title}</div>
-            <ol style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
+            <div className={LABEL_CLASS} style={{ textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700 }}>{l.title}</div>
+            <ol className="gwui-m-0 gwui-pl-0" style={{ listStyle: 'none' }}>
               {l.items.slice(0, 6).map((item, i) => (
-                <li key={`${l.key}-${i}`} style={{ display: 'flex', gap: 8, alignItems: 'baseline', fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.5 }}>
-                  <span style={{ minWidth: 22, fontWeight: 700, color: 'var(--gw-navy)', fontVariantNumeric: 'tabular-nums' }}>{item.namedBy.length}</span>
+                <li key={`${l.key}-${i}`} className="gwui-gap-8 gwui-fs-13 gwui-ink-text" style={{ display: 'flex', alignItems: 'baseline', lineHeight: 1.5 }}>
+                  <span className="gwui-ink-navy" style={{ minWidth: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{item.namedBy.length}</span>
                   <span>
                     {item.name}
-                    {item.asSaid ? <span style={{ color: 'var(--gw-sub)' }}> - "{item.asSaid}"</span> : null}
+                    {item.asSaid ? <span className="gwui-ink-sub"> - "{item.asSaid}"</span> : null}
                   </span>
                 </li>
               ))}
-              {l.items.length > 6 && <li style={{ fontSize: 12, color: 'var(--gw-sub)', paddingLeft: 30 }}>and {l.items.length - 6} more</li>}
+              {l.items.length > 6 && <li className="gwui-fs-13 gwui-ink-sub gwui-pl-30">and {l.items.length - 6} more</li>}
             </ol>
           </div>
         ))}
       </div>
       {direction.splits && direction.splits.length > 0 && (
-        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={label}>Where the room split</div>
+        <div className="gwui-rule-top gwui-mt-14 gwui-pt-12">
+          <div className={LABEL_CLASS} style={{ textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700 }}>Where the room split</div>
           {direction.splits.map((s, i) => (
-            <div key={i} style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>{s.saying}</div>
+            <div key={i} className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6, maxWidth: '68ch' }}>{s.saying}</div>
           ))}
         </div>
       )}

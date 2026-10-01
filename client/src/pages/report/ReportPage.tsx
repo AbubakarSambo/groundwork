@@ -14,7 +14,6 @@ import { useAuthStore } from '@/stores/auth'
 import { alignmentLabel, alignmentShort } from '@/lib/alignment'
 import { whyYouCannotSeeThis, whatWentWrong } from './why-you-cannot-see-this'
 import { personLabel as onePersonsLabel, participantLabel as oneParticipantsLabel, peopleLabels, atTheStart } from '@/lib/utils'
-import { Sec } from '@/components/gw/kit'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
 import { splitOutWhatWasWorkedOut } from '@/lib/which-of-this-was-worked-out'
@@ -24,6 +23,7 @@ import type { ResolutionState } from '@/api/resolution'
 import { closedByLine, openStatusLine } from '@/lib/who-closes-this'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { Page, Section, Panel, Button, Note } from '@/components/gw/ui'
 
 type ViewTab = 'shared' | 'own'
 
@@ -67,50 +67,43 @@ export function ResolutionSection({ groundId, resolutionState }: { groundId: str
    */
 
   if (!resolutionState && !data?.resolution) {
-
     return (
-
-      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', padding: '2px 0' }}>
-
-        Resolution · not set yet
-
+      <div className="gwui-fs-13 gwui-ink-sub">
+        Resolution. Not set yet.
       </div>
-
     )
-
   }
 
-
   return (
-    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px', marginBottom: 18 }}>
-      <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 10 }}>Resolution</div>
+    <Panel>
+      <div className="gwui-fs-13 gwui-ink-muted gwui-mb-10" style={{ letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700 }}>Resolution</div>
       {resolutionState && (
-        <div style={{ marginBottom: data ? 12 : 0 }}>
-          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>Agreed at the start</span>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>{resolutionState}</div>
+        <div className={data ? 'gwui-mb-12' : 'gwui-mb-0'}>
+          <span className="gwui-fs-13 gwui-ink-subd gwui-mb-2" style={{ letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Agreed at the start</span>
+          <div className="gwui-fs-14" style={{ fontWeight: 700 }}>{resolutionState}</div>
         </div>
       )}
       {data && (
         <div>
-          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 6 }}>Current status</span>
+          <span className="gwui-fs-13 gwui-ink-subd gwui-mb-6" style={{ letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Current status</span>
           {isClosed && data.resolution ? (
-            <div style={{ background: 'var(--gw-green-bg)', borderRadius: 8, padding: '10px 12px' }}>
+            <div className="gwui-pt-10 gwui-pb-10 gwui-pl-12 gwui-pr-12" style={{ background: 'var(--gw-green-bg)', borderRadius: 8 }}>
               {/* U.11: the outcome by its name, never its stored code ("Closed: KEEP"), and the
                   lead's reason, which the server serves only to whoever may read this. */}
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)' }}>
+              <div className="gwui-fs-14 gwui-ink-green" style={{ fontWeight: 700 }}>
                 {data.options.find((o) => o.value === data.resolution!.endState)?.label ?? data.resolution.endState}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', marginTop: 2 }}>{closedByLine(data)}</div>
+              <div className="gwui-fs-13 gwui-ink-green-soft gwui-mt-2">{closedByLine(data)}</div>
               {data.resolution.reason && (
-                <div style={{ fontSize: 13, color: 'var(--gw-text)', marginTop: 8, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{data.resolution.reason}</div>
+                <div className="gwui-fs-13 gwui-ink-text gwui-mt-8" style={{ lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{data.resolution.reason}</div>
               )}
             </div>
           ) : (
             <div>
-              <div style={{ fontSize: 13, marginBottom: 8 }}>{openStatusLine(data)}</div>
+              <div className="gwui-fs-13 gwui-mb-8">{openStatusLine(data)}</div>
               {/*
                 THE PER-PARTY TALLY BELONGS ONLY WHERE EVERY ANSWER IS ACTUALLY AWAITED.
-                
+
                 On a lead-decides ground it was actively misleading: a contractor sat in this list
                 marked "Not yet" against their own renewal, which reads as the org waiting on their
                 agreement for something the server closes on the lead alone. What the other parties
@@ -118,11 +111,11 @@ export function ResolutionSection({ groundId, resolutionState }: { groundId: str
                 row implying a vote they do not have.
               */}
               {!data.leadDecides && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div className="gwui-gap-6" style={{ display: 'flex', flexDirection: 'column' }}>
                   {data.confirmations.map((c) => (
-                    <div key={c.participantId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '6px 10px', background: 'var(--gw-paper-2)', borderRadius: 6 }}>
+                    <div key={c.participantId} className="gwui-fs-13 gwui-pt-6 gwui-pb-6 gwui-pl-10 gwui-pr-10" style={{ display: 'flex', justifyContent: 'space-between', background: 'var(--gw-paper-2)', borderRadius: 6 }}>
                       <span>{c.label}</span>
-                      <span style={{ color: c.confirmed ? 'var(--gw-green-t)' : 'var(--gw-muted)', fontWeight: 600 }}>{c.confirmed ? c.endState : 'Not yet'}</span>
+                      <span className={c.confirmed ? 'gwui-ink-green' : 'gwui-ink-muted'} style={{ fontWeight: 600 }}>{c.confirmed ? c.endState : 'Not yet'}</span>
                     </div>
                   ))}
                 </div>
@@ -131,7 +124,7 @@ export function ResolutionSection({ groundId, resolutionState }: { groundId: str
           )}
         </div>
       )}
-    </div>
+    </Panel>
   )
 }
 
@@ -203,23 +196,23 @@ function OutcomeFeedbackSection({ groundId, closed }: { groundId: string; closed
   const answered = !!mine
 
   return (
-    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px', marginBottom: 18 }}>
-      <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 10 }}>
+    <Panel>
+      <div className="gwui-fs-13 gwui-ink-muted gwui-mb-10" style={{ letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700 }}>
         This check-in has closed
       </div>
 
       {answered && (
-        <div style={{ fontSize: 13, marginBottom: 10 }}>
+        <div className="gwui-fs-13 gwui-mb-10">
           You said this process {mine!.feltFair ? 'felt fair' : 'did not feel fair'}.
-          {mine!.note && <span style={{ color: 'var(--gw-sub)' }}> "{mine!.note}"</span>}
-          <span style={{ color: 'var(--gw-muted)' }}> You can change that below.</span>
+          {mine!.note && <span className="gwui-ink-sub"> "{mine!.note}"</span>}
+          <span className="gwui-ink-muted"> You can change that below.</span>
         </div>
       )}
 
-      <div style={{ fontSize: 13.5, marginBottom: 8, lineHeight: 1.55 }}>
+      <div className="gwui-fs-13-5 gwui-mb-8" style={{ lineHeight: 1.55 }}>
         Did this process feel fair, and grounded in what was actually said?
       </div>
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
+      <div className="gwui-fs-13 gwui-ink-sub gwui-mb-10" style={{ lineHeight: 1.5 }}>
         Your answer is not shown to the other parties.
       </div>
 
@@ -229,27 +222,32 @@ function OutcomeFeedbackSection({ groundId, closed }: { groundId: string; closed
         maxLength={2000}
         rows={2}
         placeholder="Anything you want to add (optional)"
-        style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, padding: '8px 10px', borderRadius: 7, border: '1px solid #D6D2CA', fontFamily: 'inherit', outline: 'none', resize: 'vertical', marginBottom: 10 }}
+        className="gwui-rule gwui-fs-13 gwui-pt-8 gwui-pb-8 gwui-pl-10 gwui-pr-10 gwui-mb-10"
+        style={{ width: '100%', boxSizing: 'border-box', borderRadius: 7, fontFamily: 'inherit', outline: 'none', resize: 'vertical' }}
       />
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        {/* Equal weight, deliberately. See the note above. */}
+      <div className="gwui-gap-8" style={{ display: 'flex' }}>
+        {/* Equal weight, deliberately. See the note above. Plain buttons, not the shared Button -
+            its four kinds are all navy/white/text/red, and this pair's whole point is a green and
+            an amber of equal visual weight, neither one the page's primary action. */}
         <button
           disabled={submit.isPending}
           onClick={() => submit.mutate(true)}
-          style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', border: '1px solid #BFE3D3', borderRadius: 8, padding: '8px 16px', cursor: submit.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+          className="gwui-rule-green-soft gwui-fs-13 gwui-ink-green gwui-pt-8 gwui-pb-8 gwui-pl-16 gwui-pr-16"
+          style={{ fontWeight: 700, background: 'var(--gw-green-bg)', borderRadius: 8, cursor: submit.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
         >
           {submit.isPending && submit.variables === true ? 'Saving…' : 'It felt fair'}
         </button>
         <button
           disabled={submit.isPending}
           onClick={() => submit.mutate(false)}
-          style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid #F0DCB4', borderRadius: 8, padding: '8px 16px', cursor: submit.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+          className="gwui-rule-amber-soft gwui-fs-13 gwui-ink-amber gwui-pt-8 gwui-pb-8 gwui-pl-16 gwui-pr-16"
+          style={{ fontWeight: 700, background: 'var(--gw-amber-bg)', borderRadius: 8, cursor: submit.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
         >
           {submit.isPending && submit.variables === false ? 'Saving…' : 'It did not'}
         </button>
       </div>
-    </div>
+    </Panel>
   )
 }
 
@@ -268,11 +266,11 @@ function PatternBlock({ label, content, dark, inferences }: { label: string; con
   const pieces = splitOutWhatWasWorkedOut(content, inferences)
   const anyWorkedOut = pieces.some(p => p.workedOut)
   return (
-    <div style={{ background: dark ? 'var(--gw-green-t)' : 'var(--gw-dark)', color: '#fff', borderRadius: 8, padding: '15px 17px', marginBottom: 16 }}>
-      <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 8 }}>
+    <div className="gwui-pt-14 gwui-pb-14 gwui-pl-17 gwui-pr-17 gwui-mb-16 gwui-ink-white" style={{ background: dark ? 'var(--gw-green-t)' : 'var(--gw-dark)', borderRadius: 8 }}>
+      <div className="gwui-fs-13 gwui-ink-green gwui-mb-8" style={{ letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700 }}>
         {label}
       </div>
-      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,.93)' }}>
+      <p className="gwui-m-0 gwui-fs-14 gwui-ink-white-93" style={{ lineHeight: 1.6 }}>
         {pieces.map((piece, i) => piece.workedOut ? (
           <span
             key={i}
@@ -286,7 +284,7 @@ function PatternBlock({ label, content, dark, inferences }: { label: string; con
         ) : <span key={i}>{piece.text}</span>)}
       </p>
       {anyWorkedOut && (
-        <div style={{ marginTop: 10, fontSize: 11.5, lineHeight: 1.5, color: 'rgba(255,255,255,.72)' }}>
+        <div className="gwui-fs-13 gwui-ink-white-72 gwui-mt-10" style={{ lineHeight: 1.5 }}>
           Underlined: worked out from what people wrote, not stated by anyone. You can correct it below.
         </div>
       )}
@@ -336,22 +334,22 @@ function WhereTheRecordIsThin({ spots, nameFor }: {
   const people = Object.entries(spots).filter(([, list]) => list.length)
   if (!people.length) return null
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: '15px 17px', marginBottom: 16, background: 'var(--gw-paper)' }}>
-      <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, marginBottom: 4 }}>
+    <div className="gwui-rule gwui-pt-14 gwui-pb-14 gwui-pl-17 gwui-pr-17 gwui-mb-16" style={{ borderRadius: 8, background: 'var(--gw-paper)' }}>
+      <div className="gwui-fs-13 gwui-ink-sub gwui-mb-4" style={{ letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700 }}>
         Where this picture is thin
       </div>
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+      <div className="gwui-fs-13 gwui-ink-sub gwui-mb-10" style={{ lineHeight: 1.6 }}>
         Not a mark on anybody. It is what the record cannot yet support, and what would settle it.
       </div>
       {people.map(([participantId, list]) => (
-        <div key={participantId} style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>
+        <div key={participantId} className="gwui-mb-10">
+          <div className="gwui-fs-13 gwui-ink-text gwui-mb-4" style={{ fontWeight: 700 }}>
             In what {nameFor(participantId)} said
           </div>
           {list.map((s, i) => (
-            <div key={i} style={{ borderLeft: '3px solid var(--gw-border)', paddingLeft: 10, marginBottom: 7 }}>
-              <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{s.line}</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 2 }}>
+            <div key={i} className="gwui-rule-left gwui-pl-10 gwui-mb-7">
+              <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6 }}>{s.line}</div>
+              <div className="gwui-fs-13 gwui-ink-sub gwui-mt-2" style={{ lineHeight: 1.55 }}>
                 What would settle it: {s.wouldRaiseIt}
               </div>
             </div>
@@ -426,24 +424,25 @@ function WhatTheGroundCanTellYou({ section, note, restedOn, startedAt }: {
     },
   ]
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: '15px 17px', marginBottom: 16, background: 'var(--gw-paper)' }}>
-      <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, marginBottom: 10 }}>
+    <div className="gwui-rule gwui-pt-14 gwui-pb-14 gwui-pl-17 gwui-pr-17 gwui-mb-16" style={{ borderRadius: 8, background: 'var(--gw-paper)' }}>
+      <div className="gwui-fs-13 gwui-ink-sub gwui-mb-10" style={{ letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700 }}>
         What this check-in can tell you
       </div>
       {rows.map((r, i) => (
-        <div key={i} style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>{r.h}</div>
+        <div key={i} className="gwui-mb-12">
+          <div className="gwui-fs-13 gwui-ink-text gwui-mb-4" style={{ fontWeight: 700 }}>{r.h}</div>
           {r.items.length ? (
-            <ul style={{ margin: 0, paddingLeft: 17, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <ul className="gwui-m-0 gwui-pl-17 gwui-gap-4" style={{ display: 'flex', flexDirection: 'column' }}>
               {r.items.map((t, j) => {
                 const { text, inferred } = splitInference(t)
                 return (
-                  <li key={j} style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+                  <li key={j} className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6 }}>
                     {text}
                     {inferred && (
                       <span
                         title={inferred}
-                        style={{ marginLeft: 6, fontSize: 11, color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}
+                        className="gwui-rule gwui-fs-13 gwui-ink-sub gwui-ml-6 gwui-pt-1 gwui-pb-1 gwui-pl-5 gwui-pr-5"
+                        style={{ borderRadius: 4, whiteSpace: 'nowrap' }}
                       >
                         inferred
                       </span>
@@ -453,7 +452,7 @@ function WhatTheGroundCanTellYou({ section, note, restedOn, startedAt }: {
               })}
             </ul>
           ) : (
-            <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.6 }}>{r.empty}</div>
+            <div className="gwui-fs-13 gwui-ink-muted" style={{ lineHeight: 1.6 }}>{r.empty}</div>
           )}
         </div>
       ))}
@@ -464,33 +463,36 @@ function WhatTheGroundCanTellYou({ section, note, restedOn, startedAt }: {
         * and this block does not appear. Nothing here re-derives that rule or works around it.
         */}
       {startedAt && startedAt.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Where this stood at the start</div>
-          <ul style={{ margin: 0, paddingLeft: 17, display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <div className="gwui-mb-12">
+          <div className="gwui-fs-13 gwui-ink-text gwui-mb-4" style={{ fontWeight: 700 }}>Where this stood at the start</div>
+          <ul className="gwui-m-0 gwui-pl-17 gwui-gap-3" style={{ display: 'flex', flexDirection: 'column' }}>
             {startedAt.map((s, i) => (
-              <li key={i} style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+              <li key={i} className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6 }}>
                 {s.text}
-                {/* A line added later is a fact about later, and the distance is the finding. */}
+                {/* A line added later is a fact about later, and the distance is the finding.
+                    GROUP 3, PIECE 2: "· added at session N" was a fragment joined to the line
+                    with a middle dot (CLAUDE.md: "No pieces joined with colons, dots or arrows") -
+                    now its own short sentence. */}
                 {s.session > 1 && (
-                  <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}> · added at session {s.session}</span>
+                  <span className="gwui-fs-13 gwui-ink-muted"> Added at session {s.session}.</span>
                 )}
               </li>
             ))}
           </ul>
-          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 5 }}>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mt-5" style={{ lineHeight: 1.55 }}>
             Written at the beginning and left as it was. Read what people shared above against it.
           </div>
         </div>
       )}
       {restedOn && restedOn.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>What you said it rested on</div>
-          <ul style={{ margin: 0, paddingLeft: 17, display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <div className="gwui-mb-12">
+          <div className="gwui-fs-13 gwui-ink-text gwui-mb-4" style={{ fontWeight: 700 }}>What you said it rested on</div>
+          <ul className="gwui-m-0 gwui-pl-17 gwui-gap-3" style={{ display: 'flex', flexDirection: 'column' }}>
             {restedOn.map((c, i) => (
-              <li key={i} style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{c}</li>
+              <li key={i} className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6 }}>{c}</li>
             ))}
           </ul>
-          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 5 }}>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mt-5" style={{ lineHeight: 1.55 }}>
             These were not in their hands. Read anything unmet above against them first.
           </div>
         </div>
@@ -499,11 +501,11 @@ function WhatTheGroundCanTellYou({ section, note, restedOn, startedAt }: {
       {/* This ground's own reading of its gaps, then the standing caveat. Both ship with the
           section and they say different things. */}
       {section.note && (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6, borderTop: '1px solid var(--gw-border)', paddingTop: 9 }}>
+        <div className={`gwui-rule-top gwui-fs-13 gwui-ink-text gwui-pt-9`} style={{ lineHeight: 1.6 }}>
           {section.note}
         </div>
       )}
-      <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.6, borderTop: section.note ? 'none' : '1px solid var(--gw-border)', paddingTop: section.note ? 6 : 9 }}>
+      <div className={`${section.note ? 'gwui-rule-top-none' : 'gwui-rule-top'} gwui-fs-13 gwui-ink-sub ${section.note ? 'gwui-pt-6' : 'gwui-pt-9'}`} style={{ lineHeight: 1.6 }}>
         {note}
       </div>
     </div>
@@ -519,27 +521,24 @@ function AreaBlock({ title, observation, whyItMatters, recommendedMove, reached,
   note?: string
 }) {
   return (
-    <div style={{
-      border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 10,
-      borderLeft: `3px solid ${reached ? 'var(--gw-green-b)' : 'var(--gw-amber-b)'}`,
-    }}>
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{title}</div>
-      {note && <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{note}</div>}
+    <div className={`gwui-rule ${reached ? 'gwui-rule-left-green' : 'gwui-rule-left-amber'} gwui-pt-12 gwui-pb-12 gwui-pl-14 gwui-pr-14 gwui-mb-10`} style={{ borderRadius: 8 }}>
+      <div className="gwui-fs-14 gwui-mb-8" style={{ fontWeight: 700 }}>{title}</div>
+      {note && <div className="gwui-fs-13 gwui-ink-sub">{note}</div>}
       {observation && (
-        <div style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 7 }}>
-          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 1 }}>What we noticed</span>
+        <div className="gwui-fs-13 gwui-mb-7" style={{ lineHeight: 1.5 }}>
+          <span className="gwui-fs-13 gwui-ink-subd gwui-mb-1" style={{ letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>What we noticed</span>
           {observation}
         </div>
       )}
       {whyItMatters && (
-        <div style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 7 }}>
-          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 1 }}>Why it matters</span>
+        <div className="gwui-fs-13 gwui-mb-7" style={{ lineHeight: 1.5 }}>
+          <span className="gwui-fs-13 gwui-ink-subd gwui-mb-1" style={{ letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Why it matters</span>
           {whyItMatters}
         </div>
       )}
       {recommendedMove && (
-        <div style={{ background: 'var(--gw-green-bg)', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.5 }}>
-          <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: 0.75, display: 'block', marginBottom: 2 }}>What to do next</span>
+        <div className="gwui-fs-13 gwui-ink-green gwui-pt-8 gwui-pb-8 gwui-pl-10 gwui-pr-10" style={{ background: 'var(--gw-green-bg)', borderRadius: 8, lineHeight: 1.5 }}>
+          <span className="gwui-fs-13 gwui-ink-green gwui-mb-2" style={{ letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, opacity: 0.75, display: 'block' }}>What to do next</span>
           {recommendedMove}
         </div>
       )}
@@ -551,21 +550,21 @@ function HonestClose({ aligned, open, revisit, risk }: {
   aligned?: string; open?: string; revisit?: string; risk?: string
 }) {
   const cells = [
-    { label: 'Aligned', value: aligned, bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' },
-    { label: 'Open',    value: open,    bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' },
-    { label: 'Revisit', value: revisit, bg: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' },
-    { label: 'Risk',    value: risk,    bg: 'var(--gw-clay-bg)', color: 'var(--gw-clay)' },
+    { label: 'Aligned', value: aligned, bg: 'var(--gw-green-bg)', ink: 'gwui-ink-green' },
+    { label: 'Open',    value: open,    bg: 'var(--gw-amber-bg)', ink: 'gwui-ink-amber' },
+    { label: 'Revisit', value: revisit, bg: 'var(--gw-blue-bg)', ink: 'gwui-ink-navy' },
+    { label: 'Risk',    value: risk,    bg: 'var(--gw-clay-bg)', ink: 'gwui-ink-clay' },
   ]
   const visible = cells.filter(c => c.value)
   if (visible.length === 0) return null
   return (
     <div>
       {/* An eighth copy of the same label, written inline. Same heading, same source now. */}
-      <Sec title="An honest close" />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      <Section heading="An honest close" />
+      <div className="gwui-gap-8" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
         {cells.map(cell => cell.value ? (
-          <div key={cell.label} style={{ borderRadius: 8, padding: '10px 12px', fontSize: 12.5, lineHeight: 1.5, color: 'var(--gw-text)', background: cell.bg }}>
-            <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: 3, color: cell.color }}>{cell.label}</span>
+          <div key={cell.label} className="gwui-fs-13 gwui-ink-text gwui-pt-10 gwui-pb-10 gwui-pl-12 gwui-pr-12" style={{ borderRadius: 8, lineHeight: 1.5, background: cell.bg }}>
+            <span className={`gwui-fs-13 gwui-mb-3 ${cell.ink}`} style={{ letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>{cell.label}</span>
             {cell.value}
           </div>
         ) : null)}
@@ -576,8 +575,8 @@ function HonestClose({ aligned, open, revisit, risk }: {
 
 function Bullet({ text }: { text: string }) {
   return (
-    <div style={{ display: 'flex', gap: 9, fontSize: 13, lineHeight: 1.55, marginBottom: 7 }}>
-      <span style={{ flexShrink: 0, marginTop: '.55em', width: 5, height: 5, borderRadius: '50%', background: 'var(--gw-green-b)', display: 'inline-block' }} />
+    <div className="gwui-fs-13 gwui-gap-9 gwui-mb-7" style={{ display: 'flex', lineHeight: 1.55 }}>
+      <span className="gwui-mt-055em" style={{ flexShrink: 0, width: 5, height: 5, borderRadius: '50%', background: 'var(--gw-green-b)', display: 'inline-block' }} />
       <span>{text}</span>
     </div>
   )
@@ -596,7 +595,7 @@ function Bullet({ text }: { text: string }) {
  * hierarchy, not to churn the file. What changed is where the values come from.
  */
 function SecH({ children }: { children: React.ReactNode }) {
-  return <Sec title={String(children)} />
+  return <Section heading={String(children)} />
 }
 
 // #1b/#1c: hiddenContributors is computed server-side (reports.service.ts
@@ -650,43 +649,53 @@ function HiddenContributorsSection({
   if (contributors.length === 0) return null
 
   return (
-    <div style={{ marginTop: 16, background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '12px 14px' }}>
+    <div className="gwui-rule-blue gwui-pt-12 gwui-pb-12 gwui-pl-14 gwui-pr-14 gwui-mt-16" style={{ background: 'var(--gw-blue-bg)', borderRadius: 8 }}>
       <SecH>People who may be missing</SecH>
-      <div style={{ fontSize: 12.5, color: '#4A5568', lineHeight: 1.55, marginBottom: 10 }}>
+      <div className="gwui-fs-13 gwui-ink-sub gwui-mb-10" style={{ lineHeight: 1.55 }}>
         The record references people who are not themselves a party on this check-in.
       </div>
       {contributors.map((c, i) => {
         const key = `${i}-${c.label}`
         return (
-          <div key={key} style={{ padding: '9px 0', borderTop: i > 0 ? '1px solid var(--gw-blue-bg)' : undefined }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>{c.label}</div>
-            <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45, marginBottom: 6 }}>{c.evidence}</div>
+          <div key={key} className={`${i > 0 ? 'gwui-rule-top' : 'gwui-rule-top-none'} gwui-pt-9 gwui-pb-9`}>
+            <div className="gwui-fs-13 gwui-ink-text gwui-mb-2" style={{ fontWeight: 700 }}>{c.label}</div>
+            <div className="gwui-fs-13 gwui-ink-sub gwui-mb-6" style={{ lineHeight: 1.45 }}>{c.evidence}</div>
             {done.has(key) ? (
-              <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', fontWeight: 600 }}>{isInitiator ? '✓ Invited' : '✓ Request sent'}</div>
+              <div className="gwui-fs-13 gwui-ink-green" style={{ fontWeight: 600 }}>{isInitiator ? '✓ Invited' : '✓ Request sent'}</div>
             ) : openFor === key ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div className="gwui-gap-6" style={{ display: 'flex', flexDirection: 'column' }}>
                 <input
                   type="email" autoFocus placeholder="their@email.com"
                   value={email} onChange={e => setEmail(e.target.value)}
-                  style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--gw-blue-b)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
+                  className="gwui-rule-blue gwui-fs-13 gwui-pt-7 gwui-pb-7 gwui-pl-10 gwui-pr-10"
+                  style={{ borderRadius: 6, fontFamily: 'inherit', outline: 'none' }}
                 />
                 {!isInitiator && (
                   <input
                     type="text" placeholder="Their name (optional)"
                     value={name} onChange={e => setName(e.target.value)}
-                    style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--gw-blue-b)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }}
+                    className="gwui-rule-blue gwui-fs-13 gwui-pt-7 gwui-pb-7 gwui-pl-10 gwui-pr-10"
+                    style={{ borderRadius: 6, fontFamily: 'inherit', outline: 'none' }}
                   />
                 )}
                 {!isInitiator && (
                   <textarea
                     placeholder="Why should they be added?"
                     value={reason} onChange={e => setReason(e.target.value)}
-                    style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--gw-blue-b)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none', resize: 'vertical', minHeight: 44 }}
+                    className="gwui-rule-blue gwui-fs-13 gwui-pt-7 gwui-pb-7 gwui-pl-10 gwui-pr-10"
+                    style={{ borderRadius: 6, fontFamily: 'inherit', outline: 'none', resize: 'vertical', minHeight: 44 }}
                   />
                 )}
-                {emailError && <div className="gw-er" role="alert">{emailError}</div>}
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button
+                {emailError && <Note tone="error">{emailError}</Note>}
+                <div className="gwui-gap-6" style={{ display: 'flex' }}>
+                  {/*
+                    GROUP 3, PIECE 2: kind="secondary", not the default primary - this page is not
+                    mounted by any route today (see the comment above `ReportBody`), and where it
+                    renders in its own tests it sits beside the correction button and the "Start a
+                    new check-in" action below, none of which is more "the" primary action of a
+                    page with no single obvious one. Zero navy buttons satisfies "at most one".
+                  */}
+                  <Button kind="secondary"
                     onClick={() => {
                       /* It used to return in silence, so a typo was indistinguishable from success. */
                       if (!looksLikeAnAddress(email)) { setEmailError(NOT_AN_ADDRESS); return }
@@ -698,22 +707,18 @@ function HiddenContributorsSection({
                       }
                     }}
                     disabled={addParticipant.isPending || requestAddition.isPending}
-                    style={{ flex: 1, padding: '7px 12px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     {isInitiator ? 'Add them' : 'Send request'}
-                  </button>
-                  <button
-                    onClick={() => { setOpenFor(null); setEmail(''); setName(''); setReason('') }}
-                    style={{ padding: '7px 12px', borderRadius: 6, background: 'none', border: '1px solid var(--gw-blue-b)', color: 'var(--gw-sub)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
+                  </Button>
+                  <Button kind="secondary" onClick={() => { setOpenFor(null); setEmail(''); setName(''); setReason('') }}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
               <button
                 onClick={() => { setOpenFor(key); setEmail(''); setName(''); setReason(c.evidence) }}
-                style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                className="gwui-plain-link gwui-fs-13"
               >
                 {isInitiator ? 'Add them' : 'Request they be added'}
               </button>
@@ -876,20 +881,11 @@ export function ReportBody({
     onError: () => toast.error('Could not download that record. Please try again.'),
   })
 
-  const PAGE_STYLE: React.CSSProperties = {
-    minHeight: '100vh',
-    background: 'var(--gw-bg)',
-    color: 'var(--gw-text)',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-    lineHeight: 1.55,
-    WebkitFontSmoothing: 'antialiased',
-  }
-
   if (gl || rl) {
     return (
-      <div style={{ ...PAGE_STYLE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Loading report…</div>
-      </div>
+      <Page narrow>
+        <Note>Loading report…</Note>
+      </Page>
     )
   }
 
@@ -901,15 +897,15 @@ export function ReportBody({
      */
     const why = whyYouCannotSeeThis(whatWentWrong(groundError))
     return (
-      <div style={{ ...PAGE_STYLE, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>{why.say}</div>
-        <div style={{ display: 'flex', gap: 14 }}>
+      <Page narrow>
+        <Note>{why.say}</Note>
+        <div className="gwui-gap-14" style={{ display: 'flex' }}>
           {why.canRetry && (
-            <button onClick={() => refetchGround()} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Try again</button>
+            <button onClick={() => refetchGround()} className="gwui-plain-link gwui-fs-13">Try again</button>
           )}
-          <button onClick={() => navigate(-1)} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Go back</button>
+          <button onClick={() => navigate(-1)} className="gwui-plain-link gwui-fs-13">Go back</button>
         </div>
-      </div>
+      </Page>
     )
   }
 
@@ -924,7 +920,7 @@ export function ReportBody({
    */
   if (!report || (!(report as any).sharedPicture && !(report as any).forming)) {
     return (
-      <div style={{ ...PAGE_STYLE, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+      <Page narrow>
         {/*
           IT SAID "once at least one person has checked in" TO SOMEBODY WHO HAD.
           This is the SHARED report, which needs every party in before it can show
@@ -938,27 +934,27 @@ export function ReportBody({
           third is the one people met, pressing straight through from the end of their own
           session. Falling back to the general sentence keeps this honest where it said nothing.
         */}
-        <div style={{ fontSize: 13, color: 'var(--gw-muted)', maxWidth: 400, textAlign: 'center', lineHeight: 1.6 }}>
+        <Note>
           {whatWentWrong(reportError).message && !Array.isArray(whatWentWrong(reportError).message)
             ? whatWentWrong(reportError).message
             : 'The shared report appears once everybody has checked in. Your own record is on your check-in page in the meantime.'}
-        </div>
+        </Note>
         {waitingForItToBeWritten && (
           /* Not decoration: without it the sentence above is indistinguishable from a page that
              has given up, which is what sends somebody looking for the reload button. */
-          <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
+          <div role="status" aria-live="polite" className="gwui-fs-13 gwui-ink-muted">
             Checking again every few seconds - this page will show it the moment it is there.
           </div>
         )}
-        <button onClick={() => navigate(-1)} style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Go back</button>
-      </div>
+        <button onClick={() => navigate(-1)} className="gwui-plain-link gwui-fs-13">Go back</button>
+      </Page>
     )
   }
 
   const isForming = !report.releasedAt
 
   const staleBanner = reportIsStale ? (
-    <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: '#5A4A1A', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '9px 12px', marginBottom: 14, lineHeight: 1.5 }}>
+    <div role="status" aria-live="polite" className="gwui-rule-amber-soft gwui-fs-13 gwui-ink-amber gwui-pt-9 gwui-pb-9 gwui-pl-12 gwui-pr-12 gwui-mb-14" style={{ background: 'var(--gw-amber-bg)', borderRadius: 12, lineHeight: 1.5 }}>
       Someone has checked in since this was written, so it is being updated now. What you are reading is the previous version. It will refresh on its own.
     </div>
   ) : null
@@ -1107,18 +1103,18 @@ export function ReportBody({
   const body = (
     <>
       {restsOn && restsOn.documents.length > 0 && (
-        <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, lineHeight: 1.6 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>What this record rests on</div>
-          <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--gw-sub)' }}>
+        <div className="gwui-rule gwui-fs-13 gwui-pt-12 gwui-pb-12 gwui-pl-14 gwui-pr-14 gwui-mb-14" style={{ background: 'white', borderRadius: 8, lineHeight: 1.6 }}>
+          <div className="gwui-mb-6" style={{ fontWeight: 700 }}>What this record rests on</div>
+          <ul className="gwui-m-0 gwui-pl-18 gwui-ink-sub">
             {restsOn.documents.map(d => (
-              <li key={d.fileName} style={{ marginBottom: 3 }}>
-                <span style={{ color: 'var(--gw-text)' }}>{d.fileName}</span> - {d.whose}
+              <li key={d.fileName} className="gwui-mb-3">
+                <span className="gwui-ink-text">{d.fileName}</span> - {d.whose}
                 {d.read ? ', and it was read' : '. Nothing has read it yet'}
               </li>
             ))}
           </ul>
           {restsOn.otherPartiesHave > 0 && (
-            <div style={{ color: 'var(--gw-muted)', marginTop: 6, fontSize: 12.5 }}>
+            <div className="gwui-ink-muted gwui-mt-6 gwui-fs-13">
               {restsOn.otherPartiesHave === 1
                 ? 'One more document was attached as somebody\'s own evidence, which stays with them.'
                 : `${restsOn.otherPartiesHave} more documents were attached as people's own evidence, which stay with them.`}
@@ -1130,13 +1126,13 @@ export function ReportBody({
       {/* FORMING BANNER - the picture updates as people check in; this isn't
           the final, mutually-revealed report yet. */}
       {declined.length > 0 && (
-        <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-amber-b)', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, lineHeight: 1.65, color: 'var(--gw-text)' }}>
-          <div style={{ fontWeight: 700, marginBottom: 4 }}>
+        <div className="gwui-rule gwui-rule-left-amber gwui-fs-13 gwui-ink-text gwui-pt-12 gwui-pb-12 gwui-pl-14 gwui-pr-14 gwui-mb-14" style={{ background: 'white', borderRadius: 8, lineHeight: 1.65 }}>
+          <div className="gwui-mb-4" style={{ fontWeight: 700 }}>
             {declined.length === 1
               ? `${declined[0].label} declined to take part in this session.`
               : `${declined.map(d => d.label).join(', ')} declined to take part in this session.`}
           </div>
-          <div style={{ color: 'var(--gw-sub)' }}>
+          <div className="gwui-ink-sub">
             {/*
               The second sentence is the load-bearing one. A reader who sees a name under "declined"
               will otherwise fill the gap themselves, and the whole standing of this report is that it
@@ -1149,8 +1145,8 @@ export function ReportBody({
       )}
 
       {isForming && progress && (
-        <div role="status" aria-live="polite" style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid #F0DDB0' }}>
-          <div style={{ maxWidth: 1040, margin: '0 auto', padding: '12px 20px', fontSize: 13, color: 'var(--gw-amber-t)' }}>
+        <div role="status" aria-live="polite" className="gwui-rule-bottom" style={{ background: 'var(--gw-amber-bg)' }}>
+          <div className="gwui-report-wrap gwui-fs-13 gwui-ink-amber gwui-pt-12 gwui-pb-12 gwui-pl-20 gwui-pr-20">
             {/* The unit, named: without "for session N" this read as "3 of 5 have ever taken part". */}
             <strong>Picture forming</strong> - {progress.completed} of {progress.total} checked in for session {progress.sessionNumber}.
             {progress.requestingUserIsMissing ? ' You haven\'t checked in yet for this session - that\'s part of what\'s still missing.' : ' This updates as more people check in.'}
@@ -1172,8 +1168,8 @@ export function ReportBody({
         * the flow, closed until asked for.
         */}
       {/* LEGEND */}
-      <section style={{ background: 'white', borderBottom: '1px solid var(--gw-border)' }}>
-        <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 20px' }}>
+      <section className="gwui-rule-bottom" style={{ background: 'white' }}>
+        <div className="gwui-report-wrap gwui-pl-20 gwui-pr-20">
           <details className="gw-legend">
             <summary>How this report is put together</summary>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
@@ -1190,9 +1186,9 @@ export function ReportBody({
               { h: 'What matters most, first', p: 'Every gap names each side\'s position, the evidence behind it, and what is at stake if it holds. The most significant comes first.' },
               { h: 'Honest closes', p: 'Decisions rarely finish clean. Each report names what is aligned, what is open, what to revisit, and what risk remains.' },
             ].map((cell, i) => (
-              <div key={i} style={{ padding: '18px 22px', borderRight: i < 2 ? '1px solid var(--gw-border)' : 'none' }}>
-                <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 7 }}>{cell.h}</div>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{cell.p}</div>
+              <div key={i} className={`${i < 2 ? 'gwui-rule-right' : 'gwui-rule-right-none'} gwui-pt-18 gwui-pb-18 gwui-pl-22 gwui-pr-22`}>
+                <div className="gwui-fs-13 gwui-ink-muted gwui-mb-7" style={{ letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700 }}>{cell.h}</div>
+                <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.5 }}>{cell.p}</div>
               </div>
             ))}
           </div>
@@ -1201,17 +1197,17 @@ export function ReportBody({
       </section>
 
       {/* BODY */}
-      <div style={{ maxWidth: 1040, margin: '0 auto', padding: '34px 20px 60px' }}>
+      <div className="gwui-report-wrap gwui-pt-34 gwui-pb-60 gwui-pl-20 gwui-pr-20">
 
         {/* Session header */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-navy)' }}>
+        <div className="gwui-mb-20">
+          <div className="gwui-fs-13 gwui-ink-navy" style={{ letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700 }}>
             {ground.label}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.01em', margin: '4px 0 2px' }}>
+          <div className="gwui-fs-22 gwui-mt-4 gwui-mb-2" style={{ fontWeight: 800, letterSpacing: '-.01em' }}>
             {sessionPhrase}
           </div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{releasedDate ? `Released ${releasedDate}` : 'Still forming - not yet released'}</div>
+          <div className="gwui-fs-13 gwui-ink-sub">{releasedDate ? `Released ${releasedDate}` : 'Still forming - not yet released'}</div>
         </div>
 
         {/*
@@ -1237,11 +1233,11 @@ export function ReportBody({
 
         {/* Cards - the toggle above picks which one shows; without a solo
             report to toggle to, the shared report is the only thing here. */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
+        <div className="gwui-gap-18" style={{ display: 'grid', gridTemplateColumns: '1fr' }}>
 
           {/* SHARED / GROUND REPORT CARD */}
           {(!solo || tab === 'shared') && (
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+          <div className="gwui-rule" style={{ background: 'white', borderRadius: 12, overflow: 'hidden' }}>
             {/**
               * THE REPORT BEGINS ONCE.
               *
@@ -1254,12 +1250,12 @@ export function ReportBody({
               * screen to reach the findings does not need to be told again which check-in they opened.
               */}
             {!embedded && (
-              <div style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--gw-navy)', color: '#fff' }}>
-                <span style={{ fontSize: 13, fontWeight: 800 }}>Groundwork report</span>
-                <span style={{ fontSize: 11, opacity: 0.82 }}>for {adminHandle}</span>
+              <div className="gwui-pt-13 gwui-pb-13 gwui-pl-18 gwui-pr-18 gwui-ink-white" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--gw-navy)' }}>
+                <span className="gwui-fs-13" style={{ fontWeight: 800 }}>Groundwork report</span>
+                <span className="gwui-fs-13" style={{ opacity: 0.82 }}>for {adminHandle}</span>
               </div>
             )}
-            <div style={{ padding: '16px 18px 18px' }}>
+            <div className="gwui-pt-16 gwui-pb-18 gwui-pl-18 gwui-pr-18">
 
               {/*
                 THE PROSE MOVED TO THE END. W13-7.
@@ -1277,12 +1273,12 @@ export function ReportBody({
                   something - an empty report says nothing here rather than
                   reassuring anyone. */}
               {statusLabel && (
-                <div style={{ marginBottom: 16 }}>
+                <div className="gwui-mb-16">
                   <SecH>Where things stand</SecH>
-                  <div style={{ fontSize: 18, fontWeight: 800 }}>
+                  <div className="gwui-fs-18" style={{ fontWeight: 800 }}>
                     {oneSided ? `${agreements.length + divergences.length} areas on record` : statusLabel}
                   </div>
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
+                  <div className="gwui-fs-13 gwui-ink-sub gwui-mt-2" style={{ lineHeight: 1.5 }}>
                     {sessionPhrase}
                   </div>
                 </div>
@@ -1290,7 +1286,7 @@ export function ReportBody({
 
               {/* What's still open */}
               {divergences.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
+                <div className="gwui-mb-16">
                   <SecH>What's still open</SecH>
                   {hasAreas
                     ? areas.filter((a: any) => !a.reached).map((area: any, i: number) => (
@@ -1330,9 +1326,9 @@ export function ReportBody({
                   instructed to produce and the framing has to match or the whole
                   thing reads as an appraisal. */}
               {(isAdmin || user?.role === 'ADMIN') && Array.isArray((report as any).leadershipGaps) && (report as any).leadershipGaps.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
+                <div className="gwui-mb-16">
                   <SecH>Worth your attention as the person leading this</SecH>
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
+                  <div className="gwui-fs-13 gwui-ink-sub gwui-mb-10" style={{ lineHeight: 1.6 }}>
                     Only you see this part. It is about how the work was led, not about anyone in it, and nobody is quoted or named.
                   </div>
                   {(report as any).leadershipGaps.map((g: any, i: number) => (
@@ -1363,8 +1359,8 @@ export function ReportBody({
                         <AreaBlock key={i} title={area.title} note={area.note} reached />
                       ))
                     : agreements.map((a: string, i: number) => (
-                        <div key={i} style={{ border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', marginBottom: 10, borderLeft: '3px solid var(--gw-green-b)' }}>
-                          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{a}</div>
+                        <div key={i} className="gwui-rule gwui-rule-left-green gwui-pt-12 gwui-pb-12 gwui-pl-14 gwui-pr-14 gwui-mb-10">
+                          <div className="gwui-fs-13 gwui-ink-sub">{a}</div>
                         </div>
                       ))
                   }
@@ -1410,7 +1406,7 @@ export function ReportBody({
               <WhereToFocus direction={(report as any).theDirection} />
 
               {report.centralQuestion && (
-                <div style={{ marginBottom: 16, background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '12px 14px' }}>
+                <div className="gwui-pt-12 gwui-pb-12 gwui-pl-14 gwui-pr-14 gwui-mb-16" style={{ background: 'var(--gw-blue-bg)', borderRadius: 8 }}>
                   <WhatToSettleTogether question={report.centralQuestion} />
                 </div>
               )}
@@ -1429,17 +1425,17 @@ export function ReportBody({
                   framing - the report never recommends; the resolution step is
                   where the parties choose together. */}
               {(report as any).finalSynthesis?.closingComplete && (
-                <div style={{ marginTop: 16, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '12px 14px' }}>
+                <div className="gwui-rule-amber-soft gwui-pt-12 gwui-pb-12 gwui-pl-14 gwui-pr-14 gwui-mt-16" style={{ background: 'var(--gw-amber-bg)', borderRadius: 8 }}>
                   <SecH>This is closing</SecH>
-                  <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 8 }}>
+                  <div className="gwui-fs-13 gwui-ink-text gwui-mb-8" style={{ lineHeight: 1.6 }}>
                     Everyone has answered. The choice now in front of you, together:
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                  <div className="gwui-gap-6 gwui-mb-10" style={{ display: 'flex', flexWrap: 'wrap' }}>
                     {((report as any).finalSynthesis.endStates ?? []).map((es: any) => (
-                      <span key={es.value} style={{ fontSize: 12, fontWeight: 600, background: 'white', border: '1px solid var(--gw-amber-b-soft)', color: 'var(--gw-amber-t)', borderRadius: 20, padding: '4px 12px' }}>{es.label}</span>
+                      <span key={es.value} className="gwui-rule-amber-soft gwui-fs-13 gwui-ink-amber gwui-pt-4 gwui-pb-4 gwui-pl-12 gwui-pr-12" style={{ fontWeight: 600, background: 'white', borderRadius: 20 }}>{es.label}</span>
                     ))}
                   </div>
-                  <button onClick={() => navigate(`/grounds/${id}`)} style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-amber-t)', color: 'white', border: 'none', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <button onClick={() => navigate(`/grounds/${id}`)} className="gwui-rule-none gwui-fs-13 gwui-ink-white gwui-pt-9 gwui-pb-9 gwui-pl-16 gwui-pr-16" style={{ borderRadius: 7, background: 'var(--gw-amber-t)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Propose the end state →
                   </button>
                 </div>
@@ -1449,14 +1445,14 @@ export function ReportBody({
                   strips arcSignals for participants). A reviewer flag, not a
                   verdict. */}
               {Array.isArray((report as any).arcAdvisories) && (report as any).arcAdvisories.length > 0 && (
-                <div style={{ marginTop: 12, background: '#FBF3F3', border: '1px solid #E8C4C4', borderRadius: 8, padding: '12px 14px' }}>
+                <div className="gwui-rule gwui-pt-12 gwui-pb-12 gwui-pl-14 gwui-pr-14 gwui-mt-12" style={{ background: 'var(--gw-red-bg)', borderRadius: 8 }}>
                   <SecH>For your review - record shape</SecH>
                   {((report as any).arcAdvisories as any[]).map(a => (
-                    <div key={a.participantId} style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-red-t)' }}>{atTheStart(personLabel(a))}</div>
-                      <div style={{ fontSize: 12.5, color: '#5A2A2A', lineHeight: 1.55 }}>{a.note}</div>
+                    <div key={a.participantId} className="gwui-mb-8">
+                      <div className="gwui-fs-13 gwui-ink-red" style={{ fontWeight: 700 }}>{atTheStart(personLabel(a))}</div>
+                      <div className="gwui-fs-13 gwui-ink-red" style={{ lineHeight: 1.55 }}>{a.note}</div>
                       {(a.features ?? []).map((f: string, i: number) => (
-                        <div key={i} style={{ fontSize: 11.5, color: '#7A4B4B', lineHeight: 1.5, marginTop: 2 }}>· {f}</div>
+                        <div key={i} className="gwui-fs-13 gwui-ink-red gwui-mt-2" style={{ lineHeight: 1.5 }}>{f}</div>
                       ))}
                     </div>
                   ))}
@@ -1469,16 +1465,16 @@ export function ReportBody({
                   TEXT is shown - only who, when, and whether it happened
                   after that party had already signed off. */}
               {Array.isArray((report as any).updates) && (report as any).updates.length > 0 && (
-                <div style={{ marginTop: 12, background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px' }}>
+                <div className="gwui-rule gwui-pt-12 gwui-pb-12 gwui-pl-14 gwui-pr-14 gwui-mt-12" style={{ background: 'var(--gw-paper-2)', borderRadius: 8 }}>
                   <SecH>Updates</SecH>
                   {((report as any).updates as any[]).map((u, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '4px 0' }}>
-                      <div style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>
+                    <div key={i} className="gwui-gap-8 gwui-pt-4 gwui-pb-4" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                      <div className="gwui-fs-13 gwui-ink-text">
                         {atTheStart(personLabel(u))} updated what they said
                         {u.completedAt ? ` on ${whenItWas(u.completedAt, 'full')}` : ''}
                       </div>
                       {u.isPostSignOff && (
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 6, padding: '2px 8px', flexShrink: 0 }}>
+                        <span className="gwui-fs-13 gwui-ink-amber gwui-pt-2 gwui-pb-2 gwui-pl-8 gwui-pr-8" style={{ fontWeight: 700, background: 'var(--gw-amber-bg)', borderRadius: 6, flexShrink: 0 }}>
                           Updated after sign-off
                         </span>
                       )}
@@ -1492,27 +1488,27 @@ export function ReportBody({
 
           {/* PARTICIPANT / OWN REPORT CARD */}
           {solo && tab === 'own' && (
-            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
-              <div style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--gw-green-t)', color: '#fff' }}>
+            <div className="gwui-rule" style={{ background: 'white', borderRadius: 12, overflow: 'hidden' }}>
+              <div className="gwui-pt-13 gwui-pb-13 gwui-pl-18 gwui-pr-18 gwui-ink-white" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--gw-green-t)' }}>
                 {/* "Contributor report" was a third word for a thing the tab
                     above already calls your report and the rest of the product
                     calls a participant. One noun per thing. W8-47. */}
-                <span style={{ fontSize: 13, fontWeight: 800 }}>Your report</span>
-                <span style={{ fontSize: 11, opacity: 0.82 }}>for {partHandle}</span>
+                <span className="gwui-fs-13" style={{ fontWeight: 800 }}>Your report</span>
+                <span className="gwui-fs-13" style={{ opacity: 0.82 }}>for {partHandle}</span>
               </div>
-              <div style={{ padding: '16px 18px 18px' }}>
+              <div className="gwui-pt-16 gwui-pb-18 gwui-pl-18 gwui-pr-18">
 
                 <PatternBlock label="What your contribution reveals" content={solo.summary} dark />
 
                 {solo.whatToCarry && (
-                  <div style={{ marginBottom: 16 }}>
+                  <div className="gwui-mb-16">
                     <SecH>What to carry forward</SecH>
                     <Bullet text={solo.whatToCarry} />
                   </div>
                 )}
 
                 {divergences.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
+                  <div className="gwui-mb-16">
                     <SecH>Questions worth resolving</SecH>
                     {divergences.map((d: any, i: number) => (
                       <Bullet key={i} text={`What would alignment on ${d.topic.toLowerCase()} look like to you?`} />
@@ -1520,22 +1516,22 @@ export function ReportBody({
                   </div>
                 )}
 
-                {statusShort && <div style={{ marginBottom: 16 }}>
+                {statusShort && <div className="gwui-mb-16">
                   <SecH>Where this has got to</SecH>
-                  <div style={{ fontSize: 18, fontWeight: 800 }}>{statusShort}</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>
+                  <div className="gwui-fs-18" style={{ fontWeight: 800 }}>{statusShort}</div>
+                  <div className="gwui-fs-13 gwui-ink-sub gwui-mt-2" style={{ lineHeight: 1.5 }}>
                     {sessionPhrase}
                   </div>
                 </div>}
 
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', lineHeight: 1.55 }}>
+                <div className="gwui-rule gwui-fs-13 gwui-ink-sub gwui-pt-10 gwui-pb-10 gwui-pl-12 gwui-pr-12" style={{ background: 'var(--gw-paper-2)', borderRadius: 8, lineHeight: 1.55 }}>
                   This record is yours. It is portable and permanent. You can add this check-in to your Groundwork profile.
                   {/* The sentence above claims portability, so give them the file.
                       Completed sessions only - there is nothing settled to take
                       away from a session still in progress. */}
                   {(myStatus?.checkIns ?? []).some(c => c.completedAt) && (
-                    <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Download:</span>
+                    <div className="gwui-gap-8 gwui-mt-8" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span className="gwui-fs-13 gwui-ink-muted">Download:</span>
                       {(myStatus?.checkIns ?? [])
                         .filter(c => c.completedAt)
                         .map(c => (
@@ -1543,7 +1539,8 @@ export function ReportBody({
                             key={c.id}
                             disabled={downloadRecord.isPending && downloadRecord.variables === c.id}
                             onClick={() => downloadRecord.mutate(c.id)}
-                            style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-navy)', background: 'white', border: '1px solid #D6D2CA', borderRadius: 12, padding: '3px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                            className="gwui-rule gwui-fs-13 gwui-ink-navy gwui-pt-3 gwui-pb-3 gwui-pl-10 gwui-pr-10"
+                            style={{ background: 'white', borderRadius: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
                             title={`Download your session ${c.sessionNumber} record as a text file`}
                             aria-label={`Download your session ${c.sessionNumber} record`}
                           >
@@ -1560,11 +1557,11 @@ export function ReportBody({
 
         {/* Who is on record + how specific each account was (#33). */}
         {Array.isArray(eng.parties) && eng.parties.length > 0 && (
-          <div style={{ marginTop: 32 }}>
-            <div style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 10 }}>On record</div>
-            <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+          <div className="gwui-mt-32">
+            <div className="gwui-fs-13 gwui-ink-muted gwui-mb-10" style={{ letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 700 }}>On record</div>
+            <div className="gwui-rule" style={{ borderRadius: 12, overflow: 'hidden' }}>
               {eng.parties.map((p: any, i: number) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderBottom: i < eng.parties.length - 1 ? '1px solid var(--gw-bg)' : 'none', background: 'white' }}>
+                <div key={i} className={`gwui-gap-12 gwui-pt-10 gwui-pb-10 gwui-pl-14 gwui-pr-14 ${i < eng.parties.length - 1 ? 'gwui-rule-bottom' : 'gwui-rule-bottom-none'}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white' }}>
                   {/*
                     * A LABEL IS NOT A PERSON. The row read "the initiator" beside "Renewals owner".
                     *
@@ -1579,9 +1576,9 @@ export function ReportBody({
                     * hundred lines up - so the label is resolved here, where a name is wanted, and
                     * left alone in the payload, where it is a key.
                     */}
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{personFor(p.label)}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                    <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>
+                  <div className="gwui-fs-13 gwui-ink-text" style={{ fontWeight: 600 }}>{personFor(p.label)}</div>
+                  <div className="gwui-gap-10" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                    <span className="gwui-fs-13 gwui-ink-muted">
                       {!p.contributed
                         ? 'not yet checked in'
                         : p.recordEntries > 0
@@ -1622,9 +1619,9 @@ export function ReportBody({
 
         {/* Always-visible correction affordance (#21): the per-claim "Correct this"
             only appears when there are inferred claims, so make correction discoverable. */}
-        <div style={{ marginTop: 24, background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Something not right in this report?</div>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: myLatestCompletedSession != null ? 12 : 0 }}>
+        <div className={`gwui-rule gwui-pt-14 gwui-pb-14 gwui-pl-16 gwui-pr-16 gwui-mt-24`} style={{ background: 'var(--gw-paper-2)', borderRadius: 12 }}>
+          <div className="gwui-fs-13 gwui-ink-text gwui-mb-4" style={{ fontWeight: 700 }}>Something not right in this report?</div>
+          <div className={`gwui-fs-13 gwui-ink-sub ${myLatestCompletedSession != null ? 'gwui-mb-12' : 'gwui-mb-0'}`} style={{ lineHeight: 1.6 }}>
             {report.inferences && report.inferences.length > 0
               ? 'Inferred claims above have a "Correct this" button that opens a short follow-up to fix that specific claim. '
               : ''}
@@ -1636,14 +1633,15 @@ export function ReportBody({
             <button
               onClick={() => correctSession.mutate(myLatestCompletedSession)}
               disabled={correctSession.isPending}
-              style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: 'var(--gw-navy)', border: 'none', borderRadius: 8, padding: '9px 16px', cursor: correctSession.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+              className="gwui-rule-none gwui-fs-13 gwui-ink-white gwui-pt-9 gwui-pb-9 gwui-pl-16 gwui-pr-16"
+              style={{ fontWeight: 700, background: 'var(--gw-navy)', borderRadius: 8, cursor: correctSession.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
             >
               {correctSession.isPending ? 'Starting…' : 'Revisit my last session to correct it →'}
             </button>
           )}
         </div>
 
-        <div style={{ marginTop: 40, paddingTop: 24, borderTop: '1px solid var(--gw-border)', fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6 }}>
+        <div className="gwui-rule-top gwui-fs-13 gwui-ink-muted gwui-mt-40 gwui-pt-24" style={{ lineHeight: 1.6 }}>
           This report is permanent. Everybody in this check-in keeps their copy.
         </div>
       </div>
@@ -1654,19 +1652,20 @@ export function ReportBody({
   if (embedded) return <div>{staleBanner}{body}</div>
 
   return (
-    <div style={PAGE_STYLE}>
-      {staleBanner && <div style={{ maxWidth: 1040, margin: '0 auto', padding: '14px 20px 0' }}>{staleBanner}</div>}
+    <div className="gwui-ink-text" style={{ minHeight: '100vh', lineHeight: 1.55, WebkitFontSmoothing: 'antialiased' }}>
+      {staleBanner && <div className="gwui-report-wrap gwui-pt-14 gwui-pl-20 gwui-pr-20">{staleBanner}</div>}
       {/* HEADER */}
-      <header style={{ background: 'var(--gw-dark)', color: '#fff', padding: '40px 0 34px' }}>
-        <div style={{ maxWidth: 1040, margin: '0 auto', padding: '0 20px' }}>
+      <header className="gwui-pt-40 gwui-pb-34 gwui-ink-white" style={{ background: 'var(--gw-dark)' }}>
+        <div className="gwui-report-wrap gwui-pl-20 gwui-pr-20">
           <button
             onClick={() => navigate(backUrl)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,.55)', fontSize: 13, fontFamily: 'inherit', padding: 0, marginBottom: 22, display: 'block' }}
+            className="gwui-rule-none gwui-p-0 gwui-ink-white-55 gwui-fs-13 gwui-mb-22"
+            style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'block' }}
           >
             ← Back
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <span style={{ background: 'white', borderRadius: 4, padding: '3px 4px', display: 'inline-flex' }}><VennIcon size={24} /></span>
+          <div className="gwui-gap-8 gwui-mb-10" style={{ display: 'flex', alignItems: 'center' }}>
+            <span className="gwui-pt-3 gwui-pb-3 gwui-pl-4 gwui-pr-4" style={{ background: 'white', borderRadius: 4, display: 'inline-flex' }}><VennIcon size={24} /></span>
             {/*
               THE HEADER SAID "Shared report" WHILE YOU WERE READING YOUR OWN.
               The toggle below switches the body between two genuinely different
@@ -1675,11 +1674,11 @@ export function ReportBody({
               settings. Hafsah: "i dont know if its our shared report or my report".
               Whichever one is on screen now says so, in all three places.
             */}
-            <span style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700 }}>
+            <span className="gwui-fs-13 gwui-ink-green" style={{ letterSpacing: '.14em', textTransform: 'uppercase', fontWeight: 700 }}>
               {tab === 'own' ? 'Your report, private to you' : 'Shared report'}
             </span>
           </div>
-          <h1 style={{ fontSize: 30, lineHeight: 1.1, letterSpacing: '-.02em', margin: '0 0 12px', fontWeight: 800 }}>
+          <h1 className="gwui-fs-30 gwui-mb-12" style={{ lineHeight: 1.1, letterSpacing: '-.02em', fontWeight: 800 }}>
             {tab === 'own' ? 'What you said.' : "Where everyone agrees and where they differ."}
           </h1>
           {/*
@@ -1695,21 +1694,21 @@ export function ReportBody({
             The hero now says what the report holds: how many areas are open, how many agreed.
             The paragraph is in the card, once, where the reorder put it.
           */}
-          <p style={{ fontSize: 15, color: 'rgba(255,255,255,.72)', maxWidth: 640, margin: 0 }}>
+          <p className="gwui-fs-15 gwui-ink-white-72 gwui-m-0" style={{ maxWidth: 640 }}>
             {tab === 'own'
               ? 'Only you can see this. It is built from what you said, and nobody else reads your words.'
               : divergences.length + agreements.length > 0
                 ? `${divergences.length} ${divergences.length === 1 ? 'thing is' : 'things are'} still open. ${agreements.length} ${agreements.length === 1 ? 'is' : 'are'} agreed.`
                 : 'Everyone has checked in. This is what runs across what they said.'}
           </p>
-          <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <div className="gwui-gap-8 gwui-mt-20" style={{ display: 'flex', flexWrap: 'wrap' }}>
             {[
               ground.label,
               adminHandle,
               partParty ? partHandle : null,
               releasedDate ? `Released ${releasedDate}` : 'Still forming',
             ].filter(Boolean).map(pill => (
-              <span key={pill as string} style={{ fontSize: 12, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)', borderRadius: 20, padding: '5px 12px', color: 'rgba(255,255,255,.9)' }}>
+              <span key={pill as string} className="gwui-rule-white-16 gwui-fs-13 gwui-ink-white-90 gwui-pt-5 gwui-pb-5 gwui-pl-12 gwui-pr-12" style={{ background: 'rgba(255,255,255,.08)', borderRadius: 20 }}>
                 {pill}
               </span>
             ))}
@@ -1718,15 +1717,15 @@ export function ReportBody({
           {/* OWN / SHARED TOGGLE - always visible so it's clear these are two
               distinct reports, not one merged document. */}
           {solo && (
-            <div style={{ marginTop: 24, display: 'inline-flex', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)', borderRadius: 10, padding: 3, gap: 2 }}>
+            <div className="gwui-rule-white-16 gwui-gap-2 gwui-mt-24 gwui-pt-3 gwui-pb-3 gwui-pl-3 gwui-pr-3" style={{ display: 'inline-flex', background: 'rgba(255,255,255,.08)', borderRadius: 10 }}>
               {(['shared', 'own'] as ViewTab[]).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
+                  className={`gwui-rule-none gwui-fs-13 gwui-pt-7 gwui-pb-7 gwui-pl-16 gwui-pr-16 ${tab === t ? 'gwui-ink-dark' : 'gwui-ink-white-75'}`}
                   style={{
-                    fontSize: 13, fontWeight: 700, padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                    fontWeight: 700, borderRadius: 7, cursor: 'pointer',
                     background: tab === t ? '#fff' : 'transparent',
-                    color: tab === t ? 'var(--gw-dark)' : 'rgba(255,255,255,.75)',
                   }}
                 >
                   {t === 'shared' ? 'Shared report' : 'Your report'}

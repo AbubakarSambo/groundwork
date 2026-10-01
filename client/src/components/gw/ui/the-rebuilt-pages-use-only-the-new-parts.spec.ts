@@ -369,6 +369,7 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/auth/MagicVerifyPage.tsx',
       'pages/join/JoinPage.tsx',
       'pages/report/SessionReportPage.tsx',
+      'pages/report/ReportPage.tsx',
     ])
   })
 

@@ -51,7 +51,10 @@ describe('waits are statuses', () => {
          minute."), nested inside the same status element rather than a second live region - so
          the pin no longer requires the div's only child to be the opening sentence. */
       ['pages/chat/ChatPage.tsx', /<div role="status"[^>]*>\s*Opening your session…/],
-      ['pages/report/ReportPage.tsx', /<div role="status" aria-live="polite" style=\{\{ background: 'var\(--gw-amber-bg\)'/],
+      /* GROUP 3, PIECE 2: the inline style moved to a className (`gwui-rule-bottom`) plus a
+         `background` kept inline (not a banned prop), so `className` now sits between
+         `aria-live` and `style` - same element, same two attributes, same amber background. */
+      ['pages/report/ReportPage.tsx', /<div role="status" aria-live="polite" className="gwui-rule-bottom" style=\{\{ background: 'var\(--gw-amber-bg\)'/],
     ]
     for (const [rel, re] of pins) expect(strip(readFileSync(path.join(SRC, rel), 'utf8'))).toMatch(re)
     void BUSY; void ALLOWED_BARE

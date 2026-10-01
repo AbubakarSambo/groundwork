@@ -1,4 +1,4 @@
-import { Sec } from './kit'
+import { Section } from './ui'
 
 
 /*
@@ -42,15 +42,15 @@ export function WhatToWalkInWith({ guide }: { guide: { openingLine?: string; que
   /** A sanitiser that dropped all three leaves nothing to say, and an empty card says it badly. */
   if (!rows.length) return null
   return (
-    <div style={{ border: '1px solid var(--gw-blue-b)', background: 'var(--gw-blue-bg)', borderRadius: 8, padding: '15px 17px', marginBottom: 16 }}>
-      <Sec title="Before you talk to them" />
-      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
+    <div className="gwui-rule-blue gwui-pt-14 gwui-pb-14 gwui-pl-17 gwui-pr-17 gwui-mb-16" style={{ background: 'var(--gw-blue-bg)', borderRadius: 8 }}>
+      <Section heading="Before you talk to them" />
+      <div className="gwui-fs-13 gwui-ink-sub gwui-mb-12" style={{ lineHeight: 1.6 }}>
         Yours alone, and not part of the shared report. Nobody else is shown this.
       </div>
       {rows.map((r, i) => (
-        <div key={i} style={{ marginBottom: i === rows.length - 1 ? 0 : 11 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>{r.h}</div>
-          <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.65 }}>{r.text}</div>
+        <div key={i} className={i === rows.length - 1 ? 'gwui-mb-0' : 'gwui-mb-11'}>
+          <div className="gwui-fs-13 gwui-ink-text gwui-mb-3" style={{ fontWeight: 700 }}>{r.h}</div>
+          <div className="gwui-fs-13-5 gwui-ink-text" style={{ lineHeight: 1.65 }}>{r.text}</div>
         </div>
       ))}
     </div>

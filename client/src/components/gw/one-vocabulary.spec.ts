@@ -80,8 +80,13 @@ describe('the heading comes from the kit', () => {
   const REPORT = strip(readFileSync(join(SRC, 'pages/report/ReportPage.tsx'), 'utf8'))
 
   it('the report\'s section heading delegates rather than re-implementing', () => {
-    expect(REPORT).toMatch(/import \{ Sec \} from '@\/components\/gw\/kit'/)
-    expect(REPORT).toMatch(/return <Sec title=\{String\(children\)\} \/>/)
+    /*
+     * GROUP 3, PIECE 2: `ReportPage.tsx` joined REBUILT_PAGES, whose guard refuses any import of
+     * kit.tsx's old parts (`Sec` among them) - so `SecH` now delegates to `Section`, the same
+     * kind of heading under its newer, shared name, rather than the old one.
+     */
+    expect(REPORT).toMatch(/import \{ Page, Section, Panel, Button, Note \} from '@\/components\/gw\/ui'/)
+    expect(REPORT).toMatch(/return <Section heading=\{String\(children\)\} \/>/)
   })
 
   it('and no longer carries its own values for it', () => {

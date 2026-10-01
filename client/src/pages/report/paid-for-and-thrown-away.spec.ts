@@ -81,7 +81,13 @@ describe('the guide reaches the person it was written for', () => {
   })
 
   it('it uses the kit\'s heading rather than a tenth copy', () => {
-    expect(CODE).toMatch(/<Sec title="Before you talk to them" \/>/)
+    /*
+     * GROUP 3, PIECE 2: `Sec` (kit.tsx, the old kit) moved to `Section` (components/gw/ui), the
+     * same heading component's newer name - a rename forced by ReportPage.tsx joining
+     * REBUILT_PAGES, whose guard refuses any old kit part one import deep. Still one shared
+     * heading, not a tenth copy.
+     */
+    expect(CODE).toMatch(/<Section heading="Before you talk to them" \/>/)
   })
 })
 
