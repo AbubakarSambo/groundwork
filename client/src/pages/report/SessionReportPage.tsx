@@ -290,14 +290,14 @@ export default function SessionReportPage() {
           {/* Three things, three sentences: 404 is "no longer here", only 403 accuses, everything else offers the retry. */}
           <div className="gwui-fs-13-5 gwui-ink-text gwui-mb-5" style={{ fontWeight: 700 }}>
             {(error as any)?.response?.status === 403
-              ? 'This session is not yours to open'
+              ? 'This report is not yours to open'
               : (error as any)?.response?.status === 404
                 ? 'This session is no longer here'
                 : 'This did not load'}
           </div>
           <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.6 }}>
             {(error as any)?.response?.status === 403
-              ? 'A session report is only ever readable by the person who wrote it.'
+              ? 'Each person’s own report can only be read by that person.'
               : (error as any)?.response?.status === 404
                 ? 'The link may be out of date. Your check-ins page lists the sessions that are.'
                 : 'Nothing is wrong with the report - the request did not get through. Try again.'}

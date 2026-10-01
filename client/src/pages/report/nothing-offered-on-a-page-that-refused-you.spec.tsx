@@ -16,9 +16,16 @@ import SessionReportPage from './SessionReportPage'
  *
  * The "What now? Start a new check-in / Copy the link" block at the foot of this page sat outside
  * the `!isLoading && !isError` guard that the rest of the page uses, so a session report that
- * refused the reader (403, "This session is not yours to open") still offered them a way to start a
+ * refused the reader (403, "This report is not yours to open") still offered them a way to start a
  * new check-in and a link to copy for a report they cannot read. There is nothing this page can
  * usefully offer somebody it has just refused.
+ *
+ * WORDING UPDATED (group 3's review, request batch A, fault 4): the page used to say "This session
+ * is not yours to open", which answers nothing - nobody can be let into another person's own
+ * report, so the old toast's "whoever runs this check-in can let you in" was never true of this
+ * page. It now says "This report is not yours to open. Each person's own report can only be read by
+ * that person.", and the API call behind it (`conversationApi.sessionReport`) now carries
+ * `skipForbiddenToast` so the generic toast does not say the untrue thing on top of it.
  */
 function renderIt() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -36,9 +43,10 @@ describe('a page that refuses you offers nothing at its foot', () => {
     vi.mocked(conversationApi.sessionReport).mockRejectedValue({ response: { status: 403 } })
   })
 
-  it('says this session is not yours to open, and offers no "What now?"', async () => {
+  it('says this report is not yours to open, and offers no "What now?"', async () => {
     renderIt()
-    expect(await screen.findByText('This session is not yours to open')).toBeTruthy()
+    expect(await screen.findByText('This report is not yours to open')).toBeTruthy()
+    expect(screen.getByText('Each person’s own report can only be read by that person.')).toBeTruthy()
     expect(screen.queryByText('What now?')).toBeNull()
     expect(screen.queryByText('Start a new check-in')).toBeNull()
     expect(screen.queryByText('Copy the link')).toBeNull()
