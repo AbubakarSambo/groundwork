@@ -1040,3 +1040,25 @@ Tests: `grounds/decision-17-on-the-check-in-page.spec.ts` and `reports/decision-
 `board.objectives[*].name` is now one full sentence about a person by name, and "you" for the reader. For example, on the sales board Bisi reads "You are aiming for 120 million naira disbursed this quarter." and Ngozi reads "Bisi Adeyemi is aiming for 120 million naira disbursed this quarter." and "You are aiming for 14 approved facilities." Please show `name` as it comes. The Context page (`GET /grounds/:id`) still serves the name as stored, because that is the field the lead edits.
 
 `board.objectives[*].journey.say` is now one full sentence with numbers a person can read: "It was 0 at the start and is 11 now, and the aim is 40.", "It is 0 now, and the aim is 120 million.", "It was 0 at the start and is 254,000 now, so the aim of 180,000 has been reached.", and "Nothing has been counted for it yet." where nothing is counted. `BoardPage.tsx` (around line 1023) builds its own line from `o.count`, `o.journey.start` and `o.target`, so it prints "120000000". Please show `journey.say` there instead, or write the numbers the same way. An admin outside the check-in who may not see a number gets an empty `say`.
+
+## 1 October: each target says whether it is an aim to reach or a limit not to go over (decision 69)
+
+Each target now has a field `direction`. Its values are `"AIM"` (an aim to reach) and `"LIMIT"` (a limit not to go over). `null` means nobody has set it yet. Where it is `null`, the board reads the words of the target's name as it did before.
+
+**Where it is served.** On the board, `GET /grounds/:id/board`, every row of `objectives` carries:
+
+- `direction`: `"AIM"`, `"LIMIT"` or `null`, to everybody who may read that target.
+- `directionQuestion`: the sentence to ask the lead, only to the lead, only while `direction` is `null`, and only for a target with a number. Otherwise `null`. It reads, for example: "Is 40 something to reach, or a limit not to go over?" Please show it under the aim's own sentence, so the lead reads "Bisi is aiming for 40 approved facilities." and then the question.
+- `directionSuggested`: `"AIM"` or `"LIMIT"`, what the words of the name suggest, only to the lead and only while `direction` is `null`. Please use it to pre-select one of the two answers. It is never stored until the lead answers.
+
+The answers can be worded "Something to reach" and "A limit not to go over".
+
+**How the lead sets or changes it.** `POST /grounds/:id/board/objectives` (when making a target) and `PATCH /grounds/:id/board/objectives/:objectiveId` (later) both take `direction`: `"AIM"`, `"LIMIT"`, or `null` to put it back to not set. Leaving it out of a `PATCH` changes nothing. Both routes are the lead's alone.
+
+**From a plan.** Each waiting goal with a number, from `POST /grounds/:id/plan/proposals` and `GET /grounds/:id/plan/proposals`, now carries `whichWay` (the same question, "Is 25 something to reach, or a limit not to go over?") and `directionSuggested`. Please show `whichWay` on the card, with the two answers, and send the lead's answer as `{ "direction": "AIM" }` or `{ "direction": "LIMIT" }` in the body of `POST /grounds/:id/plan/proposals/:pid/confirm`. Without it the goal is saved with no direction set.
+
+**In the setup conversation and Ask Groundwork,** nothing changes for the screens. The say-back now states the direction of each number, and the lead's yes confirms it. A paste's list reads, for example, "- Spending this quarter: 180,000, a limit not to go over" and "- Pumps sold under the new scheme: 40, an aim to reach". Measures named one at a time read, for example, `"Pumps sold under the new scheme" is an aim of 40 to reach.`
+
+**What the board then says.** A limit the lead set reads "It was 0 at the start and is 254,000 now, which is 74,000 over the limit of 180,000." whatever the name says, and its name reads "The team is keeping spending to no more than 180,000." An aim the lead set reads "It was 0 at the start and is 254,000 now, so the aim of 180,000 has been reached." even where its name says "budget".
+
+Tests: `board/a-target-is-an-aim-or-a-limit-as-each-reader-reads-it.spec.ts` and `grounds/a-target-is-an-aim-or-a-limit-when-it-is-made.spec.ts`.
