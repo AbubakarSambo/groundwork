@@ -7106,4 +7106,12 @@ One difference for group 3's review: signed out, the product shows the sidebar w
 
 But the builders moved the old page's values into 153 new page-only classes, and the check-in conversation did the same with 88. That is the same drift your one-off decision is about, under another name. A second guard now freezes every class there is today, and a new one must be a written-up shared part. Group 3's review replaces these copies, and the reasoning is under "Decided for Hafsah to confirm".
 
+**Group 3, fifth piece: the rest of the lead's check-in page, in parts.** The first two parts are done: the Check-ins tab's five banners.
+- They now use the shared notice part, and the "Read it" and closing controls are shared buttons.
+- Dash-joined lines became sentences: "Use Remind. The most common reason a session is missed is that the email went to spam."
+- "Pending participant requests (3)" now reads "3 people have asked to join this check-in."
+- Nothing that writes was pressed, and the whole screen suite passes (3,752 tests).
+
+Next are the roster of participants, with the bounced-invitation pill, and the per-session grid. After those come the page's header and states, and the Report, chat and settings tabs.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
