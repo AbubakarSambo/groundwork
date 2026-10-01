@@ -632,16 +632,16 @@ Your request 70. Before building anything, I read what the board and the reports
 
 | Section | Calls for it | State | Where, or what is missing |
 | --- | --- | --- | --- |
-| Lead actions | 22 | Served already | `theJudgement.whatToDo` (what to do and why, the lead only), `decisions` (what needs deciding, and who decides), `toLookAt` and `eachPersonToday[].conversationPoints` (what has stayed the same, and what to talk through, the lead only). |
+| Lead actions | 22 | Built (second pass) as `leadActions`. Also served | `theJudgement.whatToDo` (what to do and why, the lead only), `decisions` (what needs deciding, and who decides), `toLookAt` and `eachPersonToday[].conversationPoints` (what has stayed the same, and what to talk through, the lead only). |
 | Risks | 18 | Not served. Built. | Nothing gathers "what could go wrong". Built from the record, in plain sentences, with the facts behind each one. |
 | Work plan | 13 | Partly served. Built. | `whoOwnsWhat` has each person's commitments with no date and no state. `overTime.commitments` has the date and the state, for the lead only. `workRecords` has it for the founder's own check-in only. Built as `workPlan` for each reader under their own wall. |
 | Deal grid | 11 | Served already | `workRecords`, the section named "Deal grid", by the check-in's kind of work (request 76): sales org, engineering release, support desk, distribution operations, trader training programme, asset loans, MarketView Q4, a government programme. Served as `none-yet` when nothing has been recorded and as `not-known` when the kind is not set. |
 | Coaching | 10 | Served already | `coaching` (`yours` and `eachPerson`), request 79 b. |
 | Themes | 9 | Served already | `whatTheRoomIsAbout` (aims, places and things, each with who named it, nothing dropped), `whatTheAnswersSay` (the network read, where enough accounts came in) and, for MarketView where next, `workRecords` "Themes". For support desk it is served as not known, because the helpdesk's own counts are not in the record. |
-| Obligations | 6 | Partly served | A law firm matter's parties are in `workRecords` "Obligations". For the others, what each person promised is `workPlan` (built here) and what each waits on is `dependencies`. What a contract's own clauses require is not in the record (the record holds what people said, not the document), so that is not served. |
+| Obligations | 6 | Built (second pass) as `obligations` | A law firm matter's parties are in `workRecords` "Obligations". For the others, what each person promised is `workPlan` (built here) and what each waits on is `dependencies`. What a contract's own clauses require is not in the record (the record holds what people said, not the document), so that is not served. |
 | Timeline | 5 | Not served. Built. | `phaseSpine` has the sessions and their dates only, and a law firm's deadlines are in `workRecords`. Nothing puts what happened in order. Built as `timeline`. |
 | Person history | 5 | Not served. Built. | Built as `personHistory`, one person's record session by session, facts only, to the lead and to the person themselves. |
-| Forecast | 5 | Not served. Nothing built. | The record holds no projected figure. `objectives[].journey` says where a number started, where it is and what was aimed for, and `eachPerson` says whether the pace is behind. Neither is a forecast, and I will not invent one. `workRecords` already serves "Forecast" as `not-known` for sales org and MarketView Q4, with the reason. |
+| Forecast | 5 | Built (second pass) as `forecast`, for Hafsah to confirm | A team's number only, the pace so far carried forward in a straight line; see below. Before that: the record holds no projected figure. `objectives[].journey` says where a number started, where it is and what was aimed for, and `eachPerson` says whether the pace is behind. Neither is a forecast, and I will not invent one. `workRecords` already serves "Forecast" as `not-known` for sales org and MarketView Q4, with the reason. |
 | Blocker check | 4 | Not served. Built. | Built as `blockerCheck`: for each open handoff, whether it names a person, whether the person said what they had tried, and whether a time was given. |
 | Evidence index | 4 | Not served. Built. | Built as `evidenceIndex`: every line on the board that a document proves or a colleague confirmed, with whose it is and the session. |
 | Busy or moving | 4 | Not served. Built. | Built as `busyOrMoving`: counts from the record, for the lead only, never a label. |
@@ -649,11 +649,11 @@ Your request 70. Before building anything, I read what the board and the reports
 | Requirements review | 3 | Served already | `overTime.gaps` (what the role was said to be, against what the record holds; the lead only), `startingState` and `objectives`. |
 | Actions and their results | 4 | Served already | `overTime.commitments` (the lead only) with the state and how it was settled. `workPlan` (built here) gives each other reader their own. |
 | The other side | 4 | Served already | `divergence.items`, `divergence.agreements`, `whoOwnsWhat` and `managerAlignment`. |
-| Who waited on whom | 4 | Served already | `dependencies` on the board, `GET /grounds/:id/links` (`dueSaid`, `dueOn`, `standing`), `GET /grounds/:id/blocker-trace`, and `overTime.dependencies` (sessions waiting, whether anybody went back). |
+| Who waited on whom | 4 | Built (second pass) as `whoWaitedOnWhom`, with dates. Also served | `dependencies` on the board, `GET /grounds/:id/links` (`dueSaid`, `dueOn`, `standing`), `GET /grounds/:id/blocker-trace`, and `overTime.dependencies` (sessions waiting, whether anybody went back). |
 | Commitments followed over time | 4 | Served already | `overTime.commitments` (said in which session, said again in which, how it ended), the lead only. |
 | Pattern history | 4 | Served already | `patterns[].sessions` and `patterns[].howOften`, under `who-reads-a-pattern.ts`, and `overTime.patterns` for the lead. |
-| Contradictions | 4 | Served already | `divergence.items` (where two people said different things). Where one person said two things across sessions, nothing is written yet. |
-| Questions for the lead | 4 | Served already | `decisions`, `coaching.eachPerson` (what to ask each person) and `eachPersonToday[].conversationPoints`, for the lead only. |
+| Contradictions | 4 | Served, and built (second pass) | `divergence.items` (where two people said different things), and `contradictions` (where one person's own record says two things about a commitment). |
+| Questions for the lead | 4 | Built (second pass) as `questionsForTheLead`. Also served | `overTime.toSettleFirst` (the lead only), `decisions`, `coaching.eachPerson` (what to ask each person) and `eachPersonToday[].conversationPoints`, for the lead only. |
 
 Built in this pass, in order of how many situations call for them: Risks, Work plan, Timeline, Person history, then Blocker check, Evidence index and Busy or moving (four each).
 
@@ -679,7 +679,7 @@ Code: `api/src/modules/board/the-switchboards-own-sections.ts` (the builders) an
 
 For the screens. Thirteen of the 22 needed no new field, and are in the table above under "Served already" with the field to map each to (`G2_SECTION_TO_BOARD_SECTION` can now point Work plan to `workPlan`, Timeline to `timeline`, Person history to `personHistory`, Risks to `risks`, Blocker check to `blockerCheck`, Evidence index to `evidenceIndex`, Busy or moving to `busyOrMoving`, Coaching to `coaching`, Lead actions to `theJudgement.whatToDo`, Deal grid, Obligations and Themes to `workRecords`, Themes also to `whatTheRoomIsAbout`, The other side and Contradictions to `divergence`, Who waited on whom to `dependencies`, Commitments followed over time and Requirements review to `overTime`, Pattern history to `patterns`, Questions for the lead to `decisions`).
 
-Left, and why. Forecast: the record holds no projected figure, so nothing is served (the work-record section still says "not known" for sales org and MarketView Q4). Where the time went: the record does not hold how anybody's time was spent, so nothing is served. Contradictions inside one person's own answers across sessions, and a contract's own clauses for Obligations: not in the record, not served. `overTime` is still served to the lead only, so the lead's Commitments followed over time, Actions and their results and Requirements review read from it; the other readers get their own commitments in `workPlan`.
+Left, and why (first pass; see the second pass below, which serves a forecast for a team's number). Forecast: the record holds no projected figure, so nothing is served (the work-record section still says "not known" for sales org and MarketView Q4). Where the time went: the record does not hold how anybody's time was spent, so nothing is served. Contradictions inside one person's own answers across sessions, and a contract's own clauses for Obligations: not in the record, not served. `overTime` is still served to the lead only, so the lead's Commitments followed over time, Actions and their results and Requirements review read from it; the other readers get their own commitments in `workPlan`.
 
 ### The rest of the switchboard's sections (request 70, second pass, 1 October)
 
@@ -758,6 +758,23 @@ What Bisi reads:
 - "What has been tried to get a date for the credit decision from Mr. Adebayo, which Ngozi Eze is waiting for?" because: "Nothing on record says anybody has chased it, so only you can find out what was done outside the check-in."
 
 Test: `questions-for-the-lead-on-the-board-as-each-reader-reads-them.spec.ts`.
+
+#### What is left after the second pass, and where each is served
+
+No new field, because the board already serves each one, and a second copy would be a second place for a wall to be forgotten:
+
+| Section | Field to draw it from |
+| --- | --- |
+| Deal grid | `workRecords`, the section named "Deal grid" (request 76). |
+| Coaching | `coaching` (`yours` and `eachPerson`). |
+| Themes | `whatTheRoomIsAbout`, `whatTheAnswersSay`, and `workRecords` "Themes" where the kind of work has one. |
+| Pattern history | `patterns[].sessions` and `patterns[].howOften`, under who-reads-a-pattern. |
+| The other side | `divergence.items` (each side's `positions`), `divergence.agreements` and `managerAlignment`. |
+| Commitments followed over time | `workPlan` for every reader (said in which session, said again in which, how it ended), and `overTime.commitments` for the lead. |
+| Actions and their results (the prototype's "Behaviour to result") | `workPlan` rows whose `state` is not `open`: what was committed to, and how it was settled (by the person's word, a document, or the colleague who received it). |
+| Requirements review | `objectives[].journey.say` (each target against what the record holds, for whoever may read the target) and `overTime.gaps` (the role as written against what the record holds, the lead only, because the role is written in the lead's own words). |
+
+Not served, because the record does not hold it. Where the time went: nothing records how anybody's time was spent, only what they said they would do, so anything here would be a guess. A contract's own clauses (for Obligations): the record holds what people said, not the document's terms.
 
 ## Week 11: the ending page's suggestion, signals and questions, and reviews that fall due from inside the product
 
