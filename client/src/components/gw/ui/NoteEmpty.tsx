@@ -22,13 +22,18 @@ export function Note({ tone, children }: { tone?: 'error'; children: React.React
 }
 
 export function Callout({ tone, role, children }: {
-  /** 'success' for a fact that just became true, e.g. "You are in." (green, `role="status"`). */
-  tone?: 'success'
+  /**
+   * 'success' for a fact that just became true, e.g. "You are in." (green, `role="status"`).
+   * 'warning' for something the person should know, not an error (amber, group 3, piece 1: a
+   * passwordless account told it has been emailed a link, a session that expired).
+   */
+  tone?: 'success' | 'warning'
   role?: React.AriaRole
   children: React.ReactNode
 }) {
+  const cls = tone === 'success' ? 'gwui-callout-success' : tone === 'warning' ? 'gwui-callout-warning' : null
   return (
-    <p className={tone === 'success' ? 'gwui-callout gwui-callout-success' : 'gwui-callout'} role={role}>
+    <p className={cls ? `gwui-callout ${cls}` : 'gwui-callout'} role={role}>
       {children}
     </p>
   )
