@@ -72,7 +72,9 @@ const READERS: Record<string, Reader> = {
  * screen. Those are marked `null`: this test does not open them separately (they are covered when
  * their parent screen is opened), and says so in the report rather than silently skipping them.
  */
-type Counterpart = { productPath: string; reader: keyof typeof READERS; hash: string; persona: string } | null;
+/* `mustShow`: for a page whose true state on this Mac's test data is short (an empty state), the
+   exact sentence it must show instead of 300 characters, so a page that did not load still fails. */
+type Counterpart = { productPath: string; reader: keyof typeof READERS; hash: string; persona: string; mustShow?: string } | null;
 const SCREENS: Record<string, Counterpart> = {
   'pages/invite/InvitePage.tsx': null, // needs an unauthenticated invite token; not opened by reader sign-in
   'pages/invite/InvitationExpired.tsx': null, // same
@@ -124,7 +126,9 @@ const SCREENS: Record<string, Counterpart> = {
   /* Group 2, piece 3 (D2-company). Both screens are drawn for the prototype's "ceo" persona
      (docs/prototype/source/data.js: "Amani, CEO", admin:true) - the closest of our own readers is
      Juma, an admin. */
-  'pages/company/CompanyPage.tsx': { productPath: '/company', reader: 'admin', hash: '#/company', persona: 'ceo' },
+  /* No organisation on this Mac has company priorities, so the page shows its true empty state;
+     adding them needs a database write, which the safety check refused (1 October). */
+  'pages/company/CompanyPage.tsx': { productPath: '/company', reader: 'admin', hash: '#/company', persona: 'ceo', mustShow: "No priorities have come in from your organisation's own systems yet." },
   'pages/company/CompanyContextPage.tsx': { productPath: '/company/context', reader: 'admin', hash: '#/company/kijani/context', persona: 'ceo' },
 };
 
@@ -251,8 +255,9 @@ test.describe('the two button rules, screen by screen', () => {
       const product = await countButtons(page);
       /* A page that did not load, or an address that does not exist, shows almost nothing and would
          pass every count. It must show the page itself: its own words inside #main. */
-      const shown = await page.evaluate(() => (document.querySelector('#main') as HTMLElement | null)?.innerText.trim().length ?? 0);
-      expect(shown, `${counterpart.productPath} shows its page (not an empty or missing one)`).toBeGreaterThan(300);
+      const mainText = await page.evaluate(() => (document.querySelector('#main') as HTMLElement | null)?.innerText.trim() ?? '');
+      if (counterpart.mustShow) expect(mainText.replace(/[’]/g, "'"), `${counterpart.productPath} shows its page`).toContain(counterpart.mustShow);
+      else expect(mainText.length, `${counterpart.productPath} shows its page (not an empty or missing one)`).toBeGreaterThan(300);
 
       const proto = await context.newPage();
       await proto.goto(PROTOTYPE_FILE);
