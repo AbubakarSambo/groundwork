@@ -306,6 +306,13 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-switch-row-title { font-size: 16px; font-weight: 700; color: var(--gw-text); }
 .gwui-switch-row-detail { font-size: 14.5px; color: var(--gw-sub); margin-top: 4px; }
 
+/* ── BUTTON ROW (group 3, piece 5): two or more Buttons side by side, left-aligned, wrapping on a
+   narrow screen - a panel's own "Add participant" beside "Dismiss", the confirm beside the cancel
+   on a step before something irreversible. No prototype class names this (the prototype writes its
+   own `style="display:flex;gap:Npx"` by hand wherever two buttons sit together); this follows the
+   same 8px gap the prototype's own hand-written rows use (e.g. s41.js's closing-session buttons). */
+.gwui-button-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
 /* ── PEOPLE PAGE LAYOUT HELPERS (search, team, and the folded tree's level line) ──────────── */
 .gwui-filters-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 /* Regular weight, not bold (a picture check found "Team", "Role" and "All teams" bold when the

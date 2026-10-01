@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { YourWork } from '@/components/gw/checkin/YourWork'
 import { Note } from '@/components/gw/ui/Note'
-import { Callout } from '@/components/gw/ui'
+import { Callout, Button, Panel, Stack } from '@/components/gw/ui'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
@@ -2140,19 +2140,20 @@ export function GroundAdminPage() {
                */
               const releasedAt = (ground as any).report?.releasedAt as string | null | undefined
               return (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 12px', marginBottom: 16, lineHeight: 1.55, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                  <span>
-                    {releasedAt
-                      ? `This report was already shared, on ${whenItWas(releasedAt, 'day')}, before everybody had checked in.`
-                      : <>The picture builds as each person answers, and you can read what it has so far.
-                          It is only released to everybody once all {ground.participants.length} are in.</>}
-                  </span>
-                  <button
-                    onClick={() => setTab('report')}
-                    style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', flexShrink: 0 }}
-                  >
-                    {releasedAt ? 'Read it' : 'Read it so far'}
-                  </button>
+                <div className="gwui-mb-16">
+                  <Callout tone="info">
+                    <span className="gwui-switch-row">
+                      <span>
+                        {releasedAt
+                          ? `This report was already shared, on ${whenItWas(releasedAt, 'day')}, before everybody had checked in.`
+                          : <>The picture builds as each person answers, and you can read what it has so far.
+                              It is only released to everybody once all {ground.participants.length} are in.</>}
+                      </span>
+                      <Button kind="quiet" size="small" onClick={() => setTab('report')}>
+                        {releasedAt ? 'Read it' : 'Read it so far'}
+                      </Button>
+                    </span>
+                  </Callout>
                 </div>
               )
             })()}
@@ -2184,38 +2185,41 @@ export function GroundAdminPage() {
             }
 
             {pendingRequests.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '8px 12px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--gw-amber-b)', flexShrink: 0, display: 'inline-block' }} />
-                  Pending participant requests ({pendingRequests.length})
+              <div className="gwui-mb-16">
+                <div className="gwui-mb-10">
+                  <Callout tone="warning" role="status">
+                    {pendingRequests.length === 1
+                      ? 'One person has asked to join this check-in.'
+                      : `${pendingRequests.length} people have asked to join this check-in.`}
+                  </Callout>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Stack gap={10}>
                   {pendingRequests.map(req => (
-                    <div key={req.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 14px' }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>
-                        {req.requestedName ? `${req.requestedName} (${req.requestedEmail})` : req.requestedEmail}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8 }}>Requested by {req.requestedByEmail}</div>
-                      <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 12 }}>{req.reason}</div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button
+                    <Panel key={req.id}>
+                      <p className="gwui-panel-text">
+                        <strong>{req.requestedName ? `${req.requestedName} (${req.requestedEmail})` : req.requestedEmail}</strong>
+                      </p>
+                      <p className="gwui-note">Requested by {req.requestedByEmail}</p>
+                      <p className="gwui-panel-text">{req.reason}</p>
+                      <div className="gwui-button-row">
+                        <Button
+                          kind="secondary"
                           onClick={() => approveRequest.mutate(req)}
                           disabled={approveRequest.isPending}
-                          style={{ flex: 1, padding: '8px 12px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: approveRequest.isPending ? 0.6 : 1 }}
                         >
                           Add participant
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          kind="quiet"
                           onClick={() => dismissRequest.mutate(req.id)}
                           disabled={dismissRequest.isPending}
-                          style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', opacity: dismissRequest.isPending ? 0.6 : 1 }}
                         >
                           Dismiss
-                        </button>
+                        </Button>
                       </div>
-                    </div>
+                    </Panel>
                   ))}
-                </div>
+                </Stack>
               </div>
             )}
 
@@ -2236,22 +2240,27 @@ export function GroundAdminPage() {
               typed rather than after the button is pressed.
             */}
             {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
-              <div style={{ marginTop: 20 }}>
+              <div className="gwui-mt-20">
                 {confirmClosing ? (
-                  <div style={{ border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 8, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Begin the closing session?</div>
-                    <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.5, marginBottom: 10 }}>
-                      Everyone's next check-in becomes their final one - same conversation, marked as closing. The final report reads the whole record, then you and the others agree the end state.
+                  <>
+                    <Callout tone="warning" title="Begin the closing session?">
+                      Everyone's next check-in becomes their final one. It is the same conversation,
+                      marked as closing. The final report reads the whole record, then you and the
+                      others agree the end state.
+                    </Callout>
+                    <div className="gwui-mt-10">
+                      <div className="gwui-button-row">
+                        <Button kind="secondary" redText onClick={() => closingSession.mutate()} disabled={closingSession.isPending}>
+                          Begin closing session
+                        </Button>
+                        <Button kind="quiet" onClick={() => setConfirmClosing(false)}>Cancel</Button>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => closingSession.mutate()} disabled={closingSession.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-amber-t)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Begin closing session</button>
-                      <button onClick={() => setConfirmClosing(false)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-amber-t)', border: 'none', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                    </div>
-                  </div>
+                  </>
                 ) : (
-                  <button onClick={() => setConfirmClosing(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-amber-t)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-amber-b-soft)', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Begin the closing session →
-                  </button>
+                  <Button kind="secondary" redText wide onClick={() => setConfirmClosing(true)}>
+                    Begin the closing session
+                  </Button>
                 )}
               </div>
             )}

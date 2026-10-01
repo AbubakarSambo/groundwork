@@ -55,6 +55,7 @@ Where a part has no rule of its own in the prototype's CSS (because the prototyp
 | **ChoiceCards** | chosen outline | `2px solid var(--ink)` equivalent (white rows) | `inset 0 0 0 2px var(--gw-text)` | same |
 | **Toggle** | size | no named prototype class for a settings toggle (the prototype's `.sharew` is the nearest: `30px x 18px` track); this part instead follows the shape of a standard switch at `48x28`, closer to iOS/Android convention than `.sharew`'s narrower one | `48px x 28px` | unchanged - flagged here as the one part with no exact prototype counterpart, nearest taken deliberately wider for a clearer on/off read, not from a miscopied number |
 | **SwitchRow** | layout | no prototype class; built to read a heading (16px/700) beside a sentence (14.5px, muted), matching the type scale used everywhere else | 16px/700 title, 14.5px muted detail | unchanged |
+| **Button row** (`gwui-button-row`, group 3, piece 5) | gap | no prototype class (the prototype hand-writes `style="display:flex;gap:Npx"` wherever two buttons sit together, e.g. s41.js's closing-session buttons); this follows the same 8px gap | n/a (new) | added: two or more `Button`s side by side, replacing a page's own one-off `style={{ display: 'flex', gap: 8 }}` rows on `GroundAdminPage.tsx`'s check-ins tab |
 | **FormFields** (`label.f`, `.input`) | label | `14.5px`/700 | `14.5px`/700 | same |
 | | field height | `48px`, radius `10px`, border `1.5px solid var(--rule2)` | same | same |
 | **Button** (`.btn`) | height / two sizes | `44px` min, `.big` `54px`, `.sm` `36px` | same | same |
