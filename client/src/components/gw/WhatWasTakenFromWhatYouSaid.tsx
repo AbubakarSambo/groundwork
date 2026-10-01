@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
+import './ui/gw-ui.css'
 
 /**
  * THE LINES TAKEN FROM WHAT YOU SAID, AS ROWS, WITH ONE PRESS TO SAY ONE IS WRONG.
@@ -71,7 +72,14 @@ export function WhatWasTakenFromWhatYouSaid({ rows, groundId, sessionNumber }: {
       <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, maxWidth: '68ch' }}>
         Not what you typed. What the product took from it, and what every count on this page is built from.{' '}
         {!disputing ? (
-          <button type="button" onClick={() => setDisputing(true)} style={{ background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>
+          /*
+           * HAFSAH'S BUTTON-COUNT REVIEW (1 October 2026): THIS ONLY OPENS THE "NOT WHAT I SAID"
+           * LINKS BESIDE EACH ROW BELOW - IT NEVER NAVIGATES AND NEVER SENDS ANYTHING ITSELF. A
+           * boxed button here read as a second real action beside the page's own "Correct it", so
+           * it is now the shared quiet-text-link style (`.gwui-plain-link`), the same look it
+           * already had, just no longer counted as a second button.
+           */
+          <button type="button" onClick={() => setDisputing(true)} className="gwui-plain-link">
             Something here is not what I said
           </button>
         ) : 'Pick the line, and it stops counting.'}
