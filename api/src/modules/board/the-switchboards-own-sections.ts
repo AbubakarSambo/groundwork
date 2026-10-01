@@ -760,9 +760,9 @@ export interface AWait {
   /** One full sentence: who waited on whom, for what, and from when to when. */
   says: string;
   /** The day it was first said, "2026-09-16", in Lagos time. */
-  since: string | null;
+  startedAt: string | null;
   /** The day it was cleared, or null while it is still open. */
-  cleared: string | null;
+  clearedAt: string | null;
   /** Whole days from the first day to the day it was cleared; null while it is open, so opening the board never moves it. */
   days: number | null;
 }
@@ -787,6 +787,6 @@ export function whoWaitedOnWhom(handoffs: AHandoff[], r: WhoIsReading): AWait[] 
         : (since
           ? `${who} ${hasHave(who)} been waiting${onWhom} for ${what} since ${saidAsDate(since)}, and it has not been cleared.`
           : `${who} ${isAre(who)} waiting${onWhom} for ${what}, and it has not been cleared.`);
-      return { id: d.id, says, since, cleared: cleared ? clearedOn : null, days: cleared ? days : null };
+      return { id: d.id, says, startedAt: since, clearedAt: cleared ? clearedOn : null, days: cleared ? days : null };
     });
 }

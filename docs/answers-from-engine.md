@@ -726,7 +726,7 @@ Test: `a-forecast-on-the-board-as-each-reader-reads-it.spec.ts`.
 
 #### Who waited on whom: `whoWaitedOnWhom`
 
-`[{ id, says, since, cleared, days }]`, oldest first. The prototype's "Dependency ledger": every wait in the record, open or cleared, with the day it was first said (`since`, "2026-09-02"), the day it was cleared (`cleared`, or null), and the whole days it took (`days`, only once cleared). Nothing counts from today, so opening the board never changes it. `dependencies` is unchanged and still has no dates.
+`[{ id, says, startedAt, clearedAt, days }]`, oldest first. The prototype's "Dependency ledger": every wait in the record, open or cleared, with the day it was first said (`startedAt`, "2026-09-02"), the day it was cleared (`clearedAt`, or null), and the whole days it took (`days`, only once cleared). Nothing counts from today, so opening the board never changes it. `dependencies` is unchanged and still has no dates.
 
 Who reads it. The same as every other wait on the board: whoever runs the check-in, the admin who set it up, and an admin on an ordinary check-in read every wait; a participant where people do not see each other, and the person reviewed on an evaluation check-in, read only the waits they are in; a wait the lead raised that names somebody stays the lead's.
 

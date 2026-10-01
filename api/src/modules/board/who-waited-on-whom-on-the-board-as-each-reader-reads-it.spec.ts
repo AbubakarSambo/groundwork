@@ -25,8 +25,8 @@ describe('Who waited on whom, as each person reads it', () => {
       'Ngozi Eze has been waiting on Mr. Adebayo for a date for the credit decision since 16 September, and it has not been cleared.',
       'Kwame Mensah has been waiting on you for the approval of five applications since 16 September, and it has not been cleared.',
     ]);
-    expect(b.whoWaitedOnWhom[0]).toMatchObject({ since: '2026-09-02', cleared: '2026-09-16', days: 14 });
-    expect(b.whoWaitedOnWhom[1]).toMatchObject({ since: '2026-09-16', cleared: null, days: null });
+    expect(b.whoWaitedOnWhom[0]).toMatchObject({ startedAt: '2026-09-02', clearedAt: '2026-09-16', days: 14 });
+    expect(b.whoWaitedOnWhom[1]).toMatchObject({ startedAt: '2026-09-16', clearedAt: null, days: null });
   });
 
   it('Ngozi reads her own waits as "You"', async () => {
