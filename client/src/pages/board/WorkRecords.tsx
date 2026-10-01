@@ -95,7 +95,10 @@ const ITEM_KINDS_FOR_HOLDS: Record<string, { value: string; label: string }[]> =
  */
 const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
   'sales org': 'Every sale, and what shows it',
-  'engineering release': 'Every release and task, and what shows it',
+  /* Phase 2 of the board task, 1 October: the prototype's own eng example
+     (docs/prototype/screens/G1-example-check-ins/eng.txt) heads this table "Every task, and
+     what shows it" - the same words every other kind uses, not "Every release and task". */
+  'engineering release': 'Every task, and what shows it',
   'support desk': 'Every ticket, and what shows it',
   'distribution operations': 'Every incident, and what shows it',
   'trader training programme': 'Every trader group, and what shows it',
