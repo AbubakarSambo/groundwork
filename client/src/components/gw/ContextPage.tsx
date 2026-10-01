@@ -4,7 +4,7 @@ import { groundsApi } from '@/api/grounds'
 import { documentsApi } from '@/api/documents'
 import { toast } from 'sonner'
 import { personLabel, peopleLabels, firstNameOrLabel, atTheStart } from '@/lib/utils'
-import { Sec } from '@/components/gw/kit'
+import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices } from '@/components/gw/ui'
 import { scrollToId } from '@/lib/scroll-to'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import { EachPerson } from '@/components/gw/EachPerson'
@@ -322,21 +322,16 @@ export function ContextPage({
     (a: any, b: any) => (a.participantId ? 1 : 0) - (b.participantId ? 1 : 0),
   )
 
-  /**
-   * THE NUMBER EACH BAND GETS, COUNTED AS THE PAGE IS DRAWN.
-   *
-   * Numbering them by hand went wrong twice in one day: first the numbers started at the third band,
-   * then a band that only renders when it has content ("Only you see this") left a gap between 3 and
-   * 5. A fixed number on a conditional section is a promise the page cannot keep, and a reader who
-   * sees 3 then 5 reasonably concludes something failed to load.
-   *
-   * Called in render order, once per band that actually renders, so the sequence is always what a
-   * person can see. It is a counter rather than a computed list because the conditions are spread
-   * through the JSX and a list would be a second copy of them.
+  /*
+   * THE BANDS ARE NOT NUMBERED (group 3, piece 5, last piece). They used to be, by a counter
+   * incremented once per band actually drawn - a fix for numbers that went wrong when a band only
+   * renders with content. But the prototype's own Context screen
+   * (docs/prototype/screens/B2-context/context.txt and company-context.txt) never numbers a
+   * heading anywhere, on this page or any other, and `docs/prototype/source/app.css` has no rule
+   * for a numbered heading either. A count the prototype does not show is not this page's to add
+   * back; `Section`'s heading and note, unnumbered, are what every other rebuilt page already
+   * uses. See docs/the-parts-against-the-prototype.md.
    */
-  let bandsSoFar = 0
-  const band = () => ++bandsSoFar
-
 
   /**
    * The lead's own answer to "What is this about? What needs to be true at the end?", typed at
@@ -422,10 +417,10 @@ export function ContextPage({
                   her own ground and waited for the first report. Nothing here writes a report; check-ins do,
                   and hers was still "Not started" on the Sessions tab. Said once, under the conversation. */}
               {contextEnabled && isTheLead && (
-                <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                <Note>
                   This conversation sets the context. It is not your check-in: the report is written from check-ins, and yours is on the{' '}
-                  <a href={`/grounds/${id}?tab=chat`} style={{ color: 'var(--gw-navy)' }}>Check-in tab</a>.
-                </div>
+                  <a href={`/grounds/${id}?tab=chat`} className="gwui-plain-link">Check-in tab</a>.
+                </Note>
               )}
             </div>
 
@@ -452,44 +447,45 @@ export function ContextPage({
               setup, in your own words") is now a full sentence under the brief itself, and the
               targets, which it also had to account for, are their own band since U.7.
             */}
-            <Sec n={band()} title="What this check-in is for" />
+            <Section heading="What this check-in is for" />
             {whatEveryoneReads && (
-              <div data-gw-brief style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: objectives.length > 0 ? 8 : 6, maxWidth: 620 }}>
-                <div style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{'\u201C'}{whatEveryoneReads}{'\u201D'}</div>
+              <Panel>
+                <p data-gw-brief className="gwui-panel-text">{'“'}{whatEveryoneReads}{'”'}</p>
                 {/*
                   WHOSE WORDS, SAID TO WHOEVER IS READING. The prototype's sentence for the lead; the
                   lead's name for everybody else, never "the lead" to the lead's own face (item D on
                   the Context fix list, 23 September 2026).
                 */}
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-                  <span data-gw-brief-whose style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+                <div className="gwui-sentence-row gwui-mt-8">
+                  <span data-gw-brief-whose className="gwui-fs-13 gwui-ink-sub">
                     {whoseWords ? `${whoseWords} ` : ''}This is what everyone in this check-in reads before they answer.
                   </span>
                   {isLead && briefDraft === null && (
-                    <button
+                    <Button
+                      kind="quiet"
+                      size="small"
                       onClick={() => setBriefDraft(theBriefIsSetups ? whatEveryoneReads : (theBrief || whatEveryoneReads))}
-                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Rewrite
-                    </button>
+                    </Button>
                   )}
                 </div>
                 {/* Her own words from setup, to her alone, while the brief is still setup's. */}
                 {isTheLead && herSetupWords && !changedBy && (
-                  <details data-gw-brief-fold style={{ marginTop: 8 }}>
-                    <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>What you wrote</summary>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{herSetupWords}</div>
+                  <details data-gw-brief-fold className="gwui-mt-8">
+                    <summary className="gwui-inline-fold-summary gwui-fs-13 gwui-ink-navy">What you wrote</summary>
+                    <p className="gwui-panel-text-muted gwui-mt-6">{herSetupWords}</p>
                   </details>
                 )}
                 {/* The stored brief, where what everyone reads is Groundwork's short read of it, and
                     only when somebody wrote it: never the text setup put together (see above). */}
                 {isLead && theBrief && !shownIsTheBrief && !theBriefIsSetups && (
-                  <details data-gw-brief-fold style={{ marginTop: 8 }}>
-                    <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>{theBriefFoldTitle}</summary>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{theBrief}</div>
+                  <details data-gw-brief-fold className="gwui-mt-8">
+                    <summary className="gwui-inline-fold-summary gwui-fs-13 gwui-ink-navy">{theBriefFoldTitle}</summary>
+                    <p className="gwui-panel-text-muted gwui-mt-6">{theBrief}</p>
                   </details>
                 )}
-              </div>
+              </Panel>
             )}
             {/*
               AN EMPTY BRIEF SAYS WHAT A BRIEF IS, rather than nothing at all.
@@ -501,26 +497,24 @@ export function ContextPage({
               on. See the comment in entry.service.ts on `const brief`.
             */}
             {!whatEveryoneReads && briefDraft === null && (
-              <div style={{ background: 'white', border: '1px dashed var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: 6, maxWidth: 620 }}>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              <Panel className="gwui-rule-dashed">
+                <p className="gwui-panel-text-muted">
                   Nobody has said what this check-in is for yet. Whoever runs it can write a few
                   lines about what it is for and what they want from it. Everyone in this check-in
                   reads it before they answer.
-                </div>
+                </p>
                 {isLead && (
-                  <button
-                    onClick={() => setBriefDraft('')}
-                    style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                  >
-                    Write the brief
-                  </button>
+                  <div className="gwui-mt-8">
+                    <Button kind="quiet" size="small" onClick={() => setBriefDraft('')}>
+                      Write the brief
+                    </Button>
+                  </div>
                 )}
-              </div>
+              </Panel>
             )}
             {isLead && briefDraft !== null && (
-              <div style={{ background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '11px 13px', marginBottom: 6, maxWidth: 620 }}>
-                <textarea
-                  className="gw-ta"
+              <Panel className="gwui-rule-blue">
+                <TextArea
                   autoFocus
                   value={briefDraft}
                   onChange={(e) => setBriefDraft(e.target.value)}
@@ -528,25 +522,22 @@ export function ContextPage({
                   maxLength={4000}
                   placeholder="What this check-in is for, and what you want from it, in your own words."
                 />
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
-                  <button
+                <div className="gwui-button-row gwui-mt-8">
+                  <Button
+                    size="small"
                     onClick={() => saveBrief.mutate(briefDraft)}
                     disabled={saveBrief.isPending || briefDraft === theBrief}
-                    style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: briefDraft === theBrief ? 0.4 : 1 }}
                   >
                     {saveBrief.isPending ? 'Saving…' : 'Save'}
-                  </button>
-                  <button
-                    onClick={() => setBriefDraft(null)}
-                    style={{ padding: '8px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12.5, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
+                  </Button>
+                  <Button kind="secondary" size="small" onClick={() => setBriefDraft(null)}>
                     Cancel
-                  </button>
+                  </Button>
                   {theBrief && briefDraft.trim() === '' && (
-                    <span style={{ fontSize: 11.5, color: 'var(--gw-amber-t)' }}>Saving it empty removes the brief.</span>
+                    <Note>Saving it empty removes the brief.</Note>
                   )}
                 </div>
-              </div>
+              </Panel>
             )}
             {/*
               TARGETS, IN THE PROTOTYPE'S TABLE (U.7): what it is, the number, whose it is, and who
@@ -561,7 +552,7 @@ export function ContextPage({
             */}
             {objectives.length > 0 ? (
               <>
-                <Sec n={band()} title="Targets" />
+                <Section heading="Targets" />
                 <TargetsBand
                   groundId={id}
                   targets={objectives}
@@ -574,9 +565,9 @@ export function ContextPage({
               </>
             ) : (
               !theBrief && (
-                <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '13px 15px', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 6, maxWidth: 620 }}>
+                <Callout>
                   Nothing yet. Say what this is counted by in the conversation below and it lands here.
-                </div>
+                </Callout>
               )
             )}
 
@@ -594,12 +585,11 @@ export function ContextPage({
               for. One heading for both made the lead's page read like a form and the participant's
               read like somebody else's list.
             */}
-            <Sec
-              n={band()}
-              /* Renamed 22 September 2026: "not sure the purpose of person by person". The band is a
-                 card per person holding everything about them, so it is named after that. */
-              title={isLead ? 'Each person' : 'Your part, and everybody else\u2019s'}
-              src={isLead ? 'Open a card to see that person\u2019s numbers, to-dos and what they said they would show.' : 'Your card is open. Open anyone else\u2019s card to see what is on it.'}
+            {/* Renamed 22 September 2026: "not sure the purpose of person by person". The band is a
+                card per person holding everything about them, so it is named after that. */}
+            <Section
+              heading={isLead ? 'Each person' : 'Your part, and everybody else\u2019s'}
+              note={isLead ? 'Open a card to see that person\u2019s numbers, to-dos and what they said they would show.' : 'Your card is open. Open anyone else\u2019s card to see what is on it.'}
             />
             {/*
               WHAT IS OUTSTANDING, IN ONE LINE, BEFORE THE LIST OF IT.
@@ -614,15 +604,7 @@ export function ContextPage({
               const all = (ground.participants ?? []).flatMap((p: any) => p.objective?.all ?? [])
               const line = whatIsOutstanding(all, new Date())
               if (!line || !isLead) return null
-              return (
-                <div style={{
-                  fontSize: 12.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)',
-                  border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8,
-                  padding: '9px 12px', marginBottom: 10, lineHeight: 1.55,
-                }}>
-                  {line}
-                </div>
-              )
+              return <Callout tone="warning">{line}</Callout>
             })()}
 
             {/*
@@ -760,11 +742,11 @@ export function ContextPage({
               document, who reads it, what the check-in read from it, and what that read is used to
               check. Nothing here is invented - a line is only drawn where the server sends it.
             */}
-            <Sec n={band()} title="Resources" src="Shared, read, and what each checks" />
+            <Section heading="Resources" note="Shared, read, and what each checks" />
             {documentsAreNotOpenToYou && (
-              <div data-gw-documents-not-open style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', marginBottom: 12, maxWidth: 620 }}>
+              <p data-gw-documents-not-open className="gwui-note">
                 Documents here are shared by the people in this check-in, so you cannot open them from here.
-              </div>
+              </p>
             )}
 
             {/*
@@ -1160,7 +1142,7 @@ export function ContextPage({
             */}
             {(isTheLead || commitments.length > 0) && (
               <>
-                <Sec n={band()} title="What people are down as doing" src="Nobody is marked as having done these. The check-ins ask about them." />
+                <Section heading="What people are down as doing" note="Nobody is marked as having done these. The check-ins ask about them." />
                 {isTheLead && contextEnabled && commitments.length === 0 && (
                   <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 14, maxWidth: 720, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
                     Nothing yet. Anything somebody says they will do in a check-in lands here on its
@@ -1226,7 +1208,7 @@ export function ContextPage({
             */}
             {(isTheLead || theBuckets.some((b) => b.lines.length > 0)) && (
               <>
-                <Sec n={band()} title="Strategy, notes and how we work" src={isTheLead ? 'What you put here guides every check-in. You can change any line in it.' : `What ${theLeadMidSentence} put here guides the check-ins. It is never quoted as something anyone found.`} />
+                <Section heading="Strategy, notes and how we work" note={isTheLead ? 'What you put here guides every check-in. You can change any line in it.' : `What ${theLeadMidSentence} put here guides the check-ins. It is never quoted as something anyone found.`} />
                 {/*
                   A PLACE TO TYPE A LINE, BESIDE THE CONVERSATION RATHER THAN INSTEAD OF IT.
 

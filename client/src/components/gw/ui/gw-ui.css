@@ -1699,3 +1699,31 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    phone the name never wraps away from its own dot and avatar while the row's actions wrap below.
    Gap 10px, the prototype's own avatar-to-name gap (app.css .person). */
 .gwui-person-head { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 220px; }
+
+/* ── CONTEXT AND RESOURCES (group 3, piece 5, last piece: B2-context). ContextPage.tsx's own
+   shapes, none of them a dedicated prototype class (the prototype draws each of these by hand) -
+   built at the same sizes the rest of this file already uses for a panel, a row and a pill. See
+   docs/the-parts-against-the-prototype.md for the full note. ────────────────────────────────── */
+/* The documents, as cards: shared ones first, "Add a document" last - the same auto-fill grid the
+   prototype's own resource cards sit in. */
+.gwui-doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+/* One line of text with its own inline meta and actions beside it - a thing somebody is down as
+   doing, a line under "Strategy, notes and how we work", the brief's "whose words" line: a label or
+   sentence, flex:1, then a short tag or button, never stacking on a mid-width screen until it must. */
+.gwui-line-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+/* A GROUP'S OWN HEADER STRIP, inside a Panel(pad=false) list - "How we work", "Notes", each with its
+   one-line sentence beside its name, set off from the page by the same fill a dropzone and an empty
+   state already use. */
+.gwui-group-head { background: var(--gw-bg); padding: 10px 16px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+/* A PILL THAT IS ALSO A CONTROL: `.gwui-tag`'s own shape (26px, round, 13.5px bold) on a `<select>`
+   or `<button>` instead of a `<span>` - who can read a document, toggled or chosen on the row
+   itself. Resets the native element's own border, font and pointer so only the tag's look shows. */
+.gwui-tag-control { border: 0; font: inherit; cursor: pointer; }
+/* A CONTROL WHILE IT IS WORKING: the upload dropzone while a file is on its way in - the prototype
+   never shows this state (nothing in it takes long enough to need one), so this is the product's
+   own addition, not a value carried over from an old page. */
+.gwui-busy { cursor: progress; opacity: .6; }
+/* A SMALL FOLD INSIDE A PANEL, NOT ITS OWN PANEL: "What you wrote", "What Groundwork took from it" -
+   a native `<details>` whose summary is a plain navy line, not `Folded`'s own boxed-and-bordered
+   shape (which is for a closed panel in a list, not a aside folded under one). */
+.gwui-inline-fold-summary { cursor: pointer; }
