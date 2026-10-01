@@ -1,8 +1,9 @@
-import { aCommitmentKey } from '../conversation/what-happened-to-what-they-said';
 import { isShut } from './a-ground-that-has-ended';
 import { whatNeedsYou, type ListedCheckIn, type Need } from './what-needs-you';
 import type { AServedPattern } from '../patterns/who-reads-a-pattern';
 import { aStepSaidToYou } from './a-step-said-to-you';
+import { asAnAction, asASentence } from './a-promise-as-an-action';
+import { sameRequest } from './a-fuller-promise-wins';
 
 /**
  * THE YOU BOARD (C2, U.12): WHAT IS YOURS, ACROSS YOUR CHECK-INS, FOR YOUR EYES ONLY.
@@ -170,10 +171,22 @@ function sessionsLine(done: number): string {
   return `You have finished ${done} sessions.`;
 }
 
+/** A bare field name ("shops"), not a phrase anybody wrote as a sentence: one lowercase word. */
+const A_BARE_WORD = /^[a-z][a-z-]*$/;
+
+/**
+ * THE GOAL FOR AN OWNED TARGET, AS A SENTENCE (fault A). `t.name` is sometimes a short label an
+ * admin typed for the target ("shops") rather than a phrase ("Sales closed"). Read as "shops. You
+ * have 0 of 4." that label has no sentence of its own, so a bare word is never put in front of a
+ * full stop: the sentence is built from the number and its unit instead ("You have 0 of 4 shops.").
+ * A real phrase is kept, only capitalised and given a stop (asASentence), as it already was.
+ */
 function goalFromTarget(t: OwnedTargetRow): string {
   const name = t.name.trim().replace(/[.\s]+$/, '');
-  if (t.target === null || t.target === undefined) return `${name}.`;
-  return `${name}. You have ${t.count ?? 0} of ${t.target}.`;
+  const hasTarget = t.target !== null && t.target !== undefined;
+  if (A_BARE_WORD.test(name) && hasTarget) return `You have ${t.count ?? 0} of ${t.target} ${name}.`;
+  if (!hasTarget) return asASentence(name);
+  return `${asASentence(name)} You have ${t.count ?? 0} of ${t.target}.`;
 }
 
 /** Four weeks, as the prototype counts them ("in the last 4 weeks", C2 you-board-daniel.txt). */
@@ -313,44 +326,48 @@ export function yourBoard(
     if (o.kind && NOT_ABOUT_ONE_PERSON.has(o.kind)) continue;
     if (o.kind && THINGS_TO_DO.has(o.kind) && o.authoredBy === 'self') continue;
     const text = (o.text ?? '').trim();
-    if (text) goals.push({ id: o.id, says: text, checkIn: labelOf.get(o.groundId)! });
+    if (text) goals.push({ id: o.id, says: asASentence(text), checkIn: labelOf.get(o.groundId)! });
   }
   for (const t of rows.ownedTargets) {
     if (!labelOf.has(t.groundId) || !(t.name ?? '').trim()) continue;
     goals.push({ id: t.id, says: goalFromTarget(t), checkIn: labelOf.get(t.groundId)! });
   }
 
-  /* What you said you would do, in your own check-ins. Dropped ones are gone, as they are elsewhere. */
+  /* What you said you would do, in your own check-ins. Dropped ones are gone, as they are elsewhere.
+     The same promise sometimes lives twice, in two different places - a GroundCommitment and a
+     self-authored PersonObjective both saying "I will plan shorter routes", one of them fuller and
+     dated - so the two sources below are merged through the one `addSaid`, never kept apart. */
   const said: (SomethingYouSaid & { t: number })[] = [];
-  const saidKey = new Map<string, number>();
   const mineCommitments: GroundCommitmentRow[] = [];
+  /* Settled beats open, and between two the same way settled (or both open) the fuller words win -
+     the dated, fuller copy of the same promise (request 96), never the shorter of the two. */
+  const saidScore = (state: SaidState, text: string) => (state === 'open' ? 0 : 1000) + text.length;
+  const addSaid = (item: SomethingYouSaid & { t: number }) => {
+    const at = said.findIndex((s) => s.checkIn === item.checkIn && sameRequest(s.text, item.text));
+    if (at !== -1) {
+      if (saidScore(item.state, item.text) > saidScore(said[at].state, said[at].text)) said[at] = item;
+      return;
+    }
+    said.push(item);
+  };
   for (const c of rows.commitments) {
     if (!isMine(c.groundId, c.participantId)) continue;
     mineCommitments.push(c);
     const state: SaidState | null =
       c.status === 'DONE' ? 'kept' : c.status === 'NOT_DONE' ? 'not_done' : c.status === 'DROPPED' ? null : 'open';
-    const text = (c.text ?? '').trim();
-    if (!state || !text) continue;
+    const rawText = (c.text ?? '').trim();
+    if (!state || !rawText) continue;
+    const checkIn = labelOf.get(c.groundId)!;
     const by = state !== 'open' && c.settledBy ? SETTLED_BY[c.settledBy] : undefined;
-    const item = { id: c.id, text, when: c.whenSaid?.trim() || null, checkIn: labelOf.get(c.groundId)!, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), t: time(c.createdAt) };
-    /* The same promise written twice ("...again" and "...again by tomorrow.") is listed once; where
-       one copy is settled, that one is shown. See aCommitmentKey. */
-    const key = `${c.groundId}\u0000${aCommitmentKey(text, c.whenSaid)}`;
-    const at = saidKey.get(key);
-    if (at !== undefined) {
-      if (said[at].state === 'open' && state !== 'open') said[at] = item;
-      continue;
-    }
-    saidKey.set(key, said.length);
-    said.push(item);
+    addSaid({ id: c.id, text: asAnAction(rawText), when: c.whenSaid?.trim() || null, checkIn, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), t: time(c.createdAt) });
   }
   for (const o of rows.objectives) {
     if (!isMine(o.groundId, o.participantId)) continue;
     if (!o.kind || !THINGS_TO_DO.has(o.kind) || o.authoredBy !== 'self') continue;
     const state: SaidState | null = (o.status ?? 'OPEN') === 'OPEN' ? 'open' : o.status === 'MET' ? 'kept' : null;
-    const text = (o.text ?? '').trim();
-    if (!state || !text) continue;
-    said.push({ id: o.id, text, when: o.dueSaid?.trim() || null, checkIn: labelOf.get(o.groundId)!, state, stateSays: STATE_SAYS[state], t: time(o.createdAt) });
+    const rawText = (o.text ?? '').trim();
+    if (!state || !rawText) continue;
+    addSaid({ id: o.id, text: asAnAction(rawText), when: o.dueSaid?.trim() || null, checkIn: labelOf.get(o.groundId)!, state, stateSays: STATE_SAYS[state], t: time(o.createdAt) });
   }
   const order: Record<SaidState, number> = { open: 0, kept: 1, not_done: 2 };
   said.sort((a, b) => order[a.state] - order[b.state] || a.t - b.t);
