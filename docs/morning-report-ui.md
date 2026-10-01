@@ -7017,4 +7017,12 @@ The local database has the new changes, and the API was rebuilt and restarted. T
 
 **Group 3 has started:** signing in and joining, first.
 
+**The merge's own fault, fixed.** Combining the engine's fix for promises shown twice with this workspace's first did it too loosely. The engine's new tests caught it merging two different promises, folding a settled promise into an open one, and losing a date. The You board now follows the engine's own rules for which promises are the same, across both places a promise is kept. Two of the engine's tests still expect the person's raw "I will…" words, where the board now shows the action, as the prototype does. That is request 98. The API is rebuilt and restarted with the fix.
+
+**Group 3, first piece: signing in and joining are rebuilt from the shared parts.**
+- Every state is kept, and every way to sign in works as before. Signing in by emailed link was proved end to end by the browser tests, 3 of 3.
+- No route, link, check or redirect was changed.
+- My own picture check found the left half of the sign-in screen painted a beige that is not the page colour (#F7F1E5), and the fields pressed too close together. Both are being fixed, and the page-colour test will now cover the signed-out pages too.
+- The prototype's "Your work email" label still waits for your decision (U.2), so it reads "Email".
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
