@@ -103,12 +103,12 @@ This branch adds or changes these scheduled jobs (all times UTC):
 | Reviews that fall due (`the-reviews-proposed.cron.ts`) | 06:30 daily | Proposes a review when one falls due; never starts one. | No |
 | Reports left behind (`reports.service.ts`) | 35 minutes past every hour | Writes a report again when more people have answered than it read. Old reports are skipped. | Yes, one report per case |
 
-**Why it matters.** On the first night, nothing is stored yet for the company picture or the role gap notes, so each runs once for every organisation that has the records it reads. The warning job may email every lead whose check-in is near its end. And if the API runs on more than one instance, every instance runs every job, so emails go twice and model calls double.
+**Why it matters.** On the first night, nothing is stored yet for the company picture or the role gap notes, so each runs once for every organisation that has the records it reads. Since decision 74 they run one organisation at a time, with a pause after each one that called the model. The warning job emails only about check-ins that reach their last week after the release; anything already there at release gets no email. Each daily, weekly and hourly job runs once even if the API runs on more than one instance.
 
 | Answer | What we would do |
 | --- | --- |
 | One instance, always on. | Nothing. Read the logs the morning after. |
-| More than one instance. | Tell us before the release. The jobs have no lock between instances, and we would add one first. |
+| More than one instance. | Nothing more is needed for the daily, weekly and hourly jobs: since decision 74 each claims its time slot in one database row before it runs, so it runs once across copies (`api/src/modules/prisma/once-across-copies.ts`). The jobs that run every 15 or 30 minutes still rely on an advisory lock, which with pooled connections can be released on a different connection; tell us, and we move them to the same claim. |
 | The instance sleeps when idle. | The jobs will be missed while it sleeps. Tell us, and we decide whether that matters. |
 
 ### 9. Memory and timeouts for reports that run many model calls side by side (week 25)
@@ -136,7 +136,7 @@ A report for a team now runs three independent model calls together, and after i
 
 ### 11. Has anybody changed a prompt in production through `/prompts`?
 
-**Why it matters.** When the API starts, it makes the active version of each of its 56 prompt keys match the words in the code. It will create and activate new versions of 23 changed keys and 4 new ones. Any version that somebody activated by hand for one of those keys would stop being used (it stays in the history).
+**Why it matters.** Since decision 74, a start never replaces a version somebody activated by hand: it adds the code's new words as an inactive version beside it. It still creates and activates new versions of the changed keys, and the 4 new ones, where the active version is one a start put there. Before this release nothing recorded who activated a version, so a version activated by hand before release, and labelled "Seeded on deploy", cannot be told apart and would be replaced.
 
 | Answer | What we would do |
 | --- | --- |
@@ -145,12 +145,12 @@ A report for a team now runs three independent model calls together, and after i
 
 ### 12. How should the one-off script for people's own words run on a hosted database?
 
-After the migrations, every existing record line and commitment is marked "not the person's exact words" until `api/journey/stamp-said-word-for-word.ts` runs. Until it does, existing reports lose their quotation marks and some quoted sentences are dropped. As written, the script refuses any database that is not on the machine it runs on.
+After the migrations, every existing record line and commitment is marked "not the person's exact words" until `api/journey/stamp-said-word-for-word.ts` runs. Until it does, existing reports lose their quotation marks and some quoted sentences are dropped. Since decision 74 the script can run on a hosted database, but only when whoever runs the release adds `--hosted-database`: on its own that is a dry run that prints what would change; with `--write` it also asks for the database's host name to be typed back, and writes nothing unless it matches. The engine work never runs it on anything but its own machine.
 
 | Answer | What we would do |
 | --- | --- |
 | Run it through a tunnel, so the hosted database looks local. | Run it once on each database right after the migrations, and check one existing report has its quotation marks back. |
-| No tunnel is possible. | We add a second, explicit way to name a hosted database to the script, reviewed by Hafsah, and it still refuses by default. |
+| No tunnel is possible. | Run it with `--hosted-database` first, read the dry run, then with `--hosted-database --write`, typing the host name back. |
 | Do not run it. | Old reports keep working, without quotation marks. New check-ins are not affected. Hafsah decides if that is acceptable. |
 
 ### 13. Which of the two histories goes first?
@@ -181,13 +181,16 @@ These come from `docs/morning-report.md`, under "Decided for Hafsah to confirm" 
 
 | Item | Why it blocks |
 | --- | --- |
-| **Patterns are switched on, and not yet steady enough.** What a person is shown after three periods is the same on a second reading about 7 times in 10, against an aim of 8 in 10. At release, every pattern already seen in three periods starts the person-first process (decision 62). | People would be shown patterns that a second reading of the same check-ins might not show. Hafsah either accepts this, or patterns are switched off in one commit before release. |
-| **Coaching is on by default where no setting row exists** (decision 57, item 6). | If production has no `coaching_live` row, coaching reaches live check-ins on release day. Hafsah should confirm that is intended. |
 | **Item 13: may the lead's setup brief be quoted into a participant's own check-in?** It is today, in three scenarios. | It is a privacy question, and the rules say a change to privacy waits for Hafsah. |
 | **Item 14: in a cohort check-in where people do not see each other, should one person's circumstances reach another?** Loans does it today. | The same. |
 | **A total can give a number away.** "Yours is 21, of 270 across ten people" gives a colleague's number away when only two people have one. | Still open in the report. It tightens a privacy rule, so it needs her yes. |
 | **The one-off script for people's own words** (Part 1, question 12). | Without it, existing reports lose their quotation marks. |
 | **Replacing `docs/decisions.md` with `docs/decisions-merged.md`.** | The engine now follows the merged file, and the protected file is out of date. Hafsah does this herself. |
+
+### Decided since (decision 74), and no longer blocking
+
+- **Patterns are never switched off.** While steadiness is under 8 in 10, a setting (`patterns.reach`, set to `PERSON_ONLY`) makes a pattern reach only the person it is about, with their answer box, never the lead or an admin. A platform admin widens it with `PATCH /admin/pattern-reach`.
+- **Coaching is on where no setting row exists.** Hafsah confirmed this is correct.
 
 ### These are decided as the more private or the safer choice, and do not block
 
