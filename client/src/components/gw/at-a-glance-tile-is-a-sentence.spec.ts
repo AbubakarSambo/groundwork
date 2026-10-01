@@ -55,6 +55,18 @@ describe('an at-a-glance tile reads as full sentences, not stacked pieces', () =
       .toBe('Nothing has moved yet. Two targets are set, and no session has closed to measure them against.')
   })
 
+  /*
+   * GROUP 3'S REVIEW, BATCH A FAULT 6: THE REGEX NEVER MATCHED WHAT THE SERVER ACTUALLY SENDS.
+   * `what-this-session-holds.ts` writes "6 targets are set, and no round has closed to measure
+   * from." - with "are" and a trailing period, neither of which the old pattern allowed - so this
+   * fell through to the raw fallback and a real screen read "no round has closed", the retired
+   * word, instead of this function's own session-worded sentence.
+   */
+  it('Movement, the exact sentence the server actually sends ("are", with a trailing period)', () => {
+    expect(tileSentence({ label: 'Movement', value: 'Nothing yet', sub: '6 targets are set, and no round has closed to measure from.' }))
+      .toBe('Nothing has moved yet. Six targets are set, and no session has closed to measure them against.')
+  })
+
   /* Board review, 30 September, item 6: "'One target is set, and no session has closed to measure
      them against' ('it' for one)." - the pronoun has to agree with a single target, not default to
      the plural "them" the way the multi-target case above reads correctly. */
@@ -76,6 +88,16 @@ describe('an at-a-glance tile reads as full sentences, not stacked pieces', () =
   it('Blockers, none named', () => {
     expect(tileSentence({ label: 'Blockers', value: 'None', sub: 'nobody named anything holding work up' }))
       .toBe('Nothing is blocking work. Nobody named anything holding work up.')
+  })
+
+  /*
+   * GROUP 3'S REVIEW, BATCH A FAULT 6: "ONE THING IS BLOCKING WORK, WORK IS HELD UP BY THE
+   * DISCOUNT DECISION.." - a bare "." was appended even when `sub` (which `blockerAsASentence` on
+   * the server already ends with a period) already had one.
+   */
+  it('Blockers, with a sentence already ending in its own period, never doubled', () => {
+    expect(tileSentence({ label: 'Blockers', value: '1', sub: 'Work is held up by the discount decision.' }))
+      .toBe('One thing is blocking work, work is held up by the discount decision.')
   })
 
   it('How much was said, a percentage documented', () => {
