@@ -28,7 +28,16 @@ import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row
  *
  * WORDING NO SCREEN SHOWS (item 28): "Onboarding" as the page heading, "Done", "Not needed",
  * "Optional", "Nobody is being set up right now." and "The board did not load."
+ *
+ * A SUBTITLE SAYING WHAT THE BOARD IS FOR (group 2's review, fault F): while the suite is off this
+ * page used to show only "Onboarding / Onboarding" and the server's off sentence, with nothing
+ * saying what the board is even for - every other board carries that line regardless of whether it
+ * loaded (TodosPage, EquipmentPage, and the rest). The sentence below is built from the same words
+ * the prototype uses for one new person (suite-onboard.txt, "This board is only about getting her
+ * set up... It is never used to judge her work."), put in general terms for anybody who might be on
+ * it.
  */
+const SUBTITLE = 'This board is only about getting new people set up: papers, equipment, training and meeting people. It is never used to judge anyone’s work.'
 export function OnboardingBoardPage() {
   const user = useAuthStore(s => s.user)
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -41,7 +50,7 @@ export function OnboardingBoardPage() {
 
   return (
     <Page>
-      <PageTitle crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Onboarding' }]} title="Onboarding" />
+      <PageTitle crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Onboarding' }]} title="Onboarding" subtitle={SUBTITLE} />
 
       {isLoading && <Note>Loading…</Note>}
       {isError && (

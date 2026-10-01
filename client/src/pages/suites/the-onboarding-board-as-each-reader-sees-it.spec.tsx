@@ -90,9 +90,13 @@ describe('Grace, an admin, reads the onboarding board', () => {
     expect(await screen.findByText('Nobody is being set up right now.')).toBeInTheDocument()
   })
 
-  it('while the suite is off, reads the server’s sentence and nothing else', async () => {
+  /* Group 2's review, fault F: while off, this page used to show only "Onboarding / Onboarding" and
+     the server's refusal, with nothing saying what the board is for - every other board carries that
+     line regardless of whether it loaded. It now reads the same here. */
+  it('while the suite is off, still reads what the board is for, above the server’s sentence', async () => {
     open(GRACE, refusal(404, 'The onboarding suite is not switched on.'))
     expect(await screen.findByRole('alert')).toHaveTextContent('The onboarding suite is not switched on.')
+    expect(screen.getByText('This board is only about getting new people set up: papers, equipment, training and meeting people. It is never used to judge anyone’s work.')).toBeInTheDocument()
     expect(screen.queryAllByRole('heading', { level: 2 })).toHaveLength(0)
   })
 })
