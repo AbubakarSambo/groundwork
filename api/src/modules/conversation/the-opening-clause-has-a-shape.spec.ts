@@ -23,7 +23,11 @@ describe('the opening clause has a shape', () => {
     expect(turns.length).toBe(4);
     /* Each one answers a line from the conversation this was written from. */
     expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).toContain('Telling them is the part that makes those real.');
-    expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).toContain('That is a real answer and it goes down as it is.');
+    /* The fourth turn used to answer "Honestly I do not know" with "That is a real answer and it goes down as it is."
+       That is a comment on the answer, which the standard forbids and which the model then copied ("That is a real
+       answer, as it stands"), so the example now shows the question alone. */
+    expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).toContain('You:  "Who would know?"');
+    expect(OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE).not.toContain('That is a real answer');
   });
 
   it('and stops the product narrating what it is doing with their words', () => {
