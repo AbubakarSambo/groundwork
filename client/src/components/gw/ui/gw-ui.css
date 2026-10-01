@@ -1168,6 +1168,10 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    screens use for an instruction rather than a fact just confirmed (gwui-callout-success) or a
    warning (gwui-callout-warning). */
 .gwui-callout-info { background: var(--gw-blue-bg); color: var(--gw-blue-t); }
+/* CALLOUT'S CONCERN TONE (group 3, piece 5, the lead's check-in page): something that needs fixing,
+   not only knowing - a bounced invite with nobody able to get in until the lead acts. Red, the same
+   tone "concern" already carries on Tag and PersonRow's help strip (both app.css's `.tag.con`). */
+.gwui-callout-concern { background: var(--gw-red-bg); color: var(--gw-red-t); }
 /* AuthNotice's own two-line shape, inside the same tinted box: a title above the sentence under
    it (signin.jpg's passwordless notice, "Check your email" over the sentence that follows). */
 .gwui-callout-title { font-weight: 700; margin: 0 0 2px; }

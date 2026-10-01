@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { YourWork } from '@/components/gw/checkin/YourWork'
 import { Note } from '@/components/gw/ui/Note'
+import { Callout } from '@/components/gw/ui'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
@@ -1746,8 +1747,12 @@ export function GroundAdminPage() {
           <div>
             {/* Who is overdue belongs with who has answered, and Remind is on the rows just below. */}
             {(ground.overdue ?? 0) > 0 && (
-              <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid #C5D9EF', borderRadius: 8, padding: '10px 12px', marginBottom: 14, lineHeight: 1.5 }}>
-                <strong>{ground.overdue} {ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.</strong> A missed session is not a lost session. Use Remind - the most common reason is the email went to spam. Their next check-in picks up where they left off.
+              <div className="gwui-mb-14">
+                <Callout tone="info" title={`${ground.overdue} ${ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.`}>
+                  A missed session is not a lost session. Use Remind. The most common reason a
+                  session is missed is that the email went to spam. Their next check-in picks up
+                  where they left off.
+                </Callout>
               </div>
             )}
 
@@ -1767,8 +1772,10 @@ export function GroundAdminPage() {
                 const bounced = ground.participants.filter((p: any) => p.inviteDeliveryStatus === 'BOUNCED')
                 if (bounced.length === 0) return null
                 return (
-                  <div style={{ background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b-soft)', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12.5, color: 'var(--gw-red-t)', lineHeight: 1.5 }}>
-                    <strong>{bounced.length === 1 ? '1 invite never arrived (bounced).' : `${bounced.length} invites never arrived (bounced).`}</strong> Fix the address below and resend - until then {bounced.length === 1 ? 'that person has' : 'those people have'} no way in.
+                  <div className="gwui-mb-10">
+                    <Callout tone="concern" title={bounced.length === 1 ? '1 invite never arrived, because it bounced.' : `${bounced.length} invites never arrived, because they bounced.`}>
+                      Fix the address below and resend it. Until then, {bounced.length === 1 ? 'that person has' : 'those people have'} no way in.
+                    </Callout>
                   </div>
                 )
               })()}
