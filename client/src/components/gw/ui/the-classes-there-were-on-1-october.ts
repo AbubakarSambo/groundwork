@@ -714,7 +714,6 @@ export const THE_CLASSES_THERE_WERE: readonly string[] = [
   'gwui-rule-left',
   'gwui-rule-left-amber',
   'gwui-rule-left-green',
-  'gwui-rule-met',
   'gwui-rule-none',
   'gwui-rule-right',
   'gwui-rule-right-none',

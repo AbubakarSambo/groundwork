@@ -199,7 +199,6 @@ export const ONE_OFF_STYLE_CLASSES_LEFT: readonly string[] = [
   'gwui-rule-left',
   'gwui-rule-left-amber',
   'gwui-rule-left-green',
-  'gwui-rule-met',
   'gwui-rule-none',
   'gwui-rule-right',
   'gwui-rule-right-none',

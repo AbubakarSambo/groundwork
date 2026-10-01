@@ -1225,7 +1225,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    `PasswordRules`/`PasswordStrength`; password.jpg, signup.jpg, reset.jpg). */
 .gwui-rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .gwui-rules li { display: flex; align-items: center; gap: 8px; font-size: 14.5px; line-height: 1.4; color: var(--gw-sub); }
-.gwui-rules li.gwui-rule-met { color: var(--gw-green-t); }
+/* The ticked state, folded into PasswordField's own rules list (group 3 drift list, piece 1); named
+   for what it belongs to rather than the generic gwui-rule-met one-off it replaces. */
+.gwui-rules li.gwui-password-rule-met { color: var(--gw-green-t); }
 .gwui-strength-bar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; margin-bottom: 8px; }
 .gwui-strength-bar span { height: 5px; border-radius: 3px; background: var(--gw-rule-2); }
 .gwui-strength-bar span.gwui-strength-on { background: var(--gw-green-t); }
