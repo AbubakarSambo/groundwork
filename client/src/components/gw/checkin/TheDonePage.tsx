@@ -71,6 +71,15 @@ function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, te
         <button
           onClick={onCorrect}
           disabled={correcting}
+          /*
+           * GROUP 3, PIECE 3: marked `.gwui-plain-link` too (the inline style above still wins
+           * for every property it sets, so nothing here looks different) - a quiet text link that
+           * only corrects the record in place, not a second button beside "Read yours". Found by
+           * the live button count once ChatPage.tsx's own completed-session state started
+           * exercising this page (e2e/the-prototype-count-of-buttons.spec.ts): without the class
+           * it read as an extra button the prototype's own card does not have.
+           */
+          className="gwui-plain-link"
           style={{ background: 'none', border: 'none', padding: 0, marginTop: 10, color: 'var(--gw-navy)', fontSize: 12.5, cursor: correcting ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
         >
           {correcting ? 'Opening…' : 'Something here isn’t right'}
