@@ -7025,4 +7025,10 @@ The local database has the new changes, and the API was rebuilt and restarted. T
 - My own picture check found the left half of the sign-in screen painted a beige that is not the page colour (#F7F1E5), and the fields pressed too close together. Both are being fixed, and the page-colour test will now cover the signed-out pages too.
 - The prototype's "Your work email" label still waits for your decision (U.2), so it reads "Email".
 
+Both faults are fixed. The sign-in screen's left half is the page colour now, and its fields have the prototype's space between them. The page-colour test now opens the signed-out pages too, and passes 4 of 4. The whole screen suite passes (3,671 tests), and the wording guard is back under its limit after the engine's latest work.
+
+**Group 3, second piece, the reports, is with a builder now.** It has the strictest rules in the brief: each person's own report stays private, a participant never reads the lead's judgement, leads never see how answers were rated, and only what the server sends is drawn.
+
+A push of mine was refused once, because I had chained it with another command. It was run again on its own, as the check's message allows.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
