@@ -24,7 +24,7 @@ vi.mock('@/api/resolution', () => ({ resolutionApi: { get: vi.fn().mockResolvedV
 vi.mock('@/api/conversation', () => ({ conversationApi: { remind: vi.fn() } }))
 vi.mock('@/api/billing', () => ({ billingApi: { status: vi.fn().mockResolvedValue(null), getContributorCodeShareCard: vi.fn() } }))
 
-function ground(over: Record<string, any> = {}) {
+function ground() {
   return {
     id: 'g1', label: 'Sales team, Q3', status: 'ACTIVE', scenario: 'SALES', timelineDays: 90, cadence: 'WEEKLY',
     daysLeft: 72, overdue: 0, initiatorId: 'u-rukia',
