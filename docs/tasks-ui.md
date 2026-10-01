@@ -92,3 +92,7 @@ Each is in `docs/answers-from-engine.md`, after the merge `a7c25b2d`. They come 
 - [ ] **Week 25:** the lead is told while the report is still being written.
 - [ ] **Week 21:** the approver is told on Today.
 - [ ] **Request 92, ready:** run the five live checks of Ask Groundwork again. If they pass, tell the engine, so it can switch the old context chat off. Then make "Context and resources" read-only.
+
+## Clean-ups found on the way
+- [ ] Fold the 173 small one-off style classes in gw-ui.css (`gwui-fs-*`, `gwui-mt-*`, `gwui-ink-*`, `gwui-rule-*` and the like) into named shared parts, page by page, with the picture check.
+- [ ] Once Hafsah decides: remove the unused `ReportBody` in `client/src/pages/report/ReportPage.tsx` and the tests that lock it.

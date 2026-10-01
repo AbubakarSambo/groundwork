@@ -7031,4 +7031,11 @@ Both faults are fixed. The sign-in screen's left half is the page colour now, an
 
 A push of mine was refused once, because I had chained it with another command. It was run again on its own, as the check's message allows.
 
+**Group 3, second piece: the reports.**
+- The session report (`/checkin/…/report`) is rebuilt from the shared parts. Rukia, the lead, reads her own private report, the team's report and "What to ask each person". Amani reads the same two cards, but the server never sends her the lead's questions. Juma, an admin who was not in that session, is refused by the server with a plain sentence.
+- The old team report page turned out to be unused: it only sends people on to the check-in's Report tab, which was rebuilt earlier. Its styling was moved over anyway, and whether to delete it is under "Decided for Hafsah to confirm".
+- I undid one change the builder made to the guard test. It had stopped catching old classes with longer names.
+- The session report shows 7 buttons against the prototype's 5. That is being fixed now, without losing any of the controls.
+- The whole screen suite passes (3,669 tests).
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
