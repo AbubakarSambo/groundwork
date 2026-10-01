@@ -7084,4 +7084,6 @@ Not yet compared with the prototype's pictures: the conversation itself, while i
 - its timeline, people and brief steps;
 - the entry chat.
 
+CreateGroundPage's situation picker, coach and billing steps are rebuilt, with every situation's wording unchanged, and the whole screen suite passes (3,657 tests). The page then turned out to be unreachable too: its address sends people on to the entry chat. So the rest of it is not being rebuilt, and whether to compare it and remove it is under "Decided for Hafsah to confirm". The entry chat, the live way to start a check-in, is now being rebuilt in four parts.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
