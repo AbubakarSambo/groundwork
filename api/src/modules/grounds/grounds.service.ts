@@ -4153,7 +4153,7 @@ export class GroundsService {
           direction: t.direction ?? null,
         })) as any,
       });
-      return { changed: 'targets', say: proposal.say };
+      return { changed: 'targets', say: confirmedSay(proposal) };
     }
 
     /*

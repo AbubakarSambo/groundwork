@@ -130,7 +130,7 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
   if (!g.runsUntilEnded && (!g.timelineDays || g.timelineDays <= 0)) {
     gaps.push({
       key: 'timeline',
-      ask: 'How long should this run? Until a date, or for a set number of weeks - either is fine, but without it we cannot work out how many check-ins this holds.',
+      ask: 'How long should this run? You can give an end date or a number of weeks. I need it to work out how many check-ins there will be.',
       suggests: null,
     });
   }
@@ -138,7 +138,7 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
   if (!g.cadence) {
     gaps.push({
       key: 'cadence',
-      ask: 'How often should people check in? Weekly, fortnightly, monthly, or once at the end.',
+      ask: 'How often should people check in? They can check in every week, every two weeks, every month, or once at the end.',
       suggests: null,
     });
   }
@@ -146,7 +146,7 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
   if (!g.successLooksLike?.trim()) {
     gaps.push({
       key: 'success',
-      ask: 'What does doing well look like here? Not a target for one person - what would make you say, at the end, that this went the way it should have.',
+      ask: 'What does doing well look like here? I do not mean a target for one person. What would make you say, at the end, that this went the way it should have?',
       suggests: 'the plan, brief or terms this work was agreed against',
     });
   }
@@ -165,7 +165,7 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
   if (g.targetCount === 0 && WORTH_COUNTING.has(g.scenario)) {
     gaps.push({
       key: 'targets',
-      ask: 'What is this counted by? Name the two or three measures - and if they are already in something you have attached, say so and I will take them from there.',
+      ask: 'How will you count whether this is going well? Name the two or three measures. If they are already in something you have attached, say so and I will take them from there.',
       suggests: 'the plan, budget or scorecard the numbers were set in',
     });
   }
@@ -173,7 +173,7 @@ export function contextGaps(g: ContextGaps): ContextGap[] {
   if (g.partyCount < 2) {
     gaps.push({
       key: 'parties',
-      ask: 'Who else is in this? One account is a record; two or more is where the report can show you what people mean differently by the same work.',
+      ask: 'Who else is in this? With one person, the report is a record of what they said. With two or more, it can show you where people understand the same work differently.',
       suggests: null,
     });
   }

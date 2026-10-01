@@ -150,6 +150,31 @@ function theMeasuresTheyNamed(heard: Heard): { name: string; target: number | nu
   return out.slice(0, 8);
 }
 
+/**
+ * THE MEASURES, SAID BACK BY NAME, BEFORE THE YES AND AFTER IT (found live, 1 October 2026, item 6).
+ *
+ * This read "Set one measure, tracked rather than counted, because no number was named for them.":
+ * an order rather than a sentence, "them" for one measure, and no word of what the measure was, so
+ * the lead said yes to something they could not read. After the yes the same order came back again,
+ * as though it still had to be done. Each measure is now named in the lead's own words, with its
+ * number said as an aim or a limit (decision 69), and the sentence after the yes says it is done.
+ */
+export function theMeasuresSaidBack(
+  targets: readonly { name: string; target: number | null; direction?: TargetDirection | null }[],
+  when: 'before' | 'after',
+): string {
+  const one = targets.length === 1;
+  const howMany = one ? 'one measure' : `${targets.length} measures`;
+  const each = targets.map((t) => (t.target != null
+    ? whichWayItIsSaid(t.name, t.target, (t.direction ?? whatTheWordsSuggest(t.name)) as TargetDirection)
+    : `"${t.name.replace(/[.!?]+$/, '')}" has no number, so it will be followed but not counted.`));
+  const anyNumber = targets.some((t) => t.target != null);
+  const change = anyNumber
+    ? (one ? 'You can change it on the board, including whether the number is an aim or a limit.' : 'You can change any of them on the board, including whether a number is an aim or a limit.')
+    : (one ? 'You can change it on the board.' : 'You can change any of them on the board.');
+  return `${when === 'before' ? 'I will set' : 'I have set'} ${howMany} for this check-in. ${each.join(' ')} ${change}`;
+}
+
 export function proposalFrom(
   gap: string | null,
   heard: Heard,
@@ -170,20 +195,16 @@ export function proposalFrom(
     if (!targets.length) {
       return { kind: 'none', why: 'Nothing in that answer reads as a measure, so nothing was set.' };
     }
-    const counted = targets.filter((t) => t.target != null).length;
     /*
      * AN AIM TO REACH, OR A LIMIT NOT TO GO OVER, SAID BACK BEFORE ANYTHING IS SAVED (decision 69).
      * Suggested from the words of each name and stated in the say-back, one sentence per number, so
      * the lead's yes confirms it. The same words give the same suggestion when the yes lands.
      */
     const withWays = targets.map((t) => ({ ...t, direction: t.target != null ? whatTheWordsSuggest(t.name) : null }));
-    const ways = withWays.filter((t) => t.target != null).map((t) => whichWayItIsSaid(t.name, t.target as number, t.direction as TargetDirection));
     return {
       kind: 'targets',
       targets: withWays,
-      say: counted
-        ? `Set ${targets.length === 1 ? 'one measure' : `${targets.length} measures`}, ${counted} of them with a number to count against. ${ways.join(' ')} You can change any of them on the board, including whether a number is an aim or a limit.`
-        : `Set ${targets.length === 1 ? 'one measure' : `${targets.length} measures`}, tracked rather than counted, because no number was named for them.`,
+      say: theMeasuresSaidBack(withWays, 'before'),
     };
   }
 
@@ -475,8 +496,7 @@ export function confirmedSay(proposal: Proposal): string {
       return `I have kept "${proposal.text}" as a private note about ${proposal.firstName} that only you can see. `
         + `It guides how this check-in is run and is never quoted to ${proposal.firstName} or put into ${proposal.firstName}'s own check-in.`;
     case 'targets':
-      /* Already a done statement ("Set N measures ..."), with nothing to ask - returned as it is. */
-      return proposal.say;
+      return theMeasuresSaidBack(proposal.targets, 'after');
     case 'none':
       /* Never reaches a confirm write at all; kept only so this switch is exhaustive. */
       return proposal.why;
