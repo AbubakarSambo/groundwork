@@ -223,6 +223,7 @@ import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose
 import { withoutWhatTheLeadHasNotToldThemAbout, type AnUntoldGoalRow } from '../board/an-untold-goal-is-not-a-board-objective';
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-set-it';
+import { withoutOurInstructions } from './our-instructions-never-reach-them';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargets } from '../board/a-hidden-target-stays-hidden';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
@@ -1163,6 +1164,8 @@ export class ConversationService {
       ? ''
       : `${await this.composeSystemPrompt(checkIn, undefined, { forTheOpener: true })}\n\n${THE_OPENER_IS_ONE_MESSAGE}`;
     if (!alreadyWritten) this.logger.log(`Check-in ${checkIn.id}: opener prompt ${openerSystem.length} chars.`);
+    /* The opener is saved through the same step as every turn, so it is read against its own prompt. */
+    if (openerSystem) this.promptForThisTurn.set(checkIn.id, openerSystem);
 
     const beginMessage = (checkIn as any).isFinal
       ? '<<BEGIN_CHECK_IN>> The person has just arrived for their CLOSING session. Open by telling them plainly, in your first sentence, that this is their closing check-in - the last word on their record, worth documenting thoroughly - and then continue per your runtime context.'
@@ -1281,6 +1284,25 @@ export class ConversationService {
       ? await (this.prisma.conversationTurn?.findMany?.({ where: { checkInId: (checkIn as any).id, role: TurnRole.AI }, select: { content: true } }) ?? Promise.resolve([]))
         .then((rows: any[]) => (rows ?? []).map((r) => r.content ?? '')).catch(() => [] as string[])
       : [];
+    /*
+     * AND NONE OF OUR INSTRUCTIONS TO THE MODEL. Tobi read "Your last three turns all ended by asking them
+     * something. This one should not. Say the single thing you noticed in what they just told you" (re-e):
+     * the rhythm block, copied out. Cut here, where every reply is saved, against the whole prompt this
+     * turn was given. See our-instructions-never-reach-them.
+     */
+    const thePrompt = (checkIn as any)?.id ? this.promptForThisTurn.get((checkIn as any).id) ?? '' : '';
+    if (thePrompt) {
+      const theirWordsHere: string[] = await (this.prisma.conversationTurn?.findMany?.({ where: { checkInId: (checkIn as any).id, role: TurnRole.PERSON }, select: { content: true } }) ?? Promise.resolve([]))
+        .then((rows: any[]) => (rows ?? []).map((r) => r.content ?? '')).catch(() => [] as string[]);
+      const sayable = [
+        ...theirWordsHere,
+        ...(this.theirEarlierWordsForThisTurn.get((checkIn as any).id) ?? []),
+        ...(this.knownForThisTurn.get((checkIn as any).id) ?? []),
+      ];
+      const ours = withoutOurInstructions(raw, thePrompt, sayable, saidHereBefore);
+      for (const c of ours.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence that copied our instructions to the model: "${c.slice(0, 160)}"`);
+      raw = ours.text;
+    }
     const noRecordInvented = withoutARecordClaimNobodyHolds(raw, saidHereBefore);
     if (noRecordInvented.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noRecordInvented.cut.length} sentence(s) claiming what "the record" shows, which this person's record does not hold.`);
     raw = noRecordInvented.text;
@@ -1697,6 +1719,7 @@ export class ConversationService {
     const fullSystem = [composed, aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null]
       .filter(Boolean)
       .join('\n\n');
+    this.promptForThisTurn.set(checkIn.id, fullSystem);
 
     // Persist the person's turn.
     const personTurn = await this.prisma.conversationTurn.create({
@@ -3199,6 +3222,16 @@ export class ConversationService {
    * "invented" by that reading, so a reply that used a colleague's name from the roster lost the
    * sentence. Written by composeSystemPrompt, read once by the reply path, same request.
    */
+  /*
+   * THE PROMPT THIS TURN WAS GIVEN, so the step every reply is saved through can cut a sentence that copies
+   * our instructions to the model. Written by composeSystemPrompt and again once the turn's own additions
+   * are on it; read once by theTurnAsItIsSaved, same request. See our-instructions-never-reach-them.
+   */
+  private _promptForThisTurn?: Map<string, string>;
+  private get promptForThisTurn(): Map<string, string> {
+    if (!this._promptForThisTurn) this._promptForThisTurn = new Map();
+    return this._promptForThisTurn;
+  }
   private _knownForThisTurn?: Map<string, string[]>;
   private get knownForThisTurn(): Map<string, string[]> {
     if (!this._knownForThisTurn) this._knownForThisTurn = new Map();
