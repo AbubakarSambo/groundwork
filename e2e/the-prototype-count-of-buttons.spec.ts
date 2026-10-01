@@ -102,6 +102,14 @@ const SCREENS: Record<string, Counterpart> = {
   'pages/org/WhoCanOpenACheckIn.tsx': null, // a panel of the people screen above
   'pages/org/OnePersonPage.tsx': { productPath: '/org/members/f5d37595-4a15-41e9-9c2e-f9b7e52a30a3', reader: 'admin', hash: '#/settings/people/miriam', persona: 'admin' },
   'pages/grounds/CheckInPeopleAndSetup.tsx': { productPath: '/grounds/9028f0ad-293b-4592-9a4e-25b680dd91cd?tab=settings', reader: 'lead', hash: '#/c/sales/people', persona: 'lead' },
+  /*
+   * GROUP 3, PIECE 5, LAST PIECE (Context and resources, B2-context): the lead's check-in page,
+   * ContextPage.tsx, drawn by GroundAdminPage.tsx as the "Context and resources" tab. Rukia is the
+   * same lead persona the prototype's own context.jpg/context.txt are drawn for, on the same "Sales
+   * team, Q3" check-in every other lead entry here opens.
+   */
+  'pages/grounds/GroundAdminPage.tsx': { productPath: '/grounds/9028f0ad-293b-4592-9a4e-25b680dd91cd?tab=context', reader: 'lead', hash: '#/c/sales/context', persona: 'lead' },
+  'components/gw/ContextPage.tsx': null, // the tab GroundAdminPage.tsx above opens; not a screen of its own
   'pages/board/BoardPage.tsx': { productPath: '/grounds/9028f0ad-293b-4592-9a4e-25b680dd91cd/board', reader: 'lead', hash: '#/c/sales/board', persona: 'lead' },
   'pages/board/WorkRecords.tsx': null, // a section of the board screen above
   'components/gw/where-each-person-is.tsx': null, // a section of the board screen above
