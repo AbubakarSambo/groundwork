@@ -116,13 +116,18 @@ describe('a sales check-in: deals and their stages', () => {
           id: 'w-1', kind: 'deal', name: 'Nyama Choma Palace', stage: 'Won', owner: 'Rukia Mwangi', ownerParticipantId: 'p-rukia',
           due: null, fields: { Value: 'KES 90K' }, from: 'said', said: 'Nyama Choma Palace paid KES 90K on 22 September, so that one is won.',
           saidBy: 'Rukia', saidByParticipantId: 'p-rukia',
+          known: 'said', knownSays: 'Someone said it.', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
         },
         {
           id: 'w-2', kind: 'deal', name: 'Eastside Foods', stage: 'Qualified', owner: 'Baraka Otieno', ownerParticipantId: 'p-baraka',
           due: null, fields: {}, from: 'said', said: 'Eastside Foods wants a second freezer and the owner has agreed the budget.',
           saidBy: 'Baraka', saidByParticipantId: 'p-baraka',
+          known: 'said', knownSays: 'Someone said it.', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
         },
-        { id: 'w-3', kind: 'deal', name: 'Karen Butchery', stage: 'Contacted', owner: null, ownerParticipantId: null, due: null, fields: {}, from: 'lead', saidBy: null, saidByParticipantId: null },
+        {
+          id: 'w-3', kind: 'deal', name: 'Karen Butchery', stage: 'Contacted', owner: null, ownerParticipantId: null, due: null, fields: {}, from: 'lead', saidBy: null, saidByParticipantId: null,
+          known: 'lead', knownSays: 'You added it on the board.', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
+        },
       ],
     });
     expect(section(board, 'Forecast')).toEqual({
@@ -200,6 +205,7 @@ describe('an engineering check-in: releases and tasks', () => {
         id: 'w-1', kind: 'release', name: 'Release 2.4', stage: 'Reviewed', owner: 'Rukia Mwangi', ownerParticipantId: 'p-rukia',
         due: '2026-09-24', fields: {}, from: 'said', said: 'Release 2.4 is reviewed and waits for the production test on 24 September.',
         saidBy: 'Rukia', saidByParticipantId: 'p-rukia',
+        known: 'said', knownSays: 'Someone said it.', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
       }],
     }]);
   });
@@ -235,7 +241,7 @@ describe('a law firm matter: deadlines and parties', () => {
     ]);
     expect(section(board, 'Obligations')).toEqual({
       section: 'Obligations', holds: 'the parties', state: 'filled',
-      rows: [{ id: 'w-3', kind: 'party', name: 'Pwani Mills', stage: null, owner: null, ownerParticipantId: null, due: null, fields: { Side: 'The other side' }, from: 'lead', saidBy: null, saidByParticipantId: null }],
+      rows: [{ id: 'w-3', kind: 'party', name: 'Pwani Mills', stage: null, owner: null, ownerParticipantId: null, due: null, fields: { Side: 'The other side' }, from: 'lead', saidBy: null, saidByParticipantId: null, known: 'lead', knownSays: 'You added it on the board.', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.' }],
     });
   });
 

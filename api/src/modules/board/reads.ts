@@ -232,9 +232,11 @@ export function dedupeDependencies<T extends ReadDependency>(deps: T[]): T[] {
       if ((d.what ?? '').trim().length > ((hit as any).what ?? '').trim().length) (hit as any).what = d.what;
       (hit as any).onParticipantId = d.onParticipantId ?? hit.onParticipantId;
       (hit as any).onLabel = d.onLabel ?? hit.onLabel;
+      /* Each time it was said, kept so the board can say how often it was raised (request 107 c). */
+      (hit as any).raisedAt = [...((hit as any).raisedAt ?? []), { at: d.createdAt ?? null, checkInId: (d as any).sourceCheckInId ?? null }];
       continue;
     }
-    out.push({ ...d });
+    out.push({ ...d, raisedAt: [{ at: d.createdAt ?? null, checkInId: (d as any).sourceCheckInId ?? null }] } as T);
   }
   return out;
 }

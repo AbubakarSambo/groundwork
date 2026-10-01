@@ -1,6 +1,9 @@
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
 import { aPartyOutside } from './a-thing-is-not-somebody';
 import { whatEachSessionSays } from './one-count-for-the-sessions';
+import { howOftenItWasRaised } from './how-often-it-was-raised';
+import { howARecordIsKnown, whatHappensNext } from './what-happens-next-to-a-record';
+import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
 import { theShareSays } from './your-share';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
@@ -1467,6 +1470,8 @@ export class BoardService {
         onParticipantId: d.onParticipantId,
         status: d.status,
         then: d.then,
+        /* How often it was raised, and over which days (request 107 c; the prototype's "Raised: 3 times, 1 Sep to 23 Sep"). */
+        raised: howOftenItWasRaised((d as any).raisedAt),
       }));
     }
 
@@ -1857,9 +1862,18 @@ export class BoardService {
         : [];
       const sourceIds = (items as any[]).map((i) => i.sourceEntryId).filter(Boolean);
       const sources = sourceIds.length
-        ? await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, id: { in: sourceIds } }, select: { id: true, text: true, disputedAt: true, participantId: true } }) as Promise<any[]>).catch(() => [] as any[])
+        ? await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, id: { in: sourceIds } }, select: { id: true, text: true, disputedAt: true, participantId: true, type: true, ...WHAT_A_MARK_READS } }) as Promise<any[]>).catch(() => [] as any[])
         : [];
       const lineOf = new Map((sources as any[]).map((l) => [l.id, l]));
+      /* How each record is known, by the same mark every line carries (request 107 c). */
+      const whoAddedTheirs = await whoAddedEachBackingDocument(this.prisma, sources as any[]).catch(() => new Map<string, string | null>());
+      /* What happens next: an open commitment that names the record, said by somebody this reader may read about it. */
+      const openPromises = items.length
+        ? ((await ((this.prisma as any).groundCommitment?.findMany?.({ where: { groundId }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => [])) as any[])
+          .filter((c) => String(c.status ?? '').toUpperCase() === 'UNKNOWN')
+        : [];
+      /* Whoever runs it reads every commitment about a record; anybody else only their own and the record holder's, never the lead's (decisions 4 and 30). */
+      const runsIt = isInitiator || runsItForAPattern(ground as any, requestingUserId) || (runsThisGround && !isEvaluationCheckIn(ground.scenario));
       /*
        * WHO SAID THE LINE A RECORD CAME FROM (screens request 89), under the rule every other name on
        * the board follows: a person this reader may not name is "a colleague" and their id is not
@@ -1890,6 +1904,14 @@ export class BoardService {
           from: i.sourceEntryId ? 'said' : 'lead',
           ...(line ? { said: cleanText(line.text) } : {}),
           ...(line ? whoSaidIt(line.participantId) : { saidBy: null, saidByParticipantId: null }),
+          ...howARecordIsKnown(
+            line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null,
+            !!i.addedByUserId && i.addedByUserId === requestingUserId,
+          ),
+          ...whatHappensNext(i, openPromises.filter((c) => runsIt || c.participantId === me?.id || (!!i.ownerParticipantId && c.participantId === i.ownerParticipantId && c.participantId !== theLeadsRow)), (pid) => {
+            if (pid && pid === me?.id) return 'You';
+            return pid ? (nameOf(pid) ?? aColleague(pid)) : 'Somebody';
+          }),
         });
       }
       out.workRecords = theRecordSections(kind, (ground as any).workStages, rows);
@@ -2179,6 +2201,16 @@ export class BoardService {
             return { ...sec, rows, state: rows.length ? 'filled' : 'none-yet' };
           })()
           : sec));
+      }
+      /*
+       * BY AREA OF WORK, AND WHAT WAS REPORTED AT EACH SALES STAGE (request 107 c). Read last, from the
+       * records this reader is served after every wall above, so they count only rows the reader can
+       * already read. See the-work-by-area-and-by-stage.
+       */
+      if (Array.isArray(walled.workRecords) && oneOfTheKinds((ground as any).kindOfWork)) {
+        walled.byArea = theWorkByArea(walled.workRecords);
+        const atEachStage = reportedAgainstTheRules(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords);
+        if (atEachStage) walled.reportedAgainstCriteria = atEachStage;
       }
       return walled;
     }

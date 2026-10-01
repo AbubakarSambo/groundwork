@@ -26,7 +26,7 @@ export interface ASessionRow {
   completedAt?: Date | string | null;
 }
 
-const asDate = (d: Date | string | null | undefined): Date | null => {
+export const asDate = (d: Date | string | null | undefined): Date | null => {
   if (!d) return null;
   const t = new Date(d);
   return Number.isNaN(t.getTime()) ? null : t;
@@ -65,3 +65,4 @@ export function whatEachSessionSays(n: number, rows: ASessionRow[], openRound: n
   if (opensLater) return { says: `Session ${n} opens on ${aDayPeopleRead(opensLater, now)}.`, openedOn: null };
   return { says: `Session ${n} has not opened yet.`, openedOn: null };
 }
+

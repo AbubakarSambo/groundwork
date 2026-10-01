@@ -154,6 +154,13 @@ export interface AServedRecord {
    */
   saidBy?: string | null;
   saidByParticipantId?: string | null;
+  /** How it is known (request 107 c): "proof" where a document is behind its line, "said", or "lead" where it was added on the board. */
+  known?: 'proof' | 'said' | 'lead';
+  knownSays?: string;
+  /** What happens next, only as somebody said it: an open commitment that names it. Null where nobody has said. */
+  next?: string | null;
+  nextKnown?: 'said' | null;
+  nextSays?: string;
 }
 
 export type AServedSection =
