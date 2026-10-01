@@ -7152,4 +7152,22 @@ Both are fixed, and group 3's pages are all built from the shared parts now.
 
 The API tests after this merge pass 13,124 of 13,128. Three of the four failures are request 99: they are the engine's own tests, waiting to be pointed at the moved report sections, which the engine said it would do once this workspace's fixes landed, and they have now. The fourth is the engine's own new conversation test failing the comment guard, which is request 94 again.
 
+**Group 3's review sent it back (1 October, evening).**
+
+What held:
+- The page colour is right everywhere.
+- Nothing scrolls sideways on a phone.
+- From what the API sends: each person's own report is refused to anyone else, a participant gets no lead's judgement, ratings stay with each person, and the lead's private notes go to the lead only.
+
+What did not hold, most serious first:
+- **A closed Session 1 report shows Session 2's material.** "What to work on next" opens "This is session 2…", under "Closed 27 Sept 2026. This does not change."
+- **Some privacy sentences are not true.** People and setup says "Nobody sees another person's answers", while the team report quotes people by name. The end card leaves out what the team will see.
+- **Two error messages on a bad join link,** and a misleading one when opening someone else's report.
+- **Contradictions,** such as Juma being told he can read reports he cannot reach, and "Rewrite" offered to someone who only reads.
+- **About 30 of the screen's own sentences** with colons, run-ons or jargon.
+- **The look:** your own bubble is navy where the prototype's is near-black. Suggested answers sit in a row where the prototype stacks them. The lead's tabs sit in a 600-pixel column where the prototype uses the full width. Sign-up has no card. Signed out, `/start` shows the sidebar.
+- **Drift:** the review listed every one-off and page-only class on group 3's pages. That is about 170 in the entry chat, 70 in the conversation and 50 in the team report, each with the shared part it should be.
+
+The text the engine writes that reaches the wrong reader is request 101. That includes advice to the lead sent to participants, "0 check-ins on record" about someone not let in, and "Rukia Otieno" written to Rukia. The fixes go in three batches, one builder at a time: what is untrue (under way), then the look, then the drift list, page by page. The review's pictures are in the scratchpad's `pictures/review-g3/`.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
