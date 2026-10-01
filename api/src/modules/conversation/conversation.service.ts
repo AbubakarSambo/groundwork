@@ -126,6 +126,7 @@ import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTh
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
 import { withoutARecordClaimNobodyHolds } from './a-record-claim-nobody-holds';
 import { withoutADateNobodyGave } from './a-date-nobody-gave';
+import { commitmentsTheyNeverMade } from './a-commitment-is-read-back-from-a-commitment';
 import { withoutAThingTheLeadListedAsTheirs } from './a-thing-the-lead-listed-is-not-theirs';
 import { aCutThatLeavesAFragment, afterTheCut } from './a-cut-never-leaves-a-fragment';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
@@ -2382,6 +2383,19 @@ export class ConversationService {
         if (cut) screened = { ...screened, text: cut };
       }
 
+      /*
+       * AND A COMMITMENT IS ONLY READ BACK FROM A COMMITMENT. "You said you would track the integration
+       * project's status" went to a man who had said the project was on track because he had been told so;
+       * the net above let it stand because the TOPIC was his. See a-commitment-is-read-back-from-a-commitment.
+       */
+      const commitmentRows = this.commitmentsForThisTurn.get(checkIn.id) ?? [];
+      this.commitmentsForThisTurn.delete(checkIn.id);
+      for (const unmade of commitmentsTheyNeverMade(screened.text, [...theirWords, ...(this.theirEarlierWordsForThisTurn.get(checkIn.id) ?? [])], commitmentRows)) {
+        this.logger.warn(`Check-in ${checkIn.id}: cut a commitment read back that this person never made: ${JSON.stringify(unmade)}`);
+        const cutAlready = whatIsLeftToSend(screened.text, unmade, closingNow);
+        if (cutAlready) screened = { ...screened, text: cutAlready };
+      }
+
       /* AND NO HOMEWORK IN A ONE-TIME SESSION. See withoutTheHomework. */
       const cadenceHere = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { cadence: true } }).catch(() => null);
       if (cadenceHere?.cadence === Cadence.ONE_TIME) {
@@ -3077,6 +3091,12 @@ export class ConversationService {
   private get knownForThisTurn(): Map<string, string[]> {
     if (!this._knownForThisTurn) this._knownForThisTurn = new Map();
     return this._knownForThisTurn;
+  }
+  /* Their commitment rows from earlier sessions, per check-in, for the commitment read-back cut. Same shape and lifetime. */
+  private _commitmentsForThisTurn?: Map<string, string[]>;
+  private get commitmentsForThisTurn(): Map<string, string[]> {
+    if (!this._commitmentsForThisTurn) this._commitmentsForThisTurn = new Map();
+    return this._commitmentsForThisTurn;
   }
   /* Their own words from earlier sessions, per check-in, for the number-claim cut. Same shape and lifetime. */
   private _theirEarlierWordsForThisTurn?: Map<string, string[]>;
@@ -4777,6 +4797,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Their own words from earlier sessions, for the number-claim cut. Same lifetime as knownForThisTurn. */
     this.theirEarlierWordsForThisTurn.set(checkIn.id, pastEntries.map((e) => e.text));
+    this.commitmentsForThisTurn.set(checkIn.id, pastEntries.filter((e) => e.type === 'COMMITMENT').map((e) => e.text));
     /* What the invention gate may treat as already said. See knownForThisTurn. */
     this.knownForThisTurn.set(checkIn.id, [
       ...(ground.participants ?? []).flatMap((p) => [p.user?.firstName ?? '', p.user?.lastName ?? '', p.roleAsDescribed ?? '']),
