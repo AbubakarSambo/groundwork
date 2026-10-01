@@ -122,7 +122,7 @@ A report for a team now runs three independent model calls together, and after i
 | Answer | What we would do |
 | --- | --- |
 | At least 1 GB, with a quota well above a few calls a second. | Release as is, and watch the first large team's report. |
-| Smaller, or a tight quota. | Lower the limit of four, which `reports.service.ts` passes to `runAtOnce`, to two before release. It changes only how long the lead waits. |
+| Smaller, or a tight quota. | Lower `READERS_WARMED_TOGETHER` in `api/src/modules/reports/reports.service.ts` from four to two before release. It changes only how long the lead waits. |
 | The database is slow under load. | Raise the 5-second transaction limit for adding a person, or move that step out of the transaction. |
 
 ### 10. WhatsApp: are any templates approved?
