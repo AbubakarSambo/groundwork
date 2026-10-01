@@ -598,10 +598,20 @@ export default function SessionReportPage() {
             opposite about the same report. It now says the same true thing `shape` already knows,
             in a sentence, with the date through the one shared formatter every other page uses.
           */}
+          {/*
+            GROUP 3'S REVIEW, BATCH A FAULT 2: "WHAT ANYONE SAID ABOUT SOMEBODY ELSE NEVER DOES" WAS
+            NOT TRUE OF THIS SAME REPORT. A person's own words, even when they name somebody else
+            ("Four shops for me", a dependency on a colleague), stay as they said them
+            (`their-own-words-stay.ts`, decision 18) - only a lead's private judgement of a person is
+            withheld from anyone but the lead (`deeplyWithoutTheLeadsDescriptionOfAnyone`). The same
+            report that carried the old line also read "Baraka Mwangi and Neema Achieng are waiting
+            on Rukia Otieno for 3 things", which is exactly what it claimed never happened. The
+            sentence now says only what is true and actually enforced.
+          */}
           <div className="gwui-fs-13 gwui-ink-sub gwui-mb-14" style={{ lineHeight: 1.55 }}>
             {shape?.state === 'final'
-              ? `Closed${shape.takenAt ? ` ${whenItWas(shape.takenAt, 'day')}` : ''}. This does not change. What each person said about their own work can appear here. What anyone said about somebody else never does.`
-              : 'Everybody’s side of this session, together, and it updates as people check in. What each person said about their own work can appear here. What anyone said about somebody else never does.'}
+              ? `Closed${shape.takenAt ? ` ${whenItWas(shape.takenAt, 'day')}` : ''}. This does not change. What each person said about their own work can appear here. Nobody's private judgement of somebody else does.`
+              : 'Everybody’s side of this session, together, and it updates as people check in. What each person said about their own work can appear here. Nobody\'s private judgement of somebody else does.'}
           </div>
           <TheSessionsReport
             groundId={data.groundId}

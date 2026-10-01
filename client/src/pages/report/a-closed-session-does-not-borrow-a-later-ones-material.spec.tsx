@@ -61,7 +61,7 @@ describe('a closed session’s own page does not borrow a later session’s mate
 
   it('does not draw the coaching note, the probe list or the inference review under the closed session’s own heading', async () => {
     renderIt()
-    await screen.findByText('Closed 27 Sept 2026. This does not change. What each person said about their own work can appear here. What anyone said about somebody else never does.')
+    await screen.findByText('Closed 27 Sept 2026. This does not change. What each person said about their own work can appear here. Nobody\'s private judgement of somebody else does.')
     /* These belong to session 2, the one actually in progress, not to the closed session 1 this
        page is about - they must not appear above the new, clearly labelled section. */
     const sinceThenHeading = screen.getByRole('heading', { name: 'Since then, in the latest check-in' })
