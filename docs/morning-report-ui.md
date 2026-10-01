@@ -6947,4 +6947,14 @@ One fault in the data, not the page: "What you said you'd do" lists each promise
 
 The pictures are in the scratchpad's `pictures/g2b/`.
 
+**Group 2, third piece: Company and company context are rebuilt from the shared parts (1 October).**
+- Every section, and every way to read and change company context, is kept.
+- What the prototype draws but the product cannot do yet is still left out: strategy history, what new people keep asking, and the edit and decide buttons that wait on the engine.
+- A participant still reads only "6 people.", with no check-in count, as the privacy rule says.
+- The privacy tests pass (74 on the screens, 10 on the API), and so do the button and page-colour tests.
+
+No organisation on this Mac has company priorities, so both pages show their empty state. The builder tried to add test priorities to the local database, and the safety check refused it. It was not retried. The button test for Company now checks for the page's own empty-state sentence instead.
+
+The pictures are in the scratchpad's `pictures/g2c/`.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
