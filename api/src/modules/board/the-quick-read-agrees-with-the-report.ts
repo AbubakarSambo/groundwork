@@ -1,3 +1,4 @@
+import { peopleSaidDifferentThingsAbout } from '../reports/what-people-said-differently-about';
 /**
  * THE QUICK READ NEVER SAYS "NO DISAGREEMENT" OVER A REPORT THAT OPENS WITH ONE (review of 1 October
  * 2026).
@@ -40,11 +41,6 @@ export function theDisagreementTheReportOpensWith(sharedPicture: string | null |
   return { topic: what, count: Math.max(1, count) };
 }
 
-const inASentence = (phrase: string): string => {
-  const t = phrase.trim().replace(/[.!?]+$/, '');
-  return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
-};
-
 export function theQuickReadAgreesWithTheReport<T extends ATile>(tiles: T[] | null | undefined, sharedPicture: string | null | undefined): T[] | null | undefined {
   if (!Array.isArray(tiles)) return tiles;
   const said = theDisagreementTheReportOpensWith(sharedPicture);
@@ -57,7 +53,7 @@ export function theQuickReadAgreesWithTheReport<T extends ATile>(tiles: T[] | nu
     return {
       ...t,
       value: String(said.count),
-      sub: `People said different things about ${inASentence(said.topic)}.${more > 0 ? ` ${more} more ${more === 1 ? 'difference is' : 'differences are'} still open.` : ''}`,
+      sub: `${peopleSaidDifferentThingsAbout(said.topic)}${more > 0 ? ` ${more} more ${more === 1 ? 'difference is' : 'differences are'} still open.` : ''}`,
       tone: 'warn',
     };
   });

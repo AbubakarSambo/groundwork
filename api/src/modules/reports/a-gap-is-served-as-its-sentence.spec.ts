@@ -35,7 +35,7 @@ describe('a gap over time is served as its sentence', () => {
       {
         participantId: 'p-ngozi',
         who: 'Ngozi Eze',
-        say: 'The role written down for Ngozi Eze is Relationship officer, Ikeja; target 14 approved facilities this quarter. '
+        say: 'Ngozi Eze is a relationship officer for Ikeja, with a goal of 14 approved facilities this quarter. '
           + 'Since then, the record holds 1 session, 6 lines of what was said, 1 with a name, a number or a date in it, '
           + 'none backed by a document and 1 commitment still open.',
       },

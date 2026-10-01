@@ -1,5 +1,6 @@
 import { aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
 import { targetsFor } from '../board/whose-number-is-whose-business';
+import { peopleSaidDifferentThingsAbout } from './what-people-said-differently-about';
 import { cleanText } from './what-the-record-actually-holds';
 import { PrismaService } from '../prisma/prisma.service';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
@@ -297,7 +298,7 @@ export function atAGlanceTiles(a: {
        */
       sub: a.stillOpen
         ? (theDifference
-          ? `People said different things about ${inASentence(theDifference)}.${a.stillOpen > 1 ? ` ${a.stillOpen - 1} more ${a.stillOpen === 2 ? 'difference is' : 'differences are'} still open.` : ''}`
+          ? `${peopleSaidDifferentThingsAbout(theDifference)}${a.stillOpen > 1 ? ` ${a.stillOpen - 1} more ${a.stillOpen === 2 ? 'difference is' : 'differences are'} still open.` : ''}`
           : 'The written report reads this as still open.')
         : a.agreed ? 'The written report finds no disagreement.'
           : a.stillToAnswer === 0 ? 'Everybody has answered, and the written report names no agreement and no gap yet.'

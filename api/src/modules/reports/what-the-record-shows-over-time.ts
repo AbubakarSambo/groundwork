@@ -27,6 +27,7 @@
 
 
 import { THE_LEADS_LABEL } from './party-labels';
+import { theNumbersPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
 import { whatWasTried, somebodyWentBackAboutIt, itWasTakenFurther } from './what-they-said-they-did-about-it';
 
 export interface ACommitmentOverTime {
@@ -549,16 +550,91 @@ const TO_THE_PLAIN_VERB: Record<string, string> = {
 const PLAIN_VERBS = new Set([...Object.values(TO_THE_PLAIN_VERB),
   'confirm', 'find', 'grow', 'close', 'win', 'get', 'hit', 'reach', 'set', 'open', 'hire', 'ship', 'launch']);
 
+/*
+ * A PLAIN VERB ONLY BEFORE WHAT IT ACTS ON. "Support team manager, six weeks in" is a job title, and read
+ * "support" as the verb: "The role written down for Daniel Park is to support team manager" (run-21,
+ * newmanager). A plain verb starts what somebody is there to do only where "the", "a", a number or a
+ * possessive follows it ("Grow the book", "Hit 12 deals"); "owns", "runs" and the rest always do.
+ */
+const WHAT_A_VERB_ACTS_ON = /^\s+(?:the|a|an|our|their|his|her|its|all|every|each|new|\d)/i;
+
+/** Whether the description starts with what somebody is there to do, rather than with a job title. */
+function startsWithAVerb(sentence: string): boolean {
+  const m = /^([A-Za-z]+)\b/.exec(sentence.trim());
+  if (!m) return false;
+  const w = m[1].toLowerCase();
+  if (TO_THE_PLAIN_VERB[w]) return true;
+  return PLAIN_VERBS.has(w) && WHAT_A_VERB_ACTS_ON.test(sentence.trim().slice(m[1].length));
+}
+
 /** "is to cover the branches", "is Relationship officer, Ikeja": the description after "is". */
 function afterIs(sentence: string): string {
   const m = /^([a-z]+)\b/.exec(sentence);
-  if (!m) return sentence;
+  if (!m || !startsWithAVerb(sentence)) return sentence;
   const plain = TO_THE_PLAIN_VERB[m[1]] ?? (PLAIN_VERBS.has(m[1]) ? m[1] : null);
   if (!plain) return sentence;
   /* And a later fragment that is another thing they are there to do joins the first one. */
   const rest = sentence.slice(m[1].length).replace(/; ([a-z]+)\b/g, (whole, verb: string) =>
     (TO_THE_PLAIN_VERB[verb] ? `, and to ${TO_THE_PLAIN_VERB[verb]}` : whole));
   return `to ${plain}${rest}`;
+}
+
+/*
+ * A ROLE WRITTEN AS A JOB TITLE IS SAID AS ONE, IN FULL SENTENCES (review of 1 October 2026, re-d, sales).
+ *
+ * The lead read "The role written down for Femi Okonkwo is Relationship officer, Lagos mainland; target
+ * 12 approved facilities this quarter." - the lead's fragments joined with a semicolon. Now:
+ *
+ *   "Femi Okonkwo is a relationship officer for Lagos mainland, with a goal of 12 approved facilities
+ *    this quarter."
+ *   "Tobi Adewale is an Engagement Director. Tobi Adewale owns the relationships with the five largest
+ *    clients."
+ *
+ * What somebody does ("owns", "hands", "did") is said about them; where they are ("on Daniel's team",
+ * "currently building ...") is what they are; anything else the lead wrote is quoted as the role
+ * description, word for word. A description that starts with what they are there to do keeps its
+ * sentence ("The role written down for you is to manage ...").
+ */
+const A_GOAL = /^(?:targets?|goals?|aims?|quota)\b[:\s]*(?:(?:of|is)\s+)?(.+)$/i;
+const SAID_ABOUT_THEM = /^(?:owns|runs|leads|manages|handles|covers|supports|sells|builds|brings|delivers|oversees|keeps|makes|helps|drives|recruits|trains|writes|designs|secures|raises|collects|hands|did|took|built|was|had|has|joined|started|works|reports)\b/i;
+const WHAT_THEY_ARE = /^(?:currently|on|in|at|based|responsible|believed|expected|leaving|new|still)\b/i;
+
+const anArticleFor = (title: string): string =>
+  /^head of\b/i.test(title) ? '' : /^(?:[aeio]|u(?!ni|se|su))/i.test(title) ? 'an ' : 'a ';
+
+/** The first word in lower case where it is an ordinary word ("Relationship officer"), not a name ("Engagement Director", "CFO"). */
+const ordinaryFirst = (t: string): string => {
+  const words = t.split(/\s+/);
+  if (/^\p{Lu}\p{Ll}+$/u.test(words[0] ?? '') && (words.length === 1 || /^[\p{Ll}\p{N}-]/u.test(words[1]))) words[0] = words[0].toLowerCase();
+  return words.join(' ');
+};
+const lowerFirst = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
+
+export function aRoleWrittenAsATitle(label: string, description: string): string | null {
+  const fragments = description.trim().replace(/[.!?;\s]+$/, '').split(/(?<=[^\s.!?;])\s*(?:[.!?]+\s+|;\s*)/).map((f) => f.trim()).filter(Boolean);
+  if (!fragments.length || startsWithAVerb(fragments[0])) return null;
+  const [first, ...rest] = fragments;
+  const comma = first.indexOf(', ');
+  const title = ordinaryFirst(comma > 0 ? first.slice(0, comma) : first);
+  const detail = comma > 0 ? first.slice(comma + 2).trim() : '';
+  const where = !detail ? ''
+    : /^\p{Lu}/u.test(detail) && !detail.includes(',') && detail.split(/\s+/).length <= 3 ? ` for ${detail}` : `, ${detail}`;
+  const goals: string[] = [];
+  const more: string[] = [];
+  for (const f of rest) {
+    const goal = A_GOAL.exec(f);
+    if (goal) { goals.push(`a goal of ${theNumbersPeopleCanRead(goal[1].trim())}`); continue; }
+    if (SAID_ABOUT_THEM.test(f)) { more.push(`${label} ${lowerFirst(f)}.`); continue; }
+    if (WHAT_THEY_ARE.test(f)) { more.push(`${label} is ${lowerFirst(f)}.`); continue; }
+    more.push(`The role description also says "${f}."`);
+  }
+  const withGoals = goals.length ? `, with ${goals.length === 1 ? goals[0] : `${goals.slice(0, -1).join(', ')} and ${goals[goals.length - 1]}`}` : '';
+  /* The person's label is written from their job title ("Relationship officer"), and the names go in
+     afterwards: a title that is also the label would be read as the name ("Ngozi Eze is a Ngozi Eze").
+     Inside quotation marks it is left as the lead wrote it. */
+  const isTheirLabel = label.toLowerCase().startsWith(title.toLowerCase());
+  const role = isTheirLabel ? `down as "${comma > 0 ? first.slice(0, comma) : first}"` : `${anArticleFor(title)}${title}`;
+  return [`${label} is ${role}${where}${withGoals}.`, ...more].join(' ');
 }
 
 /** What the record holds, in one list a sentence can end on. */
@@ -605,7 +681,7 @@ export function gapsOverTime(people: APersonsRecord[]): AGapOverTime[] {
         recordHolds: holds,
         say: titleOnly
           ? `${p.label} is down as "${expected.replace(/[.\s]+$/, '')}", and nothing on record says what that role covers. Since then, the record holds ${holds}.`
-          : `The role written down for ${p.label} is ${afterIs(asOneSentence(expected))}. Since then, the record holds ${holds}.`,
+          : `${aRoleWrittenAsATitle(p.label, expected) ?? `The role written down for ${p.label} is ${afterIs(asOneSentence(expected))}.`} Since then, the record holds ${holds}.`,
       };
     });
 }
