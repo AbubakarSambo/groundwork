@@ -86,14 +86,26 @@ function andList(names: string[]): string {
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const onDay = (d: Date) => `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
 
-/** "3 teams, 11 people, 34 check-ins this week." with only the parts this reader is given. */
+/**
+ * THE COUNTS, AS A SENTENCE (group 2's review, fault F): "6 people." and "6 people, 21 check-ins
+ * this week." read as noun phrases with a full stop stuck on, not sentences. A verb is given to
+ * each part instead - "6 people work here." / "3 teams work here." / "21 check-ins happened this
+ * week." - and joined with "and" rather than a bare comma, so what the reader is given still reads
+ * as one plain sentence: "3 teams and 11 people work here, and there were 34 check-ins this week."
+ */
 export function countsLine(counts: { teams: number; people: number; checkInsThisWeek: number | null }): string | null {
+  const who: string[] = [];
+  if (counts.teams > 0) who.push(plural(counts.teams, 'team', 'teams'));
+  if (counts.people > 0) who.push(plural(counts.people, 'person', 'people'));
   const parts: string[] = [];
-  if (counts.teams > 0) parts.push(plural(counts.teams, 'team', 'teams'));
-  if (counts.people > 0) parts.push(plural(counts.people, 'person', 'people'));
-  if (counts.checkInsThisWeek !== null) parts.push(`${plural(counts.checkInsThisWeek, 'check-in', 'check-ins')} this week`);
+  if (who.length) parts.push(`${andList(who)} work here`);
+  if (counts.checkInsThisWeek !== null) {
+    const checkIns = plural(counts.checkInsThisWeek, 'check-in', 'check-ins');
+    const was = counts.checkInsThisWeek === 1 ? 'was' : 'were';
+    parts.push(`there ${was} ${checkIns} this week`);
+  }
   if (!parts.length) return null;
-  const s = parts.join(', ');
+  const s = parts.join(', and ');
   return `${s[0].toUpperCase()}${s.slice(1)}.`;
 }
 

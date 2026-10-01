@@ -20,7 +20,7 @@ import { companyApi } from '@/api/company'
 /* What an admin is served: every priority, with what success looks like. */
 const GRACES: Page = {
   name: 'Baridi Appliances',
-  line: '2 teams, 5 people, 3 check-ins this week.',
+  line: '2 teams and 5 people work here, and there were 3 check-ins this week.',
   readsTargets: true,
   priorities: [
     { id: 's1', number: 1, title: 'Grow revenue 50%, enterprise first', owner: 'Wairimu Kamau', tag: null, fedBy: 'Fed by Sales team, Q3', staleSays: null, measure: 'Qualified enterprise deals', target: '12 this quarter' },
@@ -65,7 +65,7 @@ beforeEach(() => { vi.clearAllMocks(); useAskStore.setState({ open: false }) })
 describe('Grace, an admin, reads the Company page', () => {
   it('reads the name, the buttons, the week, and each priority as company.txt has it', async () => {
     open(GRACE, '/company', GRACES)
-    expect(await screen.findByText('2 teams, 5 people, 3 check-ins this week.')).toBeInTheDocument()
+    expect(await screen.findByText('2 teams and 5 people work here, and there were 3 check-ins this week.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'Baridi Appliances' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Ask about the whole organisation' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Ask about the strategy' })).toBeInTheDocument()
@@ -110,7 +110,7 @@ describe('Grace, an admin, reads the Company page', () => {
 
   it('draws none of the engine\'s parts while none is served', async () => {
     open(GRACE, '/company', GRACES)
-    await screen.findByText('2 teams, 5 people, 3 check-ins this week.')
+    await screen.findByText('2 teams and 5 people work here, and there were 3 check-ins this week.')
     for (const h of ['Where the strategy isn’t reaching the work', 'Named by more than one team', 'What you say, and where the time goes', 'What new people keep asking']) {
       expect(screen.queryByRole('heading', { name: h })).toBeNull()
     }
