@@ -9,18 +9,38 @@ import './gw-ui.css'
  * label (16px, ink) and an optional muted note beside it (14.5px), the way "Who reports to whom"
  * sits next to "Level and reporting lines describe the organisation...".
  */
-export function Folded({ summary, note, children }: {
+export function Folded({ summary, note, children, open, onToggle }: {
   summary: string
-  note?: string
+  note?: ReactNode
   children: ReactNode
+  /**
+   * CONTROLLED, for a caller that must keep the closed body OUT OF THE DOM entirely (not merely
+   * hidden by the browser), e.g. so a closed row's private detail is never there to be read by a
+   * test, or by anyone, until it is opened. Leave both out for the plain, uncontrolled disclosure
+   * every other caller uses, which opens with no script and keeps its children in the DOM always.
+   */
+  open?: boolean
+  onToggle?: (open: boolean) => void
 }) {
+  const isControlled = onToggle !== undefined
   return (
-    <details className="gwui-folded">
-      <summary className="gwui-folded-summary">
+    <details className="gwui-folded" open={isControlled ? open : undefined}>
+      {/*
+        CONTROLLED MODE HANDLES ITS OWN CLICK, RATHER THAN THE NATIVE `toggle` EVENT: a real browser
+        dispatches `toggle` when a summary click flips `<details>`'s own `open`, but that is the
+        browser acting on its own DOM state, not React's - relying on it here would let the two
+        disagree for a moment, and it is not dispatched reliably everywhere a controlled disclosure
+        like this one is tested. `preventDefault` stops the native toggle outright, and `onToggle`
+        is the single source of truth for whether this row is open.
+      */}
+      <summary
+        className="gwui-folded-summary"
+        onClick={isControlled ? (e) => { e.preventDefault(); onToggle!(!open) } : undefined}
+      >
         <b>{summary}</b>
         {note && <span className="gwui-folded-note">{note}</span>}
       </summary>
-      <div className="gwui-folded-body">{children}</div>
+      <div className="gwui-folded-body">{isControlled ? (open && children) : children}</div>
     </details>
   )
 }
