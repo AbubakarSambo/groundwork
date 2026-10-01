@@ -66,7 +66,7 @@ import { KindOfWorkBanner, WorkRecordsSections } from './WorkRecords'
 import {
   RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockerCheckSection,
   EvidenceIndexSection, BusyOrMovingSection, LeadActionsSection, ObligationsSection, ForecastSection,
-  WhoWaitedOnWhomSection, ContradictionsSection, QuestionsForTheLeadSection,
+  WhoWaitedOnWhomSection, ContradictionsSection, QuestionsForTheLeadSection, sameAsTheWorkPlan,
 } from './TheSwitchboardsSections'
 
 /**
@@ -1094,7 +1094,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {shown.objectives && b.objectives && (
-          <Section heading="What we are aiming for" note="The lead sets these targets.">
+          <Section
+            heading="What we are aiming for"
+            /* Board review, 1 October, item 4: "The lead sets these targets." said "the lead" even
+               to the lead themselves, and even where a colleague's reader already knows their name
+               from elsewhere on this board (leadFirstName). */
+            note={viewerRunsThisCheckIn ? 'You set these targets.' : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} sets these targets.`}
+          >
+
             {/* The privacy setting is on and some numbers still have nobody's name on them, so
                 everybody can read those. Said to the only person who can fix it. */}
             {/* One total, ten people, from the export they already have. Above the form, because
@@ -1325,18 +1332,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           under-it risk here beyond what `shown.*` already screens for. See TheSwitchboardsSections.tsx.
         */}
         {shown.workPlan && <WorkPlanSection rows={b.workPlan} />}
+        {/* Board review, 1 October, item 4 and item 6: "What needs you in this check-in" only ever
+            has rows for whoever runs the check-in (the server's own `theLeadActions` requires it),
+            so it never goes to a participant; and when its sentences already appear word for word
+            under "Work plan" above, it is left out rather than said twice. */}
         {shown.forecast && <ForecastSection rows={b.forecast} />}
         {shown.timeline && <TimelineSection rows={b.timeline} />}
         {shown.obligations && <ObligationsSection rows={b.obligations} />}
         {shown.personHistory && <PersonHistorySection rows={b.personHistory} />}
         {shown.risks && <RisksSection rows={b.risks} />}
-        {shown.leadActions && <LeadActionsSection rows={b.leadActions} />}
+        {shown.leadActions && viewerRunsThisCheckIn && !sameAsTheWorkPlan(b.leadActions, b.workPlan) && <LeadActionsSection rows={b.leadActions} />}
         {shown.blockerCheck && <BlockerCheckSection rows={b.blockerCheck} />}
         {shown.evidenceIndex && <EvidenceIndexSection rows={b.evidenceIndex} />}
         {shown.whoWaitedOnWhom && <WhoWaitedOnWhomSection rows={b.whoWaitedOnWhom} />}
         {shown.contradictions && <ContradictionsSection rows={b.contradictions} />}
         {shown.busyOrMoving && <BusyOrMovingSection data={b.busyOrMoving} />}
-        {shown.questionsForTheLead && <QuestionsForTheLeadSection rows={b.questionsForTheLead} />}
+        {shown.questionsForTheLead && viewerRunsThisCheckIn && <QuestionsForTheLeadSection rows={b.questionsForTheLead} />}
 
         {/* What was agreed at the start, so the rest of the board has something
             to be read against. This section has been in the DELIVERY family's
@@ -2221,6 +2232,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                                 pattern={p}
                                 invalidateKey={['board', id]}
                                 name={patternPersonName(p.participantId, p.yours)}
+                                leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
                               />
                             </div>
                           ))}
@@ -2236,7 +2248,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </>
                 )}
                 <div className="gwui-fs-13-5 gwui-ink-muted gwui-pt-10 gwui-pr-22 gwui-pb-10 gwui-pl-22 gwui-rule-top-dashed gwui-mt-4" style={{fontStyle: 'italic', lineHeight: 1.5}}>
-                  Patterns about the work only. Anything that would read as a judgement about a person stays in the lead's private report and never appears here.
+                  {/* Board review, 1 October, item 4: "the lead's private report" said "the lead"
+                      even to the lead themselves reading their own board. */}
+                  Patterns about the work only. Anything that would read as a judgement about a person stays in {viewerRunsThisCheckIn ? 'your' : `${(groundForSignals as any)?.leadFirstName ?? 'the lead'}’s`} private report and never appears here.
                 </div>
               </Panel>
             </Section>
@@ -2381,6 +2395,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       pattern={sig}
                       invalidateKey={['ground', id]}
                       name={patternPersonName(sig.participantId, sig.yours)}
+                      leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
                     />
                   </div>
                 ))}

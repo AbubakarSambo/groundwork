@@ -102,25 +102,25 @@ describe('the switchboard’s 22 sections: the 13 now served, as the lead reads 
     expect(screen.getAllByText(workPlan[0].says).length).toBeGreaterThan(0)
     expect(screen.getByText('Timeline')).toBeTruthy()
     expect(screen.getByText(timeline[0].says)).toBeTruthy()
-    expect(screen.getByText('Person history')).toBeTruthy()
+    expect(screen.getByText('What each person has done so far')).toBeTruthy()
     expect(screen.getByText(personHistory[0].says)).toBeTruthy()
-    expect(screen.getByText('Blocker check')).toBeTruthy()
+    expect(screen.getByText('What is blocking work, and since when')).toBeTruthy()
     expect(screen.getByText(blockerCheck[0].says)).toBeTruthy()
     expect(screen.getByText('Evidence index')).toBeTruthy()
     expect(screen.getByText(`“${evidenceIndex[0].said}”`)).toBeTruthy()
-    expect(screen.getByText('Busy or moving')).toBeTruthy()
+    expect(screen.getByText('Who is busy and who is free')).toBeTruthy()
     expect(screen.getByText(busyOrMoving.eachPerson[0].says)).toBeTruthy()
     expect(screen.getByText(busyOrMoving.cannotTellYou)).toBeTruthy()
-    expect(screen.getByText('What the lead needs to do')).toBeTruthy()
+    expect(screen.getByText('What needs you in this check-in')).toBeTruthy()
     expect(screen.getByText(leadActions[0].says)).toBeTruthy()
     expect(screen.getByText('What each side promised')).toBeTruthy()
     expect(screen.getByText('Where this could end up')).toBeTruthy()
     expect(screen.getByText(forecast[0].says)).toBeTruthy()
-    expect(screen.getByText('Who waited on whom')).toBeTruthy()
+    expect(screen.getByText('Who is waiting on whom')).toBeTruthy()
     expect(screen.getByText(whoWaitedOnWhom[0].says)).toBeTruthy()
     expect(screen.getByText('Contradictions')).toBeTruthy()
     expect(screen.getByText(contradictions[0].says)).toBeTruthy()
-    expect(screen.getByText('Questions for the lead')).toBeTruthy()
+    expect(screen.getByText('Questions for you')).toBeTruthy()
     expect(screen.getByText(questionsForTheLead[0].question)).toBeTruthy()
     cleanup()
   })
@@ -135,19 +135,44 @@ describe('the switchboard’s 22 sections: as a participant reads them', () => {
     expect(screen.getByText('What could go wrong')).toBeTruthy()
     expect(screen.getByText('Work plan')).toBeTruthy()
     expect(screen.getByText('Timeline')).toBeTruthy()
-    expect(screen.getByText('Person history')).toBeTruthy()
-    expect(screen.getByText('Blocker check')).toBeTruthy()
+    expect(screen.getByText('What each person has done so far')).toBeTruthy()
+    expect(screen.getByText('What is blocking work, and since when')).toBeTruthy()
     expect(screen.getByText('Evidence index')).toBeTruthy()
     expect(screen.getByText('What each side promised')).toBeTruthy()
-    expect(screen.getByText('Who waited on whom')).toBeTruthy()
+    expect(screen.getByText('Who is waiting on whom')).toBeTruthy()
     expect(screen.getByText('Contradictions')).toBeTruthy()
     /* Never drawn for a participant: the server itself never sends these two to one, but the page's
        own `shown.*` gate is checked here too, so a future bug that sent them cannot surface them. */
-    expect(screen.queryByText('What the lead needs to do')).toBeNull()
-    expect(screen.queryByText('Questions for the lead')).toBeNull()
-    expect(screen.queryByText('Busy or moving')).toBeNull()
+    expect(screen.queryByText('What needs you in this check-in')).toBeNull()
+    expect(screen.queryByText('Questions for you')).toBeNull()
+    expect(screen.queryByText('Who is busy and who is free')).toBeNull()
     expect(screen.queryByText('Where this could end up')).toBeNull()
     cleanup()
+  })
+
+  /*
+   * BOARD REVIEW, 1 OCTOBER, ITEM 4: THE CLIENT'S OWN GATE, NOT ONLY THE SERVER'S.
+   * `leadActions` and `questionsForTheLead` only ever hold rows for whoever runs the check-in
+   * server-side, but the page's own `shown.*` test did not check that again - it trusted the
+   * server completely. This gives a participant's payload a `leadActions` row anyway (as if the
+   * server had a bug) and checks the page still never shows it to them.
+   */
+  it('never shows "What needs you in this check-in" to a participant, even if the server sent it', async () => {
+    renderBoard({ ...AS_KWAME, leadActions: [{ id: 'l2', says: 'You need to get back to somebody.', because: 'Said on 1 September.' }] })
+    await screen.findByRole('heading', { name: 'Sales org, Q3' })
+    expect(screen.queryByText('What needs you in this check-in')).toBeNull()
+  })
+})
+
+describe('"What needs you in this check-in" is drawn once, not twice as "Work plan" too', () => {
+  beforeEach(() => { vi.clearAllMocks(); me = { id: 'u-bisi', firstName: 'Bisi', role: 'MEMBER' } })
+
+  it('is left out when every one of its sentences already appears under "Work plan"', async () => {
+    const duplicateLeadActions = [{ id: 'l3', says: workPlan[0].says, because: null }]
+    renderBoard({ ...AS_THE_LEAD, leadActions: duplicateLeadActions })
+    await screen.findByRole('heading', { name: 'Sales org, Q3' })
+    expect(screen.getByText('Work plan')).toBeTruthy()
+    expect(screen.queryByText('What needs you in this check-in')).toBeNull()
   })
 })
 
@@ -157,9 +182,9 @@ describe('the switchboard’s 22 sections: never a heading with nothing under it
     renderBoard({ ...base, myParticipantId: 'p-bisi', canEditFrame: true, readOnlyNote: null })
     await screen.findByRole('heading', { name: 'Sales org, Q3' })
     for (const heading of [
-      'What could go wrong', 'Work plan', 'Timeline', 'Person history', 'Blocker check',
-      'Evidence index', 'Busy or moving', 'What the lead needs to do', 'What each side promised',
-      'Where this could end up', 'Who waited on whom', 'Contradictions', 'Questions for the lead',
+      'What could go wrong', 'Work plan', 'Timeline', 'What each person has done so far', 'What is blocking work, and since when',
+      'Evidence index', 'Who is busy and who is free', 'What needs you in this check-in', 'What each side promised',
+      'Where this could end up', 'Who is waiting on whom', 'Contradictions', 'Questions for you',
     ]) {
       expect(screen.queryByText(heading)).toBeNull()
     }

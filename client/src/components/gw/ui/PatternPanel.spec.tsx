@@ -19,10 +19,10 @@ const PATTERN = {
   askThem: 'What did they set out to do this period?', yours: false,
 }
 
-function panel(p: any, name?: string) {
+function panel(p: any, name?: string, leadFirstName?: string | null) {
   return render(
     <QueryClientProvider client={new QueryClient()}>
-      <PatternPanel pattern={p} invalidateKey={['x']} name={name} />
+      <PatternPanel pattern={p} invalidateKey={['x']} name={name} leadFirstName={leadFirstName} />
     </QueryClientProvider>,
   )
 }
@@ -79,6 +79,17 @@ describe('a pattern reads in full sentences', () => {
     panel({ ...PATTERN, yours: true, talkedAbout: true, leadMark: null, secondReadNote: null }, undefined)
     expect(screen.getByText('Your lead has said they talked this through with you.')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/once you talked it through/)
+  })
+
+  /*
+   * BOARD REVIEW, 1 OCTOBER, ITEM 4: "YOUR LEAD" BY NAME, WHEN THE NAME IS KNOWN.
+   * The board already knows who runs the check-in (`leadFirstName`) everywhere else it needs to
+   * say so; this is the one place that still said the bare word "lead" instead.
+   */
+  it('names the lead, when the lead’s first name is known', () => {
+    panel({ ...PATTERN, yours: true, talkedAbout: true, leadMark: null, secondReadNote: null }, undefined, 'Rukia')
+    expect(screen.getByText('Rukia has said they talked this through with you.')).toBeTruthy()
+    expect(screen.queryByText(/Your lead has said/)).toBeNull()
   })
 
   it('an empty board never says no pattern has repeated, and never hints that one is waiting', () => {

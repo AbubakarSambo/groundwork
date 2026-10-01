@@ -71,8 +71,10 @@ export function TimelineSection({ rows }: { rows: BoardPresent['timeline'] }) {
 
 export function PersonHistorySection({ rows }: { rows: BoardPresent['personHistory'] }) {
   if (!rows?.length) return null
+  /* Board review, 1 October, item 6: "Person history" is a label, not a sentence saying what is
+     here. The plain heading says what the section shows. */
   return (
-    <Section heading="Person history" note="One person’s record over time.">
+    <Section heading="What each person has done so far" note="One person’s record over time.">
       <Panel pad={false}>
         {rows.map((p) => (
           <div key={p.participantId} className="gwui-panel-row">
@@ -90,8 +92,10 @@ export function PersonHistorySection({ rows }: { rows: BoardPresent['personHisto
 
 export function BlockerCheckSection({ rows }: { rows: BoardPresent['blockerCheck'] }) {
   if (!rows?.length) return null
+  /* Board review, 1 October, item 6: "Blocker check" is a label. The plain heading says what is
+     checked - what is blocking work, and since when. */
   return (
-    <Section heading="Blocker check" note="Whether a blocker is real: a named person, what was tried, and a date.">
+    <Section heading="What is blocking work, and since when" note="Whether a blocker is real: a named person, what was tried, and a date.">
       <Panel pad={false}>
         {rows.map((r) => (
           <div key={r.id} className="gwui-panel-row">
@@ -124,8 +128,10 @@ export function EvidenceIndexSection({ rows }: { rows: BoardPresent['evidenceInd
 
 export function BusyOrMovingSection({ data }: { data: BoardPresent['busyOrMoving'] }) {
   if (!data?.eachPerson?.length) return null
+  /* Board review, 1 October, item 6: "Busy or moving" is a label, not a sentence. The plain
+     heading says what the section shows - who is busy and who is free. */
   return (
-    <Section heading="Busy or moving" note="Whether activity is turning into progress.">
+    <Section heading="Who is busy and who is free" note="Whether activity is turning into progress.">
       <Panel pad={false}>
         {data.eachPerson.map((p) => (
           <div key={p.participantId} className="gwui-panel-row">
@@ -140,13 +146,36 @@ export function BusyOrMovingSection({ data }: { data: BoardPresent['busyOrMoving
   )
 }
 
+/**
+ * BOARD REVIEW, 1 OCTOBER, ITEM 4: "WHAT THE LEAD NEEDS TO DO" FOR THE LEAD'S OWN LIST.
+ *
+ * This section only ever has rows for whoever runs the check-in (the server's own
+ * `theLeadActions`, the-switchboards-own-sections.ts, requires `r.theLeadsId` and only fills it
+ * for that reader) - but the heading still said "the lead" in the third person on the lead's own
+ * board. The prototype's own words for this (G1-example-check-ins/eng.txt and others) are "What
+ * needs you in this check-in". `BoardPage.tsx` now only renders this for whoever runs the
+ * check-in, never for a participant.
+ */
 export function LeadActionsSection({ rows }: { rows: BoardPresent['leadActions'] }) {
   if (!rows?.length) return null
   return (
-    <Section heading="What the lead needs to do" note="Built from the record: who is waiting, and what has not been told yet.">
+    <Section heading="What needs you in this check-in" note="Built from the record: who is waiting, and what has not been told yet.">
       <SentenceRows rows={rows} />
     </Section>
   )
+}
+
+/**
+ * Board review, 1 October, item 6: "What the lead needs to do" and "Work plan" can say the exact
+ * same sentences, word for word, when nothing is waiting on the lead beyond what the plan already
+ * lists - the same record read twice under two headings. Drawn once: when every one of
+ * `leadActions`'s sentences already appears in `workPlan`, `LeadActionsSection` is left out and
+ * `WorkPlanSection` alone carries it.
+ */
+export function sameAsTheWorkPlan(leadActions: BoardPresent['leadActions'], workPlan: BoardPresent['workPlan']): boolean {
+  if (!leadActions?.length || !workPlan?.length) return false
+  const plan = new Set(workPlan.map((r) => r.says))
+  return leadActions.every((r) => plan.has(r.says))
 }
 
 export function ObligationsSection({ rows }: { rows: BoardPresent['obligations'] }) {
@@ -186,8 +215,10 @@ export function ForecastSection({ rows }: { rows: BoardPresent['forecast'] }) {
 
 export function WhoWaitedOnWhomSection({ rows }: { rows: BoardPresent['whoWaitedOnWhom'] }) {
   if (!rows?.length) return null
+  /* Board review, 1 October, item 6: said as a question a reader can follow - who is waiting on
+     whom, not the terser "who waited on whom". */
   return (
-    <Section heading="Who waited on whom" note="Every wait in the record, open or cleared, with its dates.">
+    <Section heading="Who is waiting on whom" note="Every wait in the record, open or cleared, with its dates.">
       <SentenceRows rows={rows.map((r) => ({ id: r.id, says: r.says }))} />
     </Section>
   )
@@ -202,10 +233,16 @@ export function ContradictionsSection({ rows }: { rows: BoardPresent['contradict
   )
 }
 
+/**
+ * Board review, 1 October, item 4: rows here only ever come for whoever runs the check-in (the
+ * server's `theQuestionsForTheLead` also requires `r.theLeadsId`), so "Questions for the lead"
+ * read about the reader in the third person on their own board. `BoardPage.tsx` only renders this
+ * for whoever runs the check-in.
+ */
 export function QuestionsForTheLeadSection({ rows }: { rows: BoardPresent['questionsForTheLead'] }) {
   if (!rows?.length) return null
   return (
-    <Section heading="Questions for the lead" note="Questions, never conclusions, built from the record.">
+    <Section heading="Questions for you" note="Questions, never conclusions, built from the record.">
       <Panel pad={false}>
         {rows.map((r) => (
           <div key={r.id} className="gwui-panel-row">
