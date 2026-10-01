@@ -1,4 +1,6 @@
-import { Button, Mark } from '@/components/gw/kit'
+import { Button } from '@/components/gw/ui/Button'
+import { ProofMark } from '@/components/gw/ui/ProofMark'
+import '@/components/gw/ui/gw-ui.css'
 import type { TheEndCard as EngineEndCard } from '@/api/conversation'
 
 /**
@@ -21,6 +23,11 @@ import type { TheEndCard as EngineEndCard } from '@/api/conversation'
  *
  * "That’s right, finish" is the one press that finishes, and "Change something" goes back to the
  * conversation, where the person says what is wrong in their own words.
+ *
+ * GROUP 3, PIECE 3: rebuilt from the shared parts - `Button` and `ProofMark` from
+ * `components/gw/ui` rather than the old `kit.tsx` (which drew the same two things under the
+ * names `Button` and `Mark`), and every size, colour and spacing as a `.gwui-ci-endcard-*` class
+ * in gw-ui.css rather than an inline style.
  */
 export function TheEndCard({
   engine,
@@ -54,17 +61,17 @@ export function TheEndCard({
   const part = () => (n += 1)
 
   return (
-    <section aria-label="What I wrote down" style={{ display: 'grid', gap: 12, padding: '4px 0 8px' }}>
+    <section aria-label="What I wrote down" className="gwui-ci-endcard">
       {record.length > 0 && (
-        <div style={box}>
-          <h2 style={heading}>{part()}. What is now in your record</h2>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        <div className="gwui-ci-endcard-box">
+          <h2 className="gwui-ci-endcard-heading">{part()}. What is now in your record</h2>
+          <ul className="gwui-ci-endcard-list">
             {record.map((l, i) => (
-              <li key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 0', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined }}>
-                <span style={{ width: 16, flexShrink: 0, paddingTop: 3 }}><Mark mark={l.mark} /></span>
+              <li key={i} className="gwui-ci-endcard-row">
+                <span className="gwui-ci-endcard-markcol"><ProofMark mark={l.mark} /></span>
                 <span>
-                  <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', lineHeight: 1.45 }}>{l.says}</span>
-                  {l.how && <span style={{ display: 'block', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.45, marginTop: 2 }}>{l.how}</span>}
+                  <span className="gwui-ci-endcard-line">{l.says}</span>
+                  {l.how && <span className="gwui-ci-endcard-how">{l.how}</span>}
                 </span>
               </li>
             ))}
@@ -73,23 +80,23 @@ export function TheEndCard({
       )}
 
       {leadName && (
-        <div style={box}>
-          <h2 style={heading}>{part()}. Why answering matters</h2>
-          <p style={body}>
+        <div className="gwui-ci-endcard-box">
+          <h2 className="gwui-ci-endcard-heading">{part()}. Why answering matters</h2>
+          <p className="gwui-ci-endcard-body">
             {leadName} also answers a check-in. The report puts the answers side by side. It shows where you agree and where you see things differently. It does not decide who is right.
           </p>
         </div>
       )}
 
-      <div style={box}>
-        <h2 style={heading}>{part()}. What happens next</h2>
-        <ul style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 4 }}>
-          {next.map((l, i) => <li key={i} style={body}>{l}</li>)}
+      <div className="gwui-ci-endcard-box">
+        <h2 className="gwui-ci-endcard-heading">{part()}. What happens next</h2>
+        <ul className="gwui-ci-endcard-next">
+          {next.map((l, i) => <li key={i} className="gwui-ci-endcard-body">{l}</li>)}
         </ul>
       </div>
 
       {finishing && whileFinishing}
-      <div style={{ display: 'grid', gap: 10 }}>
+      <div className="gwui-ci-endcard-actions">
         <Button kind="primary" wide onClick={onFinish} disabled={finishing}>
           {finishing ? 'Saving…' : 'That’s right, finish'}
         </Button>
@@ -100,7 +107,3 @@ export function TheEndCard({
     </section>
   )
 }
-
-const box: React.CSSProperties = { border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', background: 'white' }
-const heading: React.CSSProperties = { margin: '0 0 8px', fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }
-const body: React.CSSProperties = { margin: 0, fontSize: 14, lineHeight: 1.55, color: 'var(--gw-text)' }
