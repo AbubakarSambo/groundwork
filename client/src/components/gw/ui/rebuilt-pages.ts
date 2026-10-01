@@ -194,4 +194,13 @@ export const REBUILT_PAGES: string[] = [
    * caption lines (the target sentence, the "ask"/"finding" line, "what keeps coming up").
    */
   'components/gw/where-each-person-is.tsx',
+  /*
+   * BOARD TASK, BATCH 3, PART 2: `TheSwitchboardsSections.tsx` rebuilt from `Note`/`Stack` in place
+   * of fifty-nine one-off `gwui-fs-*`/`gwui-ink-*`/`gwui-mt-*` combinations across its sentence,
+   * blocker, record-history, obligation, forecast and question rows; the single section-level
+   * "cannot tell you" sentence (`BusyOrMovingSection`) now uses `Section`'s own `foot` rather than
+   * a one-off dashed-rule box, since it is the only trailing note here that sits under a whole
+   * section rather than beside one row.
+   */
+  'pages/board/TheSwitchboardsSections.tsx',
 ]

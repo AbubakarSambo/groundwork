@@ -1,4 +1,4 @@
-import { Section, Panel, Tag } from '@/components/gw/ui'
+import { Section, Panel, Tag, Note, Stack } from '@/components/gw/ui'
 import type { BoardPresent } from '@/api/board'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -29,8 +29,10 @@ function SentenceRows({ rows }: { rows: { id: string; says: string; because?: st
     <Panel pad={false}>
       {rows.map((r) => (
         <div key={r.id} className="gwui-panel-row">
-          <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{r.says}</div>
-          {r.because && <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-4" style={{ lineHeight: 1.5 }}>{r.because}</div>}
+          <Stack gap={4}>
+            <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{r.says}</div>
+            {r.because && <Note tone="muted">{r.because}</Note>}
+          </Stack>
         </div>
       ))}
     </Panel>
@@ -79,11 +81,13 @@ export function PersonHistorySection({ rows }: { rows: BoardPresent['personHisto
       <Panel pad={false}>
         {rows.map((p) => (
           <div key={p.participantId} className="gwui-panel-row">
-            <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{p.who}</div>
-            <div className="gwui-fs-15 gwui-ink-text gwui-mt-2" style={{ lineHeight: 1.55 }}>{p.says}</div>
-            {p.sessions.map((s) => (
-              <div key={s.n} className="gwui-fs-13-5 gwui-ink-muted gwui-mt-4" style={{ lineHeight: 1.5 }}>{s.says}</div>
-            ))}
+            <Stack gap={2}>
+              <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{p.who}</div>
+              <Stack gap={4}>
+                <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{p.says}</div>
+                {p.sessions.map((s) => <Note key={s.n} tone="muted">{s.says}</Note>)}
+              </Stack>
+            </Stack>
           </div>
         ))}
       </Panel>
@@ -119,7 +123,7 @@ export function BlockersSection({ blockerCheck, whoWaitedOnWhom, allowed }: {
   if (!checks.length) return null
   return (
     <Section heading="Blockers" note="Each with its history and the one thing that would clear it, where the record has it.">
-      <div className="gwui-gap-10" style={{ display: 'flex', flexDirection: 'column' }}>
+      <Stack gap={10}>
         {checks.map((r) => {
           const wait = waits.get(r.id)
           const cleared = !!wait?.clearedAt
@@ -131,26 +135,28 @@ export function BlockersSection({ blockerCheck, whoWaitedOnWhom, allowed }: {
                 <Tag tone={cleared ? 'proven' : 'concern'}>{cleared ? 'Cleared' : 'Blocking'}</Tag>
               </div>
               {waitingOn && (
-                <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-8">
-                  <b className="gwui-ink-dark" style={{ fontWeight: 600 }}>Waiting on: </b>{waitingOn}
+                <div className="gwui-mt-8">
+                  <Note><b className="gwui-ink-dark" style={{ fontWeight: 600 }}>Waiting on: </b>{waitingOn}</Note>
                 </div>
               )}
               {wait?.startedAt && (
-                <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-4">
-                  <b className="gwui-ink-dark" style={{ fontWeight: 600 }}>Raised: </b>
-                  {`since ${whenItWas(wait.startedAt, 'dayAndMonthLong')}`}
-                  {cleared && wait.clearedAt ? `, cleared on ${whenItWas(wait.clearedAt, 'dayAndMonthLong')}` : ''}
+                <div className="gwui-mt-4">
+                  <Note>
+                    <b className="gwui-ink-dark" style={{ fontWeight: 600 }}>Raised: </b>
+                    {`since ${whenItWas(wait.startedAt, 'dayAndMonthLong')}`}
+                    {cleared && wait.clearedAt ? `, cleared on ${whenItWas(wait.clearedAt, 'dayAndMonthLong')}` : ''}
+                  </Note>
                 </div>
               )}
               {rest.length > 0 && (
-                <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-4">
-                  <b className="gwui-ink-dark" style={{ fontWeight: 600 }}>What the proof shows: </b>{rest.join(' ')}
+                <div className="gwui-mt-4">
+                  <Note><b className="gwui-ink-dark" style={{ fontWeight: 600 }}>What the proof shows: </b>{rest.join(' ')}</Note>
                 </div>
               )}
             </Panel>
           )
         })}
-      </div>
+      </Stack>
     </Section>
   )
 }
@@ -162,8 +168,10 @@ export function EvidenceIndexSection({ rows }: { rows: BoardPresent['evidenceInd
       <Panel pad={false}>
         {rows.map((r) => (
           <div key={r.id} className="gwui-panel-row">
-            <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55, fontStyle: 'italic' }}>{`“${r.said}”`}</div>
-            <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-2" style={{ lineHeight: 1.5 }}>{r.backedBy}</div>
+            <Stack gap={2}>
+              <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55, fontStyle: 'italic' }}>{`“${r.said}”`}</div>
+              <Note tone="muted">{r.backedBy}</Note>
+            </Stack>
           </div>
         ))}
       </Panel>
@@ -176,16 +184,17 @@ export function BusyOrMovingSection({ data }: { data: BoardPresent['busyOrMoving
   /* Board review, 1 October, item 6: "Busy or moving" is a label, not a sentence. The plain
      heading says what the section shows - who is busy and who is free. */
   return (
-    <Section heading="Who is busy and who is free" note="Whether activity is turning into progress.">
+    <Section
+      heading="Who is busy and who is free"
+      note="Whether activity is turning into progress."
+      foot={data.cannotTellYou}
+    >
       <Panel pad={false}>
         {data.eachPerson.map((p) => (
           <div key={p.participantId} className="gwui-panel-row">
             <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{p.says}</div>
           </div>
         ))}
-        <div className="gwui-fs-13-5 gwui-ink-muted gwui-pt-10 gwui-pr-22 gwui-pb-10 gwui-pl-22 gwui-rule-top-dashed gwui-mt-4" style={{ fontStyle: 'italic', lineHeight: 1.5 }}>
-          {data.cannotTellYou}
-        </div>
       </Panel>
     </Section>
   )
@@ -230,9 +239,11 @@ export function ObligationsSection({ rows }: { rows: BoardPresent['obligations']
       <Panel pad={false}>
         {rows.map((r, i) => (
           <div key={r.participantId ?? `outside-${i}`} className="gwui-panel-row">
-            <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{r.who}</div>
-            {r.promised.map((s, j) => <div key={`p${j}`} className="gwui-fs-15 gwui-ink-text gwui-mt-2" style={{ lineHeight: 1.55 }}>{s}</div>)}
-            {r.othersWaitFor.map((s, j) => <div key={`w${j}`} className="gwui-fs-13-5 gwui-ink-muted gwui-mt-2" style={{ lineHeight: 1.5 }}>{s}</div>)}
+            <Stack gap={2}>
+              <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{r.who}</div>
+              {r.promised.map((s, j) => <div key={`p${j}`} className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{s}</div>)}
+              {r.othersWaitFor.map((s, j) => <Note key={`w${j}`} tone="muted">{s}</Note>)}
+            </Stack>
           </div>
         ))}
       </Panel>
@@ -247,10 +258,12 @@ export function ForecastSection({ rows }: { rows: BoardPresent['forecast'] }) {
       <Panel pad={false}>
         {rows.map((r) => (
           <div key={r.objectiveId} className="gwui-panel-row">
-            <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{r.about}</div>
-            <div className="gwui-fs-15 gwui-ink-text gwui-mt-2" style={{ lineHeight: 1.55 }}>{r.says}</div>
-            <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-4" style={{ lineHeight: 1.5 }}>{r.restsOn}</div>
-            <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-2" style={{ lineHeight: 1.5, fontStyle: 'italic' }}>{r.cannotTellYou}</div>
+            <Stack gap={2}>
+              <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{r.about}</div>
+              <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{r.says}</div>
+            </Stack>
+            <div className="gwui-mt-4"><Note tone="muted">{r.restsOn}</Note></div>
+            <div className="gwui-mt-2"><Note tone="muted"><em>{r.cannotTellYou}</em></Note></div>
           </div>
         ))}
       </Panel>
@@ -280,8 +293,10 @@ export function QuestionsForTheLeadSection({ rows }: { rows: BoardPresent['quest
       <Panel pad={false}>
         {rows.map((r) => (
           <div key={r.id} className="gwui-panel-row">
-            <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{r.question}</div>
-            <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-2" style={{ lineHeight: 1.5 }}>{r.because}</div>
+            <Stack gap={2}>
+              <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{r.question}</div>
+              <Note tone="muted">{r.because}</Note>
+            </Stack>
           </div>
         ))}
       </Panel>
