@@ -155,3 +155,29 @@ describe('an aim that starts with "My" (re-d, sales, Ngozi)', () => {
     expect(aboutTheSpeaker('My goal is 14 approved facilities this quarter.', 'Ngozi')).toBe("Ngozi's goal is 14 approved facilities this quarter.");
   });
 });
+
+describe('a name with no verb, and "my" in the lead\'s own line, as each reader reads them (1 October 2026)', () => {
+  const people = [person('p-bisi', 'u-bisi', 'Bisi', 'Adeyemi', PartyType.INITIATOR), person('p-ngozi', 'u-ngozi', 'Ngozi', 'Eze')];
+  const objectives = [
+    { ...aim('o-1', 'Spending on field visits.', 180000, null, 'p-bisi'), direction: 'LIMIT' },
+    aim('o-2', 'I need my team to stop missing documents.', null, null, 'p-bisi'),
+  ];
+  it('Bisi, the lead, reads a full sentence for each, and "your team"', async () => {
+    expect(await namesAs(people, 'u-bisi', objectives, 'u-bisi')).toEqual([
+      'The team is keeping spending on field visits to no more than 180,000.',
+      'You need your team to stop missing documents.',
+    ]);
+  });
+  it('Ngozi, in the check-in, reads them about the team and about Bisi, never "Bisi\'s team"', async () => {
+    expect(await namesAs(people, 'u-bisi', objectives, 'u-ngozi')).toEqual([
+      'The team is keeping spending on field visits to no more than 180,000.',
+      'Bisi Adeyemi needs the team to stop missing documents.',
+    ]);
+  });
+  it('an admin outside the check-in reads the same as Ngozi', async () => {
+    expect(await namesAs(people, 'u-bisi', objectives, ...ADMIN)).toEqual([
+      'The team is keeping spending on field visits to no more than 180,000.',
+      'Bisi Adeyemi needs the team to stop missing documents.',
+    ]);
+  });
+});

@@ -98,12 +98,32 @@ export function aboutTheSpeaker(text: string, speaker: string): string {
   return out;
 }
 
-/** A row that only says what is counted: "approved facilities", "Contracts". Never a sentence. */
+/*
+ * A NAME WITH NO VERB IS NOT A SENTENCE (review of 1 October 2026). "Spending on field visits." has a
+ * full stop and four words, and was left as it was: a fragment on the board, and in the check-in "Spending
+ * on field visits. The number 180,000 is a limit not to go over." A name is a sentence only where it has
+ * somebody doing something in it: a person ("I", "the speaker") or a verb from this list. Anything else
+ * says only what is counted, and is said as whoever holds it aiming for it, or keeping it under a limit.
+ */
+const A_PERSON_OR_A_VERB = new RegExp(String.raw`(?:^|[^\p{L}'’])(?:I|we|you|he|she|they|it|the speaker|the person|is|are|am|was|were|be|been|being|will|would|should|must|can|could|may|might|shall|has|have|had|do|does|did|need|needs|want|wants|aim|aims|aiming|plan|plans|hope|hopes|expect|expects|owns|runs|leads|manages|stop|stops|keep|keeps|get|gets|make|makes|reach|reaches|hit|hits|close|closes|sell|sells|deliver|delivers|bring|brings|grow|grows|cut|cuts)(?:(?:'|’)(?:m|re|ve|ll|d|s))?(?![\p{L}])`, 'iu');
+
+const AN_INSTRUCTION_STARTS = new Set(('decide achieve confirm hire build launch close sign win deliver reach hit grow cut reduce increase improve finish '
+  + 'complete ship raise land onboard bring book recover collect make get keep run lead own manage find secure set open train write '
+  + 'design review agree create migrate move hand pass submit approve disburse sell recruit support help double triple maintain ensure '
+  + 'establish develop define prepare plan introduce publish release deploy test fix resolve reconcile settle renew retain convert '
+  + 'visit call meet attend stop start take give send pay spend save do be have go see stay hold cover handle drive clear').split(' '));
+
+/** A row that only says what is counted: "approved facilities", "Contracts", "Spending on field visits.". Never a sentence. */
 export function onlySaysWhatIsCounted(name: string): boolean {
   const t = name.trim();
   if (!t) return false;
   if (/^[\p{Ll}\p{N}]/u.test(t)) return true;
-  return !/[.!?]$/.test(t) && t.split(/\s+/).length <= 3;
+  if (!/[.!?]$/.test(t) && t.split(/\s+/).length <= 3) return true;
+  /* An instruction is a sentence too: "Decide whether to confirm Aisha in her role", "Consistently achieve
+     eight renewals per quarter". */
+  const first = (t.split(/\s+/)[0] ?? '').toLowerCase().replace(/[^a-z]/g, '');
+  if (AN_INSTRUCTION_STARTS.has(first) || /ly$/.test(first)) return false;
+  return !A_PERSON_OR_A_VERB.test(t);
 }
 
 export interface WhoAnAimIsAbout {
@@ -156,10 +176,26 @@ export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {
  * nobody else is named in it, so "You agree with Tobi on his plan" is left as it is.
  */
 export function yourOwnWhereYouAreTheSubject(text: string, otherNames: Iterable<string>): string {
-  if (!/^You\b/.test(text)) return text;
+  if (!/^You\b/.test(text)) return theirOwnIsThe(text);
   for (const n of otherNames) {
     const name = (n ?? '').trim();
     if (name.length > 1 && new RegExp(`(?<![\\p{L}])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}])`, 'iu').test(text)) return text;
   }
   return text.replace(/\b(?:his|her)\s+(?=\p{Ll})/gu, 'your ');
+}
+
+/**
+ * "MY TEAM" IS NOT "BISI'S TEAM" IN A SENTENCE ABOUT BISI (review of 1 October 2026). "I need my team to
+ * stop missing documents", set by Bisi, came out "Bisi needs Bisi's team to stop missing documents." A
+ * pronoun is never guessed, so where the sentence is about a person, their own name again as a
+ * possessive is "the": "Bisi needs the team to stop missing documents." To Bisi herself the naming
+ * already reads "You need your team to stop missing documents."
+ */
+export function theirOwnIsThe(text: string): string {
+  const subject = /^((?:A|a) colleague|[\p{Lu}][\p{L}-]*)(?=[\s'’])/u.exec(text ?? '');
+  if (!subject || /^(?:The|A|An|This|That|It|There)$/.test(subject[1])) return text;
+  const who = subject[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const again = new RegExp(String.raw`(?<=\s)${who}(?:\s[\p{Lu}][\p{L}-]*)?(?:'|’)s\b`, 'giu');
+  const head = text.slice(0, subject[1].length);
+  return head + text.slice(subject[1].length).replace(again, 'the');
 }

@@ -98,8 +98,8 @@ describe('whose share of a target each reader is given', () => {
   }
 
   it('and on the board each share is a full sentence for its reader', async () => {
-    expect(((await boardFor(WANJIRU)).objectives as any[]).map((o) => o.name)).toEqual(['Water pumps sold this quarter.', 'Aisha Otieno\'s share is 12.', 'Baraka Kip\'s share is 13.']);
-    expect(((await boardFor(AISHA)).objectives as any[]).map((o) => o.name)).toEqual(['Water pumps sold this quarter.', 'Your share is 12.']);
+    expect(((await boardFor(WANJIRU)).objectives as any[]).map((o) => o.name)).toEqual(['The team is aiming for 25 water pumps sold this quarter.', 'Aisha Otieno\'s share is 12.', 'Baraka Kip\'s share is 13.']);
+    expect(((await boardFor(AISHA)).objectives as any[]).map((o) => o.name)).toEqual(['The team is aiming for 25 water pumps sold this quarter.', 'Your share is 12.']);
   });
 
   it('and the board’s person-by-person read gives Otieno where each person is, without their number', async () => {

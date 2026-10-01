@@ -99,7 +99,8 @@ describe('the decision about Aisha, as each person is served it', () => {
           expect(got).not.toContain('confirm Aisha');
           expect(got).not.toContain('stock counts stay late');
           /* And she still reads the team's target, so this is not a page that lost its targets. */
-          expect(got).toContain('Water pumps sold this quarter');
+          /* The team's target, which the board now says as a full sentence ("The team is aiming for 25 water pumps sold this quarter."). */
+          expect(got).toMatch(/water pumps sold this quarter/i);
         });
         it('Baraka, a colleague, does not', async () => {
           expect(await served(read, 'u-baraka', whoSees)).not.toContain('confirm Aisha');
