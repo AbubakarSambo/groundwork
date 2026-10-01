@@ -29,6 +29,16 @@ import { Page, PageTitle, Section, Panel, Button, Note, Empty } from '@/componen
 const DID_NOT_GO = 'That did not go through, and nothing has changed. Try again.'
 const at = (day: string) => new Date(`${day}T00:00:00.000Z`)
 const monthOf = (day: string) => `${whenItWas(at(day), 'month', 'UTC')} ${day.slice(0, 4)}`
+/**
+ * "IT" HAD NOTHING BEFORE IT (group 2's review, fault E): while the suite was off, or before the
+ * organisation's own answer had loaded, the subtitle read "It is built from..." alone - "it" naming
+ * nothing. The product's own cadence for this suite (the-ten-suites.ts's own "A review every 6
+ * months...") is the true default when the organisation has not answered differently; when it has,
+ * its own answer is used instead, so an organisation reviewing every 12 months still reads a true
+ * sentence.
+ */
+const DEFAULT_EVERY = 'every 6 months'
+const everySays = (raw: string | null | undefined) => raw?.replace(/^Every /, 'every ') || DEFAULT_EVERY
 
 export function ReviewsBoardPage() {
   const user = useAuthStore(s => s.user)
@@ -39,7 +49,6 @@ export function ReviewsBoardPage() {
     retry: false,
   })
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
-  const every = data?.every?.replace(/^Every /, 'every ')
   const months = [...new Set((data?.next ?? []).map(n => n.dueOn.slice(0, 7)))]
 
   return (
@@ -47,7 +56,7 @@ export function ReviewsBoardPage() {
       <PageTitle
         crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Performance reviews' }]}
         title="Performance reviews"
-        subtitle={`${every ? `A review ${every}. ` : ''}It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.`}
+        subtitle={`A review happens ${everySays(data?.every)}. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.`}
       />
 
       <Panel>
