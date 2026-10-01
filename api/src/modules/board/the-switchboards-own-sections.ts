@@ -59,6 +59,8 @@ export interface ACommitment {
   saidAgainIn: number[];
   settledBy: string | null;
   settledAt: Date | string | null;
+  /** The check-in it was settled in, where it was settled in one. */
+  settledInCheckInId?: string | null;
   saidWordForWord: boolean;
   whenSaidWordForWord: boolean;
   createdAt: Date | string;
@@ -789,4 +791,54 @@ export function whoWaitedOnWhom(handoffs: AHandoff[], r: WhoIsReading): AWait[] 
           : `${who} ${isAre(who)} waiting${onWhom} for ${what}, and it has not been cleared.`);
       return { id: d.id, says, startedAt: since, clearedAt: cleared ? clearedOn : null, days: cleared ? days : null };
     });
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * CONTRADICTIONS: where the record says two different things about one person's own commitment
+ * ---------------------------------------------------------------------------------------------- */
+
+export interface AContradiction {
+  id: string;
+  participantId: string | null;
+  who: string;
+  /** Both things the record says, in one full sentence, with the sessions. */
+  says: string;
+}
+
+/**
+ * A commitment marked done, not done or dropped in one session, and then said again in a later session
+ * as something still to do. Where two people said different things, the board already serves it as
+ * `divergence`, so this is only what one person's own record says twice. Under the work plan's wall.
+ */
+export function theContradictions(commitments: ACommitment[], sessions: ASession[], r: WhoIsReading): AContradiction[] {
+  const out: AContradiction[] = [];
+  for (const c of commitments) {
+    const state = stateOf(c.status);
+    if (state === 'open' || !c.participantId) continue;
+    if (!r.personMayBeRead(c.participantId) || !r.commitmentMayBeRead(c)) continue;
+    const settledIn = c.settledInCheckInId ? sessions.find((s) => s.id === c.settledInCheckInId)?.sessionNumber ?? null : null;
+    const settledSession = settledIn ?? (c.settledAt
+      ? sessions
+        .filter((s) => s.participantId === c.participantId && !s.isSetup && s.completedAt && new Date(s.completedAt).getTime() >= new Date(c.settledAt as any).getTime())
+        .sort((a, b) => a.sessionNumber - b.sessionNumber)[0]?.sessionNumber ?? null
+      : null);
+    if (settledSession == null) continue;
+    const later = [...(c.saidAgainIn ?? [])].filter((n) => n > settledSession).sort((a, b) => a - b);
+    if (!later.length) continue;
+    const who = whoIs(r, c.participantId);
+    const clause = clauseOf(c);
+    /* In their words where the stored text is a passage of what they typed (as the work plan quotes it), otherwise in ours. */
+    const theirWords = c.saidWordForWord === true ? c.text.trim().replace(/[.!?]+$/, '') : '';
+    const theCommitment = theirWords
+      ? `${possessive(who)} commitment, "${theirWords}",`
+      : clause ? `${possessive(who)} commitment to ${clause}` : `A commitment of ${who === 'You' ? 'yours' : `${who}'s`}`;
+    const again = later.length === 1 ? `session ${later[0]}` : `sessions ${listed(later.map(String))}`;
+    out.push({
+      id: `again-after-${state.replace(' ', '-')}-${c.id}`,
+      participantId: c.participantId,
+      who,
+      says: `${theCommitment} was marked ${state} in session ${settledSession}, and in ${again} ${midSentence(who)} said it again as something still to do.`,
+    });
+  }
+  return out;
 }

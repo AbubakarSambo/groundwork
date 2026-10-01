@@ -105,7 +105,7 @@ import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
-import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, theLeadActions, theObligations, theForecast, whoWaitedOnWhom, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
+import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, theLeadActions, theObligations, theForecast, whoWaitedOnWhom, theContradictions, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { eachLineInTheirName, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
 import { theRecordAQuoteMayComeFromByParticipant } from '../reports/a-quote-built-at-the-read';
@@ -1948,6 +1948,8 @@ export class BoardService {
       if (obligations.length) out.obligations = obligations;
       const waits = whoWaitedOnWhom(handoffs, reader);
       if (waits.length) out.whoWaitedOnWhom = waits;
+      const contradictions = theContradictions(mine.commitments, sessions, reader);
+      if (contradictions.length) out.contradictions = contradictions;
       /*
        * Built from the targets this reader is already served, so every wall on a target holds here too. Never on an
        * evaluation check-in. It says the aim or the limit, so it goes only to those who read aims and limits (decision

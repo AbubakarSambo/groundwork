@@ -734,6 +734,16 @@ What Bisi reads: "Ngozi Eze waited on the Head of Credit for the Head of Credit'
 
 Test: `who-waited-on-whom-on-the-board-as-each-reader-reads-it.spec.ts`.
 
+#### Contradictions: `contradictions`
+
+`[{ id, participantId, who, says }]`. Where one person's own record says two different things: a commitment marked done, not done or dropped in one session, and said again in a later session as something still to do. Where two people said different things, it stays in `divergence` (unchanged), so the screens draw both under "Contradictions". The commitment is quoted only where its stored text is a passage of what the person typed, as the work plan quotes it.
+
+Who reads it. The work plan's wall: whoever runs the check-in, the admin who set it up, and an admin on an ordinary check-in read everyone's; a person reads their own, and a colleague's only where people see each other and it is not an evaluation check-in.
+
+What Bisi reads: "Kwame Mensah's commitment, "I'll be following up with each client directly over the next week to chase down the missing documents", was marked done in session 1, and in session 2 Kwame Mensah said it again as something still to do." Kwame reads "Your commitment, "...", was marked done in session 1, and in session 2 you said it again as something still to do."
+
+Test: `contradictions-on-the-board-as-each-reader-reads-them.spec.ts`.
+
 ## Week 11: the ending page's suggestion, signals and questions, and reviews that fall due from inside the product
 
 ### The ending page (`GET /grounds/:groundId/resolution`)
