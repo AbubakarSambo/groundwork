@@ -74,7 +74,7 @@ function setup(opts: { on?: boolean } = {}) {
     }) },
     person: {
       findMany: jest.fn(async () => DIRECTORY),
-      findFirst: jest.fn(async ({ where }: any) => DIRECTORY.find((p) => p.linkedUserId === where.linkedUserId) ?? null),
+      findFirst: jest.fn(async ({ where }: any) => DIRECTORY.find((p) => (where.linkedUserId ? p.linkedUserId === where.linkedUserId : p.externalId === where.externalId)) ?? null),
     },
     user: { findMany: jest.fn(async ({ where }: any) => where.id.in.map((id: string) => ({ id, firstName: users[id][0], lastName: users[id][1], email: `${id}@baridi.example` }))) },
     spendRequest: {

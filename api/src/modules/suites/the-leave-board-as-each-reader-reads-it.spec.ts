@@ -120,11 +120,11 @@ describe('Grace, an admin, reads the whole board', () => {
     await expect(svc.decide(as('u-grace'), 'r-aisha', 'approved')).rejects.toThrow(new ForbiddenException(LEAVE_REFUSED.notYours));
   });
 
-  it('decides every request when the organisation said "An admin" approves', async () => {
+  it('follows the line manager even when the organisation once said "An admin" approves (decided 1 October 2026: the line manager, or an admin where there is none)', async () => {
     const { svc, as } = setup({ approver: 'An admin' });
     const { waiting } = await svc.board(as('u-grace'), TODAY);
-    expect(waiting.every((w) => w.mayDecide)).toBe(true);
-    await expect(svc.decide(as('u-wairimu'), 'r-aisha', 'approved')).rejects.toThrow(ForbiddenException);
+    expect(waiting.map((w) => [w.name, w.mayDecide])).toEqual([['Aisha Otieno', false], ['Samuel Njoroge', false], ['Otieno Ouma', true]]);
+    await expect(svc.decide(as('u-wairimu'), 'r-aisha', 'approved')).resolves.toBeDefined();
   });
 
   it('reads everybody off in the next two weeks, as annual leave', async () => {

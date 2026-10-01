@@ -1,6 +1,7 @@
 import type { PrismaService } from '../prisma/prisma.service';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { workingDays, type Day } from './the-leave-board.service';
+import { whoApprovesFor } from './who-approves';
 
 /**
  * LEAVE DATES SAID IN CHAT GO TO THE LEAVE SUITE, NEVER TO THE RECORD (week 20, request 21).
@@ -144,28 +145,14 @@ interface LeaveLike {
 const firstName = (p: { givenName?: string | null; displayName?: string | null } | null | undefined) =>
   (p?.givenName?.trim() || p?.displayName?.trim().split(/\s+/)[0] || '') || null;
 
-/** Whether the suite is on, and whom the person asks. Read here so the say-back names a real approver. */
+/** Whom the person asks (the one answer in who-approves.ts: their line manager, or an admin) and their team, for the say-back. */
 async function whoApproves(prisma: PrismaService, organizationId: string, userId: string) {
   const me = await prisma.person.findFirst({
     where: { organizationId, linkedUserId: userId, active: true },
     select: { department: true, managerExternalId: true },
   });
-  const suite = await prisma.organizationSuite.findUnique({ where: { organizationId_suite: { organizationId, suite: 'leave' } }, select: { answers: true } });
-  const approver = typeof (suite?.answers as any)?.approver === 'string' ? (suite!.answers as any).approver : null;
-  if (approver === 'Their manager' && me?.managerExternalId) {
-    const m = await prisma.person.findFirst({
-      where: { organizationId, externalId: me.managerExternalId, active: true },
-      select: { givenName: true, displayName: true, linkedUserId: true },
-    });
-    if (m?.linkedUserId) {
-      const r = await prisma.organizationMembership.findUnique({
-        where: { userId_organizationId: { userId: m.linkedUserId, organizationId } },
-        select: { role: true },
-      });
-      if (r?.role === 'LEAD' || r?.role === 'ADMIN') return { name: firstName(m), team: me?.department?.trim() || null };
-    }
-  }
-  return { name: null, team: me?.department?.trim() || null };
+  const who = await whoApprovesFor(prisma, { organizationId, personUserId: userId, managerExternalId: me?.managerExternalId ?? null });
+  return { name: who.kind === 'manager' ? who.firstName : null, team: me?.department?.trim() || null };
 }
 
 /** Who else in the person's team is off on any of those days, by first name. */
