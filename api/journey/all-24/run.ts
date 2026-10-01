@@ -206,7 +206,10 @@ async function runScenario(prisma: any, model: AnthropicService, s: AScenario) {
         if (!probe?.releasedAt && !probe?.sharedPicture) continue;
         released = true;
         written = Array.isArray(probe?.findings) ? probe.findings.length : 0;
-        if (written >= wanted) break;
+        /* Hafsah, 1 October: never capture a report that is still being written. The lead's read says
+           so (`beingWritten`, week 25); a capture taken before it clears shows an earlier version and
+           throws "reports match the database" off by timing. */
+        if (written >= wanted && !probe?.beingWritten) break;
       } catch { /* not yet */ }
     }
     /*
@@ -222,6 +225,14 @@ async function runScenario(prisma: any, model: AnthropicService, s: AScenario) {
      */
     if (written < wanted) {
       log(`    *** REPORT INCOMPLETE: ${written} finding(s) for ${wanted} person/people after ${probes * 4}s. Report numbers from this scenario are not usable. ***`);
+    }
+    /* And once more before the capture: wait (up to ten minutes) for a build still in progress to finish. */
+    for (let i = 0; i < 150; i++) {
+      try {
+        const probe = await http(`/grounds/${gid}/report`, { token: tokens[email(lead)] });
+        if (!probe?.beingWritten) break;
+      } catch { break; }
+      await new Promise((r) => setTimeout(r, 4000));
     }
     const sess: any = { session: n, people, released };
     /* What the LEAD reads. */
