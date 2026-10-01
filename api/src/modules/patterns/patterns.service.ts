@@ -7,6 +7,13 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LEARNING_SIGNAL } from '../learning/learning-signal';
 import { shouldThisCodeBeAboutThem } from './a-chaser-is-not-the-blocker';
 import { theirOwnEarlierRecord, earlierRecordQuery } from './the-detector-reads-their-own-earlier-record';
+import {
+  theReadsWereSplit,
+  couldChangeWhatIsShown,
+  whatCountsThisPeriod,
+  MORE_READS_WHEN_SPLIT,
+  votesOf,
+} from './a-period-at-the-line-is-settled-on-all-the-evidence';
 import { whatWasSeenLastPeriod, lastPeriodBlockFor, evidenceBorrowedFromAnotherCode, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
 import { AnthropicService } from '../conversation';
 import { runIntake } from '../conversation/intake';
@@ -260,22 +267,41 @@ export class PatternsService {
       return;
     }
 
-    /* Count how many of the successful reads kept each code, keeping the observation from the
-       first of the five (in order) that kept it - the Map below only ever sets it once. */
-    const votes = new Map<string, { count: number; observation: string }>();
-    for (const kept of succeeded) {
-      const codesThisRead = new Set<string>();
-      for (const { code, observation } of kept) {
-        if (codesThisRead.has(code)) continue; // one vote per read, even if a read named a code twice
-        codesThisRead.add(code);
-        const entry = votes.get(code);
-        if (entry) entry.count += 1;
-        else votes.set(code, { count: 1, observation });
-      }
+    /* Count how many of the successful reads kept each code (one vote per read), keeping the
+       observation from the first of the five, in order, that kept it. */
+    const firstVotes = votesOf(succeeded);
+
+    /*
+     * A PERIOD THE READS WERE SPLIT ON IS SETTLED ONCE, ON MORE OF THE SAME EVIDENCE. Where two or
+     * three of the five kept a code on a pattern not yet shown, the check-in is read five more times,
+     * the same way, and that code is decided on all ten by majority, a tie going the way the first
+     * five went. See
+     * a-period-at-the-line-is-settled-on-all-the-evidence.
+     */
+    const countedSoFar = new Map<string, number[]>();
+    if ([...firstVotes.values()].some(({ count }) => theReadsWereSplit(count, READS_THAT_MUST_AGREE))) {
+      const rows = await this.prisma.patternDetection
+        .findMany({ where: { participantId: checkIn.participantId }, select: { code: true, seenInSessions: true } })
+        .catch(() => [] as { code: string; seenInSessions: number[] }[]);
+      for (const r of rows ?? []) countedSoFar.set(r.code, r.seenInSessions ?? []);
+    }
+    const toSettle = (code: string, count: number) =>
+      theReadsWereSplit(count, READS_THAT_MUST_AGREE) && couldChangeWhatIsShown(countedSoFar.get(code) ?? [], period, PERIODS_BEFORE_A_PATTERN_IS_SHOWN);
+    const more: { code: string; observation: string }[][] = [];
+    if ([...firstVotes].some(([code, { count }]) => toSettle(code, count))) {
+      const moreAttempts = await Promise.allSettled(
+        Array.from({ length: MORE_READS_WHEN_SPLIT }, () =>
+          this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, getDetectionInput, whatThePersonSaid),
+        ),
+      );
+      moreAttempts.forEach((attempt, i) => {
+        if (attempt.status === 'fulfilled') more.push(attempt.value);
+        else this.logger.warn(`Pattern extraction failed for check-in ${checkInId}, extra read ${i + 1} of ${MORE_READS_WHEN_SPLIT}: ${attempt.reason?.message}`);
+      });
     }
 
-    for (const [code, { count, observation }] of votes) {
-      if (count < READS_THAT_MUST_AGREE) continue;
+    for (const [code, { observation, votes, reads, settled }] of whatCountsThisPeriod(succeeded, more, toSettle, READS_THAT_MUST_AGREE)) {
+      if (settled) this.logger.log(`Check-in ${checkInId}: ${code} was kept by ${votes} of ${reads} reads after the first five were split, so it counts for period ${period}.`);
       if (isPositiveCode(code)) {
         await this.observePositive(checkIn.groundId, checkIn.participantId, code, observation, period, await evidenceSourceFor(code));
       } else {

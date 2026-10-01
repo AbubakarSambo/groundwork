@@ -16,7 +16,9 @@
  * 1. Every check-in is read five times (READS_PER_CHECK_IN), each extraction call and the
  *    confirming call at the model's steadiest setting (PATTERN_DETECTION_STEADY_OPTIONS).
  * 2. A code is written once at least three of the five reads (READS_THAT_MUST_AGREE) keep it, and
- *    not written when only two do.
+ *    not written when only two do. Since 1 October 2026, when two or three of five keep a code on a
+ *    pattern not yet shown, five more reads are taken and it is decided on all ten, on the same line
+ *    (six of ten); see a-period-at-the-line-is-settled-on-all-the-evidence.spec.ts.
  * 3. The observation written is the one from the first of the five reads, in order, that kept the
  *    code.
  * 4. If some reads fail, a code still keeps if at least three of the reads that succeeded keep it,
@@ -93,13 +95,17 @@ describe('analyzeCheckIn reads a check-in five times, at the steady setting', ()
     };
   }
 
-  /** Every extraction call returns the same detection, `keptOn` times out of five, in order. */
-  function buildAnthropic(keptOn: number, code = 'B1', observationPrefix = 'read') {
+  /**
+   * Every extraction call returns the same detection, `keptOn` times out of the first five, in order.
+   * When the first five are split (two or three of five), the check-in is read five more times (see
+   * a-period-at-the-line-is-settled-on-all-the-evidence); `moreKeptOn` of those keep it.
+   */
+  function buildAnthropic(keptOn: number, code = 'B1', observationPrefix = 'read', moreKeptOn = 0) {
     let call = 0;
     return {
       extract: jest.fn(async () => {
         call += 1;
-        const shouldKeep = call <= keptOn;
+        const shouldKeep = call <= 5 ? call <= keptOn : call - 5 <= moreKeptOn;
         return {
           detections: shouldKeep
             ? [{ code, observation: `${observationPrefix} ${call}: what leadership was told does not match what the team describes.` }]
@@ -148,9 +154,11 @@ describe('analyzeCheckIn reads a check-in five times, at the steady setting', ()
     }
   });
 
-  it('a code kept by 3 of 5 reads is written once', async () => {
+  /* Changed 1 October 2026: three of five is now a split period, so the five more reads it brings
+     decide it on all ten. Here three of those five keep it too (six of ten), so it is written. */
+  it('a code kept by 3 of 5 reads, and by 3 of the 5 more reads the split brings, is written once', async () => {
     const prisma = buildPrisma();
-    const anthropic = buildAnthropic(3);
+    const anthropic = buildAnthropic(3, 'B1', 'read', 3);
     const svc = buildService(prisma, anthropic);
     const written: { code: string; observation: string }[] = [];
     svc.observe = jest.fn(async (_g: string, _p: string, code: string, observation: string) => {
@@ -179,7 +187,7 @@ describe('analyzeCheckIn reads a check-in five times, at the steady setting', ()
 
   it('the observation written is the one from the first of the five reads that kept it', async () => {
     const prisma = buildPrisma();
-    const anthropic = buildAnthropic(3);
+    const anthropic = buildAnthropic(3, 'B1', 'read', 3);
     const svc = buildService(prisma, anthropic);
     const written: { code: string; observation: string }[] = [];
     svc.observe = jest.fn(async (_g: string, _p: string, code: string, observation: string) => {
