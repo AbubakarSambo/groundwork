@@ -7130,4 +7130,15 @@ Next are the roster of participants, with the bounced-invitation pill, and the p
 
 The builder did not add the page to the rebuilt list, because it draws the Context and resources tab (`ContextPage.tsx`), which still uses the old parts. That tab's drawing is being rebuilt now as group 3's last piece. The old context chat stays on, exactly as it works today, until the engine's five live checks pass.
 
+**Context and resources is rebuilt from the shared parts (1 October).**
+- Its six numbered headings are now plain headings, because the prototype never numbers a heading.
+- The five kind-of-line buttons are one shared choice.
+- A second navy button that appeared when two forms were open at once was found and fixed.
+- Every action is kept, and the old context chat still works exactly as before. All 258 tests around it pass, and so does the whole screen suite (3,757 tests).
+- The lead's check-in page is now on the rebuilt list.
+
+Two things are being fixed now, as group 3's sixth piece:
+- On this tab the lead's page shows 32 buttons against the prototype's 21. The extras come from each person's part (`EachPerson.tsx`) and the targets band: fold arrows, and "Done" and "Not doing it" on every to-do.
+- The participant's check-in page still uses the old parts in its loading, header and "not in this check-in" screens.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
