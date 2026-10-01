@@ -21,12 +21,14 @@ import { Composer } from '@/components/gw/ui/Composer'
 import { Modal } from '@/components/gw/ui/Modal'
 import { Section } from '@/components/gw/ui/Section'
 import { Tag } from '@/components/gw/ui/Tag'
+import { Button } from '@/components/gw/ui/Button'
 import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
 import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
 import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { toast } from 'sonner'
+import '@/components/gw/ui/gw-ui.css'
 
 /** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
 /* .webp and .heic too: an iPhone photo is HEIC, and the server has always read both (documents.service ALLOWED_MIME). */
@@ -70,35 +72,35 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
   }
 
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', background: 'white', maxWidth: '82%', alignSelf: 'flex-start' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 8 }}>📎 {docName}</div>
+    <div className="gwui-ci-assessment">
+      <div className="gwui-ci-assessment-title">📎 {docName}</div>
       {!editing ? (
         <>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 4 }}>What this suggests</div>
-          <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
+          <div className="gwui-ci-assessment-label">What this suggests</div>
+          <ul className="gwui-ci-assessment-list">
             {assessment.suggests.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 4 }}>What I will do with it</div>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
+          <div className="gwui-ci-assessment-label">What I will do with it</div>
+          <ul className="gwui-ci-assessment-list gwui-ci-assessment-list-last">
             {assessment.willDo.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
-          <button onClick={() => setEditing(true)} style={{ marginTop: 10, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: 0 }}>
+          <button onClick={() => setEditing(true)} className="gwui-ci-assessment-link">
             Not right? Correct this
           </button>
         </>
       ) : (
         <>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 4 }}>What this suggests (one per line)</div>
+          <div className="gwui-ci-assessment-label">What this suggests (one per line)</div>
           <textarea value={suggestsText} onChange={e => setSuggestsText(e.target.value)} rows={3}
-            style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8 }} />
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-sub)', marginBottom: 4 }}>What I will do with it (one per line)</div>
+            className="gwui-ci-assessment-textarea" />
+          <div className="gwui-ci-assessment-label">What I will do with it (one per line)</div>
           <textarea value={willDoText} onChange={e => setWillDoText(e.target.value)} rows={2}
-            style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8 }} />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={save} disabled={saving} style={{ padding: '7px 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>
+            className="gwui-ci-assessment-textarea" />
+          <div className="gwui-ci-assessment-actions">
+            <button onClick={save} disabled={saving} className="gwui-ci-assessment-save">
               {saving ? 'Saving…' : 'Save correction'}
             </button>
-            <button onClick={() => setEditing(false)} disabled={saving} style={{ padding: '7px 14px', borderRadius: 6, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+            <button onClick={() => setEditing(false)} disabled={saving} className="gwui-ci-assessment-cancel">
               Cancel
             </button>
           </div>
@@ -895,7 +897,7 @@ export function ChatPage() {
 
   if (justFinished && groundId && checkInId && !bareFrame) {
     return (
-      <div style={{ minHeight: 'calc(100dvh - var(--gw-bottom-nav, 0px))', background: 'var(--gw-page)', overflowY: 'auto' }}>
+      <div className="gwui-ci-done-wrap">
         <TheDonePage
           firstName={firstWordOfAName(user?.firstName)}
           checkInId={checkInId}
@@ -918,16 +920,19 @@ export function ChatPage() {
     .flatMap(s => s.entries.map(e => ({ session: s.sessionNumber, type: e.type, text: asTheirWords(e.text), raw: e.text })))
     .filter(l => l.text && !isTheEnginesOwnNote(l.raw))
 
-  /* Fills the screen exactly, so the composer sits at the bottom of the phone and the transcript scrolls inside. It was minHeight, and the composer measured 1,518px down on an 812px screen. */
+  /* Fills the screen exactly, so the composer sits at the bottom of the phone and the transcript scrolls inside. */
   return (
-    /* minHeight 100vh was fighting the height: on a narrow screen it re-added the nav strip the
-       height had just subtracted. See --gw-bottom-nav in AppShell. */
-    <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
-      {/*
-        THE PROTOTYPE'S SHAPE: the way back above one card, and the whole check-in inside the card
-        (check-in-start.jpg). On a phone the card fills the screen.
-      */}
-      <div style={{ flex: 1, minHeight: 0, width: '100%', maxWidth: 600, margin: '0 auto', padding: 'clamp(0px, 3vw, 20px) clamp(0px, 2vw, 16px)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+    /*
+      THE PROTOTYPE'S SHAPE: the way back above one card, and the whole check-in inside the card
+      (check-in-start.jpg). On a phone the card fills the screen.
+
+      GROUP 3, PIECE 3: the page's own frame, and everything below it, is built from the shared
+      parts in components/gw/ui - ConversationCard/Composer/Bubble/Modal/Section/Tag/Button - with
+      every size, colour and spacing of this screen's own markup in gw-ui.css's `.gwui-ci-*`
+      classes rather than an inline style.
+    */
+    <div className="gwui-ci-page">
+      <div className="gwui-ci-wrap">
       {/**
         * THE WAY OUT, ON THE LEFT, AND POINTED AT THE GROUND.
         *
@@ -981,19 +986,19 @@ export function ChatPage() {
           <>
                 {/* Clarification session banner */}
                 {isClarificationSession && (
-                  <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 16px', fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.55 }}>
+                  <div className="gwui-ci-banner-info">
                     <strong>Clarification session.</strong> Something in your report was inferred, not quoted directly. Tell us what was actually happening and we'll update the record.
                   </div>
                 )}
-          
+
                 {/* Session open failure - shown at top of chat area so it's always visible */}
                 {openFailed && (
-                  <div style={{ padding: '12px 16px', background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-b)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
-                    <span style={{ fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.4 }}>Could not open your session. This is usually a temporary issue.</span>
+                  <div className="gwui-ci-banner-warn">
+                    <span className="gwui-ci-banner-warn-text">Could not open your session. This is usually a temporary issue.</span>
                     <button
                       onClick={() => { setOpenFailed(false); openedRef.current = false; openSession.mutate() }}
                       disabled={openSession.isPending}
-                      style={{ padding: '6px 14px', borderRadius: 6, background: 'var(--gw-amber-t)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, opacity: openSession.isPending ? 0.6 : 1 }}
+                      className="gwui-ci-banner-warn-btn"
                     >
                       {openSession.isPending ? 'Opening…' : 'Try again'}
                     </button>
@@ -1003,7 +1008,7 @@ export function ChatPage() {
         )}
         bodyRef={msgsRef}
         footer={(
-                  <div style={{ background: 'white', flexShrink: 0 }}>
+                  <div>
                     {/**
                       * ROUND 6, ITEM 3: THE GREY STRIP IS GONE.
                       *
@@ -1014,10 +1019,10 @@ export function ChatPage() {
                       * whoever runs it - both real fixes for reported complaints, not decoration),
                       * just on the page's own white now, not banded off from it.
                       */}
-                    <div style={{ padding: '4px 14px 0', fontSize: 11, color: 'var(--gw-sub)', lineHeight: 1.4, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div className="gwui-ci-footer-strip">
                       {/* Always the spacer, whether or not there is a sentence to put in it: the buttons after
                           it are laid out against this flex item, not against whether it has words in it. */}
-                      <span style={{ flex: 1, minWidth: 200 }}>{privacyLabel}</span>
+                      <span className="gwui-ci-footer-note">{privacyLabel}</span>
                       {/*
                         * THE TWO THINGS A PERSON KEEPS ASKING FOR, WHERE THEY ARE ASKING FOR THEM.
                         *
@@ -1037,27 +1042,27 @@ export function ChatPage() {
                         */}
                       {/*
                         BOTH OF THESE ARE THE LEAD'S, AND EVERYBODY WAS OFFERED THEM.
-          
+
                         Walked as a participant: her chat carries "Set the context" and "Add people". The
                         first goes to a Context page that tells her "you cannot change this here"; the second
                         goes to Setup, which opens with "Nothing on this page is yours to change". Two
                         controls offered to somebody, both leading to a page that refuses them - which is
                         worse than not offering, because she has to go and find out.
-          
+
                         A participant is not short of things to do here: the one thing that IS hers is her
                         own record, and it is already a tab.
                       */}
                       {groundId && isInitiator && (
-                        <span style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
+                        <span className="gwui-ci-footer-links">
                           <button
                             onClick={() => navigate(`/grounds/${groundId}?tab=context`)}
-                            style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                            className="gwui-ci-footer-link"
                           >
                             Set the context
                           </button>
                           <button
                             onClick={() => navigate(`/grounds/${groundId}?tab=settings`)}
-                            style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                            className="gwui-ci-footer-link"
                           >
                             Add people
                           </button>
@@ -1070,12 +1075,12 @@ export function ChatPage() {
                       Measured on a 375px phone before this: the typing box was 89 pixels wide, because Upload
                       doc and Paste text sat in the same row and took it. On the card whose whole promise is
                       two minutes on a phone, that is the thing that breaks it.
-          
+
                       So: one round attach button holding both ways of adding something, a full-width pill to
                       type in, and a round send. Nothing was removed - the two controls moved inside the clip.
                     */}
-                    <div style={{ padding: '10px 12px' }}>
-                      <input type="file" id="doc-upload" accept={ACCEPTED_UPLOADS.join(',')} style={{ display: 'none' }} onChange={e => {
+                    <div>
+                      <input type="file" id="doc-upload" accept={ACCEPTED_UPLOADS.join(',')} className="gwui-sr-only" onChange={e => {
                         const f = e.target.files?.[0]
                         if (f) {
                           const allowed = ACCEPTED_UPLOADS
@@ -1107,20 +1112,20 @@ export function ChatPage() {
                             <label htmlFor="doc-upload"
                               title={`Accepted: ${ACCEPTED_UPLOADS.map(e => e.slice(1).toUpperCase()).join(', ')}`}
                               onClick={() => setAttachOpen(false)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--gw-text)' }}
+                              className="gwui-ci-attach-item"
                             >
                               Add a photo or a document
                             </label>
                             <button
                               onClick={() => { setAttachOpen(false); if (groundId) setPasteMode(true) }}
                               disabled={completed || declined}
-                              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--gw-text)', background: 'none', border: 'none', width: '100%', textAlign: 'left', fontFamily: 'inherit' }}
+                              className="gwui-ci-attach-item"
                             >
                               Paste text
                             </button>
                             {/* The prototype's own sentence for a new document (U.7, Add a document), and the
                                 server's rule: a document starts private to its uploader (who-can-see-a-document). */}
-                            <div style={{ padding: '6px 12px 8px', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.45, borderTop: '1px solid var(--gw-border)', marginTop: 4 }}>
+                            <div className="gwui-ci-attach-note">
                               It starts private to you. You choose who can read it.
                             </div>
                           </>
@@ -1135,12 +1140,12 @@ export function ChatPage() {
                       thing they are typing into, says all three.
                     */}
                     {bareFrame && (
-                      <div style={{ padding: '0 14px 10px', fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center' }}>
+                      <div className="gwui-ci-signin-note">
                         {user?.email ? `Signed in as ${user.email}. ` : ''}
                         Your link reopens this any time, or{' '}
                         <button
                           onClick={() => navigate('/auth')}
-                          style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
+                          className="gwui-plain-link"
                         >
                           sign in with your email
                         </button>.
@@ -1153,13 +1158,13 @@ export function ChatPage() {
               two seconds, and openSession.isPending cannot be true until after it, so every arrival opened on
               a blank screen. The jitter stays; the sentence starts earlier. */}
           {openingNow && (
-            <div role="status" style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>
+            <div role="status" className="gwui-panel-text-muted">
               Opening your session…
               {/* Said only once the wait is long enough to need explaining (U.8 review): opening a
                   session runs several model calls and can take up to a minute with nothing else on
                   screen, which read as a hang. */}
               {openingIsSlow && (
-                <div style={{ marginTop: 6 }}>{GETTING_YOUR_FIRST_QUESTION_READY}</div>
+                <div>{GETTING_YOUR_FIRST_QUESTION_READY}</div>
               )}
             </div>
           )}
@@ -1167,7 +1172,7 @@ export function ChatPage() {
           {/*
             ROUND 6, ITEM 2: "WHAT THIS CHECK-IN IS ABOUT" AND "WHAT YOU SAID LAST TIME" FOLD
             BEHIND ONE QUIET LINK.
-            
+
             The prototype starts straight with Groundwork's first turn (check-in-start.jpg) - two
             cards above it, with their own capitalised headings, are not there. Both still carry
             real things the person may want before answering (an objective they have never seen
@@ -1176,21 +1181,19 @@ export function ChatPage() {
             what-you-said-last-time were written against. So they are reachable, not gone: one
             plain link above the first turn opens a panel with both, built from the parts
             (Modal), rather than sitting open on screen before anyone has typed a word.
-            
+
             NOT IN THE BARE FRAME, same reason as before: a team update's link opens on the
             question, and a card - or now a link - above it says something before anybody has
             typed a word. See the-link-opens-on-the-question.
           */}
           {!bareFrame && (hasAboutContent || priorRecordLines.length > 0) && (
-            <div style={{ marginBottom: 4 }}>
-              <button
-                type="button"
-                onClick={() => setShowAboutPanel(true)}
-                style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-              >
-                What this check-in is about, and what you said last time
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowAboutPanel(true)}
+              className="gwui-ci-about-link"
+            >
+              What this check-in is about, and what you said last time
+            </button>
           )}
           {showAboutPanel && (
             <Modal title="What this check-in is about, and what you said last time" onClose={() => setShowAboutPanel(false)}>
@@ -1203,9 +1206,9 @@ export function ChatPage() {
                 between the two.
               */}
               {hasAboutContent && (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div className="gwui-ci-about">
                   {brief!.subject && (
-                    <p className="gwui-panel-text" style={{ fontWeight: 600 }}>{brief!.subject}</p>
+                    <p className="gwui-ci-subject">{brief!.subject}</p>
                   )}
                   {/*
                     THE ENGINE'S OWN COLON SENTENCE, UNCHANGED. "The goals on this check-in: …; …"
@@ -1243,9 +1246,9 @@ export function ChatPage() {
               )}
               {priorRecordLines.length > 0 && (
                 <Section heading="What you said last time">
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div className="gwui-ci-record-list">
                     {priorRecordLines.map((l, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                      <div key={i} className="gwui-ci-record-line">
                         <span className="gwui-panel-text">{l.text}</span>
                         <Tag tone="plain">{RECORD_ENTRY_LABELS[l.type] ?? l.type}</Tag>
                       </div>
@@ -1256,19 +1259,19 @@ export function ChatPage() {
             </Modal>
           )}
           {priorTurns.length > 0 && (
-            <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 4, background: 'var(--gw-bg)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-muted)', marginBottom: 8 }}>
+            <div className="gwui-ci-prior">
+              <div className="gwui-ci-prior-label">
                 {/* REVIEW ROUND 3, ITEM 7: A SENTENCE, NOT A DOT-JOINED FRAGMENT. */}
                 From your earlier session{priorSessionNumber != null ? ` ${priorSessionNumber}` : ''}. You can read it, not change it.
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, opacity: 0.72 }}>
+              <div className="gwui-ci-prior-list">
                 {priorTurns.map(m => (
-                  <div key={`prior-${m.id}`} style={{ alignSelf: m.role === 'PERSON' ? 'flex-end' : 'flex-start', maxWidth: '85%', fontSize: 13, lineHeight: 1.5, color: 'var(--gw-text)', background: m.role === 'PERSON' ? 'var(--gw-blue-bg)' : 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '7px 10px' }}>
+                  <div key={`prior-${m.id}`} className={`gwui-ci-prior-bubble ${m.role === 'PERSON' ? 'gwui-ci-prior-bubble-mine' : 'gwui-ci-prior-bubble-theirs'}`}>
                     {nothingInternalReachesTheBubble(m.content)}
                   </div>
                 ))}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 8, lineHeight: 1.5 }}>
+              <div className="gwui-ci-prior-foot">
                 This stays on record as it is. What you add below is recorded as an update, not a replacement.
               </div>
             </div>
@@ -1311,25 +1314,19 @@ export function ChatPage() {
                  * to that doubt was people pressing send again — which used to put the same
                  * sentence in the record twice.
                  */
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span className="gwui-ci-dots">
                   {[0, 1, 2].map(i => (
-                    <span key={i} style={{
-                      display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-                      background: 'var(--gw-sub)',
-                      animation: 'gwDotBounce 1.2s ease-in-out infinite',
-                      animationDelay: `${i * 0.2}s`,
-                    }} />
+                    <span key={i} className="gwui-ci-dot" style={{ animationDelay: `${i * 0.2}s` }} />
                   ))}
-                  <style>{`@keyframes gwDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }`}</style>
                   {waitedAWhile && (
-                    <span role="status" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+                    <span role="status" className="gwui-ci-dot-note">
                       Still reading what you wrote. Nothing was lost, you do not need to send it again.
                     </span>
                   )}
                 </span>
               ) : nothingInternalReachesTheBubble(m.content)}
               {streamingId === m.id && (
-                <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--gw-navy)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .7s step-end infinite' }} />
+                <span className="gwui-ci-caret" />
               )}
             </Bubble>
             )
@@ -1396,27 +1393,27 @@ export function ChatPage() {
               way - that part of the fourth review's fix stands - but the offer itself now waits
               for the one floor everybody reads. */}
           {!done && !completed && !declined && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= mayCompleteAfter && (
-            <div style={{ textAlign: 'center', padding: '6px 0' }}>
+            <div className="gwui-ci-finish-wrap">
               <button
                 onClick={() => setDone(true)}
-                style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', minHeight: 32 }}
+                className="gwui-ci-finish-link"
               >
                 Finish my check-in now
               </button>
             </div>
           )}
           {declined && (
-            <div style={{ padding: '4px 0 16px' }}>
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>You declined this session.</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>
+            <div className="gwui-stack-10">
+              <div className="gwui-ci-settled-box">
+                <div className="gwui-ci-settled-title">You declined this session.</div>
+                <div className="gwui-ci-settled-body">
                   That is recorded. The report for this session will say you declined and will not guess at
                   what you would have said. Nothing you write here counts towards it now.
                   {' '}If there is another session, you can take part in that one.
                 </div>
               </div>
-              <div style={{ textAlign: 'center', paddingTop: 10 }}>
-                <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+              <div className="gwui-ci-back-wrap">
+                <button onClick={() => navigate('/grounds')} className="gwui-ci-back-link">
                   ← Back to check-ins
                 </button>
               </div>
@@ -1424,35 +1421,28 @@ export function ChatPage() {
           )}
 
           {confirmingDecline && !declined && (
-            <div style={{ padding: '4px 0 16px' }}>
-              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '16px 18px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>
+            <div className="gwui-stack-10">
+              <div className="gwui-ci-confirm-box">
+                <div className="gwui-ci-confirm-title">
                   Not taking part in this session?
                 </div>
                 {/*
                   Everything that follows from it, before they do it. A final action whose consequences
                   are discovered afterwards is a trap, however quiet the button was.
                 */}
-                <ul style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.7, margin: '0 0 12px', paddingLeft: 18 }}>
+                <ul className="gwui-ci-confirm-list">
                   <li>This cannot be undone for this session.</li>
                   <li>The session finishes without your answers, so nobody is left waiting on you.</li>
                   <li>The report will say you declined. It will not guess at what you would have said.</li>
                   <li>Nothing you have written here is shown to anyone.</li>
                 </ul>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => decline.mutate()}
-                    disabled={decline.isPending}
-                    style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
-                  >
+                <div className="gwui-ci-confirm-actions">
+                  <Button kind="primary" onClick={() => decline.mutate()} disabled={decline.isPending}>
                     {decline.isPending ? 'Recording…' : 'Yes, I am not taking part'}
-                  </button>
-                  <button
-                    onClick={() => setConfirmingDecline(false)}
-                    style={{ padding: '9px 16px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}
-                  >
+                  </Button>
+                  <Button kind="secondary" onClick={() => setConfirmingDecline(false)}>
                     Keep going
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1462,7 +1452,7 @@ export function ChatPage() {
               present on every turn and still one step from final: the confirm above spells it out. */}
 
           {completed && groundId && checkInId && (
-            <div style={{ padding: '4px 0 16px' }}>
+            <div className="gwui-stack-10">
               <TheCheckInYouJustFinished checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} />
               {/* What we measured about their answers, said to them - see WhatYouGaveUs. */}
               <WhatYouGaveUs it={whatYouGave} />
@@ -1494,12 +1484,17 @@ export function ChatPage() {
                 * this page renders it for any completed session of yours. What was missing was a
                 * sentence saying which report is which, and that is what replaces the button.
                 */}
-              <div style={{ maxWidth: 460, margin: '12px auto 0', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, textAlign: 'center' }}>
+              <p className="gwui-ci-finished-note">
                 This report is yours and it stays on this session - the button below opens it on
                 its own, and it is also under Report, in Your sessions. The shared report, where
                 what everybody said sits side by side, appears once the others have checked in.
-              </div>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', paddingTop: 12 }}>
+              </p>
+              {/*
+                PRIMARY-BUTTONS-NEVER-TOGETHER: "Open the team board" is the one navy action on this
+                panel. "Open my report" and "Open this check-in" only go elsewhere, so they are
+                secondary, same as every other page that keeps one true primary action.
+              */}
+              <div className="gwui-ci-finished-actions">
                 {/* The check-in itself, where the people, the sessions and the setup all live.
                     Deliberately not deep-linked to a tab: the tab keys and their labels differ
                     ("settings" is shown as "Setup"), and a link that lands on the wrong one is
@@ -1511,28 +1506,19 @@ export function ChatPage() {
                 */}
                 {/* The board first: the whole run in one place, and where the Report tab now leads too. */}
                 {groundId && (
-                  <button
-                    onClick={() => navigate(`/grounds/${groundId}/board`)}
-                    style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
+                  <Button kind="primary" onClick={() => navigate(`/grounds/${groundId}/board`)}>
                     Open the team board →
-                  </button>
+                  </Button>
                 )}
-                <button
-                  onClick={() => navigate(`/checkin/${checkInId}/report`)}
-                  style={{ padding: '9px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
+                <Button kind="secondary" onClick={() => navigate(`/checkin/${checkInId}/report`)}>
                   Open my report
-                </button>
-                <button
-                  onClick={() => navigate(`/grounds/${groundId}`)}
-                  style={{ padding: '9px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
+                </Button>
+                <Button kind="secondary" onClick={() => navigate(`/grounds/${groundId}`)}>
                   Open this check-in
-                </button>
+                </Button>
               </div>
-              <div style={{ textAlign: 'center', paddingTop: 10 }}>
-                <button onClick={() => navigate('/grounds')} style={{ fontSize: 13, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+              <div className="gwui-ci-back-wrap">
+                <button onClick={() => navigate('/grounds')} className="gwui-ci-back-link">
                   ← Back to check-ins
                 </button>
               </div>
@@ -1550,10 +1536,10 @@ export function ChatPage() {
           time any run drove the participant path at a phone width, which is what
           that was for. */}
       {pasteMode && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 9100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div style={{ background: 'white', borderRadius: '14px 14px 0 0', padding: '20px 20px 32px', width: '100%', maxWidth: 560 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📋 Paste text</div>
+        <div className="gwui-ci-sheet-overlay">
+          <div className="gwui-ci-sheet">
+            <div className="gwui-ci-sheet-handle" />
+            <div className="gwui-ci-sheet-title">📋 Paste text</div>
             {/*
               U.8 REVIEW: "Slack thread" AND "THE TOOL" ARE WORK JARGON, AND THE PANEL NEVER SAID
               WHAT THE UPLOAD MODAL RIGHT NEXT TO IT ALREADY SAYS - that this starts private, the
@@ -1562,31 +1548,31 @@ export function ChatPage() {
               (documentsApi.upload), so it already gets the same OWN-by-default privacy
               (who-can-see-a-document.ts); this only makes the panel say so.
             */}
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.55 }}>
+            <div className="gwui-ci-sheet-note">
               Paste an email, a message or your notes. It starts private to you.
             </div>
-            <label htmlFor="paste-label" style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)', marginBottom: 4 }}>
+            <label htmlFor="paste-label" className="gwui-ci-sheet-label">
               What is it? You can skip this.
             </label>
             <input
               id="paste-label"
               value={pasteLabel}
               onChange={e => setPasteLabel(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+              className="gwui-ci-sheet-field"
             />
             <textarea autoFocus
               placeholder="Paste your text here…"
               value={pasteText}
               onChange={e => setPasteText(e.target.value)}
-              style={{ width: '100%', resize: 'none', minHeight: 140, padding: '10px 12px', fontSize: 13, lineHeight: 1.55, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
+              className="gwui-ci-sheet-textarea"
             />
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="gwui-ci-sheet-actions">
               <button onClick={() => { setPasteMode(false); setPasteText(''); setPasteLabel('') }}
-                style={{ padding: '10px 16px', borderRadius: 8, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                className="gwui-ci-sheet-cancel">
                 Cancel
               </button>
               <button onClick={submitPaste} disabled={!pasteText.trim() || uploadDoc.isPending}
-                style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: pasteText.trim() && !uploadDoc.isPending ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: pasteText.trim() && !uploadDoc.isPending ? 1 : 0.5 }}>
+                className="gwui-ci-sheet-submit">
                 {uploadDoc.isPending ? 'Adding…' : 'Add it'}
               </button>
             </div>
@@ -1598,26 +1584,26 @@ export function ChatPage() {
       {/* Same z-index correction as the paste sheet above: both were at 50,
           under the fixed help button at 8000. */}
       {docContextMode && pendingDoc && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 9100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div style={{ background: 'white', borderRadius: '14px 14px 0 0', padding: '20px 20px 32px', width: '100%', maxWidth: 560 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📎 {pendingDoc.name}</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.55 }}>
+        <div className="gwui-ci-sheet-overlay">
+          <div className="gwui-ci-sheet">
+            <div className="gwui-ci-sheet-handle" />
+            <div className="gwui-ci-sheet-title">📎 {pendingDoc.name}</div>
+            <div className="gwui-ci-sheet-note">
               What does it show? One line is enough; you can skip it.
             </div>
             <textarea autoFocus
               aria-label="What does it show?"
               value={docContext} onChange={e => setDocContext(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitDocWithContext() } }}
-              style={{ width: '100%', resize: 'none', minHeight: 80, padding: '10px 12px', fontSize: 13, lineHeight: 1.55, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
+              className="gwui-ci-sheet-textarea gwui-ci-sheet-textarea-short"
             />
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="gwui-ci-sheet-actions">
               <button onClick={() => { setDocContextMode(false); setPendingDoc(null) }}
-                style={{ padding: '10px 16px', borderRadius: 8, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                className="gwui-ci-sheet-cancel">
                 Cancel
               </button>
               <button onClick={submitDocWithContext} disabled={uploadDoc.isPending}
-                style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: uploadDoc.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: uploadDoc.isPending ? 0.6 : 1 }}>
+                className="gwui-ci-sheet-submit">
                 {uploadDoc.isPending ? 'Adding…' : 'Add to session'}
               </button>
             </div>
