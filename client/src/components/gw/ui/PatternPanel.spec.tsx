@@ -41,6 +41,46 @@ describe('a pattern reads in full sentences', () => {
     expect(theWordsLine(false, '  ')).toBe('They said this about it.')
   })
 
+  /**
+   * REQUEST 82 AND DECISION 67: COACHING BESIDE A PATTERN, FOR WHOEVER RUNS THE CHECK-IN ONLY.
+   * `coachTowards` and `oneStep` are null for the person it is about (api/src/modules/patterns/
+   * who-reads-a-pattern.ts), so the panel draws them only when the server actually sends them -
+   * there is no separate "am I the lead" check here, the presence of the fields already decides it.
+   */
+  it('whoever runs the check-in reads the coaching and the one step, in plain sentences', () => {
+    panel({
+      ...PATTERN,
+      coachTowards: 'Coach them towards naming what the team itself can change when something goes wrong.',
+      oneStep: 'One step they could take this week is to name one thing in the team’s own hands the next time a problem comes up.',
+    }, 'Amani Wekesa')
+    expect(screen.getByText('Coach them towards naming what the team itself can change when something goes wrong.')).toBeTruthy()
+    expect(screen.getByText('One step they could take this week is to name one thing in the team’s own hands the next time a problem comes up.')).toBeTruthy()
+  })
+
+  it('the person it is about reads neither, because the server sends them null', () => {
+    panel({ ...PATTERN, coachTowards: null, oneStep: null, yours: true }, undefined)
+    expect(screen.queryByText(/Coach them towards/)).toBeNull()
+    expect(screen.queryByText(/One step they could take/)).toBeNull()
+  })
+
+  it('reads the second-read note, whether talked through, and the lead’s own mark, when the server sends them', () => {
+    panel({
+      ...PATTERN,
+      secondReadNote: 'Two separate reads of the record found this.',
+      talkedAbout: true,
+      leadMark: 'RIGHT',
+    }, 'Amani Wekesa')
+    expect(screen.getByText('Two separate reads of the record found this.')).toBeTruthy()
+    expect(screen.getByText('This has been talked through with Amani Wekesa.')).toBeTruthy()
+    expect(screen.getByText('You said this was right, once you talked it through.')).toBeTruthy()
+  })
+
+  it('the person it is about reads that their lead talked it through, in their own words, never the mark', () => {
+    panel({ ...PATTERN, yours: true, talkedAbout: true, leadMark: null, secondReadNote: null }, undefined)
+    expect(screen.getByText('Your lead has said they talked this through with you.')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/once you talked it through/)
+  })
+
   it('an empty board never says no pattern has repeated, and never hints that one is waiting', () => {
     const src = readFileSync(join(__dirname, '..', '..', '..', 'pages', 'board', 'BoardPage.tsx'), 'utf8')
     expect(src).not.toContain('No patterns have repeated often enough to show yet.')

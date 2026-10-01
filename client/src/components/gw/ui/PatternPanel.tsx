@@ -57,6 +57,39 @@ export function PatternPanel({
       )}
       <p className="gwui-panel-text-muted" style={{ marginTop: 6 }}>{pattern.whoSeesIt}</p>
 
+      {/*
+        REQUEST 82: COACHING BESIDE A PATTERN, FOR WHOEVER RUNS THE CHECK-IN ONLY. The server sends
+        `coachTowards` and `oneStep` only to that reader (null for the person it is about), so there
+        is nothing to gate here beyond their presence.
+      */}
+      {(pattern.coachTowards || pattern.oneStep) && (
+        <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, marginTop: 8 }}>
+          {pattern.coachTowards && <div>{pattern.coachTowards}</div>}
+          {pattern.oneStep && <div className="gwui-mt-4">{pattern.oneStep}</div>}
+        </div>
+      )}
+
+      {/* "Two separate reads of the record found this." For whoever runs the check-in only. */}
+      {pattern.secondReadNote && (
+        <p className="gwui-panel-text-muted" style={{ marginTop: 6, fontStyle: 'italic' }}>{pattern.secondReadNote}</p>
+      )}
+
+      {/* Whether whoever runs the check-in has said they talked it through, a plain fact both readers may see. */}
+      {pattern.talkedAbout && (
+        <p className="gwui-panel-text-muted" style={{ marginTop: 6 }}>
+          {pattern.yours ? 'Your lead has said they talked this through with you.' : `This has been talked through with ${name ?? 'them'}.`}
+        </p>
+      )}
+
+      {/* After talking it through: the lead's own mark, for that reader alone, never shown to the person it is about. */}
+      {pattern.leadMark && (
+        <p className="gwui-panel-text-muted" style={{ marginTop: 6 }}>
+          {pattern.leadMark === 'RIGHT' ? "You said this was right, once you talked it through."
+            : pattern.leadMark === 'WRONG' ? "You said this was not right, once you talked it through."
+            : "You said you were not sure, once you talked it through."}
+        </p>
+      )}
+
       {pattern.askThem && (
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 8, paddingLeft: 11, borderLeft: '2px solid var(--gw-border)' }}>
           <div style={{ color: 'var(--gw-muted)' }}>{`A question you could ask ${name ?? 'them'}, to hear their side.`}</div>

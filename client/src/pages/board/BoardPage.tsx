@@ -2137,18 +2137,40 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   <div className="gwui-panel-row"><div className="gwui-fs-15 gwui-ink-muted">Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</div></div>
                 ) : (
                   <>
-                    <div className="gwui-panel-row">
-                      <div className="gwui-fs-13-5 gwui-ink-dark" style={{fontWeight: 700}}>About each person’s work</div>
-                    </div>
-                    {visiblePatterns.map((p) => (
-                      <div key={p.id} className="gwui-panel-row">
-                        <PatternPanel
-                          pattern={p}
-                          invalidateKey={['board', id]}
-                          name={patternPersonName(p.participantId, p.yours)}
-                        />
-                      </div>
-                    ))}
+                    {/*
+                      REQUEST 82 AND DECISION 67: TWO PARTS, BY EACH PATTERN'S `about`. "the work" goes
+                      under "About each person's work"; the nine patterns decision 67 named (D1, D2,
+                      D3, D5, D8, B1, B2, B3, E2) carry `about: 'what is said against what happened'`
+                      and go under the second heading instead. A pattern with no `about` at all (an
+                      older server, or a test fixture) falls back to the first part, which is where
+                      every pattern used to be drawn.
+                    */}
+                    {(() => {
+                      const aboutTheWork = visiblePatterns.filter((p) => p.about !== 'what is said against what happened')
+                      const aboutWhatIsSaid = visiblePatterns.filter((p) => p.about === 'what is said against what happened')
+                      const group = (heading: string, rows: ServedPattern[]) => rows.length === 0 ? null : (
+                        <>
+                          <div className="gwui-panel-row">
+                            <div className="gwui-fs-13-5 gwui-ink-dark" style={{fontWeight: 700}}>{heading}</div>
+                          </div>
+                          {rows.map((p) => (
+                            <div key={p.id} className="gwui-panel-row">
+                              <PatternPanel
+                                pattern={p}
+                                invalidateKey={['board', id]}
+                                name={patternPersonName(p.participantId, p.yours)}
+                              />
+                            </div>
+                          ))}
+                        </>
+                      )
+                      return (
+                        <>
+                          {group('About each person’s work', aboutTheWork)}
+                          {group('How what people say can run ahead of what happened', aboutWhatIsSaid)}
+                        </>
+                      )
+                    })()}
                   </>
                 )}
                 <div className="gwui-fs-13-5 gwui-ink-muted gwui-pt-10 gwui-pr-22 gwui-pb-10 gwui-pl-22 gwui-rule-top-dashed gwui-mt-4" style={{fontStyle: 'italic', lineHeight: 1.5}}>
