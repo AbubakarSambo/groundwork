@@ -790,12 +790,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 (board-as-participant.txt). Both go to the same place - the Check-in tab.
               */}
               {(viewerRunsThisCheckIn || isAParty) && (
-                <Link
-                  to={`/grounds/${id}`}
-                  className="gwui-pt-8 gwui-pr-14 gwui-pb-8 gwui-pl-14 gwui-ink-white gwui-fs-16" style={{borderRadius: 7, background: 'var(--gw-navy)', fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit'}}
-                >
+                <UIButton kind="primary" to={`/grounds/${id}`}>
                   {isAParty && !viewerRunsThisCheckIn ? 'Start my check-in' : 'Your check-in'}
-                </Link>
+                </UIButton>
               )}
               <button
                 type="button"
