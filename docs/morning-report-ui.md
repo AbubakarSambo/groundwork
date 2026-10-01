@@ -236,6 +236,14 @@ Batch 2 is next: the prototype's own sections where their data is already sent, 
 
 **Board batch 3 is next:** the board's one-off classes become shared parts, and the new waiting-question sentence is drawn.
 
+**Board batch 3, first part (2 October, early).**
+- Request 107 (a) is drawn. The lead reads "In session 1, Rukia Mwangi was asked, "How are you making your number?" Rukia Mwangi has not answered it yet.", and Rukia reads it as "you".
+- The links between check-ins are built from shared parts.
+- The other ten board files are being done in smaller pieces, five at a time, each matched to the prototype's own values.
+- The builder left the whole screen suite running in the background, against the rules. I stopped it.
+- The before pictures of all eleven boards, as the lead and a participant at both widths (40 pictures), are in the scratchpad's `pictures/boards-before3/`.
+- The API tests after the sixth merge pass 13,385 of 13,386. The one failure, and a second suite that failed to load, both pass when run on their own, all 23 tests, so they were load during the full run.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
