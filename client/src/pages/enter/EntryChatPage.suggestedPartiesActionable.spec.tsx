@@ -46,7 +46,10 @@ describe('#1a recommended additions / mentioned people are actionable', () => {
   it('and the entry page supplies the "Add them" control to it', () => {
     const block = src.slice(src.indexOf('<TheReportYouSawAtTheEnd'))
     expect(block).toMatch(/renderAdd=\{/)
-    expect(block).toMatch(/\+ Add them/)
+    /* 4d-3: the leading "+" was a decoration, not a word a screen reader needed - the control is
+       now a plain .gwui-plain-link reading "Add them", the same change "Attach a document" made
+       to the "📎" chip in 4d-2. */
+    expect(block).toMatch(/Add them/)
     expect(block).toMatch(/queueSuggestedContributor/)
   })
 })

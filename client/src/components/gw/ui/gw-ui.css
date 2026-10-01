@@ -1530,3 +1530,88 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-doc-pill-name { font-size: 13px; color: var(--gw-navy); flex: 1; }
 .gwui-ec-modal-actions { display: flex; gap: 8px; margin-top: 14px; }
 .gwui-ec-modal-actions > * { flex: 1; }
+
+/* 4D-3: the save card and what follows saving, and the new-scenario-conflict dialog. */
+.gwui-ec-savecard-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50; overflow-y: auto; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px 48px; transition: opacity .3s, visibility .3s; }
+.gwui-ec-savecard-overlay-hidden { opacity: 0; pointer-events: none; visibility: hidden; }
+.gwui-ec-savecard-overlay-shown { opacity: 1; pointer-events: auto; visibility: visible; }
+.gwui-ec-savecard { width: 100%; max-width: 640px; background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.22); }
+.gwui-ec-savecard-header { background: var(--gw-dark); color: white; padding: 20px 22px 16px; }
+.gwui-ec-savecard-eyebrow { font-size: 13px; color: var(--gw-green-b); font-weight: 700; margin-bottom: 6px; }
+.gwui-ec-savecard-title { font-size: 18px; font-weight: 800; letter-spacing: -.01em; line-height: 1.2; }
+.gwui-ec-savecard-venn-row { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; }
+.gwui-ec-savecard-venn-icon { flex-shrink: 0; margin-top: 2px; background: white; border-radius: 4px; padding: 2px 3px; }
+.gwui-ec-savecard-venn-text { font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.5; }
+.gwui-ec-savecard-venn-text b { color: rgba(255,255,255,.85); }
+.gwui-ec-savecard-stat-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.gwui-ec-savecard-stat { font-size: 13px; color: rgba(255,255,255,.55); }
+.gwui-ec-savecard-body { padding: 18px 20px 28px; }
+.gwui-ec-savecard-status { margin-bottom: 18px; }
+.gwui-ec-savecard-retry { background: var(--gw-clay-bg); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; display: flex; align-items: center; gap: 12px; }
+.gwui-ec-savecard-retry-text { flex: 1; font-size: 13px; color: var(--gw-clay); line-height: 1.5; }
+.gwui-ec-savecard-add-pending { font-size: 13px; color: var(--gw-green-t); font-weight: 600; margin-top: 6px; }
+.gwui-ec-savecard-add-row { display: flex; gap: 6px; margin-top: 6px; }
+.gwui-ec-savecard-add-error { font-size: 13px; color: var(--gw-red-t); margin-top: 4px; }
+.gwui-ec-savecard-whatnext { background: #F0F4FA; border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+.gwui-ec-savecard-whatnext-title { font-size: 13px; font-weight: 600; color: var(--gw-navy); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .06em; }
+.gwui-ec-savecard-whatnext-list { display: flex; flex-direction: column; gap: 8px; }
+.gwui-ec-savecard-whatnext-row { display: flex; gap: 10px; align-items: flex-start; }
+.gwui-ec-savecard-whatnext-num { width: 22px; height: 22px; border-radius: 50%; background: var(--gw-navy); color: white; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.gwui-ec-savecard-whatnext-text { font-size: 13px; color: var(--gw-text); line-height: 1.55; }
+.gwui-ec-savecard-section { margin-bottom: 20px; }
+.gwui-ec-savecard-helper { font-size: 13px; color: var(--gw-muted); line-height: 1.5; text-align: center; padding-top: 8px; }
+.gwui-ec-savecard-clear-row { text-align: center; padding-top: 6px; font-size: 13px; color: var(--gw-muted); }
+.gwui-ec-savecard-clear-confirm { display: inline-flex; gap: 10px; align-items: center; }
+.gwui-ec-savecard-clear-danger { color: var(--gw-red-t); font-weight: 600; }
+.gwui-ec-savecard-field { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
+.gwui-ec-savecard-field-error { border-color: var(--gw-danger); }
+.gwui-ec-savecard-error { font-size: 13px; color: var(--gw-red-t); margin-bottom: 6px; }
+.gwui-ec-savecard-or-row { display: flex; align-items: center; gap: 8px; padding: 12px 0 8px; }
+.gwui-ec-savecard-or-text { font-size: 13px; color: var(--gw-muted); }
+.gwui-ec-savecard-confirm-box { position: sticky; top: 8px; z-index: 5; background: var(--gw-green-bg); border: 1px solid var(--gw-green-b-soft); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.gwui-ec-savecard-confirm-title { font-size: 14px; font-weight: 700; color: var(--gw-green-t); margin-bottom: 4px; }
+.gwui-ec-savecard-confirm-body { font-size: 13px; color: var(--gw-green-t); line-height: 1.6; }
+.gwui-ec-savecard-confirm-sub { font-size: 13px; color: var(--gw-green-t); line-height: 1.6; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gw-green-b-soft); }
+.gwui-ec-savecard-divider { border-top: 1px solid var(--gw-border); margin-bottom: 18px; }
+.gwui-ec-savecard-name-block { margin-bottom: 14px; }
+.gwui-ec-savecard-name-label { font-size: 13px; font-weight: 600; color: var(--gw-sub); margin-bottom: 6px; }
+.gwui-ec-savecard-name-hint { font-size: 13px; color: var(--gw-sub); line-height: 1.5; }
+.gwui-ec-savecard-invite-block { border-bottom: 1px solid var(--gw-border); margin-bottom: 16px; padding-bottom: 16px; }
+.gwui-ec-savecard-invite-subtext { font-size: 13px; color: var(--gw-muted); line-height: 1.55; margin-bottom: 10px; }
+.gwui-ec-savecard-invite-banner { font-size: 13px; color: var(--gw-navy); background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); border-radius: 8px; padding: 8px 11px; line-height: 1.5; margin-bottom: 10px; }
+.gwui-ec-savecard-invite-later { font-size: 13px; color: var(--gw-sub); line-height: 1.55; margin-bottom: 10px; }
+.gwui-ec-savecard-invite-notice { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; color: var(--gw-amber-t); line-height: 1.55; }
+.gwui-ec-savecard-invite-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.gwui-ec-savecard-invite-chip { font-size: 13px; color: var(--gw-green-t); background: var(--gw-green-bg); border-radius: 6px; padding: 5px 10px; }
+.gwui-ec-savecard-invite-context { background: var(--gw-paper-2); border: 1px solid var(--gw-border); border-radius: 10px; padding: 12px 14px; }
+.gwui-ec-savecard-invite-context-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.gwui-ec-savecard-invite-context-name { font-size: 13px; font-weight: 600; color: var(--gw-text); }
+.gwui-ec-savecard-invite-context-more { font-size: 13px; color: var(--gw-muted); }
+.gwui-ec-savecard-invite-context-ask { font-size: 13px; color: var(--gw-sub); margin-bottom: 8px; line-height: 1.5; }
+.gwui-ec-savecard-row-gap8 { display: flex; gap: 8px; }
+.gwui-ec-savecard-row-gap8-grow-last > *:last-child { flex: 1; }
+.gwui-ec-savecard-row-gap8-mb { display: flex; gap: 8px; margin-bottom: 8px; }
+.gwui-ec-savecard-invite-add-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.gwui-ec-savecard-invite-add-row > :first-child { flex: 1; }
+.gwui-ec-savecard-link-row { display: flex; align-items: center; gap: 8px; }
+.gwui-ec-savecard-link-box { flex: 1; font-size: 13px; color: var(--gw-navy); background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); border-radius: 7px; padding: 8px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gwui-ec-savecard-done { text-align: center; padding-top: 8px; }
+.gwui-ec-savecard-done-text { font-size: 13px; color: var(--gw-muted); padding-top: 8px; line-height: 1.6; }
+
+/* The correction thread inside the report's own dark card (TheReportYouSawAtTheEnd's correctionSlot). */
+.gwui-ec-correction-intro { font-size: 13px; color: rgba(255,255,255,.75); margin-bottom: 6px; }
+.gwui-ec-correction-thread { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.gwui-ec-correction-bubble { max-width: 88%; padding: 7px 10px; border-radius: 8px; font-size: 13px; line-height: 1.5; }
+.gwui-ec-correction-bubble-user { align-self: flex-end; background: var(--gw-green-b); color: var(--gw-dark); }
+.gwui-ec-correction-bubble-assistant { align-self: flex-start; background: rgba(255,255,255,.1); color: rgba(255,255,255,.9); }
+.gwui-ec-correction-field { width: 100%; min-height: 64px; padding: 8px 10px; font-size: 13px; line-height: 1.55; border: none; border-radius: 7px; font-family: inherit; outline: none; box-sizing: border-box; resize: vertical; background: rgba(255,255,255,.94); color: var(--gw-text); }
+.gwui-ec-correction-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+/* The two small centred confirmation dialogs (New scenario conflict, and End this session - the
+   second one Modal'd already in 4d-2). Both read the same way: a sentence, then two ways out. */
+.gwui-ec-confirm-overlay { position: fixed; inset: 0; background: rgba(10,22,40,0.55); z-index: 40; display: flex; align-items: center; justify-content: center; padding: 0 16px; }
+.gwui-ec-confirm-box { background: white; border-radius: 12px; padding: 24px; max-width: 380px; width: 100%; }
+.gwui-ec-confirm-title { font-size: 16px; font-weight: 800; color: var(--gw-dark); margin-bottom: 8px; }
+.gwui-ec-confirm-body { font-size: 13px; color: var(--gw-sub); line-height: 1.65; margin-bottom: 18px; }
+.gwui-ec-confirm-actions { display: flex; gap: 8px; }
+.gwui-ec-confirm-actions > * { flex: 1; }

@@ -5,6 +5,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { EntryChatPage } from './EntryChatPage'
+import { visiblePrimaryButtons } from './the-entry-chats-own-test-helpers'
 import {
   stripComments, oldClassesUsed, bannedInlineStyleProps, bannedStyleReferenceProps, tooSmallFontSizes,
 } from '@/components/gw/ui/the-rebuilt-pages-use-only-the-new-parts.spec'
@@ -75,7 +76,10 @@ vi.mock('@/api/billing', () => ({ billingApi: { checkCanCreateGround: vi.fn().mo
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: null, isAuthenticated: false }) }))
 
 function expectAtMostOnePrimaryButton(container: HTMLElement) {
-  const primaries = container.querySelectorAll('.gwui-btn-primary')
+  /* Excludes the save card's own primary button while the card is CSS-hidden (visibility:
+     hidden, which also takes it out of the tab order and the accessibility tree) - see
+     the-entry-chats-own-test-helpers.ts for why a literal DOM count cannot see that on its own. */
+  const primaries = visiblePrimaryButtons(container)
   expect(primaries.length, `expected at most one primary (navy) button, found ${primaries.length}`).toBeLessThanOrEqual(1)
 }
 

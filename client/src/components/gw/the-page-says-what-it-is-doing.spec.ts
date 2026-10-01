@@ -70,7 +70,10 @@ describe('waits are statuses', () => {
   it('the two message lists are live regions and the long report wait is a status', () => {
     const entry = strip(readFileSync(path.join(SRC, 'pages/enter/EntryChatPage.tsx'), 'utf8'))
     expect(entry.match(/ref=\{msgsRef\}\s*aria-live="polite"/g)?.length).toBe(2)
-    expect(entry).toMatch(/<div style=\{\{ marginBottom: 18 \}\} role="status" aria-live="polite">/)
+    /* 4d-3: the generating-report wait moved from an inline `style={{ marginBottom: 18 }}` to the
+       named class `gwui-ec-savecard-status` (CLAUDE.md: no inline style props on a rebuilt range) -
+       the guarantee this checks, `role="status" aria-live="polite"`, is unchanged. */
+    expect(entry).toMatch(/<div className="gwui-ec-savecard-status" role="status" aria-live="polite">/)
     /**
      * ROUND 5, ITEM B: ChatPage.tsx's message list moved into ConversationCard.tsx's own scrolling
      * body (components/gw/ui/ConversationCard.tsx), which sets `aria-live="polite"` unconditionally

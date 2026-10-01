@@ -59,6 +59,8 @@ describe('somebody who is already signed in', () => {
 describe('and somebody without an account still gets the email path', () => {
   it('the email box is still there for them', () => {
     expect(CODE).toMatch(/: !emailSent \? \(/)
-    expect(CODE).toMatch(/Save my check-in →/)
+    /* 4d-3: the arrow is gone (CLAUDE.md's wording rule), so this checks the words it actually
+       reads now. */
+    expect(CODE).toMatch(/Save my check-in/)
   })
 })
