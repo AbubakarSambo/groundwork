@@ -71,6 +71,14 @@ export interface AHandoff {
   createdAt: Date | string;
   /** The check-in the person first said it in. */
   sourceCheckInId?: string | null;
+  /**
+   * The passage of what this person typed in that check-in that `triedSaid` is, character for character,
+   * or null. Set when the board is built from the record (the-handoff-words-the-person-typed). Only this
+   * may be put inside quotation marks; a tidied or joined `triedSaid` never is.
+   */
+  triedSaidTheirWords?: string | null;
+  /** The same for `dueSaid`. */
+  dueSaidTheirWords?: string | null;
 }
 
 export interface ASession {
@@ -104,6 +112,30 @@ const inASentence = (phrase: string): string => {
 const listed = (ns: string[]) => (ns.length <= 1 ? ns.join('') : `${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`);
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const isAre = (who: string) => (who === 'You' ? 'are' : 'is');
+const hasHave = (who: string) => (who === 'You' ? 'have' : 'has');
+const theirOrYour = (who: string) => (who === 'You' ? 'your' : 'their');
+const endedOnce = (t: string) => { const x = t.trim(); return /[.!?]$/.test(x) ? x : `${x}.`; };
+
+/**
+ * WHAT WAS TRIED, as one or two sentences. Inside quotation marks only where the words are the person's
+ * own, found character for character in what they typed in that check-in. Where the stored text is a
+ * tidied or joined version, it is said plainly, with no quotation marks and no claim of exact words.
+ */
+export function whatWasTriedSaid(d: AHandoff, who: string): string | null {
+  const t = d.triedSaid?.trim();
+  if (!t) return null;
+  if (d.triedSaidTheirWords) return `About what has been tried, ${midSentence(who)} said, "${d.triedSaidTheirWords}"${/[.!?]$/.test(d.triedSaidTheirWords) ? '' : '.'}`;
+  return `${who} ${hasHave(who)} said what has been tried, though these are not ${theirOrYour(who)} exact words. ${endedOnce(t)}`;
+}
+
+/** WHEN IT IS DUE, quoted only where it is the person's own words, as above. */
+export function theTimeGivenSaid(d: AHandoff): string | null {
+  const t = d.dueSaid?.trim();
+  if (!t) return null;
+  if (d.dueSaidTheirWords) return `The time given for it was "${d.dueSaidTheirWords}".`;
+  return `The time given for it was ${t.replace(/[.!?]+$/, '')}.`;
+}
+
 const midSentence = (who: string) => (who === 'You' ? 'you' : who);
 const possessive = (who: string) => (who === 'You' ? 'Your' : `${who}'s`);
 
@@ -220,8 +252,8 @@ export function theRisks(
     const since = day(d.createdAt);
     const facts: string[] = [];
     if (since) facts.push(`It was first said on ${saidAsDate(since)}.`);
-    facts.push(d.triedSaid?.trim() ? `About what has been tried, ${midSentence(who)} said, "${d.triedSaid.trim()}"` : 'Nobody has said what has been tried.');
-    facts.push(d.dueSaid?.trim() ? `The time given for it was "${d.dueSaid.trim()}".` : 'No time has been given for it.');
+    facts.push(whatWasTriedSaid(d, who) ?? 'Nobody has said what has been tried.');
+    facts.push(theTimeGivenSaid(d) ?? 'No time has been given for it.');
     out.push({ id: `handoff-${d.id}`, says, because: facts.join(' ') });
   }
 
@@ -418,8 +450,8 @@ export function theBlockerCheck(handoffs: AHandoff[], r: WhoIsReading): ABlocker
       timeGiven,
       checks: [
         named ? (on === 'you' ? 'You hold it.' : `${on!.charAt(0).toUpperCase()}${on!.slice(1)} holds it.`) : 'Nobody has been named as holding it.',
-        wentBack ? `About what has been tried, ${midSentence(who)} said, "${d.triedSaid!.trim()}"` : 'Nobody has said what has been tried.',
-        timeGiven ? `The time given for it was "${d.dueSaid!.trim()}".` : 'No time has been given for it.',
+        whatWasTriedSaid(d, who) ?? 'Nobody has said what has been tried.',
+        theTimeGivenSaid(d) ?? 'No time has been given for it.',
       ],
     });
   }

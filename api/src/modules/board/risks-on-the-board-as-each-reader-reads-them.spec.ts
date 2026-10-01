@@ -9,13 +9,14 @@ import { AMINA, BARAKA, JUMA, RUKIA, SETUP_ADMIN, boardAs, commitment, handoff, 
  * rests on, and none of it rates or labels anybody.
  */
 const RECORD: Setup = {
+  turns: [{ checkInId: 'c1-p-rukia', content: 'I emailed twice.' }, { checkInId: 'c1-p-rukia', content: 'by Friday' }],
   commitments: [
     commitment('k-1', 'p-rukia', 'I will send the Westgate quote.'),
     commitment('k-2', 'p-baraka', 'I will call the Kisumu depot.', { whenSaid: 'by Friday', saidAgainIn: [] }),
     commitment('k-3', 'p-rukia', 'I will finish the stock count.', { whenSaid: 'this week', saidAgainIn: [2, 3] }),
   ],
   dependencies: [
-    handoff('d-1', 'p-rukia', 'the credit terms', { onLabel: 'Finance', dueSaid: 'by Friday', triedSaid: 'I emailed twice.' }),
+    handoff('d-1', 'p-rukia', 'the credit terms', { onLabel: 'Finance', dueSaid: 'by Friday', triedSaid: 'I emailed twice.', sourceCheckInId: 'c1-p-rukia' }),
     handoff('d-2', 'p-baraka', 'the depot keys', { onParticipantId: 'p-rukia', status: 'WAITING' }),
   ],
 };

@@ -37,6 +37,8 @@ export interface Setup {
   lines?: any[];
   objectives?: any[];
   closedAt?: Date | null;
+  /** What people typed, as conversation turns the person wrote (role PERSON). */
+  turns?: { checkInId: string; content: string }[];
   createdByUserId?: string;
   /** A stored report, where a spec reads the parts of the board that are built from it. */
   report?: any;
@@ -81,6 +83,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     ground: model({ findUnique: jest.fn(async () => clone(ground)) }),
     user: model({ findUnique: jest.fn(async () => ({ role, organizationId: 'org-1' })) }),
     checkIn: model({ findMany: jest.fn(async () => clone(checkIns)) }),
+    conversationTurn: model({ findMany: jest.fn(async (args: any) => clone((setup.turns ?? []).filter((t) => (args?.where?.checkInId?.in ?? []).includes(t.checkInId)))) }),
     groundCommitment: model({ findMany: jest.fn(async () => clone(setup.commitments ?? [])) }),
     recordEntry: model({ findMany: jest.fn(async (args: any) => {
       if (args?.where?.id?.in) return [];
