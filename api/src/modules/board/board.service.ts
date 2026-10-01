@@ -1,3 +1,4 @@
+import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
 import { theSharedReadWithoutTheLeadsJudgement } from './what-the-room-says-is-not-a-reading-of-the-lead';
@@ -80,7 +81,7 @@ import {
   whoIsBeingWaitedOn,
 } from './what-the-whole-place-is-waiting-on';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
-import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern } from '../patterns/who-reads-a-pattern';
+import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, readsHowTheLeadingIsLanding } from '../patterns/who-reads-a-pattern';
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { theShortNameOf } from '../reports/a-title-is-not-a-first-name';
@@ -1122,9 +1123,30 @@ export class BoardService {
         orderBy: [{ firstRound: 'asc' }],
         select: { participantId: true, what: true, firstRound: true, asked: true, certain: true },
       })?.catch(() => [] as any[]) ?? [];
+      /*
+       * NEVER THE ENGINE'S OWN WORKING NOTE (request 107 a). `what` on a gap row is the line the model
+       * was given about what the record is missing ("how they are making their number. Not the total:
+       * ..."), written for the model and never for a person. The board serves the plain question that
+       * was owed, and one sentence about it for this reader; the stored line itself goes nowhere.
+       */
       out.stillUnanswered = (gapRows as any[])
         .filter((g) => g.asked >= 2)
-        .map((g) => ({ who: nameOf(g.participantId) ?? aColleague(g.participantId), what: g.what, sinceRound: g.firstRound, certain: g.certain !== false }));
+        .map((g) => {
+          const isYou = !!me && g.participantId === me.id;
+          const who = isYou ? 'You' : (nameOf(g.participantId) ?? aColleague(g.participantId));
+          const question = theOwedThingAskedPlainly(String(g.what ?? ''));
+          const n = g.firstRound ?? 1;
+          const certain = g.certain !== false;
+          const asked = isYou ? 'you were asked' : `${who} was asked`;
+          const says = question
+            ? (certain
+              ? `In session ${n}, ${asked}, "${question}" ${isYou ? 'You have' : `${who} has`} not answered it yet.`
+              : `In session ${n}, ${asked}, "${question}" Nothing on record can confirm the answer yet.`)
+            : (certain
+              ? `${isYou ? 'You have' : `${who} has`} something from session ${n} that is still not answered.`
+              : `${isYou ? 'You were' : `${who} was`} asked something in session ${n} that nothing on record can confirm yet.`);
+          return { who, what: question ?? 'Something the check-in asked', says, sinceRound: n, certain };
+        });
     }
 
     if (has('checkInGrid') && runsThisGround) {
@@ -1606,7 +1628,7 @@ export class BoardService {
      * or an admin who set the check-in up for them - never a participant, never an admin without that
      * access, even one who can otherwise read the rest of this board (decision 64).
      */
-    if (has('contribution') && PATTERNS_ARE_SERVED && runsItForAPattern(ground as any, requestingUserId)) {
+    if (has('contribution') && PATTERNS_ARE_SERVED && readsHowTheLeadingIsLanding(ground as any, requestingUserId)) {
       // Only meaningful where someone actually manages someone: needs a manager
       // and at least one report, both with accounts on record.
       // The forbidden-name list is built from THIS ground's participants. See
@@ -1719,7 +1741,10 @@ export class BoardService {
       const requoted: string[] = [];
       const q = <T,>(v: T): T => (v == null ? v : quotesBuiltAtTheRead(v, quotable, requoted));
       if (Array.isArray(out.quickRead)) out.quickRead = (out.quickRead as any[]).map((t) => ({ ...t, sub: q(t?.sub) }));
-      for (const k of ['howItIsGoing', 'divergence', 'eachPerson', 'toLookAt', 'stillUnanswered', 'contribution', 'coverage', 'hiddenContributors', 'decisions', 'managerAlignment'] as const) {
+      /* Not `stillUnanswered`: since request 107 (a) it holds only the question Groundwork asked, in
+         quotation marks, and a name. Nobody's own words are in it, so there is nothing to check
+         against the record, and the check would strip the marks from Groundwork's own question. */
+      for (const k of ['howItIsGoing', 'divergence', 'eachPerson', 'toLookAt', 'contribution', 'coverage', 'hiddenContributors', 'decisions', 'managerAlignment'] as const) {
         if (out[k] != null) out[k] = q(out[k]);
       }
       if (requoted.length) this.logger?.warn?.(`Board for ${groundId}: ${requoted.length} quote(s) built at the read were not the record's words. First: ${requoted[0].slice(0, 200)}`);

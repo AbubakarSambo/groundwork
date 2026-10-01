@@ -53,6 +53,8 @@ export interface Setup {
   initiatorId?: string;
   /** Each target's count at its first session (GroundObjectiveSnapshot), where it started. */
   snapshots?: { objectiveId: string; count: number }[];
+  /** Rows of checkInGap: what a check-in asked twice and did not get (request 107 a). */
+  gaps?: any[];
 }
 
 export const commitment = (id: string, participantId: string | null, text: string, more: Record<string, any> = {}) => ({
@@ -96,6 +98,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     conversationTurn: model({ findMany: jest.fn(async (args: any) => clone((setup.turns ?? []).filter((t) => (args?.where?.checkInId?.in ?? []).includes(t.checkInId)))) }),
     personObjective: model({ findMany: jest.fn(async (args: any) => clone((setup.personObjectives ?? []).filter((o: any) => !args?.where?.awareness || o.awareness === args.where.awareness))) }),
     groundCommitment: model({ findMany: jest.fn(async () => clone(setup.commitments ?? [])) }),
+    checkInGap: model({ findMany: jest.fn(async () => clone(setup.gaps ?? [])) }),
     recordEntry: model({ findMany: jest.fn(async (args: any) => {
       if (args?.where?.id?.in) return [];
       return clone(setup.lines ?? []);
