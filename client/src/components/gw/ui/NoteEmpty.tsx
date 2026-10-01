@@ -17,6 +17,11 @@ import './gw-ui.css'
  * caption) - named here rather than left as that pair. `Callout` is the tinted line the prototype shows above the
  * invitation's heading (s44.js: `background:var(--chat)`, 10px corners, 10/14px inside, 14.5px
  * text) - one sentence that matters more than the page around it, e.g. who can see what you say.
+ * `tone="emphasis"` (board task, batch 3, part 3): the one thing on the whole board a reader is
+ * meant to remember - "The gap", on the lead's judgement (`TheJudgement.tsx`). Blue, like `"info"`,
+ * but at the larger size and panel-level padding (20/22px) that single sentence already carried as
+ * a one-off box, so naming it here loses nothing: 13.5px navy title, 16px bold near-black body,
+ * both read off the box this replaces, not invented for this.
  * `Empty` says it in a sentence where the thing would be: a 14.5px muted line by default, or for
  * a door you cannot open, a `Panel` up to 640px wide with a 21px heading, one sentence and at
  * most one button ("Only an admin at Baridi can change this. Grace Achieng is your admin.").
@@ -58,7 +63,7 @@ export function Callout({ tone, title, role, children }: {
    * 'concern' for something broken that needs fixing, not only knowing (red, group 3, piece 5: an
    * invite that bounced, with nobody able to get in until the lead acts).
    */
-  tone?: 'success' | 'warning' | 'info' | 'concern'
+  tone?: 'success' | 'warning' | 'info' | 'concern' | 'emphasis'
   /**
    * A bold first line above the sentence, the same two-line shape `AuthNotice` (auth-kit.tsx)
    * already draws for its amber notices - added here so every tone can use it, not only warning.
@@ -68,7 +73,7 @@ export function Callout({ tone, title, role, children }: {
   role?: React.AriaRole
   children: React.ReactNode
 }) {
-  const cls = tone === 'success' ? 'gwui-callout-success' : tone === 'warning' ? 'gwui-callout-warning' : tone === 'info' ? 'gwui-callout-info' : tone === 'concern' ? 'gwui-callout-concern' : null
+  const cls = tone === 'success' ? 'gwui-callout-success' : tone === 'warning' ? 'gwui-callout-warning' : tone === 'info' ? 'gwui-callout-info' : tone === 'concern' ? 'gwui-callout-concern' : tone === 'emphasis' ? 'gwui-callout-emphasis' : null
   const className = cls ? `gwui-callout ${cls}` : 'gwui-callout'
   if (title) {
     return (

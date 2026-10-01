@@ -1242,6 +1242,12 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    not only knowing - a bounced invite with nobody able to get in until the lead acts. Red, the same
    tone "concern" already carries on Tag and PersonRow's help strip (both app.css's `.tag.con`). */
 .gwui-callout-concern { background: var(--gw-red-bg); color: var(--gw-red-t); }
+/* CALLOUT'S EMPHASIS TONE (board task, batch 3, part 3, TheJudgement.tsx): "The gap", the one thing
+   on the whole board a reader is meant to remember - blue like "info", but at panel-level padding
+   and a larger, bolder body, the exact values the one-off box this replaces already carried. */
+.gwui-callout-emphasis { background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); padding: 20px 22px; }
+.gwui-callout-emphasis .gwui-callout-title { font-size: 13.5px; color: var(--gw-navy); letter-spacing: .4px; margin-bottom: 5px; }
+.gwui-callout-emphasis .gwui-callout-body { font-size: 16px; color: var(--gw-text); font-weight: 600; line-height: 1.55; }
 /* AuthNotice's own two-line shape, inside the same tinted box: a title above the sentence under
    it (signin.jpg's passwordless notice, "Check your email" over the sentence that follows). */
 .gwui-callout-title { font-weight: 700; margin: 0 0 2px; }
