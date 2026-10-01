@@ -708,7 +708,10 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 
       {canAdd && (
         <div className="gwui-mt-14">
-          <Button kind="secondary" size="small" onClick={() => setAdding(true)}>Add a record</Button>
+          {/* Board review, 1 October, item 8: this only opens the form below (a fold) - the real
+              mutation is that form's own submit button, which stays a real button. A boxed
+              secondary button here counted as a second control for one action. */}
+          <button onClick={() => setAdding(true)} className="gwui-plain-link gwui-fs-13-5">Add a record</button>
         </div>
       )}
       {adding && (

@@ -810,11 +810,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   {isAParty && !viewerRunsThisCheckIn ? 'Start my check-in' : 'Your check-in'}
                 </Link>
               )}
-              <button
-                type="button"
-                onClick={showAsk}
-                className="gwui-rule-none gwui-pt-0 gwui-pr-0 gwui-pb-0 gwui-pl-0 gwui-fs-13-5 gwui-ink-navy" style={{background: 'none', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline'}}
-              >
+              {/* Board review, 1 October, item 8: a quiet text link that opens Ask, drawn with its
+                  own one-off classes instead of the shared `gwui-plain-link` every other quiet
+                  text link on this board uses - the button-count test could not tell it apart
+                  from a real button because of it. */}
+              <button type="button" onClick={showAsk} className="gwui-plain-link">
                 Ask
               </button>
             </div>
@@ -1000,9 +1000,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               </p>
             </>
           )}
+          {/* Board review, 1 October, item 8: this only opens or closes a section (a fold), drawn
+              with its own one-off classes instead of the shared `gwui-plain-link` quiet-text-link
+              class, so the button-count test counted it as a real button. */}
           <button
             onClick={() => setHowToRead(v => { localStorage.setItem(HOW_TO_READ_KEY, v ? 'closed' : 'open'); return !v })}
-            className="gwui-mt-6 gwui-rule-none gwui-pt-0 gwui-pr-0 gwui-pb-0 gwui-pl-0 gwui-fs-13-5 gwui-ink-navy" style={{background: 'none', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline'}}
+            className="gwui-plain-link gwui-mt-6"
           >
             {howToRead ? 'Show less' : 'How to read this board'}
           </button>
@@ -2039,9 +2042,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 time" already uses below, rather than two chips that say the same thing twice.
               */}
               <div className="gwui-mt-8 gwui-mb-4">
+                {/* Board review, 1 October, item 8: only switches how this is drawn (a fold, not a
+                    button), drawn with one-off classes instead of the shared `gwui-plain-link`. */}
                 <button
                   onClick={() => setVariant(b.coverageVariant === 'bar' ? 'text' : 'bar')}
-                  className="gwui-fs-13 gwui-ink-navy gwui-rule-none" style={{background: 'none', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline'}}
+                  className="gwui-plain-link gwui-fs-13"
                 >
                   {b.coverageVariant === 'bar' ? 'Show as words only' : 'Show with a bar'}
                 </button>
@@ -2264,8 +2269,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {b.canEditFrame && (
                 <div className={`gwui-pt-8 gwui-pr-0 gwui-pb-8 gwui-pl-0 ${b.poll ? 'gwui-rule-bottom' : 'gwui-rule-bottom-none'}`}>
                   {!showPollForm ? (
+                    /* Board review, 1 October, item 8: only opens the poll form below (a fold) -
+                       the actual mutation is that form's own "Save" button, which stays a real
+                       button. Drawn with the shared `gwui-plain-link` quiet-text-link class. */
                     <button onClick={() => { setShowPollForm(true); setPollQ(b.poll?.question ?? 'Weekly sync, best time'); setPollOpts((b.poll?.options ?? []).map((o) => o.label).join('\n')) }}
-                      className="gwui-fs-13-5 gwui-ink-navy gwui-rule-none gwui-pt-0 gwui-pr-0 gwui-pb-0 gwui-pl-0" style={{background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline'}}>
+                      className="gwui-plain-link gwui-fs-13-5">
                       {b.poll ? 'Change the times' : 'Set up an availability poll'}
                     </button>
                   ) : (
@@ -2555,10 +2563,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         <Section
           heading="Over time"
+          /* Board review, 1 October, item 8: this only opens or closes a section (a fold), drawn
+             with its own one-off classes instead of the shared `gwui-plain-link` quiet-text-link
+             class, so the button-count test counted it as a real button. */
           action={(
             <button
               onClick={() => setShowOverTime((v) => !v)}
-              className="gwui-rule-none gwui-pt-0 gwui-pr-0 gwui-pb-0 gwui-pl-0 gwui-fs-13-5 gwui-ink-navy" style={{background: 'none', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', flexShrink: 0}}
+              className="gwui-plain-link"
+              style={{ flexShrink: 0 }}
             >
               {showOverTime ? 'Hide' : 'Show'}
             </button>

@@ -44,12 +44,11 @@ export function SplitOneTotalAcrossPeople({ groundId }: { groundId: string }) {
   const out = propose.data
 
   if (!open) {
+    /* Board review, 1 October, item 8: this only opens the form below (a fold) - "Nothing is
+       saved here" until its own Propose action is pressed - drawn with one-off classes instead
+       of the shared `gwui-plain-link` quiet-text-link class. */
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="gwui-fs-13 gwui-ink-navy gwui-mb-10 gwui-p-0 gwui-rule-none"
-        style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-      >
+      <button onClick={() => setOpen(true)} className="gwui-plain-link gwui-fs-13 gwui-mb-10">
         Split one total across people
       </button>
     )
