@@ -214,6 +214,7 @@ import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargets } from '../board/a-hidden-target-stays-hidden';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
+import { theFullerPromise, nameTwoDifferentDates } from './the-same-promise-said-more-fully';
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
@@ -6952,9 +6953,28 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     for (const kept of keep) {
       /* Their quotation marks, as in the record. See their-quotation-marks-are-theirs. */
       const c = { ...kept, action: theirQuotationMarksBack(kept.action, said), when: kept.when ? theirQuotationMarksBack(kept.when, said) : kept.when };
+      /* The same promise said short and then whole, in this one check-in, is one row in the fuller words. */
+      const fuller = (theirs as any[]).map((h) => ({ h, which: h.statedInSession === row.sessionNumber && h.status === 'UNKNOWN' ? theFullerPromise({ text: h.text ?? '', when: h.whenSaid }, { text: c.action, when: c.when }) : null })).find((x) => x.which);
+      if (fuller) {
+        if (fuller.which === 'existing') continue;
+        const wholeText = c.action.slice(0, 400);
+        const wholeWhen = c.when ?? fuller.h.whenSaid ?? null;
+        let moved = true;
+        await this.prisma.groundCommitment.update({
+          where: { id: fuller.h.id },
+          data: {
+            text: wholeText,
+            whenSaid: wholeWhen,
+            saidWordForWord: saidWordForWord(wholeText, said),
+            whenSaidWordForWord: wholeWhen ? saidWordForWord(wholeWhen, said) : false,
+          },
+        }).catch((err: any) => { moved = false; this.logger.warn(`Could not write a promise more fully on ${checkInId}: ${err?.message}`); });
+        if (moved) { fuller.h.text = wholeText; fuller.h.whenSaid = wholeWhen; }
+        continue;
+      }
       /* The same promise said twice in one breath, once with its time on the end, is one promise. */
-      const same = (theirs as any[]).find((h) => theSameMeasure(h.text ?? '', c.action)
-        || (!!aCommitmentKey(c.action, c.when) && aCommitmentKey(h.text ?? '', h.whenSaid) === aCommitmentKey(c.action, c.when)));
+      const same = (theirs as any[]).find((h) => !(h.statedInSession === row.sessionNumber && nameTwoDifferentDates({ text: h.text ?? '', when: h.whenSaid }, { text: c.action, when: c.when })) && (theSameMeasure(h.text ?? '', c.action)
+        || (!!aCommitmentKey(c.action, c.when) && aCommitmentKey(h.text ?? '', h.whenSaid) === aCommitmentKey(c.action, c.when))));
       if (same) {
         /* Already settled by a person: saying it again does not reopen it and is not counted. */
         if (same.status !== 'UNKNOWN') continue;
