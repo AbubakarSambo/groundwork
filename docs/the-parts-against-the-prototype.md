@@ -406,3 +406,22 @@ where the rule lives:
 | `gwui-sr-section-note` | a short note under a themed group ("the lines this comes from" style of aside) | one-session.txt's own section notes |
 | `gwui-sr-person-saying`, `gwui-sr-person-finding` | a person's own summary line, and (grouped by person) the product's own finding about their work, with an amber edge when there is a gap | one-session.txt's per-person material, grouped |
 | `gwui-sr-footer`, `gwui-sr-footer-line` | the closing line: when it was last updated, and whether it is still forming or closed | team-report.txt's own "Last updated on..." line |
+
+## Group 3's drift-list review, part 2 (continued): `Note` gains three tones
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| `Note` `tone="amber"`/`"green"`/`"navy"` (`.gwui-note-amber`, `.gwui-note-green`, `.gwui-note-navy`) | colour | the check-in header's own one-sentence state line ("Your turn. It is 1 day late.", "Ended well.", "2 of 6 have not answered yet.") used page-only classes (`gwui-ink-amber`/`-green`/`-navy`/`-sub` combined with `gwui-fs-14`/`gwui-fs-13-5`) on `GroundAdminPage.tsx` for exactly this; `Note`'s own 13.5px size already matches the prototype's note size, so `amber`/`green` are the same colours `Tag`'s own `attention`/`proven` tones already draw from (`var(--gw-amber-t)`, `var(--gw-green-t)`), and `navy` is the same ink `Button`'s own primary colour already uses (`var(--gw-navy)`), each named as an option on the part that already exists for a plain sentence | added |
+
+## Group 3's drift-list review, part 2 (continued): one centred-column class for two pages
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| `.gwui-centered-column` | layout | `GroundAdminPage.tsx`'s and `GroundParticipantPage.tsx`'s own content column each carried a page-only `gwui-ml-auto gwui-mr-auto` pair (plus a one-off `gwui-pt-12`/`gwui-pt-16`) to centre the conversation's own narrow 600px reading column inside the page's wider, full-width header - the only width `Page` itself does not already cap, since this column sits a level under `Page`'s own 1150px wrap. One class, used by both pages identically, replaces the pair; the extra top padding is dropped, since `Page`'s own 30px rule between its direct children (the header, any notices, and this column) already gives the gap the one-off padding was adding a second time. | added |
+
+## Group 3's drift-list review, part 2 (continued): `GroundParticipantPage.tsx`'s own header row
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| `.gwui-status-row` | font-size, colour, padding | the participant's own check-in header row carried a page-only `gwui-fs-13 gwui-ink-muted gwui-pt-10 gwui-pb-12` combination for its one muted sentence plus the badges beside it (a guest check-in's own organisation, how it ended) | added, one named class in place of four one-off ones |
+| `.gwui-note-navy`/`.gwui-note-green` reused as plain spans | colour | the same row's two badges (`gwui-ink-navy`, `gwui-ink-green`) used the same colours `Note`'s new tones already carry (see above); rather than keep the `gwui-ink-*` utility pair for these two spans, they use the already-documented `Note` tone classes directly | changed to reuse the existing part |

@@ -541,6 +541,21 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* ── NOTE / EMPTY (prototype: .note, an empty sentence, a locked door) ────── */
 .gwui-note { font-size: 13.5px; color: var(--gw-sub); }
 .gwui-note-error { color: var(--gw-red-t); }
+/* A check-in's own one-sentence state above its tabs - "Your turn. It is 1 day late.", "Ended
+   well." - in the same amber/green/navy ink Tag's own tones already draw from (group 3's
+   drift-list review, part 2). */
+.gwui-note-amber { color: var(--gw-amber-t); }
+.gwui-note-green { color: var(--gw-green-t); }
+.gwui-note-navy { color: var(--gw-navy); }
+/* A narrow column centred in a wider frame - the check-in's own conversation, inside the lead's
+   and the participant's full-width header (group 3's drift-list review, part 2; replaces the
+   gwui-ml-auto/gwui-mr-auto pair on GroundAdminPage.tsx and GroundParticipantPage.tsx). */
+.gwui-centered-column { margin-left: auto; margin-right: auto; }
+/* The participant's own check-in header row - a muted 13px sentence, with room above and below
+   for the badges beside it (a guest check-in's own org, how it ended) (group 3's drift-list
+   review, part 2; replaces GroundParticipantPage.tsx's own gwui-fs-13/gwui-ink-muted/gwui-pt-10/
+   gwui-pb-12 combination). */
+.gwui-status-row { font-size: 13px; color: var(--gw-sub); padding: 10px 0 12px; }
 /* A centred Note, for the sign-up screen's own "or with your email" divider between Google and the
    email form (signup.jpg), replacing the page-only gwui-auth-or (group 3 drift list, piece 1). */
 .gwui-note-centre { text-align: center; }

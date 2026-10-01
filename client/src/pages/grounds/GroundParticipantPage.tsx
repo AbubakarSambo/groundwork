@@ -11,8 +11,7 @@ import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Page } from '@/components/gw/ui/Page'
-import { Note } from '@/components/gw/ui/Note'
-import { Empty, Button, Stack, SubHeading, Callout } from '@/components/gw/ui'
+import { Note, Empty, Button, Stack, SubHeading, Callout } from '@/components/gw/ui'
 import { cadenceLabel } from '@/lib/cadence'
 import { peopleLabels, atTheStart } from '@/lib/utils'
 import { whoRunsThis, whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
@@ -524,7 +523,7 @@ export function GroundParticipantPage() {
           }}
         />
 
-        <div className="gwui-button-row gwui-fs-13 gwui-ink-muted gwui-pt-10 gwui-pb-12">
+        <div className="gwui-button-row gwui-status-row">
           {/*
             REVIEW ROUND 3, ITEM 2: ONE PAGE PER CHECK-IN NOW, NOT TWO.
             This used to say which of two pages you were on, for whoever runs the check-in AND
@@ -546,13 +545,13 @@ export function GroundParticipantPage() {
             Null on a reader's own check-in, because "at your own company" is not information.
           */}
           {(ground as any).guestIn && (
-            <span className="gwui-ink-navy" style={{ fontWeight: 600 }}>
+            <span className="gwui-note-navy" style={{ fontWeight: 600 }}>
               A guest check-in at {(ground as any).guestIn}.
             </span>
           )}
           {/* Once it has ended, the clock is not the news. See lib/a-ground-that-has-ended. */}
           {howItEnded(ground as any) ? (
-            <span className="gwui-ink-green" style={{ fontWeight: 600 }}>{howItEnded(ground as any)}</span>
+            <span className="gwui-note-green" style={{ fontWeight: 600 }}>{howItEnded(ground as any)}</span>
           ) : (
             <>
               {/* OPEN IS NOT DUE, in the header too. `opensLater` is derived above to tell the two
@@ -636,7 +635,7 @@ export function GroundParticipantPage() {
         * box first.
         */}
       {tab === 'checkin' && (
-        <div className="gwui-pt-4 gwui-pb-4 gwui-pl-3 gwui-pr-3">
+        <>
           {dueNow ? (
             <Note>Opening your check-in…</Note>
           ) : (
@@ -648,7 +647,7 @@ export function GroundParticipantPage() {
               onGoToSetup={() => goTab('settings')}
             />
           )}
-        </div>
+        </>
       )}
 
       {/* READING WIDTH, EXCEPT WHERE THE PAGE ISN'T PROSE (see the-dashboard-uses-the-screen.spec.ts).
@@ -662,7 +661,7 @@ export function GroundParticipantPage() {
           and `settings` widened - the one tab this page draws from the very same `ContextPage`
           GroundAdminPage.tsx now widens, left narrower by mistake. */}
       <div
-        className={`gw-bd gwui-pt-16${(tab === 'settings' || tab === 'record' || tab === 'docs') ? '' : ' gwui-ml-auto gwui-mr-auto'}`}
+        className={`gw-bd${(tab === 'settings' || tab === 'record' || tab === 'docs') ? '' : ' gwui-centered-column'}`}
         style={{ maxWidth: (tab === 'settings' || tab === 'record' || tab === 'docs') ? 1150 : 600, width: '100%' }}
       >
 
