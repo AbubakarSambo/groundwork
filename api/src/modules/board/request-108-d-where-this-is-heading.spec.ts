@@ -70,6 +70,11 @@ describe('request 108 (d): where this is heading, as Bisi, who runs it, reads it
     expect(b.whereThisIsHeading.decided).toBe('You recorded the decision on 30 September. The outcome is "Not yet, more sessions needed".');
     expect(b.whereThisIsHeading.recordTheDecision).toBeNull();
   });
+
+  it('read the next year, the same board writes the year out', async () => {
+    const b = await boardAs({ ...RUN, status: 'CLOSED', endState: 'NOT_YET', resolvedAt: new Date('2026-09-30T10:00:00Z'), clock: { ...RUN.clock, now: new Date('2027-01-15T12:00:00Z') } }, ...BISI);
+    expect(b.whereThisIsHeading.decided).toBe('You recorded the decision on 30 September 2026. The outcome is "Not yet, more sessions needed".');
+  });
 });
 
 describe('request 108 (d): who else reads it', () => {

@@ -1587,3 +1587,7 @@ Decided for Hafsah to confirm:
 - Not on an evaluation check-in, and not to an admin who only reads.
 
 Tests: `board/request-108-d-where-this-is-heading.spec.ts` (9 cases, as every reader). The board cases fail without this change.
+
+## Request 108: the year in the board's dates follows the board's own clock (2 October)
+
+The headline's deadline and "Where this is heading"'s recorded date leave out the year only where it is the year of the clock the board is read at, never the machine's own clock. In the product that is the moment the board is served; in tests it is the clock the test gives (`THE_BOARDS_CLOCK` in the board harness, 2 October 2026, unless a spec sets its own), so a test reads the same every year. Read in January 2027, the same board says "Will we reach 40 approved facilities by 30 November 2026?" and "You recorded the decision on 30 September 2026."

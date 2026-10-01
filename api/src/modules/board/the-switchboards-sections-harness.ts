@@ -64,7 +64,7 @@ export interface Setup {
   /** The documents on the check-in (GroundDocument rows). */
   documents?: any[];
   /** The check-in's clock (request 108): when it was made, starts and ends, how long it runs and how often. */
-  clock?: { createdAt?: Date; startsAt?: Date | null; endsAt?: Date | null; timelineDays?: number; cadence?: string; runsUntilEnded?: boolean };
+  clock?: { now?: Date; createdAt?: Date; startsAt?: Date | null; endsAt?: Date | null; timelineDays?: number; cadence?: string; runsUntilEnded?: boolean };
   /** Whether the lead has recorded how it ended (request 108 d). */
   status?: string;
   endState?: string | null;
@@ -111,7 +111,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     whoSeesTargets: setup.whoSeesTargets ?? 'THEIR_OWN', label: setup.label ?? 'The team, Q3', participants: setup.people ?? PEOPLE, checkIns, report: setup.report ?? null,
     dependencies: setup.dependencies ?? [], poll: null, objectives: setup.objectives ?? [], closedAt: setup.closedAt ?? null,
     kindOfWork: setup.kindOfWork ?? null, workStages: null, subjectExternalId: setup.subjectExternalId ?? null,
-    ...(setup.clock ?? {}),
+    ...(({ now: _now, ...rest }) => rest)(setup.clock ?? {}),
     ...(setup.status ? { status: setup.status } : {}),
     ...(setup.endState !== undefined ? { endState: setup.endState } : {}),
     ...(setup.resolvedAt !== undefined ? { resolvedAt: setup.resolvedAt } : {}),
@@ -151,8 +151,11 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
   });
   const reports = Object.create(ReportsService.prototype) as ReportsService;
   return new BoardService(prisma, { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, reports)
-    .get('g-1', userId) as Promise<any>;
+    .get('g-1', userId, undefined, { now: setup.clock?.now ?? THE_BOARDS_CLOCK }) as Promise<any>;
 }
+
+/** The clock every board in these tests is read at, unless a spec gives its own, so a date reads the same every year. */
+export const THE_BOARDS_CLOCK = new Date('2026-10-02T12:00:00Z');
 
 /*
  * THE SALES RUN (api/journey/all-24/re-f/sales.json, "Credit sales against this quarter target"). Bisi

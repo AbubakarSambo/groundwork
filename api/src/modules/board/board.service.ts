@@ -282,8 +282,10 @@ export class BoardService {
     groundId: string,
     requestingUserId: string,
     variant: CoverageVariant = DEFAULT_COVERAGE_VARIANT,
-    opts: { mayWordNewLines?: boolean } = {},
+    /* `now`: the board's clock. Dates it writes leave out the year only where it is this clock's year. */
+    opts: { mayWordNewLines?: boolean; now?: Date } = {},
   ) {
+    const now = opts.now ?? new Date();
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: {
@@ -2162,7 +2164,7 @@ export class BoardService {
           aims.push({ id: o.id, name: String(row.name ?? ''), target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, word: stands?.word ?? null });
           return { ...o, stands };
         });
-        const headline = theHeadlineQuestion(aims, deadlineOf(ground as any));
+        const headline = theHeadlineQuestion(aims, deadlineOf(ground as any), now);
         if (headline) out.headline = headline;
       }
       /*
@@ -2183,6 +2185,7 @@ export class BoardService {
           decided: (ground as any).status === 'CLOSED' || (ground as any).status === 'RESOLVED'
             ? { endState: (ground as any).endState ?? null, on: (ground as any).resolvedAt ?? null }
             : null,
+          now,
         });
       }
     }

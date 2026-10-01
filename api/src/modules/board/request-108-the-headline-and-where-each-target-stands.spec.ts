@@ -61,6 +61,12 @@ describe('(a) the headline question, as Bisi, who runs it, reads it', () => {
     expect(b.headline.answer).toBe('So far it is 11 of the 40 approved facilities. 29 more are needed by 30 November.');
   });
 
+  it('read the next year, the same board writes the deadline\'s year out', async () => {
+    const b = await boardAs({ ...RUN, objectives: [target('o-approved', 'Approved facilities', 40, 11, null)], clock: { ...RUN.clock, now: new Date('2027-01-15T12:00:00Z') } }, ...BISI);
+    expect(b.headline.question).toBe('Will we reach 40 approved facilities by 30 November 2026?');
+    expect(b.headline.answer).toBe('So far it is 11 of the 40 approved facilities. 29 more are needed by 30 November 2026.');
+  });
+
   it('asks nothing where no team aim has a number, and never makes one up from a person\'s own target', async () => {
     const b = await boardAs({ ...RUN, objectives: RUN.objectives!.filter((o: any) => o.ownerParticipantId) }, ...BISI);
     expect(b.headline).toBeUndefined();
