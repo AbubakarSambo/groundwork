@@ -1674,8 +1674,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       <div className="gwui-fs-15 gwui-ink-muted gwui-mt-2">{d.why}</div>
                     </div>
                     {/* U.10: a name, not a verdict - the owner is who this is for, not a label on
-                        them. Re-review, 30 September: to that person themselves it is "You". */}
-                    <span className="gwui-fs-13-5 gwui-ink-sub" style={{whiteSpace: 'nowrap'}}>{myName && d.owner === myName ? 'You' : d.owner}</span>
+                        them. Re-review, 30 September: to that person themselves it is "You".
+                        Re-review, 1 October (phase 2 of the board task): the owner is usually a
+                        short name, but when nobody is named the record sends a full sentence
+                        ("Nobody has been named to decide this."). A fixed `nowrap` fit the name
+                        and overflowed the phone-width board by this sentence's own width (a real
+                        375px board measured 395px wide because of it) - this box must wrap like
+                        any other sentence, not stay on one line. */}
+                    <span className="gwui-fs-13-5 gwui-ink-sub">{myName && d.owner === myName ? 'You' : d.owner}</span>
                   </div>
                 </div>
               ))}
