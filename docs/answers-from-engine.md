@@ -965,3 +965,25 @@ Both go through Ask Groundwork only (lanes `log_hours` and `ask_to_spend`), as a
 The approver is not yet told on Today. Today is built in `grounds/what-needs-you*`, which this work did not change, so it needs one new kind of item there ("Aisha has asked for leave", "Brian has sent hours to approve", "Kamau has asked to spend KES 18,000"), read from the leave, time sheets and spending boards for the person who may decide. Until then the approver finds them on the three suite boards, which already show Approve and Decline only to the right person.
 
 Code: `api/src/modules/suites/hours-said-in-chat.ts`, `spend-said-in-chat.ts`, `who-approves.ts`, and the lanes in `api/src/modules/assistant/assistant.service.ts`. Tests: `suites/hours-and-spending-said-in-chat.spec.ts` and `assistant/hours-and-spending-through-ask-groundwork.spec.ts`.
+
+## Being away (week 23)
+
+Approved leave is read by its dates only (decision 31): never the reason, never the kind of leave. Leave that is waiting, declined, not yet started or over changes nothing. The one read is `api/src/modules/suites/who-is-away.ts`.
+
+While somebody is away today:
+
+- **The round does not wait for them.** They are not counted as still to answer, the round closes and the report releases without them, and the board, the list and the report's count leave them out. If they answer anyway, they count like anybody.
+- **No reminder or "you have missed" mail goes to them.** The mail door refuses nudges, the absence mail, "your check-in is open", the invitation-about-to-lapse mail and the feedback request while they are away. The manual and scheduled chases skip them, and the lead's "who has not started" list leaves them out. A check-in that opened while they were on leave is never a missed one.
+- **Nothing counts against them.** A promise not kept on a day of leave is not a miss in the kept count (You board and suggestions), a pattern's streak is paused and not broken by a period spent on leave, and coaching is not offered while they are away.
+
+### What each person reads (decided for Hafsah to confirm)
+
+The ground read (`GET` of a check-in) and the board now carry `whoIsAway`, a list with one entry for each person who is away and not waited on: `{ participantId, until, says }`. It is empty when nobody is away. Please show `says` as it is.
+
+- **The lead (and an admin who runs it):** "Yemi is on leave until Friday 2 October, so this round does not wait for Yemi."
+- **A colleague:** "Yemi is away until Friday 2 October." Only where the check-in already shows that person to them by name. A colleague who is not shown the person by name reads nothing.
+- **The person themselves:** "You are on leave until Friday 2 October, so this round does not wait for you."
+
+The count a person reads ("Four of the five people have answered") now counts the people the round waits on, so it can drop by one while somebody is away. `sessionProgress` also carries `awayUntil` (participant id to last day) beside `missingParticipantIds`, which no longer lists somebody who is away.
+
+Tests: `suites/being-away-as-each-reader-reads-it.spec.ts`, `conversation/being-away-no-reminders.spec.ts`, `email/no-reminder-to-somebody-who-is-away.spec.ts`.

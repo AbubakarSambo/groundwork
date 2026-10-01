@@ -31,7 +31,7 @@ import { targetsFor } from '../board/whose-number-is-whose-business';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting } from './the-context-chat';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
-import { leaveOfThePeopleOn, whoOnACheckInIsAway } from '../suites/who-is-away';
+import { leaveOfThePeopleOn, theAwayLinesFor, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { LEAVE_NOTHING_WAITING, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
 import { offerToKeep, keepWhatWasOffered, dropWhatWasOffered } from '../knowledge/organisation-memory';
 import { keepable, soundsCompanyWide, MEMORY_PROMPT, MEMORY_TOOL, NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
@@ -2587,6 +2587,14 @@ export class GroundsService {
       leadContextNotes,
       org: org ?? null,
       sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+      /* WHO IS AWAY, AND THAT THIS ROUND DOES NOT WAIT FOR THEM (week 23). Dates only, never a reason or
+         a kind of leave. The lead reads it for each person; a colleague reads only that the person is
+         away, and only for a person this reader is already shown by name; a person reads their own. */
+      whoIsAway: theAwayLinesFor(
+        sessionProgress?.awayUntil ?? {},
+        participantsWithCheckIns as any[],
+        { viewerRunsThisGround, myParticipantId: requestingParticipant?.id ?? null },
+      ),
       /**
        * The context flag, sent with the ground because that is where the tab
        * lives. The client cannot read an environment variable, and a screen that
@@ -7418,6 +7426,8 @@ export class GroundsService {
      * when it holds three, and the report's whole standing rests on not doing that.
      */
     declinedParticipantIds: string[];
+    /** Who is on approved leave today and not waited on, with the last day of it (week 23). Dates only. */
+    awayUntil: Record<string, string>;
   } | null> {
     /**
      * THE ROUND THIS IS ABOUT IS THE ONE PEOPLE HAVE ANSWERED, NOT THE NEWEST ONE OPENED.
@@ -7463,6 +7473,7 @@ export class GroundsService {
        */
       missingParticipantIds: counted.waitingOn,
       declinedParticipantIds: counted.expectedIds.filter((id) => declined.has(id)),
+      awayUntil: counted.awayUntil ?? {},
     };
   }
 

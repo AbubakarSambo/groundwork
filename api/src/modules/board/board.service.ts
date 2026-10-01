@@ -82,7 +82,7 @@ import { theShortNameOf } from '../reports/a-title-is-not-a-first-name';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
-import { leaveOfThePeopleOn } from '../suites/who-is-away';
+import { leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
@@ -774,6 +774,19 @@ export class BoardService {
        * `aTeamReportComes` (grounds.service): a yes or no, never how many.
        */
       aTeamReportComes: ground.participants.filter((p) => !p.managingOnly).length > 1,
+      /* WHO IS AWAY AND NOT WAITED ON THIS ROUND (week 23). Dates only. The lead reads it for each person;
+         a colleague only for a person the board already names to them; a person reads their own. */
+      whoIsAway: theAwayLinesFor(
+        (await howManyHaveAnswered(this.prisma, groundId, openRound)).awayUntil ?? {},
+        ground.participants.map((p: any) => {
+          const shown = nameOf(p.id);
+          const first = (p.user?.firstName ?? '').trim();
+          const name = shown && shown !== 'A colleague' ? (first && shown.includes(first) ? first : shown) : null;
+          return { id: p.id, nameGiven: name, user: null };
+        }),
+        { viewerRunsThisGround: isInitiator || isSetupAdmin || adminHere, myParticipantId: me?.id ?? null },
+        true,
+      ),
     };
 
     if (has('phaseSpine')) {

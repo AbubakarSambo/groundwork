@@ -86,7 +86,7 @@ export function whoIsExpected<T extends SomebodyWhoMightAnswer>(
  * which also leaves out an invitation that lapsed; that stays for deciding when a round is done and
  * who is still waited on, but it is not the number people read.
  */
-export function whoIsInTheRound<T extends { managingOnly?: boolean | null }>(people: T[], sessionNumber: number, scenario?: string | null): T[] {
+export function whoIsInTheRound<T extends { managingOnly?: boolean | null; awayUntil?: string | null; checkIns?: { status: string; sessionNumber?: number }[] }>(people: T[], sessionNumber: number, scenario?: string | null): T[] {
   const waitsOnTheLead = waitsOnAManagingOnlyLead(scenario, sessionNumber);
   /* Somebody away, who has not answered, is not in the count this round waits on (week 23). */
   return (people ?? []).filter((p) => (!p.managingOnly || waitsOnTheLead)

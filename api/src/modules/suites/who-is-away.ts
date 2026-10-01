@@ -149,3 +149,28 @@ export function theAwayLine(who: WhoReadsIt, name: string | null, until: LeaveDa
   if (who === 'the lead') return `${n} is on leave until ${date}, so this round does not wait for ${n}.`;
   return `${n} is away until ${date}.`;
 }
+
+/**
+ * THE AWAY LINES ONE READER GETS FOR A CHECK-IN: one per person who is away and not waited on.
+ * `served` is the people this reader is shown on the check-in; a colleague reads a line only for
+ * someone in it who is shown by name. Nothing here names a reason or a kind of leave.
+ */
+export function theAwayLinesFor(
+  awayUntil: Record<string, string>,
+  served: { id: string; nameGiven?: string | null; user?: { firstName?: string | null } | null }[],
+  reader: { viewerRunsThisGround: boolean; myParticipantId: string | null },
+  /** True where the name is already the one this reader is shown, and must not be cut to a first word. */
+  nameIsAsShown = false,
+): { participantId: string; until: LeaveDay; says: string }[] {
+  const out: { participantId: string; until: LeaveDay; says: string }[] = [];
+  for (const [participantId, until] of Object.entries(awayUntil ?? {})) {
+    const shown = served.find((p) => p.id === participantId);
+    if (!shown) continue;
+    const said = (shown.user?.firstName ?? shown.nameGiven ?? '').trim();
+    const first = (nameIsAsShown ? said : said.split(/\s+/)[0]) || null;
+    const who: WhoReadsIt = reader.myParticipantId === participantId ? 'the person' : reader.viewerRunsThisGround ? 'the lead' : 'a colleague';
+    const says = theAwayLine(who, first, until);
+    if (says) out.push({ participantId, until, says });
+  }
+  return out;
+}
