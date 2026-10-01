@@ -2419,14 +2419,6 @@ export function GroundAdminPage() {
                 </Callout>
               </div>
             )}
-            {/* The lead's one press to get this round's report to everyone who answered and asked for it. */}
-            {isInitiator && (
-              <SendTheReportToEveryone
-                groundId={id!}
-                participants={(ground.participants ?? []) as any[]}
-                answered={new Set(((ground.checkIns ?? []) as any[]).filter((c) => c.status === 'COMPLETED' && c.sessionNumber === Math.max(1, roundDone > 0 ? openRound : openRound - 1)).map((c) => c.participantId))}
-              />
-            )}
             {/* What success looks like is deliberately NOT here - see the note in
                 SharedReportForAParty, which carried the same block and lost it for the same
                 reason. This tab is an index; the band renders where it can say something. */}
@@ -2436,6 +2428,20 @@ export function GroundAdminPage() {
               onOpenBoard={() => navigate(`/grounds/${ground.id}/board`)}
               onOpenSession={(n: number) => navigate(`/grounds/${ground.id}/session/${n}`)}
             />
+
+            {/*
+              THE LEAD'S ONE PRESS TO GET THIS ROUND'S REPORT TO EVERYONE WHO ASKED FOR IT.
+              GROUP 3 REVIEW, BATCH B: moved below "Every session", where it now reads as a short
+              line rather than a card above the heading - sessions.jpg has no such card, and this
+              screen's one navy button is the header's own "Your check-in".
+            */}
+            {isInitiator && (
+              <SendTheReportToEveryone
+                groundId={id!}
+                participants={(ground.participants ?? []) as any[]}
+                answered={new Set(((ground.checkIns ?? []) as any[]).filter((c) => c.status === 'COMPLETED' && c.sessionNumber === Math.max(1, roundDone > 0 ? openRound : openRound - 1)).map((c) => c.participantId))}
+              />
+            )}
 
             {/*
               RELEASING, AS ONE LINE RATHER THAN THE HEADLINE ACTION.

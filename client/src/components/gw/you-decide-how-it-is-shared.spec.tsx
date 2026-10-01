@@ -40,6 +40,17 @@ describe('the organiser chooses what the respondents receive', () => {
   it('and the button says which one it is about to do', () => {
     expect(SEND).toMatch(/Send \$\{how === 'ANONYMOUS' \? 'anonymised ' : ''\}to/)
   })
+
+  /*
+   * GROUP 3 REVIEW, BATCH B: sessions.jpg has no card for this at all, and a navy button here sat
+   * beside the header's own navy "Your check-in" - more than the one navy button a screen gets.
+   * The shared `Button kind="secondary"` (white, outlined) replaces the hand-rolled navy
+   * `<button style={{ background: 'var(--gw-navy)', ... }}>`.
+   */
+  it('is a white secondary button, not a second navy one', () => {
+    expect(SEND).toMatch(/Button kind="secondary"/)
+    expect(SEND).not.toMatch(/background: 'var\(--gw-navy\)'/)
+  })
 })
 
 describe('a hundred accounts get their own read', () => {

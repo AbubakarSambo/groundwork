@@ -3,6 +3,7 @@ import { reportsApi } from '@/api/reports'
 import { toast } from 'sonner'
 import { useState } from 'react'
 import type { GroundParticipant } from '@/types'
+import { Button } from '@/components/gw/ui/Button'
 
 /**
  * THE PLACE TO SEND THE REPORT TO EVERYONE, AT THE END.
@@ -22,6 +23,14 @@ import type { GroundParticipant } from '@/types'
  * choice belongs at the moment of sending, because that is the moment somebody knows who is about
  * to read it. Named is preselected: it is what this did before the choice existed, and quietly
  * switching a hundred people to anonymised would be the product deciding by another route.
+ *
+ * GROUP 3 REVIEW, BATCH B: this used to be a boxed, bordered card of its own, with a navy button,
+ * sitting ABOVE "Every session" - the prototype's own sessions.jpg has no such card at all, and
+ * two navy buttons on one screen (this one beside the header's own navy "Your check-in") is more
+ * than the one navy button a screen gets. It is placed AFTER `TheReportIsAListOfSessions` now
+ * (GroundAdminPage.tsx), drawn as a short line rather than a card, and its button is `Button
+ * kind="secondary"` - white, the prototype's own outlined button - not navy. Every action it
+ * offered keeps working: sending, choosing named or anonymised, and reading who gets it.
  */
 export function SendTheReportToEveryone({ groundId, participants, answered }: {
   groundId: string
@@ -44,21 +53,14 @@ export function SendTheReportToEveryone({ groundId, participants, answered }: {
   })
   if (!answered.size) return null
   return (
-    <section aria-label="Send the report to everyone" style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
+    <section aria-label="Send the report to everyone" style={{ marginTop: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>Send the report to everyone who asked for it</div>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2 }}>
-            {reachable.length} {reachable.length === 1 ? 'person' : 'people'} answered and asked for it{declined.length ? `; ${declined.length} said no thanks` : ''}. Each gets a link to this session's report, once.
-          </div>
-        </div>
-        <button
-          onClick={() => send.mutate()}
-          disabled={send.isPending || reachable.length === 0}
-          style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: send.isPending || reachable.length === 0 ? .5 : 1 }}
-        >
+        <p style={{ fontSize: 13.5, color: 'var(--gw-text)', margin: 0 }}>
+          {reachable.length} {reachable.length === 1 ? 'person' : 'people'} answered and asked for the report{declined.length ? `; ${declined.length} said no thanks` : ''}. Each gets a link to this session's report, once.
+        </p>
+        <Button kind="secondary" size="small" onClick={() => send.mutate()} disabled={send.isPending || reachable.length === 0}>
           {send.isPending ? 'Sending…' : `Send ${how === 'ANONYMOUS' ? 'anonymised ' : ''}to ${reachable.length}`}
-        </button>
+        </Button>
       </div>
       {reachable.length > 0 && (
         <fieldset style={{ border: 0, padding: 0, margin: '12px 0 0' }}>
