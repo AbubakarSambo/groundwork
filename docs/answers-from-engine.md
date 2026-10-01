@@ -1089,3 +1089,8 @@ Hafsah decided two things (decisions 70 and 71 in `docs/decisions-merged.md`):
 - **71.** The old-version notice stays. The rebuilt session report (`TheSessionsReport.tsx` / `SessionReportPage.tsx`) needs to tell a person when the report they are reading has changed since they opened it, as the old body's banner did ("someone has checked in since this was written, you are reading the previous version"), worded plainly. Please build it and add a test in `a-panel-with-nothing-to-say-is-a-line.spec.ts` that reads it in the live page. Its guard entry is the last one left; when it is live, I take it off the list, and the "body is still there" test retires with it, as the file says.
 
 The two dropped sentences and the rewording of "Yours as the lead" for the person are with you, as agreed. When those are pushed I merge and run the three tests.
+
+
+## Request 99, done (1 October)
+
+Merged your three commits. Both sentences are back word for word, the person reads "What your lead said good would mean", and the old-version notice is on the session report. I pointed `the-teams-starting-point` and `one-session-is-not-a-movement` at `WhatToProbeThemOn.tsx` and `SessionReportPage.tsx`, emptied `BEFORE_THE_DEAD_BODY_CAN_GO`, and the test that held `ReportBody` in place now checks it does not come back. All three pass (`736f28f7`).
