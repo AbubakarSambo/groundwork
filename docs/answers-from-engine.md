@@ -1456,3 +1456,21 @@ Decided for Hafsah to confirm:
 - Should Setup ask for each person's level (gov) and group (mvnext), so the board can show them? Today nothing on record holds either.
 
 Tests: `board/request-105-each-kind-gets-its-own-board.spec.ts` (23 cases, on the real run text named above, as every reader). This includes a walk of every sentence in the five through the plain-sentence rules.
+
+## Request 105: the glance names nobody a reader may not read (2 October)
+
+`howItIsGoing.glance` is the header line ("N things are in the way, the oldest being ..."). It used to be worked out once for the whole team and sent to every reader. It is now cut to what each reader may read (`theGlanceAsThisReaderMayReadIt` in `grounds/what-a-manager-needs-at-a-glance.ts`). The cut applies to three kinds of reader:
+- a participant on a check-in where people see only themselves;
+- anybody on an evaluation check-in who does not run it: the person reviewed, a colleague giving a view, and an admin without access;
+- that admin also on the list (the board already refuses them).
+
+For those readers, `inTheWay` is counted and named from their own waits only: the ones they wait on, and the ones waiting on them. `progress.waitingOn` holds only themselves. The rounds and the answered counts stay, because they name nobody. The lead, the admin who set it up, and an admin of the organisation on a check-in that is not an evaluation read the whole team, as before. The check-ins list follows the same rule (`grounds.service`, `list`). Today is built from that list, so it follows too.
+
+Before and after, on the sales run (re-f), where Femi's wait for the bank statements is the oldest:
+- Ngozi, where people see only themselves. Before, she read 3 things in the way, the oldest being "the bank statements", and `waitingOn` ["Bisi Adeyemi", ...]. Now she reads 1 thing, the oldest being "a date for the credit decision", and `waitingOn` [].
+- Kwame, where people see only themselves, and as a colleague giving a view on a performance plan. Before, 3 and "the bank statements". Now, 1 and "the approval of five applications".
+- Femi, the person reviewed on a performance plan, where Ngozi's wait is the oldest. Before, 3 and "a date for the credit decision". Now, 1 and "the bank statements".
+- Bisi, Juma (an admin who only reads) and the admin who set it up: 3 and "the bank statements", unchanged.
+- On the list, where people see only themselves, Miriam used to be given 0 things in the way, her own included. Now she is given 1, "the delivery van". On a performance plan the list used to give her and Omar the whole team, 2 things, the oldest being Omar's "the new price list". Now each is given only their own. An admin without access is given 0 and no name.
+
+Tests: `board/request-105-the-glance-names-nobody-walled.spec.ts` (10 cases) and `grounds/request-105-the-list-glance-names-nobody-walled.spec.ts` (6 cases). One older list test expected a walled participant to be given no blocker at all, her own included. It now expects her own wait, still with no name: "A colleague's login for the order system".

@@ -5,6 +5,7 @@ import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
 import { aParticipantsOwnBoard } from './a-participants-board-is-their-own';
 import { theBoardForThisKind } from './each-kind-gets-its-own-board';
+import { theGlanceAsThisReaderMayReadIt } from '../grounds/what-a-manager-needs-at-a-glance';
 import { howARecordIsKnown, whatHappensNext } from './what-happens-next-to-a-record';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
 import { theShareSays } from './your-share';
@@ -838,6 +839,20 @@ export class BoardService {
         true,
       ),
     };
+
+    /*
+     * THE GLANCE NAMES NOBODY THIS READER MAY NOT READ (request 105, the more private choice). Where people
+     * see only themselves, and for anybody on an evaluation check-in who does not run it (the person
+     * reviewed, a colleague giving a view, an admin without access), the header counts and names only the
+     * reader's own waits, and says only whether they themselves have answered. The list of check-ins and
+     * Today apply the same rule (grounds.service, list). See theGlanceAsThisReaderMayReadIt.
+     */
+    if (out.howItIsGoing?.glance && (whoMaySee.peersHidden || (isEvaluationCheckIn(ground.scenario) && !isInitiator && !runsItForAPattern(ground as any, requestingUserId)))) {
+      out.howItIsGoing = {
+        ...out.howItIsGoing,
+        glance: theGlanceAsThisReaderMayReadIt(out.howItIsGoing.glance, { participantId: me?.id ?? null }, ((ground as any).dependencies ?? []) as any[]),
+      };
+    }
 
     if (has('phaseSpine')) {
       /*

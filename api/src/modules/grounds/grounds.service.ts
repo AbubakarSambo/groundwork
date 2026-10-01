@@ -49,6 +49,7 @@ import { endStatesFor } from '../resolution/end-states';
 import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
+import { theGlanceAsThisReaderMayReadIt } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
@@ -84,7 +85,7 @@ import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { theLeadsWordsAbout } from './the-leads-words-about-someone';
 import { timelineDaysForAChosenEnd } from './session-count';
 import { adminsThisOrg, maySee, groundsAViewerMayList, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from './who-may-read-this-check-in';
-import { EVALUATION_SCENARIOS } from '../reports/is-this-an-evaluation-check-in';
+import { EVALUATION_SCENARIOS, isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, briefChangedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -1594,6 +1595,18 @@ export class GroundsService {
              answered, nor what is holding them up. Their own turn still shows from their own rows. */
           glance: (() => {
             const { oldestOnParticipantId, ...inTheWay } = (glance.inTheWay ?? {}) as any;
+            /*
+             * WHAT IS IN THE WAY NAMES NOBODY THIS READER MAY NOT READ (request 105, the more private choice):
+             * where people see only themselves, and on an evaluation check-in for anybody but its lead and the
+             * admin who set it up, it is counted and named from the reader's own waits only. The same rule as
+             * the board's header (theGlanceAsThisReaderMayReadIt). Today reads this list, so it follows.
+             */
+            const me = ((allParticipants ?? []) as any[]).find(isMe);
+            const runsTheEvaluation = isInitiator || (!!userId && (rest as any).createdByUserId === userId);
+            const walledFromColleagues = hidePeers || (isEvaluationCheckIn((rest as any).scenario) && !runsTheEvaluation);
+            const theirOwn = walledFromColleagues
+              ? theGlanceAsThisReaderMayReadIt(glance as any, { participantId: me?.id ?? null }, (allDependencies ?? []) as any[])
+              : null;
             if (hidePeers) {
               /* What the reader may say of themselves, in place of numbers about people they are not shown
                  (request 97d): "Just started" was read from those zeroes and was untrue of a check-in
@@ -1604,9 +1617,10 @@ export class GroundsService {
               return {
                 ...glance,
                 progress: { ...glance.progress, answeredThisRound: 0, ofPeople: 0, waitingOn: [], youHaveAnswered: answered, standsSaid: answered ? 'You have answered.' : 'You have not answered yet.' },
-                inTheWay: { count: 0, oldest: null, daysWaiting: null },
+                inTheWay: theirOwn!.inTheWay,
               };
             }
+            if (theirOwn) return theirOwn;
             /* A thing waited on that starts with "her" says "A colleague's"; a reader who may name people is told whose. */
             let oldest: string | null = inTheWay.oldest;
             if (oldest && oldestOnParticipantId && oldest.startsWith("A colleague's")) {

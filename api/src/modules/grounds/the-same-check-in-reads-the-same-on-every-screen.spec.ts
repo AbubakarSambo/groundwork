@@ -175,10 +175,13 @@ describe('(d) "Her login for the order system is holding it up" says whose', () 
     const r = await listAs(AMANI, 'MEMBER', stuck('p-omar'));
     expect(r.glance.inTheWay.oldest).toBe("Omar's login for the order system");
   });
-  it('a participant where people are not shown to each other is given no blocker at all, so no name', async () => {
+  /* Request 105: a reader walled from colleagues is given their own waits, counted and named, and nobody
+     else's. Before, Amani was given no blocker at all, her own included. The name of the person she waits on
+     is still never given. */
+  it('a participant where people are not shown to each other is given only her own wait, and no name', async () => {
     const r = await listAs(AMANI, 'MEMBER', { ...stuck('p-omar'), peersVisibleToEachOther: false });
-    expect(r.glance.inTheWay).toEqual({ count: 0, oldest: null, daysWaiting: null });
-    expect(JSON.stringify(r.glance)).not.toMatch(/Omar|login/);
+    expect(r.glance.inTheWay).toEqual({ count: 1, oldest: "A colleague's login for the order system", daysWaiting: 9 });
+    expect(JSON.stringify(r.glance)).not.toMatch(/Omar/);
     expect(JSON.stringify(r.participants)).not.toMatch(/Omar/);
   });
   it('where nobody is said to be waited on, it is "A colleague\'s", never a bare "Her"', async () => {
