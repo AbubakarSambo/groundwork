@@ -68,7 +68,9 @@ describe('the board of the next reviews', () => {
     ;(reviewsApi.board as any).mockResolvedValue(BOARD)
     open(WAIRIMU, '/suite/reviews')
     expect(await screen.findByText('A review every 6 months. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: 'Breadcrumb' }).textContent).toBe('Suites / Performance reviews')
+    /* "Where you are" is the shared PageTitle crumb's own aria-label (group 2, piece 4 rebuild),
+       in place of the page's prior "Breadcrumb". */
+    expect(screen.getByRole('navigation', { name: 'Where you are' }).textContent).toBe('Suites/Performance reviews')
     expect(screen.getByText('How a review is built')).toBeInTheDocument()
     expect(screen.getByText('From proof in each person’s check-ins, their own view of their work, and their manager’s view. A person decides, not Groundwork.')).toBeInTheDocument()
   })

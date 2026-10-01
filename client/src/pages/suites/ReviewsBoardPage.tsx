@@ -4,16 +4,21 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { reviewsApi, type NextReview } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Button } from '@/components/gw/kit'
+import { Page, PageTitle, Section, Panel, Button, Note, Empty } from '@/components/gw/ui'
 
 /**
- * PERFORMANCE REVIEWS (E4, #/suite/reviews, U.17). The wording is copied from
+ * PERFORMANCE REVIEWS (E4, #/suite/reviews, group 2 piece 4). The wording is copied from
  * docs/prototype/screens/E-suites/suite-reviews.txt.
  *
  * WHAT EACH READER IS GIVEN IS THE SERVER'S (GET /suites/reviews/board): the reviews that fall due, as
  * the organisation's own system set them (the dates the daily reminder already reads); an admin reads
  * all of them, a lead only their own team's. "Start it" only where the server says this reader writes
  * the review with the person.
+ *
+ * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (crumbs, subtitle), `Panel` for "How a review is
+ * built", `Section` for each month ("The next reviews", its month as `Section`'s own `note`),
+ * `.gwui-record-table` for the table, `Button` for "Start it" (it has a side effect) and a plain
+ * link for "Open it" (it only navigates), and `Note`/`Empty` for loading, error and empty states.
  *
  * NOT DRAWN HERE, ON PURPOSE (docs/morning-report-ui.md, item 28): "What Aisha’s review will show"
  * and "6 months of check-ins to draw on", which are the engine's to write (request 23).
@@ -38,58 +43,55 @@ export function ReviewsBoardPage() {
   const months = [...new Set((data?.next ?? []).map(n => n.dueOn.slice(0, 7)))]
 
   return (
-    <div className="gw-you gw-suites">
-      <nav className="gw-people-crumb" aria-label="Breadcrumb"><Link to="/settings/suites">Suites</Link> / Performance reviews</nav>
-      <h1 className="gw-t-title gw-suites-h1">Performance reviews</h1>
-      <p className="gw-you-sub">{`${every ? `A review ${every}. ` : ''}It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.`}</p>
+    <Page>
+      <PageTitle
+        crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Performance reviews' }]}
+        title="Performance reviews"
+        subtitle={`${every ? `A review ${every}. ` : ''}It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.`}
+      />
 
-      <div className="gw-you-card gw-time-rule">
-        <b>How a review is built</b>
-        <p>From proof in each person’s check-ins, their own view of their work, and their manager’s view. A person decides, not Groundwork.</p>
-      </div>
+      <Panel>
+        <p className="gwui-panel-text"><b>How a review is built</b></p>
+        <p className="gwui-panel-text">From proof in each person’s check-ins, their own view of their work, and their manager’s view. A person decides, not Groundwork.</p>
+      </Panel>
 
-      {isLoading && <p className="gw-t-body gw-you-quiet">Loading…</p>}
+      {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <p role="alert" className="gw-t-body">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</p>
+          <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</Note>
         ) : (
-          <div role="alert" className="gw-you-quiet">
-            <p className="gw-t-body">The board did not load.</p>
+          <div>
+            <Note tone="error">The board did not load.</Note>
             <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
           </div>
         )
       )}
 
       {data && data.next.length === 0 && (
-        <section className="gw-suites-group" aria-labelledby="reviews-next">
-          <h2 id="reviews-next" className="gw-t-h2">The next reviews</h2>
-          <p className="gw-t-body gw-you-quiet">No reviews are due yet.</p>
-        </section>
+        <Section heading="The next reviews">
+          <Empty>No reviews are due yet.</Empty>
+        </Section>
       )}
       {months.map(m => (
-        <section key={m} className="gw-suites-group" aria-labelledby={`reviews-${m}`}>
-          <div className="gw-suite-head">
-            <h2 id={`reviews-${m}`} className="gw-t-h2">The next reviews</h2>
-            <span className="gw-you-quiet">{monthOf(`${m}-01`)}</span>
-          </div>
-          <div className="gw-you-card gw-time-table-wrap">
-            <table className="gw-time-table">
+        <Section key={m} heading="The next reviews" note={monthOf(`${m}-01`)}>
+          <Panel>
+            <table className="gwui-record-table">
               <thead>
                 <tr>
                   <th scope="col">Person</th>
                   <th scope="col">Written with</th>
                   <th scope="col">Where it stands</th>
-                  <th scope="col"><span className="gw-sr-only">What you can do</span></th>
+                  <th scope="col"><span className="gwui-sr-only">What you can do</span></th>
                 </tr>
               </thead>
               <tbody>
                 {data!.next.filter(n => n.dueOn.startsWith(m)).map(n => <AReviewRow key={n.dueId} n={n} />)}
               </tbody>
             </table>
-          </div>
-        </section>
+          </Panel>
+        </Section>
       ))}
-    </div>
+    </Page>
   )
 }
 
@@ -106,10 +108,10 @@ function AReviewRow({ n }: { n: NextReview }) {
     <tr>
       <th scope="row">{n.name}</th>
       <td>{n.writtenWith ?? ''}</td>
-      <td>{stands}{problem && <span className="gw-auth-error" role="alert"> {problem}</span>}</td>
+      <td>{stands}{problem && <span role="alert"> {problem}</span>}</td>
       <td>
         {n.reviewId
-          ? <Button kind="secondary" size="small" to={`/suite/reviews/${n.reviewId}`} aria-label={`Open ${n.name}’s review`}>Open it</Button>
+          ? <Link className="gwui-plain-link" to={`/suite/reviews/${n.reviewId}`} aria-label={`Open ${n.name}’s review`}>Open it</Link>
           : n.mayStart && <Button kind="secondary" size="small" onClick={() => start.mutate()} disabled={start.isPending} aria-label={`Start ${n.name}’s review`}>Start it</Button>}
       </td>
     </tr>

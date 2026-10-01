@@ -5,6 +5,7 @@
 export { Page } from './Page'
 export { Stack, type StackGap } from './Stack'
 export { Mark } from './Mark'
+export { ProofMark } from './ProofMark'
 export { PageTitle, type Crumb } from './PageTitle'
 export { Greeting } from './Greeting'
 export { ComingUp, type ComingUpItem } from './ComingUp'
