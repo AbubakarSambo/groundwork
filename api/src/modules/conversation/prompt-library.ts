@@ -4453,11 +4453,23 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     }),
     `CADENCE: ${cadenceLabel(ctx.cadence)}`,
     `RESOLUTION_STATE: ${ctx.resolutionState ?? 'not yet defined'}`,
+    /*
+     * A TARGET WORDED AS A SENTENCE IS SAID AS ONE (decision 69). The check-in passes each target as a
+     * sentence about whoever set it, with "you" for the person in the check-in, so "I'm aiming for N120
+     * million" is never read as theirs. A bare name from any other caller is listed as before.
+     */
     `OBJECTIVES: ${
       (ctx.objectives ?? []).length
-        ? (ctx.objectives ?? [])
-            .map((o) => (o.target != null ? `${o.name} (target ${o.target.toLocaleString('en-US')})` : o.name))
-            .join('; ')
+        ? ((ctx.objectives ?? []).some((o) => /[.!?]$/.test((o.name ?? '').trim()))
+            ? 'Each is written as it is said to the person you are talking to, so "you" in them is that person. '
+            : '') +
+          (ctx.objectives ?? [])
+            .map((o) => {
+              const name = (o.name ?? '').trim();
+              if (/[.!?]$/.test(name)) return o.target != null && !/\d/.test(name) ? `${name} The number is ${o.target.toLocaleString('en-US')}.` : name;
+              return o.target != null ? `${name} (target ${o.target.toLocaleString('en-US')})` : name;
+            })
+            .join((ctx.objectives ?? []).some((o) => /[.!?]$/.test((o.name ?? '').trim())) ? ' ' : '; ')
         : 'none stated'
     }`,
     /**

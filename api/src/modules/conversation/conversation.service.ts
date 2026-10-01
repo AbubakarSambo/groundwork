@@ -220,6 +220,9 @@ import { whenThisIsOver, theyAskedWhenThisIsOver, THE_RUN_IS_WHAT_THEY_ASKED_ABO
 import { whatTheySaidTheyWouldDo, thingsNobodyOwns, whatIsNotSettled, theQuestionsTheLeadWants, whatSitsBetweenPeople, whatTheyHedged, keepTheirHedge, howThisTeamWorks } from './what-the-context-already-holds';
 import { alreadyAsked, withTheQuestionAsConfirmed } from '../grounds/a-question-asked-word-for-word';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
+import { withoutWhatTheLeadHasNotToldThemAbout, type AnUntoldGoalRow } from '../board/an-untold-goal-is-not-a-board-objective';
+import { asADirection } from '../board/an-aim-or-a-limit';
+import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-set-it';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargets } from '../board/a-hidden-target-stays-hidden';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
@@ -330,7 +333,11 @@ const WHAT_THE_BRIEF_IS_READ_FROM = {
      who set this up said". See nothing-said-yet-cannot-be-quoted. */
   initiator: { select: { firstName: true, lastName: true } },
   whoSeesTargets: true,
-  objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' as const } },
+  /* WHO SET EACH TARGET AND WHICH WAY IT GOES (decision 69), so it is said about them and not as the reader's own. */
+  objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true }, orderBy: { sortOrder: 'asc' as const } },
+  /* And the people, by first name, under the same naming rule as everywhere else. */
+  peersVisibleToEachOther: true,
+  participants: { select: { id: true, partyType: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
 } as const;
 
 const RECORD_EXTRACTION_SCHEMA = {
@@ -515,15 +522,56 @@ export class ConversationService {
    * the brief on their screen already follows (whose-number-is-whose-business). The lead gets all.
    */
   private theTargetsThisPersonMaySee(
-    ground: { objectives?: { name: string; target: number | null; ownerParticipantId?: string | null }[]; whoSeesTargets?: string | null },
+    ground: { objectives?: { name: string; target: number | null; ownerParticipantId?: string | null }[]; whoSeesTargets?: string | null; participants?: any[] },
     checkIn: { participantId: string; participant?: { partyType?: string | null } | null },
+    untold: AnUntoldGoalRow[] = [],
   ) {
-    return targetsFor(
+    const isLead = checkIn.participant?.partyType === PartyType.INITIATOR;
+    const shown = targetsFor(
       (ground.objectives ?? []) as any[],
       checkIn.participantId ?? null,
       ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : UNLESS_SOMEBODY_SAYS,
-      { isLead: checkIn.participant?.partyType === PartyType.INITIATOR },
+      { isLead },
     ).shown;
+    /* AND NOT A GOAL THE LEAD HAS NOT TOLD THEM ABOUT (decision 56): the board's own wall, read the same way. */
+    return withoutWhatTheLeadHasNotToldThemAbout(shown as any[], untold, (ground.participants ?? []) as any[], isLead).kept;
+  }
+
+  /** The goals the lead has set for somebody on this check-in and not yet told them (decision 56). */
+  private async untoldGoalsOn(groundId: string): Promise<AnUntoldGoalRow[]> {
+    const rows = await ((this.prisma as any).personObjective?.findMany?.({
+      where: { groundId, awareness: 'NOT_TOLD' },
+      select: { participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
+    }) ?? Promise.resolve([])).catch(() => []);
+    return (rows as any[]).filter(notToldYet);
+  }
+
+  /**
+   * EACH TARGET THIS PERSON MAY READ, AS A SENTENCE ABOUT WHOEVER SET IT (decision 69). "You" for the
+   * person in this check-in, a first name for anybody this check-in names to them, "a colleague"
+   * otherwise. Only the wording: who may read which target is decided before this is called.
+   */
+  private theTargetsAsSentences(
+    rows: { name: string; target: number | null; ownerParticipantId?: string | null; setByParticipantId?: string | null; direction?: string | null }[],
+    ground: { participants?: any[]; scenario?: any; peersVisibleToEachOther?: boolean | null } | null,
+    readerParticipantId: string | null,
+  ): { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | null }[] {
+    const people = (ground?.participants ?? []) as any[];
+    const first = (p: any) => (p?.user?.firstName ?? p?.nameGiven ?? '').trim() || null;
+    const reader = people.find((p) => p.id === readerParticipantId);
+    const lead = people.find((p) => p.partyType === PartyType.INITIATOR);
+    const peersMayBeNamed = peersAreNamedOn(ground as any, { participantId: readerParticipantId });
+    return rows.map((o) => ({
+      name: theTargetAsASentence(o, {
+        readerId: readerParticipantId,
+        readerFirstName: first(reader),
+        leadId: lead?.id ?? null,
+        /* The lead runs the check-in and is named to everybody in it; anybody else by the naming rule. */
+        firstNameOf: (id) => (id === lead?.id || peersMayBeNamed ? first(people.find((p) => p.id === id)) : null),
+      }),
+      target: o.target ?? null,
+      direction: asADirection(o.direction),
+    }));
   }
 
   /**
@@ -694,7 +742,7 @@ export class ConversationService {
         groundLabel: ground?.label ?? null,
         scenario: ground?.scenario ?? null,
       },
-      brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)),
+      brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)),
       /* The turn floor the server will hold this to, so the screen offers to finish exactly when the server will honour it. See how-short-a-check-in-may-be. */
       mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null),
       turns: turns.map(asRead),
@@ -844,14 +892,20 @@ export class ConversationService {
      * colleague's screen is a decision nobody made. See whose-number-is-whose-business.
      */
     reader?: { participantId: string | null; isLead: boolean },
-  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null }[]; alsoSay?: string | null } | null {
+    untold: AnUntoldGoalRow[] = [],
+  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | null }[]; alsoSay?: string | null } | null {
     if (!ground) return null;
-    const maySee = targetsFor(
+    const allowed = targetsFor(
       ground.objectives ?? [],
       reader?.participantId ?? null,
       ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : UNLESS_SOMEBODY_SAYS,
       { isLead: !!reader?.isLead },
     );
+    /* AND NOT A GOAL THE LEAD HAS NOT TOLD THEM ABOUT (decision 56), the board's own wall. */
+    const maySee = {
+      ...allowed,
+      shown: withoutWhatTheLeadHasNotToldThemAbout(allowed.shown as any[], untold, ((ground as any).participants ?? []) as any[], !!reader?.isLead).kept,
+    };
     return {
       subject: ground.label ?? null,
       /*
@@ -872,7 +926,8 @@ export class ConversationService {
       says: reader?.isLead
         ? ground.brief?.trim() || null
         : whatAParticipantIsToldAboutThis(ground.brief, maySee.shown as any, { told: (ground as any).toldToParticipants ?? null, readerParticipantId: reader?.participantId ?? null }),
-      objectives: maySee.shown,
+      /* Each as a sentence about whoever set it, and only the fields a reader is shown: never the row as stored. */
+      objectives: this.theTargetsAsSentences(maySee.shown as any[], ground as any, reader?.participantId ?? null),
       alsoSay: maySee.alsoSay,
     };
   }
@@ -917,7 +972,7 @@ export class ConversationService {
       orderBy: { createdAt: 'asc' },
     });
     if (existingAiTurn) {
-      return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
+      return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
     }
     /*
      * THE BRIEF IS READ WHILE EVERYTHING ELSE IS GATHERED, NOT AFTER IT (request 44). The opener's
@@ -1197,7 +1252,7 @@ export class ConversationService {
     const contextAtTheTop = await this.theContextNotYetSaid(checkIn as any);
     /* Suggested answers under the opening question too. */
     const suggestedAnswers = await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', null);
-    return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null), ...(suggestedAnswers.length ? { suggestedAnswers } : {}) };
+    return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null), ...(suggestedAnswers.length ? { suggestedAnswers } : {}) };
   }
 
 
@@ -3217,7 +3272,7 @@ export class ConversationService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
       include: {
-        objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true }, orderBy: { sortOrder: 'asc' } },
         /* The product's finding per person, for the lead's side of the disagreement. */
         report: { select: { findings: true } },
         /**
@@ -3258,6 +3313,8 @@ export class ConversationService {
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* The goals the lead has not told people about yet (decision 56): no target of theirs reaches this check-in. */
+    const untoldHere = await this.untoldGoalsOn(checkIn.groundId);
 
     /*
      * WHAT THIS INTERVIEW MAY CALL THE OTHER PEOPLE IN IT.
@@ -3528,11 +3585,11 @@ export class ConversationService {
      */
     /* Optional-chained like `personObjective` above: a caller whose prisma double does not stub a
        model must get an empty read, not a crash mid-prompt. */
-    const [objectivesOnRecord, inTheWayRows, lastTimeRows] = await Promise.all([
+    const [objectivesAsStored, inTheWayRows, lastTimeRows] = await Promise.all([
       this.prisma.groundObjective?.findMany({
         where: { groundId: ground.id },
         orderBy: { sortOrder: 'asc' },
-        select: { name: true, target: true, count: true, ownerParticipantId: true, setByParticipantId: true },
+        select: { name: true, target: true, count: true, ownerParticipantId: true, setByParticipantId: true, direction: true },
       })?.catch(() => [] as any[]) ?? [],
       /*
        * Theirs only. Somebody else's blocker is on the board, not in this person's interview.
@@ -3559,13 +3616,21 @@ export class ConversationService {
         select: { text: true, type: true },
       })?.catch(() => [] as any[]) ?? [],
     ]);
+    /*
+     * AND NO GOAL THE LEAD HAS NOT TOLD THEM ABOUT (decision 56), for every block below that reads the
+     * targets: the record, what does not add up, the disagreement and the rest. The board's own wall.
+     */
+    const objectivesOnRecord = withoutWhatTheLeadHasNotToldThemAbout(
+      (objectivesAsStored ?? []) as any[], untoldHere, (ground.participants ?? []) as any[], checkIn.participant.partyType === PartyType.INITIATOR,
+    ).kept;
     const recordAlreadyHolds = whatTheRecordAlreadyHolds({
       /* Good news first, when there is some: task 2.4. Only in the opener, only from the same lines as saidLastTime. */
       wentWellLastTime: how?.forTheOpener ? theGoodNewsIn(lastTimeRows as any[]) : [],
       /* Theirs, and the check-in's own. Somebody else's owned number is on the board, not in this person's interview. */
+      /* Each said about whoever set it, "you" for this person (decision 69). */
       targets: (objectivesOnRecord as any[])
         .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === checkIn.participantId)
-        .map((o) => ({ name: o.name, target: o.target, count: o.count, yours: o.ownerParticipantId === checkIn.participantId, setByThem: o.setByParticipantId === checkIn.participantId })),
+        .map((o) => ({ name: this.theTargetsAsSentences([o], ground as any, checkIn.participantId)[0].name.replace(/[.\s]+$/, ''), target: o.target, count: o.count, yours: o.ownerParticipantId === checkIn.participantId, setByThem: o.setByParticipantId === checkIn.participantId })),
       inTheWay: (inTheWayRows as any[]).map((d) => ({
         what: d.what,
         /* Their own word for whoever they meant first, then a name where this check-in allows one,
@@ -3866,7 +3931,8 @@ export class ConversationService {
       /* ONLY THE TARGETS THIS PERSON MAY SEE (week 0). Every target went in, so on a check-in where
          people see only their own, each person's model was given everybody's numbers and could say
          them back. The same rule the brief on their screen uses. */
-      objectives: this.theTargetsThisPersonMaySee(ground as any, checkIn as any),
+      /* And each one as a sentence about whoever set it, "you" for this person (decision 69). */
+      objectives: this.theTargetsAsSentences(this.theTargetsThisPersonMaySee(ground as any, checkIn as any, untoldHere) as any[], ground as any, checkIn.participantId),
       /* The same: never the lead's words about this person, in this person's own session (request 36). */
       priorContext: aRoleInTheirOwnWords(checkIn.participant as any),
       priorSession,
@@ -4868,7 +4934,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ...(ground.leadContextNotes ?? []).map((n) => this.theLeadsWordsThisPersonMayBeGiven(ground as any, checkIn as any, n.text) ?? ''),
       ...uploadedDocs.map((d: any) => `${d.fileName ?? ''} ${d.content ?? ''} ${d.uploaderNote ?? ''}`),
       /* Only the targets this person may see: a colleague's hidden number is not "already said" to them (week 0). */
-      ...this.theTargetsThisPersonMaySee(ground as any, checkIn as any).map((o: any) => `${o.name ?? ''} ${o.target ?? ''}`),
+      ...this.theTargetsThisPersonMaySee(ground as any, checkIn as any, untoldHere).map((o: any) => `${o.name ?? ''} ${o.target ?? ''}`),
       priorSession ?? '',
       /* Their own earlier sessions' entries: a difference the product quotes from session one is theirs to hear back. */
       ...pastEntries.map((e) => e.text),
