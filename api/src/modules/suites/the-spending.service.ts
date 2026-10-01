@@ -202,7 +202,13 @@ export class SpendingService {
     const who = await this.approverOf(organizationId, { userId, amount } as any, answers, byUser, dir);
     const approverId = who.kind === 'admin' ? null : who.userId;
     const first = approverId ? (await this.names([approverId])).get(approverId)?.first || null : null;
-    return { ...checked, limit: answers.limit, approverFirstName: first };
+    /* What the same team has already asked for this month and is still waiting on: one total, never whose. */
+    let waiting: number | null = null;
+    if (checked.team && checked.left != null) {
+      const rows = await this.prisma.spendRequest.findMany({ where: { organizationId, team: checked.team, status: 'waiting', createdAt: { gte: monthOf(today) } }, select: { amount: true } });
+      waiting = rows.reduce((t, r) => t + n(r.amount), 0);
+    }
+    return { ...checked, waiting, limit: answers.limit, approverFirstName: first };
   }
 
   /** A request to spend, as the engine records it once the person has confirmed it (request 26). No route. */

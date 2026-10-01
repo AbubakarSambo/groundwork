@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { SpendingService, SPEND_REFUSED } from './the-spending.service';
+import { spendingSaidBack } from './spend-said-in-chat';
 
 /**
  * SPENDING AND BUDGETS, AS EACH PERSON IS SERVED IT (E7, U.17).
@@ -236,5 +237,30 @@ describe('what the board never holds', () => {
     walk(join(__dirname, '..'));
     expect(faults).toEqual([]);
     expect(strip(readFileSync(join(__dirname, 'the-spending.service.ts'), 'utf8'))).toMatch(/\bspendRequest\b/);
+  });
+});
+
+/*
+ * WHAT IS ALREADY ASKED FOR COUNTS TOO (found live, 1 October 2026, item 6). Chidi asked to spend
+ * KES 30,000 while KES 12,000 of the Sales budget was already asked for and waiting, and read
+ * "Sales has KES 38,000 left for October, so that fits." Operations here has KES 38,000 left after
+ * what was approved, and Kamau's KES 18,000 is waiting.
+ */
+describe('the budget left, with what is already asked for and waiting', () => {
+  it('the check for the say-back counts the team’s waiting requests, as one total', async () => {
+    const { svc } = setup();
+    expect(await svc.checkForChat(ORG, 'u-fatuma', 30000, TODAY)).toMatchObject({ team: 'Operations', left: 38000, waiting: 18000 });
+  });
+
+  it('Fatuma reads what is free, and that hers is more than that, before the yes', async () => {
+    const { svc } = setup();
+    const facts = await svc.checkForChat(ORG, 'u-fatuma', 30000, TODAY);
+    const said = { amount: 30000, what: 'a stand for the Nairobi show', currency: 'KES' };
+    expect(spendingSaidBack(said, facts as any, 'September')).toBe(
+      'You asked to spend KES 30,000 on a stand for the Nairobi show. Operations has KES 38,000 left for September, and KES 18,000 of that is already asked for and waiting, so KES 20,000 is free. This is more than that. This is over KES 20,000, so Grace must approve it. Shall I still send it to Grace to approve?');
+    const small = await svc.checkForChat(ORG, 'u-fatuma', 5000, TODAY);
+    expect(spendingSaidBack({ ...said, amount: 5000, what: 'airtime' }, small as any, 'September')).toContain(
+      'Operations has KES 38,000 left for September, and KES 18,000 of that is already asked for and waiting, so KES 20,000 is free. That fits.');
+    expect(JSON.stringify(facts)).not.toMatch(/Kamau|fuel for Kisumu/);
   });
 });

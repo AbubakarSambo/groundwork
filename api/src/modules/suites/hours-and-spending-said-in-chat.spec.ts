@@ -123,3 +123,15 @@ describe('who approves for a person is one answer', () => {
     expect(await mayApproveFor(prisma, { organizationId: 'o', readerId: 'u-admin', readerRole: 'ADMIN', personUserId: 'u-a' })).toBe(false);
   });
 });
+
+describe('the budget left, with what is already asked for and waiting (found live, 1 October 2026)', () => {
+  const base = { currency: 'KES', team: 'Sales', limit: null, approver: 'manager' as const, approverFirstName: 'Wairimu' };
+  const said = { amount: 30000, what: 'a stand for the Nairobi show', currency: 'KES' };
+  it('says what is free once the waiting requests are counted, and says it plainly when there is none', () => {
+    expect(spendingSaidBack(said, { ...base, left: 38000, waiting: 12000 }, 'October')).toBe(
+      'You asked to spend KES 30,000 on a stand for the Nairobi show. Sales has KES 38,000 left for October, and KES 12,000 of that is already asked for and waiting, so KES 26,000 is free. This is more than that. Shall I still send it to Wairimu to approve?');
+    expect(spendingSaidBack(said, { ...base, left: 38000, waiting: 40000 }, 'October')).toBe(
+      'You asked to spend KES 30,000 on a stand for the Nairobi show. Sales has KES 38,000 left for October, and all of it is already asked for and waiting, so none of it is free. Shall I still send it to Wairimu to approve?');
+    expect(spendingSaidBack(said, { ...base, left: 38000, waiting: 0 }, 'October')).toContain('Sales has KES 38,000 left for October, so that fits.');
+  });
+});
