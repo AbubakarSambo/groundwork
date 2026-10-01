@@ -162,7 +162,7 @@ export type BoardPresent = {
    * lead is which questions their check-ins are not managing to answer, which is as often a fact
    * about the setup as about a person.
    */
-  stillUnanswered?: { who: string; what: string; sinceRound: number; certain: boolean }[]
+  stillUnanswered?: { who: string; what: string; says?: string; sinceRound: number; certain: boolean }[]
 
   eachPerson?: {
     participantId: string

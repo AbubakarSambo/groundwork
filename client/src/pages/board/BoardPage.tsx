@@ -1797,18 +1797,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Panel pad={false}>
               {b.stillUnanswered.map((g) => (
                 <div key={`${g.who}-${g.what}`} className="gwui-panel-row">
-                  <div className="gwui-gap-12" style={{display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap'}}>
-                    <span className="gwui-fs-16 gwui-ink-dark">
-                      <b style={{fontWeight: 700}}>{g.who}</b> &mdash; {g.what}
-                    </span>
-                    <span className="gwui-fs-13-5 gwui-ink-sub" style={{whiteSpace: 'nowrap'}}>
-                      {/* Some of these cannot be confirmed either way - the check-in asked and
-                          nothing on the record can prove the answer. Saying "they did not answer"
-                          about somebody who answered in their first sentence would be worse than
-                          saying nothing. */}
-                      {g.certain ? `open since session ${g.sinceRound}` : `asked in session ${g.sinceRound}, could not confirm`}
-                    </span>
-                  </div>
+                  {/*
+                    REQUEST 107 (a): ONE SENTENCE, NOT TWO PIECES JOINED BY A DASH.
+
+                    The engine now sends `says`, already worded for this reader (it reads "you"
+                    when the reader is the person the gap is about). Older payloads, from before
+                    the engine's change, still carry only `who`, `what`, `sinceRound` and
+                    `certain` - the fallback below writes the same fact as one plain sentence
+                    instead of the old "who — what" plus a separate "open since" note.
+                  */}
+                  <span className="gwui-fs-16 gwui-ink-dark">
+                    {g.says ?? (
+                      g.certain
+                        ? `In session ${g.sinceRound}, ${g.who} was asked, "${g.what}" ${g.who} has not answered it yet.`
+                        : `In session ${g.sinceRound}, ${g.who} was asked, "${g.what}" Nothing on record can confirm the answer yet.`
+                    )}
+                  </span>
                 </div>
               ))}
             </Panel>
