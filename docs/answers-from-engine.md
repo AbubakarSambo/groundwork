@@ -724,6 +724,16 @@ What Bisi reads, for "The team is aiming for 40 approved facilities this quarter
 
 Test: `a-forecast-on-the-board-as-each-reader-reads-it.spec.ts`.
 
+#### Who waited on whom: `whoWaitedOnWhom`
+
+`[{ id, says, since, cleared, days }]`, oldest first. The prototype's "Dependency ledger": every wait in the record, open or cleared, with the day it was first said (`since`, "2026-09-02"), the day it was cleared (`cleared`, or null), and the whole days it took (`days`, only once cleared). Nothing counts from today, so opening the board never changes it. `dependencies` is unchanged and still has no dates.
+
+Who reads it. The same as every other wait on the board: whoever runs the check-in, the admin who set it up, and an admin on an ordinary check-in read every wait; a participant where people do not see each other, and the person reviewed on an evaluation check-in, read only the waits they are in; a wait the lead raised that names somebody stays the lead's.
+
+What Bisi reads: "Ngozi Eze waited on the Head of Credit for the Head of Credit's reply from 2 September until it was cleared on 16 September, 14 days in all." and "Kwame Mensah has been waiting on you for the approval of five applications since 16 September, and it has not been cleared." Ngozi reads "You waited on the Head of Credit for ..." and "You have been waiting on Mr. Adebayo for a date for the credit decision since 16 September, and it has not been cleared."
+
+Test: `who-waited-on-whom-on-the-board-as-each-reader-reads-it.spec.ts`.
+
 ## Week 11: the ending page's suggestion, signals and questions, and reviews that fall due from inside the product
 
 ### The ending page (`GET /grounds/:groundId/resolution`)

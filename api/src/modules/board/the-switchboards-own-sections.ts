@@ -750,3 +750,43 @@ export function theForecast(
   }
   return out;
 }
+
+/* ------------------------------------------------------------------------------------------------
+ * WHO WAITED ON WHOM: every wait in the record, open or cleared, with its dates
+ * ---------------------------------------------------------------------------------------------- */
+
+export interface AWait {
+  id: string;
+  /** One full sentence: who waited on whom, for what, and from when to when. */
+  says: string;
+  /** The day it was first said, "2026-09-16", in Lagos time. */
+  since: string | null;
+  /** The day it was cleared, or null while it is still open. */
+  cleared: string | null;
+  /** Whole days from the first day to the day it was cleared; null while it is open, so opening the board never moves it. */
+  days: number | null;
+}
+
+export function whoWaitedOnWhom(handoffs: AHandoff[], r: WhoIsReading): AWait[] {
+  return handoffs
+    .filter((d) => r.handoffMayBeRead(d) && d.onParticipantId !== d.fromParticipantId)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .map((d) => {
+      const who = whoIs(r, d.fromParticipantId);
+      const on = whoIsWaitedOn(r, d);
+      const what = inASentence(d.what);
+      const since = day(d.createdAt);
+      const clearedOn = d.clearedAt ? day(d.clearedAt) : null;
+      const cleared = !isOpen(d);
+      const days = since && clearedOn ? Math.round((Date.parse(clearedOn) - Date.parse(since)) / 86_400_000) : null;
+      const onWhom = on ? ` on ${on}` : '';
+      const says = cleared
+        ? (since && clearedOn
+          ? `${who} waited${onWhom} for ${what} from ${saidAsDate(since)} until it was cleared on ${saidAsDate(clearedOn)}, ${days === 1 ? '1 day' : `${days} days`} in all.`
+          : `${who} waited${onWhom} for ${what}, and it has been cleared.`)
+        : (since
+          ? `${who} ${hasHave(who)} been waiting${onWhom} for ${what} since ${saidAsDate(since)}, and it has not been cleared.`
+          : `${who} ${isAre(who)} waiting${onWhom} for ${what}, and it has not been cleared.`);
+      return { id: d.id, says, since, cleared: cleared ? clearedOn : null, days: cleared ? days : null };
+    });
+}
