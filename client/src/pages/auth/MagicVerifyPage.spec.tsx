@@ -99,7 +99,10 @@ describe('MagicVerifyPage - Bug A (wrong-flow routing)', () => {
 
     renderPage('tok-real-failure')
 
-    await waitFor(() => expect(screen.getByText(/the check-in wasn't saved/i)).toBeInTheDocument())
+    /* Group 3, piece 1: the rebuilt page's heading uses the house style's typographic apostrophe
+       ("wasn’t"), the same as every other rebuilt screen's wording, not the straight one this
+       regex used to pin. */
+    await waitFor(() => expect(screen.getByText(/the check-in wasn.t saved/i)).toBeInTheDocument())
   })
 
   it('a genuine successful commit still works - the real initiator path is not regressed', async () => {

@@ -64,7 +64,10 @@ describe('the setup, after "Where do you work?"', () => {
     await answerWhereDoYouWork(button)
     await waitFor(() => expect(entryApi.commit).toHaveBeenCalledTimes(1))
     expect(vi.mocked(entryApi.commit).mock.calls[0][0]).toMatchObject({ groundLabel: 'Daniel, the next six weeks', contributors: [{ email: 'daniel@x.test' }] })
-    expect(await screen.findByText('Your check-in is set up.')).toBeTruthy()
+    /* Group 3, piece 1: the two old separate lines are now one plain sentence, in the shared
+       Callout - "Your check-in is set up. Your session is saved and you are signed in." - so this
+       matches the sentence it is now part of, rather than the whole node's exact old text. */
+    expect(await screen.findByText(/Your check-in is set up\./)).toBeTruthy()
     expect(screen.getByText('daniel@x.test')).toBeTruthy()
     /* And not sent to Today with nothing saved. */
     expect(navigated).not.toHaveBeenCalledWith('/today', expect.anything())
