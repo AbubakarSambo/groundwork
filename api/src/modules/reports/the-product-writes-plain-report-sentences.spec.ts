@@ -105,7 +105,7 @@ describe('every sentence the reports compose is plain', () => {
     for (const status of ['SURFACED', 'CANDIDATE']) for (const seenInSessions of [[2], [2, 3], [2, 4, 6], [1, 2, 3]]) {
       out.push(...failures('pattern', patternsOverTime([{ participantId: 'marcus', code: 'E2', observationText: 'A commitment was replaced by a letter.', seenInSessions, periodsObserved: 1, lastPeriodNumber: 6, status }], (c) => c, labelOf, 6)));
     }
-    for (const expected of ['', 'Covers the mainland branches. Ikeja and Yaba are his.', 'Relationship officer, Ikeja. Target 14 approved facilities this quarter.', 'Government Liaison Consultant']) for (const c of [{ lines: 0, checkable: 0, documented: 0, openCommitments: 0, owedToOthers: 0 }, { lines: 6, checkable: 1, documented: 1, openCommitments: 1, owedToOthers: 1 }, { lines: 20, checkable: 12, documented: 0, openCommitments: 5, owedToOthers: 9 }]) {
+    for (const expected of ['', 'Covers the mainland branches. Ikeja and Yaba are theirs.', 'Relationship officer, Ikeja. Target 14 approved facilities this quarter.', 'Government Liaison Consultant']) for (const c of [{ lines: 0, checkable: 0, documented: 0, openCommitments: 0, owedToOthers: 0 }, { lines: 6, checkable: 1, documented: 1, openCommitments: 1, owedToOthers: 1 }, { lines: 20, checkable: 12, documented: 0, openCommitments: 5, owedToOthers: 9 }]) {
       out.push(...failures('gap', gapsOverTime([{ participantId: 'marcus', label: 'Marcus Oyelaran', expected, sessions: 1, ...c }])));
     }
     expect([...new Set(out)]).toEqual([]);

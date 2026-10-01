@@ -35,6 +35,7 @@ const RULES: { rule: string; pattern: RegExp }[] = [
   { rule: 'a machine word', pattern: /^(?:null|undefined|NaN)$|\[object Object\]/g },
   { rule: 'a leftover template slot', pattern: /\{\{?\w+\}?\}|\$\{|%s\b/g },
   { rule: 'two spaces or a space before a full stop', pattern: /\S {2,}\S| [.,;?!](?!\.)/g },
+  { rule: 'a gendered pronoun for a person whose pronouns are not on record', pattern: /\b(?:he|she|him|his|hers|her|himself|herself)\b/gi },
   { rule: 'text cut short', pattern: /\.\.\.|…/g },
 ];
 
