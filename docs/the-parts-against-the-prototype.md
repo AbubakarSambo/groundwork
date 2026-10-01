@@ -34,6 +34,7 @@ Where a part has no rule of its own in the prototype's CSS (because the prototyp
 | | narrow width | no rule (prototype draws sign-in/invite frames as `.stack` inside a plain centred column; nearest is `Arrival`'s own `maxWidth: wide ? 520 : 400`) | `360px` | same - a deliberate, narrower choice than `Arrival`'s 400px, unchanged by this task |
 | | **full-height shell** (`gwui-page-shell`, group 3, piece 5) | no prototype class (the prototype's `body` itself is cream); for a page's own wrapper that renders outside `Page` - a sticky header's flex column, or a state with nothing else on screen | n/a (new) | added: replaces `GroundAdminPage.tsx`'s own page-level `style={{ minHeight: '100vh', ... }}` and its local `Shell` helper's identical inline style |
 | **PageTitle** (`.t-title`, `.crumb`, `.t-small`) | title font/size | Literata, `clamp(24px,3vw,30px)`, weight 500, line-height 1.18 | `30px` fixed (not the clamp), weight 500, line-height 1.18 | same - the fixed 30px (24px under 640px via its own media query) is a deliberate simplification of the `clamp()`, already noted as intentional; not changed here |
+| | **title-less, centred** (`title?`, `center`, `subtitleRole`, `gwui-title-centre`, group 3 drift list, piece 1) | no prototype class for a bare loading line (the prototype has no screenshot for this in-between moment); nearest is its own `.t-small` muted sentence | one-off `gwui-pt-sub` with an inline `style={{ textAlign: 'center' }}`, on MagicVerifyPage's "Confirming your email…"/"Setting up your check-in…" and JoinPage's "Loading…" | added: `title` is now optional and `PageTitle` takes `center` (centres the row, used with no title and no avatar) and `subtitleRole="status"` (so the line is announced as it arrives); both pages now render `<PageTitle center subtitle={...} subtitleRole="status" />` with no title at all |
 | | sub line | `16px`/1.5, muted | `16px`/1.5, muted | same |
 | **CheckInHeader** (PageTitle + `.tabs`) | gap under the title | `18px` (`.tabs{margin-top:18px}`) | `18px` | same |
 | **Tabs** (`.tabs`, `.tab`) | tab height | `46px` | `46px` | same |
@@ -71,8 +72,15 @@ Where a part has no rule of its own in the prototype's CSS (because the prototyp
 | | radius | `13px` | `13px` | same |
 | | tones | `rec`/`att`/`act`/`con`/`plain`, each tinted bg + matching ink, plus a `1px` matching outline in the dark-mode-and-after rules (line 193) | proven/attention/action/concern/plain, each with the matching `box-shadow: inset 0 0 0 1px` outline | same |
 | **Note / Empty / Callout** | note | `13.5px`, muted | `13.5px`, muted | same |
+| | **Note's `center` option** (`gwui-note-centre`, group 3 drift list, piece 1) | `.gwui-auth-or` (signup.jpg's "or with your email" divider between Google and the email form): `text-align:center`, `14.5px`, muted | n/a (new) | added: `<Note center>`, replacing AuthPage.tsx's page-only `gwui-auth-or` paragraph; kept at `Note`'s own `13.5px` rather than copying the old class's `14.5px`, since the point of this option is to fold the divider into the one shared Note size, not carry its old number forward |
 | | empty panel heading | `21px`/700 (`.t-h2`) | `21px`/700 | same |
 | | **Callout's `concern` tone** (`gwui-callout-concern`, group 3, piece 5) | no prototype class for a tinted red callout (the prototype only ever shows red as `.btn.danger` or plain red text); this follows the same red the product already uses for a `concern`-toned `Tag` and `PersonRow` help strip (`--con` `#791F1F` on `--gw-red-bg`) | n/a (new) | added: a banner for something broken that needs fixing, such as a bounced invite, replacing a page's own one-off red `style={{...}}` block on `GroundAdminPage.tsx`'s check-ins tab |
+| **TheDoor, rebuilt from the shared parts** (group 3 drift list, piece 1) | heading/help/crumb/rather | one-off `gwui-door-heading` (`clamp(26px,5vw,34px)`), `gwui-door-help` (`15.5px`), a hand-written crumb (`gwui-pt-crumb`, literal text spaces around "/"), `gwui-door-rather` (`13.5px`, ink) | now `PageTitle` (`title`, `subtitle`, `crumbs` - the fixed `30px` title and `16px` subtitle every other screen already uses) and `Note` for "Rather pick from a list?"; `gwui-door-heading`, `-help` and `-rather` are gone from gw-ui.css and the frozen list, `gwui-door` itself (the column's own width/margin) is kept since it is a layout wrapper, not a one-off style |
+| **SessionReportPage, rebuilt from the shared parts** (`gwui-panel-private`, group 3 drift list, piece 1) | 38 one-off `gwui-fs-*`/`gwui-ink-*`/`gwui-mb-*`/`gwui-mt-*`/`gwui-pb-*`/`gwui-pl-*`/`gwui-pr-*`/`gwui-pt-*`/`gwui-rule-top` classes and 24 inline styles | no single prototype screen draws this page (own-report.txt is the nearest), so each piece follows the house type scale already set by the shared parts | now `Section` for "Session N"/"Your session" and "What now?", `Panel` with a real `Tag` reading "Only you" for the private half (kept tinted via a new `gwui-panel-private`, since the two-report layout is this page's own invention, not flattened to the plain `Panel`), `SubHeading` for every sub-heading ("Something here isn't right", "The team's report", "Since then, in the latest check-in"), `Note` for every small/muted line, `Stack` for the gaps between them, and `gwui-button-row` for "Start a new check-in" beside "Copy the link". `gw-print-none` (an old, non-`gwui-` print-only class) is kept, now on its own wrapping `div` around the "What now?" `Section`. No wording or behaviour changed. |
+| **WhatToProbeThemOn, rebuilt from the shared parts** (`gwui-inferred-mark`, `gwui-panel-private`, group 3 drift list, piece 1) | 35 inline styles, a bordered tinted `<section>` | no prototype screen (lead-only) | now a `Panel` (tinted `gwui-panel-private`, since this is lead-only private material like the private half elsewhere) with a real `Tag` reading "Yours as the lead" beside its `SubHeading`, every block label (including each `Block`'s own title) a `SubHeading`, body text `gwui-panel-text`/`gwui-panel-text-muted`, every small caption a `Note`, and `Stack` for every gap. The small "inferred" provenance mark next to a worked-out line is not a `Tag` (a `Tag` is a short fact about a thing; this is a footnote on where a sentence came from), so it keeps its own tiny `gwui-inferred-mark`, at the 13px floor rather than the old 11px. The soft-spot items' left accent bar is the existing `gwui-rule-left` (3px, not the old 2px) with no side padding, a small simplification of the old `borderLeft`+`paddingLeft` pair. Every word, every block and the whole role-map fairness pairing (`protectAgainst`, `noticed`/`lookingLike`) are unchanged. |
+| **WhatToWorkOnNext, rebuilt from the shared parts** (group 3 drift list, piece 1) | 22 inline styles, a navy-bordered tinted `<section>` | no prototype screen for the coaching note | now a `Panel` with a real `Tag` reading "Only you" beside its `SubHeading`, each short block label (`Where you stand`, `What keeps showing up`, `Before the next session` and the rest) its own `SubHeading`, body text `gwui-panel-text`, the empty-role-map line a `Note`, and `Stack` for the gaps - the same pattern SessionReportPage's own private half uses. The navy border and tinted background are gone, folded into the plain `Panel` it now sits inside (SessionReportPage's own private surface already carries the tint); every word and every block is unchanged. |
+| **"Fills in as you talk", rebuilt from the shared parts** (group 3 drift list, piece 1) | box, name/count row, each row's mark | one-off `gwui-fit-aside` (`10px` corners, `16px` inside), `gwui-fit-name`/`gwui-fit-count` (`15px`/`13px` bold), `gwui-fit-row`/`-label`/`-value`/`-mark*` (`13px`, a flex row) | now a shared `Panel` (the house `12px`/`20-22px`, not the sidebar's own narrower box), the name and its tag in a `gwui-sentence-row` with a real `Tag`, the situation and help sentence each a `Note`, and the four rows a `RowList` of `Row`s at the Row's own `14.5px` (not the old `13px` one-off); the ✓/○ mark, its label and its value have no existing shared equivalent, so they keep their own small classes - `gwui-setrow-mark`, `gwui-setrow-mark-set`, `gwui-setrow-mark-unset`, `gwui-setrow-label`, `gwui-setrow-value`, `gwui-setrow-value-name`, `gwui-setrow-more` - documented here rather than carried over as a page-only sheet |
+| **PasswordField's rules list** (`PasswordRulesList`, `gwui-password-rule-met`, group 3 drift list, piece 1) | the ticked rule's colour | `--rec` (green) - the prototype draws this inline in its own JS, no named class | one-off `gwui-rule-met` on `auth-kit.tsx`'s `PasswordRules` | moved into the shared `PasswordField` part as `PasswordRulesList`, with its own `gwui-password-rule-met` class so the tick style is not a page-only rule any more; `auth-kit.tsx`'s `PasswordRules` now only works out which rules are met and hands the list to this shared renderer |
 | **Toast** | position/size | `bottom:90px`, `12px 18px`, radius `10px`, `15px` | same | same |
 | **Modal** | width/padding/radius | `520px` max, `24px` inside, `14px` | same | same |
 | **Mark** (the three bars, `.brand`) | size | `17px`/700 wordmark, navy, `22x17` mark (lines 210-211, the SVG bars) | `18px`/700 (`gwui-mark`) - a small, deliberate difference from the prototype's `17px` sidebar brand, since this part is also used at a slightly larger scale on the invitation and sign-in pages | unchanged; noted, not fixed, since the difference is a size choice for a different context, not a stray number |
@@ -317,3 +325,103 @@ this same piece's next commit - see that commit for where it is actually drawn f
 | --- | --- | --- | --- |
 | `.gwui-auth-card` | spacing between a narrow account screen's mark, heading and form | `Page narrow`'s own `.gwui-page-narrow > * + * { margin-top: 30px }` (gw-ui.css), for a `Page narrow`'s direct children | the same 30px, moved one level deeper: `AuthCard` (auth-kit.tsx) now wraps its mark, heading and form in the shared `Panel` - the white card signup.jpg and verify-expired.jpg both draw and `AuthCard` had been missing entirely - so those three are no longer `Page narrow`'s own direct children, and need the same rhythm restated on the panel that now holds them |
 | `.gwui-mark-row` | the mark, with one action beside it | no prototype class; a plain flex row (`space-between`, `12px` gap, `16px 0` padding) for the one place the product needs `Mark` beside something else - a signed-out reader's "Sign in" on `/start` (`EntryChatPage.tsx`), now that that screen draws no sidebar of its own (start.jpg draws none either, and the sidebar used to be the only thing putting a mark and a way to sign in on that screen) | as listed |
+
+## Group 3's drift-list review, part 1 (1 October): `TheSessionsReport.tsx` rebuilt
+
+Hafsah's 1 October review of group 3's own earlier pages found about fifty one-off utility classes
+(`gwui-fs-*`, `gwui-gap-*`, `gwui-ink-*`, `gwui-m*`, `gwui-p*`, plus `gwui-rule-blue` and
+`gwui-rule-top`) still carrying this one session report's own values, alongside the inline styles
+sitting beside them. Rebuilt from `Panel`, `SubHeading`, `Stack`, `EdgeList`/`EdgeRow`, `Callout`
+and `Note` (B4-reports-and-sharing: team-report.txt, one-session.txt,
+team-report-as-participant.txt):
+
+- The outer card is now `Panel` (`pad={false}`, since the card needs full-bleed colour bands the
+  finding and the conversation-worth-having both use - a padded `Panel` would have padded those
+  bands too, which the prototype's own full-width tinted strips never do).
+- `withheldUntilYouAnswer`'s box - the one literally named `gwui-rule-blue` - and "The conversation
+  worth having now" are both now `Callout` (`tone="info"`), each with its own `title`, in place of a
+  hand-built tinted `<div>` with a hand-built label above a paragraph.
+- The loading line ("Reading everybody's side of this session...") is now `Note` (`role="status"`),
+  the same pattern `SessionReportPage.tsx`'s own "Getting your report…" already uses.
+- Each "still open" topic under "Where things stand" is now an `EdgeList`/`EdgeRow` (`kind="look"`,
+  amber), its accent spur standing in for the dot this file used to paint by hand with an inline
+  `style={{width:6,height:6,...}}`; everything the topic used to carry - each person's position as
+  its own sentence, the "why this matters"/"what would settle it" captions, and the folded "lines
+  this comes from" - now lives in the row's `detail`.
+- The local `Row` component (used for every other block - the cascade, the objective band, "what
+  people said this session", "the picture from everybody", "not raised again", "what this is built
+  from") keeps its exact name and its `label`/`n` props: `the-order-comes-from-one-place.spec.ts`
+  reads this file's own source for a literal `<Row ... label=...>` tag to prove the block order, so
+  renaming it or dropping its shape would have broken a test that is right to exist. It now draws
+  its label with `SubHeading` rather than a bespoke bold, muted span.
+- What is left after that is content this report alone has no other shared part for yet - the
+  quote-and-citation pairing (`Quotes`/`Cite`), the at-a-glance tiles, and the amber finding band.
+  Each now lives in one purpose-named local class scoped under `.gw-sr` in the component's own
+  `<style>` tag (`.gw-sr-quote`, `.gw-sr-cite`, `.gw-tile-grid`, `.gw-sr-row`, and the rest) - the
+  same pattern this file already used, before this rebuild, for `.gw-find`/`.gw-tile*` - rather than
+  a combination of atomic one-off utility classes. None of these are in `gw-ui.css`, so they add
+  nothing to either frozen class list; they are local to this one component, the same as the two
+  classes that were already there.
+- `Section` and `Tag` are deliberately not used here. This component has no page-level heading of
+  its own - every page that draws it (`SessionReportPage.tsx`, `RoundReportPage.tsx`) already
+  supplies one above it - and nothing on this screen is the short, unpunctuated fact `Tag` is for.
+  "Shared with the team." is a full sentence the prototype prints as plain text under the session
+  line (one-session.txt: "Shared with the team that evening"), not a pill, so it stays plain text
+  rather than being forced into a `Tag` just to use the part.
+
+`gwui-rule-blue` and `gwui-rule-top` are still used elsewhere (`TheJudgement.tsx`,
+`WhatTheRecordShows.tsx`, `ContextPage.tsx`, `WhatToWalkInWith.tsx`, `WhatSuccessLooksLike.tsx`,
+`where-to-focus.tsx`, `ResolutionPanel.tsx`, `split-one-total-across-people.tsx`, `BoardPage.tsx`,
+`WorkRecords.tsx`, `two-accounts-side-by-side.tsx`), so neither rule nor name comes off
+`one-off-style-classes.ts` yet.
+
+## Group 3's drift-list review, part 2 (1 October): `TheSessionsReport.tsx`'s own `<style>` tag removed
+
+Its 46 classes lived in a component-local stylesheet (a template string, injected with a `<style>`
+element), which neither class guard reads - the same drift as a one-off utility class, just hidden
+in a different place (Hafsah, 1 October). They are now ordinary named classes in `gw-ui.css`,
+`gwui-` prefixed like every other shared part, with every value carried over unchanged. The file
+and its class list come off `the-style-tags-there-were-on-1-october.ts`.
+
+Each followed the values below before this move, and follows them still - nothing changed but
+where the rule lives:
+
+| Class | What it draws | Where it came from |
+| --- | --- | --- |
+| `gwui-sr` | the report card's own overflow clip, so the full-bleed finding and tile bands do not escape the panel's rounded corners | the card's own shape (no dedicated prototype class; this product's own invention for a card with full-bleed internal bands) |
+| `gwui-sr-head`, `gwui-sr-head-title`, `gwui-sr-head-shared` | the masthead line ("Session 37. 6 of 6 people checked in.") and, once released, "Shared with the team." under it | one-session.txt's own masthead sentence and share line |
+| `gwui-sr-counted`, `gwui-sr-counted-item`, `gwui-sr-muted` | the row naming who is counted and who has or has not checked in | one-session.txt: "You have checked in.", "Omar has not checked in yet." |
+| `gwui-sr-finding`, `gwui-sr-finding-label` | the amber finding band at the top of the card | the marketing example report's own finding band (no screen in `docs/prototype/screens` carries this card; the marketing site's example reports are the nearest prototype source, as the file's own top comment says) |
+| `gwui-find`, `gwui-find-why`, `gwui-find-why-basis`, `gwui-find-why-also` | the finding's own sentence, and its basis/also-would-have-surfaced captions underneath, in amber | the same marketing example report |
+| `gwui-sr-row` | one numbered block of the card (the cascade, the objective band, "what people said", "the picture from everybody", "not raised again", "what this is built from") | the marketing example report's own row rhythm, a rule above and padding around each block |
+| `gwui-tile-grid`, `gwui-tile`, `gwui-tile-n`, `gwui-tile-txt`, `gwui-tile-good`, `gwui-tile-watch` | the "at a glance" row of four tiles, each a sentence rather than a bare figure (U.9 third review, item 2) | the marketing example report's own four-state row |
+| `gwui-sr-parent`, `gwui-sr-why` | the cascade block: the bigger goal this one sits under, and why | one-session.txt's "This is part of a bigger goal" block |
+| `gwui-sr-quotes`, `gwui-sr-quote`, `gwui-sr-cite` | a quote, and the sentence under it naming who said it (or, for a document, what kind of file it is) | one-session.txt's quoted lines, each with its own source line underneath |
+| `gwui-sr-statement`, `gwui-sr-position` | a plain sentence row (the picture from everybody; what went quiet; a person's own position on an open topic) | one-session.txt's own prose rows |
+| `gwui-sr-caption-label`, `gwui-sr-caption-text` | a small caption above its own sentence ("Why this matters", "What would settle it") | one-session.txt's "why it matters"/"what settles it" captions, re-read (U.9 review fix 12) as a caption over a sentence rather than a label joined by a colon |
+| `gwui-sr-source-line` | the folded "lines this comes from", under an open topic | one-session.txt's own sourcing line |
+| `gwui-sr-toggle-row`, `gwui-sr-muted-inline` | the row holding "Each person's own work, in their own words." beside the "Group by person"/"Group by theme" link | the card's own control row (no dedicated prototype class; the prototype does not carry this toggle) |
+| `gwui-sr-item-title`, `gwui-sr-muted-prose` | a themed or per-person heading, and the sentence said when a group has nothing in it | one-session.txt's own grouped headings |
+| `gwui-sr-grouped`, `gwui-sr-lines-gap`, `gwui-sr-picture-list`, `gwui-sr-definitions`, `gwui-sr-built-from`, `gwui-sr-rests-on-item`, `gwui-sr-agree-wrap` | the spacing between items inside a folded or grouped list | the card's own vertical rhythm, 8 to 16px between rows, the same scale every other shared part uses |
+| `gwui-sr-section-note` | a short note under a themed group ("the lines this comes from" style of aside) | one-session.txt's own section notes |
+| `gwui-sr-person-saying`, `gwui-sr-person-finding` | a person's own summary line, and (grouped by person) the product's own finding about their work, with an amber edge when there is a gap | one-session.txt's per-person material, grouped |
+| `gwui-sr-footer`, `gwui-sr-footer-line` | the closing line: when it was last updated, and whether it is still forming or closed | team-report.txt's own "Last updated on..." line |
+
+## Group 3's drift-list review, part 2 (continued): `Note` gains three tones
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| `Note` `tone="amber"`/`"green"`/`"navy"` (`.gwui-note-amber`, `.gwui-note-green`, `.gwui-note-navy`) | colour | the check-in header's own one-sentence state line ("Your turn. It is 1 day late.", "Ended well.", "2 of 6 have not answered yet.") used page-only classes (`gwui-ink-amber`/`-green`/`-navy`/`-sub` combined with `gwui-fs-14`/`gwui-fs-13-5`) on `GroundAdminPage.tsx` for exactly this; `Note`'s own 13.5px size already matches the prototype's note size, so `amber`/`green` are the same colours `Tag`'s own `attention`/`proven` tones already draw from (`var(--gw-amber-t)`, `var(--gw-green-t)`), and `navy` is the same ink `Button`'s own primary colour already uses (`var(--gw-navy)`), each named as an option on the part that already exists for a plain sentence | added |
+
+## Group 3's drift-list review, part 2 (continued): one centred-column class for two pages
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| `.gwui-centered-column` | layout | `GroundAdminPage.tsx`'s and `GroundParticipantPage.tsx`'s own content column each carried a page-only `gwui-ml-auto gwui-mr-auto` pair (plus a one-off `gwui-pt-12`/`gwui-pt-16`) to centre the conversation's own narrow 600px reading column inside the page's wider, full-width header - the only width `Page` itself does not already cap, since this column sits a level under `Page`'s own 1150px wrap. One class, used by both pages identically, replaces the pair; the extra top padding is dropped, since `Page`'s own 30px rule between its direct children (the header, any notices, and this column) already gives the gap the one-off padding was adding a second time. | added |
+
+## Group 3's drift-list review, part 2 (continued): `GroundParticipantPage.tsx`'s own header row
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| `.gwui-status-row` | font-size, colour, padding | the participant's own check-in header row carried a page-only `gwui-fs-13 gwui-ink-muted gwui-pt-10 gwui-pb-12` combination for its one muted sentence plus the badges beside it (a guest check-in's own organisation, how it ended) | added, one named class in place of four one-off ones |
+| `.gwui-note-navy`/`.gwui-note-green` reused as plain spans | colour | the same row's two badges (`gwui-ink-navy`, `gwui-ink-green`) used the same colours `Note`'s new tones already carry (see above); rather than keep the `gwui-ink-*` utility pair for these two spans, they use the already-documented `Note` tone classes directly | changed to reuse the existing part |

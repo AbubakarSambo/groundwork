@@ -90,7 +90,7 @@ export function JoinPage() {
     return (
       <Page narrow>
         <Mark />
-        <p role="status" className="gwui-pt-sub">Loading…</p>
+        <PageTitle center subtitle="Loading…" subtitleRole="status" />
       </Page>
     )
   }

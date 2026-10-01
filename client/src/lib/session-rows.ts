@@ -47,13 +47,32 @@ export function buildSessionRows(
       closed: ((ground?.roundCompletions ?? []) as any[]).some((r) => r.sessionNumber === n),
       /* The reader is "you", never their own name (the wording rule); everybody else as labelled. */
       waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => (p.userId && p.userId === userId ? 'you' : labelInASentence(p))),
-      /* When this session opened, for the row's "Wed, 23 Sept" (U.9). The earliest opening, or
-         the first answer when no opening time was kept. */
+      /* WHEN THIS SESSION REALLY OPENED, for the row's "Wed, 23 Sept" (U.9).
+       *
+       * Board review, 1 October, item 3: this used to read `availableFrom` first - the day the
+       * session was SCHEDULED to open - so a round that had already run showed a date still to
+       * come ("Session 2, 6 Oct" beside the same session's own page saying "opened on 30
+       * September"). `availableFrom` is a gate a cron reads before anyone can start; it is not
+       * when anyone actually did. The board's own phase-spine timeline (board.service.ts,
+       * `phaseSpine.sessions[].date`) already gets this right, from the earliest `completedAt`
+       * among that session's check-ins - the first account that is actually in. This copies the
+       * same rule, so the two places on the board agree.
+       */
       opened: (() => {
         const these = checkIns.filter((c) => c.sessionNumber === n)
+        const completed = these.map((c) => c.completedAt).filter(Boolean)
+        return completed.length
+          ? completed.map((t: string) => new Date(t)).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0].toISOString()
+          : null
+      })(),
+      /* The scheduled day this session opens, for a round nobody has started yet - said as
+         "opens on", never confused with the date above, which is when it really did. */
+      opensOn: (() => {
+        const these = checkIns.filter((c) => c.sessionNumber === n)
         const times = these.map((c) => c.availableFrom).filter(Boolean)
-        const pick = times.length ? times : these.map((c) => c.completedAt).filter(Boolean)
-        return pick.length ? pick.map((t: string) => new Date(t)).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0].toISOString() : null
+        return times.length
+          ? times.map((t: string) => new Date(t)).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0].toISOString()
+          : null
       })(),
     }
   })

@@ -10,8 +10,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { YourWork } from '@/components/gw/checkin/YourWork'
-import { Note } from '@/components/gw/ui/Note'
-import { Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty, Folded, Modal } from '@/components/gw/ui'
+import { Note, Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty, Folded, Modal } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
@@ -1421,15 +1420,13 @@ export function GroundAdminPage() {
         */}
         {isInitiator && (() => {
           const a = attention
-          const say =
-            a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn. It is 1 day late.' : `Your turn. It is ${a.daysLate} days late.`, cls: 'gwui-ink-amber' }
-            : a.kind === 'yours' ? { t: 'Your turn.', cls: 'gwui-ink-navy' }
+          const say: { t: string; tone?: 'amber' | 'navy' } | null =
+            a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn. It is 1 day late.' : `Your turn. It is ${a.daysLate} days late.`, tone: 'amber' }
+            : a.kind === 'yours' ? { t: 'Your turn.', tone: 'navy' }
             /* U.9 re-review, item B: a sentence, not a label and a fraction. */
-            : a.kind === 'waiting' ? { t: `${a.total - a.done} of the ${a.total} have not answered yet.`, cls: 'gwui-ink-sub' }
+            : a.kind === 'waiting' ? { t: `${a.total - a.done} of the ${a.total} have not answered yet.` }
             : null
-          return say
-            ? <p className={`gwui-fs-14 ${say.cls}`}>{say.t}</p>
-            : null
+          return say ? <Note tone={say.tone}>{say.t}</Note> : null
         })()}
         {/*
           IT RAN OUT OF TIME, AND HERE IS WHAT LIFTS IT.
@@ -1457,43 +1454,39 @@ export function GroundAdminPage() {
           if (left.state === 'fine') return null
           const said = sayHowLongIsLeft(left, ground.overdue ?? 0)
           return (
-            <div className="gwui-mb-12">
+            <Stack gap={10}>
               <Callout tone="warning" title={left.state === 'out' ? 'Time is up' : left.daysLeft === 1 ? 'Runs out tomorrow' : `Runs out in ${left.daysLeft} days`}>
                 {said}
               </Callout>
               {ground.viewerRunsThisGround && (
-                <div className="gwui-mt-10">
-                  <Button kind="secondary" size="small" onClick={() => { goTab('settings'); setOpenTimeframe(true); scrollToId('how-long-this-runs') }}>
-                    Give it more time
-                  </Button>
-                </div>
+                <Button kind="secondary" size="small" onClick={() => { goTab('settings'); setOpenTimeframe(true); scrollToId('how-long-this-runs') }}>
+                  Give it more time
+                </Button>
               )}
-            </div>
+            </Stack>
           )
         })()}
         {hasStalled(ground.status) && (
-          <div className="gwui-mb-12">
+          <Stack gap={10}>
             <Callout tone="warning" title="Out of time">
               {itRanOutOfTime(!!ground.viewerRunsThisGround)}
             </Callout>
             {ground.viewerRunsThisGround && (
-              <div className="gwui-mt-10">
-                <Button
-                  kind="secondary"
-                  size="small"
-                  onClick={() => {
-                    goTab('settings')
-                    setOpenTimeframe(true)
-                    /* Through the one helper - see lib/scroll-to, which exists because a raw smooth
-                       scroll ignores reduced-motion and fights the page's own scroll container. */
-                    scrollToId('how-long-this-runs')
-                  }}
-                >
-                  Give it more time
-                </Button>
-              </div>
+              <Button
+                kind="secondary"
+                size="small"
+                onClick={() => {
+                  goTab('settings')
+                  setOpenTimeframe(true)
+                  /* Through the one helper - see lib/scroll-to, which exists because a raw smooth
+                     scroll ignores reduced-motion and fights the page's own scroll container. */
+                  scrollToId('how-long-this-runs')
+                }}
+              >
+                Give it more time
+              </Button>
             )}
-          </div>
+          </Stack>
         )}
         {/*
           U.10 PICTURE-CHECK ROUND 7, ITEM 3: ONE OR TWO PLAIN SENTENCES, LIKE THE BOARD'S.
@@ -1538,10 +1531,10 @@ export function GroundAdminPage() {
             parts.push(`${reportState.charAt(0).toUpperCase()}${reportState.slice(1)}.`)
           }
           if (!parts.length && sessionsDone !== 0) return null
-          const cls = ended && hasStalled(ground.status) ? 'gwui-ink-amber' : ended ? 'gwui-ink-green' : 'gwui-ink-sub'
+          const tone: 'amber' | 'green' | undefined = ended && hasStalled(ground.status) ? 'amber' : ended ? 'green' : undefined
           return (
             <>
-              <p className={`gwui-fs-13-5 ${cls}`}>{parts.join(' ')}</p>
+              <Note tone={tone}>{parts.join(' ')}</Note>
               {/*
                 GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 12: A LINK IS NOT THE LAST WORD OF A
                 SENTENCE. "...Nothing anybody wrote is lost. How to run one" ran the link straight
@@ -1551,9 +1544,9 @@ export function GroundAdminPage() {
                 text link, below the sentence rather than inside it.
               */}
               {sessionsDone === 0 && !ended && (
-                <p className="gwui-fs-13-5 gwui-mt-2">
+                <Note>
                   <Link className="gwui-plain-link" to="/org/guide">Read how to run one</Link>
-                </p>
+                </Note>
               )}
             </>
           )
@@ -1578,7 +1571,7 @@ export function GroundAdminPage() {
         keeps the 600px reading width, centred under the full-width header.
       */}
       <div
-        className={`gw-bd gwui-pt-12${tab === 'chat' ? ' gwui-ml-auto gwui-mr-auto' : ''}`}
+        className={`gw-bd${tab === 'chat' ? ' gwui-centered-column' : ''}`}
         style={{ maxWidth: tab === 'chat' ? 600 : 1150, width: '100%' }}
       >
 
@@ -1601,13 +1594,11 @@ export function GroundAdminPage() {
           />
         )}
         {(ground as any).status === 'AWAITING_APPROVAL' && !(isOrgAdmin && !isInitiator) && (
-          <div className="gwui-mb-16">
-            <Callout tone="warning" title="Waiting for an admin to accept this check-in">
-              You can keep editing it, and nobody can be invited until it is accepted, so nobody
-              has been contacted and nothing has been shared. An admin in your organisation sees it
-              on their check-ins page.
-            </Callout>
-          </div>
+          <Callout tone="warning" title="Waiting for an admin to accept this check-in">
+            You can keep editing it, and nobody can be invited until it is accepted, so nobody
+            has been contacted and nothing has been shared. An admin in your organisation sees it
+            on their check-ins page.
+          </Callout>
         )}
 
         {/*
@@ -1619,20 +1610,20 @@ export function GroundAdminPage() {
           it, so they left believing everybody had been asked. See who-was-not-invited.ts.
         */}
         {notInvited.length > 0 && (
-          <div className="gwui-mb-16">
-            {/* Not <Callout>: its children render inside one <p>, and a <ul> cannot sit inside a
-                <p>. Builds the same tinted box directly from the shared classes instead. */}
-            <div className="gwui-callout gwui-callout-warning">
-              <p className="gwui-callout-title">{whatToSayAboutThem(notInvited)}</p>
-              <ul className="gwui-mb-10">
+          /* Not <Callout>: its children render inside one <p>, and a <ul> cannot sit inside a
+              <p>. Builds the same tinted box directly from the shared classes instead. */
+          <div className="gwui-callout gwui-callout-warning">
+            <p className="gwui-callout-title">{whatToSayAboutThem(notInvited)}</p>
+            <Stack gap={10}>
+              <ul>
                 {notInvited.map(f => (
-                  <li key={f.email}><span className="gwui-ink-text">{f.email}</span>, {f.because}</li>
+                  <li key={f.email}>{f.email}, {f.because}</li>
                 ))}
               </ul>
               <Button kind="quiet" size="small" onClick={() => { thatIsDealtWith(id!); setNotInvited([]) }}>
                 I have dealt with this
               </Button>
-            </div>
+            </Stack>
           </div>
         )}
 
@@ -1666,15 +1657,17 @@ export function GroundAdminPage() {
               )
             ) : (
               <Panel>
-                <p className="gwui-panel-text gwui-mb-10">
-                  You do not answer this check-in yourself. The board shows what has come from it so far.
-                </p>
-                <Link
-                  className="gwui-plain-link"
-                  to={`/grounds/${id}/board`}
-                >
-                  Go to the board
-                </Link>
+                <Stack gap={10}>
+                  <p className="gwui-panel-text">
+                    You do not answer this check-in yourself. The board shows what has come from it so far.
+                  </p>
+                  <Link
+                    className="gwui-plain-link"
+                    to={`/grounds/${id}/board`}
+                  >
+                    Go to the board
+                  </Link>
+                </Stack>
               </Panel>
             )}
           </div>
@@ -1716,7 +1709,7 @@ export function GroundAdminPage() {
           disappearing with the sub-tab row that used to offer them unconditionally.
         */}
         {inMyWork && !viewerIsAParty && (
-          <div className="gwui-button-row gwui-mb-12">
+          <div className="gwui-button-row">
             {tab !== 'report' && <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every session</button>}
             {tab !== 'checkins' && <button type="button" className="gwui-plain-link" onClick={() => goTab('checkins')}>Who has answered</button>}
           </div>
@@ -1753,16 +1746,14 @@ export function GroundAdminPage() {
         )}
 
         {tab === 'checkins' && (
-          <div>
+          <Stack gap={18}>
             {/* Who is overdue belongs with who has answered, and Remind is on the rows just below. */}
             {(ground.overdue ?? 0) > 0 && (
-              <div className="gwui-mb-14">
-                <Callout tone="info" title={`${ground.overdue} ${ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.`}>
-                  A missed session is not a lost session. Use Remind. The most common reason a
-                  session is missed is that the email went to spam. Their next check-in picks up
-                  where they left off.
-                </Callout>
-              </div>
+              <Callout tone="info" title={`${ground.overdue} ${ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.`}>
+                A missed session is not a lost session. Use Remind. The most common reason a
+                session is missed is that the email went to spam. Their next check-in picks up
+                where they left off.
+              </Callout>
             )}
 
             {/*
@@ -1776,16 +1767,14 @@ export function GroundAdminPage() {
               Adding somebody and sharing the join link come with it, because they are the same
               job: deciding who gives an account of this.
             */}
-            <div className="gwui-mb-16">
+            <Stack gap={18}>
               {(() => {
                 const bounced = ground.participants.filter((p: any) => p.inviteDeliveryStatus === 'BOUNCED')
                 if (bounced.length === 0) return null
                 return (
-                  <div className="gwui-mb-10">
-                    <Callout tone="concern" title={bounced.length === 1 ? '1 invite never arrived, because it bounced.' : `${bounced.length} invites never arrived, because they bounced.`}>
-                      Fix the address below and resend it. Until then, {bounced.length === 1 ? 'that person has' : 'those people have'} no way in.
-                    </Callout>
-                  </div>
+                  <Callout tone="concern" title={bounced.length === 1 ? '1 invite never arrived, because it bounced.' : `${bounced.length} invites never arrived, because they bounced.`}>
+                    Fix the address below and resend it. Until then, {bounced.length === 1 ? 'that person has' : 'those people have'} no way in.
+                  </Callout>
                 )
               })()}
               <SubHeading>Participants</SubHeading>
@@ -2149,7 +2138,7 @@ export function GroundAdminPage() {
                   )
                 })}
               </Stack>
-            </div>
+            </Stack>
 
             {/*
               WHAT THIS SAID WAS NOT TRUE, AND THE PAGE ALREADY SAID THE REST OF IT.
@@ -2177,21 +2166,19 @@ export function GroundAdminPage() {
                */
               const releasedAt = (ground as any).report?.releasedAt as string | null | undefined
               return (
-                <div className="gwui-mb-16">
-                  <Callout tone="info">
-                    <span className="gwui-switch-row">
-                      <span>
-                        {releasedAt
-                          ? `This report was already shared, on ${whenItWas(releasedAt, 'day')}, before everybody had checked in.`
-                          : <>The picture builds as each person answers, and you can read what it has so far.
-                              It is only released to everybody once all {ground.participants.length} are in.</>}
-                      </span>
-                      <Button kind="quiet" size="small" onClick={() => setTab('report')}>
-                        {releasedAt ? 'Read it' : 'Read it so far'}
-                      </Button>
+                <Callout tone="info">
+                  <span className="gwui-switch-row">
+                    <span>
+                      {releasedAt
+                        ? `This report was already shared, on ${whenItWas(releasedAt, 'day')}, before everybody had checked in.`
+                        : <>The picture builds as each person answers, and you can read what it has so far.
+                            It is only released to everybody once all {ground.participants.length} are in.</>}
                     </span>
-                  </Callout>
-                </div>
+                    <Button kind="quiet" size="small" onClick={() => setTab('report')}>
+                      {releasedAt ? 'Read it' : 'Read it so far'}
+                    </Button>
+                  </span>
+                </Callout>
               )
             })()}
 
@@ -2211,25 +2198,21 @@ export function GroundAdminPage() {
               !ground.isFreeGround &&
               !(ground.org?.subscriptionPlan && ground.org?.subscriptionStatus === 'active') &&
               (ground.sessionsBalance ?? 0) === 0 && (
-                <div className="gwui-mb-16">
-                  <PostSessionPanel
-                    groundId={ground.id}
-                    freeExtensionUsed={ground.org?.freeExtensionUsed ?? false}
-                    onDismiss={() => setPostSessionDismissed(true)}
-                  />
-                </div>
+                <PostSessionPanel
+                  groundId={ground.id}
+                  freeExtensionUsed={ground.org?.freeExtensionUsed ?? false}
+                  onDismiss={() => setPostSessionDismissed(true)}
+                />
               )
             }
 
             {pendingRequests.length > 0 && (
-              <div className="gwui-mb-16">
-                <div className="gwui-mb-10">
-                  <Callout tone="warning" role="status">
-                    {pendingRequests.length === 1
-                      ? 'One person has asked to join this check-in.'
-                      : `${pendingRequests.length} people have asked to join this check-in.`}
-                  </Callout>
-                </div>
+              <Stack gap={10}>
+                <Callout tone="warning" role="status">
+                  {pendingRequests.length === 1
+                    ? 'One person has asked to join this check-in.'
+                    : `${pendingRequests.length} people have asked to join this check-in.`}
+                </Callout>
                 <Stack gap={10}>
                   {pendingRequests.map(req => (
                     <Panel key={req.id}>
@@ -2257,7 +2240,7 @@ export function GroundAdminPage() {
                     </Panel>
                   ))}
                 </Stack>
-              </div>
+              </Stack>
             )}
 
 
@@ -2277,31 +2260,27 @@ export function GroundAdminPage() {
               typed rather than after the button is pressed.
             */}
             {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
-              <div className="gwui-mt-20">
-                {confirmClosing ? (
-                  <>
-                    {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "SESSION" IS INTERNAL JARGON HERE; THE
-                        PRODUCT CALLS THE THING A PERSON ANSWERS A "CHECK-IN" EVERYWHERE ELSE. */}
-                    <Callout tone="warning" title="Begin the last check-in?">
-                      Everyone's next check-in becomes their final one. It is the same conversation,
-                      marked as closing. The final report reads the whole record, then you and the
-                      others agree the end state.
-                    </Callout>
-                    <div className="gwui-mt-10">
-                      <div className="gwui-button-row">
-                        <Button kind="secondary" redText onClick={() => closingSession.mutate()} disabled={closingSession.isPending}>
-                          Begin the last check-in
-                        </Button>
-                        <Button kind="quiet" onClick={() => setConfirmClosing(false)}>Cancel</Button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <Button kind="secondary" redText wide onClick={() => setConfirmClosing(true)}>
-                    Begin the last check-in
-                  </Button>
-                )}
-              </div>
+              confirmClosing ? (
+                <Stack gap={10}>
+                  {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "SESSION" IS INTERNAL JARGON HERE; THE
+                      PRODUCT CALLS THE THING A PERSON ANSWERS A "CHECK-IN" EVERYWHERE ELSE. */}
+                  <Callout tone="warning" title="Begin the last check-in?">
+                    Everyone's next check-in becomes their final one. It is the same conversation,
+                    marked as closing. The final report reads the whole record, then you and the
+                    others agree the end state.
+                  </Callout>
+                  <div className="gwui-button-row">
+                    <Button kind="secondary" redText onClick={() => closingSession.mutate()} disabled={closingSession.isPending}>
+                      Begin the last check-in
+                    </Button>
+                    <Button kind="quiet" onClick={() => setConfirmClosing(false)}>Cancel</Button>
+                  </div>
+                </Stack>
+              ) : (
+                <Button kind="secondary" redText wide onClick={() => setConfirmClosing(true)}>
+                  Begin the last check-in
+                </Button>
+              )
             )}
 
             {/*
@@ -2361,7 +2340,7 @@ export function GroundAdminPage() {
                 </p>
               </Panel>
             )}
-          </div>
+          </Stack>
         )}
 
         {/* DOCUMENTS */}
@@ -2409,15 +2388,13 @@ export function GroundAdminPage() {
           run in one place is the board's job, and the board is the first row here.
         */}
         {tab === 'report' && (
-          <div>
+          <Stack gap={18}>
             {/* A shared report needs two people; a check-in with one on it says so here rather than "forming" for ever (B17). */}
             {whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length < 2 && (
-              <div className="gwui-mb-12">
-                <Callout tone="warning" role="status">
-                  The shared report compares two accounts. Add somebody and this will build.{' '}
-                  <button type="button" className="gwui-plain-link" onClick={() => setTab('checkins')}>Add a person</button>
-                </Callout>
-              </div>
+              <Callout tone="warning" role="status">
+                The shared report compares two accounts. Add somebody and this will build.{' '}
+                <button type="button" className="gwui-plain-link" onClick={() => setTab('checkins')}>Add a person</button>
+              </Callout>
             )}
             {/* What success looks like is deliberately NOT here - see the note in
                 SharedReportForAParty, which carried the same block and lost it for the same
@@ -2461,13 +2438,13 @@ export function GroundAdminPage() {
                   and publish what there is; it will be missing whoever has not answered.
                 </Note>
                 {!showReleaseConfirm ? (
-                  <div className="gwui-mt-10">
+                  <Stack gap={10}>
                     <Button kind="quiet" size="small" onClick={() => setShowReleaseConfirm(true)}>
                       Close this round now and publish what there is
                     </Button>
-                  </div>
+                  </Stack>
                 ) : (
-                  <div className="gwui-mt-10">
+                  <Stack gap={10}>
                     <Callout tone="warning">
                       {/* "Everybody reads the same thing at the same moment" was here and is not
                           true: everyone is emailed, but each person has to show theirs before they
@@ -2476,21 +2453,19 @@ export function GroundAdminPage() {
                       Everybody is emailed. This cannot be undone, and
                       anybody who has not answered loses their turn on this round.
                     </Callout>
-                    <div className="gwui-mt-10">
-                      <div className="gwui-button-row">
-                        <Button kind="secondary" redText size="small" disabled={releaseReport.isPending} onClick={() => releaseReport.mutate()}>
-                          {releaseReport.isPending ? 'Publishing…' : 'Publish it now'}
-                        </Button>
-                        <Button kind="quiet" size="small" onClick={() => setShowReleaseConfirm(false)}>
-                          Keep waiting
-                        </Button>
-                      </div>
+                    <div className="gwui-button-row">
+                      <Button kind="secondary" redText size="small" disabled={releaseReport.isPending} onClick={() => releaseReport.mutate()}>
+                        {releaseReport.isPending ? 'Publishing…' : 'Publish it now'}
+                      </Button>
+                      <Button kind="quiet" size="small" onClick={() => setShowReleaseConfirm(false)}>
+                        Keep waiting
+                      </Button>
                     </div>
-                  </div>
+                  </Stack>
                 )}
               </Folded>
             )}
-          </div>
+          </Stack>
         )}
 
         {/* SETTINGS: "People and setup", rebuilt from components/gw/ui - see CheckInPeopleAndSetup.tsx. */}

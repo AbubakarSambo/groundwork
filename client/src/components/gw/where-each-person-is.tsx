@@ -19,7 +19,7 @@ import { initialsOf } from '@/pages/org/people-here'
  * could read off the board. What a manager can act on is how long something has sat against what
  * has actually been tried, and one move to put to them.
  */
-export type Reason = 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do'
+export type Reason = 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do' | 'not let in'
 
 export interface Row {
   participantId: string
@@ -49,15 +49,23 @@ export interface Row {
    * the label when the engine's own reason is "nothing to do"; every other reason stands.
    */
   waitingOnReader?: boolean
+  /**
+   * REQUEST 85: AN ADMIN DID NOT LET THIS PERSON IN. `reason` is `'not let in'`, sorted last, `ask`
+   * is always null, and `says` already carries the row's own sentence ("Faraji Odhiambo was not let
+   * in by Juma Mwangi, so there is nobody to ask."). No chasing (there is nothing to ask) and no
+   * label (this is not a judgement on the person) - the row draws its sentence alone.
+   */
 }
 
-/** The tag's label for each reason, sentence case throughout - not just "Nothing checkable". */
+/** The tag's label for each reason, sentence case throughout - not just "Nothing checkable". `'not
+    let in'` has no label: see the comment on `Row.reason` above - the row's own sentence is enough. */
 const LABEL: Record<Reason, string> = {
   'has not answered': 'Has not answered',
   'stuck and not chasing': 'Stuck and not chasing',
   'behind the pace': 'Behind the pace',
   'nothing checkable': 'Nothing checkable',
   'nothing to do': 'Nothing to do',
+  'not let in': '',
 }
 
 const TONE: Record<Reason, TagTone> = {
@@ -66,6 +74,7 @@ const TONE: Record<Reason, TagTone> = {
   'behind the pace': 'attention',
   'nothing checkable': 'attention',
   'nothing to do': 'plain',
+  'not let in': 'plain',
 }
 
 export type Square = { key: number; state: 'done' | 'empty' | 'upcoming' }
@@ -126,9 +135,11 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
               <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-4" style={{ lineHeight: 1.5 }}>{r.keepsComingUp}</div>
             )}
           </div>
-          {r.reason === 'nothing to do' && r.waitingOnReader
-            ? <Tag tone="attention">Waiting on you</Tag>
-            : <Tag tone={TONE[r.reason]}>{LABEL[r.reason]}</Tag>}
+          {r.reason === 'not let in'
+            ? <span />
+            : r.reason === 'nothing to do' && r.waitingOnReader
+              ? <Tag tone="attention">Waiting on you</Tag>
+              : <Tag tone={TONE[r.reason]}>{LABEL[r.reason]}</Tag>}
           {/* The last-10 squares, the same mark and the same data "Who checked in" draws, in their
               own fixed-width column so they line up across every row. */}
           {squaresFor ? (

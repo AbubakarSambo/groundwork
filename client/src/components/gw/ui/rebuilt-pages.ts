@@ -182,4 +182,10 @@ export const REBUILT_PAGES: string[] = [
    * `WhoIsInThis`, `MyParticipation`) before this page itself joined the list.
    */
   'pages/grounds/GroundParticipantPage.tsx',
+  /*
+   * BOARD TASK, BATCH 3 (CLAUDE.md, Hafsah 1 October: "the board's one-off classes become shared
+   * parts"): `CheckInLinks.tsx` rebuilt from `Section`/`RowList`/`Row`/`Note`, in place of
+   * `kit.tsx`'s `Card`/`Row`/`Sec` and six inline styles for size, colour and spacing.
+   */
+  'pages/board/CheckInLinks.tsx',
 ]

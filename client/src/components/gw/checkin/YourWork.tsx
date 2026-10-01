@@ -203,7 +203,7 @@ export function YourWork({
         <Section heading="Something that keeps coming up">
           {patterns.map((p) => (
             <div key={p.id} style={{ marginBottom: 8 }}>
-              <PatternPanel pattern={p} invalidateKey={['my-record', groundId]} />
+              <PatternPanel pattern={p} invalidateKey={['my-record', groundId]} leadFirstName={leadFirstName} />
             </div>
           ))}
         </Section>

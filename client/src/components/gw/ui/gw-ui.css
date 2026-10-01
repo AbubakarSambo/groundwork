@@ -95,6 +95,12 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 .gwui-pt-sub { font-size: 16px; line-height: 1.5; color: var(--gw-sub); margin-top: 6px; }
 /* "Almost in", "Out of time", "This link has expired" (prototype): the line under the title is ink, not muted. */
 .gwui-pt-sub-ink { color: var(--gw-text); }
+/* A title-less, centred PageTitle (group 3 drift list, piece 1): the one status line shown alone
+   while something loads, replacing a page's own one-off gwui-pt-sub paragraph with a centring inline
+   style. */
+.gwui-title-centre { text-align: center; }
+.gwui-title-centre .gwui-pt-row { justify-content: center; }
+.gwui-title-centre .gwui-pt-head { justify-content: center; width: 100%; }
 
 /* ── MARK (prototype: the three bars and "Groundwork", .brand) ──────────── */
 .gwui-mark {
@@ -207,6 +213,16 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    previewed on the lead's own roster after they have shared it (`GroundAdminPage.tsx`'s check-ins
    tab). Pass as an extra className alongside `Panel`, which forwards one. */
 .gwui-panel-dark { background: var(--gw-dark); border-color: var(--gw-dark); color: #fff; }
+/* "INFERRED", A SMALL PROVENANCE MARK NEXT TO A WORKED-OUT LINE (WhatToProbeThemOn.tsx, group 3
+   drift list, piece 1): a quiet badge, not a Tag - a Tag is a short fact about a thing, and this is
+   a footnote on where a sentence came from. No prototype class for it; kept at the 13px floor
+   rather than the one-off 11px it replaces. */
+.gwui-inferred-mark { margin-left: 6px; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--gw-border); font-size: 13px; color: var(--gw-sub); white-space: nowrap; }
+/* THE PRIVATE HALF OF A SESSION'S REPORT (SessionReportPage.tsx, group 3 drift list, piece 1): a
+   Panel, inset and tinted, so a reader's own report does not read as the same card as the shared
+   report below it - a deliberate distinction this page already drew (own-report.txt has no prototype
+   equivalent for two reports on one page), kept rather than flattened to the plain Panel. */
+.gwui-panel-private { background: var(--gw-paper-2); border-radius: 14px; }
 
 /* ── EDGE LIST / EDGE ROW (prototype: .list, .item, .sp) ─────────────────── */
 .gwui-edge-list { border-top: 1px solid var(--gw-border); list-style: none; margin: 0; padding: 0; }
@@ -525,6 +541,24 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* ── NOTE / EMPTY (prototype: .note, an empty sentence, a locked door) ────── */
 .gwui-note { font-size: 13.5px; color: var(--gw-sub); }
 .gwui-note-error { color: var(--gw-red-t); }
+/* A check-in's own one-sentence state above its tabs - "Your turn. It is 1 day late.", "Ended
+   well." - in the same amber/green/navy ink Tag's own tones already draw from (group 3's
+   drift-list review, part 2). */
+.gwui-note-amber { color: var(--gw-amber-t); }
+.gwui-note-green { color: var(--gw-green-t); }
+.gwui-note-navy { color: var(--gw-navy); }
+/* A narrow column centred in a wider frame - the check-in's own conversation, inside the lead's
+   and the participant's full-width header (group 3's drift-list review, part 2; replaces the
+   gwui-ml-auto/gwui-mr-auto pair on GroundAdminPage.tsx and GroundParticipantPage.tsx). */
+.gwui-centered-column { margin-left: auto; margin-right: auto; }
+/* The participant's own check-in header row - a muted 13px sentence, with room above and below
+   for the badges beside it (a guest check-in's own org, how it ended) (group 3's drift-list
+   review, part 2; replaces GroundParticipantPage.tsx's own gwui-fs-13/gwui-ink-muted/gwui-pt-10/
+   gwui-pb-12 combination). */
+.gwui-status-row { font-size: 13px; color: var(--gw-sub); padding: 10px 0 12px; }
+/* A centred Note, for the sign-up screen's own "or with your email" divider between Google and the
+   email form (signup.jpg), replacing the page-only gwui-auth-or (group 3 drift list, piece 1). */
+.gwui-note-centre { text-align: center; }
 .gwui-empty-line { font-size: 14.5px; color: var(--gw-sub); }
 .gwui-empty-panel { max-width: 640px; }
 .gwui-empty-panel-title {
@@ -1222,7 +1256,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    `PasswordRules`/`PasswordStrength`; password.jpg, signup.jpg, reset.jpg). */
 .gwui-rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .gwui-rules li { display: flex; align-items: center; gap: 8px; font-size: 14.5px; line-height: 1.4; color: var(--gw-sub); }
-.gwui-rules li.gwui-rule-met { color: var(--gw-green-t); }
+/* The ticked state, folded into PasswordField's own rules list (group 3 drift list, piece 1); named
+   for what it belongs to rather than the generic gwui-rule-met one-off it replaces. */
+.gwui-rules li.gwui-password-rule-met { color: var(--gw-green-t); }
 .gwui-strength-bar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; margin-bottom: 8px; }
 .gwui-strength-bar span { height: 5px; border-radius: 3px; background: var(--gw-rule-2); }
 .gwui-strength-bar span.gwui-strength-on { background: var(--gw-green-t); }
@@ -1253,9 +1289,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-split-form { padding: 24px 16px 40px; }
   .gwui-split-body { margin: 0; padding-top: 28px; }
 }
-
-/* THE SIGN-IN SCREEN'S "OR" DIVIDER, BETWEEN GOOGLE AND THE EMAIL FORM (signup.jpg). */
-.gwui-auth-or { text-align: center; font-size: 14.5px; color: var(--gw-sub); margin: 14px 0; }
 
 /* THE TWO SMALL TEXT ACTIONS UNDER A SIGN-IN FORM (signin.jpg: "Forgot password?" / "New here?
    Sign up", each a side of the same row). */
@@ -1482,9 +1515,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    TheDoor.tsx: one box, one question. serif heading at the prototype's own clamp, then help text,
    the panel, then the quiet "Rather pick from a list?" line. */
 .gwui-door { width: 100%; max-width: 684px; margin: 0 auto; }
-.gwui-door-heading { font-family: var(--gw-font-name); font-size: clamp(26px, 5vw, 34px); font-weight: 500; line-height: 1.2; color: var(--gw-text); margin: 0 0 6px; }
-.gwui-door-help { font-size: 15.5px; color: var(--gw-sub); line-height: 1.6; margin: 0 0 14px; }
-.gwui-door-rather { font-size: 13.5px; color: var(--gw-text); margin: 12px 0 0; }
 
 /* ── PHASE STEPS (group 3, piece 4d-1, the entry chat's own progress bar) ──────────────────
    No prototype screen draws this exact track; values are the house style's own. */
@@ -1686,20 +1716,18 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* "Fills in as you talk" (FillsInAsYouTalk.tsx, B1's side panel on a wide screen) - its own
    sizes, narrower than the shared Panel; see that file's own comment for why. */
-.gwui-fit-aside { background: white; border: 1px solid var(--gw-border); border-radius: 10px; padding: 16px; }
-.gwui-fit-name { font-size: 15px; font-weight: 700; color: var(--gw-text); }
-.gwui-fit-situation { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
-.gwui-fit-count { font-size: 13px; font-weight: 700; color: var(--gw-text); margin-top: 8px; }
-.gwui-fit-help { font-size: 13px; color: var(--gw-sub); line-height: 1.5; margin: 2px 0 12px; }
-.gwui-fit-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.gwui-fit-row { display: flex; gap: 8px; }
-.gwui-fit-mark { width: 16px; flex-shrink: 0; font-weight: 700; }
-.gwui-fit-mark-set { color: var(--gw-green-t); }
-.gwui-fit-mark-unset { color: var(--gw-muted); }
-.gwui-fit-label { display: block; font-size: 13px; font-weight: 700; color: var(--gw-text); }
-.gwui-fit-value { display: block; font-size: 13px; color: var(--gw-sub); line-height: 1.45; }
-.gwui-fit-value-name { color: var(--gw-text); }
-.gwui-fit-more { margin-top: 4px; }
+/* "FILLS IN AS YOU TALK" (new.jpg): each row's own ✓/○ mark and its two-line label/value, inside a
+   RowList/Row - group 3 drift list, piece 1, replacing the page-only gwui-fit-* sheet. No existing
+   part already draws a ticked two-line row, so this is its own small addition, at the Row's own
+   14.5px rather than the old sheet's 13px one-off (folding into the shared type scale, not copying
+   the old pixel value forward). */
+.gwui-setrow-mark { font-weight: 700; }
+.gwui-setrow-mark-set { color: var(--gw-green-t); }
+.gwui-setrow-mark-unset { color: var(--gw-muted); }
+.gwui-setrow-label { display: block; font-weight: 700; color: var(--gw-text); }
+.gwui-setrow-value { display: block; color: var(--gw-sub); line-height: 1.45; }
+.gwui-setrow-value-name { color: var(--gw-text); }
+.gwui-setrow-more { margin-top: 4px; }
 
 /* The correction thread inside the report's own dark card (TheReportYouSawAtTheEnd's correctionSlot). */
 .gwui-ec-correction-intro { font-size: 13px; color: rgba(255,255,255,.75); margin-bottom: 6px; }
@@ -1751,3 +1779,71 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    a native `<details>` whose summary is a plain navy line, not `Folded`'s own boxed-and-bordered
    shape (which is for a closed panel in a list, not a aside folded under one). */
 .gwui-inline-fold-summary { cursor: pointer; }
+
+/*
+ * THE SESSIONS REPORT'S OWN SHAPE (group 3's drift-list review, part 2, 1 October 2026).
+ *
+ * Moved here from `TheSessionsReport.tsx`'s own `<style>` tag, which is now gone - the same drift
+ * as a one-off utility class, just hidden from both class guards by being written inside a
+ * component's own `<style>` instead of gw-ui.css (Hafsah, 1 October: "a class written inside a
+ * component's own style tag slips past both class guards... same drift"). Every value is unchanged
+ * from that tag; only the names moved, prefixed `gwui-` like every other shared part, and the file
+ * they live in. See docs/the-parts-against-the-prototype.md for what each follows.
+ */
+.gwui-sr { overflow: hidden; }
+.gwui-sr-head     { padding: 16px 20px; }
+.gwui-sr-head-title { font-size: 14px; line-height: 1.5; color: var(--gw-text); }
+.gwui-sr-head-shared { font-size: 13.5px; color: var(--gw-sub); margin-top: 2px; }
+.gwui-sr-counted  { border-top: 1px solid var(--gw-border); padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 6px 20px; }
+.gwui-sr-counted-item { font-size: 13px; color: var(--gw-text); }
+.gwui-sr-counted-item.gwui-sr-muted { color: var(--gw-sub); }
+.gwui-sr-finding  { border-top: 1px solid var(--gw-border); padding: 16px 20px; background: var(--gw-amber-bg); }
+.gwui-sr-finding-label { font-size: 13px; font-weight: 700; color: var(--gw-amber-t); margin-bottom: 8px; }
+.gwui-sr .gwui-find     { font-size: 16.5px; line-height: 1.4; font-weight: 600; color: var(--gw-text); margin: 0; max-width: 58ch; }
+.gwui-sr .gwui-find-why { font-size: 13px; line-height: 1.6; color: var(--gw-amber-t); display: block; }
+.gwui-sr .gwui-find-why-basis { margin-top: 8px; }
+.gwui-sr .gwui-find-why-also  { margin-top: 6px; opacity: .85; }
+.gwui-sr-row      { border-top: 1px solid var(--gw-border); padding: 16px 20px; }
+.gwui-tile-grid   { border-top: 1px solid var(--gw-border); display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.gwui-sr .gwui-tile     { padding: 14px 18px; }
+.gwui-sr .gwui-tile-n   { border-left: 1px solid var(--gw-border); }
+/* U.9 THIRD REVIEW: ONE CLASS, FOR ONE SENTENCE, NOT A FIGURE CLASS AND A CAPTION CLASS. Each tile
+   used to be a big figure over a small caption; it is one sentence now, set at a size that reads
+   as body text rather than as a scoreboard digit. */
+.gwui-sr .gwui-tile-txt { font-size: 13px; font-weight: 600; line-height: 1.5; color: var(--gw-text); }
+.gwui-sr .gwui-tile-good  { color: var(--gw-green-t); }
+.gwui-sr .gwui-tile-watch { color: var(--gw-amber-t); }
+.gwui-sr-parent   { margin: 0 0 6px; font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--gw-text); }
+.gwui-sr-why      { margin: 0; font-size: 13.5px; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; }
+.gwui-sr-quotes   { display: grid; gap: 12px; }
+.gwui-sr-quote    { font-size: 13.5px; font-style: italic; color: var(--gw-text); max-width: 68ch; line-height: 1.6; }
+.gwui-sr-cite     { font-size: 13px; color: var(--gw-muted); margin-top: 6px; }
+.gwui-sr-statement{ margin: 0; font-size: 13.5px; color: var(--gw-text); max-width: 68ch; line-height: 1.6; }
+.gwui-sr-position { margin: 0; font-size: 13px; color: var(--gw-text); max-width: 68ch; line-height: 1.6; }
+.gwui-sr-caption-label { margin: 0 0 2px; font-size: 13px; color: var(--gw-sub); }
+.gwui-sr-caption-text  { margin: 0; font-size: 13px; color: var(--gw-text); max-width: 68ch; line-height: 1.6; }
+.gwui-sr-source-line   { margin: 0; font-size: 13px; font-style: italic; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; }
+.gwui-sr-toggle-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.gwui-sr-muted-inline { font-size: 13px; color: var(--gw-sub); }
+.gwui-sr-item-title { font-size: 13px; font-weight: 700; color: var(--gw-text); margin-bottom: 6px; }
+.gwui-sr-muted-prose { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; }
+.gwui-sr-section-note { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; margin-top: 8px; }
+.gwui-sr-person-saying { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; }
+.gwui-sr-person-finding { font-size: 13px; color: var(--gw-text); margin-top: 6px; padding: 8px 10px; max-width: 68ch; line-height: 1.6; }
+.gwui-sr-footer   { font-size: 13px; color: var(--gw-sub); line-height: 1.6; }
+.gwui-sr-footer-line { display: block; margin-bottom: 4px; }
+.gwui-sr-definitions { display: grid; gap: 12px; margin-top: 12px; }
+.gwui-sr-agree-wrap { margin-top: 12px; }
+.gwui-sr-grouped  { display: grid; gap: 16px; margin-top: 10px; }
+.gwui-sr-lines-gap { display: grid; gap: 8px; }
+.gwui-sr-picture-list { display: grid; gap: 10px; }
+.gwui-sr-built-from { margin-top: 10px; }
+.gwui-sr-rests-on-item { margin-top: 12px; }
+@media (max-width: 640px) {
+  .gwui-sr .gwui-find     { font-size: 15px; line-height: 1.5; font-weight: 600; }
+  .gwui-sr .gwui-find-why { font-size: 13px; }
+  /* Stacked, the divider is the rule ABOVE each tile, not a stripe down its left edge. */
+  .gwui-sr .gwui-tile     { padding: 12px 16px; }
+  .gwui-sr .gwui-tile-n   { border-left: none; border-top: 1px solid var(--gw-border); }
+  .gwui-sr .gwui-tile-txt { font-size: 13.5px; }
+}

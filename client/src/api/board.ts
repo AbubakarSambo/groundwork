@@ -162,7 +162,7 @@ export type BoardPresent = {
    * lead is which questions their check-ins are not managing to answer, which is as often a fact
    * about the setup as about a person.
    */
-  stillUnanswered?: { who: string; what: string; sinceRound: number; certain: boolean }[]
+  stillUnanswered?: { who: string; what: string; says?: string; sinceRound: number; certain: boolean }[]
 
   eachPerson?: {
     participantId: string
@@ -171,10 +171,14 @@ export type BoardPresent = {
     nameIsTheirRole: boolean
     target: number | null
     count: number
-    reason: 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do'
+    reason: 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do' | 'not let in'
     /** What happened and what would change it, in a full sentence from the server. Shown under the pill in place of a fixed phrase. */
     says: string
     ask: string | null
+    /** REQUEST 85: an admin did not let this person in. `notLetInBy` is the decider's name, for whoever runs the check-in or an admin only. */
+    notLetIn?: boolean
+    notLetInBy?: string | null
+    notLetInAt?: string | null
   }[]
   /**
    * EACH PERSON'S OWN LINE, AND WHAT KEEPS COMING UP ABOUT THEIR WORK (board-as-lead.txt, "The team
@@ -250,6 +254,42 @@ export type BoardPresent = {
    * `deleteWorkItem`. Who sees which rows is already decided by the server.
    */
   workRecords?: AServedWorkSection[]
+
+  /**
+   * THE SWITCHBOARD'S OWN SECTIONS (request 70): the 22 purple sections with no served field
+   * before 1 October. Each is a new top-level field, present only when it has something in it
+   * (absent, never an empty list), built from rows the record already holds - no model, nothing
+   * written, so opening the board changes none of them. Who reads what is already decided
+   * server-side; the client only draws what it is given, gated further by the switchboard's own
+   * per-situation table (`what-the-switchboard-allows.ts`) so a section never appears for a
+   * situation G2 marks off on purpose.
+   */
+  /** What could go wrong, each with the facts it rests on. At most 10. */
+  risks?: { id: string; says: string; because: string }[]
+  /** Who is doing what, and by when - every commitment this reader may read, open first. */
+  workPlan?: { id: string; participantId: string | null; who: string | null; says: string; when: string | null; state: 'open' | 'done' | 'not done' | 'dropped'; statedInSession: number | null }[]
+  /** What happened, in order. `on` is the day for ordering; `says` starts with the day in words. Newest 40. */
+  timeline?: { on: string; says: string }[]
+  /** One person's record over time: their own tally, the lead's for everyone who has answered. */
+  personHistory?: { participantId: string; who: string; says: string; sessions: { n: number; on: string | null; says: string }[] }[]
+  /** For each open wait: whether it names a person, whether what was tried was said, whether a time was given. */
+  blockerCheck?: { id: string; who: string; says: string; namesWhoHoldsIt: boolean; saidWhatWasTried: boolean; timeGiven: boolean; checks: string[] }[]
+  /** Every line on the board a document proves or a colleague confirmed, word for word. */
+  evidenceIndex?: { id: string; participantId: string | null; who: string | null; said: string; backedBy: string; sessionNumber: number | null }[]
+  /** Counts from the record, for whoever runs the check-in only, never a label. */
+  busyOrMoving?: { eachPerson: { participantId: string; who: string; says: string }[]; cannotTellYou: string }
+  /** What the person who runs the check-in needs to do. At most 10, for that reader only. */
+  leadActions?: { id: string; says: string; because: string | null }[]
+  /** What each side promised, and what somebody here still waits on that side for. One per person, then each outside party named. */
+  obligations?: { participantId: string | null; who: string; promised: string[]; othersWaitFor: string[] }[]
+  /** Where a team's number would land by the last session at its current pace, against the aim or the limit. Never about one person. */
+  forecast?: { objectiveId: string; about: string; says: string; restsOn: string; cannotTellYou: string }[]
+  /** Every wait in the record, open or cleared, with the day it started and the day it cleared. Oldest first. */
+  whoWaitedOnWhom?: { id: string; says: string; startedAt: string | null; clearedAt: string | null; days: number | null }[]
+  /** Where one person's own record says two different things about one commitment. */
+  contradictions?: { id: string; commitmentId: string; participantId: string | null; who: string; says: string }[]
+  /** Questions only whoever runs the check-in can answer. At most 10, for that reader only. */
+  questionsForTheLead?: { id: string; question: string; because: string }[]
 }
 
 export type BoardResponse = BoardAbsent | BoardWithheld | BoardPresent
@@ -284,6 +324,14 @@ export interface AServedWorkRow {
   /** "said": read from somebody's check-in, with `said` holding their words exactly. "lead": added by the lead. */
   from: 'said' | 'lead'
   said?: string
+  /**
+   * REQUEST 89: WHO SAID THIS RECORD, as a first name ("Baraka"), or "a colleague" (lower case,
+   * to sit inside "In ...'s words") where this reader may not be told who. Null for a record the
+   * lead added, and null when `from` is "lead".
+   */
+  saidBy?: string | null
+  /** The id behind `saidBy`, or null for "a colleague" and for a record the lead added. */
+  saidByParticipantId?: string | null
 }
 
 export type AServedWorkSection =

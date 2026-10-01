@@ -95,7 +95,10 @@ const ITEM_KINDS_FOR_HOLDS: Record<string, { value: string; label: string }[]> =
  */
 const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
   'sales org': 'Every sale, and what shows it',
-  'engineering release': 'Every release and task, and what shows it',
+  /* Phase 2 of the board task, 1 October: the prototype's own eng example
+     (docs/prototype/screens/G1-example-check-ins/eng.txt) heads this table "Every task, and
+     what shows it" - the same words every other kind uses, not "Every release and task". */
+  'engineering release': 'Every task, and what shows it',
   'support desk': 'Every ticket, and what shows it',
   'distribution operations': 'Every incident, and what shows it',
   'trader training programme': 'Every trader group, and what shows it',
@@ -248,19 +251,23 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
  * `readerIsLead`, since the lead is the only one who adds a record); and "In Amani's words," which
  * guessed the speaker FROM THE OWNER FIELD - `row.owner` is whose the record is, not who said it in
  * their check-in, and a record about Amani's deal can just as easily have been said by somebody
- * else. `AServedWorkRow` (client/src/api/board.ts) carries no field for who actually spoke, so
- * rather than keep guessing, this now says "In the words of someone in this check-in," when the row
- * does not say who said it - engine request: a `saidBy` (or similarly named) field on a "said" row,
- * separate from `owner`, naming who spoke it.
+ * else.
+ *
+ * REQUEST 89, ANSWERED: `AServedWorkRow` now carries `saidBy`, separate from `owner` - the person's
+ * first name, "a colleague" (lower case, to sit inside "In ...'s words") where this reader may not
+ * be told who, or null for a record the lead added. "In the words of someone in this check-in," was
+ * this screen's own stand-in for the missing field and is gone now that the field exists; a "said"
+ * row with no `saidBy` at all (an older server) still falls back to it, so nothing breaks mid-rollout.
  */
 function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
   if (row.from === 'lead') {
     const addedBy = readerIsLead ? 'You' : (leadFirstName ?? 'The person running this check-in')
     return <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>{`${addedBy} added it.`}</p>
   }
+  const saidBy = row.saidBy?.trim()
   return (
     <div className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>
-      <div>In the words of someone in this check-in,</div>
+      <div>{saidBy ? `In ${saidBy}'s words,` : 'In the words of someone in this check-in,'}</div>
       {row.said && <p className="gwui-mt-2 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{fontStyle: 'italic'}}>{`“${row.said}”`}</p>}
     </div>
   )
@@ -701,7 +708,10 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 
       {canAdd && (
         <div className="gwui-mt-14">
-          <Button kind="secondary" size="small" onClick={() => setAdding(true)}>Add a record</Button>
+          {/* Board review, 1 October, item 8: this only opens the form below (a fold) - the real
+              mutation is that form's own submit button, which stays a real button. A boxed
+              secondary button here counted as a second control for one action. */}
+          <button onClick={() => setAdding(true)} className="gwui-plain-link gwui-fs-13-5">Add a record</button>
         </div>
       )}
       {adding && (
@@ -724,6 +734,42 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
           removing={removeItem.isPending}
         />
       )}
+    </Section>
+  )
+}
+
+/**
+ * YOUR OWN RECORDS, DAY BY DAY - ONLY YOURS (B5's board-as-participant.txt: "Your deals, day by
+ * day / Only yours"). The participant's own personal view leads with this: not the whole kind-of-
+ * work record every reader already gets further down (`WorkRecordsSections`, unchanged, still
+ * there for everybody inside "The whole check-in"), but just the rows this one reader owns,
+ * pulled out and named as theirs. Draws nothing the server did not already send in `workRecords`;
+ * only filters it down to `row.ownerParticipantId === myParticipantId`.
+ */
+export function YourOwnRecordsSections({ kindOfWork, sections, myParticipantId, leadFirstName }: {
+  kindOfWork?: KindOfWork | null
+  sections?: AServedWorkSection[]
+  myParticipantId: string | null
+  leadFirstName: string | null
+}) {
+  if (!sections?.length || !myParticipantId) return null
+  const itemNoun = (kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item').toLowerCase()
+  const mine = sections
+    .filter((s): s is Extract<AServedWorkSection, { state: 'filled' | 'none-yet' }> => s.state !== 'not-known')
+    .flatMap((s) => (s.rows ?? []).filter((r) => r.ownerParticipantId === myParticipantId))
+  if (!mine.length) return null
+  return (
+    <Section heading={`Your own ${itemNoun}s, day by day`} note="Only yours.">
+      <Panel pad={false}>
+        {mine.map((row) => (
+          <div key={row.id} className="gwui-panel-row">
+            <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{row.name}</div>
+            {row.stage && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2"><Tag tone="plain">{row.stage}</Tag></div>}
+            {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
+            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={false} /></div>
+          </div>
+        ))}
+      </Panel>
     </Section>
   )
 }

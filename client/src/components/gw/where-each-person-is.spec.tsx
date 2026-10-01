@@ -63,3 +63,23 @@ describe('WhereEachPersonIs: a count reads as a sentence, not a bare "0 of 4"', 
     expect(screen.getByText('Baraka Mwangi has none of their 1 target yet.')).toBeTruthy()
   })
 })
+
+/**
+ * REQUEST 85: SOMEONE AN ADMIN DID NOT LET IN. The row's own sentence is enough - no chasing (ask
+ * is always null for this reason, so the ask/finding line never appears) and no label (the reason
+ * tag is left off entirely, rather than drawing a tag with an empty face).
+ */
+describe('WhereEachPersonIs: someone an admin did not let in', () => {
+  it('shows the row’s own sentence, with no tag and nothing to chase', () => {
+    render(<WhereEachPersonIs rows={[row({
+      who: 'Faraji Odhiambo',
+      reason: 'not let in',
+      says: 'Faraji Odhiambo was not let in by Juma Mwangi, so there is nobody to ask.',
+      ask: null,
+    })]} />)
+    expect(screen.getByText('Faraji Odhiambo was not let in by Juma Mwangi, so there is nobody to ask.')).toBeTruthy()
+    for (const label of ['Has not answered', 'Stuck and not chasing', 'Behind the pace', 'Nothing checkable', 'Nothing to do', 'Waiting on you']) {
+      expect(screen.queryByText(label)).toBeNull()
+    }
+  })
+})

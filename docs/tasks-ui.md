@@ -69,6 +69,18 @@ Rebuilt from the shared parts in four groups, each with a picture check per scre
 - [ ] **Group 3, check-ins and signing in:** the rest of GroundAdminPage, ChatPage, CreateGroundPage, EntryChatPage and SaveCard, ReportPage and SessionReportPage, the sign-in pages (AuthPage, auth-kit, MagicVerifyPage), JoinPage.
 - [ ] **Group 4, the back office:** AdminPage, AdminDashboardPage, the ops pages, the prompt pages.
 
+## The order from here (Hafsah, 1 October, night)
+1. [x] Group 3's batch C, the check-in pages: the drift on the lead's and the participant's check-in pages, and the team report's 46 classes. Done 1 October.
+2. The board for all eleven kinds of work (below).
+3. The rest of group 3's batch C: the check-in conversation, the entry chat, and the My work tab (`YourWork.tsx`).
+4. The Context and resources tab, only when the engine says Ask Groundwork's context work is ready and the old context chat can be switched off.
+
+## Next after group 3's check-in pages: the board for every kind of work (Hafsah, 1 October)
+Patterns and coaching are protected: every piece stays. A kind is marked done only when its pictures match the prototype after the engine's latest merge.
+- [ ] Draw the engine's new board fields: request 82 (the two parts of "What keeps coming up", with the lead's "coach towards" and "one step"), 85, 87, 89, and the switchboard's 22 sections.
+- [ ] Picture all eleven kinds of work, as the lead and as a participant, at 1440 and 375, against their prototype examples, using the local test check-ins and the kind-of-work records from request 76.
+- [ ] Review and fix, with the board's drift replaced by shared parts. Then say for each kind: done and matching the prototype.
+
 ## The engine's answers of 30 September, to draw on the screens
 
 Each is in `docs/answers-from-engine.md`. They come after group 1, in this order.
@@ -97,6 +109,8 @@ Each is in `docs/answers-from-engine.md`, after the merge `a7c25b2d`. They come 
 - [x] No new one-off style class (Hafsah, 1 October): the guard `the-one-off-style-classes-only-go.spec.ts` freezes the 199 that are left, in `one-off-style-classes.ts`, and lets the list only shrink.
 - [ ] Replace the one-off style classes on each group's pages with the proper shared parts, as part of that group's review, from group 3 on. Each page then gets its picture check against the prototype.
 - [x] No new class without a shared part (1 October): the guard `no-new-class-without-a-shared-part.spec.ts` freezes the 837 classes gw-ui.css had, in `the-classes-there-were-on-1-october.ts`. A new class must be a shared part written up in the parts table.
+- [x] No new <style> tag (1 October): `no-new-style-tag.spec.ts` freezes the six files that draw their own <style> and the classes in them, in `the-style-tags-there-were-on-1-october.ts`.
+- [ ] Make the 46 classes in `TheSessionsReport.tsx`'s own <style> named shared parts in gw-ui.css (a quote with where it came from, an at-a-glance tile, the finding band), written up in the parts table, then take them off the frozen list.
 - [ ] Replace the page-only classes that copy an old page's values (`gwui-ec-*`, `gwui-ci-*`, `gwui-fit-*`, `gwui-situation-*`, `gwui-console-*`, `gwui-embed-*` and the like) with shared parts, in each group's review, the same way as the one-off classes. Group 3 first: the entry chat and the check-in conversation.
 - [ ] Go back over the pages already reviewed, group by group, and do the same: U.1 to U.8, the people group, the board, group 1 and group 2.
 - [ ] The old team report (`ReportBody` in `client/src/pages/report/ReportPage.tsx`): compare it with the rebuilt Report tab. Move any section the tab lacks into it, from the shared parts, especially anything about patterns, coaching, roles or probes. Then remove the old page and the tests that lock only it, and say in the report what was moved.

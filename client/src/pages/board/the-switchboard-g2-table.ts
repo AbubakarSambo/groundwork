@@ -353,6 +353,17 @@ export const SWITCHBOARD_MATRIX: SwitchboardRow[] = [
  * the leading is landing") are not G2 names at all - they map from the served `contribution` and
  * `coverage` fields directly, drawn lead-only, below G2's own sections (see BoardPage.tsx).
  */
+/**
+ * 1 OCTOBER, THE SWITCHBOARD'S 22 SECTIONS (docs/answers-from-engine.md, "1 October: the
+ * switchboard's 22 sections"). Thirteen names below still map to `null` because the engine's own
+ * table ("What is left after the second pass, and where each is served") says they are served
+ * already, under a field this page draws elsewhere (Deal grid, Coaching, Themes, Pattern history,
+ * The other side, Commitments followed over time, Actions and their results, Requirements review),
+ * or are not served at all because the record does not hold them (Check-in grades, Where the time
+ * went). Drawing those again here under a second name would be a second place for a wall to be
+ * forgotten - see the file's own top comment. The rest now point at the new top-level fields
+ * `board.ts` carries (request 70, both passes).
+ */
 export const G2_SECTION_TO_BOARD_SECTION: Record<string, string | null> = {
   'Targets': 'objectives',
   'Starting agreement': 'startingState',
@@ -362,28 +373,28 @@ export const G2_SECTION_TO_BOARD_SECTION: Record<string, string | null> = {
   'Patterns': 'patterns',
   'Change since last': 'quickRead',
   'Check-in grades': null,
-  'Work plan': null,
+  'Work plan': 'workPlan',
   'Deal grid': null,
-  'Forecast': null,
-  'Timeline': null,
+  'Forecast': 'forecast',
+  'Timeline': 'timeline',
   'Themes': null,
-  'Obligations': null,
-  'Person history': null,
-  'Risks': null,
+  'Obligations': 'obligations',
+  'Person history': 'personHistory',
+  'Risks': 'risks',
   'Coaching': null,
-  'Lead actions': null,
-  'Blocker check': null,
+  'Lead actions': 'leadActions',
+  'Blocker check': 'blockerCheck',
   'Where the time went': null,
   'Requirements review': null,
   'Actions and their results': null,
   'The other side': null,
-  'Evidence index': null,
-  'Who waited on whom': null,
+  'Evidence index': 'evidenceIndex',
+  'Who waited on whom': 'whoWaitedOnWhom',
   'Commitments followed over time': null,
   'Pattern history': null,
-  'Contradictions': null,
-  'Busy or moving': null,
-  'Questions for the lead': null,
+  'Contradictions': 'contradictions',
+  'Busy or moving': 'busyOrMoving',
+  'Questions for the lead': 'questionsForTheLead',
 }
 
 /** Every row of `SWITCHBOARD_MATRIX`, keyed by the GroundScenario it runs on. */

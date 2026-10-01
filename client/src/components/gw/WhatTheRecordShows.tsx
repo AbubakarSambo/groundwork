@@ -18,6 +18,12 @@
 
 export interface TheRecordOverTime {
   sessions?: number
+  /**
+   * REQUEST 87: THE HEADING, ALREADY A SENTENCE. "in 1 session", "in 3 sessions", or null before any
+   * session - used in place of building ", over N sessions" here, so "1 sessions" never reads wrong
+   * and the word "in" always sits inside the sentence rather than before a bare number.
+   */
+  inSessions?: string | null
   toSettleFirst?: string[]
   commitments?: { who: string; what: string; say: string; status?: string; restatedIn?: number[] }[]
   dependencies?: { say: string; escalated?: boolean }[]
@@ -73,7 +79,7 @@ export function WhatTheRecordShows({ it }: { it: TheRecordOverTime | null | unde
 
       {!!open.length && (
         <>
-          <Head>What people said they would do{it.sessions ? `, over ${it.sessions} sessions` : ''}</Head>
+          <Head>What people said they would do{it.inSessions ? `, ${it.inSessions}` : (it.sessions ? `, over ${it.sessions} sessions` : '')}</Head>
           {open.map((c, i) => <Line key={i}>{c.say}</Line>)}
         </>
       )}

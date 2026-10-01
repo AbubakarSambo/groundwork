@@ -1,8 +1,7 @@
-import { useId } from 'react'
 import type { ReactNode } from 'react'
 import {
   Mark, Page, Panel, PageTitle, FieldLabel, TextField, Note,
-  PasswordField as SharedPasswordField, SplitPage, SplitPanelLine, SplitPanelList,
+  PasswordField as SharedPasswordField, PasswordRulesList, SplitPage, SplitPanelLine, SplitPanelList,
 } from '@/components/gw/ui'
 import { todaysPasswordRules } from './password-rules'
 
@@ -127,20 +126,8 @@ export const PasswordField = SharedPasswordField
  * Each mark is also said in words, for anyone who cannot see a tick.
  */
 export function PasswordRules({ password, confirm, email }: { password: string; confirm?: string; email?: string | null }) {
-  const listId = useId()
   const rules = todaysPasswordRules(password, confirm, email)
-  return (
-    <ul className="gwui-rules" id={listId} aria-label="What your password needs">
-      {rules.map(r => (
-        <li key={r.text} className={r.met ? 'gwui-rule-met' : undefined}>
-          <span aria-hidden>{r.met ? '✓' : '○'}</span>
-          {/* Read aloud as "Met, at least 8 characters" or "Not met yet, at least 8 characters". */}
-          <span className="gwui-sr-only">{r.met ? 'Met, ' : 'Not met yet, '}</span>
-          {r.text}
-        </li>
-      ))}
-    </ul>
-  )
+  return <PasswordRulesList rules={rules} />
 }
 
 /**

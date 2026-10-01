@@ -71,11 +71,21 @@ describe('orderedSwitchboardSections', () => {
 })
 
 describe('switchboardSectionsNotServed', () => {
+  /*
+   * 1 OCTOBER, REQUEST 70: "Person history", "Blocker check", "Who waited on whom", "Contradictions",
+   * "Busy or moving" and "Questions for the lead" now have a served field each (personHistory,
+   * blockerCheck, whoWaitedOnWhom, contradictions, busyOrMoving, questionsForTheLead), so they moved
+   * out of "not served" - this is an update to the test, not a loosening of it: it now checks the
+   * sections the engine's own table still leaves unserved for PIP (Coaching, and the ones the record
+   * genuinely does not hold, such as "Where the time went"), rather than ones request 70 answered.
+   */
   it('lists the on/optional G2 sections with no served counterpart, for PIP', () => {
     const missing = switchboardSectionsNotServed('PIP')
-    expect(missing).toContain('Person history')
-    expect(missing).toContain('Blocker check')
-    expect(missing).toContain('Questions for the lead')
+    expect(missing).toContain('Coaching')
+    expect(missing).toContain('Where the time went')
     expect(missing).not.toContain('Starting agreement') // this one IS mapped (startingState)
+    expect(missing).not.toContain('Person history') // request 70: mapped to `personHistory`
+    expect(missing).not.toContain('Blocker check') // request 70: mapped to `blockerCheck`
+    expect(missing).not.toContain('Questions for the lead') // request 70: mapped to `questionsForTheLead`
   })
 })

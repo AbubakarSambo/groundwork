@@ -1,4 +1,5 @@
 import { neverAnAddressAsAName } from './an-address-that-can-receive-mail'
+import { Panel, SubHeading, Tag, Note, Stack } from '@/components/gw/ui'
 
 /**
  * WHAT TO PROBE EACH PERSON ON. THE LEAD SEES THIS AND NOBODY ELSE DOES.
@@ -31,26 +32,20 @@ export interface ProbeRead {
 function Block({ title, lines, markInferred, note }: { title: string; lines: string[]; markInferred?: boolean; note?: string }) {
   if (!lines.length) return null
   return (
-    <div style={{ marginTop: 10 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-sub-d)', marginBottom: 4 }}>
-        {title}
-      </div>
-      <div style={{ display: 'grid', gap: 6 }}>
+    <div>
+      <SubHeading>{title}</SubHeading>
+      <Stack gap={10}>
         {lines.map((l, i) => {
-          if (!markInferred) return <p key={i} style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>{l}</p>
+          if (!markInferred) return <p key={i} className="gwui-panel-text">{l}</p>
           const { text, inferred } = splitInference(l)
           return (
-            <p key={i} style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>
+            <p key={i} className="gwui-panel-text">
               {text}
-              {inferred && (
-                <span title={inferred} style={{ marginLeft: 6, padding: '1px 5px', borderRadius: 4, border: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>
-                  inferred
-                </span>
-              )}
+              {inferred && <span title={inferred} className="gwui-inferred-mark">inferred</span>}
             </p>
           )
         })}
-      </div>
+      </Stack>
       {note && <p className="gwui-panel-text-muted">{note}</p>}
     </div>
   )
@@ -139,114 +134,97 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
   /* Nothing to ask, nothing to weigh, nothing thin and nothing flagged is the only empty state. */
   if (!reads?.length && !weigh && spotPeople.length === 0 && !arcAdvisories?.length) return null
   return (
-    <section
-      style={{
-        border: '1px solid var(--gw-border)', borderRadius: 14, background: 'var(--gw-paper-2)',
-        padding: '18px 20px', marginTop: 34,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-        <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>{readerRunsIt ? 'What to ask each person' : 'What your lead is looking for'}</h2>
-        {readerRunsIt && <span style={{ fontSize: 13, color: 'var(--gw-muted)', flexShrink: 0 }}>Yours as the lead</span>}
-      </div>
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '2px 0 4px', lineHeight: 1.55, maxWidth: '68ch' }}>
-        {readerRunsIt
-          ? 'Built from the record, not from a read on anybody. Each person has already been asked to move the same things, so none of this will be news to them.'
-          : 'Built from the record, not from a read on you. It is what your lead said they were looking for, and what has been said about it so far.'}
-      </div>
+    <Panel as="section" className="gwui-panel-private">
+      <Stack gap={18}>
+        <div className="gwui-sentence-row">
+          <SubHeading>{readerRunsIt ? 'What to ask each person' : 'What your lead is looking for'}</SubHeading>
+          {readerRunsIt && <Tag>Yours as the lead</Tag>}
+        </div>
+        <Note>
+          {readerRunsIt
+            ? 'Built from the record, not from a read on anybody. Each person has already been asked to move the same things, so none of this will be news to them.'
+            : 'Built from the record, not from a read on you. It is what your lead said they were looking for, and what has been said about it so far.'}
+        </Note>
 
-      <div style={{ display: 'grid', gap: 18, marginTop: 14 }}>
-      {weigh && (
-        <div style={{ marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--gw-border)' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>{readerRunsIt ? 'What you said you were looking for, and what people have said about it' : 'What your lead said they were looking for, and what people have said about it'}</div>
-          {weigh.whatYouSaidGoodMeans.length > 0 && (
-            <Block title={readerRunsIt ? 'What you said good would mean' : 'What your lead said good would mean'} lines={weigh.whatYouSaidGoodMeans.map(x => x.text)} markInferred />
-          )}
-          {weigh.whatTheRecordHolds.length > 0 && (
-            <Block title="What people have said about that" lines={weigh.whatTheRecordHolds.map(x => x.text)} markInferred />
-          )}
-          {/* Absence is invisible in a list, so an empty one says so rather than disappearing -
-              the part of this block that earns it. */}
-          <Block
-            title="What nobody has mentioned yet"
-            lines={weigh.whatNobodyHasEvidenceFor.length > 0 ? weigh.whatNobodyHasEvidenceFor : [readerRunsIt ? 'Everything you named was reached by something somebody said.' : 'Everything your lead named was reached by something somebody said.']}
-            markInferred={weigh.whatNobodyHasEvidenceFor.length > 0}
-          />
-          {startedAt && startedAt.length > 0 && (
-            <Block title="Where this stood at the start" lines={startedAt.map(s => s.session > 1 ? `${s.text} Added at session ${s.session}.` : s.text)} note="Written at the beginning and left as it was. Read what people shared above against it." />
-          )}
-          {restedOn && restedOn.length > 0 && (
-            <Block title={readerRunsIt ? 'What you said it rested on' : 'What your lead said it rested on'} lines={restedOn} note="These were not in their hands. Read anything unmet above against them first." />
-          )}
-          {/*
-            TWO NOTES, NOT ONE. `weigh.note` is this ground's own reading of its gaps; `weighNote` is
-            the standing caveat that this is material, never a verdict. Picking only one of them with
-            `??` was dropping whichever one was not asked for - both ship with the section and say
-            different things, so both are shown.
-          */}
-          {weigh.note && (
-            <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.55, marginTop: 8, maxWidth: '68ch' }}>{weigh.note}</div>
-          )}
-          {weighNote && (
-            <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 6, maxWidth: '68ch' }}>{weighNote}</div>
-          )}
-        </div>
-      )}
-      {spotPeople.length > 0 && (
-        <div style={{ marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--gw-border)' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>Where this picture is thin</div>
-          <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 8, maxWidth: '68ch' }}>
-            Not a mark on anybody. It is what the record cannot yet support, and what would settle it.
-          </div>
-          {spotPeople.map(([participantId, list]) => (
-            <div key={participantId} style={{ marginTop: 10 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>
-                {`In what ${nameFor ? nameFor(participantId) : 'a colleague'} said`}
+        {weigh && (
+          <Stack gap={10}>
+            <SubHeading>{readerRunsIt ? 'What you said you were looking for, and what people have said about it' : 'What your lead said they were looking for, and what people have said about it'}</SubHeading>
+            {weigh.whatYouSaidGoodMeans.length > 0 && (
+              <Block title={readerRunsIt ? 'What you said good would mean' : 'What your lead said good would mean'} lines={weigh.whatYouSaidGoodMeans.map(x => x.text)} markInferred />
+            )}
+            {weigh.whatTheRecordHolds.length > 0 && (
+              <Block title="What people have said about that" lines={weigh.whatTheRecordHolds.map(x => x.text)} markInferred />
+            )}
+            {/* Absence is invisible in a list, so an empty one says so rather than disappearing -
+                the part of this block that earns it. */}
+            <Block
+              title="What nobody has mentioned yet"
+              lines={weigh.whatNobodyHasEvidenceFor.length > 0 ? weigh.whatNobodyHasEvidenceFor : [readerRunsIt ? 'Everything you named was reached by something somebody said.' : 'Everything your lead named was reached by something somebody said.']}
+              markInferred={weigh.whatNobodyHasEvidenceFor.length > 0}
+            />
+            {startedAt && startedAt.length > 0 && (
+              <Block title="Where this stood at the start" lines={startedAt.map(s => s.session > 1 ? `${s.text} Added at session ${s.session}.` : s.text)} note="Written at the beginning and left as it was. Read what people shared above against it." />
+            )}
+            {restedOn && restedOn.length > 0 && (
+              <Block title={readerRunsIt ? 'What you said it rested on' : 'What your lead said it rested on'} lines={restedOn} note="These were not in their hands. Read anything unmet above against them first." />
+            )}
+            {/*
+              TWO NOTES, NOT ONE. `weigh.note` is this ground's own reading of its gaps; `weighNote` is
+              the standing caveat that this is material, never a verdict. Picking only one of them with
+              `??` was dropping whichever one was not asked for - both ship with the section and say
+              different things, so both are shown.
+            */}
+            {weigh.note && <p className="gwui-panel-text">{weigh.note}</p>}
+            {weighNote && <Note>{weighNote}</Note>}
+          </Stack>
+        )}
+        {spotPeople.length > 0 && (
+          <Stack gap={10}>
+            <SubHeading>Where this picture is thin</SubHeading>
+            <Note>Not a mark on anybody. It is what the record cannot yet support, and what would settle it.</Note>
+            {spotPeople.map(([participantId, list]) => (
+              <div key={participantId}>
+                <SubHeading>{`In what ${nameFor ? nameFor(participantId) : 'a colleague'} said`}</SubHeading>
+                <Stack gap={10}>
+                  {list.map((s, i) => (
+                    <div key={i} className="gwui-rule-left">
+                      <p className="gwui-panel-text">{s.line}</p>
+                      <Note>What would settle it</Note>
+                      <Note>{s.wouldRaiseIt}</Note>
+                    </div>
+                  ))}
+                </Stack>
               </div>
-              <div style={{ display: 'grid', gap: 7 }}>
-                {list.map((s, i) => (
-                  <div key={i} style={{ borderLeft: '2px solid var(--gw-border)', paddingLeft: 10 }}>
-                    <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>{s.line}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--gw-muted)' }}>What would settle it</p>
-                    <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, maxWidth: '68ch' }}>{s.wouldRaiseIt}</p>
-                  </div>
-                ))}
+            ))}
+          </Stack>
+        )}
+        {arcAdvisories && arcAdvisories.length > 0 && (
+          <Stack gap={10}>
+            <SubHeading>For your review, about the record itself</SubHeading>
+            <Note>A flag about how an account was given, never a judgement on the person who gave it.</Note>
+            {arcAdvisories.map((a) => (
+              <div key={a.participantId}>
+                <SubHeading>{nameFor ? nameFor(a.participantId) : 'A colleague'}</SubHeading>
+                <p className="gwui-panel-text">{a.note}</p>
+                {a.features.map((f, i) => <Note key={i}>{f}</Note>)}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {arcAdvisories && arcAdvisories.length > 0 && (
-        <div style={{ marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--gw-border)' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>For your review, about the record itself</div>
-          <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 8, maxWidth: '68ch' }}>
-            A flag about how an account was given, never a judgement on the person who gave it.
-          </div>
-          {arcAdvisories.map((a) => (
-            <div key={a.participantId} style={{ marginTop: 10 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>
-                {nameFor ? nameFor(a.participantId) : 'A colleague'}
-              </div>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>{a.note}</p>
-              {a.features.map((f, i) => (
-                <p key={i} style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5, maxWidth: '68ch' }}>{f}</p>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </Stack>
+        )}
         {(reads ?? []).map((r) => (
-          <div key={r.participantId} style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14 }}>
+          <div key={r.participantId}>
             {/* U.9 THIRD REVIEW, ITEM 5: A HEADING STARTS WITH A CAPITAL, LIKE ANY OTHER SENTENCE.
                 The fallback name is "a colleague" everywhere else it is used mid-sentence; here it
                 opens a heading of its own, so it reads "A colleague". */}
-            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-text)' }}>{neverAnAddressAsAName(r.who, 'A colleague')}</div>
-            <Block title="Worth asking" lines={r.probe} />
-            <Block title="Worth saying" lines={r.encourage} />
-            <Block title="What they said they did about being stuck" lines={[r.triedToUnblock]} />
+            <SubHeading>{neverAnAddressAsAName(r.who, 'A colleague')}</SubHeading>
+            <Stack gap={10}>
+              <Block title="Worth asking" lines={r.probe} />
+              <Block title="Worth saying" lines={r.encourage} />
+              <Block title="What they said they did about being stuck" lines={[r.triedToUnblock]} />
+            </Stack>
           </div>
         ))}
-      </div>
-    </section>
+      </Stack>
+    </Panel>
   )
 }

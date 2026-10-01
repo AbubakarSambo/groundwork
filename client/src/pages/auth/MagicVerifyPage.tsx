@@ -710,9 +710,11 @@ export function MagicVerifyPage() {
       <Mark />
       {/* Only somebody who described a check-in before giving their address has one being made
           (U.2 re-review). Everybody else is only having their address confirmed. */}
-      <p role="status" className="gwui-pt-sub" style={{ textAlign: 'center' }}>
-        {aCheckInIsBeingMade() ? 'Setting up your check-in…' : 'Confirming your email…'}
-      </p>
+      <PageTitle
+        center
+        subtitle={aCheckInIsBeingMade() ? 'Setting up your check-in…' : 'Confirming your email…'}
+        subtitleRole="status"
+      />
     </Page>
   )
 }

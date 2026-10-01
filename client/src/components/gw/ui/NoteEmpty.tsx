@@ -6,16 +6,38 @@ import './gw-ui.css'
  * NOTE / CALLOUT / EMPTY (prototype: .note, a plain sentence, a locked-door panel, app.css).
  *
  * `Note` is 13.5px muted; pass `tone="error"` for a problem the person needs to act on (13.5px
- * red, announced as an alert). `Callout` is the tinted line the prototype shows above the
+ * red, announced as an alert). `tone="amber"`/`"green"`/`"navy"` (group 3's drift-list review,
+ * part 2) are the same 13.5px line in the product's own amber/green/navy ink, for the one-sentence
+ * state a check-in's own header carries above its tabs ("Your turn. It is 1 day late.", "Ended
+ * well.") - the same three colours `Tag`'s own tones already draw from, not a new one invented for
+ * this. `Callout` is the tinted line the prototype shows above the
  * invitation's heading (s44.js: `background:var(--chat)`, 10px corners, 10/14px inside, 14.5px
  * text) - one sentence that matters more than the page around it, e.g. who can see what you say.
  * `Empty` says it in a sentence where the thing would be: a 14.5px muted line by default, or for
  * a door you cannot open, a `Panel` up to 640px wide with a 21px heading, one sentence and at
  * most one button ("Only an admin at Baridi can change this. Grace Achieng is your admin.").
  */
-export function Note({ tone, children }: { tone?: 'error'; children: React.ReactNode }) {
+export function Note({ tone, center, role, children }: {
+  tone?: 'error' | 'amber' | 'green' | 'navy'
+  /** Centred, as the prototype's own divider line between Google and the email form (signup.jpg). */
+  center?: boolean
+  /**
+   * `'status'` for a line that announces itself as it arrives, e.g. "Getting your report…" (group 3
+   * drift list, piece 1). Defaults to `'alert'` for `tone="error"` and nothing otherwise.
+   */
+  role?: 'status' | 'alert'
+  children: React.ReactNode
+}) {
+  const className = [
+    'gwui-note',
+    tone === 'error' && 'gwui-note-error',
+    tone === 'amber' && 'gwui-note-amber',
+    tone === 'green' && 'gwui-note-green',
+    tone === 'navy' && 'gwui-note-navy',
+    center && 'gwui-note-centre',
+  ].filter(Boolean).join(' ')
   return (
-    <p className={tone === 'error' ? 'gwui-note gwui-note-error' : 'gwui-note'} role={tone === 'error' ? 'alert' : undefined}>
+    <p className={className} role={role ?? (tone === 'error' ? 'alert' : undefined)}>
       {children}
     </p>
   )

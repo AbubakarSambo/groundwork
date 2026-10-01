@@ -54,3 +54,28 @@ export function PasswordField({ id, label, value, onChange, autoComplete, autoFo
     </FieldLabel>
   )
 }
+
+/**
+ * THE RULES A NEW PASSWORD HAS TO MEET, TICKED AS THEY ARE MET (group 3 drift list, piece 1).
+ *
+ * Moved here from auth-kit.tsx's own `PasswordRules`, which drew this list with a one-off
+ * `gwui-rule-met` class: the ticked style now belongs to this shared part (`gwui-password-rule-met`)
+ * rather than floating as a page-only rule. `auth-kit.tsx` still works out which rules are met
+ * (`todaysPasswordRules`, which the server checks too) and hands the finished list here to render.
+ *
+ * Each mark is also said in words, for anyone who cannot see a tick.
+ */
+export function PasswordRulesList({ rules }: { rules: { text: string; met: boolean }[] }) {
+  return (
+    <ul className="gwui-rules" aria-label="What your password needs">
+      {rules.map(r => (
+        <li key={r.text} className={r.met ? 'gwui-password-rule-met' : undefined}>
+          <span aria-hidden>{r.met ? '✓' : '○'}</span>
+          {/* Read aloud as "Met, at least 8 characters" or "Not met yet, at least 8 characters". */}
+          <span className="gwui-sr-only">{r.met ? 'Met, ' : 'Not met yet, '}</span>
+          {r.text}
+        </li>
+      ))}
+    </ul>
+  )
+}
