@@ -70,16 +70,19 @@ Checked against eng, founder, ops, programme, salesorg and support, both readers
 
 | Prototype section | Our heading | Match | Cause if not |
 | --- | --- | --- | --- |
-| "Where each target stands" (a compact row of target chips, each with its own "Close"/"Behind"/"On time" word) | "What we are aiming for" | **Different heading, different shape.** The prototype shows each target as a short chip with one status word. Ours is a full `TargetsBand` with the lead's own editing controls (Change/Add target), which is right for the lead but is also what a participant without edit rights sees, just without the buttons. | Screen: the heading itself could read "Where each target stands" when there is nothing to change (see request below); the editing shape for a lead is correct and not a prototype regression. |
+| "Where each target stands" (a compact row of target chips, each with its own "Close"/"Behind"/"On time" word) | "What we are aiming for" | **Different heading, different shape.** The prototype shows each target as a short chip with one status word. Ours is a full `TargetsBand` with the lead's own editing controls (Change/Add target), which is right for the lead but is also what a participant without edit rights sees, just without the buttons. | Engine: no field carries the per-target pace word ("Close"/"Behind"/"On time") `objectives[].journey` would need to draw the prototype's own chip; drawing one here would be a word invented rather than read off the record. See request 108(b). The editing shape for a lead is correct and not a prototype regression. |
+| The headline question, with its bar ("Deliver the major release by 30 September?", a bold serif question above everything else, with a one-line answer and a bar) | `howItIsGoing`'s own story, at the prototype's own size (no question above it) | **Close, but missing the question itself.** `howItIsGoing.latestSummary` already supplies the prototype's prose answer, drawn at the prototype's largest text (fixed in an earlier review, see `how-it-is-going.tsx`'s own comment) - but nothing on the payload is a yes/no question like the prototype's own headline, so the board has no question to put above it. | Engine: no field is this question; `title` is the check-in's name, not one. See request 108(a). |
 | "Every task, and what shows it" / "Every sale, and what shows it" / "Every incident..." | "Every release and task, and what shows it" / "Every sale, and what shows it" / "Every county, and what shows it" | **Close.** The per-kind noun (`ITEM_NOUN_FOR_KIND` in `WorkRecords.tsx`) already varies by kind and mostly matches; "Every release and task" for eng has an extra word the prototype's "Every task" does not. | Screen - see fix below. |
-| "What needs you in this check-in" | "What needs you in this check-in" | Match. | - |
+| The record table's key ("Ringed is someone's word; filled is proven. Select one for its detail") | No key; no mark drawn on any row | **Missing.** The prototype draws the shared proof-mark dot (`ProofMark`, already used by `TheEndCard.tsx` and `ReviewPage.tsx`) beside each record. | Engine: `AServedWorkRow` carries no `mark` field (only `from: 'said' \| 'lead'` and free text) - nothing to read a mark from. See request 108(c). |
+| "What needs you in this check-in" (Today's items, the record's own `leadActions`, and decisions - a decision reads as one more row here, tagged "Decision needed", with no separate "Decisions needed" heading anywhere in the example) | **Fixed, phase 2.** One section, built from Today's `needsHere`, `leadActions` and `decisions` together, for whoever runs the check-in. The standalone "Decisions needed" section (unchanged) now renders only for a participant or a read-only admin, who this heading was never addressed to. | Match. | - |
 | "The team today" | "The team today" | Match (request 70/82 already renamed this). | - |
 | "Who checked in" | "Who checked in" | Match. | - |
-| "Blockers" (its own section, with history and "would clear it") | Folded into "Waiting on" and "What could go wrong" | **Different shape.** The prototype's "Blockers" section gives each blocker its own card: what it's blocking, who's waited on, every time it was raised, what the proof shows, and the one thing that would clear it. Ours spreads the same facts across "Waiting on" (handoffs) and "What could go wrong" (risks), with no single per-blocker history or "would clear it" line. | Engine: no field groups one blocker's full history (raised-count, dates, "would clear it") the way the prototype's example does; `whoWaitedOnWhom`/`risks` are close but not the same shape. See request 105. |
+| "Blockers" (its own section, one card per blocker: "Waiting on:", "Raised:", "Affects:", "Promised"/"What the proof shows:", "Would clear it:") | **Fixed, phase 2.** One "Blockers" section, one card per blocker, joining `blockerCheck` and `whoWaitedOnWhom` on the id they already share. Each card shows "Waiting on:" (who holds it, from `blockerCheck`'s own first check), "Raised:" (the date `whoWaitedOnWhom` gives, and when it cleared), and "What the proof shows:" (the rest of `blockerCheck`'s checks) - only what the two arrays actually send. | **Close, not exact.** "Affects" and "Would clear it" are in the prototype's own example; no field sends either one today, so neither is drawn (nothing invented in their place). | Engine: see request 105 (already covers this gap) and request 108(d)'s neighbour, "Where this is heading", for the same kind of missing field. |
 | "What keeps coming up" | "What keeps coming up" | Match. | - |
 | "Reports" / "Over time" | "Reports" / "Over time" | Match. | - |
 | "By area of work" (eng only: grouped tasks-done/blocked/released by area, with names) | Not present | **Missing.** | Engine: no field for this grouping. |
 | "Reported vs evidence, stage by stage" (eng only: a stage funnel, said vs met) | Present as "The shape of the work" (a similar said-vs-met stage funnel) | Close in substance, different heading. | Screen wording, minor. |
+| "Where this is heading" (the possible outcomes, with their signals, "What would settle it", who decides) and "Record the decision" | Not present (closest served field, `forecast`, is "Where this could end up": one pace-based projection, not named outcomes or a place to record which was chosen) | **Missing.** | Engine: no field carries named outcomes, their own signals, or a decision-recording action. See request 108(d). |
 
 ## The two confirmed screen-side fixes
 
@@ -126,38 +129,57 @@ board: only their own deals ("Your deals, day by day - Only yours"), their own s
 total ("Only you and Wairimu see your share"), and a note that the team's shared picture isn't out
 yet.
 
-Every participant board pictured here instead shows the **same generic switchboard sections** a
-lead sees (What success looks like, Every sale and what shows it for everyone, Work plan for
-everyone, Where people differ - naming colleagues and quoting them, Who owns what - everyone's
-statements, Waiting on - everyone's handoffs), minus the lead's own editing controls (Change/Add
-target/Add a record) and minus `theJudgement`/`whatTheAnswersSay` (confirmed absent from every
-participant's own `GET /grounds/:id/board` response in this review - the privacy rule that a
-participant never reads the lead's judgement holds server-side, not just on screen).
+**Fixed, phase 2 of the board task.** A participant's board now leads with a short personal view
+(`TheParticipantsOwnView`, `client/src/pages/board/BoardPage.tsx`), decided for Hafsah to confirm:
+whether today's team picture is shared (read off `howItIsGoing.glance.progress.roundsDone`, the
+same count the board's own header sentence already uses elsewhere - nothing invented for this),
+"Read your own report", and this reader's own records from `workRecords`, filtered to rows they
+own and marked "Only yours" (`YourOwnRecordsSections`, `WorkRecords.tsx`). "Your share" (B5's "Only
+you and Wairimu see your share") has no served field at all yet, so nothing is drawn for it rather
+than an empty box - still open, see request 107(c).
+
+Everything the participant already received - the same generic switchboard sections a lead sees
+(What success looks like, Every sale and what shows it for everyone, Work plan for everyone, Where
+people differ, Who owns what, Waiting on), minus the lead's own editing controls and minus
+`theJudgement`/`whatTheAnswersSay` (confirmed absent from every participant's own
+`GET /grounds/:id/board` response - the privacy rule that a participant never reads the lead's
+judgement holds server-side, not just on screen) - is unchanged and still there, now folded below
+the personal view under one name, "The whole check-in" (`Folded`, closed by default), so nothing a
+participant could read before this change is taken away.
 
 This is allowed under CLAUDE.md's privacy rule ("What people say in check-ins can be shown word for
-word to the people in that check-in") - nothing here is a privacy defect. But it is a real shape
-difference from the prototype's much narrower participant board, and it is not something the
-screen draws wrongly: the client shows exactly what `GET /grounds/:id/board` sends a participant,
-unfiltered by section beyond what `shown.*`/`canEdit` already gate. Whether participants should see
-the full switchboard or the narrower "your own work" board the prototype shows is a product
-decision the engine side owns (which fields it sends a participant), so this is logged as part of
-request 105 rather than fixed here.
+word to the people in that check-in") - nothing here is a privacy defect. The full switchboard
+staying available (now inside the fold) is a deliberate choice, not a stopgap: Hafsah's instruction
+for this task was to draw the personal view first and keep everything else below it, rather than
+replace the full switchboard outright, since whether participants should ever lose any of it is a
+product decision nobody has made. If that decision changes, only the fold needs removing - no data
+the server sends is withheld by this screen.
 
 ## Per-kind, per-reader summary
 
+**Phase 2 update (2 October).** The merged "What needs you in this check-in" (Today's items,
+`leadActions` and `decisions` together) and the joined "Blockers" section apply to every kind that
+carries these fields - all eleven, not only the six generic ones - since both are built in
+`BoardPage.tsx`/`TheSwitchboardsSections.tsx` from fields the switchboard already sends regardless
+of kind of work. The participant's personal view (`TheParticipantsOwnView`) applies to every
+participant board, for the same reason. The table below is not yet re-pictured against these
+changes (see "Pictures" below for the fresh set); it still records what the previous review found,
+with the phase 2 fixes noted against each row. Nobody here is marked "done" - that is the
+reviewer's finding, not this one.
+
 | Kind | Lead board | Participant board |
 | --- | --- | --- |
-| eng | Generic shape, matches prototype's section set; two heading-wording differences (fixed) | Same sections minus lead controls and judgement; shape differs from B5's personal view (request 105) |
+| eng | Generic shape, matches prototype's section set; two heading-wording differences (fixed); "What needs you" merge and "Blockers" join now apply (phase 2) | Now leads with the personal view (phase 2); the rest, unchanged, folded below under "The whole check-in" |
 | founder | Generic shape, matches (no participant - founder's own check-in has none) | n/a |
-| ops | Generic shape, matches | As eng |
-| programme | Generic shape, matches | As eng |
-| salesorg | Generic shape, matches; richest test data of the ten | As eng; B5's own example is this kind, so the gap above is clearest here |
-| support | Generic shape, matches | As eng |
-| gov | Generic switchboard shown; prototype expects a bespoke cascade/county board (request 105) | As eng, generic shape; prototype has no participant example for this kind |
-| loans | Generic switchboard shown; prototype expects a bespoke 40-trader cohort board (request 105) | As eng |
-| matter | Generic switchboard shown; prototype expects a bespoke legal-matter board (request 105) | As eng |
-| mvnext | Generic switchboard shown; prototype expects a bespoke discovery-workshop board (request 105) | As eng |
-| mvq4 | Generic switchboard shown (on the repurposed check-in, which also still carries its old onboarding content); prototype expects a systems-integration board sourced from Paystack/MarketView (request 105) | As eng |
+| ops | Generic shape, matches; phase 2 fixes apply | As eng |
+| programme | Generic shape, matches; phase 2 fixes apply | As eng |
+| salesorg | Generic shape, matches; richest test data of the ten; phase 2 fixes apply | As eng; B5's own example is this kind, so the personal view is clearest here |
+| support | Generic shape, matches; phase 2 fixes apply | As eng |
+| gov | Generic switchboard shown; prototype expects a bespoke cascade/county board (request 105); phase 2 fixes apply where the fields exist | As eng, generic shape; prototype has no participant example for this kind |
+| loans | Generic switchboard shown; prototype expects a bespoke 40-trader cohort board (request 105); phase 2 fixes apply where the fields exist | As eng |
+| matter | Generic switchboard shown; prototype expects a bespoke legal-matter board (request 105); phase 2 fixes apply where the fields exist | As eng |
+| mvnext | Generic switchboard shown; prototype expects a bespoke discovery-workshop board (request 105); phase 2 fixes apply where the fields exist | As eng |
+| mvq4 | Generic switchboard shown (on the repurposed check-in, which also still carries its old onboarding content); prototype expects a systems-integration board sourced from Paystack/MarketView (request 105); phase 2 fixes apply where the fields exist | As eng |
 
 ## Pictures
 
