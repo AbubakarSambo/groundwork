@@ -7001,4 +7001,12 @@ The second review passed all of that, except one fault. The To-dos board still s
 
 The whole API suite after these changes: 12,117 of 12,119 pass. One failure is the engine's comment guard (request 94). The other is an engine test that looks for a promise in lowercase. Our fix now writes it with a capital letter, and it is still listed once. That is request 98.
 
+**Group 2 is finished and passed its review (1 October).**
+- The To-dos board now shows the fuller copy of every promise, the same as the You board.
+- Its source line no longer repeats a date.
+- Every to-do comes from a check-in the reader may read. A test also covers performance plans, promotions and renewals, which this organisation does not have.
+- All ten suites are off again.
+
+The review's pictures are in the scratchpad's `pictures/review-g2c/`.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
