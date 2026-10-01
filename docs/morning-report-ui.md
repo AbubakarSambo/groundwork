@@ -289,6 +289,8 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
 
+**1 October, who may rewrite a check-in's brief.** A check-in's brief follows the same rule as every other setup change. Only the lead can rewrite it, unless the lead has left the organisation; then an admin can, and people are told who did it. "Rewrite" is shown only to whoever is allowed under that rule. The screen now does this: "Rewrite" and "Write the brief" show only when the server says the reader may change setup, and until the server says so, only to the lead. The server's side is request 104.
+
 **1 October, the moved report sections (from the engine's answer to request 99).**
 - The two explaining sentences dropped in the move are back, word for word. Under "What you said it rested on": "These were not in their hands. Read anything unmet above against them first." Under "Where this stood at the start": "Written at the beginning and left as it was. Read what people shared above against it." Done.
 - The resolution panel shows nothing until a decision is near, as the prototype does, with no "Resolution. Not set yet." line. It already did this, and a test now holds it.

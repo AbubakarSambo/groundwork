@@ -95,6 +95,13 @@ export function ContextPage({
   const isLead = role === 'lead' || role === 'admin'
   /** Its lead alone. See the note on `role` for why these are two questions. */
   const isTheLead = role === 'lead'
+  /**
+   * WHO MAY REWRITE THE BRIEF (Hafsah, 1 October): the same rule as every other setup change. Only
+   * the lead, unless the lead has left the organisation; then an admin may, and people are told who
+   * did it. The server says so in `mayChangeSetup` (request 104); until it sends that, only the
+   * lead is offered it, the more careful side of the rule.
+   */
+  const mayRewriteTheBrief = typeof (ground as any)?.mayChangeSetup === 'boolean' ? (ground as any).mayChangeSetup === true : isTheLead
   const contextEnabled = (ground as any)?.contextEnabled === true
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === viewerUserId)
 
@@ -461,7 +468,7 @@ export function ContextPage({
                   <span data-gw-brief-whose className="gwui-fs-13 gwui-ink-sub">
                     {whoseWords ? `${whoseWords} ` : ''}This is what everyone in this check-in reads before they answer.
                   </span>
-                  {isLead && briefDraft === null && (
+                  {mayRewriteTheBrief && briefDraft === null && (
                     <Button
                       kind="quiet"
                       size="small"
@@ -500,11 +507,11 @@ export function ContextPage({
             {!whatEveryoneReads && briefDraft === null && (
               <Panel className="gwui-rule-dashed">
                 <p className="gwui-panel-text-muted">
-                  Nobody has said what this check-in is for yet. Whoever runs it can write a few
-                  lines about what it is for and what they want from it. Everyone in this check-in
+                  Nobody has said what this check-in is for yet. The lead can write a few lines
+                  about what it is for and what they want from it. Everyone in this check-in
                   reads it before they answer.
                 </p>
-                {isLead && (
+                {mayRewriteTheBrief && (
                   <div className="gwui-mt-8">
                     <Button kind="quiet" size="small" onClick={() => setBriefDraft('')}>
                       Write the brief
