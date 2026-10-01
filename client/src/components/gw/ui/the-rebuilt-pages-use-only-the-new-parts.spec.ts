@@ -352,6 +352,12 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/suites/TodosPage.tsx',
       'pages/suites/CustomersPage.tsx',
       'pages/suites/EquipmentPage.tsx',
+      /* Group 3's first piece: signing in and joining (A2, A3). See the comment on
+         REBUILT_PAGES in rebuilt-pages.ts. */
+      'pages/auth/auth-kit.tsx',
+      'pages/auth/AuthPage.tsx',
+      'pages/auth/MagicVerifyPage.tsx',
+      'pages/join/JoinPage.tsx',
     ])
   })
 

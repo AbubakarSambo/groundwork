@@ -28,9 +28,14 @@ import { describe, it, expect } from 'vitest'
  * U.20 UPDATE (the invitation's rebuild, design-audit.md section 3): `/invite` is no longer one of
  * the three `Arrival` pages. It is the first screen rebuilt from `components/gw/ui`
  * (rebuilt-pages.ts), whose own `Page narrow` + `Mark` is now the prototype-accurate version of the
- * same idea `Arrival`'s `plain` mode approximated - a cream page, a small mark, no header band. The
- * other two routes are unaffected and still share `Arrival` exactly as before; only `/invite`
- * moved, and this file says so rather than silently dropping the route from its checks.
+ * same idea `Arrival`'s `plain` mode approximated - a cream page, a small mark, no header band.
+ *
+ * GROUP 3, PIECE 1 UPDATE (signing in and joining): `/join` and `/verify-email` are rebuilt the same
+ * way now, so all three of the routes this file once called "arrivals" draw `Page`/`Mark` rather
+ * than `Arrival`. `Arrival` itself is not removed - `JoinConfirmPage.tsx` (a later step of the join
+ * flow, outside this task) still renders inside it - so its own file and header still exist, and
+ * this file keeps proving the thing that mattered about each of the three: one consistent frame,
+ * never three different ideas of how much product surrounds a link from an email.
  */
 const P = (p: string) => readFileSync(join(__dirname, '../../pages', p), 'utf8')
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
@@ -41,28 +46,16 @@ const ARRIVALS = {
   '/verify-email': 'auth/MagicVerifyPage.tsx',
 }
 
-/** The two routes still built on the old `Arrival` shell. `/invite` is rebuilt (see above). */
-const STILL_ON_ARRIVAL = {
-  '/join': ARRIVALS['/join'],
-  '/verify-email': ARRIVALS['/verify-email'],
-}
-
 describe('every arrival uses the same shell', () => {
-  for (const [route, file] of Object.entries(STILL_ON_ARRIVAL)) {
-    it(`${route} renders inside Arrival`, () => {
+  for (const [route, file] of Object.entries(ARRIVALS)) {
+    it(`${route} renders inside the shared Page/Mark, now that it is rebuilt`, () => {
       const code = strip(P(file))
-      expect(code).toMatch(/import \{ Arrival \} from '@\/components\/gw\/Arrival'/)
-      expect(code).toMatch(/<Arrival/)
+      expect(code).not.toMatch(/from '@\/components\/gw\/Arrival'/)
+      expect(code).toMatch(/import \{[^}]*\bPage\b[^}]*\bMark\b[^}]*\} from '@\/components\/gw\/ui'/)
+      expect(code).toMatch(/<Page narrow>/)
+      expect(code).toMatch(/<Mark/)
     })
   }
-
-  it('/invite renders inside the shared Page/Mark instead, now that it is rebuilt', () => {
-    const code = strip(P(ARRIVALS['/invite']))
-    expect(code).not.toMatch(/from '@\/components\/gw\/Arrival'/)
-    expect(code).toMatch(/import \{[^}]*\bPage\b[^}]*\bMark\b[^}]*\} from '@\/components\/gw\/ui'/)
-    expect(code).toMatch(/<Page narrow>/)
-    expect(code).toMatch(/<Mark/)
-  })
 
   for (const [route, file] of Object.entries(ARRIVALS)) {
     it(`${route} no longer rolls its own full-height page`, () => {
@@ -74,10 +67,12 @@ describe('every arrival uses the same shell', () => {
     })
   }
 
-  it('and the shell is the thing that carries the header, for the two still on it', () => {
+  it('and Arrival itself still carries the header, for the step of the join flow still on it', () => {
     const shell = strip(readFileSync(join(__dirname, 'Arrival.tsx'), 'utf8'))
     expect(shell).toMatch(/className="gw-hdr"/)
     expect(shell).toMatch(/<GroundworkLogo \/>/)
+    expect(strip(readFileSync(join(__dirname, '../../pages/join/JoinConfirmPage.tsx'), 'utf8')))
+      .toMatch(/from '@\/components\/gw\/Arrival'/)
   })
 })
 

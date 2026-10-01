@@ -105,4 +105,20 @@ export const REBUILT_PAGES: string[] = [
   'pages/suites/TodosPage.tsx',
   'pages/suites/CustomersPage.tsx',
   'pages/suites/EquipmentPage.tsx',
+  /*
+   * GROUP 3's FIRST PIECE (signing in and joining, docs/prototype/screens/A2-accounts-and-signing-in
+   * and A3-organisations-and-joining): the sign-in family and the broadcast join landing. New shared
+   * parts this piece added: `PasswordField` (the "Show"/"Hide" box every password screen needs),
+   * `SplitPage`/`SplitPanelLine`/`SplitPanelList` (the sign-in screen's own two-column layout, the
+   * only A2 screen drawn that way), `Callout`'s `tone="warning"`, and `PageTitle`'s `subtitle`
+   * widened to take a sentence with a bold address in it, not only a plain string - see
+   * docs/the-parts-against-the-prototype.md. `auth-kit.tsx` keeps every other auth page's import
+   * (`AuthCard`, `AuthField`, `AuthError`, and the rest) unchanged, so `LinkExpired.tsx`,
+   * `EmailConfirmed.tsx`, `LinkSentPanel.tsx`, `GoogleFailedPage.tsx`, `SignOutPage.tsx` and
+   * `ChoosePasswordPage.tsx` draw the new parts too without being rewritten from nothing.
+   */
+  'pages/auth/auth-kit.tsx',
+  'pages/auth/AuthPage.tsx',
+  'pages/auth/MagicVerifyPage.tsx',
+  'pages/join/JoinPage.tsx',
 ]

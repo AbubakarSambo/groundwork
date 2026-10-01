@@ -79,6 +79,19 @@ const SCREENS: Record<string, Counterpart> = {
   'pages/invite/InvitePage.tsx': null, // needs an unauthenticated invite token; not opened by reader sign-in
   'pages/invite/InvitationExpired.tsx': null, // same
   'pages/join/WaitingForAnAdminPage.tsx': null, // same
+  /*
+   * GROUP 3, PIECE 1 (signing in and joining, A2/A3): all four are signed-OUT screens, and this
+   * test signs a reader in before opening anything - opening them here would mean signing out
+   * first, which no other entry in this table does, and `signIn` keeps a signed-in session across
+   * the whole run deliberately (its own comment). So the one-primary-button rule for these four is
+   * checked statically instead, by `primaryButtonCount` in
+   * components/gw/ui/the-rebuilt-pages-use-only-the-new-parts.spec.ts, which runs for every entry
+   * on REBUILT_PAGES including these.
+   */
+  'pages/auth/auth-kit.tsx': null, // a kit of parts, not a screen of its own
+  'pages/auth/AuthPage.tsx': null, // signed out; see above
+  'pages/auth/MagicVerifyPage.tsx': null, // signed out; see above
+  'pages/join/JoinPage.tsx': null, // signed out; see above
   'pages/grounds/OutOfTime.tsx': null, // needs a check-in that has actually run out of time
   'pages/org/OrgMembersPage.tsx': { productPath: '/org/members', reader: 'admin', hash: '#/settings/people', persona: 'admin' },
   'pages/org/WaitingToBeLetIn.tsx': null, // a panel of the people screen above, not its own prototype screen
