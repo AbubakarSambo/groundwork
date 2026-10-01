@@ -1,18 +1,22 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { leaveBoardApi, type LeaveWaiting } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Button } from '@/components/gw/kit'
+import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row } from '@/components/gw/ui'
 import { theDaysInFull, theDaysShort, whatToKnow } from './the-days-someone-is-off'
 
 /**
- * THE LEAVE BOARD (E2, #/suite/leave, U.17). The wording is copied from
+ * THE LEAVE BOARD (E2, #/suite/leave, group 2 piece 4). The wording is copied from
  * docs/prototype/screens/E-suites/suite-leave.txt.
  *
  * WHAT EACH READER IS GIVEN IS THE SERVER'S (GET /suites/leave/board): an admin reads everything, a
  * lead only their own team's, and only while the suite is on. Approve and Decline are offered only
  * on a request the server says this reader approves, and the server checks again.
+ *
+ * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (its own `crumbs` and `subtitle`), `Section` for
+ * "Waiting for approval" and "Who's off" (the latter's "The next two weeks" is `Section`'s own
+ * `note`), `RowList`/`Row` for both lists, `Button` for Approve/Decline, and `Note`/`Empty` for the
+ * loading, error and empty states. No new parts were needed.
  *
  * NOT DRAWN HERE, ON PURPOSE (docs/morning-report-ui.md, item 28):
  *   - "How people ask", with its example chat and "In their check-in, in chat, or on WhatsApp. Nobody
@@ -35,18 +39,20 @@ export function LeaveBoardPage() {
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
 
   return (
-    <div className="gw-you gw-suites">
-      <nav className="gw-people-crumb" aria-label="Breadcrumb"><Link to="/settings/suites">Suites</Link> / Leave requests</nav>
-      <h1 className="gw-t-title gw-suites-h1">Leave requests</h1>
-      <p className="gw-you-sub">People ask for time off in their check-in or chat. Groundwork checks their balance and who else is off, and sends it to the right approver.</p>
+    <Page>
+      <PageTitle
+        crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Leave requests' }]}
+        title="Leave requests"
+        subtitle="People ask for time off in their check-in or chat. Groundwork checks their balance and who else is off, and sends it to the right approver."
+      />
 
-      {isLoading && <p className="gw-t-body gw-you-quiet">Loading…</p>}
+      {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <p role="alert" className="gw-t-body">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</p>
+          <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</Note>
         ) : (
-          <div role="alert" className="gw-you-quiet">
-            <p className="gw-t-body">The board did not load.</p>
+          <div>
+            <Note tone="error">The board did not load.</Note>
             <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
           </div>
         )
@@ -54,35 +60,34 @@ export function LeaveBoardPage() {
 
       {data && (
         <>
-          <section className="gw-suites-group" aria-labelledby="leave-waiting">
-            <h2 id="leave-waiting" className="gw-t-h2">Waiting for approval</h2>
+          <Section heading="Waiting for approval">
             {data.waiting.length === 0
-              ? <p className="gw-t-body gw-you-quiet">Nothing is waiting for approval.</p>
-              : <ul className="gw-leave-list">{data.waiting.map(w => <ARequest key={w.id} w={w} />)}</ul>}
-          </section>
-
-          <section className="gw-suites-group" aria-labelledby="leave-off">
-            <div className="gw-suite-head">
-              <h2 id="leave-off" className="gw-t-h2">Who’s off</h2>
-              <span className="gw-you-quiet">The next two weeks</span>
-            </div>
-            {data.off.length === 0
-              ? <p className="gw-t-body gw-you-quiet">Nobody is off in the next two weeks.</p>
+              ? <Empty>Nothing is waiting for approval.</Empty>
               : (
-                <ul className="gw-leave-off">
+                <RowList label="Waiting for approval">
+                  {data.waiting.map(w => <ARequest key={w.id} w={w} />)}
+                </RowList>
+              )}
+          </Section>
+
+          <Section heading="Who’s off" note="The next two weeks">
+            {data.off.length === 0
+              ? <Empty>Nobody is off in the next two weeks.</Empty>
+              : (
+                <RowList label="Who’s off">
                   {data.off.map(o => (
-                    <li key={o.id}>
+                    <Row key={o.id} columns="minmax(0, 1fr) auto auto">
                       <b>{o.name}</b>
                       <span>{theDaysShort(o.startsOn, o.endsOn)}</span>
                       <span>Annual leave</span>
-                    </li>
+                    </Row>
                   ))}
-                </ul>
+                </RowList>
               )}
-          </section>
+          </Section>
         </>
       )}
-    </div>
+    </Page>
   )
 }
 
@@ -96,20 +101,20 @@ function ARequest({ w }: { w: LeaveWaiting }) {
   })
   const line = whatToKnow(w)
   return (
-    <li className="gw-leave-row">
+    <Row columns="minmax(0, 1fr) auto">
       <div>
         <b>{`${w.name}: ${theDaysInFull(w.startsOn, w.endsOn)}`}</b>
-        {line && <p>{line}</p>}
-        {problem && <p className="gw-auth-error" role="alert">{problem}</p>}
+        {line && <p className="gwui-panel-text">{line}</p>}
+        {problem && <Note tone="error">{problem}</Note>}
       </div>
       {w.mayDecide && (
-        <div className="gw-leave-acts">
+        <div className="gwui-edge-acts">
           <Button kind="secondary" size="small" onClick={() => decide.mutate('approve')} disabled={decide.isPending}
             aria-label={`Approve ${w.name}’s request`}>Approve</Button>
           <Button kind="quiet" size="small" onClick={() => decide.mutate('decline')} disabled={decide.isPending}
             aria-label={`Decline ${w.name}’s request`}>Decline</Button>
         </div>
       )}
-    </li>
+    </Row>
   )
 }

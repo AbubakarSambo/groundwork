@@ -1,16 +1,20 @@
-import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { onboardingBoardApi, type NewPerson } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Button, Tag } from '@/components/gw/kit'
+import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row } from '@/components/gw/ui'
 
 /**
- * THE ONBOARDING BOARD (E1, #/suite/onboard, U.17). The wording is copied from
+ * THE ONBOARDING BOARD (E1, #/suite/onboard, group 2 piece 4). The wording is copied from
  * docs/prototype/screens/E-suites/suite-onboard.txt.
  *
  * WHAT EACH READER IS GIVEN IS THE SERVER'S (GET /suites/onboard/board): an admin reads everybody
  * being set up, a lead only the new people in their own team, and only while the suite is on.
+ *
+ * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (its own `crumbs`, "Suites / Onboarding"),
+ * `Section` for each new person ("Faith Kerubo is getting set up"), `Panel` for their to-do list,
+ * `Tag` for each step's own state, `RowList`/`Row` for the steps, and `Note`/`Empty` for the
+ * loading, error and empty states. No new parts were needed.
  *
  * NOT DRAWN HERE, ON PURPOSE (docs/morning-report-ui.md, item 28):
  *   - "Something nobody has shown ... yet": it would be built from the new person's private
@@ -36,24 +40,23 @@ export function OnboardingBoardPage() {
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
 
   return (
-    <div className="gw-you gw-suites">
-      <nav className="gw-people-crumb" aria-label="Breadcrumb"><Link to="/settings/suites">Suites</Link> / Onboarding</nav>
-      <h1 className="gw-t-title gw-suites-h1">Onboarding</h1>
+    <Page>
+      <PageTitle crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Onboarding' }]} title="Onboarding" />
 
-      {isLoading && <p className="gw-t-body gw-you-quiet">Loading…</p>}
+      {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <p role="alert" className="gw-t-body">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</p>
+          <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</Note>
         ) : (
-          <div role="alert" className="gw-you-quiet">
-            <p className="gw-t-body">The board did not load.</p>
+          <div>
+            <Note tone="error">The board did not load.</Note>
             <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
           </div>
         )
       )}
-      {data && data.people.length === 0 && <p className="gw-t-body gw-you-quiet">Nobody is being set up right now.</p>}
+      {data && data.people.length === 0 && <Empty>Nobody is being set up right now.</Empty>}
       {data?.people.map(p => <ANewPerson key={p.id} p={p} />)}
-    </div>
+    </Page>
   )
 }
 
@@ -61,30 +64,26 @@ function ANewPerson({ p }: { p: NewPerson }) {
   const first = p.firstName
   const started = p.startedAt ? `${first} started on ${whenItWas(p.startedAt, 'dayAndMonthLong')}. ` : ''
   return (
-    <section className="gw-suites-group" aria-labelledby={`new-${p.id}`}>
-      <h2 id={`new-${p.id}`} className="gw-t-h2">{p.name} is getting set up</h2>
-      <p className="gw-you-sub">{`${started}This board is only about getting ${first} set up. It is never used to judge ${first}’s work.`}</p>
-      <div className="gw-you-card">
-        <div className="gw-suite-head">
-          <h3 className="gw-t-h3">{first}’s to-do list</h3>
-          <span className="gw-you-quiet">{p.done} of {p.of} done</span>
+    <Section heading={`${p.name} is getting set up`}>
+      <p className="gwui-panel-text-muted">{`${started}This board is only about getting ${first} set up. It is never used to judge ${first}’s work.`}</p>
+      <Panel>
+        <div className="gwui-suite-head">
+          <h3 className="gwui-panel-heading">{first}’s to-do list</h3>
+          <span className="gwui-ink-sub">{p.done} of {p.of} done</span>
         </div>
-        <ul className="gw-onboard-steps">
+        <RowList label={`${first}’s to-do list`}>
           {p.steps.map((s, i) => (
-            <li key={i}>
-              <div>
-                <span>{s.name}</span>
-                {s.description && <small>{s.description}</small>}
-              </div>
-              <div className="gw-onboard-tags">
-                {s.optional && <Tag tone="plain">Optional</Tag>}
-                {s.state === 'done' && <Tag tone="plain">Done</Tag>}
-                {s.state === 'not needed' && <Tag tone="plain">Not needed</Tag>}
-              </div>
-            </li>
+            <Row key={i} columns="minmax(0, 1fr) auto">
+              <span>{s.name}{s.description && <small className="gwui-ink-sub">{s.description}</small>}</span>
+              <span>
+                {s.optional && <Tag>Optional</Tag>}
+                {s.state === 'done' && <Tag>Done</Tag>}
+                {s.state === 'not needed' && <Tag>Not needed</Tag>}
+              </span>
+            </Row>
           ))}
-        </ul>
-      </div>
-    </section>
+        </RowList>
+      </Panel>
+    </Section>
   )
 }

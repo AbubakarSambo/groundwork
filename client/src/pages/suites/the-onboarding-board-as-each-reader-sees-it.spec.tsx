@@ -52,7 +52,9 @@ describe('Grace, an admin, reads the onboarding board', () => {
     expect(await screen.findByRole('heading', { level: 2, name: 'Faith Kerubo is getting set up' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 2, name: 'Otieno Ouma is getting set up' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'Onboarding' })).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: 'Breadcrumb' }).textContent).toBe('Suites / Onboarding')
+    /* "Where you are" is the shared PageTitle crumb's own aria-label (group 2, piece 4 rebuild),
+       in place of the page's prior "Breadcrumb". */
+    expect(screen.getByRole('navigation', { name: 'Where you are' }).textContent).toBe('Suites/Onboarding')
     expect(screen.getByRole('link', { name: 'Suites' })).toHaveAttribute('href', '/settings/suites')
   })
 
