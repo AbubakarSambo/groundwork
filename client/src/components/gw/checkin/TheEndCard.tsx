@@ -17,10 +17,17 @@ import type { TheEndCard as EngineEndCard } from '@/api/conversation'
  *
  * Numbered by what is drawn, so a card with two parts reads 1 and 2, not 2 and 3.
  *
- * The prototype's line "Your team will see what you said today, and a short summary of what moved."
- * is not shown: whether the team sees a person's words is the open question about the invitation's
- * promise (morning report, item 11, conflict A), and a sentence here must match what the server does.
+ * THE PROTOTYPE'S LINE, BUILT FROM THE CHECK-IN'S REAL SETTING (group 3's review, batch A fault 2).
+ * "Your team will see what you said today, and a short summary of what moved." sat out for months
+ * on the comment that it was "the open question about the invitation's promise" - but that question
+ * was settled 29 September (Conflict A, docs/morning-report-ui.md): the people in a check-in,
+ * including the lead, can see what you say in it, once the team's report is shared. `aTeamReportComes`
+ * (already on the `Ground` the chat page holds - nothing new from the server) says whether more than
+ * one party answers this check-in at all, which is exactly what decides whether there is a team to
+ * see anything. Where there is, the prototype's own line is shown; where this check-in has nobody
+ * else in it, the true sentence for that case is shown instead.
  *
+
  * "That’s right, finish" is the one press that finishes, and "Change something" goes back to the
  * conversation, where the person says what is wrong in their own words.
  *
@@ -33,6 +40,7 @@ export function TheEndCard({
   engine,
   leadName,
   nextOpens,
+  othersCanSeeWhatYouSay,
   finishing,
   whileFinishing,
   onFinish,
@@ -43,6 +51,12 @@ export function TheEndCard({
   leadName: string | null
   /** "Your next check-in opens tomorrow at 4pm.", when it is known. */
   nextOpens: string | null
+  /**
+   * Whether more than one party answers this check-in (`ground.aTeamReportComes`) - whether there
+   * is a team at all to see a shared report with your words in it. Undefined while the ground has
+   * not loaded yet, in which case neither sentence is shown rather than guessing.
+   */
+  othersCanSeeWhatYouSay?: boolean
   finishing: boolean
   /** What to show while finishing, which takes about half a minute. */
   whileFinishing?: React.ReactNode
@@ -94,6 +108,14 @@ export function TheEndCard({
           {next.map((l, i) => <li key={i} className="gwui-ci-endcard-body">{l}</li>)}
         </ul>
       </div>
+
+      {othersCanSeeWhatYouSay !== undefined && (
+        <p className="gwui-ci-endcard-body">
+          {othersCanSeeWhatYouSay
+            ? 'Your team will see what you said today, and a short summary of what moved.'
+            : 'Nobody else answers this check-in, so what you said today stays yours alone.'}
+        </p>
+      )}
 
       {finishing && whileFinishing}
       <div className="gwui-ci-endcard-actions">

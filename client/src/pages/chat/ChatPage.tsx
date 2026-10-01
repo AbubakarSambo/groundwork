@@ -1353,6 +1353,7 @@ export function ChatPage() {
               engine={endCard}
               leadName={whoElseAnswers(ground.data as any)}
               nextOpens={whenTheNextOneOpens(myStatus.data?.checkIns, checkInId)}
+              othersCanSeeWhatYouSay={(ground.data as any)?.aTeamReportComes}
               finishing={complete.isPending}
               /*
                 HALF A MINUTE OF "SAVING…" READS AS A HANG. W8-16. Completing runs two model calls
