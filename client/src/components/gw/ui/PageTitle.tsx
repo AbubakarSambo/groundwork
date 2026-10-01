@@ -21,12 +21,17 @@ import './gw-ui.css'
  */
 export type Crumb = { label: string; to?: string }
 
-export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, subtitleTone = 'muted', action }: {
+export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, subtitleTone = 'muted', subtitleRole, action, center }: {
   /** The line above the title, e.g. the organisation's name. */
   eyebrow?: string
   /** e.g. [{ label: 'People', to: '/org/members' }, { label: 'Miriam Wanjiku' }]. */
   crumbs?: Crumb[]
-  title: string
+  /**
+   * Left out entirely (group 3 drift list, piece 1) for the one status line shown alone while
+   * something loads - MagicVerifyPage's "Confirming your email…", JoinPage's "Loading…" - which has
+   * no heading at all, only the subtitle's own muted sentence.
+   */
+  title?: string
   /** Shows a 56px avatar to the left of the title when given. */
   avatarInitials?: string
   /**
@@ -37,10 +42,14 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, su
   subtitle?: React.ReactNode
   /** 'ink' for the prototype's darker line under "Almost in", "Out of time" and expired-link. */
   subtitleTone?: 'muted' | 'ink'
+  /** `'status'` so a screen reader announces the subtitle as it arrives, for a title-less loading line. */
+  subtitleRole?: 'status'
   action?: React.ReactNode
+  /** Centred, with no title and no avatar - the same title-less loading line above. */
+  center?: boolean
 }) {
   return (
-    <div>
+    <div className={center ? 'gwui-title-centre' : undefined}>
       {eyebrow && <p className="gwui-pt-eyebrow">{eyebrow}</p>}
       {crumbs && crumbs.length > 0 && (
         <nav className="gwui-pt-crumb" aria-label="Where you are">
@@ -56,8 +65,15 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, su
         <div className="gwui-pt-head">
           {avatarInitials && <Avatar initials={avatarInitials} size={56} />}
           <div className="gwui-pt-headtext">
-            <h1 className="gwui-pt-title">{title}</h1>
-            {subtitle && <p className={subtitleTone === 'ink' ? 'gwui-pt-sub gwui-pt-sub-ink' : 'gwui-pt-sub'}>{subtitle}</p>}
+            {title && <h1 className="gwui-pt-title">{title}</h1>}
+            {subtitle && (
+              <p
+                className={subtitleTone === 'ink' ? 'gwui-pt-sub gwui-pt-sub-ink' : 'gwui-pt-sub'}
+                role={subtitleRole}
+              >
+                {subtitle}
+              </p>
+            )}
           </div>
         </div>
         {action}

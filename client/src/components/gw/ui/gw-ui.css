@@ -95,6 +95,12 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 .gwui-pt-sub { font-size: 16px; line-height: 1.5; color: var(--gw-sub); margin-top: 6px; }
 /* "Almost in", "Out of time", "This link has expired" (prototype): the line under the title is ink, not muted. */
 .gwui-pt-sub-ink { color: var(--gw-text); }
+/* A title-less, centred PageTitle (group 3 drift list, piece 1): the one status line shown alone
+   while something loads, replacing a page's own one-off gwui-pt-sub paragraph with a centring inline
+   style. */
+.gwui-title-centre { text-align: center; }
+.gwui-title-centre .gwui-pt-row { justify-content: center; }
+.gwui-title-centre .gwui-pt-head { justify-content: center; width: 100%; }
 
 /* ── MARK (prototype: the three bars and "Groundwork", .brand) ──────────── */
 .gwui-mark {
