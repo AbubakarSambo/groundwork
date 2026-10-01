@@ -71,6 +71,10 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    the gap. Found live, U.20 seventh round: "Almost in" read with Steps touching the line above
    it.). A Stack's own gap must always win over whatever a child resets itself to. */
 .gwui-stack-0.gwui-stack-0 > * + * { margin-top: 0; }
+.gwui-stack-2.gwui-stack-2 > * + * { margin-top: 2px; }
+.gwui-stack-4.gwui-stack-4 > * + * { margin-top: 4px; }
+.gwui-stack-6.gwui-stack-6 > * + * { margin-top: 6px; }
+.gwui-stack-8.gwui-stack-8 > * + * { margin-top: 8px; }
 .gwui-stack-10.gwui-stack-10 > * + * { margin-top: 10px; }
 .gwui-stack-12.gwui-stack-12 > * + * { margin-top: 12px; }
 .gwui-stack-18.gwui-stack-18 > * + * { margin-top: 18px; }
@@ -124,6 +128,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 /* SUB-HEADING'S DARK TONE (group 3, piece 5): a faint label on a dark panel, replacing kit.tsx's
    `Sec title=... on="dark"` (same rgba(255,255,255,.45) the old part used). */
 .gwui-subheading-dark { color: rgba(255, 255, 255, .45); }
+.gwui-subheading-kicker { font-size: 13.5px; color: var(--gw-sub); letter-spacing: .1px; margin: 18px 0 7px; }
 
 /* ── PANEL TEXT (prototype: a fact's body, inside a panel - 14.5px, 21px line) ─────────── */
 .gwui-panel-text { font-size: 14.5px; line-height: 21px; color: var(--gw-text); margin: 0; }
@@ -547,6 +552,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-note-amber { color: var(--gw-amber-t); }
 .gwui-note-green { color: var(--gw-green-t); }
 .gwui-note-navy { color: var(--gw-navy); }
+.gwui-note-muted { color: var(--gw-muted); }
 /* A narrow column centred in a wider frame - the check-in's own conversation, inside the lead's
    and the participant's full-width header (group 3's drift-list review, part 2; replaces the
    gwui-ml-auto/gwui-mr-auto pair on GroundAdminPage.tsx and GroundParticipantPage.tsx). */

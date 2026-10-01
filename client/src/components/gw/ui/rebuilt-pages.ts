@@ -188,4 +188,10 @@ export const REBUILT_PAGES: string[] = [
    * `kit.tsx`'s `Card`/`Row`/`Sec` and six inline styles for size, colour and spacing.
    */
   'pages/board/CheckInLinks.tsx',
+  /*
+   * BOARD TASK, BATCH 3, PART 2: `where-each-person-is.tsx` rebuilt from `Note`/`Stack` in place of
+   * eleven one-off `gwui-fs-*`/`gwui-ink-*`/`gwui-mt-*` combinations on "the team today"'s per-person
+   * caption lines (the target sentence, the "ask"/"finding" line, "what keeps coming up").
+   */
+  'components/gw/where-each-person-is.tsx',
 ]

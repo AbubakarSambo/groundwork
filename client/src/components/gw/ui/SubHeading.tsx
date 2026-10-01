@@ -13,7 +13,15 @@ import './gw-ui.css'
  * `tone="dark"` (group 3, piece 5): the same label, faint white instead of ink, for the one place
  * it sits on a dark panel instead of a white one - a person's private report, previewed on the
  * lead's own roster after they have shared it. Replaces `kit.tsx`'s `Sec title=... on="dark"`.
+ *
+ * `tone="kicker"` (board task, batch 3): a smaller, quieter label over one block inside a wider
+ * read that is not itself a panel - "Settle these before deciding anything", "What people said
+ * they would do" on the lead's across-every-session read (`WhatTheRecordShows.tsx`). 13.5px, the
+ * prototype's own `.note` size, `--gw-sub` rather than `--gw-text`, 18px above and 7px below -
+ * values that component's own local `Head` already drew, named here instead of left as one-off
+ * `gwui-fs-13-5 gwui-ink-sub gwui-mt-18 gwui-mb-7` classes.
  */
-export function SubHeading({ tone, children }: { tone?: 'dark'; children: ReactNode }) {
-  return <h2 className={tone === 'dark' ? 'gwui-subheading gwui-subheading-dark' : 'gwui-subheading'}>{children}</h2>
+export function SubHeading({ tone, children }: { tone?: 'dark' | 'kicker'; children: ReactNode }) {
+  const cls = tone === 'dark' ? 'gwui-subheading gwui-subheading-dark' : tone === 'kicker' ? 'gwui-subheading gwui-subheading-kicker' : 'gwui-subheading'
+  return <h2 className={cls}>{children}</h2>
 }

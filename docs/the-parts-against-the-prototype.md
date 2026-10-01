@@ -425,3 +425,11 @@ where the rule lives:
 | --- | --- | --- | --- |
 | `.gwui-status-row` | font-size, colour, padding | the participant's own check-in header row carried a page-only `gwui-fs-13 gwui-ink-muted gwui-pt-10 gwui-pb-12` combination for its one muted sentence plus the badges beside it (a guest check-in's own organisation, how it ended) | added, one named class in place of four one-off ones |
 | `.gwui-note-navy`/`.gwui-note-green` reused as plain spans | colour | the same row's two badges (`gwui-ink-navy`, `gwui-ink-green`) used the same colours `Note`'s new tones already carry (see above); rather than keep the `gwui-ink-*` utility pair for these two spans, they use the already-documented `Note` tone classes directly | changed to reuse the existing part |
+
+## Board task, batch 3 (Hafsah, 1 October: "the board's one-off classes become shared parts")
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| `Stack` `gap={2}`/`gap={4}`/`gap={6}`/`gap={8}` (`.gwui-stack-2`, `.gwui-stack-4`, `.gwui-stack-6`, `.gwui-stack-8`) | spacing | the board's own tight runs inside one row or one panel each carried a one-off `gwui-mt-2`/`gwui-mt-4`/`gwui-mt-6`/`gwui-mt-8` on the element that followed (`where-each-person-is.tsx`'s target/says/ask lines, `TheSwitchboardsSections.tsx`'s sentence-and-caption rows, `PatternPanel.tsx`'s own paragraph run) | added, at the exact pixel values those classes already held |
+| `Note` `tone="muted"` (`.gwui-note-muted`) | colour | several board rows carried a one-off `gwui-fs-13-5 gwui-ink-muted` pair for a caption fainter than `Note`'s own default `--gw-sub` (a person's "ask"/"finding" line, a blocker's history, a record row's caption, a switchboard section's because/also-waiting line) | added, the same 13.5px line in `--gw-muted` in place of the utility pair |
+| `SubHeading` `tone="kicker"` (`.gwui-subheading-kicker`) | size, colour, spacing | `WhatTheRecordShows.tsx`'s own local `Head` component drew a 13.5px `--gw-sub` kicker, 18px above and 7px below, over each block of the lead's across-every-session read ("Settle these before deciding anything", "What people said they would do") | added, the same values as a named option on the existing heading part |

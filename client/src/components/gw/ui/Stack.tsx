@@ -18,8 +18,15 @@ import './gw-ui.css'
  * children, used here for one column of a two-column layout (`gwui-side`) rather than the whole
  * page, so the column's own blocks - "You are in.", the admin's first-run card, the greeting, "What
  * needs you" - stay 30px apart without the page's stacking rule reaching the OTHER column beside it.
+ *
+ * `gap={2}`/`gap={4}`/`gap={6}`/`gap={8}` (board task, batch 3): the board's own tight runs inside
+ * one row or one panel - a name and the line under it, a sentence and its muted caption, a kicker
+ * and the content under it - each already carried by a one-off `gwui-mt-2`/`gwui-mt-4`/`gwui-mt-6`/
+ * `gwui-mt-8` on the element that followed. Added at the exact pixel values those classes already
+ * held (`gw-ui.css`), not a new number, so a run of sibling blocks that shares one of these gaps can
+ * drop the per-element margin class for the grouping `Stack` already used everywhere else.
  */
-export type StackGap = 0 | 10 | 12 | 18 | 19 | 30
+export type StackGap = 0 | 2 | 4 | 6 | 8 | 10 | 12 | 18 | 19 | 30
 
 export function Stack({ gap, children }: { gap: StackGap; children: ReactNode }) {
   return <div className={`gwui-stack-${gap}`}>{children}</div>
