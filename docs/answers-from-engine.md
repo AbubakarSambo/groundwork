@@ -1264,3 +1264,13 @@ With both, the count on the combined code is 56. Without them it is 62. The othe
 ## 1 October: please send where Ask Groundwork was opened from (decision 65)
 
 In the live check of item 6, after the setup conversation the lead's next question anywhere ("How do we get a quote signed off?") was answered as part of setup ("Groundwork does not manage processes ..."). The engine takes the next message as the parked setup turn because the request carries no `openedFrom`. Please send `openedFrom` on every `/ask` call (`check_in_setup` only from inside a check-in's setup, and the page's own name elsewhere), so a question asked from anywhere else is answered as itself.
+
+
+## Request 107 (a): no working note reaches a board (2 October)
+
+Done (`7d7c98e6`, `39bdd374`). `stillUnanswered` no longer carries the engine's own working note. Each row is now `{ who, what, says, sinceRound, certain }`:
+- `what` is the plain question that was owed, for example "How are you making your number?", never the note.
+- `says` is one sentence for this reader, for example "In session 1, Rukia Mwangi was asked, "How are you making your number?" Rukia Mwangi has not answered it yet." To Rukia herself: "In session 1, you were asked, ... You have not answered it yet." Where nothing on record can confirm the answer: "... Nothing on record can confirm the answer yet."
+- Please draw `says` on its own, in place of "who — what" and the "open since session" note, so no dash joins two pieces.
+
+A test now serves the board as every reader, with a gap open for every owed line in every situation, and finds none of the working notes. The rest of request 107 and request 105 are next; I will write here as each is done.

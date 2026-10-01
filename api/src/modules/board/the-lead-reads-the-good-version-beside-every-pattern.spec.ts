@@ -1,3 +1,4 @@
+import { setPatternReachInForce as theReachForThisFile } from '../patterns/who-reads-a-pattern';
 import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
 import { BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES } from '../patterns/pattern-library';
 
@@ -225,5 +226,48 @@ describe('a role can say the good version better, from its own map', () => {
   it('with a low confidence, or no pairing, the pattern\'s own sentence stands', () => {
     expect(coachingForAPattern('K1', { fn: 'SALES', confidence: 0.2 }).coachTowards).toBe('Coach them towards speaking with named buyers directly, and not only sending decks and proposals.');
     expect(coachingForAPattern('D1', { fn: 'SALES', confidence: 0.9 }).coachTowards).toBe('Coach them towards saying something is finished only when the team who receives it has confirmed it works.');
+  });
+});
+
+/*
+ * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
+ * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
+ * puts that reach in force for the whole file. Its last block puts the person-only reach in force
+ * and reads the same surfaces again, so both settings are checked here.
+ */
+beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+afterAll(() => theReachForThisFile('PERSON_ONLY'));
+
+/*
+ * DECISION 74, ITEM 2: THE PERSON-ONLY REACH, THE DEFAULT. The coaching beside a pattern is written
+ * for the lead, so with the person-only reach nobody reads it: the lead and the setup admin read no
+ * pattern, and the person reads their own without the lead's coaching.
+ */
+describe.each(GROUNDS_TO_READ)('with the person-only reach, nobody reads the lead’s coaching beside a pattern (%s)', (_name, shape) => {
+  beforeAll(() => theReachForThisFile('PERSON_ONLY'));
+  afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+
+  it('the lead reads no pattern and no coaching, although both people answered', async () => {
+    const served = await everyPageAs(withTheSwitch(true), 'u-tunde', groundWith(shape), MORE_ROWS());
+    expect(served.board.patterns).toEqual([]);
+    expect(served.page.signals ?? []).toEqual([]);
+    expect(JSON.stringify(served)).not.toContain('Coach them towards');
+    expect(JSON.stringify(served)).not.toContain('One step they could take');
+  });
+
+  it('the admin who set the check-in up reads none either', async () => {
+    USERS['u-setup-admin'] = { role: 'ADMIN', organizationId: 'org-1' };
+    const served = await everyPageAs(withTheSwitch(true), 'u-setup-admin', { ...groundWith(shape), createdByUserId: 'u-setup-admin' }, MORE_ROWS());
+    expect(served.board.patterns).toEqual([]);
+    expect(JSON.stringify(served)).not.toContain('Coach them towards');
+  });
+
+  it('Femi reads his own, with the part it belongs in, and none of the coaching', async () => {
+    const served = await everyPageAs(withTheSwitch(true), 'u-femi', groundWith(shape), MORE_ROWS());
+    const own = served.board.patterns as any[];
+    expect(own.map((p) => p.id)).toEqual(['pd2']);
+    expect(own[0].about).toBe('what is said against what happened');
+    expect(own[0].coachTowards).toBeNull();
+    expect(own[0].whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
   });
 });

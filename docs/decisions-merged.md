@@ -157,3 +157,12 @@ These are settled. Do not change them. If one seems to block the work, stop and 
     2. A participant's "for next week" is their own open commitments from this week.
     3. The week's facts are kept in the existing weekly report column, without a migration, "as long as every earlier weekly report stays readable and a new one never overwrites an old one." Each week is its own row; building a new week never changes an earlier one; an earlier week is read by the date of its Monday (`GET /grounds/:id/report/week?week=2026-09-21`), and a week kept in the earlier form (only the sentences about each person) still reads.
     4. When the prototype's opening line comparing people is built later, it must never rank people against each other (decision 11): it may say what happened across the team, never who did best or worst.
+74. **The seven deploy risks** (decided 1 October, night, on `docs/deploy.md`).
+    1. **Backup:** stays a release question for whoever runs the hosting. A backup is taken before release.
+    2. **Patterns are never switched off.** If steadiness is not at least 8 in 10 by release, patterns reach only the person themselves, with their answer box, and not the lead, until they are. Built as a setting, and the report says which way it is set.
+    3. **Coaching is on when there is no row.** That is correct, and stays.
+    4. **`NODE_ENV`:** stays a release question.
+    5. **The word-for-word script** gets a safe way to run on a hosted database, only with an explicit confirmation given by whoever runs the release. It is never run on anything but this Mac by the engine work.
+    6. **A start never overwrites a prompt somebody activated by hand.** It only adds new versions. Tested.
+    7. **The first night:** no "time running out" email for anything that reached that point before release; only check-ins reaching it after release get one. The per-organisation model calls are spread out. Nightly jobs run once even if two copies of the API run. Tested.
+    Joining this branch with the live main line stays a release step, and `docs/ready-to-deploy.md` is brought in line with all of this.

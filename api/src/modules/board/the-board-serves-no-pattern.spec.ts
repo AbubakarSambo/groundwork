@@ -1,3 +1,4 @@
+import { setPatternReachInForce as theReachForThisFile } from '../patterns/who-reads-a-pattern';
 import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
 import { BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES } from '../patterns/pattern-library';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
@@ -241,5 +242,36 @@ describe('and the report serves the record over time the same way', () => {
       expect(served.toSettleFirst.filter((q: string) => q === PATTERN_QUESTION)).toEqual([]);
       expect(JSON.stringify(served)).not.toMatch(/Blame Shifting|Equity Without Contribution|not yet a pattern/);
     }
+  });
+});
+
+/*
+ * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
+ * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
+ * puts that reach in force for the whole file. Its last block puts the person-only reach in force
+ * and reads the same surfaces again, so both settings are checked here.
+ */
+beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+afterAll(() => theReachForThisFile('PERSON_ONLY'));
+
+/*
+ * DECISION 74, ITEM 2: THE PERSON-ONLY REACH, THE DEFAULT. Patterns stay switched on, and the same
+ * fixture shows it: the lead's board has no pattern at all, and Ngozi, whom pd1 is about, reads hers.
+ */
+describe('with the person-only reach, the lead’s board carries no pattern and Ngozi’s carries hers', () => {
+  beforeAll(() => theReachForThisFile('PERSON_ONLY'));
+  afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+
+  it('the lead’s board has no pattern, no heading and no internal name', async () => {
+    const board = await boardFor(real(), 'u-tunde', 'MEMBER', groundWith(GROUNDS[0][1]));
+    expect(board.patterns ?? []).toEqual([]);
+    expect(JSON.stringify(board)).not.toContain('Problems are mostly put down to things outside the team');
+    expect(whatOfAPatternIsIn(board).filter((f) => f.startsWith('the internal name') || f.startsWith('the code'))).toEqual([]);
+  });
+
+  it('Ngozi’s own board carries hers, in plain words', async () => {
+    const board = await boardFor(real(), 'u-ngozi', 'MEMBER', groundWith(GROUNDS[0][1]));
+    expect((board.patterns ?? []).map((p: any) => p.heading)).toContain('Problems are mostly put down to things outside the team');
+    expect((board.patterns ?? []).every((p: any) => p.yours)).toBe(true);
   });
 });

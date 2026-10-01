@@ -132,7 +132,9 @@ describe('a reply asked for again is read against the instruction it was asked a
   });
 
   it('every retry in the service goes to the model through it', () => {
-    const src = require('fs').readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8');
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
     expect(src).not.toMatch(/\.respond\(`\$\{fullSystem\}/);
     expect((src.match(/\.respond\(this\.keptForTheLeakCheck\(/g) ?? []).length).toBe(17);
   });

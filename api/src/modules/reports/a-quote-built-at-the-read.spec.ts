@@ -206,9 +206,13 @@ describe('every part built at the read goes through the quote rule, by the code 
 
   it('the board: the tiles, and every section it builds on open', () => {
     expect(board).toMatch(/out\.quickRead = \(out\.quickRead as any\[\]\)\.map\(\(t\) => \(\{ \.\.\.t, sub: q\(t\?\.sub\) \}\)\)/);
-    for (const k of ['howItIsGoing', 'divergence', 'eachPerson', 'stillUnanswered', 'contribution', 'coverage', 'hiddenContributors', 'decisions', 'managerAlignment']) {
+    for (const k of ['howItIsGoing', 'divergence', 'eachPerson', 'contribution', 'coverage', 'hiddenContributors', 'decisions', 'managerAlignment']) {
       expect(board).toContain(`'${k}'`);
     }
+    /* Request 107 (a): stillUnanswered now holds only the question Groundwork asked, in quotation
+       marks, and a name, never anybody's own words, so it is left out of the quote rule on purpose
+       (the rule would strip the marks from Groundwork's own question). */
+    expect(board).not.toMatch(/for \(const k of \[[^\]]*'stillUnanswered'/);
     expect(board).toMatch(/const quotable = await theRecordAQuoteMayComeFrom\(this\.prisma as any, groundId\)/);
   });
 });

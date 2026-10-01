@@ -3,6 +3,7 @@ import { PatternsService } from './patterns.service';
 import { PatternsCron } from './patterns.cron';
 import { PatternsListener } from './patterns.listener';
 import { PatternsController } from './patterns.controller';
+import { WhoAPatternReachesService } from './who-a-pattern-reaches.service';
 import { ConversationModule } from '../conversation';
 
 @Module({
@@ -18,7 +19,7 @@ import { ConversationModule } from '../conversation';
    * and git holds it if the feed idea comes back.
    */
   controllers: [PatternsController],
-  providers: [PatternsService, PatternsCron, PatternsListener],
+  providers: [PatternsService, PatternsCron, PatternsListener, WhoAPatternReachesService],
   exports: [PatternsService],
 })
 export class PatternsModule {}

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { onceAcrossCopies, theDay } from '../prisma/once-across-copies';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -17,6 +18,11 @@ export class CodeExpiryScheduler {
   // fire at a different real time in dev vs. production.
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, { timeZone: 'UTC' })
   async handleCodeExpiryReminders(): Promise<void> {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'code-expiry-reminders', theDay(), () => this.handleCodeExpiryRemindersHere());
+  }
+
+  private async handleCodeExpiryRemindersHere(): Promise<void> {
     this.logger.log('Running contributor code expiry reminder job');
 
     const REMINDER_DAYS = [30, 14, 7, 3, 1];

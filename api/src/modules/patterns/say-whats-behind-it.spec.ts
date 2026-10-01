@@ -1,3 +1,4 @@
+import { setPatternReachInForce as theReachForThisFile } from './who-reads-a-pattern';
 /**
  * "SAY WHAT'S BEHIND IT." The person a pattern is about answers it, and nobody else can.
  *
@@ -78,5 +79,41 @@ describe('the person a pattern is about says what is behind it', () => {
     const { svc } = serviceWith(true);
     await expect(svc.answerAsThePerson('pd2', 'u-femi', '   ')).rejects.toThrow('Write what is behind it in a sentence or two.');
     await expect(svc.answerAsThePerson('pd2', 'u-femi', 'x'.repeat(2001))).rejects.toHaveProperty('status', 400);
+  });
+});
+
+/*
+ * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
+ * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
+ * puts that reach in force for the whole file. Its last block puts the person-only reach in force
+ * and reads the same surfaces again, so both settings are checked here.
+ */
+beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+afterAll(() => theReachForThisFile('PERSON_ONLY'));
+
+/*
+ * DECISION 74, ITEM 2: THE PERSON-ONLY REACH, THE DEFAULT. The person keeps the answer box, and is
+ * told that only they see the pattern and their answer. Nobody else can answer it.
+ */
+describe('with the person-only reach, the person still answers, and is told only they see it', () => {
+  beforeAll(() => theReachForThisFile('PERSON_ONLY'));
+  afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
+
+  it('keeps their words beside it, and the sentence says nobody else reads it', async () => {
+    const { svc, update } = serviceWith(true);
+    const served = await svc.answerAsThePerson('pd2', 'u-femi', 'I built the deck and Ngozi did the pricing.');
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(served.theirWords).toBe('I built the deck and Ngozi did the pricing.');
+    expect(served.canAnswer).toBe(true);
+    expect(served.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    expect(served.whoSeesIt).not.toContain('Tunde');
+  });
+
+  it('a colleague, the lead or an admin still cannot answer it', async () => {
+    for (const userId of ['u-ngozi', 'u-tunde', 'u-admin']) {
+      const { svc, update } = serviceWith(true);
+      await expect(svc.answerAsThePerson('pd2', userId, 'Not mine to say.')).rejects.toHaveProperty('status', 404);
+      expect(update).not.toHaveBeenCalled();
+    }
   });
 });
