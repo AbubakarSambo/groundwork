@@ -934,3 +934,34 @@ Leave dates said in the setup conversation or to Ask Groundwork ("I need next Th
 Through the setup route it arrives as `proposal: { gap: 'leave_request', say }` and the yes is `confirm` with `{ said, leave: true }`. Through Ask Groundwork it is lane `ask_for_leave`.
 
 Code: `api/src/modules/knowledge/what-the-organisation-keeps.ts` (the rules and the words), `organisation-memory.ts` (the table), `api/src/modules/suites/leave-said-in-chat.ts`, the hooks in `grounds.service.ts` (`contextChat`, `applyContextProposal`, `declineContextOffer`), `assistant.service.ts`, `conversation.service.ts` and `company.service.ts`. Tests: `organisation-memory.spec.ts`, `organisation-memory-through-the-setup-chat.spec.ts`, `organisation-memory-and-leave-through-ask-groundwork.spec.ts`, `kept-organisation-memory-reaches-the-prompt.spec.ts`, `leave-said-in-chat.spec.ts`, and the company page spec for each reader.
+
+## Hours and spending said in chat (weeks 21 and 22, requests 21, 22 and 26)
+
+Who approves, for leave, hours and spending alike: the person's line manager in the staff directory when that manager is a lead or an admin here, otherwise an admin. The person who runs a check-in does not approve just because they run it, and nobody approves their own. It is one function (`whoApprovesFor` in `api/src/modules/suites/who-approves.ts`), and the leave board, the time sheets board and the spending board all follow it. This is recorded as decided for Hafsah to confirm. The suite's own answer to "Who approves?" no longer changes who decides for leave and hours, so that question can leave the suite's setup page when you next touch it; spending still has its limit and the named person above it.
+
+Both go through Ask Groundwork only (lanes `log_hours` and `ask_to_spend`), as a text block and a proposal block with Yes and No, exactly like leave. Neither is in a check-in's record, a report, a pattern, or the person's Ask Groundwork history.
+
+### Hours (lane `log_hours`)
+
+- Said: "I did 6 hours on Atlas today". Read by rules: the hours, a project from the admin's list, and a day that was said (today, yesterday, a weekday, a date). A day, a project or an amount that is not certain is asked, never guessed.
+- Said back: "Shall I log 6 hours on Atlas for Thursday 1 October and send it to Wairimu to approve?" (several projects: "Shall I log 3 hours on Naivas Ngong Road and 1 hour on Lakeside for Wednesday 30 September and send it to Wairimu to approve?"). With no line manager it says "an admin".
+- After the yes, through `TimeSheetsService.record`: "I have logged 6 hours on Atlas for Thursday 1 October and sent it to Wairimu to approve. It is not approved until they decide, and you will see it under your hours." The hours then wait for the approver on the time sheets board.
+- After the no: "I have not sent it. Nothing was kept."
+- Suite off: "Time sheets are not switched on in your organisation, so I have not sent or kept these hours. An admin can switch them on under Suites." Nothing is parked or kept.
+- Asked again: "I do not have Zebra on the list of clients and projects. Which one did you mean? The ones I have are Atlas, Naivas Ngong Road and Lakeside." / "Which day was that? Tell me the day, for example today, yesterday or a date, and I will ask again." / "Monday 5 October has not come yet. Tell me the day the hours were on, and I will ask again." / "I could not tell how many hours that was. Tell me the number of hours and the project, for example 6 hours on Atlas, and I will ask again."
+
+### Spending (lane `ask_to_spend`)
+
+- Said: "I spent 12,000 on fuel for the Kisumu trip" or "Can I spend KES 18,000 on fuel for the Kisumu deliveries?".
+- Fits: "You asked to spend KES 12,000 on fuel for the Kisumu trip. Operations has KES 38,000 left for October, so that fits. Shall I send it to Wairimu to approve?"
+- Over the budget: "You asked to spend KES 12,000 on fuel for the Kisumu trip. That is over the Operations budget left for October, which is KES 8,000. Shall I still send it to Wairimu to approve?" (It names the person's team, not a category: the budget in the product is per team.)
+- Over the rule: "... This is over KES 20,000, so Grace must approve it. Shall I still send it to Grace to approve?"
+- After the yes, through `SpendingService.ask`: "I have sent your request to spend KES 12,000 on fuel for the Kisumu trip to Wairimu. It is not approved until they decide, and nothing is spent until then."
+- After the no: "I have not sent it. Nothing was kept." Suite off: "Spending requests are not switched on in your organisation, so I have not sent or kept this. An admin can switch them on under Suites."
+- Asked again: more than one amount, a currency that is not the organisation's ("Your organisation counts spending in KES, and you wrote USD. Tell me the amount in KES and I will ask again."), or no reason ("What is the KES 12,000 for? Tell me in a few words and I will ask again."). A person is told only what their own team has left, never anybody else's spending.
+
+### Still open for the screens
+
+The approver is not yet told on Today. Today is built in `grounds/what-needs-you*`, which this work did not change, so it needs one new kind of item there ("Aisha has asked for leave", "Brian has sent hours to approve", "Kamau has asked to spend KES 18,000"), read from the leave, time sheets and spending boards for the person who may decide. Until then the approver finds them on the three suite boards, which already show Approve and Decline only to the right person.
+
+Code: `api/src/modules/suites/hours-said-in-chat.ts`, `spend-said-in-chat.ts`, `who-approves.ts`, and the lanes in `api/src/modules/assistant/assistant.service.ts`. Tests: `suites/hours-and-spending-said-in-chat.spec.ts` and `assistant/hours-and-spending-through-ask-groundwork.spec.ts`.
