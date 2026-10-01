@@ -7086,4 +7086,13 @@ Not yet compared with the prototype's pictures: the conversation itself, while i
 
 CreateGroundPage's situation picker, coach and billing steps are rebuilt, with every situation's wording unchanged, and the whole screen suite passes (3,657 tests). The page then turned out to be unreachable too: its address sends people on to the entry chat. So the rest of it is not being rebuilt, and whether to compare it and remove it is under "Decided for Hafsah to confirm". The entry chat, the live way to start a check-in, is now being rebuilt in four parts.
 
+The entry chat's first part is done: the door, the frame, the header, the steps, the messages and the box you type in.
+- The door you see first, signed out, now matches the prototype's start picture closely: the heading, the box, the five example pills and "Continue".
+- The chat's bubbles now use the same shared part as the check-in conversation.
+- "Getting started · session is about 10 minutes" became a sentence.
+- Nothing was typed or sent.
+- The whole screen suite passes (3,681 tests).
+
+One difference for group 3's review: signed out, the product shows the sidebar with a "Not saved yet" card, where the prototype shows no sidebar. The other three parts are with a fresh builder.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
