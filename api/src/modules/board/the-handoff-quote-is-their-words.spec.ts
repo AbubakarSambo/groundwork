@@ -27,33 +27,45 @@ describe('the board quotes only exact words, as each reader reads it', () => {
     }
   });
 
-  it.each(readers)('%s: a tidied version loses its quotation marks and is not called exact words', async (_n, who) => {
+  it.each(readers)('%s: a tidied version is never shown as words without marks; the sentences it came from are quoted', async (_n, who) => {
     const b = await boardAs(record('I have chased the committee four times in writing.', 'on Friday'), who[0], who[1]);
     for (const text of [because(b), checks(b)]) {
-      expect(text).not.toContain('"');
-      expect(text).toMatch(/though these are not (their|your) exact words\. I have chased the committee four times in writing\./);
-      expect(text).toContain('The time given for it was on Friday.');
+      expect(text).toContain('said, "I\'ve chased the committee four times in writing".');
+      expect(text).not.toMatch(/exact words|I have chased/);
+      expect(text).toContain('About when it is due,');
+      expect(text).toContain('"It should be by Friday".');
     }
   });
 
-  it.each(readers)('%s: two sayings joined into one lose their quotation marks', async (_n, who) => {
+  it.each(readers)('%s: two sayings joined into one are quoted as the two sentences they were drawn from', async (_n, who) => {
     const b = await boardAs(record("I have chased the committee four times in writing. I escalated it to the Head of Credit, but he did not reply.", null), who[0], who[1]);
     for (const text of [because(b), checks(b)]) {
+      expect(text).toContain('said, "I escalated to the head of credit, Mr. Adebayo, on the 10th of May." and "I\'ve chased the committee four times in writing".');
+      expect(text).not.toContain('did not reply');
+    }
+  });
+
+  it.each(readers)('%s: when no sentence of theirs is the source, only that it was said, never their words or the first person', async (_n, who) => {
+    const b = await boardAs(record('We will reconvene after the audit.', 'next quarter'), who[0], who[1]);
+    for (const text of [because(b), checks(b)]) {
+      expect(text).toMatch(/(Rukia Mwangi has|You have) said what has been tried\. /);
       expect(text).not.toContain('"');
-      expect(text).toContain('Head of Credit, but he did not reply.');
+      expect(text).not.toContain('reconvene');
+      expect(text).toContain('A time has been given for it.');
+      expect(text).not.toContain('next quarter');
     }
   });
 
   it('the quote is the person\'s own passage, with their own capitals and marks', async () => {
-    const b = await boardAs(record('i escalated to the head of credit, mr. adebayo, on the 10th of may', null), ...AMINA);
+    const b = await boardAs(record('i escalated to the head of credit, mr. adebayo, on the 10th of may', null), AMINA[0], AMINA[1]);
     expect(because(b)).toContain('said, "I escalated to the head of credit, Mr. Adebayo, on the 10th of May".');
   });
 
   it('says it to the person themself as "You", and never quotes words typed in somebody else\'s check-in', async () => {
     const rec = record("I've chased the committee four times in writing", null);
     rec.turns = rec.turns!.map((t) => ({ ...t, checkInId: 'c1-p-baraka' }));
-    const b = await boardAs(rec, ...RUKIA);
-    expect(because(b)).toContain('You have said what has been tried, though these are not your exact words.');
+    const b = await boardAs(rec, RUKIA[0], RUKIA[1]);
+    expect(because(b)).toContain('You have said what has been tried.');
     expect(because(b)).not.toContain('"');
   });
 });

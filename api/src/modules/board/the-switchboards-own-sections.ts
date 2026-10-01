@@ -76,9 +76,9 @@ export interface AHandoff {
    * or null. Set when the board is built from the record (the-handoff-words-the-person-typed). Only this
    * may be put inside quotation marks; a tidied or joined `triedSaid` never is.
    */
-  triedSaidTheirWords?: string | null;
+  triedSaidTheirWords?: string[] | null;
   /** The same for `dueSaid`. */
-  dueSaidTheirWords?: string | null;
+  dueSaidTheirWords?: string[] | null;
 }
 
 export interface ASession {
@@ -113,27 +113,33 @@ const listed = (ns: string[]) => (ns.length <= 1 ? ns.join('') : `${ns.slice(0, 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const isAre = (who: string) => (who === 'You' ? 'are' : 'is');
 const hasHave = (who: string) => (who === 'You' ? 'have' : 'has');
-const theirOrYour = (who: string) => (who === 'You' ? 'your' : 'their');
-const endedOnce = (t: string) => { const x = t.trim(); return /[.!?]$/.test(x) ? x : `${x}.`; };
+
+/** Each of their sentences in quotation marks, as they typed them, joined as a sentence reads. */
+const theirSentencesQuoted = (them: string[]): string => {
+  const q = them.map((t) => `"${t}"`);
+  const list = q.length <= 1 ? q.join('') : `${q.slice(0, -1).join(', ')} and ${q[q.length - 1]}`;
+  return `${list}${/[.!?]$/.test(them[them.length - 1]) ? '' : '.'}`;
+};
 
 /**
- * WHAT WAS TRIED, as one or two sentences. Inside quotation marks only where the words are the person's
- * own, found character for character in what they typed in that check-in. Where the stored text is a
- * tidied or joined version, it is said plainly, with no quotation marks and no claim of exact words.
+ * WHAT WAS TRIED. Inside quotation marks only where the words are the person's own: the stored text if
+ * found in what they typed in that check-in, otherwise the sentences of theirs it was drawn from. Where
+ * no sentence of theirs is its source, only that they have said it. Never their words without marks.
  */
 export function whatWasTriedSaid(d: AHandoff, who: string): string | null {
-  const t = d.triedSaid?.trim();
-  if (!t) return null;
-  if (d.triedSaidTheirWords) return `About what has been tried, ${midSentence(who)} said, "${d.triedSaidTheirWords}"${/[.!?]$/.test(d.triedSaidTheirWords) ? '' : '.'}`;
-  return `${who} ${hasHave(who)} said what has been tried, though these are not ${theirOrYour(who)} exact words. ${endedOnce(t)}`;
+  if (!d.triedSaid?.trim()) return null;
+  const them = d.triedSaidTheirWords;
+  if (them?.length) return `About what has been tried, ${midSentence(who)} said, ${theirSentencesQuoted(them)}`;
+  return `${who} ${hasHave(who)} said what has been tried.`;
 }
 
-/** WHEN IT IS DUE, quoted only where it is the person's own words, as above. */
-export function theTimeGivenSaid(d: AHandoff): string | null {
-  const t = d.dueSaid?.trim();
-  if (!t) return null;
-  if (d.dueSaidTheirWords) return `The time given for it was "${d.dueSaidTheirWords}".`;
-  return `The time given for it was ${t.replace(/[.!?]+$/, '')}.`;
+/** WHEN IT IS DUE, by the same rule. */
+export function theTimeGivenSaid(d: AHandoff, who: string): string | null {
+  if (!d.dueSaid?.trim()) return null;
+  const them = d.dueSaidTheirWords;
+  if (them?.length === 1 && them[0].replace(/[.!?]+$/, '').toLowerCase() === d.dueSaid.trim().replace(/[.!?]+$/, '').toLowerCase()) return `The time given for it was "${them[0].replace(/[.!?]+$/, '')}".`;
+  if (them?.length) return `About when it is due, ${midSentence(who)} said, ${theirSentencesQuoted(them)}`;
+  return 'A time has been given for it.';
 }
 
 const midSentence = (who: string) => (who === 'You' ? 'you' : who);
@@ -253,7 +259,7 @@ export function theRisks(
     const facts: string[] = [];
     if (since) facts.push(`It was first said on ${saidAsDate(since)}.`);
     facts.push(whatWasTriedSaid(d, who) ?? 'Nobody has said what has been tried.');
-    facts.push(theTimeGivenSaid(d) ?? 'No time has been given for it.');
+    facts.push(theTimeGivenSaid(d, who) ?? 'No time has been given for it.');
     out.push({ id: `handoff-${d.id}`, says, because: facts.join(' ') });
   }
 
@@ -451,7 +457,7 @@ export function theBlockerCheck(handoffs: AHandoff[], r: WhoIsReading): ABlocker
       checks: [
         named ? (on === 'you' ? 'You hold it.' : `${on!.charAt(0).toUpperCase()}${on!.slice(1)} holds it.`) : 'Nobody has been named as holding it.',
         whatWasTriedSaid(d, who) ?? 'Nobody has said what has been tried.',
-        theTimeGivenSaid(d) ?? 'No time has been given for it.',
+        theTimeGivenSaid(d, who) ?? 'No time has been given for it.',
       ],
     });
   }
