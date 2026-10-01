@@ -7,6 +7,27 @@ import { Prisma } from '@prisma/client';
 import { A_CUSTOMER, A_REAL_CHECK_IN, A_REAL_SESSION, aRealUsageEvent, aMean, inRange, session2RateOfThoseDue, sinceFor } from './what-the-platform-has-actually-done';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
+/** What the start writes in `activated_by` when it activates a version itself (decision 74, item 6). */
+export const SEEDED_ON_START = 'seeded on start';
+/** What `activated_by` says when a version was activated by hand and nobody's id was given. */
+export const ACTIVATED_BY_HAND = 'by hand';
+
+/**
+ * WHETHER THE ACTIVE VERSION IS THE SEEDING'S OWN, SO A START MAY REPLACE IT (decision 74, item 6).
+ *
+ *   - `activated_by` is SEEDED_ON_START: the start activated it.
+ *   - `activated_by` is anything else: somebody activated it by hand. Never replaced.
+ *   - `activated_by` is empty: activated before this rule, when nothing wrote the column. It counts as
+ *     the seeding's own only when the seeding made it: its summary is "Seeded on deploy", or it is
+ *     version 1 with no summary, which is how prisma/seed.ts writes a key's first version. Anything
+ *     else, such as a version made through /prompts with a summary of its own, is kept.
+ */
+export function theSeedingActivatedIt(v: { activatedBy?: string | null; summary?: string | null; version?: number | null }): boolean {
+  if (v.activatedBy) return v.activatedBy === SEEDED_ON_START;
+  if (v.summary === 'Seeded on deploy') return true;
+  return v.version === 1 && !v.summary;
+}
+
 /**
  * The moat. Every prompt is versioned; every change is versioned against
  * outcome data. The active version of a key is what the engine loads.
@@ -26,13 +47,20 @@ export class PromptsService implements OnModuleInit {
   ) {}
 
   /**
-   * Seed-on-deploy (B7): ensure every seeded prompt key has an active version.
-   * Idempotent - skips when the active content already matches; otherwise
-   * activates the matching version or creates and activates a new one (history
-   * preserved). Runs on every boot, so a deploy that changes a seed prompt
-   * (e.g. report_synthesis) takes effect without manual SQL.
+   * Seed-on-deploy (B7): ensure every seeded prompt key has an active version, so a deploy that
+   * changes a seed prompt (e.g. report_synthesis) takes effect without manual SQL. History is kept.
+   *
+   * A START NEVER OVERWRITES A PROMPT SOMEBODY ACTIVATED BY HAND (decision 74, item 6). For each key:
+   *   - When the file's words are new, a new version is added ("Seeded on deploy"), always.
+   *   - It is made active only when the active version is the seeding's own (see
+   *     `theSeedingActivatedIt`), or when the key has no active version at all.
+   *   - When somebody activated the active version by hand, it stays active. The new words wait as
+   *     an inactive version, and the start says so in its log.
+   * Which is which is `activated_by`: the seeding writes SEEDED_ON_START there, and activating by
+   * hand through /prompts writes the admin's user id.
    */
   async onModuleInit() {
+    let kept = 0;
     for (const seed of SEED_PROMPTS) {
       const active = await this.prisma.promptVersion.findFirst({ where: { key: seed.key, isActive: true } });
       if (active && active.content === seed.content) continue;
@@ -41,15 +69,18 @@ export class PromptsService implements OnModuleInit {
         where: { key: seed.key, content: seed.content },
         orderBy: { version: 'desc' },
       });
-      if (sameContent) {
-        await this.activate(sameContent.id);
+      const theWords = sameContent ?? (await this.createVersion(seed.key, seed.content, 'Seeded on deploy'));
+
+      if (active && !theSeedingActivatedIt(active)) {
+        kept += 1;
+        this.logger.warn(
+          `The prompt "${seed.key}" was activated by hand (version ${active.version}), so it stays active. The words in the code are kept as version ${theWords.version}, not active.`,
+        );
         continue;
       }
-
-      const created = await this.createVersion(seed.key, seed.content, 'Seeded on deploy');
-      await this.activate(created.id);
+      await this.activate(theWords.id, SEEDED_ON_START);
     }
-    this.logger.log(`Prompt seed ensured for ${SEED_PROMPTS.length} key(s).`);
+    this.logger.log(`Prompt seed ensured for ${SEED_PROMPTS.length} key(s). ${kept} activated by hand stayed as they were.`);
   }
 
   async getActive(key: string) {
@@ -379,14 +410,18 @@ export class PromptsService implements OnModuleInit {
     };
   }
 
-  /** Activate a version (deactivates other versions of the same key). */
-  async activate(id: string) {
+  /**
+   * Activate a version (deactivates other versions of the same key). `activatedBy` is who did it: the
+   * admin's user id when it is done by hand through /prompts, or SEEDED_ON_START when the start did
+   * it. A start never replaces a version activated by hand (see onModuleInit).
+   */
+  async activate(id: string, activatedBy: string = ACTIVATED_BY_HAND) {
     const target = await this.prisma.promptVersion.findUnique({ where: { id } });
     if (!target) throw new NotFoundException('Prompt version not found');
 
     await this.prisma.$transaction([
       this.prisma.promptVersion.updateMany({ where: { key: target.key }, data: { isActive: false } }),
-      this.prisma.promptVersion.update({ where: { id }, data: { isActive: true, activatedAt: new Date() } }),
+      this.prisma.promptVersion.update({ where: { id }, data: { isActive: true, activatedAt: new Date(), activatedBy } }),
     ]);
     return this.prisma.promptVersion.findUnique({ where: { id } });
   }
