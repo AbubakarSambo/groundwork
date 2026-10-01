@@ -1,4 +1,4 @@
-import { Sec } from '@/components/gw/kit'
+import { SubHeading } from '@/components/gw/ui'
 
 /**
  * ONE SOLO REPORT, RENDERED ONE WAY. Stage 5, second pass.
@@ -47,7 +47,7 @@ export function SoloReportBody({ report, dense, on = 'dark' }: {
         const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())
         return (
           <div key={key} style={{ marginBottom: dense ? 10 : 12 }}>
-            <Sec title={label} on={on} />
+            {on === 'dark' ? <SubHeading tone="dark">{label}</SubHeading> : <SubHeading>{label}</SubHeading>}
             {Array.isArray(val) ? (
               <ul style={{ margin: 0, paddingLeft: indent, color: on === 'light' ? 'var(--gw-text)' : undefined }}>
                 {(val as string[]).map((v, i) => (

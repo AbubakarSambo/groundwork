@@ -1551,7 +1551,10 @@ export function GroundAdminPage() {
         `Page`'s own frame allows (1150px, see the note above where `Page` replaced this page's old,
         narrower hand-rolled wrapper). So only this one tab gets that width; the others are unchanged.
       */}
-      <div className="gw-bd" style={{ paddingTop: 12, maxWidth: tab === 'settings' ? 1150 : 600, margin: tab === 'settings' ? '0' : '0 auto', width: '100%' }}>
+      <div
+        className={`gw-bd gwui-pt-12${tab === 'settings' ? '' : ' gwui-ml-auto gwui-mr-auto'}`}
+        style={{ maxWidth: tab === 'settings' ? 1150 : 600, width: '100%' }}
+      >
 
         {/* OVERVIEW */}
         {/*
@@ -1827,6 +1830,7 @@ export function GroundAdminPage() {
                             aria-label={`${name}'s corrected email address`}
                           />
                           <Button
+                            kind="secondary"
                             size="small"
                             disabled={fixEmail.isPending || !looksLikeAnAddress(fixingEmailValue)}
                             onClick={() => fixEmail.mutate({ participantId: p.id, email: fixingEmailValue })}
