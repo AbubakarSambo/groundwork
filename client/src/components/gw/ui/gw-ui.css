@@ -213,6 +213,11 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    previewed on the lead's own roster after they have shared it (`GroundAdminPage.tsx`'s check-ins
    tab). Pass as an extra className alongside `Panel`, which forwards one. */
 .gwui-panel-dark { background: var(--gw-dark); border-color: var(--gw-dark); color: #fff; }
+/* "INFERRED", A SMALL PROVENANCE MARK NEXT TO A WORKED-OUT LINE (WhatToProbeThemOn.tsx, group 3
+   drift list, piece 1): a quiet badge, not a Tag - a Tag is a short fact about a thing, and this is
+   a footnote on where a sentence came from. No prototype class for it; kept at the 13px floor
+   rather than the one-off 11px it replaces. */
+.gwui-inferred-mark { margin-left: 6px; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--gw-border); font-size: 13px; color: var(--gw-sub); white-space: nowrap; }
 /* THE PRIVATE HALF OF A SESSION'S REPORT (SessionReportPage.tsx, group 3 drift list, piece 1): a
    Panel, inset and tinted, so a reader's own report does not read as the same card as the shared
    report below it - a deliberate distinction this page already drew (own-report.txt has no prototype
