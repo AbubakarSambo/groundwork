@@ -174,7 +174,8 @@ describe('the latest summary and finding, for each reader of a released report',
   it('a participant on a check-in where people see each other reads the summary', async () => {
     const row = await listAs(PART, 'MEMBER', { ...released, peersVisibleToEachOther: true });
     expect(row.peersVisibleEffective).toBe(true);
-    expect(row.latestSummary).toBe('Omar has closed no loans. Miriam has closed two.');
+    /* Changed 1 October: Miriam is the reader, so her own name is "you" (the review, section 2). */
+    expect(row.latestSummary).toBe('Omar has closed no loans. You have closed two.');
     expect(row.latestFinding).toBe('Omar is behind on the loans.');
   });
   it('an admin who runs the organisation reads both on a private team check-in', async () => {

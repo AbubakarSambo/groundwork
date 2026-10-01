@@ -47,6 +47,7 @@ import { buildCoverage, buildContribution } from '../board/reads';
 import { roleMapFor } from '../board/role-maps';
 import { BoardFamily, familyFor } from '../board/board-families';
 import { peersAreNamedOn } from './peers-are-named';
+import { YOUR_OWN_ACCOUNT_IS_NOT_HERE } from './a-sentence-from-the-readers-side';
 
 /**
  * The catalogue by code, so both coaching surfaces read the same plain words.
@@ -4508,7 +4509,9 @@ happened, and what is in the way.`;
           who: p.who,
           isLead: p.isLead,
           role: p.role,
-          finding: p.finding,
+          /* A name in it is a label too, so the lead named in somebody's finding is not read as a
+             stranger and then written about in the third person to the lead (the 1 October review). */
+          finding: p.finding ? theirWords(p.finding) : p.finding,
           /*
            * AND THE SAME EXCLUSION THE SYNTHESIS CORPUS HAS, WHICH THIS PATH NEVER GOT.
            *
@@ -4531,7 +4534,10 @@ happened, and what is in the way.`;
             .map((x) => ({ name: x.heading, observation: x.whatHappened as string, seenInSessions: x.sessions })),
           openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => theirWords(String(c.text))),
         })),
-        room!.differences,
+        room!.differences.map((d) => ({
+          topic: theirWords(d.topic),
+          positions: d.positions.map((x) => ({ who: x.who, view: theirWords(x.view) })),
+        })),
         sessions,
         namedByMoreThanOne(shared),
       );
@@ -5138,8 +5144,20 @@ happened, and what is in the way.`;
      * a side assigned to each position before names go in, and `engagement` gets a name carried
      * beside the label rather than into it.
      */
+    const named = walkTextOnly(report);
+    /*
+     * A STEP THAT ONLY ASKED THE READER TO ASK THEMSELVES IS NOT A STEP (the 1 October review). Once
+     * their own name is "you", withNames writes it as what is missing ("Your own account of ... is
+     * not in this check-in."), which belongs under what this cannot tell them, not under what to do.
+     */
+    if (named?.theJudgement && Array.isArray(named.theJudgement.whatToDo)) {
+      named.theJudgement = {
+        ...named.theJudgement,
+        whatToDo: named.theJudgement.whatToDo.filter((m: any) => !(m && typeof m.move === 'string' && YOUR_OWN_ACCOUNT_IS_NOT_HERE.test(m.move))),
+      };
+    }
     return {
-      ...walkTextOnly(report),
+      ...named,
       sharedPicture: t(report.sharedPicture),
       centralQuestion: t(report.centralQuestion),
       agreements: walk(report.agreements),

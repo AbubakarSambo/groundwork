@@ -281,7 +281,8 @@ const reportAs = async (userId: string, role: string, withMarks: boolean) => {
 describe('the team report, as each reader is served it', () => {
   it.each(READERS)('%s reads a mark beside each line, with the lines unchanged', async (_w, userId, role) => {
     const r = await reportAs(userId, role, true);
-    expect(r.sharedPicture).toContain('Aisha has a quote for Green Mart.');
+    /* Changed 1 October: Aisha reads her own name as "you" (the review, section 2). */
+    expect(r.sharedPicture).toContain(userId === 'u-aisha' ? 'You have a quote for Green Mart.' : 'Aisha has a quote for Green Mart.');
     expect(r.sharedPictureLines?.map((l: any) => l.markSays)).toEqual(['Proven', 'From memory only']);
     expect(r.agreementMarks?.[0]).toMatchObject({ mark: 'said', markSays: 'Only someone’s word' });
     /* The differences are served to the lead and to an admin, and to nobody else (as before). */
@@ -303,7 +304,8 @@ describe('the team report, as each reader is served it', () => {
   });
   it.each(READERS)('%s: a report stored before the marks reads as it always did', async (_w, userId, role) => {
     const r = await reportAs(userId, role, false);
-    expect(r.sharedPicture).toContain('Aisha has a quote for Green Mart.');
+    /* Changed 1 October: Aisha reads her own name as "you" (the review, section 2). */
+    expect(r.sharedPicture).toContain(userId === 'u-aisha' ? 'You have a quote for Green Mart.' : 'Aisha has a quote for Green Mart.');
     expect(r.sharedPictureLines).toBeUndefined();
     expect(r.agreementMarks).toBeUndefined();
     if (r.divergences) {

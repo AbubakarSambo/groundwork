@@ -153,3 +153,52 @@ export function fromTheReadersSide(text: string, names: Iterable<string>): strin
   if (!text) return text;
   return fullNameOnce(theReaderIsNotThey(youComeFirst(text)), names);
 }
+
+/**
+ * NOBODY IS TOLD TO ASK THEMSELVES (the 1 October review).
+ *
+ * Amina, who runs the check-in, read in her own judgement: "Ask Amina for her account of her role in
+ * the meetings." Once her name is "you" that is "Ask you for your account...", an instruction to
+ * ask herself. What it means is that her own account is not on the record, so that is what she reads:
+ *
+ *   "Ask you for your account of your role in the meetings."
+ *     -> "Your own account of your role in the meetings is not in this check-in."
+ *   "Ask you and Tobi Adewale to account for how the role was first defined."
+ *     -> "Ask Tobi Adewale to account for how the role was first defined."
+ *
+ * A step in "what to do" that only asked the reader is dropped where the judgement is served, by
+ * `YOUR_OWN_ACCOUNT_IS_NOT_HERE`, because it is not something to do.
+ */
+export const YOUR_OWN_ACCOUNT_IS_NOT_HERE = /^\s*Your own account of .+ is not in this check-in\.\s*$/;
+const TO_ASK = '(?:Ask|Check with|Confirm with|Speak with|Speak to|Talk with|Talk to|Meet with|Follow up with)';
+
+export function noInstructionToAskYourself(text: string, agree: (s: string) => string = (s) => s): string {
+  if (!text || !/\byou\b/i.test(text)) return text;
+  let out = text.replace(new RegExp(`\\b(${TO_ASK}) you and `, 'g'), (_m, verb: string) => `${verb} `);
+  const pieces = out.split(/(?<=[.!?])(\s+)/);
+  out = pieces.map((piece) => {
+    if (!new RegExp(`^\\s*${TO_ASK} you\\b`).test(piece)) return piece;
+    const lead = piece.match(/^\s*/)?.[0] ?? '';
+    const account = piece.match(new RegExp(`^\\s*${TO_ASK} you (?:for|about) (?:your|an|a|their|her|his) (?:own )?account of (.+?)[.!?]?\\s*$`));
+    if (account) {
+      const about = account[1]
+        .replace(/\b(?:they|she|he)\b/g, 'you')
+        .replace(/\b(?:their|her|his)\b/g, 'your');
+      return `${lead}${agree(`Your own account of ${about} is not in this check-in.`)}`;
+    }
+    return `${lead}Your own account of this is not in this check-in.`;
+  }).join('');
+  return out;
+}
+
+/**
+ * "her own" AND "his own" IN A SENTENCE ABOUT THE READER ALONE ARE THE READER'S. "Amina was not part
+ * of this check-in, so her own account of the meetings is missing" reached Amina as "You were not part
+ * of this check-in, so her own account...". Run where the reader's name has just become their label,
+ * so "her own" becomes "<label>'s own", which the next step serves as "your own". Only where the
+ * sentence names nobody else.
+ */
+export function theirOwnIsTheReaders(sentence: string, readersLabel: string, others: Iterable<string>): string {
+  for (const n of others) if (n && n.length > 1 && new RegExp(`(?<![\\p{L}])${escapeRe(n)}(?![\\p{L}])`, 'iu').test(sentence)) return sentence;
+  return sentence.replace(/\b(?:her|his|their) own\b/gi, `${readersLabel}'s own`);
+}
