@@ -41,7 +41,10 @@ describe('the browser that signs up with a password', () => {
     at('/auth?mode=signup', <AuthPage />, '/auth')
     fireEvent.change(await screen.findByLabelText('Your name'), { target: { value: 'Ama' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ama@gmail.com' } })
-    fireEvent.click(screen.getByLabelText('With a password'))
+    /* Group 3, piece 1: the sign-up choice is the shared `Choices` part now (role="radiogroup",
+       each option its own role="radio" button named by its own text), not a native radio with a
+       wrapping <label> - so it is found by role and name, not by label. */
+    fireEvent.click(screen.getByRole('radio', { name: 'With a password' }))
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'harbour7lamp' } })
     fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'harbour7lamp' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }))

@@ -38,7 +38,10 @@ function renderAt(path: string) {
 /** The words a person reads, top to bottom, with the hidden anti-bot field left out. */
 function readable(container: HTMLElement) {
   const copy = container.cloneNode(true) as HTMLElement
-  copy.querySelectorAll('[aria-hidden="true"], .gw-sr-only').forEach(n => n.remove())
+  /* Group 3, piece 1: the rebuilt screen-reader-only text uses the shared .gwui-sr-only class
+     (gw-ui.css), not the old .gw-sr-only - strip both, since neither belongs in what a sighted
+     reader reads. */
+  copy.querySelectorAll('[aria-hidden="true"], .gw-sr-only, .gwui-sr-only').forEach(n => n.remove())
   return (copy.textContent ?? '').replace(/\s+/g, ' ').trim()
 }
 
@@ -234,9 +237,12 @@ describe('signing up with a password, if the person prefers (Hafsah, 26 Septembe
   it('the link is the default; choosing a password shows the two boxes and the prototype\'s rules', async () => {
     const { container } = renderAt('/auth?mode=signup')
     await screen.findByRole('heading', { name: 'Create your account' })
-    expect((screen.getByLabelText('With a link we email you') as HTMLInputElement).checked).toBe(true)
+    /* Group 3, piece 1: the choice is the shared `Choices` part now (role="radiogroup", each
+       option its own role="radio" button named by its own text), not a native radio with a
+       wrapping <label> - so it is found and read by role and name, not by label. */
+    expect(screen.getByRole('radio', { name: 'With a link we email you' }).getAttribute('aria-checked')).toBe('true')
     expect(screen.queryByLabelText('Type it again')).toBeNull()
-    fireEvent.click(screen.getByLabelText('With a password'))
+    fireEvent.click(screen.getByRole('radio', { name: 'With a password' }))
     expect(readable(container)).toContain(['Password', 'Show', 'Type it again', 'Show', 'At least 8 characters', 'A number or a symbol', 'Not your email address', 'Both passwords match', 'Create account'].join(''))
   })
 
@@ -247,7 +253,7 @@ describe('signing up with a password, if the person prefers (Hafsah, 26 Septembe
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'wairimu@baridi.test' } })
     /* The suggestion arrives from the server now (U.3). */
     await waitFor(() => expect((screen.getByLabelText('Your organisation (optional)') as HTMLInputElement).value).toBe('Baridi'))
-    fireEvent.click(screen.getByLabelText('With a password'))
+    fireEvent.click(screen.getByRole('radio', { name: 'With a password' }))
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'harbour7lamp' } })
     fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'harbour7lamp' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
@@ -260,7 +266,7 @@ describe('signing up with a password, if the person prefers (Hafsah, 26 Septembe
   it('a password that is the email address typed above is caught before anything is sent', async () => {
     renderAt('/auth?mode=signup')
     fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'wairimu@baridi.test' } })
-    fireEvent.click(screen.getByLabelText('With a password'))
+    fireEvent.click(screen.getByRole('radio', { name: 'With a password' }))
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wairimu@baridi.test' } })
     fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'wairimu@baridi.test' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
