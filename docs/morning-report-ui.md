@@ -325,6 +325,13 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
 
+**1 October, night: the order, and the boards.** After batch C's check-in pages, the board for all eleven kinds of work comes next, before the Context and resources tab. That tab waits until the engine says Ask Groundwork's context work is ready and the old context chat can be switched off. For the boards, the order is:
+1. Draw the new fields: both parts of "What keeps coming up" with the lead's coaching, who said each record, someone an admin did not let in, and all 22 switchboard sections.
+2. Picture all eleven as the lead and a participant at both widths, against their prototype examples.
+3. Review and fix.
+
+Patterns and coaching are protected: every piece stays. Each of the eleven is marked done in the report only when its pictures match the prototype after the engine's latest merge.
+
 **1 October, who may rewrite a check-in's brief.** A check-in's brief follows the same rule as every other setup change. Only the lead can rewrite it, unless the lead has left the organisation; then an admin can, and people are told who did it. "Rewrite" is shown only to whoever is allowed under that rule. The screen now does this: "Rewrite" and "Write the brief" show only when the server says the reader may change setup, and until the server says so, only to the lead. The server's side is request 104.
 
 **1 October, the moved report sections (from the engine's answer to request 99).**
