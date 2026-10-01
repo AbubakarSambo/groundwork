@@ -2596,6 +2596,20 @@ export class BoardService {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
     if (!existing || existing.groundId !== groundId) throw new NotFoundException('Objective not found');
+    /*
+     * ACCEPTING A NUMBER READ OFF A CLOSED ROUND PUTS IT WHERE THAT ROUND CLOSED (review of 1 October
+     * 2026). The listener writes a number it lands into that round's snapshot, so the Movement tile and
+     * Since the last round read the same movement. A number it only offered, and the lead accepts later,
+     * is the same fact about the same round, so it goes into that round's snapshot too. Only a snapshot
+     * that exists is changed: a round still open has none, and its live count already stands in.
+     */
+    const suggestedAt = (existing as any).suggestedAtSession as number | null | undefined;
+    if (dto.count !== undefined && suggestedAt != null && (existing as any).suggestedCount != null && dto.count === (existing as any).suggestedCount) {
+      await (this.prisma as any).groundObjectiveSnapshot?.updateMany?.({
+        where: { groundId, objectiveId, sessionNumber: suggestedAt },
+        data: { count: dto.count },
+      })?.catch?.(() => undefined);
+    }
     return this.prisma.groundObjective.update({
       where: { id: objectiveId },
       data: {

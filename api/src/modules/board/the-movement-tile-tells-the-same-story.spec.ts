@@ -49,8 +49,23 @@ function prismaFor(w: World, role: string) {
     ground: model({ findUnique: jest.fn(async () => structuredClone(ground)) }),
     user: model({ findUnique: jest.fn(async () => ({ role, organizationId: 'org-1' })) }),
     checkIn: model({ findMany: jest.fn(async (args: any) => structuredClone(CHECK_INS).filter((c: any) => args?.where?.sessionNumber == null || c.sessionNumber === args.where.sessionNumber)) }),
-    groundObjective: model({ findMany: jest.fn(async () => structuredClone(w.objectives)) }),
-    groundObjectiveSnapshot: model({ findMany: jest.fn(async (args: any) => structuredClone(w.snapshots[args?.where?.sessionNumber] ?? [])) }),
+    groundObjective: model({
+      findMany: jest.fn(async () => structuredClone(w.objectives)),
+      findUnique: jest.fn(async (args: any) => structuredClone(w.objectives.find((o) => o.id === args?.where?.id) ?? null)),
+      update: jest.fn(async (args: any) => {
+        const o = w.objectives.find((x) => x.id === args?.where?.id);
+        Object.assign(o, args.data);
+        return structuredClone(o);
+      }),
+    }),
+    groundObjectiveSnapshot: model({
+      findMany: jest.fn(async (args: any) => structuredClone(w.snapshots[args?.where?.sessionNumber] ?? [])),
+      updateMany: jest.fn(async (args: any) => {
+        const rows = (w.snapshots[args.where.sessionNumber] ?? []).filter((r) => r.objectiveId === args.where.objectiveId);
+        for (const r of rows) r.count = args.data.count;
+        return { count: rows.length };
+      }),
+    }),
   } as any, {
     get(target: any, prop: string) {
       if (!(prop in target) && typeof prop === 'string' && !prop.startsWith('$')) target[prop] = model();
@@ -70,6 +85,13 @@ async function readAs(w: World, userId: string, role = 'MEMBER'): Promise<{ move
   const report = await (reports as ReportsService).get('g-sales', userId, 'org-1') as any;
   const movement = (board.quickRead ?? []).find((t: any) => t.label === 'Movement');
   return { movement: { value: movement?.value, sub: movement?.sub }, sinceLast: [report.sinceLast?.says, report.sinceLast?.also].filter(Boolean).join(' ') };
+}
+
+async function bisiAccepts(w: World, objectiveId: string, count: number): Promise<void> {
+  const prisma = prismaFor(w, 'MEMBER');
+  const reports = Object.create(ReportsService.prototype) as any;
+  await new BoardService(prisma, { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, reports)
+    .updateObjective('g-sales', objectiveId, 'u-bisi', { count });
 }
 
 const DISBURSED = (count: number) => objective('o-team', 'N120m disbursed', 120000000, count, null, 0);
@@ -120,5 +142,26 @@ describe('2. the tile and Since the last round tell one story (re-d, sales, sess
     const r = await readAs(still, 'u-bisi');
     expect(r.movement).toEqual({ value: 'None', sub: 'No target moved this session.' });
     expect(r.sinceLast).not.toMatch(/went from/);
+  });
+});
+
+describe('3. a number the lead accepts later goes where its round closed, so the page still tells one story', () => {
+  /* Round 2 closed at 0; Bisi's "N31 million" was only offered, read off round 2, and she accepts it after. */
+  const fresh = (): World => ({
+    objectives: [{ ...DISBURSED(0), suggestedCount: 31000000, suggestedSaid: 'The total amount disbursed for the team this quarter is N31 million.', suggestedAtSession: 2 }],
+    snapshots: { 1: [{ objectiveId: 'o-team', count: 0 }], 2: [{ objectiveId: 'o-team', count: 0 }] },
+  });
+  it.each([['Bisi, who runs it', 'u-bisi', 'MEMBER'], ['Ngozi, in it', 'u-ngozi', 'MEMBER'], ['an admin outside it', 'u-grace', 'ADMIN']])('%s reads the same movement on the tile and in the sentence', async (_who, userId, role) => {
+    const w = fresh();
+    await bisiAccepts(w, 'o-team', 31000000);
+    expect(w.snapshots[2]).toEqual([{ objectiveId: 'o-team', count: 31000000 }]);
+    const r = await readAs(w, userId, role);
+    expect(r.movement).toEqual({ value: '+31 million', sub: 'Targets moved this session.' });
+    expect(r.sinceLast).toBe("The team is aiming for 120 million naira disbursed. The team's total went from 0 to 31 million naira.");
+  });
+  it('a number the lead types that was not the one offered leaves the closed round as it was', async () => {
+    const w = fresh();
+    await bisiAccepts(w, 'o-team', 29000000);
+    expect(w.snapshots[2]).toEqual([{ objectiveId: 'o-team', count: 0 }]);
   });
 });
