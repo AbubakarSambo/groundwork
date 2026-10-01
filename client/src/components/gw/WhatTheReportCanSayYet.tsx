@@ -209,6 +209,18 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
             <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.25 }}>
               {r.short.charAt(0).toUpperCase() + r.short.slice(1)}
             </div>
+            {/*
+              GROUP 3'S REVIEW, BATCH A FAULT 6: "HOVER ONE TO SEE WHAT IT IS WAITING FOR" ASKED FOR
+              AN INTERACTION A PHONE DOES NOT HAVE. The reason a dashed bar cannot say yet now reads
+              on the page itself, under its own label, for everyone - not only somebody with a mouse.
+              `title` stays too, so a reader with a pointer still sees it on hover, but the words no
+              longer depend on it.
+            */}
+            {!r.can && r.because && (
+              <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.25 }}>
+                {r.because}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -222,7 +234,7 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
         say yet, not a thing it failed at.
       */}
       <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 8, lineHeight: 1.5 }}>
-        Dashed ones it cannot say yet. Hover one to see what it is waiting for.
+        Dashed ones it cannot say yet. What each one is waiting for is written under it.
       </div>
     </div>
   )

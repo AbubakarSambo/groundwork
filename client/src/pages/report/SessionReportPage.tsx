@@ -499,9 +499,13 @@ export default function SessionReportPage() {
                 ) : (
                   <>
                     <div className="gwui-fs-13 gwui-ink-sub gwui-mb-10" style={{ lineHeight: 1.6 }}>
-                      Correcting it is a short check-in of its own. It asks you what it got wrong. Nothing
-                      is overwritten; the change is shown alongside the original, and it closes a short
-                      while after the shared report goes out.
+                      {/*
+                        GROUP 3'S REVIEW, BATCH A FAULT 6: "NOTHING IS OVERWRITTEN; THE CHANGE IS
+                        SHOWN ALONGSIDE THE ORIGINAL" JOINED TWO SENTENCES WITH A SEMICOLON.
+                      */}
+                      Correcting it is a short check-in of its own. It asks you what it got wrong.
+                      Nothing is overwritten. The change is shown alongside the original, and it
+                      closes a short while after the shared report goes out.
                     </div>
                     <Button kind="secondary" onClick={() => correct.mutate()} disabled={correct.isPending || !data.groundId || !data.sessionNumber}>
                       <span role="status">{correct.isPending ? 'Starting...' : 'Correct it'}</span>
@@ -518,15 +522,17 @@ export default function SessionReportPage() {
           )}
 
           {/*
-            "THIS RECORD IS YOURS. IT IS PORTABLE AND PERMANENT" - offered wherever that is true,
-            which is once the session is finished, not only when a stored report happens to exist
-            (the branch above). A session run while signed in has no stored `data.report` but is
-            just as much a finished session whose record is yours to take away.
+            "THIS RECORD IS YOURS" - offered wherever that is true, which is once the session is
+            finished, not only when a stored report happens to exist (the branch above). A session
+            run while signed in has no stored `data.report` but is just as much a finished session
+            whose record is yours to take away.
+            GROUP 3'S REVIEW, BATCH A FAULT 6: "IT IS PORTABLE AND PERMANENT" IS WORK JARGON. Said
+            plainly instead - you can keep your own copy, and it stays here for you either way.
           */}
           {data?.finishedAt && (
             <div className="gwui-mt-10">
               <div className="gwui-fs-13 gwui-ink-sub gwui-mb-6" style={{ lineHeight: 1.55 }}>
-                This record is yours. It is portable and permanent.
+                This record is yours. You can keep your own copy, and it will always be here for you.
               </div>
               <button
                 type="button"

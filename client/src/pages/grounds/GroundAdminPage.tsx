@@ -2230,7 +2230,9 @@ export function GroundAdminPage() {
               <div className="gwui-mt-20">
                 {confirmClosing ? (
                   <>
-                    <Callout tone="warning" title="Begin the closing session?">
+                    {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "SESSION" IS INTERNAL JARGON HERE; THE
+                        PRODUCT CALLS THE THING A PERSON ANSWERS A "CHECK-IN" EVERYWHERE ELSE. */}
+                    <Callout tone="warning" title="Begin the last check-in?">
                       Everyone's next check-in becomes their final one. It is the same conversation,
                       marked as closing. The final report reads the whole record, then you and the
                       others agree the end state.
@@ -2238,7 +2240,7 @@ export function GroundAdminPage() {
                     <div className="gwui-mt-10">
                       <div className="gwui-button-row">
                         <Button kind="secondary" redText onClick={() => closingSession.mutate()} disabled={closingSession.isPending}>
-                          Begin closing session
+                          Begin the last check-in
                         </Button>
                         <Button kind="quiet" onClick={() => setConfirmClosing(false)}>Cancel</Button>
                       </div>
@@ -2246,7 +2248,7 @@ export function GroundAdminPage() {
                   </>
                 ) : (
                   <Button kind="secondary" redText wide onClick={() => setConfirmClosing(true)}>
-                    Begin the closing session
+                    Begin the last check-in
                   </Button>
                 )}
               </div>

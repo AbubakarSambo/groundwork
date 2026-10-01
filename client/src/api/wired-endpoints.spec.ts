@@ -75,7 +75,12 @@ describe('the record the report page promises is portable', () => {
 
   it('the page that makes the promise offers it', () => {
     expect(SESSION_REPORT_PAGE).toMatch(/conversationApi\.download/)
-    expect(SESSION_REPORT_PAGE).toMatch(/portable and permanent/)
+    /*
+     * WORDING UPDATED (group 3's review, request batch A, fault 6): "portable and permanent" is
+     * work jargon. The page now says the same thing plainly - "This record is yours. You can keep
+     * your own copy, and it will always be here for you."
+     */
+    expect(SESSION_REPORT_PAGE).toMatch(/This record is yours\. You can keep your own copy/)
   })
 
   it('offers it only for sessions that finished', () => {

@@ -38,7 +38,8 @@ export function InferenceReviewPanel({ groundId, inferences }: Props) {
   if (active.length === 0) return null
 
   return (
-    <Folded summary="Inferences we made" note={active.length === 1 ? 'There is one for you to check.' : `There are ${active.length} for you to check.`}>
+    // GROUP 3'S REVIEW, BATCH A FAULT 6: "INFERENCES" IS JARGON. Said plainly instead.
+    <Folded summary="What we worked out from what you said" note={active.length === 1 ? 'There is one for you to check.' : `There are ${active.length} for you to check.`}>
       <p style={{ fontSize: 13, color: 'var(--gw-sub)', margin: '0 0 12px', lineHeight: 1.6 }}>
         These claims are not direct quotes from your session. They were inferred from what you said. If anything is not right, you can correct it through a short follow-up session.
       </p>
