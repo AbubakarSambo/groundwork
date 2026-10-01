@@ -4,7 +4,7 @@ import { groundsApi } from '@/api/grounds'
 import { documentsApi } from '@/api/documents'
 import { toast } from 'sonner'
 import { personLabel, peopleLabels, firstNameOrLabel, atTheStart } from '@/lib/utils'
-import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices } from '@/components/gw/ui'
+import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices, SubHeading } from '@/components/gw/ui'
 import { scrollToId } from '@/lib/scroll-to'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import { EachPerson } from '@/components/gw/EachPerson'
@@ -450,7 +450,7 @@ export function ContextPage({
             <Section heading="What this check-in is for" />
             {whatEveryoneReads && (
               <Panel>
-                <p data-gw-brief className="gwui-panel-text">{'“'}{whatEveryoneReads}{'”'}</p>
+                <p data-gw-brief className="gwui-panel-text gwui-pre-line">{'“'}{whatEveryoneReads}{'”'}</p>
                 {/*
                   WHOSE WORDS, SAID TO WHOEVER IS READING. The prototype's sentence for the lead; the
                   lead's name for everybody else, never "the lead" to the lead's own face (item D on
@@ -474,7 +474,7 @@ export function ContextPage({
                 {isTheLead && herSetupWords && !changedBy && (
                   <details data-gw-brief-fold className="gwui-mt-8">
                     <summary className="gwui-inline-fold-summary gwui-fs-13 gwui-ink-navy">What you wrote</summary>
-                    <p className="gwui-panel-text-muted gwui-mt-6">{herSetupWords}</p>
+                    <p className="gwui-panel-text-muted gwui-pre-line gwui-mt-6">{herSetupWords}</p>
                   </details>
                 )}
                 {/* The stored brief, where what everyone reads is Groundwork's short read of it, and
@@ -482,7 +482,7 @@ export function ContextPage({
                 {isLead && theBrief && !shownIsTheBrief && !theBriefIsSetups && (
                   <details data-gw-brief-fold className="gwui-mt-8">
                     <summary className="gwui-inline-fold-summary gwui-fs-13 gwui-ink-navy">{theBriefFoldTitle}</summary>
-                    <p className="gwui-panel-text-muted gwui-mt-6">{theBrief}</p>
+                    <p className="gwui-panel-text-muted gwui-pre-line gwui-mt-6">{theBrief}</p>
                   </details>
                 )}
               </Panel>
@@ -769,7 +769,7 @@ export function ContextPage({
                 bulk she keeps naming - and the reader has already made the choice by their second
                 upload. */}
             {contextEnabled && docs.length === 1 && (
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+              <Callout>
                 {/*
                   THE WORDS HERE ARE THE WORDS ON THE CONTROL, which they were not: this sentence
                   explained "Open" and the button has always said "Everyone", so the one term the
@@ -778,7 +778,7 @@ export function ContextPage({
                 */}
                 Everything you add starts private to you. If you choose <b>Everyone</b>, everyone in this check-in can read it. If you choose <b>Only you</b>, nobody else can open it.
                 {isTheLead && <> If you choose <b>Whoever runs this check-in</b>, the person running it can read it, so it stays readable if someone else takes the check-in over from you.</>}
-              </div>
+              </Callout>
             )}
             {/*
               THE DOCUMENTS AS CARDS, WITH "ADD A DOCUMENT" AS THE LAST CARD (U.7, the prototype's
@@ -798,7 +798,7 @@ export function ContextPage({
               />
             )}
             {!documentsAreNotOpenToYou && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 12, maxWidth: 720 }}>
+            <div className="gwui-doc-grid">
             {/*
               GROUPED BY WHO READS THEM, which is the only decision anybody makes about a file.
               
@@ -811,10 +811,11 @@ export function ContextPage({
               ...docs.filter((d: any) => d.visibility === 'OPEN'),
               ...docs.filter((d: any) => d.visibility !== 'OPEN'),
             ].filter((d: any) => d.id !== reviewing?.id).map((doc: any) => (
-              <div key={doc.id} data-gw-document={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10, minWidth: 0 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>
-                    {doc.name}
+              <Panel key={doc.id}>
+                <div data-gw-document={doc.id} className="gwui-doc-card">
+                <div>
+                  <p className="gwui-fs-13">
+                    <strong>{doc.name}</strong>
                     {/*
                       A PHOTO READS AS A PHOTO. Her words: "they should see docs/photos/things to
                       upload". A thumbnail is not possible today and saying so is better than
@@ -823,9 +824,9 @@ export function ContextPage({
                       thumbnail waits until a file is stored as a file.
                     */}
                     {/^image\//.test((doc as any).mimeType ?? '') && (
-                      <span style={{ marginLeft: 7, fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)' }}>photo</span>
+                      <> <Tag tone="action">photo</Tag></>
                     )}
-                  </div>
+                  </p>
                   {/*
                     "WHAT WE READ FROM IT" AND "USED TO CHECK", THE COMPANY-LEVEL RESOURCES ROW,
                     ONE LEVEL DOWN (company-context.txt, "Strategy v2.pdf / Everyone / What we read
@@ -839,9 +840,9 @@ export function ContextPage({
                     else who can read it.
                   */}
                   {doc.usedFor && (
-                    <div style={{ marginTop: 5 }}>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gw-sub)' }}>Used to check</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{doc.usedFor}</div>
+                    <div className="gwui-mt-5">
+                      <SubHeading>Used to check</SubHeading>
+                      <p className="gwui-panel-text-muted">{doc.usedFor}</p>
                     </div>
                   )}
                   {/*
@@ -858,9 +859,9 @@ export function ContextPage({
                       : (doc.theContextWeHave ? doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '').trim() : null)
                     if (!whatWeRead) return null
                     return (
-                      <div style={{ marginTop: 5 }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gw-sub)' }}>What we read from it</div>
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{whatWeRead}</div>
+                      <div className="gwui-mt-5">
+                        <SubHeading>What we read from it</SubHeading>
+                        <p className="gwui-panel-text-muted gwui-pre-line">{whatWeRead}</p>
                       </div>
                     )
                   })()}
@@ -872,23 +873,21 @@ export function ContextPage({
                     holds.ts) - one click away rather than printed a second time.
                   */}
                   {doc.theContextWeHave && (
-                    <details data-gw-document-took style={{ marginTop: 6 }}>
-                      <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>What Groundwork took from it</summary>
+                    <details data-gw-document-took className="gwui-mt-6">
+                      <summary className="gwui-inline-fold-summary gwui-fs-13 gwui-ink-navy">What Groundwork took from it</summary>
                       {doc.uploadedAt && (
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 5 }}>Added on {whenItWas(doc.uploadedAt, 'day')}.</div>
+                        <Note>Added on {whenItWas(doc.uploadedAt, 'day')}.</Note>
                       )}
-                      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      <p className="gwui-panel-text gwui-pre-line gwui-mt-6">
                         {doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '')}
                         {(doc.holds?.forOnePerson?.length || doc.holds?.forEverybody?.length) ? (
-                          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
-                            These are on the board and in the report, against the people who hold them.
-                          </div>
+                          <Note>These are on the board and in the report, against the people who hold them.</Note>
                         ) : null}
-                      </div>
+                      </p>
                     </details>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div className="gwui-button-row">
                   {/* WHO CAN READ THIS, stated on the row rather than in a
                       settings screen. Somebody deciding whether to attach a
                       handover note needs the answer where they are, not two
@@ -925,13 +924,7 @@ export function ContextPage({
                         visibility: e.target.value as 'OPEN' | 'OWN' | 'CLOSED',
                       })}
                       aria-label={`Who can read ${doc.name}`}
-                      style={{
-                        fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
-                        padding: '3px 6px', borderRadius: 20,
-                        border: `1px solid ${(doc as any).visibility === 'OPEN' ? '#A7D9CC' : 'var(--gw-border)'}`,
-                        background: (doc as any).visibility === 'OPEN' ? '#DFF1EA' : 'var(--gw-bg)',
-                        color: (doc as any).visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-sub)',
-                      }}
+                      className={`gwui-tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'gwui-tag-proven' : 'gwui-tag-plain'}`}
                     >
                       <option value="OPEN">Everyone</option>
                       <option value="OWN">Only you</option>
@@ -960,13 +953,7 @@ export function ContextPage({
                       title={(doc as any).visibility === 'OPEN'
                         ? 'Everyone in this check-in can read this. Click to make it yours only.'
                         : 'Only you can read this. Click to share it with everyone in this check-in.'}
-                      style={{
-                        fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
-                        padding: '3px 9px', borderRadius: 20,
-                        border: `1px solid ${(doc as any).visibility === 'OPEN' ? '#A7D9CC' : 'var(--gw-border)'}`,
-                        background: (doc as any).visibility === 'OPEN' ? '#DFF1EA' : 'var(--gw-bg)',
-                        color: (doc as any).visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-sub)',
-                      }}
+                      className={`gwui-tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'gwui-tag-proven' : 'gwui-tag-plain'}`}
                     >
                       {/* THE DESTINATION IN WORDS, as the design has it. "Everyone" and "Only me"
                           are what a person is choosing between; an icon or a switch makes them
@@ -979,35 +966,27 @@ export function ContextPage({
                       Delete was drawn on everybody's OPEN files and answered "Document not found".
                       Only the uploader may delete, so only the uploader is offered it. */}
                   {(doc as any).mine !== false && (
-                    <button onClick={() => deleteDoc.mutate(doc.id)} style={{ fontSize: 12, color: 'var(--gw-red-t)', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
+                    <button onClick={() => deleteDoc.mutate(doc.id)} className="gwui-btn gwui-btn-quiet gwui-btn-small gwui-ink-red">Delete</button>
                   )}
                 </div>
-              </div>
+                </div>
+              </Panel>
             ))}
-            <div
+            <Panel
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !uploadDoc.isPending) { e.preventDefault(); document.getElementById('ga-doc-upload')?.click() } }}
-              style={{
-                border: '1.5px dashed var(--gw-border)', borderRadius: 8,
-                /* A card beside the documents, as the prototype draws "Add a document". */
-                padding: '12px 14px',
-                textAlign: 'left', background: 'var(--gw-bg)',
-                /* A dropped file can take a moment. Without this the box looks untouched and
-                   somebody presses it again, which is how two copies of one file get attached. */
-                cursor: uploadDoc.isPending ? 'progress' : 'pointer',
-                opacity: uploadDoc.isPending ? 0.6 : 1,
-              }}
               onClick={() => { if (!uploadDoc.isPending) document.getElementById('ga-doc-upload')?.click() }}
               /* The formats, where somebody asks the question: while choosing a file. */
               title={WHAT_YOU_CAN_UPLOAD}
+              className={`gwui-rule-dashed${uploadDoc.isPending ? ' gwui-busy' : ''}`}
             >
               {/*
                 LABELLED BY WHO READS IT, like the two note boxes below. The page had three inputs
                 named by what they were - documents, notes, private context - when the only difference
                 that matters to somebody deciding where to put something is who ends up reading it.
               */}
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>
+              <p className="gwui-fs-13 gwui-ink-navy">
                 {/*
                   THE HEADING FOLLOWS THE FLAG, LIKE THE SENTENCE UNDER IT.
                   
@@ -1016,10 +995,8 @@ export function ContextPage({
                   exist, directly above a sentence correctly saying the file reaches nobody. The same
                   contradiction this box was just fixed for, reintroduced one line higher.
                 */}
-                {uploadDoc.isPending
-                  ? 'Uploading…'
-                  : 'Add a document'}
-              </div>
+                <strong>{uploadDoc.isPending ? 'Uploading…' : 'Add a document'}</strong>
+              </p>
               {/*
                 THE FILE-TYPE LIST CAME OFF THE PAGE AND ONTO THE CONTROL.
 
@@ -1057,15 +1034,15 @@ export function ContextPage({
                 somebody uploads, and the second person to upload a file reads this box too. The
                 examples below are for a first-timer; this sentence is for every upload.
               */}
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 4 }}>
+              <p className="gwui-panel-text-muted gwui-mt-4">
                 {contextEnabled
                   ? 'It starts private to you. You choose who can read it.'
                   : 'It is private to you. It shapes your own questions and reaches nobody else.'}
-              </div>
+              </p>
               {docs.length === 0 && (
                 /* Left-aligned: it inherits the dropzone's centring otherwise, and a paragraph set
                    centred is harder to read than the same paragraph set flush. */
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6 }}>
+                <p className="gwui-note gwui-mt-6">
                   {/*
                     AND WHAT COUNTS, WHICH ONLY THE FIRST-TIME READER NEEDS.
 
@@ -1078,9 +1055,9 @@ export function ContextPage({
                   can be proof of what has happened, such as meeting notes, a transcript from Gemini
                   or another notetaker, or a photo of what was agreed. It can also be the brief, plan
                   or scope this work was set against.
-                </div>
+                </p>
               )}
-              <input type="file" id="ga-doc-upload" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR}
+              <input type="file" id="ga-doc-upload" className="gwui-sr-only" accept={UPLOAD_ACCEPT_ATTR}
                 onChange={e => {
                   const f = e.target.files?.[0]
                   /*
@@ -1096,7 +1073,7 @@ export function ContextPage({
                   }
                   e.target.value = ''
                 }} />
-            </div>
+            </Panel>
             </div>
             )}
 

@@ -277,3 +277,36 @@ above.
 | Part | Where it is used | What it follows |
 | --- | --- | --- |
 | `gwui-person-head` | The roster row on the lead's check-in page (`GroundAdminPage.tsx`): the status dot, the avatar and the name kept on one line | The prototype's own avatar-to-name gap, 10px (app.css `.person`). It was first added to the old stylesheet as `ga-row-head`, outside both class guards; it is now a shared part, and the old stylesheet is frozen too. |
+
+## Group 3, piece 5 (last piece): Context and resources
+
+`ContextPage.tsx` (drawn by both `GroundAdminPage.tsx` and `GroundParticipantPage.tsx` as the
+"Context and resources" tab) was the last file in the product still importing `kit.tsx`'s `Sec`,
+including `Sec`'s own numbering (`n={band()}`, a counter incremented once per band actually drawn).
+Checked against the prototype's own Context screens
+(`docs/prototype/screens/B2-context/context.txt`, `company-context.txt`) and
+`docs/prototype/source/app.css`: neither numbers a heading anywhere, on this screen or any other.
+The numbering is a product invention with no prototype source, so it is dropped rather than carried
+into `Section` as a named option - every heading on this page now reads as a plain `Section`
+heading/note, the same as every other rebuilt page.
+
+Six small parts were added to `gw-ui.css` for shapes this page needed, none with a dedicated
+prototype class (the prototype draws each of these by hand, the same basis the rest of this file
+already uses for a one-off shape):
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| `.gwui-doc-grid` | the documents, as cards | the page's own prior `display:grid, gridTemplateColumns: repeat(auto-fill, minmax(200px,1fr)), gap:10` | unchanged values, moved into a named class |
+| `.gwui-line-row` | a line of text with inline meta beside it | the page's own prior `display:flex, alignItems:baseline, gap:10, flexWrap:wrap`, repeated at several call sites (ready for reuse; not yet drawn from in this piece - see the note below) | unchanged |
+| `.gwui-group-head` | a named bucket's own header strip inside a Panel list ("How we work", "Notes") | the page's own prior `background:var(--gw-bg), padding:'8px 13px 6px'` | padding rounded to the page's own 10px/16px scale |
+| `.gwui-tag-control` | a `<select>`/`<button>` styled with `.gwui-tag` instead of a `<span>` - who can read a document | new: resets a native control's own border/font/cursor so only `Tag`'s look shows | n/a (new) |
+| `.gwui-busy` | the upload dropzone while a file is on its way in | the page's own prior `cursor:'progress', opacity:.6` | unchanged |
+| `.gwui-inline-fold-summary` | a `<details>` folded under a quote or a card, not its own boxed panel ("What you wrote", "What Groundwork took from it") | the page's own prior `cursor:'pointer'` on a bare `<summary>` | unchanged - deliberately NOT `Folded`, which draws its own 20/22px-padded, bordered, triangle-marked panel meant for a closed panel in a list, not a short aside folded under a quote |
+
+Document cards, the brief's quote panel, the empty and editing states, the privacy notices, and the
+outstanding-work warning now draw from `Panel`, `Section`, `Button`, `TextArea`, `Tag`, `SubHeading`,
+`Note` and `Callout` rather than inline styles. Every text size under 13px (the small "Used to
+check"/"What we read from it" labels, the "photo" tag, the visibility pill) now reads at 13px or
+above, per the floor every rebuilt page keeps. `.gwui-line-row` is written up here because it was
+added for the lines under "What people are down as doing" and "Strategy, notes and how we work" in
+this same piece's next commit - see that commit for where it is actually drawn from.
