@@ -173,4 +173,13 @@ export const REBUILT_PAGES: string[] = [
   'pages/enter/EntryChatPage.tsx',
   'pages/grounds/GroundAdminPage.tsx',
   'components/gw/ContextPage.tsx',
+  /*
+   * GROUP 3, PIECE 5, THE LAST PIECE (the participant's check-in page, B3-the-check-in): the
+   * header, loading, no-check-in and "not in this check-in" states, rebuilt the same way
+   * GroundAdminPage.tsx's own equivalent states were (`Page narrow` + `Empty` + `Button`, the
+   * shared `gwui-page-shell`, `gw-bd` for the tab content column). Its four tabs were already
+   * rebuilt components (`BetweenCheckIns`, `YourWork`, `SharedReportForAParty`, `ContextPage`,
+   * `WhoIsInThis`, `MyParticipation`) before this page itself joined the list.
+   */
+  'pages/grounds/GroundParticipantPage.tsx',
 ]

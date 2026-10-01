@@ -383,6 +383,7 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/enter/EntryChatPage.tsx',
       'pages/grounds/GroundAdminPage.tsx',
       'components/gw/ContextPage.tsx',
+      'pages/grounds/GroundParticipantPage.tsx',
     ])
   })
 

@@ -110,6 +110,14 @@ const SCREENS: Record<string, Counterpart> = {
    */
   'pages/grounds/GroundAdminPage.tsx': { productPath: '/grounds/9028f0ad-293b-4592-9a4e-25b680dd91cd?tab=context', reader: 'lead', hash: '#/c/sales/context', persona: 'lead' },
   'components/gw/ContextPage.tsx': null, // the tab GroundAdminPage.tsx above opens; not a screen of its own
+  /*
+   * GROUP 3, PIECE 5, PART 9 (the participant's check-in page): Amani, on the same "Sales team, Q3"
+   * check-in every other entry here opens, at its default tab (`/p` with no `?tab=`). Her check-in
+   * is not due right now, so the page renders the prototype's own "between sessions" conversation
+   * card (`BetweenCheckIns`) - the closest prototype counterpart is B3's own `between-check-ins`
+   * screen (docs/prototype/screens/index.json), drawn for the "part" persona.
+   */
+  'pages/grounds/GroundParticipantPage.tsx': { productPath: '/grounds/9028f0ad-293b-4592-9a4e-25b680dd91cd/p', reader: 'participant', hash: '#/c/sales/between', persona: 'part' },
   'pages/board/BoardPage.tsx': { productPath: '/grounds/9028f0ad-293b-4592-9a4e-25b680dd91cd/board', reader: 'lead', hash: '#/c/sales/board', persona: 'lead' },
   'pages/board/WorkRecords.tsx': null, // a section of the board screen above
   'components/gw/where-each-person-is.tsx': null, // a section of the board screen above
