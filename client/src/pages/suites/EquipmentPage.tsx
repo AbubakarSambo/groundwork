@@ -6,10 +6,10 @@ import { Page, PageTitle, Section, Panel, Button, Note, Empty, FieldLabel, Selec
 
 /**
  * EQUIPMENT (E10, #/suite/equipment, group 2 piece 4). ADMINS ONLY, on the server. The wording is
- * copied from docs/prototype/screens/E-suites/suite-equipment.txt: "Laptops, phones and demo
- * freezers. See who has what, and what needs fixing. People update it by telling Groundwork."
- * (group 2's review, fault F: a colon stood in for the missing second sentence; now there are two),
- * "Item", "Who has it" and "How it is".
+ * copied from docs/prototype/screens/E-suites/suite-equipment.txt: "See who has each laptop, phone
+ * and demo freezer, and what needs fixing. People update it by telling Groundwork." (group 2's
+ * second review, fault 3: "Laptops, phones and demo freezers. See who has what..." was still two
+ * fragments stapled together with a full stop), "Item", "Who has it" and "How it is".
  *
  * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (crumbs, subtitle), `Panel` with
  * `.gwui-record-table`, `Section` for "Add an item", `FieldLabel`/`Select`/`TextField` for every
@@ -40,7 +40,7 @@ export function EquipmentPage() {
       <PageTitle
         crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Equipment' }]}
         title="Equipment"
-        subtitle="Laptops, phones and demo freezers. See who has what, and what needs fixing. People update it by telling Groundwork."
+        subtitle="See who has each laptop, phone and demo freezer, and what needs fixing. People update it by telling Groundwork."
       />
 
       {isLoading && <Note>Loading…</Note>}
