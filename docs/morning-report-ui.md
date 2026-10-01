@@ -7213,4 +7213,15 @@ The whole screen suite passes (3,792 tests), except the wording guard, which is 
 
 Batch C, the drift list, comes next, page by page: every one-off and page-only class on group 3's pages is replaced with the shared part the review named, then pictured again.
 
+**Batch C, part 1: eight of the ten pages are clean.**
+- Sign-in, sign-up, "check your email", the join and verify pages, the door and the "fills in as you talk" panel no longer use one-off or page-only classes. Each is built from the shared button row, a centred note, `PageTitle`, `Panel`, `Tag` and `RowList`.
+- The session report's 38 one-off classes and all its inline styles are gone. Its private half is a panel with a real "Only you" tag.
+- The lead's "What to ask each person" and "What to work on next" lost all their inline styles, with every word kept, including the protected probe structure. Its 11-pixel mark is now 13 pixels.
+- The classes nothing uses any more are deleted, and the frozen lists are shorter.
+
+Still to do in part 1:
+- The team report (`TheSessionsReport.tsx`, about 885 lines).
+- The pictures of the reports.
+- The report a stranger reads at the end of a check-in without an account. Its sizes shrink on a phone on purpose, so its mechanism is kept, but nothing in it will be below 13 pixels any more; parts of it went down to 9.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
