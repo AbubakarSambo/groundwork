@@ -151,6 +151,16 @@ export class BoardListener {
             where: { id: n.objectiveId },
             data: { count: n.count, suggestedCount: null, suggestedSaid: cleanText(n.said), suggestedAtSession: e.sessionNumber },
           }).catch(() => undefined);
+          /*
+           * AND THE ROUND'S OWN SNAPSHOT, which was taken when the round closed, before this number was
+           * read off it. Left as it was, session 2 of re-d (sales) had a snapshot of 0 beside a count of
+           * 31 million naira, and the Movement tile said "No target moved this session." while Since the
+           * last round said it had. The number said in this round is where this round closed.
+           */
+          await (this.prisma as any).groundObjectiveSnapshot?.updateMany?.({
+            where: { groundId: e.groundId, objectiveId: n.objectiveId, sessionNumber: e.sessionNumber },
+            data: { count: n.count },
+          })?.catch?.(() => undefined);
         } else {
           await this.prisma.groundObjective.update({
             where: { id: n.objectiveId },

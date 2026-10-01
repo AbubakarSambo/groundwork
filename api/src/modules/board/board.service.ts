@@ -509,7 +509,7 @@ export class BoardService {
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
        board runs the same engines over all of them, so the two share a vocabulary and differ only in
        scope. Same tiles, same settled-and-open, same question engine. */
-    const sessionShape: any = await this.everySessionThroughTheReportEngines(groundId, ground as any, checkIns as any[], openRound).catch((err: any) => {
+    const sessionShape: any = await this.everySessionThroughTheReportEngines(groundId, ground as any, checkIns as any[], openRound, { participantId: me?.id ?? null, isLead: isInitiator }).catch((err: any) => {
       this.logger.warn(`Board could not run the report engines over ${groundId}: ${err?.message}`);
       return null;
     });
@@ -1441,7 +1441,7 @@ export class BoardService {
       if (sessionShape?.atAGlance?.length) {
         out.quickRead = sessionShape.atAGlance;
       } else {
-        const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
+        const held = await whatThisSessionHolds(this.prisma, groundId, openRound, { participantId: me?.id ?? null, isLead: isInitiator });
         /*
          * THE DIFFERENCE THE PAGE IS SHOWING IS THE DIFFERENCE THE TILE COUNTS. Read live, 22 Sep
          * 2026: the tile said "Nothing to compare yet" on a board whose own session report, one
@@ -2849,7 +2849,7 @@ export class BoardService {
    * dependency, every OPEN document: the same pure functions the session report runs, with the
    * ground's rows instead of one session's. Names go through the same labels the board already uses.
    */
-  private async everySessionThroughTheReportEngines(groundId: string, ground: any, checkIns: any[], openRound: number) {
+  private async everySessionThroughTheReportEngines(groundId: string, ground: any, checkIns: any[], openRound: number, reader: { participantId: string | null; isLead: boolean }) {
     const completed = checkIns.filter((c) => c.status === CheckInStatus.COMPLETED);
     const [entries, docs, baseline, deps] = await Promise.all([
       this.prisma.recordEntry.findMany({
@@ -2868,7 +2868,7 @@ export class BoardService {
     const whoAnswered = await howManyHaveAnswered(this.prisma, groundId, openRound);
     const waiting = new Set(whoAnswered.waitingOn);
     const answered = ground.participants.filter((p: any) => !waiting.has(p.id) && completed.some((c) => c.participantId === p.id && c.sessionNumber === openRound));
-    const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
+    const held = await whatThisSessionHolds(this.prisma, groundId, openRound, reader);
     /* Whose document backs each line: somebody else's proves nothing of theirs (how-a-line-is-known). */
     const whoseDocument = await whoAddedEachBackingDocument(this.prisma, entries as any[]);
     const shape = theSessionReport({

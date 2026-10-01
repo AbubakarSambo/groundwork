@@ -26,7 +26,8 @@ const service = fs
 describe('the four reads', () => {
   it('are on the report, computed from the rows the board reads', () => {
     /* Through the one owner of the session's counts, which the board reads too. */
-    expect(service).toContain('whatThisSessionHolds(this.prisma, groundId, sessionNumber)');
+    /* With the reader, so the movement counts only the targets they may read (review of 1 October 2026). */
+    expect(service).toContain('whatThisSessionHolds(this.prisma, groundId, sessionNumber, { participantId: me?.id ?? null, isLead: viewerIsLead })');
     expect(service).toContain('movedOnTargets: held.movedOnTargets');
     expect(service).toContain('blocked: held.blocked');
   });

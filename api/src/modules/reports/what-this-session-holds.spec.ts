@@ -97,13 +97,13 @@ describe('the first worry is one whose line survives the quote rule whole', () =
   });
 
   it('passes over Amina\'s line, whose quote is not the record\'s words, for the next one', async () => {
-    const held = await whatThisSessionHolds(prisma(ROWS), 'g', 1);
+    const held = await whatThisSessionHolds(prisma(ROWS), 'g', 1, { participantId: null, isLead: true });
     expect(held.worries).toBe(4);
     expect(held.theFirstWorry).toBe("I'm just not sure the brief was clear enough on that one point.");
   });
 
   it('and with none that stands whole, there is no first worry, and the tile says the count', async () => {
-    const held = await whatThisSessionHolds(prisma(ROWS.slice(0, 1)), 'g', 1);
+    const held = await whatThisSessionHolds(prisma(ROWS.slice(0, 1)), 'g', 1, { participantId: null, isLead: true });
     expect(held.theFirstWorry).toBeNull();
   });
 });

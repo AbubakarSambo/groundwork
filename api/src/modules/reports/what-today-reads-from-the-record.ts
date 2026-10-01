@@ -3,6 +3,7 @@ import { targetsFor } from '../board/whose-number-is-whose-business';
 import { notToldYet, theLeadIsNudgedToTell, aWeekHasPassedSinceNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 import { aCountThatMovedSaid } from './a-count-that-moved-is-one-sentence';
+import { whatMovedInTheRound } from './what-this-session-holds';
 import { yourOwnWhereYouAreTheSubject } from '../board/an-aim-is-a-sentence-about-somebody';
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { PATTERN_ROW_SELECT, servedPatterns, patternTalkNudge } from '../patterns/who-reads-a-pattern';
@@ -139,7 +140,7 @@ function oneRowPerThing(rows: any[]): any[] {
  * (a) WHAT MOVED SINCE THE ROUND BEFORE. Nothing until there has been a round before: a first report
  * has nothing to compare with.
  */
-export function sinceLastFrom(l: Loaded, reader: Reader): SinceLast | null {
+export async function sinceLastFrom(prisma: any, groundId: string, l: Loaded, reader: Reader): Promise<SinceLast | null> {
   const { ground, participants, checkIns, nameOf } = l;
   const runsIt = ground.initiatorId === reader.userId;
   const me = participants.find((p) => p.userId === reader.userId) ?? null;
@@ -162,8 +163,17 @@ export function sinceLastFrom(l: Loaded, reader: Reader): SinceLast | null {
     me?.id ?? null,
     ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
     { isLead: runsIt },
-  ).shown as any[])
-    .filter((o) => typeof o.count === 'number' && typeof o.prevCount === 'number' && o.count !== o.prevCount)
+  ).shown as any[]);
+  /*
+   * WHAT MOVED IS READ ONE WAY, FOR EVERY SURFACE (review of 1 October 2026, re-d, sales, session 2).
+   * This read `count` against `prevCount`, and the Movement tile on the same page read the snapshots:
+   * one said 31 million naira moved, the other "No target moved this session.". Both now read
+   * whatMovedInTheRound, for the same round and the same targets this reader may read.
+   */
+  const moves = await whatMovedInTheRound(prisma, groundId, latest, objectives);
+  const moved = objectives
+    .filter((o) => moves.has(o.id) && moves.get(o.id)!.from !== moves.get(o.id)!.to)
+    .map((o) => ({ ...o, prevCount: moves.get(o.id)!.from, count: moves.get(o.id)!.to }))
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   /* Each count that moved, in plain sentences with numbers a person can read. See a-count-that-moved-is-one-sentence. */
   const labels = labelsForParties(participants as any);
@@ -174,7 +184,7 @@ export function sinceLastFrom(l: Loaded, reader: Reader): SinceLast | null {
   const othersNames = participants.filter((p) => p.id !== me?.id)
     .flatMap((p) => [p.user?.firstName, p.user?.lastName, p.nameGiven].filter(Boolean) as string[]);
   const theLeadsRow = participants.find((p) => p.userId === ground.initiatorId)?.id ?? null;
-  for (const o of objectives) {
+  for (const o of moved) {
     const setBy = o.setByParticipantId ?? o.ownerParticipantId ?? theLeadsRow;
     const said = aCountThatMovedSaid(
       { name: String(o.name ?? ''), target: typeof o.target === 'number' ? o.target : null, count: o.count, prevCount: o.prevCount, direction: asADirection(o.direction) },
@@ -388,7 +398,7 @@ export async function whereWhatPeopleSaidDiffers(prisma: any, groundId: string, 
 export async function whatTodayReads(prisma: any, groundId: string, reader: Reader): Promise<{ sinceLast?: SinceLast; forTheLead?: ForTheLead[] }> {
   const l = await load(prisma, groundId);
   if (!l) return {};
-  const sinceLast = sinceLastFrom(l, reader);
+  const sinceLast = await sinceLastFrom(prisma, groundId, l, reader);
   const forTheLead = await forTheLeadFrom(prisma, groundId, l, reader);
   return {
     ...(sinceLast ? { sinceLast } : {}),

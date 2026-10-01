@@ -48,6 +48,8 @@ function reportFor(requestingUserId: string, objectives: any[], viewerRole = 'ME
     ground: model({ findUnique: jest.fn(async () => structuredClone(groundWith(objectives))) }),
     user: model({ findUnique: jest.fn(async () => ({ role: viewerRole, organizationId: 'org-1' })) }),
     checkIn: model({ findMany: jest.fn(async () => structuredClone(CHECK_INS)) }),
+    /* Round 1 closed at nought; round 2 closed where each count is now. */
+    groundObjectiveSnapshot: model({ findMany: jest.fn(async (args: any) => (objectives as any[]).map((o) => ({ objectiveId: o.id, count: args?.where?.sessionNumber === 1 ? o.prevCount : o.count }))) }),
   }, {
     get(target: any, prop: string) {
       if (!(prop in target) && typeof prop === 'string' && !prop.startsWith('$')) target[prop] = model();

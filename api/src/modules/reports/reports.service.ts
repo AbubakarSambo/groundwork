@@ -3104,7 +3104,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * not this reader's slice of them (P3-010).
      */
     const [held, saidInAll, documentedInAll, whoAnswered] = await Promise.all([
-      whatThisSessionHolds(this.prisma, groundId, sessionNumber),
+      whatThisSessionHolds(this.prisma, groundId, sessionNumber, { participantId: me?.id ?? null, isLead: viewerIsLead }),
       this.prisma.recordEntry.count({ where: { disputedAt: null, participant: { groundId }, checkIn: { sessionNumber } } }),
       this.prisma.recordEntry.count({ where: { disputedAt: null, participant: { groundId }, checkIn: { sessionNumber }, recallBased: false, anchoredOrigin: { in: [...COUNTS_AS_A_SOURCE] as any } } }),
       howManyHaveAnswered(this.prisma, groundId, sessionNumber),

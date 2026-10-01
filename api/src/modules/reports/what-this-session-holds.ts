@@ -1,4 +1,5 @@
 import { aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
+import { targetsFor } from '../board/whose-number-is-whose-business';
 import { cleanText } from './what-the-record-actually-holds';
 import { PrismaService } from '../prisma/prisma.service';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
@@ -118,21 +119,57 @@ export interface WhatThisSessionHolds {
   targetsMoved?: number;
 }
 
-export async function whatThisSessionHolds(prisma: PrismaService, groundId: string, sessionNumber: number): Promise<WhatThisSessionHolds> {
+/** Who is reading, so the Movement tile counts only the targets they may read. */
+export interface WhoReadsTheMovement {
+  participantId: string | null;
+  /** Whoever set the targets reads every one of them. */
+  isLead: boolean;
+}
+
+/**
+ * WHAT MOVED IN ONE ROUND, FOR EVERY SURFACE THAT SAYS SO (review of 1 October 2026, re-d, sales).
+ *
+ * Session 2's Movement tile said "No target moved this session." while the same page's "since the last
+ * round" said 31 million naira moved. The tile read two snapshots; the sentence read `count` against
+ * `prevCount`. They are now one read: the count as the round before closed, and the count as this
+ * round closed (the live count while it is still open). An objective with no count from the round
+ * before has nothing to move from and is left out, never counted from nought.
+ */
+export async function whatMovedInTheRound(
+  prisma: any,
+  groundId: string,
+  sessionNumber: number,
+  objectives: readonly { id: string; count: number }[],
+): Promise<Map<string, { from: number; to: number }>> {
+  const out = new Map<string, { from: number; to: number }>();
+  if (!objectives.length || sessionNumber < 2) return out;
+  const [now, before] = await Promise.all([
+    prisma.groundObjectiveSnapshot?.findMany?.({ where: { groundId, sessionNumber }, select: { objectiveId: true, count: true } })?.catch?.(() => []) ?? [],
+    prisma.groundObjectiveSnapshot?.findMany?.({ where: { groundId, sessionNumber: sessionNumber - 1 }, select: { objectiveId: true, count: true } })?.catch?.(() => []) ?? [],
+  ]) as [{ objectiveId: string; count: number }[], { objectiveId: string; count: number }[]];
+  const prev = new Map((before ?? []).map((b) => [b.objectiveId, b.count]));
+  const current = new Map((now ?? []).map((n) => [n.objectiveId, n.count]));
+  for (const o of objectives) {
+    const from = prev.get(o.id);
+    if (from == null) continue;
+    out.set(o.id, { from, to: current.get(o.id) ?? o.count });
+  }
+  return out;
+}
+
+export async function whatThisSessionHolds(prisma: PrismaService, groundId: string, sessionNumber: number, reader: WhoReadsTheMovement): Promise<WhatThisSessionHolds> {
   /* A dependency knows which check-in raised it (sourceCheckInId); the check-in knows its session. */
   const raisedIn = await prisma.checkIn.findMany({ where: { groundId, sessionNumber }, select: { id: true } });
-  const [deps, objectives, now, before, worried] = await Promise.all([
+  const [deps, everyObjective, theGround, worried] = await Promise.all([
     raisedIn.length
       ? prisma.groundDependency.findMany({
           where: { groundId, clearedAt: null, status: { in: ['WAITING', 'BLOCKING'] as any }, sourceCheckInId: { in: raisedIn.map((c) => c.id) } },
           select: { status: true, fromParticipantId: true, onParticipantId: true, what: true, onLabel: true },
         })
       : Promise.resolve([] as { status: string; fromParticipantId: string; onParticipantId: string | null; what: string; onLabel: string | null }[]),
-    prisma.groundObjective.findMany({ where: { groundId, target: { not: null } }, select: { id: true, count: true } }),
-    prisma.groundObjectiveSnapshot.findMany({ where: { groundId, sessionNumber }, select: { objectiveId: true, count: true } }),
-    sessionNumber > 1
-      ? prisma.groundObjectiveSnapshot.findMany({ where: { groundId, sessionNumber: sessionNumber - 1 }, select: { objectiveId: true, count: true } })
-      : Promise.resolve([] as { objectiveId: string; count: number }[]),
+    /* Every count, as Since the last round reads them; `targetsSet` counts the ones with a number. */
+    prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, count: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true } }),
+    (prisma as any).ground?.findUnique?.({ where: { id: groundId }, select: { whoSeesTargets: true } })?.catch?.(() => null) ?? null,
     raisedIn.length
       ? prisma.recordEntry.findMany({
           where: { disputedAt: null, checkInId: { in: raisedIn.map((c) => c.id) }, type: { in: ['WORRY', 'TENSION'] as any } },
@@ -142,6 +179,18 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
       : Promise.resolve([] as { text: string }[]),
   ]);
   const worries = worried.length;
+  /*
+   * ONLY THE TARGETS THIS READER MAY READ (review of 1 October 2026). The tile added up every target on
+   * the check-in whoever was reading, so a participant where people see only their own numbers could
+   * read "+5" when the only target that moved was a colleague's. The same rule the board's own targets
+   * use for this reader (whose-number-is-whose-business).
+   */
+  const objectives = targetsFor(
+    (everyObjective ?? []) as any[],
+    reader.participantId,
+    (theGround as any)?.whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
+    { isLead: reader.isLead },
+  ).shown as unknown as { id: string; count: number; target?: number | null }[];
   /*
    * THE FIRST WORRY WHOSE LINE STANDS WHOLE: a first sentence that fits a tile, and whose quotes,
    * if it has any, are the record's words, so the quote rule at the read leaves it as it is (see
@@ -166,21 +215,19 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
   const theFirstBlocker = what ? `${what}${on && !alreadySaid ? `, which waits on ${on}` : ''}` : null;
 
   /* Movement is the difference between two snapshots, and nothing at all when there is only one. A
-     session still in play has no snapshot of its own yet, so its live count stands in for it. */
+     session still in play has no snapshot of its own yet, so its live count stands in for it. The one
+     read every surface uses: see whatMovedInTheRound. */
   let movedOnTargets: number | null = null;
   let targetsMoved = 0;
-  if (objectives.length && before.length) {
-    const prev = new Map(before.map((b) => [b.objectiveId, b.count]));
-    const current = new Map(now.map((n) => [n.objectiveId, n.count]));
-    movedOnTargets = objectives.reduce((sum, o) => {
-      const from = prev.get(o.id);
-      if (from == null) return sum;
-      const moved = (current.get(o.id) ?? o.count) - from;
-      if (moved > 0) targetsMoved += 1;
-      return sum + moved;
-    }, 0);
+  const moves = await whatMovedInTheRound(prisma, groundId, sessionNumber, objectives);
+  if (moves.size) {
+    movedOnTargets = 0;
+    for (const { from, to } of moves.values()) {
+      movedOnTargets += to - from;
+      if (to - from > 0) targetsMoved += 1;
+    }
   }
-  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, targetsSet: objectives.length, targetsMoved };
+  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, targetsSet: objectives.filter((o) => o.target != null).length, targetsMoved };
 }
 
 /** The four tiles, from the counts. The one builder both the report and the board call. */
