@@ -15,7 +15,8 @@
  *    their blockers and the ones waiting on them, their own targets and the team's, their share,
  *    what they have still to answer).
  *  - THE TEAM'S PICTURE, ONLY ONCE IT IS SHARED: the report's opening, where people differ and what
- *    the answers say, after the report has been released. Before that, one sentence saying so.
+ *    the answers say, the headline question and where each team target stands (request 108), after the
+ *    report has been released. Before that, one sentence saying so.
  *
  * WHO THIS IS FOR. A person who checks in and does not run the check-in. Never the lead, the admin who
  * set it up, or an admin of the organisation. The person reviewed on an evaluation check-in is left as
@@ -41,7 +42,7 @@ const ROWS_THAT_ARE_THEIRS = ['whoOwnsWhat', 'contribution', 'patterns'] as cons
 const BUILT_FROM_THEIR_OWN = ['risks', 'workPlan', 'timeline', 'personHistory', 'blockerCheck', 'evidenceIndex', 'obligations', 'whoWaitedOnWhom', 'contradictions'] as const;
 
 /** The team's picture: served only once the report has been released to the people in it. */
-const THE_TEAMS_PICTURE = ['divergence', 'whatTheAnswersSay', 'whatTheRoomIsAbout', 'whatTheRoomIsAboutNote', 'quickRead', 'forecast'] as const;
+const THE_TEAMS_PICTURE = ['divergence', 'whatTheAnswersSay', 'whatTheRoomIsAbout', 'whatTheRoomIsAboutNote', 'quickRead', 'forecast', 'headline'] as const;
 
 /** The lead's own reads: always empty for a participant, said as nothing rather than left out. */
 const THE_LEADS_OWN = ['theJudgement', 'theTable', 'overTime'] as const;
@@ -78,6 +79,8 @@ export function aParticipantsOwnBoard(board: Record<string, any>, reader: { meId
 
   /* Their own targets, and the team's, which are about nobody in particular. */
   if (Array.isArray(board.objectives)) out.objectives = board.objectives.filter((o: any) => !o?.ownerParticipantId || o.ownerParticipantId === me);
+  /* Where each team target stands is the team's picture too (request 108 b): held back until it is shared. */
+  if (Array.isArray(out.objectives) && !reader.released) out.objectives = out.objectives.map((o: any) => ('stands' in (o ?? {}) ? { ...o, stands: null } : o));
   if (board.yourShare) out.yourShare = board.yourShare;
 
   /* What they are waiting on, and what is waiting on them. */

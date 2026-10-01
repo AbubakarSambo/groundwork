@@ -7,6 +7,8 @@ import { aParticipantsOwnBoard } from './a-participants-board-is-their-own';
 import { theBoardForThisKind } from './each-kind-gets-its-own-board';
 import { theGlanceAsThisReaderMayReadIt } from '../grounds/what-a-manager-needs-at-a-glance';
 import { howARecordIsKnown, theRecordsMark, whatHappensNext } from './what-happens-next-to-a-record';
+import { whereThisTargetStands, theHeadlineQuestion, theDirectionToReadIn, type ATeamAim } from './the-headline-and-where-each-target-stands';
+import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
 import { theShareSays } from './your-share';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
@@ -2137,6 +2139,30 @@ export class BoardService {
         const counts = await (this.prisma.groundObjectiveSnapshot.findMany({ where: { groundId }, select: { objectiveId: true, sessionNumber: true, count: true } }) as Promise<any[]>).catch(() => [] as any[]);
         const forecast = theForecast(served, (counts ?? []) as any[], totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null);
         if (forecast.length) out.forecast = forecast;
+        /*
+         * WHERE EACH TARGET STANDS, AND THE HEADLINE QUESTION (request 108, a and b). From the same targets and
+         * counts as the forecast, under the same gate, so nothing reaches a reader who could not already read the
+         * target and its number. A word only on a team target: on somebody's own target it would be a label on them.
+         * See the-headline-and-where-each-target-stands.
+         */
+        const totalSessions = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null;
+        const countsOf = (id: string) => ((counts ?? []) as any[]).filter((c) => c.objectiveId === id && typeof c.sessionNumber === 'number');
+        const aims: ATeamAim[] = [];
+        out.objectives = (out.objectives as any[]).map((o) => {
+          const row = stored.get(o.id);
+          if (!row || o.ownerParticipantId || row.isADecisionAboutAPerson) return { ...o, stands: null };
+          const direction = theDirectionToReadIn(asADirection(row.direction), row.name);
+          const journeyDirection = (o.journey?.direction ?? 'unknown') as 'up' | 'down' | 'unknown';
+          const start = typeof o.journey?.start === 'number' ? o.journey.start : null;
+          const stands = whereThisTargetStands(
+            { id: o.id, target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, notSettled: o.notSettled ?? null },
+            countsOf(o.id), totalSessions,
+          );
+          aims.push({ id: o.id, name: String(row.name ?? ''), target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, word: stands?.word ?? null });
+          return { ...o, stands };
+        });
+        const headline = theHeadlineQuestion(aims, deadlineOf(ground as any));
+        if (headline) out.headline = headline;
       }
     }
 

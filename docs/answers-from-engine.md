@@ -1512,3 +1512,47 @@ Nothing upgrades it. A line backed by somebody else's document is not proof of i
 What each reader reads on the sales run (re-f): Bisi, Juma (an admin who only reads) and the admin who set it up read every row with its mark, "Ikeja Bakery" `proven`, "Jos Grain Traders" `memory` (Kwame's "That N8 million disbursed represents three approved facilities."), "Lekki Cold Rooms" `confirmed`, and the deal Bisi added on the board `none`. Femi reads only his two rows. Ngozi, where people see only themselves, reads only hers.
 
 Tests: `board/request-108-c-each-record-row-carries-its-mark.spec.ts` (8 cases; all fail without this change). `each-kind-of-work-has-its-records.spec.ts` compares whole rows, so it now expects `mark` as well; nothing in it was taken out.
+
+## Request 108 (a): the headline question, with its answer and its bar (2 October)
+
+`GET /grounds/:id/board` now sends `headline`: `{ question, answer, bars }`. Please draw `question` above everything else in the largest type, `answer` under it, then one bar for each entry in `bars`, and then `howItIsGoing.latestSummary` as now.
+
+**How it is built.** Only from the check-in's own team aims, meaning the targets with nobody's name on them, in the lead's own words for what is counted, with their number. Up to two are asked together, as in the prototype's "Will MarketView reach 40 paying subscribers and 200 weekly users this quarter?". A time in the aim's own words ("this quarter") is kept. Otherwise the check-in's own deadline is added ("by 30 November"). Where no team aim has a number, an aim with no number is asked only where it is said as something to do and the check-in has a deadline ("Will we replace the payments integration by 31 October?"). An aim stored as a sentence about somebody ("They want to get 12 shops onboarded.") is never turned into a question. Where nothing qualifies, no `headline` is sent, and nothing is made up. A limit is asked as a limit (decision 69).
+
+- `answer` is one or two plain sentences from the counts the board already serves, or null for an aim with no number.
+- Each bar is `{ objectiveId, kind: "aim" | "limit", now, target, filled (0 to 100), word }`. `word` is the target's word from part (b).
+
+**What each reader reads on the sales run (re-f).** Bisi said "We're aiming for 40 approved facilities and N120 million disbursed this quarter."; the team was at 11 and 31 million after session 2.
+- Bisi, who runs it, and the admin who set it up: "Will we reach 40 approved facilities and 120 million naira disbursed this quarter?" and "So far it is 11 of the 40 approved facilities. 29 more are needed. So far it is 31 million of the 120 million naira disbursed. 89 million more are needed." Bars: 11 of 40 (15%), 31 million of 120 million (12%), both "Behind".
+- With one aim and no time in its words: "Will we reach 40 approved facilities by 30 November?" and "So far it is 11 of the 40 approved facilities. 29 more are needed by 30 November."
+- A limit, from the workplan run: "Will we keep spending within 180,000 this quarter?" and "So far it is 254,000, which is 74,000 over the limit of 180,000."
+- Femi, Ngozi and Kwame, who check in: only where everybody sees the targets (decision 73), and only once the team picture is shared (request 105, part 3). Then they read the same question, about the team's aims only, never a colleague's number. Where each person sees only their own numbers, or before the picture is shared, it is not sent.
+- Juma, an admin who only reads: not sent, as he is not sent the aims and limits (decisions 58 and 73), the same as the forecast.
+- On an evaluation check-in nobody is sent it: not the lead, not the person reviewed, not a colleague giving a view.
+
+## Request 108 (b): a word for where each target stands (2 October)
+
+Each row of `objectives` now has `stands`: `{ word, says }`, or null. Please draw `word` as the short chip and `says` where the reader opens it. `word` is one of the prototype's own words: "Met", "On time", "Close", "Behind", "Within", "Over limit", "Not settled", or null with `says` saying why there is none.
+
+**The thresholds** (`board/the-headline-and-where-each-target-stands.ts`, `CLOSE_MEANS_AT_LEAST = 0.9`):
+- For an aim to reach, the pace between the first and the latest count stored when sessions closed is carried forward to the check-in's last session, in a straight line, exactly as the forecast does.
+  - "Met": the count has reached the aim.
+  - "On time": at that pace it reaches the aim by the last session.
+  - "Close": at that pace it covers at least 90% of the way from where it started to the aim.
+  - "Behind": at that pace it covers less than 90% of the way.
+  - Once the last session has been counted, the count itself is where it ends: 90% of the way or more is "Close", less is "Behind".
+- For a limit not to go over: "Within" at or under the limit, "Over limit" above it.
+- "Not settled": the lead wrote down that what this number counts is not settled.
+- No word: fewer than two sessions counted ("It needs a count from two sessions before its pace can be read, so how it stands cannot be said yet."), no planned last session ("This check-in has no planned last session, so its pace cannot be read against one."), or nobody has said which way the number goes ("Nobody has said whether 40 is something to reach or a limit not to go over, so how it stands cannot be said.").
+
+**About a target, never a person.** Only a team target gets a word. A target with somebody's name on it, or a decision about a person, has `stands: null`, the same reason the forecast leaves it out. Nothing is built on an evaluation check-in. Who reads it is the same as part (a): whoever runs it, a participant only where everybody sees the targets and only once the team picture is shared (before that, `stands` is null), and not an admin who only reads.
+
+To Bisi, on the sales run: approved facilities "Behind", "At the pace it has kept since session 1, it would be about 31 by the last session, short of the aim of 40."; disbursed "Behind", "At the pace it has kept since session 1, it would be about 79 million by the last session, short of the aim of 120 million."; Femi's and Kwame's own targets have no word. Where Bisi wrote "Whether the 120m counts what was approved or what was disbursed.", disbursed reads "Not settled", "What this number counts is not settled yet, so how it stands cannot be said."
+
+Decided for Hafsah to confirm:
+- "On time" is used for a target on pace but not yet reached. The prototype's examples show no such target; in eng.txt "On time" is the name of a target, not a word.
+- A person's own target gets no word, as the forecast gets none.
+- The headline goes to the same readers as the forecast: not to an admin who only reads.
+- Up to two team aims are asked in one question; the others are under "Where each target stands".
+
+Tests: `board/request-108-the-headline-and-where-each-target-stands.spec.ts` (22 cases, as every reader). The board cases fail without this change.
