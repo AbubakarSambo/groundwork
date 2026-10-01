@@ -17,7 +17,7 @@ import { LinkSentPanel } from './LinkSentPanel'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { whatIsWrongWithTheAddress } from './the-address-typed'
-import { Button, Stack, Choices, Callout } from '@/components/gw/ui'
+import { Button, Stack, Choices, Callout, Note } from '@/components/gw/ui'
 import { AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField, PasswordRules } from './auth-kit'
 import { meetsTodaysPasswordRules } from './password-rules'
 import { theFreeTrialSentence } from '@/lib/the-free-trial'
@@ -497,7 +497,7 @@ export function AuthPage() {
           </Stack>
         </form>
 
-        <div className="gwui-auth-links">
+        <div className="gwui-button-row">
           <Button kind="quiet" onClick={() => { clearNotices(); setView('forgot') }}>Forgot password?</Button>
           <Button kind="quiet" onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</Button>
         </div>
@@ -545,7 +545,7 @@ export function AuthPage() {
         {google && (
           <>
             <Stack gap={10}>{google}</Stack>
-            <p className="gwui-auth-or">or with your email</p>
+            <Note center>or with your email</Note>
           </>
         )}
 
@@ -625,7 +625,7 @@ export function AuthPage() {
             </Button>
           </Stack>
         </form>
-        <div className="gwui-auth-links">
+        <div className="gwui-button-row">
           <Button kind="quiet" onClick={() => { clearNotices(); setView('password') }}>Sign in with a password instead</Button>
         </div>
       </AuthCard>
@@ -656,7 +656,7 @@ export function AuthPage() {
           </Button>
         </Stack>
       </form>
-      <div className="gwui-auth-links">
+      <div className="gwui-button-row">
         <Button kind="quiet" onClick={() => { clearNotices(); setView('password') }}>Back to sign in</Button>
         <Button kind="quiet" onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</Button>
       </div>

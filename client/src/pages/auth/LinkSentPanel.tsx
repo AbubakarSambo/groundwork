@@ -87,7 +87,7 @@ export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent, forRes
           You can send it again in {countdown} {countdown === 1 ? 'second' : 'seconds'}.
         </p>
       )}
-      <div className="gwui-auth-links">
+      <div className="gwui-button-row">
         {/* The only way off this page for a mistyped address: a button, so the keyboard reaches it. */}
         <Button kind="quiet" onClick={onUseDifferent}>Wrong address? Use a different one</Button>
       </div>

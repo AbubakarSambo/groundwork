@@ -525,6 +525,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* ── NOTE / EMPTY (prototype: .note, an empty sentence, a locked door) ────── */
 .gwui-note { font-size: 13.5px; color: var(--gw-sub); }
 .gwui-note-error { color: var(--gw-red-t); }
+/* A centred Note, for the sign-up screen's own "or with your email" divider between Google and the
+   email form (signup.jpg), replacing the page-only gwui-auth-or (group 3 drift list, piece 1). */
+.gwui-note-centre { text-align: center; }
 .gwui-empty-line { font-size: 14.5px; color: var(--gw-sub); }
 .gwui-empty-panel { max-width: 640px; }
 .gwui-empty-panel-title {
@@ -1253,9 +1256,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-split-form { padding: 24px 16px 40px; }
   .gwui-split-body { margin: 0; padding-top: 28px; }
 }
-
-/* THE SIGN-IN SCREEN'S "OR" DIVIDER, BETWEEN GOOGLE AND THE EMAIL FORM (signup.jpg). */
-.gwui-auth-or { text-align: center; font-size: 14.5px; color: var(--gw-sub); margin: 14px 0; }
 
 /* THE TWO SMALL TEXT ACTIONS UNDER A SIGN-IN FORM (signin.jpg: "Forgot password?" / "New here?
    Sign up", each a side of the same row). */

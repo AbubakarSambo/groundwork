@@ -12,7 +12,6 @@
 export const THE_CLASSES_THERE_WERE: readonly string[] = [
   'gwui-accent-left-blue',
   'gwui-auth-links',
-  'gwui-auth-or',
   'gwui-avatar',
   'gwui-boards-menu',
   'gwui-boards-option',

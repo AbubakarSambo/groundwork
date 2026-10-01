@@ -13,9 +13,19 @@ import './gw-ui.css'
  * a door you cannot open, a `Panel` up to 640px wide with a 21px heading, one sentence and at
  * most one button ("Only an admin at Baridi can change this. Grace Achieng is your admin.").
  */
-export function Note({ tone, children }: { tone?: 'error'; children: React.ReactNode }) {
+export function Note({ tone, center, children }: {
+  tone?: 'error'
+  /** Centred, as the prototype's own divider line between Google and the email form (signup.jpg). */
+  center?: boolean
+  children: React.ReactNode
+}) {
+  const className = [
+    'gwui-note',
+    tone === 'error' && 'gwui-note-error',
+    center && 'gwui-note-centre',
+  ].filter(Boolean).join(' ')
   return (
-    <p className={tone === 'error' ? 'gwui-note gwui-note-error' : 'gwui-note'} role={tone === 'error' ? 'alert' : undefined}>
+    <p className={className} role={tone === 'error' ? 'alert' : undefined}>
       {children}
     </p>
   )
