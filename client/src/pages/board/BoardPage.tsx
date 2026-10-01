@@ -1,5 +1,5 @@
 import { hasEnded, howItEnded } from '@/lib/a-ground-that-has-ended'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { ThatIsOnTheRecord } from '@/components/gw/ThatIsOnTheRecord'
@@ -58,15 +58,15 @@ import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
-import { Page, CheckInHeader, Section, Panel, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList } from '@/components/gw/ui'
+import { Page, CheckInHeader, Section, Panel, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
-import { KindOfWorkBanner, WorkRecordsSections } from './WorkRecords'
+import { KindOfWorkBanner, WorkRecordsSections, YourOwnRecordsSections } from './WorkRecords'
 import {
-  RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockerCheckSection,
-  EvidenceIndexSection, BusyOrMovingSection, LeadActionsSection, ObligationsSection, ForecastSection,
-  WhoWaitedOnWhomSection, ContradictionsSection, QuestionsForTheLeadSection, sameAsTheWorkPlan,
+  RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockersSection,
+  EvidenceIndexSection, BusyOrMovingSection, ObligationsSection, ForecastSection,
+  ContradictionsSection, QuestionsForTheLeadSection, sameAsTheWorkPlan,
 } from './TheSwitchboardsSections'
 
 /**
@@ -341,6 +341,77 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
   )
 }
 
+/**
+ * THE WHOLE CHECK-IN, FOLDED - OR NOT, FOR A LEAD (B5's board-as-participant.txt).
+ *
+ * A participant's board leads with their own short personal view (see `TheParticipantsOwnView`
+ * below); everything else this reader already receives - the same sections a lead sees, minus
+ * their editing controls and minus anything privacy already keeps from them - stays exactly as it
+ * was, just folded under one name below the personal view, so nothing they could read today is
+ * taken away. The lead's own board is unchanged: for them this renders its children plainly.
+ */
+function MaybeFolded({ fold, children }: { fold: boolean; children: ReactNode }) {
+  if (!fold) return <>{children}</>
+  return (
+    <Folded summary="The whole check-in" note="Everything from this check-in, as before.">
+      {children}
+    </Folded>
+  )
+}
+
+/**
+ * THE PARTICIPANT'S OWN VIEW, FIRST (B5's board-as-participant.txt). A participant's board used to
+ * open on the same generic switchboard a lead sees - every target, every sale, work plan for
+ * everyone, naming colleagues - before the lead's own editing controls and judgement were taken
+ * out of it. The prototype's own participant board instead opens on four short, personal things:
+ * whether today's team picture is ready, a way to their own report, their own records (never
+ * anybody else's), and their own share of the team's total once the engine sends one.
+ *
+ * ONLY WHAT IS ALREADY SENT. "Whether today's team picture is shared" reads
+ * `howItIsGoing.glance.progress.roundsDone` - the same count the board's own header sentence
+ * already reads elsewhere on this page - rather than a field invented for this purpose; nobody has
+ * built a separate "has the lead released it" flag. "Your share" (board-as-participant.txt: "4 of
+ * your 5 sales so far... Only you and Wairimu see your share") has no served field at all yet
+ * (request 107) and is left out entirely rather than drawn as an empty box.
+ */
+function TheParticipantsOwnView({ groundId, roundsDone, kindOfWork, workRecords, myParticipantId, leadFirstName }: {
+  groundId: string
+  roundsDone: number | null
+  kindOfWork: string | null
+  workRecords: BoardPresent['workRecords']
+  myParticipantId: string | null
+  leadFirstName: string | null
+}) {
+  const pictureShared = roundsDone != null && roundsDone > 0
+  return (
+    <div className="gwui-mt-16">
+      <Panel>
+        <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700}}>
+          {pictureShared ? 'Today’s team picture is ready.' : 'Today’s team picture isn’t ready yet.'}
+        </div>
+        <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>
+          {pictureShared
+            ? 'It is below, with everything else from this check-in.'
+            : `${leadFirstName ? `${leadFirstName} hasn’t` : 'Nobody has'} shared it yet. Your own report is ready now.`}
+        </div>
+        <div className="gwui-mt-10">
+          <UIButton kind="secondary" to={`/grounds/${groundId}/report`}>Read your own report</UIButton>
+        </div>
+      </Panel>
+      <YourOwnRecordsSections
+        kindOfWork={kindOfWork as any}
+        sections={workRecords}
+        myParticipantId={myParticipantId}
+        leadFirstName={leadFirstName}
+      />
+      {/*
+        "YOUR SHARE" (request 107): no field for it exists yet on `GET /grounds/:id/board` - drawn
+        nothing here, rather than an empty box with nothing behind it, until the engine sends one.
+      */}
+    </div>
+  )
+}
+
 export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const { id: idFromRoute } = useParams<{ id: string }>()
   const id = groundId ?? idFromRoute
@@ -565,6 +636,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * carry).
    */
   const isAParty = !!b.myParticipantId
+  /* THE PARTICIPANT'S OWN BOARD (B5): a true participant, never the lead and never a read-only
+     admin who merely has access - see `TheParticipantsOwnView` and `MaybeFolded`, below. */
+  const isParticipantView = isAParty && !viewerRunsThisCheckIn
   const myWorkTab = viewerRunsThisCheckIn ? 'sessions' : 'record'
   const headerTabs = [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
@@ -837,6 +911,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
+          THE PARTICIPANT'S OWN VIEW, FIRST (B5's board-as-participant.txt). See
+          `TheParticipantsOwnView` for what it draws and from which fields, and `MaybeFolded` for
+          why everything below it is wrapped for this one reader and nobody else.
+        */}
+        {isParticipantView && (
+          <TheParticipantsOwnView
+            groundId={id!}
+            roundsDone={(b as any).howItIsGoing?.glance?.progress?.roundsDone ?? null}
+            kindOfWork={(b as any).kindOfWork ?? null}
+            workRecords={b.workRecords}
+            myParticipantId={b.myParticipantId}
+            leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+          />
+        )}
+
+        <MaybeFolded fold={isParticipantView}>
+
+        {/*
           THE KIND OF WORK, SAID ONCE, NEAR THE TOP OF THE BOARD (item 4). The lead, or an admin of
           this organisation, can change it and its own stage names; a participant reads the same
           sentence and gets no "Change" button. See WorkRecords.tsx.
@@ -938,11 +1030,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
-          WHAT NEEDS YOU IN THIS CHECK-IN (board-as-lead.txt), for whoever runs it. Not a second read:
-          the same items Today shows (GET /today, already cut to what this reader may see), kept to
-          this check-in. So the board and Today cannot disagree about what needs the lead.
+          WHAT NEEDS YOU IN THIS CHECK-IN (board-as-lead.txt), for whoever runs it - ONE section,
+          not three. The prototype's own example (eng.txt) lists Today's items, what the record
+          says still needs the lead (`leadActions`), AND the decisions raised by what people see
+          differently or what is stuck (`decisions`) under this single heading - a decision there
+          reads as one more row ("Decide what the release will include...", tagged "Decision
+          needed"), not a second section of its own further down the page.
+
+          BOARD REVIEW, PHASE 2: this used to be two sections with the same heading - Today's items
+          here, and the switchboard's own `leadActions` rendered again, separately, as
+          `LeadActionsSection` further down (itself already renamed to this heading in batch 1).
+          Merged into the one the prototype draws, in the prototype's place. `decisions` moves here
+          too, for the lead only; a participant or a read-only admin - who this heading is not
+          addressed to - still gets the original "Decisions needed" section, lower on the page,
+          unchanged.
         */}
-        {viewerRunsThisCheckIn && needsHere.length > 0 && (
+        {viewerRunsThisCheckIn && (needsHere.length > 0 || (shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan)) || shown.decisions) && (
           <Section heading="What needs you in this check-in">
             <EdgeList label="What needs you in this check-in">
               {needsHere.map((n: Need) => (
@@ -952,6 +1055,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   title={n.title}
                   detail={n.detail ?? undefined}
                   actions={<UIButton kind="secondary" size="small" to={n.action.to}>{n.action.label}</UIButton>}
+                />
+              ))}
+              {shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan) && b.leadActions!.map((r) => (
+                <EdgeRow key={r.id} kind="look" title={r.says} detail={r.because ?? undefined} />
+              ))}
+              {shown.decisions && b.decisions!.map((d, i) => (
+                <EdgeRow
+                  key={`decision-${i}`}
+                  kind="decide"
+                  title={d.question}
+                  detail={(
+                    <>
+                      {d.why}
+                      {/* U.10 re-review, item 1: a name, not a verdict - "You" to the reader
+                          themselves, kept from the old standalone "Decisions needed" section. */}
+                      {d.owner && <span className="gwui-fs-13-5 gwui-ink-sub gwui-ml-7">{myName && d.owner === myName ? 'You' : d.owner}</span>}
+                    </>
+                  )}
                 />
               ))}
             </EdgeList>
@@ -1335,19 +1456,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           under-it risk here beyond what `shown.*` already screens for. See TheSwitchboardsSections.tsx.
         */}
         {shown.workPlan && <WorkPlanSection rows={b.workPlan} />}
-        {/* Board review, 1 October, item 4 and item 6: "What needs you in this check-in" only ever
-            has rows for whoever runs the check-in (the server's own `theLeadActions` requires it),
-            so it never goes to a participant; and when its sentences already appear word for word
-            under "Work plan" above, it is left out rather than said twice. */}
+        {/* Board review, phase 2: "What needs you in this check-in" (the lead's own `leadActions`)
+            now renders once, merged into the one section of that name near the top of the board
+            (board-as-lead.txt's own place for it) - not a second copy down here. See the merge
+            above, just under the headline and the kind-of-work banner. */}
         {shown.forecast && <ForecastSection rows={b.forecast} />}
         {shown.timeline && <TimelineSection rows={b.timeline} />}
         {shown.obligations && <ObligationsSection rows={b.obligations} />}
         {shown.personHistory && <PersonHistorySection rows={b.personHistory} />}
         {shown.risks && <RisksSection rows={b.risks} />}
-        {shown.leadActions && viewerRunsThisCheckIn && !sameAsTheWorkPlan(b.leadActions, b.workPlan) && <LeadActionsSection rows={b.leadActions} />}
-        {shown.blockerCheck && <BlockerCheckSection rows={b.blockerCheck} />}
+        {/*
+          BLOCKERS (board-as-lead.txt, "Blockers"): one card per blocker, each with its history and
+          the one thing that would clear it - built by joining `blockerCheck` (who holds it, what
+          has been tried) and `whoWaitedOnWhom` (since when, and whether it has cleared) on their
+          shared id, the way the server itself keeps one blocker's id the same across both arrays.
+          Replaces the two separate sections this used to be split across (see BlockersSection).
+        */}
+        <BlockersSection blockerCheck={b.blockerCheck} whoWaitedOnWhom={b.whoWaitedOnWhom} allowed={allowed('blockerCheck') || allowed('whoWaitedOnWhom')} />
         {shown.evidenceIndex && <EvidenceIndexSection rows={b.evidenceIndex} />}
-        {shown.whoWaitedOnWhom && <WhoWaitedOnWhomSection rows={b.whoWaitedOnWhom} />}
         {shown.contradictions && <ContradictionsSection rows={b.contradictions} />}
         {shown.busyOrMoving && <BusyOrMovingSection data={b.busyOrMoving} />}
         {shown.questionsForTheLead && viewerRunsThisCheckIn && <QuestionsForTheLeadSection rows={b.questionsForTheLead} />}
@@ -1689,7 +1815,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </Section>
         )}
 
-        {shown.decisions && b.decisions && (
+        {/*
+          FOR THE LEAD, THIS IS ALREADY SAID ABOVE. `decisions` now renders inside the merged "What
+          needs you in this check-in" section near the top of the board, for whoever runs it - the
+          prototype's own place for it (eng.txt has no separate "Decisions needed" heading at all).
+          A participant or a read-only admin, who that heading is not addressed to, still reads it
+          here, exactly as before.
+        */}
+        {shown.decisions && b.decisions && !viewerRunsThisCheckIn && (
           <Section heading="Decisions needed" note="Raised by what people see differently, or what is stuck.">
             <Panel pad={false}>
               {b.decisions.map((d, i) => (
@@ -2647,6 +2780,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           people check in each session." Neither is true: each reader is served what they may read, and
           opening the board rebuilds nothing. The line at the top says what is true.
         */}
+
+        </MaybeFolded>
 
         {/*
           U.10 ITEM 8: THE ASK BAR AT THE FOOT (board-as-lead.txt: "Ask about this board, for

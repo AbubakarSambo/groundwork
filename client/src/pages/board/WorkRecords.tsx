@@ -739,6 +739,42 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 }
 
 /**
+ * YOUR OWN RECORDS, DAY BY DAY - ONLY YOURS (B5's board-as-participant.txt: "Your deals, day by
+ * day / Only yours"). The participant's own personal view leads with this: not the whole kind-of-
+ * work record every reader already gets further down (`WorkRecordsSections`, unchanged, still
+ * there for everybody inside "The whole check-in"), but just the rows this one reader owns,
+ * pulled out and named as theirs. Draws nothing the server did not already send in `workRecords`;
+ * only filters it down to `row.ownerParticipantId === myParticipantId`.
+ */
+export function YourOwnRecordsSections({ kindOfWork, sections, myParticipantId, leadFirstName }: {
+  kindOfWork?: KindOfWork | null
+  sections?: AServedWorkSection[]
+  myParticipantId: string | null
+  leadFirstName: string | null
+}) {
+  if (!sections?.length || !myParticipantId) return null
+  const itemNoun = (kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item').toLowerCase()
+  const mine = sections
+    .filter((s): s is Extract<AServedWorkSection, { state: 'filled' | 'none-yet' }> => s.state !== 'not-known')
+    .flatMap((s) => (s.rows ?? []).filter((r) => r.ownerParticipantId === myParticipantId))
+  if (!mine.length) return null
+  return (
+    <Section heading={`Your own ${itemNoun}s, day by day`} note="Only yours.">
+      <Panel pad={false}>
+        {mine.map((row) => (
+          <div key={row.id} className="gwui-panel-row">
+            <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{row.name}</div>
+            {row.stage && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2"><Tag tone="plain">{row.stage}</Tag></div>}
+            {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
+            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={false} /></div>
+          </div>
+        ))}
+      </Panel>
+    </Section>
+  )
+}
+
+/**
  * EVERY SECTION THE KIND OF WORK KEEPS (item 1, 2, 3 and 6). Renders exactly what
  * `board.workRecords` sends, in the order the server gives it, and adds nothing of its own -
  * including when `kindOfWork` is `null`, where the server already sends every section as
