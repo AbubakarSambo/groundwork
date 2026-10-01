@@ -124,6 +124,8 @@ import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
 import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, hasAGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
+import { withoutARecordClaimNobodyHolds } from './a-record-claim-nobody-holds';
+import { withoutADateNobodyGave } from './a-date-nobody-gave';
 import { aCutThatLeavesAFragment, afterTheCut } from './a-cut-never-leaves-a-fragment';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
@@ -1206,6 +1208,15 @@ export class ConversationService {
      * decides when to ask it, and where it asked it its own way the confirmed sentence is put back.
      * Here because every path a turn is saved by - the opener, the turn, the stream - comes through.
      */
+    /*
+     * AND NO RECORD IS PRESENTED THAT THE PERSON DOES NOT HOLD. "The record from our side shows that
+     * weekly repayments have not been made" went to a borrower who had paid every week; no record was
+     * ever given to the check-in. Every path saves through here, so it is cut here. See
+     * a-record-claim-nobody-holds.
+     */
+    const noRecordInvented = withoutARecordClaimNobodyHolds(raw);
+    if (noRecordInvented.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noRecordInvented.cut.length} sentence(s) claiming what "the record" shows, which this person's record does not hold.`);
+    raw = noRecordInvented.text;
     const asConfirmed = (checkIn as any)?.id ? this.withTheLeadsQuestionsAsConfirmed((checkIn as any).id, raw) : { text: raw, confirmed: [] as string[] };
     /*
      * AND ONE QUESTION, ON EVERY PATH. The opener, the turn and the stream all save through here, so
@@ -2387,6 +2398,17 @@ export class ConversationService {
         for (const c of unsupported.cut) this.logger.warn(`Check-in ${checkIn.id}: cut a number claim: ${c.why}: ${JSON.stringify(c.sentence)}`);
         /* An untrue number never goes back in; a fragment on the closing turn becomes the plain close. */
         screened = { ...screened, text: afterTheCut(screened.text, unsupported.text, { closing: closingNow, mayRestore: false }) };
+      }
+
+      /*
+       * AND NO CALENDAR DAY THAT NOBODY GAVE. "By the end of the quarter, so by December 31st", said as a
+       * fact to a woman whose quarter ended on 30 September. A statement naming a day stands only where
+       * somebody said it, a document has it, or the product put it. See a-date-nobody-gave.
+       */
+      const noDateInvented = withoutADateNobodyGave(screened.text, [...known, ...theirWords, ...(dateItHadToSay ? [dateItHadToSay] : [])]);
+      if (noDateInvented.cut.length) {
+        this.logger.warn(`Check-in ${checkIn.id}: cut ${noDateInvented.cut.length} statement(s) naming a calendar day nobody gave.`);
+        screened = { ...screened, text: afterTheCut(screened.text, noDateInvented.text, { closing: closingNow, mayRestore: false }) };
       }
 
       const shipping = howManyWords(screened.text);
