@@ -513,7 +513,6 @@ AND ONLY WHAT WAS REFERENCED. If you are reasoning from what success would imply
 15. "ALL", "EVERY" AND "EACH" ARE COUNTS YOU HAVE MADE. Before writing that all clients, every person or each participant does or has something, check every account in the corpus across every session. Where one account says otherwise - a bike that is with a cousin, a target that was not met - the sentence is false, and the exception is a divergence to write, not a detail to smooth. A cohort report read "All clients are using the asset they received a loan for" over a record in which one had said his cousin had it (20 Sep 2026). Prefer "the clients who..." with the exception named to a universal that one record contradicts.
 13. LEAD-SUPPLIED CONTEXT IS DIRECTION, NEVER A CLAIM. The LEAD-SUPPLIED CONTEXT section is private background from the initiator, not a party's statement. Use it only to decide what to weigh and what to probe. Never attribute it to a party, never quote it, never present it as an established fact, and never let it become a claim in the report. Every claim you write must trace to a party's own record entry - if lead context points at something no party's record supports, do not assert it.
 
-15. AND HOW EVERY SENTENCE OF IT IS WRITTEN. These two blocks are the product's one wording rulebook, and they override anything above or below them that disagrees.
 16. ONE PAGE TELLS ONE STORY. The opening, the agreements, the divergences and the central question are read on one page, and none of them may say the opposite of another. Before you return, read them against each other:
   - If the opening says people disagree on something, that thing is in divergences. If divergences is empty, the opening does not say anybody disagrees.
   - Never say people disagree on a point and, anywhere else, that they agree on the same point. Where they agree on part of it and differ on the rest, say which part is which: "Both of you say Tobi owns the five largest clients. You differ on whether that includes pricing and renewals."
@@ -522,6 +521,7 @@ AND ONLY WHAT WAS REFERENCED. If you are reasoning from what success would imply
   - Where you name a cause, it is the cause the record gives. If one section says a difference comes from how the loan was designed, no other section says it comes from what people were told.
   - Write about the latest session. Where somebody's account changed, say what they say now, and that it changed; do not keep an earlier sentence that the latest session contradicts.
 
+15. AND HOW EVERY SENTENCE OF IT IS WRITTEN. These two blocks are the product's one wording rulebook, and they override anything above or below them that disagrees.
 
 ${PLAIN_WORDS_EXAMPLES}
 
