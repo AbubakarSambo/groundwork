@@ -289,6 +289,10 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
 
+**1 October, the one-off style classes and the old team report.**
+- The small one-off style classes (`gwui-fs-20`, `gwui-mt-…` and the rest) are not left for later, because they are how screens drift from the prototype. No new one may be added; the guard test now holds this. From now on, each group's review replaces the ones on that group's pages with the proper shared parts, and the pages already reviewed are gone back over, group by group. Each page still gets its picture check afterwards.
+- The unused old team report page is compared with the rebuilt Report tab before it goes. Any section the tab lacks is moved into it first, from the shared parts, especially anything about patterns, coaching, roles or probes. Then the old page is removed, and the report says what, if anything, was moved.
+
 `CLAUDE.md` forbids editing `docs/decisions.md`, and the kit's safety rule blocks it. So these are
 written here, for Hafsah to copy into `docs/decisions.md` when she chooses, and for every later session
 to find.

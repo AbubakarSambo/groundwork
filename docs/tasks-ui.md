@@ -94,5 +94,7 @@ Each is in `docs/answers-from-engine.md`, after the merge `a7c25b2d`. They come 
 - [ ] **Request 92, ready:** run the five live checks of Ask Groundwork again. If they pass, tell the engine, so it can switch the old context chat off. Then make "Context and resources" read-only.
 
 ## Clean-ups found on the way
-- [ ] Fold the 173 small one-off style classes in gw-ui.css (`gwui-fs-*`, `gwui-mt-*`, `gwui-ink-*`, `gwui-rule-*` and the like) into named shared parts, page by page, with the picture check.
-- [ ] Once Hafsah decides: remove the unused `ReportBody` in `client/src/pages/report/ReportPage.tsx` and the tests that lock it.
+- [x] No new one-off style class (Hafsah, 1 October): the guard `the-one-off-style-classes-only-go.spec.ts` freezes the 199 that are left, in `one-off-style-classes.ts`, and lets the list only shrink.
+- [ ] Replace the one-off style classes on each group's pages with the proper shared parts, as part of that group's review, from group 3 on. Each page then gets its picture check against the prototype.
+- [ ] Go back over the pages already reviewed, group by group, and do the same: U.1 to U.8, the people group, the board, group 1 and group 2.
+- [ ] The old team report (`ReportBody` in `client/src/pages/report/ReportPage.tsx`): compare it with the rebuilt Report tab. Move any section the tab lacks into it, from the shared parts, especially anything about patterns, coaching, roles or probes. Then remove the old page and the tests that lock only it, and say in the report what was moved.
