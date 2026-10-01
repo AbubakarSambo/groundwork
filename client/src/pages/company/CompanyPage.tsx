@@ -2,14 +2,25 @@ import { useQuery } from '@tanstack/react-query'
 import { companyApi, type CompanyPage as Page, type CompanyPriority } from '@/api/company'
 import { useAuthStore } from '@/stores/auth'
 import { useAskStore } from '@/stores/ask'
-import { Button, Tag } from '@/components/gw/kit'
+import { Page as PageFrame, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row } from '@/components/gw/ui'
 
 /**
- * THE COMPANY PAGE (D2, #/company). The wording is copied from
+ * THE COMPANY PAGE (D2, #/company, group 2 piece 3). The wording is copied from
  * docs/prototype/screens/D2-company/company.txt.
  *
  * WHAT EACH READER IS GIVEN IS THE SERVER'S (GET /company). The page adds nothing to what it is
  * given, and hides nothing it was given.
+ *
+ * REBUILT FROM THE SHARED PARTS (`@/components/gw/ui`): `Page`/`PageTitle` for the frame, the head
+ * row of buttons reuses `.gwui-sentence-row` (the same row `YouPage`'s "Your data" already uses),
+ * `Section` for "Is the strategy moving?" and every section below it, `Panel` (`as="section"`) for
+ * each priority card and the "Named by more than one team" card, and `Note`/`Empty` in place of the
+ * page's own loading and empty lines. Two small parts were missing and are now in `gw-ui.css`, read
+ * from the prototype's own values where it has one (see docs/the-parts-against-the-prototype.md):
+ * `.gwui-priority-top` (a priority's "Priority N" beside its tag), `.gwui-team-col` (one team's own
+ * column under "Named by more than one team"), and `.gwui-compare-table` (the plain comparison
+ * table under "What you say, and where the time goes" - the prototype never draws a real `<table>`
+ * itself, so this is the product's own shape, built at the same sizes the rest of this kit uses).
  *
  * NOT DRAWN HERE, ON PURPOSE (docs/morning-report-ui.md, item 26):
  *   - "Strategy v2, since 1 September.": nothing keeps versions of the strategy yet.
@@ -37,105 +48,97 @@ export function CompanyPage() {
   const name = data?.name || user?.organizationName || 'Company'
 
   return (
-    <div className="gw-you gw-company">
-      <h1 className="gw-t-title gw-company-h1">{name}</h1>
+    <PageFrame>
+      <PageTitle title={name} />
 
-      {data && (
-        <div className="gw-company-head">
-          <div>
-            <Button kind="secondary" onClick={showAsk}>Ask about the whole organisation</Button>
-            {data.line && <p className="gw-you-sub gw-company-line">{data.line}</p>}
-          </div>
-          <div className="gw-company-head-actions">
-            <Button kind="secondary" to="/company/context">Company context</Button>
-            <Button kind="secondary" onClick={showAsk}>Ask about the strategy</Button>
-          </div>
-        </div>
-      )}
-
-      {isLoading && <p className="gw-t-body gw-you-quiet">Loading…</p>}
+      {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 ? (
-          <p role="alert" className="gw-t-body">{refused.data?.message ?? 'You cannot read this page.'}</p>
+          <Note tone="error">{refused.data?.message ?? 'You cannot read this page.'}</Note>
         ) : (
-          <div role="alert" className="gw-you-quiet">
-            <p className="gw-t-body">The company page did not load.</p>
+          <div>
+            <Note tone="error">The company page did not load.</Note>
             <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
           </div>
         )
       )}
-      {data && <ThePage p={data} />}
-    </div>
+
+      {data && (
+        <>
+          <div className="gwui-sentence-row">
+            <Button kind="secondary" onClick={showAsk}>Ask about the whole organisation</Button>
+            <div className="gwui-edge-acts">
+              <Button kind="secondary" to="/company/context">Company context</Button>
+              <Button kind="secondary" onClick={showAsk}>Ask about the strategy</Button>
+            </div>
+          </div>
+          {data.line && <Note>{data.line}</Note>}
+
+          <ThePage p={data} />
+        </>
+      )}
+    </PageFrame>
   )
 }
 
 function ThePage({ p }: { p: Page }) {
   return (
     <>
-      <h2 className="gw-t-h2 gw-company-h2">Is the strategy moving?</h2>
-      {p.priorities.length === 0 ? (
-        <p className="gw-t-body gw-you-quiet">No priorities have come in from your organisation’s own systems yet.</p>
-      ) : (
-        <div className="gw-you-grid">
-          {p.priorities.map(pr => <Priority key={pr.id} pr={pr} />)}
-        </div>
-      )}
+      <Section heading="Is the strategy moving?">
+        {p.priorities.length === 0 ? (
+          <Empty>No priorities have come in from your organisation’s own systems yet.</Empty>
+        ) : (
+          <div className="gwui-cards-3">
+            {p.priorities.map(pr => <Priority key={pr.id} pr={pr} />)}
+          </div>
+        )}
+      </Section>
 
       {!!p.notReaching?.length && (
-        <section className="gw-you-section" aria-labelledby="co-reach-h">
-          <div className="gw-you-section-head">
-            <h2 id="co-reach-h" className="gw-t-h2">Where the strategy isn’t reaching the work</h2>
-            <span>Questions for the person who can answer each one</span>
-          </div>
-          <ul className="gw-you-rows">
+        <Section heading="Where the strategy isn’t reaching the work" note="Questions for the person who can answer each one">
+          <RowList label="Where the strategy isn’t reaching the work">
             {p.notReaching.map(o => (
-              <li key={o.id} className="gw-you-row gw-company-row-q">
+              <Row key={o.id} columns="minmax(0, 1fr) auto">
                 <span><b>{o.observation}</b><br />{o.question}</span>
-                <span className="gw-you-quiet">{o.forWhom}</span>
-              </li>
+                <span className="gwui-ink-sub">{o.forWhom}</span>
+              </Row>
             ))}
-          </ul>
-        </section>
+          </RowList>
+        </Section>
       )}
 
       {!!p.namedByTeams?.length && (
-        <section className="gw-you-section" aria-labelledby="co-named-h">
-          <div className="gw-you-section-head">
-            <h2 id="co-named-h" className="gw-t-h2">Named by more than one team</h2>
-            <span>Nobody on a single team would see this</span>
-          </div>
+        <Section heading="Named by more than one team" note="Nobody on a single team would see this">
           {p.namedByTeams.map(n => (
-            <div key={n.id} className="gw-you-card">
-              <div className="gw-you-section-head">
-                <h3 className="gw-t-h3">{n.title}</h3>
-                {n.touches && <span>{n.touches}</span>}
+            <Panel as="section" key={n.id} aria-label={n.title}>
+              <div className="gwui-section-h">
+                <h3 className="gwui-panel-heading">{n.title}</h3>
+                {n.touches && <span className="gwui-ink-sub">{n.touches}</span>}
               </div>
-              <div className="gw-you-grid">
+              <div className="gwui-cards-3">
                 {n.teams.map(t => (
-                  <div key={t.team} className="gw-company-team">
+                  <div key={t.team} className="gwui-team-col">
                     <b>{t.team}</b>
                     <p>{t.says}</p>
                   </div>
                 ))}
               </div>
-            </div>
+            </Panel>
           ))}
-        </section>
+        </Section>
       )}
 
       {!!p.saidAndShown?.length && (
-        <section className="gw-you-section" aria-labelledby="co-said-h">
-          <h2 id="co-said-h" className="gw-t-h2 gw-company-h2">What you say, and where the time goes</h2>
-          <table className="gw-company-table">
-            <thead><tr><th scope="col"><span className="gw-sr-only">Priority</span></th><th scope="col">You said</th><th scope="col">The check-ins show</th></tr></thead>
+        <Section heading="What you say, and where the time goes" foot="People appear here as counts. What each person said stays with them and their own lead.">
+          <table className="gwui-compare-table">
+            <thead><tr><th scope="col"><span className="gwui-sr-only">Priority</span></th><th scope="col">You said</th><th scope="col">The check-ins show</th></tr></thead>
             <tbody>
               {p.saidAndShown.map(s => (
                 <tr key={s.id}><th scope="row">{s.area}</th><td>“{s.youSaid}”</td><td>{s.checkInsShow}</td></tr>
               ))}
             </tbody>
           </table>
-          <p className="gw-you-quiet">People appear here as counts. What each person said stays with them and their own lead.</p>
-        </section>
+        </Section>
       )}
     </>
   )
@@ -144,15 +147,15 @@ function ThePage({ p }: { p: Page }) {
 function Priority({ pr }: { pr: CompanyPriority }) {
   const tag = pr.reading?.tag ?? pr.tag
   return (
-    <section className="gw-you-card gw-company-priority" aria-label={`Priority ${pr.number}`}>
-      <div className="gw-company-priority-top">
-        <span className="gw-you-quiet">Priority {pr.number}</span>
+    <Panel as="section" aria-label={`Priority ${pr.number}`}>
+      <div className="gwui-priority-top">
+        <span className="gwui-ink-sub gwui-fs-13-5">Priority {pr.number}</span>
         {tag && <Tag tone="attention">{tag}</Tag>}
       </div>
-      <h3 className="gw-t-h3">{pr.title}</h3>
-      {pr.reading?.says && <p>{pr.reading.says}</p>}
-      {pr.staleSays && <p className="gw-you-quiet">{pr.staleSays}</p>}
-      {pr.fedBy && <p className="gw-you-quiet">{pr.fedBy}</p>}
-    </section>
+      <h3 className="gwui-panel-heading">{pr.title}</h3>
+      {pr.reading?.says && <p className="gwui-panel-text">{pr.reading.says}</p>}
+      {pr.staleSays && <p className="gwui-panel-text-muted">{pr.staleSays}</p>}
+      {pr.fedBy && <p className="gwui-panel-text-muted">{pr.fedBy}</p>}
+    </Panel>
   )
 }

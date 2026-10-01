@@ -1,17 +1,23 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
 import { companyApi, type CompanyCard, type CompanyPriority } from '@/api/company'
 import { useAuthStore } from '@/stores/auth'
-import { Button, Tag } from '@/components/gw/kit'
+import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row } from '@/components/gw/ui'
 
 /**
- * COMPANY CONTEXT (D2 and B2, #/company/context). The wording is copied from
+ * COMPANY CONTEXT (D2 and B2, #/company/context, group 2 piece 3). The wording is copied from
  * docs/prototype/screens/B2-context/company-context.txt.
  *
  * TWO READS, EACH WITH ITS OWN RULE ON THE SERVER:
  *   - GET /company: the priorities, who owns each, and, for admins only, what success looks like.
  *   - GET /org/how-we-do-it: how the company does things (organisation memory), which everybody in
  *     the organisation may read. The handbook, resources and everything else it has been told.
+ *
+ * REBUILT FROM THE SHARED PARTS (`@/components/gw/ui`): `PageTitle`'s own `crumbs` for "Company /
+ * Baridi Appliances" in place of the page's own nav, `Section` for "Priorities" and every card
+ * group below it, `Panel` (`as="section"`) for each priority card in place of the page's own
+ * `gw-you-card`, and `RowList`/`Row` for the handbook, resources and "what the company has learned"
+ * lists in place of the page's own `gw-you-rows`. No new parts were needed beyond the two
+ * `CompanyPage` already added (see docs/the-parts-against-the-prototype.md).
  *
  * NOT DRAWN HERE, ON PURPOSE (docs/morning-report-ui.md, item 26): "Waiting for your confirmation",
  * the brief in the chief executive's words, "How goals connect", principles, definitions, "Still
@@ -35,86 +41,80 @@ export function CompanyContextPage() {
   const failed = (page.isError && refused?.status !== 403) || cards.isError
 
   return (
-    <div className="gw-you gw-company">
-      <nav aria-label="Where you are" className="gw-company-crumbs">
-        <Link to="/company">Company</Link> <span aria-hidden="true">/</span> <span>{name}</span>
-      </nav>
-      <h1 className="gw-t-title gw-company-h1">What the company is trying to do, and how it reaches every team</h1>
+    <Page>
+      <PageTitle
+        crumbs={[{ label: 'Company', to: '/company' }, { label: name }]}
+        title="What the company is trying to do, and how it reaches every team"
+      />
 
-      {loading && <p className="gw-t-body gw-you-quiet">Loading…</p>}
+      {loading && <Note>Loading…</Note>}
       {page.isError && refused?.status === 403 && (
-        <p role="alert" className="gw-t-body">{refused.data?.message ?? 'You cannot read this page.'}</p>
+        <Note tone="error">{refused.data?.message ?? 'You cannot read this page.'}</Note>
       )}
       {failed && (
-        <div role="alert" className="gw-you-quiet">
-          <p className="gw-t-body">The company context did not load.</p>
+        <div>
+          <Note tone="error">The company context did not load.</Note>
           <Button kind="secondary" size="small" onClick={() => { page.refetch(); cards.refetch() }}>Try again</Button>
         </div>
       )}
 
       {page.data && (
-        <section className="gw-you-section" aria-labelledby="cc-pri-h">
-          <h2 id="cc-pri-h" className="gw-t-h2 gw-company-h2">Priorities</h2>
-          <p className="gw-you-quiet">Everyone reads the priorities. Targets and numbers are leadership only.</p>
+        <Section heading="Priorities" note="Everyone reads the priorities. Targets and numbers are leadership only.">
           {priorities.length === 0 ? (
-            <p className="gw-t-body gw-you-quiet">No priorities have come in from your organisation’s own systems yet.</p>
+            <Empty>No priorities have come in from your organisation’s own systems yet.</Empty>
           ) : (
-            <div className="gw-you-grid">
+            <div className="gwui-cards-3">
               {priorities.map(pr => <Priority key={pr.id} pr={pr} readsTargets={page.data!.readsTargets} />)}
             </div>
           )}
-        </section>
+        </Section>
       )}
 
       {cards.data && (
         <>
           {handbook.length > 0 && (
-            <Cards id="cc-hb-h" title="The staff handbook, short and simple" sub="Ask Groundwork answers from this, and says so" cards={handbook} />
+            <Cards title="The staff handbook, short and simple" sub="Ask Groundwork answers from this, and says so" cards={handbook} />
           )}
-          {resources.length > 0 && <Cards id="cc-res-h" title="Resources" cards={resources} />}
-          {rest.length > 0 && <Cards id="cc-rest-h" title={`What ${name} has learned, promised and has to hand`} cards={rest} />}
+          {resources.length > 0 && <Cards title="Resources" cards={resources} />}
+          {rest.length > 0 && <Cards title={`What ${name} has learned, promised and has to hand`} cards={rest} />}
           {page.data && all.length === 0 && (
-            <p className="gw-t-body gw-you-quiet">Nothing about how {name} does things has been added yet.</p>
+            <Empty>Nothing about how {name} does things has been added yet.</Empty>
           )}
         </>
       )}
-    </div>
+    </Page>
   )
 }
 
 function Priority({ pr, readsTargets }: { pr: CompanyPriority; readsTargets: boolean }) {
   const success = [pr.measure, pr.target].filter((s): s is string => !!s && !!s.trim())
   return (
-    <section className="gw-you-card gw-company-priority" aria-label={`Priority ${pr.number}`}>
-      <span className="gw-you-quiet">Priority {pr.number}</span>
-      <h3 className="gw-t-h3">{pr.title}</h3>
+    <Panel as="section" aria-label={`Priority ${pr.number}`}>
+      <span className="gwui-ink-sub gwui-fs-13-5">Priority {pr.number}</span>
+      <h3 className="gwui-panel-heading">{pr.title}</h3>
       {readsTargets && success.length > 0 && (
         <>
-          <p className="gw-company-small"><b>What success looks like</b> <Tag>Leadership only</Tag></p>
-          {success.map(s => <p key={s}>{s}</p>)}
+          <p className="gwui-panel-text"><b>What success looks like</b> <Tag>Leadership only</Tag></p>
+          {success.map(s => <p key={s} className="gwui-panel-text">{s}</p>)}
         </>
       )}
-      <p className="gw-you-quiet">Owner: {pr.owner ?? 'No owner yet'}</p>
-      {pr.staleSays && <p className="gw-you-quiet">{pr.staleSays}</p>}
-    </section>
+      <p className="gwui-panel-text-muted">Owner: {pr.owner ?? 'No owner yet'}</p>
+      {pr.staleSays && <p className="gwui-panel-text-muted">{pr.staleSays}</p>}
+    </Panel>
   )
 }
 
-function Cards({ id, title, sub, cards }: { id: string; title: string; sub?: string; cards: CompanyCard[] }) {
+function Cards({ title, sub, cards }: { title: string; sub?: string; cards: CompanyCard[] }) {
   return (
-    <section className="gw-you-section" aria-labelledby={id}>
-      <div className="gw-you-section-head">
-        <h2 id={id} className="gw-t-h2">{title}</h2>
-        {sub && <span>{sub}</span>}
-      </div>
-      <ul className="gw-you-rows">
+    <Section heading={title} note={sub}>
+      <RowList label={title}>
         {cards.map(c => (
-          <li key={c.key} className="gw-you-row gw-company-row-card">
+          <Row key={c.key} columns="minmax(0, 1fr) minmax(0, 2fr)">
             <b>{c.title}</b>
-            <span className="gw-company-body">{c.body}</span>
-          </li>
+            <span className="gwui-ink-sub gwui-pre-line">{c.body}</span>
+          </Row>
         ))}
-      </ul>
-    </section>
+      </RowList>
+    </Section>
   )
 }

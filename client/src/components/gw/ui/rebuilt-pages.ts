@@ -21,6 +21,9 @@
  *
  * ONE PERSON (design-audit.md section 3, "One person (the admin's view)") is the third entry:
  * `OnePersonPage.tsx`, at `/org/members/:id`.
+ *
+ * GROUP 2, PIECE 3 (D2-company, docs/prototype/screens/D2-company): the Company page and company
+ * context. See the comment near the end of this list for what it added.
  */
 export const REBUILT_PAGES: string[] = [
   'pages/invite/InvitePage.tsx',
@@ -77,4 +80,11 @@ export const REBUILT_PAGES: string[] = [
    * row-lists) - see docs/the-parts-against-the-prototype.md.
    */
   'pages/you/YouPage.tsx',
+  /*
+   * GROUP 2, PIECE 3 (D2-company, docs/prototype/screens/D2-company): the Company page and company
+   * context. New shared parts this piece added: `.gwui-priority-top`, `.gwui-team-col` and
+   * `.gwui-compare-table` in `gw-ui.css` - see docs/the-parts-against-the-prototype.md.
+   */
+  'pages/company/CompanyPage.tsx',
+  'pages/company/CompanyContextPage.tsx',
 ]

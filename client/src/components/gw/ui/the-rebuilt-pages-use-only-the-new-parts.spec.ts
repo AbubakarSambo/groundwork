@@ -336,6 +336,9 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/grounds/an-admin-lands-on-a-check-in-list.tsx',
       /* Group 2, piece 2: the You board (C2-the-you-board). */
       'pages/you/YouPage.tsx',
+      /* Group 2, piece 3: the Company page and company context (D2-company). */
+      'pages/company/CompanyPage.tsx',
+      'pages/company/CompanyContextPage.tsx',
     ])
   })
 
