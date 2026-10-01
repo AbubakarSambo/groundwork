@@ -31,7 +31,7 @@ import { targetsFor } from '../board/whose-number-is-whose-business';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting } from './the-context-chat';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
-import { leaveOfThePeopleOn, theAwayLinesFor, whoOnACheckInIsAway } from '../suites/who-is-away';
+import { leaveOfThePeopleOn, theAwayLinesFor, awayUntilAsServed, isFromOutside, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { LEAVE_NOTHING_WAITING, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
 import { offerToKeep, keepWhatWasOffered, dropWhatWasOffered } from '../knowledge/organisation-memory';
 import { keepable, soundsCompanyWide, MEMORY_PROMPT, MEMORY_TOOL, NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
@@ -42,7 +42,7 @@ import { EmailService } from '../email/email.service';
 import { BillingService } from '../billing';
 import { UsageService } from '../usage/usage.service';
 import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dto';
-import { GroundworkEvents, GroundActivatedEvent } from '../../common';
+import { GroundworkEvents, GroundActivatedEvent, CommitmentsSettledEvent } from '../../common';
 import { createHash } from 'node:crypto';
 import { ContextItemKind, GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType, Prisma, GroundMoment, ContextNoteAudience, DocumentVisibility } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
@@ -85,7 +85,7 @@ import { theLeadsWordsAbout } from './the-leads-words-about-someone';
 import { timelineDaysForAChosenEnd } from './session-count';
 import { adminsThisOrg, maySee, groundsAViewerMayList, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from './who-may-read-this-check-in';
 import { EVALUATION_SCENARIOS } from '../reports/is-this-an-evaluation-check-in';
-import { whoMayConfirmSetup, confirmedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
+import { whoMayConfirmSetup, confirmedByAnAdminSentence, briefChangedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
@@ -2316,6 +2316,9 @@ export class GroundsService {
     const requestingParticipant = requestingUserId
       ? (ground.participants ?? []).find((p: any) => p.userId === requestingUserId)
       : null;
+    const readerIsFromOutside = sessionProgress && Object.keys(sessionProgress.awayUntil ?? {}).length
+      ? await isFromOutside(this.prisma, requestingUserId, ground.organizationId)
+      : false;
     const requestingUserIsMissing = !!(
       sessionProgress && requestingParticipant && sessionProgress.missingParticipantIds.includes(requestingParticipant.id)
     );
@@ -2623,6 +2626,9 @@ export class GroundsService {
       briefIsTheLeadsOwnWords,
       /* Who last rewrote it, to whoever runs the check-in: their first name, or "you". */
       briefChangedBy: viewerRunsThisGround ? briefChangedBy : undefined,
+      /* Decision 72: when an admin rewrote it because the lead has left, everybody on the check-in
+         is told who did it, in one plain sentence. Null otherwise. */
+      briefChangedByAnAdmin: typeof briefChange?.byAnAdminSentence === 'string' ? briefChange.byAnAdminSentence : null,
       /* Whether the brief is still the one setup put together from the lead's answers. */
       briefPutTogetherBySetup: viewerRunsThisGround ? briefWasPutTogetherBySetup : undefined,
       /* What she typed in setup, to her alone (U.7 re-check). See LeadSetupWords. */
@@ -2635,14 +2641,19 @@ export class GroundsService {
       baseline,
       leadContextNotes,
       org: org ?? null,
-      sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+      /* A guest from another organisation is not told anybody's days away but their own (1 October 2026);
+         the count still leaves the person out, without saying why. */
+      sessionProgress: sessionProgress
+        ? { ...sessionProgress, awayUntil: awayUntilAsServed(sessionProgress.awayUntil ?? {}, { fromOutside: readerIsFromOutside, myParticipantId: requestingParticipant?.id ?? null }), requestingUserIsMissing }
+        : null,
       /* WHO IS AWAY, AND THAT THIS ROUND DOES NOT WAIT FOR THEM (week 23). Dates only, never a reason or
          a kind of leave. The lead reads it for each person; a colleague reads only that the person is
-         away, and only for a person this reader is already shown by name; a person reads their own. */
+         away, and only for a person this reader is already shown by name; a person reads their own.
+         Somebody from outside the organisation (a guest, decision 36) reads nobody's but their own. */
       whoIsAway: theAwayLinesFor(
         sessionProgress?.awayUntil ?? {},
         participantsWithCheckIns as any[],
-        { viewerRunsThisGround, myParticipantId: requestingParticipant?.id ?? null },
+        { viewerRunsThisGround, myParticipantId: requestingParticipant?.id ?? null, fromOutside: readerIsFromOutside },
       ),
       /**
        * The context flag, sent with the ground because that is where the tab
@@ -4150,7 +4161,7 @@ export class GroundsService {
           direction: t.direction ?? null,
         })) as any,
       });
-      return { changed: 'targets', say: proposal.say };
+      return { changed: 'targets', say: confirmedSay(proposal) };
     }
 
     /*
@@ -4481,6 +4492,10 @@ export class GroundsService {
       select: { id: true, text: true, status: true, participantId: true },
     });
     this.logger.log(`Ground ${groundId}: somebody moved their own to-do to ${clean}.`);
+    /* Settled by hand is something new too (decision 7): what is counted from settled commitments reads it now. */
+    if (clean === 'DONE' || clean === 'NOT_DONE') {
+      this.events?.emit?.(GroundworkEvents.COMMITMENTS_SETTLED, { groundId, participantId: row.participantId } satisfies CommitmentsSettledEvent);
+    }
     return moved;
   }
 
@@ -6273,18 +6288,16 @@ export class GroundsService {
     }
 
     /*
-     * THE BRIEF. Whoever runs the check-in writes it and can rewrite it; it is the words everybody
-     * reads before they answer, so it carries the same permission as renaming and the same audit
-     * entry. Blank clears it, deliberately: a lead who wants the wrong brief GONE - every entry-chat
-     * check-in before today had one written by the report rather than by them - should not have to
-     * replace it with something they do not mean.
+     * THE BRIEF. It is the words everybody reads before they answer. Hafsah, 1 October (decision 72):
+     * rewriting it follows the same rule as every other setup change (decision 63). Only the lead
+     * can, unless the lead has left the organisation; then an admin of it can, and the people on
+     * the check-in are told who did it. It used to carry renaming's permission, so any admin could
+     * rewrite a present lead's words. Blank clears it, deliberately: a lead who wants the wrong
+     * brief GONE should not have to replace it with something they do not mean.
      */
+    let briefDecision: Awaited<ReturnType<GroundsService['mayConfirmSetupOn']>> | null = null;
     if (dto.brief !== undefined) {
-      if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-        throw new ForbiddenException(
-          'Only the lead of this check-in, or an admin in your organisation, can change what it says it is for.',
-        );
-      }
+      briefDecision = await this.mayConfirmSetupOn(ground, requestingUserId);
     }
 
     /**
@@ -6355,7 +6368,7 @@ export class GroundsService {
 
     // Parse existing audit log - migrate legacy array format to structured object.
     const rawLog = ground.groundAuditLog;
-    const auditData: { timeline: object[]; contextNotes: string[]; briefChangedBy?: { userId: string; at: string } } =
+    const auditData: { timeline: object[]; contextNotes: string[]; briefChangedBy?: { userId: string; at: string; byAnAdminSentence?: string } } =
       rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object'
         ? {
             timeline: (rawLog as any).timeline ?? [], contextNotes: (rawLog as any).contextNotes ?? [],
@@ -6371,7 +6384,15 @@ export class GroundsService {
      * changes to the length and the cadence.
      */
     if (dto.brief !== undefined && (dto.brief.trim() || null) !== ((ground as any).brief ?? null)) {
-      auditData.briefChangedBy = { userId: requestingUserId, at: new Date().toISOString() };
+      auditData.briefChangedBy = {
+        userId: requestingUserId,
+        at: new Date().toISOString(),
+        /* Decision 72: an admin who rewrote it because the lead has left is named to everybody on
+           the check-in, in the same sentence shape as decision 63's. */
+        ...(briefDecision?.as === 'admin'
+          ? { byAnAdminSentence: briefChangedByAnAdminSentence(briefDecision.confirmedByName, briefDecision.leadName) }
+          : {}),
+      };
     }
 
     if (requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined) {

@@ -138,7 +138,8 @@ describe('and the reads that were guessing now have the answer', () => {
      */
     const REPORTS = readFileSync(join(__dirname, '../reports/reports.service.ts'), 'utf8');
     expect(REPORTS).toMatch(/if \(restsOn\.length\) out\.whatItRestedOn = restsOn/);
-    const PAGE = readFileSync(join(__dirname, '../../../../client/src/pages/report/ReportPage.tsx'), 'utf8');
+    /* Request 99: the old report body is gone; the live home of this section is WhatToProbeThemOn. */
+    const PAGE = readFileSync(join(__dirname, '../../../../client/src/components/gw/WhatToProbeThemOn.tsx'), 'utf8');
     expect(PAGE).toMatch(/These were not in their hands\. Read anything unmet above against them first\./);
   });
 });

@@ -83,7 +83,7 @@ describe('a paste in the setup conversation, or in Ask Groundwork', () => {
 describe('the measures named in the setup conversation, one at a time', () => {
   it('the say-back states each number as an aim or a limit, so the yes confirms it', () => {
     const p: any = proposalFrom('targets', { targets: [{ name: 'Pumps sold under the new scheme', target: 40 }, { name: 'Spending within budget', target: 180000 }, { name: 'Get the new depot running', target: null }] });
-    expect(p.say).toBe('Set 3 measures, 2 of them with a number to count against. "Pumps sold under the new scheme" is an aim of 40 to reach. "Spending within budget" is a limit of 180,000 not to go over. You can change any of them on the board, including whether a number is an aim or a limit.');
+    expect(p.say).toBe('I will set 3 measures for this check-in. "Pumps sold under the new scheme" is an aim of 40 to reach. "Spending within budget" is a limit of 180,000 not to go over. "Get the new depot running" has no number, so it will be followed but not counted. You can change any of them on the board, including whether a number is an aim or a limit.');
     expect(p.targets.map((t: any) => t.direction)).toEqual(['AIM', 'LIMIT', null]);
   });
 });

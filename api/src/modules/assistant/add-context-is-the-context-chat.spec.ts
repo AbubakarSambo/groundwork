@@ -475,3 +475,21 @@ describe('FIX 2, 30 September 2026: a setup conversation opened with openedFromS
     expect(r2.blocks.some((b) => b.type === 'proposal')).toBe(true);
   });
 });
+
+/*
+ * FOUND LIVE, 1 October 2026 (item 6, journey/memory-requests-and-being-away-live.ts). Where the
+ * lead answers with a yes or a no, the setup conversation says nothing beside its say-back, and the
+ * reply carried an empty text block, which the panel draws as an empty bubble above the question.
+ */
+describe('a say-back never comes with an empty bubble', () => {
+  it('the say-back is the text when the setup conversation says nothing beside it', async () => {
+    const say = 'Shall I keep "Every quote over 1 million shillings needs Grace\'s sign-off" as a rule for the whole organisation, so later check-ins and Ask Groundwork can use it?';
+    const contextChat = jest.fn(async () => ({ reply: '', gaps: ['targets'], done: false, proposal: { gap: 'organisation_memory', say, offerId: 'o1' } }));
+    const { service } = svc({ contextChat });
+    const r = await service.respond('org-a', 'p1', 'add this as context: every quote over 1 million shillings needs Grace\'s sign-off', 'g1');
+    const texts = r.blocks.filter((b: any) => b.type === 'text').map((b: any) => b.body);
+    expect(texts.every((t: string) => t.trim().length > 0)).toBe(true);
+    expect(texts).toEqual([say]);
+    expect(r.blocks.find((b: any) => b.type === 'proposal')).toMatchObject({ summary: say });
+  });
+});

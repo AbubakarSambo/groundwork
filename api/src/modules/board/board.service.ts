@@ -87,7 +87,7 @@ import { theShortNameOf } from '../reports/a-title-is-not-a-first-name';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
-import { leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
+import { isFromOutside, leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
@@ -105,7 +105,7 @@ import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
-import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
+import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, theLeadActions, theObligations, theForecast, whoWaitedOnWhom, theContradictions, theQuestionsForTheLead, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { eachLineInTheirName, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
 import { theRecordAQuoteMayComeFromByParticipant } from '../reports/a-quote-built-at-the-read';
@@ -803,7 +803,12 @@ export class BoardService {
           const name = shown && shown !== 'A colleague' ? (first && shown.includes(first) ? first : shown) : null;
           return { id: p.id, nameGiven: name, user: null };
         }),
-        { viewerRunsThisGround: isInitiator || isSetupAdmin || adminHere, myParticipantId: me?.id ?? null },
+        {
+          viewerRunsThisGround: isInitiator || isSetupAdmin || adminHere,
+          myParticipantId: me?.id ?? null,
+          /* A guest from another organisation reads nobody's days away but their own (1 October 2026). */
+          fromOutside: !(isInitiator || isSetupAdmin || adminHere) && await isFromOutside(this.prisma, requestingUserId, ground.organizationId),
+        },
         true,
       ),
     };
@@ -1940,6 +1945,34 @@ export class BoardService {
       if (evidenceIndex.length) out.evidenceIndex = evidenceIndex;
       const busyOrMoving = theBusyOrMoving(people, mine.commitments, handoffs, sessions, reader);
       if (busyOrMoving) out.busyOrMoving = busyOrMoving;
+      /* A goal the lead has not told the person about is the lead's own note (decision 56): only the lead's list carries it. */
+      const untoldGoals = isInitiator ? await this.goalsNotToldYetByParticipant(groundId) : [];
+      const leadActions = theLeadActions(mine.commitments, handoffs, sessions, untoldGoals, reader);
+      if (leadActions.length) out.leadActions = leadActions;
+      const obligations = theObligations(people, mine.commitments, handoffs, sessions, reader);
+      if (obligations.length) out.obligations = obligations;
+      const waits = whoWaitedOnWhom(handoffs, reader);
+      if (waits.length) out.whoWaitedOnWhom = waits;
+      const contradictions = theContradictions(mine.commitments, sessions, reader);
+      if (contradictions.length) out.contradictions = contradictions;
+      const questionsForTheLead = theQuestionsForTheLead(mine.commitments, handoffs, sessions, reader);
+      if (questionsForTheLead.length) out.questionsForTheLead = questionsForTheLead;
+      /*
+       * Built from the targets this reader is already served, so every wall on a target holds here too. Never on an
+       * evaluation check-in. It says the aim or the limit, so it goes only to those who read aims and limits (decision
+       * 73, as the weekly report): whoever runs the check-in, and a person in it only where everybody sees the targets.
+       */
+      const readsTheAims = runsIt || (!!me && (ground as any).whoSeesTargets === 'EVERYBODY');
+      if (!evaluation && readsTheAims && Array.isArray(out.objectives) && (out.objectives as any[]).length) {
+        const stored = new Map(((ground.objectives ?? []) as any[]).map((o) => [o.id, o]));
+        const served = (out.objectives as any[]).filter((o) => stored.has(o.id)).map((o) => {
+          const row = stored.get(o.id);
+          return { id: o.id, about: String(o.name ?? ''), target: typeof o.target === 'number' ? o.target : null, ownerParticipantId: o.ownerParticipantId ?? null, direction: asADirection(row.direction) ?? whatTheWordsSuggest(row.name) };
+        });
+        const counts = await (this.prisma.groundObjectiveSnapshot.findMany({ where: { groundId }, select: { objectiveId: true, sessionNumber: true, count: true } }) as Promise<any[]>).catch(() => [] as any[]);
+        const forecast = theForecast(served, (counts ?? []) as any[], totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null);
+        if (forecast.length) out.forecast = forecast;
+      }
     }
 
     /*

@@ -20,6 +20,20 @@ import { whoApprovesFor } from './who-approves';
 export const LEAVE_SUITE_OFF = 'Leave requests are not switched on in your organisation, so I have not sent or kept these dates. An admin can switch them on under Suites.';
 export const LEAVE_NOT_SENT = 'I have not sent it. Nothing was kept.';
 export const LEAVE_NOTHING_WAITING = 'There is no leave request waiting to be sent. Tell me the days again and I will ask.';
+/** Leave was asked for, but the days could not be read without guessing. Nothing is sent or kept. */
+export const LEAVE_WHICH_DAYS = 'I could not tell exactly which days you mean, so I have not sent anything. Tell me the first day and the last day, for example "from next Monday to next Wednesday", and I will ask again.';
+
+/**
+ * WHETHER THE WORDS PLAINLY ASK FOR TIME OFF, so days that cannot be read are asked for again rather
+ * than answered with a shrug (found live, 1 October 2026, item 6: "I need Monday and Wednesday off
+ * next week" was answered "I cannot answer that one yet"). Narrower than `soundsLikeLeave`: "off"
+ * counts only where it ends the request or comes before a day, so "I am off to Kisumu" is not one.
+ */
+export function plainlyAsksForLeave(message: string): boolean {
+  const t = (message ?? '').trim();
+  if (!soundsLikeLeave(t)) return false;
+  return /\b(?:leave|holiday|vacation|days? off|time off|off work)\b|\boff\b(?=\s+(?:next|this|on|from|until|till)\b|\s*[.!?]?\s*$)/i.test(t);
+}
 
 export interface LeaveDates { startsOn: Day; endsOn: Day }
 
@@ -78,6 +92,21 @@ export function readLeaveDates(message: string, today: Date = new Date()): Leave
   if (!soundsLikeLeave(t)) return null;
   const out = (a: Date | null, b: Date | null): LeaveDates | null =>
     a && b && b >= a ? { startsOn: iso(a), endsOn: iso(b) } : null;
+
+  /*
+   * TODAY, NEVER DROPPED (found live, 1 October 2026, item 6). "I need leave today and tomorrow" was
+   * read as tomorrow alone, because nothing read "today", and the person was asked to send one day
+   * when they had asked for two. Today with tomorrow, or with a weekday after it, is read; today with
+   * anything else is not read at all, so it is asked again rather than half read. (Today on its own
+   * never gets here: a message is read as leave only when it also names a day, a date or a week.)
+   */
+  if (/\btoday\b/.test(t)) {
+    const now = midnight(today);
+    if (new RegExp(`\\b(?:from\\s+)?today\\s*(?:and|to|until|till|through|-)\\s*tomorrow\\b`).test(t)) return out(now, new Date(now.getTime() + DAY_MS));
+    const until = new RegExp(`\\b(?:from\\s+)?today\\s*(?:to|until|till|through|-)\\s*(?:(next|this)\\s+)?${WEEKDAY_RE}\\b`).exec(t);
+    if (until) return out(now, until[1] === 'next' ? weekdayFrom(until[2], 'next', today) : weekdayFrom(until[2], 'this', today));
+    return null;
+  }
 
   /* 2026-10-08 to 2026-10-09, or one day. */
   const isos = [...t.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g)].map((m) => new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])));

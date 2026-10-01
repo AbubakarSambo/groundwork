@@ -632,16 +632,16 @@ Your request 70. Before building anything, I read what the board and the reports
 
 | Section | Calls for it | State | Where, or what is missing |
 | --- | --- | --- | --- |
-| Lead actions | 22 | Served already | `theJudgement.whatToDo` (what to do and why, the lead only), `decisions` (what needs deciding, and who decides), `toLookAt` and `eachPersonToday[].conversationPoints` (what has stayed the same, and what to talk through, the lead only). |
+| Lead actions | 22 | Built (second pass) as `leadActions`. Also served | `theJudgement.whatToDo` (what to do and why, the lead only), `decisions` (what needs deciding, and who decides), `toLookAt` and `eachPersonToday[].conversationPoints` (what has stayed the same, and what to talk through, the lead only). |
 | Risks | 18 | Not served. Built. | Nothing gathers "what could go wrong". Built from the record, in plain sentences, with the facts behind each one. |
 | Work plan | 13 | Partly served. Built. | `whoOwnsWhat` has each person's commitments with no date and no state. `overTime.commitments` has the date and the state, for the lead only. `workRecords` has it for the founder's own check-in only. Built as `workPlan` for each reader under their own wall. |
 | Deal grid | 11 | Served already | `workRecords`, the section named "Deal grid", by the check-in's kind of work (request 76): sales org, engineering release, support desk, distribution operations, trader training programme, asset loans, MarketView Q4, a government programme. Served as `none-yet` when nothing has been recorded and as `not-known` when the kind is not set. |
 | Coaching | 10 | Served already | `coaching` (`yours` and `eachPerson`), request 79 b. |
 | Themes | 9 | Served already | `whatTheRoomIsAbout` (aims, places and things, each with who named it, nothing dropped), `whatTheAnswersSay` (the network read, where enough accounts came in) and, for MarketView where next, `workRecords` "Themes". For support desk it is served as not known, because the helpdesk's own counts are not in the record. |
-| Obligations | 6 | Partly served | A law firm matter's parties are in `workRecords` "Obligations". For the others, what each person promised is `workPlan` (built here) and what each waits on is `dependencies`. What a contract's own clauses require is not in the record (the record holds what people said, not the document), so that is not served. |
+| Obligations | 6 | Built (second pass) as `obligations` | A law firm matter's parties are in `workRecords` "Obligations". For the others, what each person promised is `workPlan` (built here) and what each waits on is `dependencies`. What a contract's own clauses require is not in the record (the record holds what people said, not the document), so that is not served. |
 | Timeline | 5 | Not served. Built. | `phaseSpine` has the sessions and their dates only, and a law firm's deadlines are in `workRecords`. Nothing puts what happened in order. Built as `timeline`. |
 | Person history | 5 | Not served. Built. | Built as `personHistory`, one person's record session by session, facts only, to the lead and to the person themselves. |
-| Forecast | 5 | Not served. Nothing built. | The record holds no projected figure. `objectives[].journey` says where a number started, where it is and what was aimed for, and `eachPerson` says whether the pace is behind. Neither is a forecast, and I will not invent one. `workRecords` already serves "Forecast" as `not-known` for sales org and MarketView Q4, with the reason. |
+| Forecast | 5 | Built (second pass) as `forecast`, for Hafsah to confirm | A team's number only, the pace so far carried forward in a straight line; see below. Before that: the record holds no projected figure. `objectives[].journey` says where a number started, where it is and what was aimed for, and `eachPerson` says whether the pace is behind. Neither is a forecast, and I will not invent one. `workRecords` already serves "Forecast" as `not-known` for sales org and MarketView Q4, with the reason. |
 | Blocker check | 4 | Not served. Built. | Built as `blockerCheck`: for each open handoff, whether it names a person, whether the person said what they had tried, and whether a time was given. |
 | Evidence index | 4 | Not served. Built. | Built as `evidenceIndex`: every line on the board that a document proves or a colleague confirmed, with whose it is and the session. |
 | Busy or moving | 4 | Not served. Built. | Built as `busyOrMoving`: counts from the record, for the lead only, never a label. |
@@ -649,11 +649,11 @@ Your request 70. Before building anything, I read what the board and the reports
 | Requirements review | 3 | Served already | `overTime.gaps` (what the role was said to be, against what the record holds; the lead only), `startingState` and `objectives`. |
 | Actions and their results | 4 | Served already | `overTime.commitments` (the lead only) with the state and how it was settled. `workPlan` (built here) gives each other reader their own. |
 | The other side | 4 | Served already | `divergence.items`, `divergence.agreements`, `whoOwnsWhat` and `managerAlignment`. |
-| Who waited on whom | 4 | Served already | `dependencies` on the board, `GET /grounds/:id/links` (`dueSaid`, `dueOn`, `standing`), `GET /grounds/:id/blocker-trace`, and `overTime.dependencies` (sessions waiting, whether anybody went back). |
+| Who waited on whom | 4 | Built (second pass) as `whoWaitedOnWhom`, with dates. Also served | `dependencies` on the board, `GET /grounds/:id/links` (`dueSaid`, `dueOn`, `standing`), `GET /grounds/:id/blocker-trace`, and `overTime.dependencies` (sessions waiting, whether anybody went back). |
 | Commitments followed over time | 4 | Served already | `overTime.commitments` (said in which session, said again in which, how it ended), the lead only. |
 | Pattern history | 4 | Served already | `patterns[].sessions` and `patterns[].howOften`, under `who-reads-a-pattern.ts`, and `overTime.patterns` for the lead. |
-| Contradictions | 4 | Served already | `divergence.items` (where two people said different things). Where one person said two things across sessions, nothing is written yet. |
-| Questions for the lead | 4 | Served already | `decisions`, `coaching.eachPerson` (what to ask each person) and `eachPersonToday[].conversationPoints`, for the lead only. |
+| Contradictions | 4 | Served, and built (second pass) | `divergence.items` (where two people said different things), and `contradictions` (where one person's own record says two things about a commitment). |
+| Questions for the lead | 4 | Built (second pass) as `questionsForTheLead`. Also served | `overTime.toSettleFirst` (the lead only), `decisions`, `coaching.eachPerson` (what to ask each person) and `eachPersonToday[].conversationPoints`, for the lead only. |
 
 Built in this pass, in order of how many situations call for them: Risks, Work plan, Timeline, Person history, then Blocker check, Evidence index and Busy or moving (four each).
 
@@ -679,7 +679,102 @@ Code: `api/src/modules/board/the-switchboards-own-sections.ts` (the builders) an
 
 For the screens. Thirteen of the 22 needed no new field, and are in the table above under "Served already" with the field to map each to (`G2_SECTION_TO_BOARD_SECTION` can now point Work plan to `workPlan`, Timeline to `timeline`, Person history to `personHistory`, Risks to `risks`, Blocker check to `blockerCheck`, Evidence index to `evidenceIndex`, Busy or moving to `busyOrMoving`, Coaching to `coaching`, Lead actions to `theJudgement.whatToDo`, Deal grid, Obligations and Themes to `workRecords`, Themes also to `whatTheRoomIsAbout`, The other side and Contradictions to `divergence`, Who waited on whom to `dependencies`, Commitments followed over time and Requirements review to `overTime`, Pattern history to `patterns`, Questions for the lead to `decisions`).
 
-Left, and why. Forecast: the record holds no projected figure, so nothing is served (the work-record section still says "not known" for sales org and MarketView Q4). Where the time went: the record does not hold how anybody's time was spent, so nothing is served. Contradictions inside one person's own answers across sessions, and a contract's own clauses for Obligations: not in the record, not served. `overTime` is still served to the lead only, so the lead's Commitments followed over time, Actions and their results and Requirements review read from it; the other readers get their own commitments in `workPlan`.
+Left, and why (first pass; see the second pass below, which serves a forecast for a team's number). Forecast: the record holds no projected figure, so nothing is served (the work-record section still says "not known" for sales org and MarketView Q4). Where the time went: the record does not hold how anybody's time was spent, so nothing is served. Contradictions inside one person's own answers across sessions, and a contract's own clauses for Obligations: not in the record, not served. `overTime` is still served to the lead only, so the lead's Commitments followed over time, Actions and their results and Requirements review read from it; the other readers get their own commitments in `workPlan`.
+
+### The rest of the switchboard's sections (request 70, second pass, 1 October)
+
+Each section below is a new top-level field on `GET /grounds/:id/board`, built the same way as the seven above: from rows the record already holds, with no model and nothing written, so opening the board never changes it, and absent (never an empty list) when there is nothing in it. The readers are the same as above unless a section says otherwise.
+
+#### Lead actions: `leadActions`
+
+`[{ id, says, because }]`, at most 10. What the person who runs the check-in needs to do, from the record: somebody waiting on the lead, a wait nobody was named to provide, a goal the lead set for somebody and has not told them about (decision 56), and what the lead committed to that nobody has said happened. `because` is the facts behind it, or null when `says` already holds them.
+
+Who reads it. Whoever runs the check-in: the lead reads "You"; the admin who set it up, and an admin of the organisation on a check-in that is not an evaluation, read the lead's name. The untold goal is the lead's own private note, so only the lead reads that line, and never the goal's words or number. A participant, and the person reviewed on an evaluation check-in, read no lead actions at all. An admin with no access to an evaluation check-in reads no board.
+
+What Bisi (the lead, sales run) reads:
+
+- "You need to get back to Kwame Mensah, who is waiting on you for the approval of five applications." because: "It was first said on 16 September. Nobody has said what has been tried. No time has been given for it."
+- "You need to find out who can provide the bank statements Femi Okonkwo is waiting for, because nobody has been named yet."
+- "You need to talk Kwame Mensah through a goal you set for this work, because Kwame Mensah has not been told about it yet." because: "The goal still counts, and Groundwork will not tell its number until it has been talked through."
+- "In session 2, you said, "I'll follow up directly with the committee members." Nobody has said yet whether it happened."
+
+What an admin who reads it reads: "Bisi Adeyemi needs to get back to Kwame Mensah, who is waiting on Bisi Adeyemi for the approval of five applications."
+
+Test: `lead-actions-on-the-board-as-each-reader-reads-them.spec.ts`.
+
+#### Obligations: `obligations`
+
+`[{ participantId, who, promised: [sentence], othersWaitFor: [sentence] }]`. What each side promised, and what somebody here is still waiting on that side for. One side per person in the order of the check-in, then each party outside it that somebody is waiting on (`participantId: null`, `who` is the name they were given, for example "Mr. Adebayo"). `promised` holds the work plan's own sentences for that person, so it is under the work plan's wall; `othersWaitFor` holds the open waits the reader may read. A side with nothing in it is left out. What a contract's own clauses require is still not in the record, so it is not served.
+
+Who reads it. Whoever runs the check-in, the admin who set it up, and an admin of the organisation on an ordinary check-in read every side. A participant where people see each other reads every side; where they do not, only their own side and the lead's, and only the waits they are in. The person reviewed on an evaluation check-in reads their own side and the lead's side without the lead's promises.
+
+What Bisi reads, for her own side: promised "In session 2, you said, "I'll follow up directly with the committee members." Nobody has said yet whether it happened." and othersWaitFor "Kwame Mensah is waiting on you for the approval of five applications." For the party outside: "Ngozi Eze is waiting on Mr. Adebayo for a date for the credit decision." Kwame, where people do not see each other, reads on Bisi's side "You are waiting on Bisi Adeyemi for the approval of five applications."
+
+Test: `obligations-on-the-board-as-each-reader-reads-them.spec.ts`.
+
+#### Forecast: `forecast` (decided for Hafsah to confirm)
+
+`[{ objectiveId, about, says, restsOn, cannotTellYou }]`. Where a team's number would be by the last session if it keeps the pace the record shows, carried forward in a straight line from the counts stored when each session closed. `about` is the sentence the board already serves for that target, so the screens can draw `says` under it. The earlier answer said nothing would be served; the prototype's board does show a forecast, so this is the closest thing the record can honestly give, and it is listed for Hafsah to confirm.
+
+When it is served. Only for a target with a number and no owner: a target that belongs to one person is never forecast, because the prototype says a forecast about one person reads like a judgement on them. Only with two sessions counted, and only while the check-in still runs past the last count. Never on an evaluation check-in (a performance plan, a promotion, a renewal). It is built from the targets this reader is already served, so `targetsFor`, an untold goal (decision 56), the lead's direction (decision 69) and the word guess where none is set all hold.
+
+Who reads it. It says the aim or the limit, so it follows decision 73, as the weekly report does: whoever runs the check-in and the admin who set it up read it; a person in it reads it only where the check-in's "who sees targets" is everybody; an admin who only reads keeps the counts alone and reads no forecast.
+
+What Bisi reads, for "The team is aiming for 40 approved facilities this quarter.": "If it keeps moving at the pace it has since session 1, it would be about 21 by session 4, against an aim of 40." restsOn: "It was 6 in session 1 and 11 in session 2, and this check-in runs for 4 sessions." cannotTellYou: "This carries the pace so far forward in a straight line. It is not a promise, and anything that changes the pace changes where it ends." Where the number has not moved: "It has not moved since session 1, so if nothing changes it would still be 2 by session 4, against a limit of 5."
+
+Test: `a-forecast-on-the-board-as-each-reader-reads-it.spec.ts`.
+
+#### Who waited on whom: `whoWaitedOnWhom`
+
+`[{ id, says, startedAt, clearedAt, days }]`, oldest first. The prototype's "Dependency ledger": every wait in the record, open or cleared, with the day it was first said (`startedAt`, "2026-09-02"), the day it was cleared (`clearedAt`, or null), and the whole days it took (`days`, only once cleared). Nothing counts from today, so opening the board never changes it. `dependencies` is unchanged and still has no dates.
+
+Who reads it. The same as every other wait on the board: whoever runs the check-in, the admin who set it up, and an admin on an ordinary check-in read every wait; a participant where people do not see each other, and the person reviewed on an evaluation check-in, read only the waits they are in; a wait the lead raised that names somebody stays the lead's.
+
+What Bisi reads: "Ngozi Eze waited on the Head of Credit for the Head of Credit's reply from 2 September until it was cleared on 16 September, 14 days in all." and "Kwame Mensah has been waiting on you for the approval of five applications since 16 September, and it has not been cleared." Ngozi reads "You waited on the Head of Credit for ..." and "You have been waiting on Mr. Adebayo for a date for the credit decision since 16 September, and it has not been cleared."
+
+Test: `who-waited-on-whom-on-the-board-as-each-reader-reads-it.spec.ts`.
+
+#### Contradictions: `contradictions`
+
+`[{ id, commitmentId, participantId, who, says }]`. Where one person's own record says two different things: a commitment marked done, not done or dropped in one session, and said again in a later session as something still to do. Where two people said different things, it stays in `divergence` (unchanged), so the screens draw both under "Contradictions". The commitment is quoted only where its stored text is a passage of what the person typed, as the work plan quotes it.
+
+Who reads it. The work plan's wall: whoever runs the check-in, the admin who set it up, and an admin on an ordinary check-in read everyone's; a person reads their own, and a colleague's only where people see each other and it is not an evaluation check-in.
+
+What Bisi reads: "Kwame Mensah's commitment, "I'll be following up with each client directly over the next week to chase down the missing documents", was marked done in session 1, and in session 2 Kwame Mensah said it again as something still to do." Kwame reads "Your commitment, "...", was marked done in session 1, and in session 2 you said it again as something still to do."
+
+Test: `contradictions-on-the-board-as-each-reader-reads-them.spec.ts`.
+
+#### Questions for the lead: `questionsForTheLead`
+
+`[{ id, question, because }]`, at most 10. Questions, never conclusions, each built from rows so the same facts ask the same questions: a commitment said in three sessions or more with nobody saying whether it happened, a commitment the record says two things about (see Contradictions), a wait on somebody in the check-in nobody has gone back about, and a wait on somebody outside it nobody has chased. What the lead needs to do themselves is in `leadActions`, not here. `overTime.toSettleFirst` (the report's own list, the lead only) is unchanged.
+
+Who reads it. Whoever runs the check-in, the admin who set it up, and an admin on an ordinary check-in. Nobody taking part, and never the person reviewed. The lead reads "only you can find out"; anybody else reads the lead's name.
+
+What Bisi reads:
+
+- "Has Femi Okonkwo's commitment, "I will call them again", happened, or is it still wanted?" because: "Femi Okonkwo said it in sessions 1, 2 and 3, and nobody has said whether it happened."
+- "Is Kwame Mensah's commitment, "I'll be following up with each client directly over the next week to chase down the missing documents", done, or still to do?" because: the contradiction's own sentence.
+- "Has anybody gone back to Ngozi Eze about the Head of Credit's contact, which Femi Okonkwo is waiting for?" because: "Nothing on record says anybody has, so only you can find out whether it was raised outside the check-in."
+- "What has been tried to get a date for the credit decision from Mr. Adebayo, which Ngozi Eze is waiting for?" because: "Nothing on record says anybody has chased it, so only you can find out what was done outside the check-in."
+
+Test: `questions-for-the-lead-on-the-board-as-each-reader-reads-them.spec.ts`.
+
+#### What is left after the second pass, and where each is served
+
+No new field, because the board already serves each one, and a second copy would be a second place for a wall to be forgotten:
+
+| Section | Field to draw it from |
+| --- | --- |
+| Deal grid | `workRecords`, the section named "Deal grid" (request 76). |
+| Coaching | `coaching` (`yours` and `eachPerson`). |
+| Themes | `whatTheRoomIsAbout`, `whatTheAnswersSay`, and `workRecords` "Themes" where the kind of work has one. |
+| Pattern history | `patterns[].sessions` and `patterns[].howOften`, under who-reads-a-pattern. |
+| The other side | `divergence.items` (each side's `positions`), `divergence.agreements` and `managerAlignment`. |
+| Commitments followed over time | `workPlan` for every reader (said in which session, said again in which, how it ended), and `overTime.commitments` for the lead. |
+| Actions and their results (the prototype's "Behaviour to result") | `workPlan` rows whose `state` is not `open`: what was committed to, and how it was settled (by the person's word, a document, or the colleague who received it). |
+| Requirements review | `objectives[].journey.say` (each target against what the record holds, for whoever may read the target) and `overTime.gaps` (the role as written against what the record holds, the lead only, because the role is written in the lead's own words). |
+
+Not served, because the record does not hold it. Where the time went: nothing records how anybody's time was spent, only what they said they would do, so anything here would be a guess. A contract's own clauses (for Obligations): the record holds what people said, not the document's terms.
 
 ## Week 11: the ending page's suggestion, signals and questions, and reviews that fall due from inside the product
 
@@ -699,11 +794,14 @@ The read the ending page already makes now also carries `theEndingPage`. It is b
 What a lead reads, for a person the suggestion was reached for:
 
 - "Groundwork suggests extra support for Kwame"
-- Why: "Commitments have been kept less often than Groundwork looks for, over several check-ins."
-- What would change it: "Keeping more of what is agreed, over the next few check-ins."
+- Why: "In the last four weeks, Kwame has kept fewer of the commitments made in this check-in than Groundwork looks for."
+- What would change it: "If Kwame keeps more of the commitments made in this check-in over the next four weeks."
 - Questions: "Were Kwame's goals clear enough from the first day?" and "Is there something Kwame needed from you or from the team that has not been given yet?"
+- `theirOwnAnswer` is now always `null`: the lead reads the person's answer as `theirSide` (changed 1 October; it used to be the last thing they typed in a check-in, mostly a goodbye). Draw "Kwame's side" when there is one.
 
-What the person reads: "In the last few check-ins, you kept 2 of 8 commitments. That is 25 in 100. When fewer are kept than Groundwork looks for, Groundwork suggests extra support to your lead." and, once decided, the decision with its reasons.
+What the person reads: "In the last four weeks, you kept two of your eight commitments in this check-in. When fewer than half are kept, Groundwork suggests extra help to Wairimu." and "What would change this: Keeping at least half of your commitments in this check-in over the next four weeks.", and, once decided, the decision with its reasons.
+
+Suggestions exist only on a performance plan, a recognition or a contract renewal (decision 6, clarified 29 September; the same list as the reading rule). On any other check-in, including a first 90 days, `suggestions`, `aboutYou` and `appealed` are always empty, and the You board, reviews and appeals list leave them out (changed 1 October).
 
 Until the threshold in decision 61 is crossed (fewer than half kept, at least 6 settled), there is no suggestion, so `suggestions` and `aboutYou` are empty lists, and the page should draw nothing for them rather than a line saying nothing was found.
 
@@ -1089,3 +1187,80 @@ Hafsah decided two things (decisions 70 and 71 in `docs/decisions-merged.md`):
 - **71.** The old-version notice stays. The rebuilt session report (`TheSessionsReport.tsx` / `SessionReportPage.tsx`) needs to tell a person when the report they are reading has changed since they opened it, as the old body's banner did ("someone has checked in since this was written, you are reading the previous version"), worded plainly. Please build it and add a test in `a-panel-with-nothing-to-say-is-a-line.spec.ts` that reads it in the live page. Its guard entry is the last one left; when it is live, I take it off the list, and the "body is still there" test retires with it, as the file says.
 
 The two dropped sentences and the rewording of "Yours as the lead" for the person are with you, as agreed. When those are pushed I merge and run the three tests.
+
+
+## Request 99, done (1 October)
+
+Merged your three commits. Both sentences are back word for word, the person reads "What your lead said good would mean", and the old-version notice is on the session report. I pointed `the-teams-starting-point` and `one-session-is-not-a-movement` at `WhatToProbeThemOn.tsx` and `SessionReportPage.tsx`, emptied `BEFORE_THE_DEAD_BODY_CAN_GO`, and the test that held `ReportBody` in place now checks it does not come back. All three pass (`736f28f7`).
+
+
+## Decision 72: who may rewrite what a check-in is for (1 October)
+
+The server now allows only the lead to rewrite a check-in's brief, unless the lead has left the organisation; then an admin of it may. Anybody else is refused with decision 63's message (it names the lead). When an admin rewrote it because the lead left, `GET /grounds/:id` serves `briefChangedByAnAdmin` to everybody on the check-in, participants included, as one plain sentence: "Otieno Kamau changed what this check-in is for because Wanjiru Mwangi has left the organisation." It is null otherwise. `briefChangedBy` (first name, `isYou`, `isTheLead`) still goes only to whoever runs the check-in, as before.
+
+
+## Request 9, part (d): the rest of the weekly report (1 October 2026, week 12b)
+
+`GET /grounds/:groundId/report/week` now serves the whole weekly report, not only the sentence about each person. Everything it said before is unchanged (`weekStart`, `builtAt`, `saying`, `eachPerson`), so nothing on the screens breaks. The new fields, all optional, all full sentences, and all already named for the reader:
+
+```
+{ heading?: string,            // "This week, 21 to 23 Sep, so far" (a finished week: "The week of 28 Sep to 2 Oct")
+  whatThisIs?: string,         // the sentence under the heading
+  inNumbers?: [{ figure: string, of: string, says: string }],   // "The week in numbers"
+  eachPerson: [...as before],  // "What this week shows", one sentence each
+  acrossTheTeam?: string[],    // also under "What this week shows", after the sentences
+  threeInARow?: [{ who: string, isYou: boolean, says: string }],  // "Things that happened in three check-ins in a row"
+  saidAndProof?: string | null,                                  // "What people said, and what the proof shows"
+  whatChanged?: { moved: string[], dropped: string[], result: string[] },  // "What changed": Moved, Dropped, Result
+  forNextWeek?: [{ do: string, why: string, comesFrom: string }] }        // "For you to do next week"
+```
+
+Draw `figure` large with `of` under it, as the prototype's tiles do; `says` is the same thing as a sentence, for the phone or a screen reader. Each list in `whatChanged` always has at least one sentence ("Nothing was dropped this week."), so draw it as it comes. Leave a section out when its field is missing.
+
+**What the lead reads** (a check-in with Wairimu leading Aisha, Baraka and Chidi, on Wednesday 23 September):
+- "This week, 21 to 23 Sep, so far" and "The report for each check-in shows that check-in. This weekly report shows what kept happening for three check-ins in a row or more." (A daily check-in reads "The daily reports show each day." first, as the prototype does.)
+- 67% "of check-ins made this week" ("2 of the 3 check-ins due this week were made."); 1 "things people said this week with a photo or document behind them"; 17 "freezers sold" ("The team's freezers sold went from 12 to 17 this week, against the aim of 40."); 254,000 "spending this quarter" ("The team's spending this quarter went from 200,000 to 254,000 this week, against the limit of 180,000. That is 74,000 over the limit."); 9 "visits made, Aisha's number" ("It stayed at 9 this week.").
+- "Green Mart came up in what Aisha and Baraka said this week."
+- Baraka: "The work stops until there is another call. This came up in 3 check-ins, in sessions 3, 4 and 5."
+- "This week, people said 5 things in their check-ins. 1 of them has a photo or document behind it. 1 number was given as an estimate, and 1 number was given from memory with nothing attached, so they cannot be checked yet. It is worth confirming them before acting on them."
+- Moved: "Aisha committed to call Mama Fresh by Thursday, and it is now done." and "Baraka is no longer waiting on you for the price list." Dropped: "Baraka committed to visit Kwik Stores, and it has been dropped." Result: the targets that moved, as above.
+- For you to do next week: "Decide whether a price range counts as a budget." / "Aisha is waiting on you for it." / "This comes from a blocker."; "Talk with Baraka about “The work stops until there is another call”." / "Baraka has seen this and has not answered yet." / "This comes from something that kept happening."; "Decide whether to hire a second driver." / "You wrote this down as still to decide." / "This comes from something you wrote down to decide." Where people said different things, it reads "This comes from a disagreement in the team.", as the prototype does.
+
+**What a person in the check-in reads** (Baraka): only their own sentence, as "you"; the team's check-ins made and the targets they may already read, without the aim or the limit; "0 things you said this week with a photo or document behind them"; their own patterns, first ("The work stops until there is another call. This came up in 3 of your check-ins, in sessions 3, 4 and 5."), including one the lead cannot read yet; "This week, you said 2 things in your check-ins. ..."; their own moved and dropped ("You are no longer waiting on Wairimu for the price list.", "You committed to visit Kwik Stores, and it has been dropped."); and, for next week, what they said this week they would do and have not settled ("Send Green Mart the price list on Monday." / "You said this week that you would do this, and it is still open." / "This comes from what you said you would do."). Never a colleague's sentence, number, pattern or commitment, never what came up across the team, and never the lead's list.
+
+**What an admin who does not run the check-in reads** (an ordinary check-in): the lead's view of the week, without the aim or the limit, without the targets that are decisions about a person, without any pattern (decision 58), and with no `forNextWeek` at all, since that list holds the lead's own notes. An admin not given an evaluation check-in gets "Check-in not found", as before.
+
+**When it is worked out.** When a check-in comes in, and again once that session's report is written, so the lead's list reads the newest report. Opening the page builds nothing and reads no record line; it words the kept facts for the reader. The facts are kept without names, by report label, and the names go in through `withNames` when served. No model is asked, so no prompt and no prompt version is involved. Patterns are read when the page is opened, under the same rule as everywhere else (three periods, the person first), and only the ones seen in this week's check-ins are shown.
+
+**What is not there, and why.**
+- The prototype's opening line ("People are busy, but some sales move forward much more than others.") compares people. A sentence the product writes from counts cannot say that honestly, and there is no model step for the weekly report, so it is not written.
+- "Adapted" ("Brian now asks about the budget on his first visit") has nothing in the record to come from: nothing records a change in how somebody works. It is not served. Please draw Moved, Dropped and Result only.
+- The prototype's "9 customers said the price was too high, and none named a competitor" needs a reading of what each claim was about, which needs a model. The engine says what it can count instead: how many things were said, how many have something behind them, and how many numbers were estimates or from memory.
+- Figures such as "14 deals moved stage", "5 sales closed" and "3 deals hit the stall rule" come from the stages and the stall rule, which are not in the record yet (week 6b's marks). Today the numbers are the check-ins made, the things with proof, and every target the reader may read.
+- The week is kept in the existing weekly report row; nothing in the database changed.
+
+
+## Decision 73: the weekly report for each reader, and earlier weeks (1 October)
+
+- A person in the check-in reads aims and limits in the weekly report only where the check-in's `whoSeesTargets` is `EVERYBODY`, as on the board. With `THEIR_OWN` they read the counts alone.
+- `GET /grounds/:groundId/report/week?week=2026-09-21` reads an earlier week by the date of its Monday, as it was kept. Without `week`, the latest week. A week with no report returns `saying: "There is no weekly report for that week."`; a value that is not a date in that form is refused with "Pick a week by the date of its Monday, for example 2026-09-21."
+
+
+## Request 95, part (b), again: the wording guard (1 October, evening)
+
+On the combined code the guard counted 63 against 60. I went through every match by the commit that wrote it. Seven were added by the engine today, and I have dealt with all seven:
+
+1. **One was copy-shaped and is rewritten** (`what-they-will-do-is-asked-before-the-end.ts`): "This is the last question you should ask before you close. Ask it now. Make it the one question in this turn. Use words from what they have told you, about the thing in the way or the thing that is due. ..."
+2. **Five are instructions to the pattern detector, read by no person** (what counts for each wavering pattern). I moved them word for word out of `pattern-library.ts`, which also holds pattern names people read, into a file of their own, `api/src/modules/patterns/what-counts-for-each-pattern.ts`. What the detector is given is unchanged (I checked its fingerprint before and after). I did not reword them, because a pattern steadiness measurement is running against exactly this wording.
+3. **One is a test fixture**, `api/src/modules/board/__fixtures__/a-page-that-contradicts-itself.ts`: the words a board was built from in a run, kept as they were on purpose, so a test can prove the faults in them are fixed. It is not copy anybody reads.
+
+**What the guard needs, in `client/src/lib/copy-does-not-sound-like-yoda.spec.ts`, two lines, the limit untouched:**
+- Add `'what-counts-for-each-pattern.ts'` to `NOT_COPY`, with the same reason as `prompt-library.ts`: every line in it is addressed to a model.
+- Skip test data the way `.spec.` files are skipped: in `everyFile`, also pass over any path containing `/__fixtures__/` (for example `if (name === 'node_modules' || name === 'dist' || name === '__fixtures__') continue`).
+
+With both, the count on the combined code is 56. Without them it is 62. The other matches are older than today and were inside the 60 already.
+
+
+## 1 October: please send where Ask Groundwork was opened from (decision 65)
+
+In the live check of item 6, after the setup conversation the lead's next question anywhere ("How do we get a quote signed off?") was answered as part of setup ("Groundwork does not manage processes ..."). The engine takes the next message as the parked setup turn because the request carries no `openedFrom`. Please send `openedFrom` on every `/ask` call (`check_in_setup` only from inside a check-in's setup, and the page's own name elsewhere), so a question asked from anywhere else is answered as itself.

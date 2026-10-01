@@ -33,6 +33,8 @@ export interface AWeeksPerson {
   label: string;
   /** Whether they finished a check-in this week. */
   checkedIn: boolean;
+  /** Whether approved leave covered any day of this week so far (week 23). Dates only, never the kind of leave. */
+  onLeave?: boolean;
   lines: AWeeksLine[];
 }
 
@@ -51,7 +53,7 @@ const NOT_THINGS_NAMED = new Set([
   'participant', 'initiator',
 ]);
 
-const A_DATE = /\b(?:mon|tues?|wed(?:nes)?|thu(?:rs)?|fri|sat(?:ur)?|sun)(?:day)?\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep(?:t)?|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b|\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b|\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b|\b(?:today|tomorrow|tonight|next week|end of (?:the )?(?:week|month)|by (?:the )?end of)\b/i;
+const A_DATE = /\b(?:mon|tues?|wed(?:nes)?|thu(?:rs)?|fri|sat(?:ur)?|sun)(?:day)?\b|\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}\b|\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b|\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b|\b(?:today|tomorrow|tonight|next week|end of (?:the )?(?:week|month)|by (?:the )?end of)\b/i;
 
 const A_NEXT_STEP = /\b(?:will|i'll|we'll|going to|plan(?:s|ning)? to|next step|follow(?:ing)? up|call(?:ing)? (?:them|him|her|back)|send(?:ing)?|book(?:ing)?|meet(?:ing)? (?:on|with)|confirm(?:ing)?|to do)\b/i;
 
@@ -102,6 +104,12 @@ export function theSentenceAbout(p: AWeeksPerson): string | null {
   const who = p.label;
   const said = p.lines.filter((l) => l.type !== 'SUCCESS_DEFINITION');
   if (!p.checkedIn && !said.length) {
+    /*
+     * BEING AWAY IS NOT COUNTED AGAINST ANYBODY (week 23, found live 1 October 2026, item 6). The lead
+     * read "Amani has not checked in this week" about a person on approved leave all week, and so did
+     * Amani. It now says why there is nothing, and that it is not counted against them.
+     */
+    if (p.onLeave) return `${who} has been on leave this week, so there is nothing here yet about what ${who} is working on. That is not counted against ${who}.`;
     return `${who} has not checked in this week, so there is nothing here yet about what ${who} is working on.`;
   }
   const got = whatWasNamedIn(p.lines);

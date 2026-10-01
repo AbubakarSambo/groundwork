@@ -41,7 +41,19 @@ export const GroundworkEvents = {
    * email/invite-bounced.listener.ts.
    */
   INVITE_BOUNCED: 'invite.bounced',
+  /**
+   * SOMETHING THEY SAID THEY WOULD DO WAS SETTLED, done or not done (week 9): by the check-in's own
+   * words after it finished, or by the person by hand. Settling from a check-in is a model call that
+   * finishes after CHECK_IN_COMPLETED has already fired, so anything counted from settled commitments
+   * (a suggestion, week 10) listens for this too, or it would always read the record one check-in late.
+   */
+  COMMITMENTS_SETTLED: 'commitments.settled',
 } as const;
+
+export interface CommitmentsSettledEvent {
+  groundId: string;
+  participantId: string;
+}
 
 export interface InviteBouncedEvent {
   participantId: string;

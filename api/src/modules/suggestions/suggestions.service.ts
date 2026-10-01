@@ -18,7 +18,8 @@ import {
   type WhoIsWho,
 } from './a-suggestion-told-like-a-signal';
 import { aSuggestionFromTheRecord, type TheRecordForOnePerson } from './a-suggestion-reached-from-the-record';
-import { readSuggestionThresholds, SUGGESTION_THRESHOLDS_KEY, type SuggestionThresholds } from './thresholds';
+import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { thresholdsInForce, SUGGESTION_THRESHOLDS_KEY, type SuggestionThresholds } from './thresholds';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const REFUSED = {
@@ -42,6 +43,16 @@ export const REFUSED = {
 } as const;
 
 export interface Reader { userId: string; organizationId: string }
+
+/**
+ * ONLY ON AN EVALUATION CHECK-IN (decision 6, clarified 29 September: "the check-ins where a verdict
+ * is reached are the evaluation check-ins of decision 17" - a performance plan, a recognition or
+ * promotion, a contract renewal). The list is the reading rule's own (`isEvaluationCheckIn`, which
+ * who-may-read-this-check-in.ts uses too), never a second one. Nothing is reached anywhere else, and
+ * a row that somehow exists on any other check-in is never served, decided, answered or appealed.
+ */
+export const aVerdictIsReachedOn = (ground: { scenario?: unknown } | null | undefined): boolean =>
+  isEvaluationCheckIn((ground?.scenario ?? null) as any);
 
 /** What the engine hands over when it reaches a verdict (docs/requests-to-engine.md, request 15). */
 export interface ASuggestionFromTheEngine {
@@ -106,8 +117,11 @@ export class SuggestionsService {
     if (texts.some((t) => t && A_LABEL_ON_A_PERSON.test(t))) {
       throw new BadRequestException('A suggestion never puts a label on a person. Say what happened instead.');
     }
-    const ground = await this.prisma.ground.findUnique({ where: { id: input.groundId }, select: { id: true, organizationId: true } });
+    const ground = await this.prisma.ground.findUnique({ where: { id: input.groundId }, select: { id: true, organizationId: true, scenario: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
+    if (!aVerdictIsReachedOn(ground)) {
+      throw new BadRequestException('A suggestion is only reached on a performance plan, a recognition or a contract renewal.');
+    }
     const about = await this.prisma.groundParticipant.findFirst({
       where: { id: input.aboutParticipantId, groundId: input.groundId },
       select: { id: true },
@@ -147,14 +161,14 @@ export class SuggestionsService {
   }
 
   /**
-   * The live thresholds (thresholds.ts), or nothing set (decision 33). Never throws: a missing or
-   * malformed row must mean "nothing set", never a made-up threshold that reaches a suggestion
-   * nobody asked for.
+   * The live thresholds (thresholds.ts, thresholdsInForce): decision 61's first threshold where no row
+   * exists, the row exactly as stored where one does. Never throws: a malformed row, or a database
+   * that cannot be read, means "nothing set", never a made-up threshold.
    */
   async thresholds(): Promise<SuggestionThresholds> {
     try {
       const row = await this.prisma.platformSetting.findUnique({ where: { key: SUGGESTION_THRESHOLDS_KEY } });
-      return readSuggestionThresholds(row?.value);
+      return thresholdsInForce(row);
     } catch {
       return {};
     }
@@ -167,6 +181,8 @@ export class SuggestionsService {
    * still goes through `record`, so it never replaces a suggestion nobody has decided (item 4).
    */
   async reachFromTheRecord(groundId: string, record: TheRecordForOnePerson) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
+    if (!aVerdictIsReachedOn(ground)) return null;
     const thresholds = await this.thresholds();
     const suggestion = aSuggestionFromTheRecord(groundId, record, thresholds);
     if (!suggestion) return null;
@@ -182,6 +198,7 @@ export class SuggestionsService {
     const ground = await this.theGround(groundId);
     const role = await this.whoIsTheReader(ground, reader);
     if (role === 'outsider') throw new ForbiddenException(REFUSED.notInIt);
+    if (!aVerdictIsReachedOn(ground)) return { suggestions: [] };
     if (role === 'colleague') {
       /* A colleague may still be the person some of these are about. */
       const rows = await this.rows({ groundId, about: { userId: reader.userId } });
@@ -238,6 +255,7 @@ export class SuggestionsService {
     })) as unknown as SuggestionRow[];
     for (const r of rows) {
       const ground = await this.theGround(r.groundId);
+      if (!aVerdictIsReachedOn(ground)) continue;
       if (ground.initiatorId !== reader.userId) continue;
       if (!theLeadMayReadIt(r, now)) continue;
       const names = await this.deciders([r]);
@@ -256,6 +274,7 @@ export class SuggestionsService {
     const out: ForThePerson[] = [];
     for (const r of rows) {
       const ground = await this.theGround(r.groundId);
+      if (!aVerdictIsReachedOn(ground)) continue;
       out.push(forThePerson(r, this.whoIsWho(ground, r, 'person', names)));
     }
     return out;
@@ -272,6 +291,7 @@ export class SuggestionsService {
     const appeals: ForAnAdmin[] = [];
     for (const r of rows) {
       const ground = await this.theGround(r.groundId);
+      if (!aVerdictIsReachedOn(ground)) continue;
       const shaped = forAnAdmin(r, this.whoIsWho(ground, r, 'admin', names), reader.userId);
       if (shaped) appeals.push(shaped);
     }
@@ -365,6 +385,8 @@ export class SuggestionsService {
     })) as (SuggestionRow & { about?: { userId: string | null } }) | null;
     if (!row) throw new NotFoundException(REFUSED.notFound);
     const ground = await this.theGround(row.groundId);
+    /* A row on any other check-in is as if it did not exist: nobody decides, answers or appeals it. */
+    if (!aVerdictIsReachedOn(ground)) throw new NotFoundException(REFUSED.notFound);
     return { row, ground };
   }
 

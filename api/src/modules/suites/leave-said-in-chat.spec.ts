@@ -1,4 +1,4 @@
-import { readLeaveDates, soundsLikeLeave, sayBackLeave, sendLeave, theDaysAsRead, LEAVE_SUITE_OFF } from './leave-said-in-chat';
+import { readLeaveDates, soundsLikeLeave, sayBackLeave, sendLeave, theDaysAsRead, LEAVE_SUITE_OFF, plainlyAsksForLeave } from './leave-said-in-chat';
 
 /**
  * WEEK 20. LEAVE DATES SAID IN CHAT: READ BY RULES, NEVER GUESSED, SAID BACK, SENT ONLY ON A YES.
@@ -91,5 +91,40 @@ describe('what is said back, and what is sent', () => {
     const say = await sendLeave(leave, prisma, reader, dates);
     expect(ask).toHaveBeenCalledWith('o1', 'u-me', dates);
     expect(say).toBe('I have sent your leave request from Thursday 8 October to Friday 9 October to Wairimu. It is not approved until they decide, and you will see it under your leave.');
+  });
+});
+
+/*
+ * FOUND LIVE, 1 October 2026 (item 6, journey/memory-requests-and-being-away-live.ts): "I need leave
+ * today and tomorrow" was said back as one day, Friday 2 October, because "today" was not read.
+ */
+describe('today is never dropped', () => {
+  it.each([
+    ['I need leave today and tomorrow', '2026-10-01', '2026-10-02'],
+    ['I need today and tomorrow off', '2026-10-01', '2026-10-02'],
+    ['I need leave from today to Friday', '2026-10-01', '2026-10-02'],
+    ['I need leave from today until next Tuesday', '2026-10-01', '2026-10-06'],
+  ])('%s', (said, from, to) => {
+    expect(readLeaveDates(said, TODAY)).toEqual({ startsOn: from, endsOn: to });
+  });
+
+  it('today with a day it cannot join to is not half read', () => {
+    expect(readLeaveDates('I need leave today and on 20 October', TODAY)).toBeNull();
+  });
+});
+
+describe('a plain request for time off whose days cannot be read is asked again', () => {
+  it.each([
+    'I need Monday and Wednesday off next week.',
+    'I need leave on Monday and Wednesday.',
+    'Can I take a holiday on Monday and Thursday?',
+  ])('%s', (said) => {
+    expect(readLeaveDates(said, TODAY)).toBeNull();
+    expect(plainlyAsksForLeave(said)).toBe(true);
+  });
+
+  it('but not words that only mention a day and "off"', () => {
+    expect(plainlyAsksForLeave('I am off to Kisumu on Monday and Wednesday to see Green Mart')).toBe(false);
+    expect(plainlyAsksForLeave('I need sign-off on the quote by Friday')).toBe(false);
   });
 });

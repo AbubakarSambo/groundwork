@@ -1,3 +1,4 @@
+import { theAwayLine } from '../suites/who-is-away';
 import { theCheckIn, yourCheckIn } from './which-check-in-it-is';
 import { isShut } from './a-ground-that-has-ended';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
@@ -102,6 +103,12 @@ export interface Reader {
    * request to the engine workspace on whether a held person may read a shared report at all).
    */
   notLetIn?: boolean;
+  /**
+   * THE LAST DAY OF APPROVED LEAVE THAT COVERS TODAY, when the reader is away (week 23), as
+   * "2026-10-02". Dates only. Their own check-in is still offered, because they may answer if they
+   * want to, but it says the round does not wait for them and never that it has been open a while.
+   */
+  awayUntil?: string | null;
 }
 
 const DAY = 86_400_000;
@@ -211,14 +218,23 @@ export function whatNeedsYou(
            * yours" is true only of the lead's own first check-in, so only they are told it. Nothing
            * in the product holds a closing time, so "It closes at 6pm" is never said.
            */
-          detail: [
-            next.sessionNumber === 1 && iRunIt ? 'About two minutes. Everyone else’s answers are read against yours.' : 'About two minutes.',
-            days > A_WHILE ? `It opened ${days} days ago.` : null,
-          ].filter(Boolean).join(' '),
+          detail: reader.awayUntil
+            /*
+             * BEING AWAY (week 23, found live 1 October 2026, item 6). Amani, on approved leave, read
+             * "About two minutes." under her check-in, the same as anybody the round waits for. It now
+             * says what the check-in page says, and that she may still answer.
+             */
+            ? `${theAwayLine('the person', null, reader.awayUntil)} You can still answer it if you want to.`
+            : [
+              next.sessionNumber === 1 && iRunIt ? 'About two minutes. Everyone else’s answers are read against yours.' : 'About two minutes.',
+              days > A_WHILE ? `It opened ${days} days ago.` : null,
+            ].filter(Boolean).join(' '),
           action: { label: 'Start it', to: `/checkin/${next.id}` },
           ...base,
         };
-        if (next.sessionNumber === 1) firstTurns.push(need);
+        /* Not first among what needs them while they are away: the round does not wait for them. */
+        if (reader.awayUntil) otherTurns.push(need);
+        else if (next.sessionNumber === 1) firstTurns.push(need);
         else if (days > A_WHILE) lateTurns.push(need);
         else otherTurns.push(need);
         myOpenTurn ??= g.label;

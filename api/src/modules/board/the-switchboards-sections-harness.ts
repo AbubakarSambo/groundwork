@@ -110,3 +110,44 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
   return new BoardService(prisma, { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, reports)
     .get('g-1', userId) as Promise<any>;
 }
+
+/*
+ * THE SALES RUN (api/journey/all-24/re-f/sales.json, "Credit sales against this quarter target"). Bisi
+ * Adeyemi runs it; Femi Okonkwo, Ngozi Eze and Kwame Mensah check in. Every commitment's words below are
+ * word for word what that person typed in the run; the waits are what they said they were waiting for.
+ */
+export const SALES_PEOPLE = [
+  person('p-bisi', 'u-bisi', 'Bisi', 'Adeyemi', PartyType.INITIATOR),
+  person('p-femi', 'u-femi', 'Femi', 'Okonkwo'),
+  person('p-ngozi', 'u-ngozi', 'Ngozi', 'Eze'),
+  person('p-kwame', 'u-kwame', 'Kwame', 'Mensah'),
+];
+export const BISI = ['u-bisi', 'MEMBER'] as const;
+export const FEMI = ['u-femi', 'MEMBER'] as const;
+export const NGOZI = ['u-ngozi', 'MEMBER'] as const;
+export const KWAME = ['u-kwame', 'MEMBER'] as const;
+
+export const SALES_RUN: Setup = {
+  people: SALES_PEOPLE,
+  initiatorId: 'u-bisi',
+  label: 'Credit sales against this quarter target',
+  checkIns: [
+    answered('p-femi', 1, '2026-09-02T16:00:00Z'), answered('p-ngozi', 1, '2026-09-02T17:00:00Z'), answered('p-kwame', 1, '2026-09-02T18:00:00Z'),
+    answered('p-femi', 2, '2026-09-16T16:00:00Z'), answered('p-ngozi', 2, '2026-09-16T17:00:00Z'), answered('p-kwame', 2, '2026-09-16T18:00:00Z'),
+  ],
+  turns: [
+    { checkInId: 'c2-p-ngozi', content: 'I don\'t have a date. I\'m waiting for Mr. Adebayo.' },
+    { checkInId: 'c2-p-femi', content: 'Nothing has changed with the 31 applications. They\'re still waiting for the bank statements.' },
+  ],
+  commitments: [
+    commitment('k-bisi', 'p-bisi', 'I\'ll follow up directly with the committee members.', { statedInSession: 2, saidWordForWord: true, createdAt: new Date('2026-09-16T15:00:00Z') }),
+    commitment('k-femi', 'p-femi', 'I will visit a few of them again this week to see if I can collect the statements myself.', { statedInSession: 2, whenSaid: 'this week', saidWordForWord: true, whenSaidWordForWord: true, createdAt: new Date('2026-09-16T16:00:00Z') }),
+    commitment('k-ngozi', 'p-ngozi', 'I will continue to follow up with the Head of Credit.', { statedInSession: 2, whenSaid: 'tomorrow', saidWordForWord: true, whenSaidWordForWord: true, createdAt: new Date('2026-09-16T17:00:00Z') }),
+    commitment('k-kwame', 'p-kwame', 'I\'ll be following up with each client directly over the next week to chase down the missing documents.', { statedInSession: 1, whenSaid: 'over the next week', saidWordForWord: true, status: 'DONE', settledBy: 'SAID', settledAt: new Date('2026-09-16T18:00:00Z'), createdAt: new Date('2026-09-02T18:00:00Z') }),
+  ],
+  dependencies: [
+    handoff('d-ngozi', 'p-ngozi', 'a date for the credit decision', { onLabel: 'Mr. Adebayo', status: 'WAITING', dueSaid: null, sourceCheckInId: 'c2-p-ngozi', createdAt: new Date('2026-09-16T17:00:00Z') }),
+    handoff('d-femi', 'p-femi', 'the bank statements', { status: 'BLOCKING', sourceCheckInId: 'c2-p-femi', createdAt: new Date('2026-09-16T16:00:00Z') }),
+    handoff('d-kwame', 'p-kwame', 'the approval of five applications', { onParticipantId: 'p-bisi', status: 'WAITING', createdAt: new Date('2026-09-16T18:00:00Z') }),
+  ],
+};

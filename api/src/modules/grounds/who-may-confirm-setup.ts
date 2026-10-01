@@ -105,3 +105,12 @@ export function onlyTheLeadConfirmsSetup(leadName: string | null | undefined): s
   const first = name.split(/\s+/)[0];
   return `Only ${name}, who runs this check-in, can change how it is set up. An admin can only do that once ${first} has left the organisation. Nothing was changed.`;
 }
+
+/**
+ * DECISION 72's SENTENCE: the brief (what the check-in says it is for) rewritten by an admin because
+ * the lead has left, told to everybody on the check-in. For example: "Otieno Kamau changed what this
+ * check-in is for because Wanjiru Mwangi has left the organisation."
+ */
+export function briefChangedByAnAdminSentence(byName: string, leadName: string): string {
+  return `${byName} changed what this check-in is for because ${leadName} has left the organisation.`;
+}

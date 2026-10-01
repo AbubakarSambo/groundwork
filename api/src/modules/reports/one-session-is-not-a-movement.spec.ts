@@ -15,7 +15,11 @@ import { canShowMovement } from '../grounds/an-objective-belongs-to-a-person';
  */
 const SERVICE = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8');
 const CODE = SERVICE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-const PAGE = readFileSync(join(__dirname, '../../../../client/src/pages/report/ReportPage.tsx'), 'utf8')
+/* Request 99: the old report body is gone. The section lives in WhatToProbeThemOn, fed by the
+   session report page. */
+const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const CALLER = strip(readFileSync(join(__dirname, '../../../../client/src/pages/report/SessionReportPage.tsx'), 'utf8'));
+const PAGE = readFileSync(join(__dirname, '../../../../client/src/components/gw/WhatToProbeThemOn.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/^\s*\/\/.*$/gm, '');
 
@@ -56,7 +60,8 @@ describe('the report asks before it answers', () => {
      * server's refusal could be worked around in the client, which is the failure this pins.
      */
     expect(PAGE).toMatch(/startedAt && startedAt\.length > 0 &&/);
-    expect(PAGE).toMatch(/startedAt=\{\(report as any\)\.whereThisStarted\}/);
+    expect(CALLER).toMatch(/startedAt=\{\(groundReport as any\)\?\.whereThisStarted\}/);
     expect(PAGE).not.toMatch(/canShowMovement/);
+    expect(CALLER).not.toMatch(/canShowMovement/);
   });
 });

@@ -73,6 +73,8 @@ export interface GroundCommitmentRow {
   status: string | null;
   /** How it was settled: SAID, PROVEN or CONFIRMED (conversation/settled-by-proof.ts). */
   settledBy?: string | null;
+  /** When it was settled, done or not done (week 9). What "in the last 4 weeks" reads. */
+  settledAt?: Date | string | null;
   createdAt?: Date | string | null;
 }
 
@@ -228,15 +230,21 @@ export function keptLatelySays(kept: number, of: number): string {
 }
 
 /**
- * WHICH COMMITMENTS COUNT: yours, settled done or not done, whose check-in fell in the 28 days before
- * now. A commitment has no due date of its own (its "when" is kept in their words and never turned
- * into a date), so the day it was made, the day of the check-in it was said in, is the one used.
+ * WHICH COMMITMENTS COUNT: yours, settled done or not done in the 28 days before now. "In the last 4
+ * weeks" reads the day it was settled (`settledAt`), the column week 9 added for exactly this count
+ * and that both ways of settling stamp (the check-in's own words, and the person by hand). A row
+ * settled before that column existed has no date of settling, so the day it was made stands in.
  * Open ones count in neither number, and a dropped one is not a miss.
+ *
+ * LEAVE (week 23, "nothing counts against them"). A promise not kept is not a miss when any approved
+ * leave fell while it was open: from the day it was made to the day it was settled. Reading only the
+ * day it was made counted a promise made on Friday, due while the person was away all the next week
+ * and settled "not done" when they came back, as a miss.
  */
 export function keptLately(
-  rows: readonly { status: string | null; createdAt?: Date | string | null }[],
+  rows: readonly { status: string | null; createdAt?: Date | string | null; settledAt?: Date | string | null }[],
   now: Date,
-  /** Approved leave, as whole days (week 23): a promise not kept from a day spent on leave is not a miss. */
+  /** Approved leave, as whole days (week 23): a promise not kept while the person was on leave is not a miss. */
   leave: readonly { from: Date; to: Date }[] = [],
 ): KeptLately | null {
   const from = now.getTime() - THE_LAST_FOUR_WEEKS_MS;
@@ -244,9 +252,11 @@ export function keptLately(
   let of = 0;
   for (const r of rows) {
     if (r.status !== 'DONE' && r.status !== 'NOT_DONE') continue;
-    const t = time(r.createdAt);
+    const made = time(r.createdAt);
+    const t = time(r.settledAt) || made;
     if (!t || t < from || t > now.getTime()) continue;
-    if (r.status === 'NOT_DONE' && leave.some((l) => t >= l.from.getTime() && t <= l.to.getTime())) continue;
+    const openFrom = made || t;
+    if (r.status === 'NOT_DONE' && leave.some((l) => openFrom <= l.to.getTime() && t >= l.from.getTime())) continue;
     of++;
     if (r.status === 'DONE') kept++;
   }
@@ -267,12 +277,21 @@ export function keptLately(
  * duplicated.
  */
 export function commitmentsKeptInTheLastFourWeeks(
-  rows: readonly { status: string | null; createdAt?: Date | string | null }[],
+  rows: readonly { status: string | null; createdAt?: Date | string | null; settledAt?: Date | string | null }[],
   now: Date = new Date(),
   leave: readonly { from: Date; to: Date }[] = [],
 ): { kept: number; of: number } | null {
   const r = keptLately(rows, now, leave);
   return r ? { kept: r.kept, of: r.of } : null;
+}
+
+/**
+ * THE SAME SENTENCE, FOR THE PERSON'S OWN SUGGESTION (week 10). "Where you stand" in the prototype
+ * opens with exactly the You board's sentence, so the suggestion the person reads says their count
+ * the same way, from here, rather than a second wording of it. Only ever handed to the person.
+ */
+export function theCountSaidToThePerson(kept: number, of: number): string {
+  return keptLatelySays(kept, of);
 }
 
 const SETTLED_BY: Record<string, 'said' | 'proven' | 'confirmed'> = { SAID: 'said', PROVEN: 'proven', CONFIRMED: 'confirmed' };

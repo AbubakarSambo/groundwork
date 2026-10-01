@@ -340,30 +340,12 @@ export const THE_VARIANTS: { situation: string; change: string; state: 'already 
  */
 export const BEFORE_THE_DEAD_BODY_CAN_GO: { rule: string; spec: string }[] = [
   /*
-   * TWO LEFT, AND THE LIST STARTED AT EIGHT RATHER THAN TEN.
-   *
-   * The count came from grepping for specs that read `ReportPage.tsx`, and that matched
-   * `SessionReportPage.tsx` as a substring. Two of the ten - `the-report-you-saw-is-the-one-that-
-   * opens` and `nothing-was-lost-when-the-body-went` - never touched the dead body at all. They
-   * read the live session page, the board, a party's view and the walk-in-with card. Off the list
-   * as a correction to my own arithmetic rather than as progress.
-   *
-   * `one-report-not-two` is off for a real reason: its rule - no page carries a second report body
-   * - is a negative sweep over the lead and participant pages, both live. Three of its assertions
-   * describe the body itself (that it is a component, that the old route redirects) and those
-   * retire WITH the file rather than before it. That is expected, not a gap.
-   *
-   * Five more came off by pointing them at the copy people see. The two that remain are the ones
-   * where the rule genuinely has no live home, and both need a surface rather than a repoint.
+   * EMPTY, 1 October. The last two rules found live homes: what the server already knew renders,
+   * lead-only, in WhatToProbeThemOn with both of its explaining sentences; and the old-version
+   * notice is on the rebuilt session report (decision 71), read by a-panel-with-nothing-to-say-is-
+   * a-line. The resolution line was retired by decision 70, not moved. The screens workspace
+   * deleted ReportBody, and the test that held it in place went with it, as this list promised.
    */
-  /* Decision 70 (1 October): the resolution panel shows nothing until a decision is near, as the
-     prototype does, so the "Resolution. Not set yet." half of this rule is retired, not owed.
-     Decision 71: the old-version notice stays, and the rebuilt session report does not carry one
-     yet. That half is real work for the screens, and this entry comes off when it is live. */
-  { rule: 'Staleness is never conditional on being settled: a report changed since it was opened says so', spec: 'a-panel-with-nothing-to-say-is-a-line' },
-  /* The weigh section and the soft spots render only inside the body. This is the same work as
-     giving the risk reads a surface, and it is the larger of the two. */
-  { rule: 'What the server already knew reaches the page, lead-only, worded about the record', spec: 'what-the-server-already-knew' },
 ];
 
 /**

@@ -79,6 +79,8 @@ export interface SpendFacts {
   currency: string | null;
   team: string | null;
   left: number | null;
+  /** What the same team has already asked for this month and is still waiting on a decision. */
+  waiting?: number | null;
   limit: number | null;
   approver: 'manager' | 'person' | 'admin';
   approverFirstName: string | null;
@@ -93,7 +95,25 @@ export function spendingSaidBack(said: SpendSaid, facts: SpendFacts, month: stri
   const who = facts.approverFirstName ?? 'an admin';
   const parts = [`You asked to spend ${money(cur, said.amount)} on ${said.what}.`];
   let trouble = false;
-  if (facts.team && facts.left != null) {
+  const waiting = facts.waiting && facts.waiting > 0 ? facts.waiting : 0;
+  if (facts.team && facts.left != null && facts.left > 0 && waiting > 0) {
+    /*
+     * WHAT IS ALREADY ASKED FOR COUNTS TOO (found live, 1 October 2026, item 6). Chidi asked to spend
+     * KES 30,000 while KES 12,000 of the Sales budget was already asked for and waiting, and read
+     * "Sales has KES 38,000 left for October, so that fits." The money waiting for a decision is said,
+     * as one total for the team and never whose it is, and what is free is what is left after it.
+     */
+    const free = facts.left - waiting;
+    if (free <= 0) {
+      parts.push(`${facts.team} has ${money(cur, facts.left)} left for ${month}, and ${waiting >= facts.left ? 'all of it' : money(cur, waiting)} is already asked for and waiting, so none of it is free.`);
+      trouble = true;
+    } else if (said.amount > free) {
+      parts.push(`${facts.team} has ${money(cur, facts.left)} left for ${month}, and ${money(cur, waiting)} of that is already asked for and waiting, so ${money(cur, free)} is free. This is more than that.`);
+      trouble = true;
+    } else {
+      parts.push(`${facts.team} has ${money(cur, facts.left)} left for ${month}, and ${money(cur, waiting)} of that is already asked for and waiting, so ${money(cur, free)} is free. That fits.`);
+    }
+  } else if (facts.team && facts.left != null) {
     if (facts.left <= 0) { parts.push(`${facts.team} has no budget left for ${month}.`); trouble = true; }
     else if (said.amount > facts.left) { parts.push(`That is over the ${facts.team} budget left for ${month}, which is ${money(cur, facts.left)}.`); trouble = true; }
     else parts.push(`${facts.team} has ${money(cur, facts.left)} left for ${month}, so that fits.`);

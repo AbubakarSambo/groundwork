@@ -180,7 +180,7 @@ export function whereTheCheckInIs(w: WhereTheCheckInIs): string {
   return [
     `WHERE THIS CHECK-IN IS. They have given ${answers} answers. A check-in like this usually closes after about ${A_CHECK_IN_USUALLY_CLOSES_AFTER}, and you have not yet asked them ${what}. The next check-in can only test what they say here.`,
     now
-      ? 'This is the last question you should ask before you close. Ask it now, as the one question in this turn, in words taken from what they have told you: the thing in the way, or the thing that is due. Do not ask anything else in this turn. When they have answered, close.'
+      ? 'This is the last question you should ask before you close. Ask it now. Make it the one question in this turn. Use words from what they have told you, about the thing in the way or the thing that is due. Do not ask anything else in this turn. When they have answered, close.'
       : 'Ask it as soon as the thing you are asking about now is answered. At the latest, it is your next question. Keep to one question in each turn.',
     w.isLead
       ? 'They run this check-in, so ask what they have decided, not what homework they will do.'

@@ -116,7 +116,7 @@ describe('the model is told where the check-in is, while what they will do is st
   it('Femi, seven answers in: told this is the last question, to ask it now, and nothing else', () => {
     const block = whereTheCheckInIs(where(upTo(FEMI, 7)));
     expect(block).toContain('They have given 7 answers.');
-    expect(block).toContain('This is the last question you should ask before you close. Ask it now, as the one question in this turn, in words taken from what they have told you');
+    expect(block).toContain('This is the last question you should ask before you close. Ask it now. Make it the one question in this turn. Use words from what they have told you');
     expect(block).toContain('Do not ask anything else in this turn.');
   });
 

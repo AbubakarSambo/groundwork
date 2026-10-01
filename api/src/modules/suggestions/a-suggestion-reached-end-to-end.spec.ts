@@ -25,7 +25,7 @@ const party = (id: string, who: Who, partyType: string, at: number) => ({
 
 const ground = {
   id: 'g-tobi', label: 'Tobi, the next few weeks', organizationId: ORG, initiatorId: 'u-wairimu',
-  scenario: 'PERFORMANCE_IMPROVEMENT', peersVisibleToEachOther: null,
+  scenario: 'PIP', peersVisibleToEachOther: null,
   participants: [party('p-w', 'wairimu', 'INITIATOR', 1), party('p-t', 'tobi', 'PARTICIPANT', 2)],
 };
 
@@ -81,9 +81,22 @@ function setup(thresholdRow: any) {
 
 const record = { aboutParticipantId: 'p-t', aboutLabel: 'Tobi X', commitmentsSettledRecently: { kept: 2, of: 8 }, ownWords: 'Most of my time has gone on the new routes.' };
 
-describe('week 10: no threshold, no suggestion (decision 33)', () => {
-  it('reaches nothing when the settings row is empty', async () => {
+describe('week 10: no threshold, no suggestion (decision 33), and decision 61 from the start', () => {
+  /*
+   * CHANGED 1 October: this test read a missing row as "nothing set", which was the rule before
+   * decision 61. Decision 61 sets the first threshold from the start, and the admin page already read
+   * a missing row as decision 61's value, so the two disagreed on a database with no row. A missing
+   * row now reads as decision 61's threshold for both; a row an admin emptied still reaches nothing.
+   */
+  it('reaches decision 61\'s suggestion when there is no settings row at all', async () => {
     const { svc, suggestions } = setup(null);
+    const out = await svc.reachFromTheRecord('g-tobi', record);
+    expect(out).not.toBeNull();
+    expect(suggestions).toHaveLength(1);
+  });
+
+  it('reaches nothing when an admin has emptied the settings row', async () => {
+    const { svc, suggestions } = setup({ value: {} });
     const out = await svc.reachFromTheRecord('g-tobi', record);
     expect(out).toBeNull();
     expect(suggestions).toHaveLength(0);
@@ -117,7 +130,7 @@ describe('week 10: a threshold is set, the record crosses it', () => {
     const { suggestions } = await svc.forGround('g-tobi', as('tobi'));
     expect(suggestions).toHaveLength(1);
     const s: any = suggestions[0];
-    expect(s.facts).toContain('kept 2 of 8');
+    expect(s.facts).toContain('you kept two of your eight commitments in this check-in.');
     expect(s.decision).toBeNull();
     for (const hidden of ['headline', 'why', 'verdict']) expect(s).not.toHaveProperty(hidden);
   });

@@ -94,6 +94,12 @@ describe('every surface that hands out whose number it is', () => {
        numbers apart, and it is handed `out.objectives` after the board has asked targetsFor, so it
        only ever sees what this reader may read. Proved below on the real board, as each reader. */
     'modules/board/one-count-per-thing.ts': 'joins rows the board already passed through targetsFor; it reads the owner only to keep two people apart',
+    /* Week 12b (d45afaca): the shape of one target in a week, and the sentence for it. It is handed only
+       the rows the-weekly-report.service.ts has already passed through targetsFor for this reader. */
+    'modules/reports/the-weekly-report.ts': 'the shape and sentence of a target in a week; its service asks targetsFor before handing rows in',
+    /* Request 70: the forecast reads the owner only to leave out a target that is one person's. It is handed
+       `out.objectives` after the board has asked targetsFor, so it only ever sees what this reader may read. */
+    'modules/board/the-switchboards-own-sections.ts': 'the forecast reads the owner only to leave one person\'s number out; it is handed rows the board passed through targetsFor',
     'modules/board/__fixtures__/a-page-that-contradicts-itself.ts': 'test rows for a-board-that-does-not-contradict-itself; the board asks targetsFor',
   };
 
