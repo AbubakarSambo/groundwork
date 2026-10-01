@@ -6292,6 +6292,10 @@ happened, and what is in the way.`;
         select: { text: true, awareness: true, authoredBy: true },
       }) ?? Promise.resolve([])).catch(() => []);
       served = withoutGoalsNotToldIn(served, (notTold as any[]).filter(notToldYet).map((r) => String(r.text ?? '')));
+      /* A line of the picture whose only sentence was the goal is not left as a line with no words. */
+      if (Array.isArray((served as any).sharedPictureLines)) {
+        served = { ...(served as any), sharedPictureLines: (served as any).sharedPictureLines.filter((l: any) => !(l && typeof l.text === 'string' && !l.text.trim())) };
+      }
     }
     /* What people said stays as they said it: the hidden-target rule is for the report's own words.
        See board/their-own-words-stay (screens request 77). */

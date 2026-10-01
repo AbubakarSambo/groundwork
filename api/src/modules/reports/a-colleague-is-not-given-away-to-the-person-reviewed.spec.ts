@@ -67,7 +67,7 @@ function makeGround(scenario: string, opts: { createdByUserId?: string | null } 
   };
 }
 
-function makeService(ground: any, userRole: 'ADMIN' | 'MEMBER' = 'MEMBER') {
+function makeService(ground: any, userRole: 'ADMIN' | 'MEMBER' = 'MEMBER', untold: any[] = []) {
   const clone = () => structuredClone(ground);
   const entries = [
     { id: 'e1', text: THE_SUBJECTS_LINE, saidWordForWord: true, participantId: 'subject' },
@@ -83,6 +83,7 @@ function makeService(ground: any, userRole: 'ADMIN' | 'MEMBER' = 'MEMBER') {
       }),
     },
     groundDocument: { findMany: jest.fn(async () => []) },
+    personObjective: { findMany: jest.fn(async () => untold) },
     checkIn: { findMany: jest.fn(async () => []), aggregate: jest.fn(async () => ({ _max: { sessionNumber: 1 } })), count: jest.fn(async () => 0) },
     reportActivation: { findUnique: jest.fn(async () => ({ status: 'ACTIVATED' })), findMany: jest.fn(async () => []) },
     recordEntry: { findMany: jest.fn(async () => entries), count: jest.fn(async () => entries.length) },
@@ -136,5 +137,37 @@ describe('on a renewal, the person reviewed reads no colleague\'s words and no c
     const r: any = await makeService(makeGround('OKR_ALIGNMENT')).get('g1', 'user-2', 'org-1');
     expect(linesOf(r)).toContain(THE_QUOTED_CONFIRMATION);
     expect(linesOf(r)).toContain('account manager');
+  });
+});
+
+/*
+ * THE LEAD'S GOAL, NOT TOLD YET, SAID IN A SENTENCE OF THE REPORT (decision 56). The lead said it in the check-in,
+ * so the report states it in its own words, which share no sentence with the stored goal. The person it is for reads
+ * neither the number nor that the lead thinks they are missing it, until the lead has told them.
+ */
+describe('a goal the lead has not told the person about, in the team report', () => {
+  const goal = { participantId: 'subject', text: 'Make eight client renewals every quarter', awareness: 'NOT_TOLD', authoredBy: 'lead', createdAt: new Date() };
+  const withTheGoal = () => {
+    const g: any = makeGround('PIP');
+    g.report.sharedPicture = 'Both people have answered. The initiator states the goal is eight renewals per quarter, and believes you are not meeting this target. Participant A says they were told five renewals.';
+    g.report.engagement = {};
+    g.report.findings = [{ text: 'You say you were told the target was five renewals. The initiator\'s target of eight renewals was never shared with you.', headline: 'Your renewal target was never communicated to you.' }];
+    return g;
+  };
+  it('the person it is for reads neither the number nor the lead\'s view of it', async () => {
+    const r: any = await makeService(withTheGoal(), 'MEMBER', [goal]).get('g1', 'user-2', 'org-1');
+    expect(r.sharedPicture).not.toMatch(/eight/i);
+    expect(JSON.stringify(r.findings)).not.toMatch(/eight/i);
+    /* What they said themselves stays, and the report still reads. */
+    expect(r.sharedPicture).toContain('Both people have answered.');
+    expect(r.sharedPicture).toMatch(/five renewals/);
+  });
+  it('the lead reads it', async () => {
+    const r: any = await makeService(withTheGoal(), 'MEMBER', [goal]).get('g1', 'user-1', 'org-1');
+    expect(r.sharedPicture).toMatch(/eight renewals per quarter/);
+  });
+  it('once the lead has told them, they read it', async () => {
+    const r: any = await makeService(withTheGoal(), 'MEMBER', [{ ...goal, awareness: 'TOLD' }]).get('g1', 'user-2', 'org-1');
+    expect(r.sharedPicture).toMatch(/eight renewals per quarter/);
   });
 });

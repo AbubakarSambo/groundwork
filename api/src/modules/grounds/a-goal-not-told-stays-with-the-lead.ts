@@ -138,6 +138,33 @@ export function goalsThisReaderMaySee<T extends { awareness?: string | null; aut
 
 const plain = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').replace(/[’‘`´]/g, "'").toLowerCase().replace(/[^\p{L}\p{N}' ]+/gu, ' ').replace(/\s+/g, ' ').trim();
 
+const NUMBER_WORDS: Record<string, string> = {
+  one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10', eleven: '11', twelve: '12',
+  fifteen: '15', twenty: '20', thirty: '30', forty: '40', fifty: '50', sixty: '60', hundred: '100',
+};
+const NOT_THE_WORK = new Set(['about', 'their', 'there', 'would', 'should', 'which', 'every', 'per', 'quarter', 'month', 'week', 'year', 'target', 'targets', 'goal', 'goals', 'needs', 'need', 'must', 'meet', 'hits', 'reach', 'before', 'during', 'after', 'being']);
+const numbersIn = (t: string): Set<string> => {
+  const out = new Set<string>();
+  for (const m of plain(t).matchAll(/\b\d[\d,]*(?:\.\d+)?\b|\b[a-z]+\b/g)) {
+    const w = m[0].replace(/,/g, '');
+    if (/^\d/.test(w)) out.add(w); else if (NUMBER_WORDS[w]) out.add(NUMBER_WORDS[w]);
+  }
+  return out;
+};
+const stemsOfTheWork = (t: string): Set<string> =>
+  new Set(plain(t).split(' ').filter((w) => /^[a-z]{5,}$/.test(w) && !NOT_THE_WORK.has(w) && !NUMBER_WORDS[w]).map((w) => w.slice(0, 5)));
+
+/** The numbers in a goal, and the words (by their first five letters) about the work it is for. */
+export function theNumberAndWorkOfAGoal(goal: string): { numbers: Set<string>; work: Set<string> } {
+  return { numbers: numbersIn(goal ?? ''), work: stemsOfTheWork(goal ?? '') };
+}
+
+function saysItsNumber(sentence: string, g: { numbers: Set<string>; work: Set<string> }): boolean {
+  const n = numbersIn(sentence);
+  if (![...n].some((x) => g.numbers.has(x))) return false;
+  return [...stemsOfTheWork(sentence)].some((w) => g.work.has(w));
+}
+
 /**
  * AND NO PRODUCT SENTENCE GIVES IT EITHER. A sentence that carries the goal's own words is taken out
  * of what this reader is served (a report, a board). Only goals long enough to be recognised are
@@ -145,11 +172,14 @@ const plain = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').replace(/
  */
 export function withoutGoalsNotToldIn<T>(value: T, goals: readonly string[]): T {
   const keys = goals.map((g) => plain(g ?? '')).filter((g) => g.length >= 12);
-  if (!keys.length) return value;
+  /* And the goal's NUMBER, said in the lead's own words in the check-in ("We need eight renewals per quarter"):
+     a sentence that carries the goal's number beside a word about the same work is not given either. */
+  const numbered = goals.map(theNumberAndWorkOfAGoal).filter((g) => g.numbers.size && g.work.size);
+  if (!keys.length && !numbered.length) return value;
   const sentencesOf = (t: string) => t.match(/[^.!?\n]+(?:[.!?]+|\n|$)\s*/g) ?? [t];
   const strip = (t: string): string => {
     const all = sentencesOf(t);
-    const kept = all.filter((s) => !keys.some((k) => plain(s).includes(k)));
+    const kept = all.filter((s) => !keys.some((k) => plain(s).includes(k)) && !numbered.some((g) => saysItsNumber(s, g)));
     return kept.length === all.length ? t : kept.join('').trim();
   };
   const NOT_WORDS = /^(?:id|.*Id|.*Ids|.*[Tt]oken|.*[Uu]rl|href|slug|email|.*At)$/;
