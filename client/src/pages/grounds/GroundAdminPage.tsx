@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { YourWork } from '@/components/gw/checkin/YourWork'
 import { Note } from '@/components/gw/ui/Note'
-import { Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty, Folded } from '@/components/gw/ui'
+import { Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty, Folded, Modal } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
@@ -30,7 +30,6 @@ import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
-import { TextAction } from '@/components/gw/kit'
 import { theLeadsNote, waitsForItsStart } from '@/lib/the-leads-note'
 import { useOpenSession } from '@/hooks/useOpenSession'
 import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
@@ -1573,15 +1572,12 @@ export function GroundAdminPage() {
           />
         )}
         {(ground as any).status === 'AWAITING_APPROVAL' && !(isOrgAdmin && !isInitiator) && (
-          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '13px 15px', marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
-              Waiting for an admin to accept this check-in
-            </div>
-            <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              You can keep editing it, and nobody can be invited until it is accepted - so nobody
+          <div className="gwui-mb-16">
+            <Callout tone="warning" title="Waiting for an admin to accept this check-in">
+              You can keep editing it, and nobody can be invited until it is accepted, so nobody
               has been contacted and nothing has been shared. An admin in your organisation sees it
               on their check-ins page.
-            </div>
+            </Callout>
           </div>
         )}
 
@@ -1594,21 +1590,20 @@ export function GroundAdminPage() {
           it, so they left believing everybody had been asked. See who-was-not-invited.ts.
         */}
         {notInvited.length > 0 && (
-          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>
-              {whatToSayAboutThem(notInvited)}
+          <div className="gwui-mb-16">
+            {/* Not <Callout>: its children render inside one <p>, and a <ul> cannot sit inside a
+                <p>. Builds the same tinted box directly from the shared classes instead. */}
+            <div className="gwui-callout gwui-callout-warning">
+              <p className="gwui-callout-title">{whatToSayAboutThem(notInvited)}</p>
+              <ul className="gwui-mb-10">
+                {notInvited.map(f => (
+                  <li key={f.email}><span className="gwui-ink-text">{f.email}</span>, {f.because}</li>
+                ))}
+              </ul>
+              <Button kind="quiet" size="small" onClick={() => { thatIsDealtWith(id!); setNotInvited([]) }}>
+                I have dealt with this
+              </Button>
             </div>
-            <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              {notInvited.map(f => (
-                <li key={f.email}><span style={{ color: 'var(--gw-text)' }}>{f.email}</span> - {f.because}</li>
-              ))}
-            </ul>
-            <button
-              onClick={() => { thatIsDealtWith(id!); setNotInvited([]) }}
-              style={{ fontSize: 12.5, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontFamily: 'inherit' }}
-            >
-              I have dealt with this
-            </button>
           </div>
         )}
 
@@ -1625,10 +1620,10 @@ export function GroundAdminPage() {
           * that this reader does not answer the check-in, and links to the board instead.
           */}
         {tab === 'chat' && (
-          <div style={{ padding: '4px 2px' }}>
+          <div>
             {viewerIsAParty ? (
               myOpenCheckIn && !myOpenOpensLater ? (
-                <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Opening your check-in…</div>
+                <Note>Opening your check-in…</Note>
               ) : (
                 /* REVIEW ROUND 3, ITEM 2: NOTHING OPEN RIGHT NOW - the prototype's own between-check-ins
                    card, shown here directly rather than by sending her to the participant page for it. */
@@ -1641,17 +1636,17 @@ export function GroundAdminPage() {
                 />
               )
             ) : (
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px' }}>
-                <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, margin: '0 0 10px' }}>
+              <Panel>
+                <p className="gwui-panel-text gwui-mb-10">
                   You do not answer this check-in yourself. The board shows what has come from it so far.
                 </p>
                 <Link
+                  className="gwui-plain-link"
                   to={`/grounds/${id}/board`}
-                  style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}
                 >
                   Go to the board
                 </Link>
-              </div>
+              </Panel>
             )}
           </div>
         )}
@@ -1692,9 +1687,9 @@ export function GroundAdminPage() {
           disappearing with the sub-tab row that used to offer them unconditionally.
         */}
         {inMyWork && !viewerIsAParty && (
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
-            {tab !== 'report' && <TextAction onClick={() => goTab('report')} size={13}>Every session</TextAction>}
-            {tab !== 'checkins' && <TextAction onClick={() => goTab('checkins')} size={13}>Who has answered</TextAction>}
+          <div className="gwui-button-row gwui-mb-12">
+            {tab !== 'report' && <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every session</button>}
+            {tab !== 'checkins' && <button type="button" className="gwui-plain-link" onClick={() => goTab('checkins')}>Who has answered</button>}
           </div>
         )}
 
@@ -2162,7 +2157,7 @@ export function GroundAdminPage() {
               !ground.isFreeGround &&
               !(ground.org?.subscriptionPlan && ground.org?.subscriptionStatus === 'active') &&
               (ground.sessionsBalance ?? 0) === 0 && (
-                <div style={{ marginBottom: 16 }}>
+                <div className="gwui-mb-16">
                   <PostSessionPanel
                     groundId={ground.id}
                     freeExtensionUsed={ground.org?.freeExtensionUsed ?? false}
@@ -2303,10 +2298,12 @@ export function GroundAdminPage() {
               the same date in their tooltip, and the same click into your own open session.
             */}
             {(ground.checkIns ?? []).length === 0 && (
-              <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, padding: '14px 16px', background: 'var(--gw-bg)', borderRadius: 8, border: '1px solid var(--gw-border)' }}>
-                No sessions yet. The first one opens once the people above have been invited and the
-                check-in starts.
-              </div>
+              <Panel>
+                <p className="gwui-panel-text">
+                  No sessions yet. The first one opens once the people above have been invited and the
+                  check-in starts.
+                </p>
+              </Panel>
             )}
           </div>
         )}
@@ -2495,33 +2492,22 @@ export function GroundAdminPage() {
       </div>
       </Page>
       {shareCodeModalOpen && (
-        <div
-          onClick={() => setShareCodeModalOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-        >
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Share an access code</span>
-              <button onClick={() => setShareCodeModalOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.6)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
-            </div>
-            {shareCardLoading && (
-              <div style={{ color: 'rgba(255,255,255,.5)', fontSize: 13, textAlign: 'center', padding: 24 }}>Loading…</div>
-            )}
-            {!shareCardLoading && shareCardData && (
-              <CodeShareCard
-                code={shareCardData.code}
-                expiresAt={shareCardData.expiresAt}
-                daysRemaining={shareCardData.daysRemaining}
-                note={shareCardData.note}
-                allowCodeCreation={shareCardData.allowCodeCreation}
-                onCopy={() => toast.success('Code copied')}
-              />
-            )}
-            {!shareCardLoading && !shareCardData && (
-              <div style={{ color: 'rgba(255,255,255,.5)', fontSize: 13, textAlign: 'center', padding: 24 }}>No share code available for this check-in.</div>
-            )}
-          </div>
-        </div>
+        <Modal title="Share an access code" onClose={() => setShareCodeModalOpen(false)}>
+          {shareCardLoading && <Note>Loading…</Note>}
+          {!shareCardLoading && shareCardData && (
+            <CodeShareCard
+              code={shareCardData.code}
+              expiresAt={shareCardData.expiresAt}
+              daysRemaining={shareCardData.daysRemaining}
+              note={shareCardData.note}
+              allowCodeCreation={shareCardData.allowCodeCreation}
+              onCopy={() => toast.success('Code copied')}
+            />
+          )}
+          {!shareCardLoading && !shareCardData && (
+            <Note>No share code available for this check-in.</Note>
+          )}
+        </Modal>
       )}
       {/* REVIEW ROUND 3, ITEM 2: THE PAYWALL FOR THE LEAD'S OWN SESSION, OPENED FROM THIS PAGE NOW. */}
       <SessionPaywallModal paywall={paywall} canPayHere={canPayForMySession} />
