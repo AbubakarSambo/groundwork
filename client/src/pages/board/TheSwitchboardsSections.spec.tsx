@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BoardPage } from './BoardPage'
@@ -48,13 +48,13 @@ const risks = [{ id: 'r1', says: 'Rukia Mwangi cannot move on the credit terms u
 const workPlan = [{ id: 'w1', participantId: 'p-kwame', who: 'Kwame Mensah', says: 'Kwame Mensah committed to send the Westgate quote.', when: 'by Friday', state: 'open' as const, statedInSession: 1 }]
 const timeline = [{ on: '2026-09-10', says: 'On 10 September, Baraka Otieno’s commitment to call the Kisumu depot was marked done.' }]
 const personHistory = [{ participantId: 'p-kwame', who: 'Kwame Mensah', says: 'Kwame Mensah has answered 2 sessions and made 3 commitments.', sessions: [{ n: 1, on: '2026-09-02', says: 'In session 1, Kwame Mensah made 1 commitment.' }] }]
-const blockerCheck = [{ id: 'b1', who: 'Kwame Mensah', says: 'Kwame Mensah is waiting on Bisi Adeyemi for the approval of five applications.', namesWhoHoldsIt: true, saidWhatWasTried: false, timeGiven: false, checks: ['Finance holds it.', 'Nobody has said what has been tried.', 'No time has been given for it.'] }]
+const blockerCheck = [{ id: 'blocker-1', who: 'Kwame Mensah', says: 'Kwame Mensah is waiting on Bisi Adeyemi for the approval of five applications.', namesWhoHoldsIt: true, saidWhatWasTried: false, timeGiven: false, checks: ['Finance holds it.', 'Nobody has said what has been tried.', 'No time has been given for it.'] }]
 const evidenceIndex = [{ id: 'e1', participantId: 'p-kwame', who: 'Kwame Mensah', said: 'We paid out KES 90K to the Nyama Choma Palace account.', backedBy: 'A document Kwame Mensah added shows this.', sessionNumber: 2 }]
 const busyOrMoving = { eachPerson: [{ participantId: 'p-kwame', who: 'Kwame Mensah', says: 'Kwame Mensah has made 3 commitments across 2 answered sessions.' }], cannotTellYou: 'These are counts of what people said and what came of it.' }
 const leadActions = [{ id: 'l1', says: 'You need to get back to Kwame Mensah, who is waiting on you for the approval of five applications.', because: 'It was first said on 16 September.' }]
 const obligations = [{ participantId: 'p-kwame', who: 'Kwame Mensah', promised: ['Kwame Mensah committed to send the Westgate quote.'], othersWaitFor: [] }]
 const forecast = [{ objectiveId: 'o1', about: 'The team is aiming for 40 approved facilities this quarter.', says: 'If it keeps moving at the pace it has since session 1, it would be about 21 by session 4, against an aim of 40.', restsOn: 'It was 6 in session 1 and 11 in session 2.', cannotTellYou: 'This carries the pace so far forward in a straight line.' }]
-const whoWaitedOnWhom = [{ id: 'd1', says: 'Kwame Mensah has been waiting on you for the approval of five applications since 16 September, and it has not been cleared.', startedAt: '2026-09-16', clearedAt: null, days: null }]
+const whoWaitedOnWhom = [{ id: 'blocker-1', says: 'Kwame Mensah has been waiting on you for the approval of five applications since 16 September, and it has not been cleared.', startedAt: '2026-09-16', clearedAt: null, days: null }]
 const contradictions = [{ id: 'c1', commitmentId: 'cm1', participantId: 'p-kwame', who: 'Kwame Mensah', says: 'Kwame Mensah’s commitment was marked done in session 1, and in session 2 Kwame Mensah said it again as something still to do.' }]
 const questionsForTheLead = [{ id: 'q1', question: 'Has Femi Okonkwo’s commitment, "I will call them again", happened, or is it still wanted?', because: 'Femi Okonkwo said it in sessions 1, 2 and 3.' }]
 
@@ -104,7 +104,16 @@ describe('the switchboard’s 22 sections: the 13 now served, as the lead reads 
     expect(screen.getByText(timeline[0].says)).toBeTruthy()
     expect(screen.getByText('What each person has done so far')).toBeTruthy()
     expect(screen.getByText(personHistory[0].says)).toBeTruthy()
-    expect(screen.getByText('What is blocking work, and since when')).toBeTruthy()
+    /*
+     * BOARD TASK, PHASE 2: "Blockers", ONE SECTION, NOT TWO. `blockerCheck` and `whoWaitedOnWhom`
+     * used to draw as two separate sections ("What is blocking work, and since when" and "Who is
+     * waiting on whom"), each saying an overlapping half of the same blocker's story under its own
+     * heading. The prototype's own example (eng.txt, "Blockers") draws one card per blocker,
+     * joined on the id the two arrays already share - see `BlockersSection`. Updated here, not
+     * deleted: the facts behind both old headings are still checked, just under the one heading
+     * and the "Waiting on"/"Raised" labels the joined card actually renders.
+     */
+    expect(screen.getByText('Blockers')).toBeTruthy()
     expect(screen.getByText(blockerCheck[0].says)).toBeTruthy()
     expect(screen.getByText('Evidence index')).toBeTruthy()
     expect(screen.getByText(`“${evidenceIndex[0].said}”`)).toBeTruthy()
@@ -116,8 +125,6 @@ describe('the switchboard’s 22 sections: the 13 now served, as the lead reads 
     expect(screen.getByText('What each side promised')).toBeTruthy()
     expect(screen.getByText('Where this could end up')).toBeTruthy()
     expect(screen.getByText(forecast[0].says)).toBeTruthy()
-    expect(screen.getByText('Who is waiting on whom')).toBeTruthy()
-    expect(screen.getByText(whoWaitedOnWhom[0].says)).toBeTruthy()
     expect(screen.getByText('Contradictions')).toBeTruthy()
     expect(screen.getByText(contradictions[0].says)).toBeTruthy()
     expect(screen.getByText('Questions for you')).toBeTruthy()
@@ -136,10 +143,11 @@ describe('the switchboard’s 22 sections: as a participant reads them', () => {
     expect(screen.getByText('Work plan')).toBeTruthy()
     expect(screen.getByText('Timeline')).toBeTruthy()
     expect(screen.getByText('What each person has done so far')).toBeTruthy()
-    expect(screen.getByText('What is blocking work, and since when')).toBeTruthy()
+    /* See the lead's own test above: "Blockers" replaces "What is blocking work, and since when"
+       and "Who is waiting on whom" as one joined section. */
+    expect(screen.getByText('Blockers')).toBeTruthy()
     expect(screen.getByText('Evidence index')).toBeTruthy()
     expect(screen.getByText('What each side promised')).toBeTruthy()
-    expect(screen.getByText('Who is waiting on whom')).toBeTruthy()
     expect(screen.getByText('Contradictions')).toBeTruthy()
     /* Never drawn for a participant: the server itself never sends these two to one, but the page's
        own `shown.*` gate is checked here too, so a future bug that sent them cannot surface them. */
@@ -176,15 +184,68 @@ describe('"What needs you in this check-in" is drawn once, not twice as "Work pl
   })
 })
 
+describe('Blockers: one card per blocker, joined from blockerCheck and whoWaitedOnWhom', () => {
+  beforeEach(() => { vi.clearAllMocks(); me = { id: 'u-bisi', firstName: 'Bisi', role: 'MEMBER' } })
+
+  it('shows Waiting on, Raised and What the proof shows, from the two arrays joined on their shared id', async () => {
+    renderBoard(AS_THE_LEAD)
+    await screen.findByRole('heading', { name: 'Sales org, Q3' })
+    const card = screen.getByText(blockerCheck[0].says).closest('div[class*="gwui-panel"]') as HTMLElement
+    expect(within(card).getByText(/Waiting on:/)).toBeTruthy()
+    expect(within(card).getByText(/Finance holds it\./)).toBeTruthy()
+    expect(within(card).getByText(/Raised:/)).toBeTruthy()
+    expect(within(card).getByText(/16 September/)).toBeTruthy()
+    expect(within(card).getByText(/What the proof shows:/)).toBeTruthy()
+    expect(within(card).getByText(/Nobody has said what has been tried\./)).toBeTruthy()
+    expect(within(card).getByText('Blocking')).toBeTruthy()
+    // "Affects" and "Would clear it" are in the prototype's own example, but no field sends
+    // either one today - nothing invented here for them (request 105/107).
+    expect(screen.queryByText(/Affects:/)).toBeNull()
+    expect(screen.queryByText(/Would clear it:/)).toBeNull()
+  })
+
+  it('reads "Cleared" once whoWaitedOnWhom says so', async () => {
+    renderBoard({
+      ...AS_THE_LEAD,
+      whoWaitedOnWhom: [{ ...whoWaitedOnWhom[0], clearedAt: '2026-09-20' }],
+    })
+    await screen.findByRole('heading', { name: 'Sales org, Q3' })
+    expect(screen.getByText('Cleared')).toBeTruthy()
+    expect(screen.queryByText('Blocking')).toBeNull()
+  })
+})
+
+describe('"Decisions needed" moves for the lead, stays for everyone else', () => {
+  const decisions = [{ question: 'Decide the discount.', why: 'Someone cannot move until this is decided.', owner: 'Bisi Adeyemi', source: 'blocker' as const }]
+
+  it('for the lead, a decision reads inside "What needs you in this check-in", not as its own section', async () => {
+    me = { id: 'u-bisi', firstName: 'Bisi', role: 'MEMBER' }
+    renderBoard({ ...AS_THE_LEAD, sections: ['decisions'], decisions })
+    await screen.findByRole('heading', { name: 'Sales org, Q3' })
+    const needsYou = screen.getByText('What needs you in this check-in').closest('section') as HTMLElement
+    expect(within(needsYou).getByText(decisions[0].question)).toBeTruthy()
+    expect(screen.queryByText('Decisions needed')).toBeNull()
+  })
+
+  it('for a participant, "Decisions needed" is still its own section, as before', async () => {
+    me = { id: 'u-kwame', firstName: 'Kwame', role: 'MEMBER' }
+    renderBoard({ ...AS_KWAME, sections: ['decisions'], decisions })
+    await screen.findByRole('heading', { name: 'Sales org, Q3' })
+    expect(screen.getByText('Decisions needed')).toBeTruthy()
+    const section = screen.getByText('Decisions needed').closest('section') as HTMLElement
+    expect(within(section).getByText(decisions[0].question)).toBeTruthy()
+  })
+})
+
 describe('the switchboard’s 22 sections: never a heading with nothing under it', () => {
   it('draws none of the 13 when the server sends none of them', async () => {
     me = { id: 'u-bisi', firstName: 'Bisi', role: 'MEMBER' }
     renderBoard({ ...base, myParticipantId: 'p-bisi', canEditFrame: true, readOnlyNote: null })
     await screen.findByRole('heading', { name: 'Sales org, Q3' })
     for (const heading of [
-      'What could go wrong', 'Work plan', 'Timeline', 'What each person has done so far', 'What is blocking work, and since when',
+      'What could go wrong', 'Work plan', 'Timeline', 'What each person has done so far', 'Blockers',
       'Evidence index', 'Who is busy and who is free', 'What needs you in this check-in', 'What each side promised',
-      'Where this could end up', 'Who is waiting on whom', 'Contradictions', 'Questions for you',
+      'Where this could end up', 'Contradictions', 'Questions for you',
     ]) {
       expect(screen.queryByText(heading)).toBeNull()
     }

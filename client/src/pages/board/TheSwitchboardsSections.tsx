@@ -1,5 +1,6 @@
-import { Section, Panel } from '@/components/gw/ui'
+import { Section, Panel, Tag } from '@/components/gw/ui'
 import type { BoardPresent } from '@/api/board'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE SWITCHBOARD'S OWN SECTIONS (request 70): THE 22 PURPLE SECTIONS WITH NO SERVED FIELD BEFORE
@@ -90,22 +91,66 @@ export function PersonHistorySection({ rows }: { rows: BoardPresent['personHisto
   )
 }
 
-export function BlockerCheckSection({ rows }: { rows: BoardPresent['blockerCheck'] }) {
-  if (!rows?.length) return null
-  /* Board review, 1 October, item 6: "Blocker check" is a label. The plain heading says what is
-     checked - what is blocking work, and since when. */
+/**
+ * BLOCKERS (board-as-lead.txt, "Blockers": "Each with its history and the one thing that would
+ * clear it"). The prototype draws one card per blocker - a title, a status pill, then "Waiting
+ * on:", "Raised:", "Affects:", "What the proof shows:" and "Would clear it:".
+ *
+ * `blockerCheck` and `whoWaitedOnWhom` share the same id for the same blocker (the server keeps
+ * one id across both arrays, since they both come off the same underlying handoff), so they are
+ * joined here into one card per id rather than shown as two separate lists that say overlapping
+ * things under two headings. Only what the server actually sends is drawn:
+ *  - "Waiting on" from `blockerCheck`'s own first check (who holds it).
+ *  - "Raised" from `whoWaitedOnWhom`'s `startedAt`, as a date.
+ *  - "What the proof shows" from `blockerCheck`'s remaining checks (what was tried, whether a
+ *    time was given).
+ *  - A "Cleared"/"Waiting" tag from whether `whoWaitedOnWhom` has a `clearedAt`.
+ * "Affects" and "Would clear it" are in the prototype's own example but no field sends either one
+ * today - drawing them would be inventing text nobody wrote. See request 105/107.
+ */
+export function BlockersSection({ blockerCheck, whoWaitedOnWhom, allowed }: {
+  blockerCheck: BoardPresent['blockerCheck']
+  whoWaitedOnWhom: BoardPresent['whoWaitedOnWhom']
+  allowed: boolean
+}) {
+  if (!allowed) return null
+  const waits = new Map((whoWaitedOnWhom ?? []).map((w) => [w.id, w]))
+  const checks = blockerCheck ?? []
+  if (!checks.length) return null
   return (
-    <Section heading="What is blocking work, and since when" note="Whether a blocker is real: a named person, what was tried, and a date.">
-      <Panel pad={false}>
-        {rows.map((r) => (
-          <div key={r.id} className="gwui-panel-row">
-            <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{r.says}</div>
-            {r.checks.map((c, i) => (
-              <div key={i} className="gwui-fs-13-5 gwui-ink-muted gwui-mt-2" style={{ lineHeight: 1.5 }}>{c}</div>
-            ))}
-          </div>
-        ))}
-      </Panel>
+    <Section heading="Blockers" note="Each with its history and the one thing that would clear it, where the record has it.">
+      <div className="gwui-gap-10" style={{ display: 'flex', flexDirection: 'column' }}>
+        {checks.map((r) => {
+          const wait = waits.get(r.id)
+          const cleared = !!wait?.clearedAt
+          const [waitingOn, ...rest] = r.checks ?? []
+          return (
+            <Panel key={r.id}>
+              <div className="gwui-gap-10" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{r.says}</div>
+                <Tag tone={cleared ? 'proven' : 'concern'}>{cleared ? 'Cleared' : 'Blocking'}</Tag>
+              </div>
+              {waitingOn && (
+                <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-8">
+                  <b className="gwui-ink-dark" style={{ fontWeight: 600 }}>Waiting on: </b>{waitingOn}
+                </div>
+              )}
+              {wait?.startedAt && (
+                <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-4">
+                  <b className="gwui-ink-dark" style={{ fontWeight: 600 }}>Raised: </b>
+                  {`since ${whenItWas(wait.startedAt, 'dayAndMonthLong')}`}
+                  {cleared && wait.clearedAt ? `, cleared on ${whenItWas(wait.clearedAt, 'dayAndMonthLong')}` : ''}
+                </div>
+              )}
+              {rest.length > 0 && (
+                <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-4">
+                  <b className="gwui-ink-dark" style={{ fontWeight: 600 }}>What the proof shows: </b>{rest.join(' ')}
+                </div>
+              )}
+            </Panel>
+          )
+        })}
+      </div>
     </Section>
   )
 }
@@ -209,17 +254,6 @@ export function ForecastSection({ rows }: { rows: BoardPresent['forecast'] }) {
           </div>
         ))}
       </Panel>
-    </Section>
-  )
-}
-
-export function WhoWaitedOnWhomSection({ rows }: { rows: BoardPresent['whoWaitedOnWhom'] }) {
-  if (!rows?.length) return null
-  /* Board review, 1 October, item 6: said as a question a reader can follow - who is waiting on
-     whom, not the terser "who waited on whom". */
-  return (
-    <Section heading="Who is waiting on whom" note="Every wait in the record, open or cleared, with its dates.">
-      <SentenceRows rows={rows.map((r) => ({ id: r.id, says: r.says }))} />
     </Section>
   )
 }
