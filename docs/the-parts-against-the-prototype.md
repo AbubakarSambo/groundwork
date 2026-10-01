@@ -41,6 +41,7 @@ Where a part has no rule of its own in the prototype's CSS (because the prototyp
 | | note | `13.5px`, muted (`.note`) | `13.5px`, muted | same |
 | **Panel** (`.panel`, `.pad`) | corner radius | `12px` | `12px` | same |
 | | inside padding | `20px 22px` | `20px 22px` | same |
+| | **dark tone** (`gwui-panel-dark`, group 3, piece 5) | no prototype class for a dark panel; this keeps `Panel`'s own radius and padding and swaps in `--gw-dark` (`#0A1628`, already used elsewhere for a dark surface) and white text | n/a (new) | added: a person's private report, previewed on the lead's own roster once they have shared it, replacing a page's own `style={{ background: 'var(--gw-dark)', ... }}` div on `GroundAdminPage.tsx` |
 | | border | `1px solid var(--rule)` | `1px solid var(--gw-border)` (= `#EDE5D6`) | same |
 | **EdgeRow** (`.list`, `.item`, `.sp`) | grid | `4px minmax(0,1fr) auto`, gap 16px | same | same |
 | | row padding | `16px 0` | `16px 0` | same |
@@ -75,6 +76,7 @@ Where a part has no rule of its own in the prototype's CSS (because the prototyp
 | **Modal** | width/padding/radius | `520px` max, `24px` inside, `14px` | same | same |
 | **Mark** (the three bars, `.brand`) | size | `17px`/700 wordmark, navy, `22x17` mark (lines 210-211, the SVG bars) | `18px`/700 (`gwui-mark`) - a small, deliberate difference from the prototype's `17px` sidebar brand, since this part is also used at a slightly larger scale on the invitation and sign-in pages | unchanged; noted, not fixed, since the difference is a size choice for a different context, not a stray number |
 | **SubHeading** | size/weight | no direct class (the prototype writes these by hand in its JS at `14.5px`/700, the same as `.f` labels) | `14.5px`/700 | same |
+| | **dark tone** (`gwui-subheading-dark`, group 3, piece 5) | no prototype class; follows `kit.tsx`'s own `Sec on="dark"`, which used `rgba(255,255,255,.45)` for the same faint label-on-dark | n/a (new) | added: replaces `Sec title=... on="dark"` on `GroundAdminPage.tsx`'s private-report preview, the one old-kit import left in that file after this group's earlier parts |
 | **Steps** | row height / marks | no direct class; a `Panel`-shaped list (`20px 22px` pad, `12px` radius) with rows on a hand-picked `38px` pitch and `16px`/700 marks, following the prototype's own step lists in its JS at the same sizes | `38px` row, `16px`/700 mark | unchanged |
 | **Stack** | gaps | the prototype's `.stack` sets no gap of its own (`display:flex;flex-direction:column`) - spacing between children is set ad hoc in its JS per screen; this part's numeric gaps (`0/10/12/18/19px`) are taken from those per-screen numbers, not one prototype rule | as listed | unchanged |
 | **Bubble** (`.bub`) | max width / radius / padding | `82%`, `16px`, `12px 16px` | same | same |

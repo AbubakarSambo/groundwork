@@ -9,7 +9,11 @@ import './gw-ui.css'
  * 15px, bold, ink, a small gap above its own text and a bigger gap before the next block. Pair it
  * with a plain paragraph and put more than one pair in a `.gwui-subheading-list` for the gap
  * between blocks.
+ *
+ * `tone="dark"` (group 3, piece 5): the same label, faint white instead of ink, for the one place
+ * it sits on a dark panel instead of a white one - a person's private report, previewed on the
+ * lead's own roster after they have shared it. Replaces `kit.tsx`'s `Sec title=... on="dark"`.
  */
-export function SubHeading({ children }: { children: ReactNode }) {
-  return <h2 className="gwui-subheading">{children}</h2>
+export function SubHeading({ tone, children }: { tone?: 'dark'; children: ReactNode }) {
+  return <h2 className={tone === 'dark' ? 'gwui-subheading gwui-subheading-dark' : 'gwui-subheading'}>{children}</h2>
 }
