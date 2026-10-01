@@ -430,6 +430,9 @@ export function GroundParticipantPage() {
         name: atTheStart(participantLabel(p)),
         done: hasDoneThisSession((p.checkIns ?? []) as any[], currentSession),
         isSelf: p.userId === user?.id,
+        /* GROUP 3'S REVIEW, CONTRADICTION 4: held outside the organisation, by an admin - not by
+           the session's own clock. See the matching note in WhoIsInThis.tsx. */
+        waitingToBeLetIn: !!p.user?.awaitingOrgApproval,
       }
     })
 

@@ -20,7 +20,7 @@ export function WhoIsInThis({ parties, peersHidden, notOpenYet, viewerIsParty, l
    *
    * It is coverage, not content: that somebody has checked in, never a word of what they said.
    */
-  parties?: { name: string; done: boolean; isSelf: boolean }[]
+  parties?: { name: string; done: boolean; isSelf: boolean; waitingToBeLetIn?: boolean }[]
   peersHidden?: boolean
   /** Whether the reader is one of the people this card is talking about. */
   viewerIsParty?: boolean
@@ -58,11 +58,21 @@ export function WhoIsInThis({ parties, peersHidden, notOpenYet, viewerIsParty, l
               that they will check in once it does.
             */
             const have = p.isSelf ? 'have' : 'has'
-            const sentence = p.done
-              ? `${p.isSelf ? 'You' : p.name} ${have} checked in.`
-              : notOpenYet
-                ? `${p.isSelf ? 'You have' : `${p.name} has`} nothing to answer until the next session opens.`
-                : `${p.isSelf ? 'You' : p.name} ${have} not checked in yet.`
+            /*
+              GROUP 3'S REVIEW, CONTRADICTION 4: WAITING TO BE LET IN IS NOT "NOTHING TO ANSWER
+              YET". Faraji is held outside the organisation, by an admin, not by the clock - calling
+              it the same thing as everyone else waiting on the next session said the session was
+              what stood between him and answering, which is not true and names nobody. This says
+              what is actually true, without saying who decides (that is People and setup's own
+              line, to whoever can act on it).
+            */
+            const sentence = p.waitingToBeLetIn
+              ? `${p.isSelf ? 'You are' : `${p.name} is`} waiting to be let in.`
+              : p.done
+                ? `${p.isSelf ? 'You' : p.name} ${have} checked in.`
+                : notOpenYet
+                  ? `${p.isSelf ? 'You have' : `${p.name} has`} nothing to answer until the next session opens.`
+                  : `${p.isSelf ? 'You' : p.name} ${have} not checked in yet.`
             return (
               <span
                 key={i}

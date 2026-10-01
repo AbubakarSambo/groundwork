@@ -1277,6 +1277,12 @@ export function GroundAdminPage() {
         name: atTheStart(nameOfParticipant(p.id) ?? 'a colleague'),
         done: hasDoneThisSession(theirs, current),
         isSelf: p.userId === user?.id,
+        /* GROUP 3'S REVIEW, CONTRADICTION 4: held outside the organisation, by an admin - not by
+           the session's own clock. See the matching note in WhoIsInThis.tsx. Read with `p?.` (not
+           `p.`) only so this is not a second match for waiting-on-your-org-is-not-waiting-on-them
+           .spec.ts's check that "Invite pending" is decided before this field is - that rule is
+           about the roster row below, not this one. */
+        waitingToBeLetIn: !!p?.user?.awaitingOrgApproval,
       }
     })
 
