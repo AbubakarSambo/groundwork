@@ -149,13 +149,13 @@ function everySectionCanBeAbsent(report: EntryReport): EntryReport {
  */
 const SIZES = `
 .gw-entry-report {
-  --er-lead: 13px; --er-body: 12px; --er-label: 9px;
+  --er-lead: 13px; --er-body: 13px; --er-label: 13px;
   --er-box: 11px 13px; --er-box-lg: 14px 16px; --er-box-sm: 7px 9px;
   --er-gap: 16px; --er-gap-sm: 8px;
 }
 @media (max-width: 640px) {
   .gw-entry-report {
-    --er-lead: 15.5px; --er-body: 14.5px; --er-label: 11px;
+    --er-lead: 15.5px; --er-body: 14.5px; --er-label: 13px;
     --er-box: 14px 15px; --er-box-lg: 16px; --er-box-sm: 11px 12px;
     --er-gap: 22px; --er-gap-sm: 12px;
   }
