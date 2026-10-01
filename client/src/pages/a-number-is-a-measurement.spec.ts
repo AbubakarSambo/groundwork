@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import path from 'path'
+import { sessionAndWhoCheckedIn } from '@/components/gw/TheSessionsReport'
 
 /**
  * A NUMBER IS A MEASUREMENT. Five screens printed a number the code itself knew was a guess: a
@@ -47,11 +48,17 @@ describe('the label says what is counted', () => {
     expect(dash).not.toContain('Total sessions')
     expect(dash).toContain('Check-ins created')
   })
-  it('the report counts who is outstanding and names the session on the progress line', () => {
-    const report = code('report/ReportPage.tsx')
-    expect(report).not.toContain('The second is what makes it a comparison.')
-    expect(report).toMatch(/outstandingParties/)
-    expect(report).toContain('checked in for session {progress.sessionNumber}')
+  it('the report counts who has checked in and names the session, never a fabricated total', () => {
+    /*
+     * MOVED FROM THE DEAD REPORT BODY (1 October 2026). `ReportBody`'s "Picture forming - X of Y
+     * checked in for session N" lived in `ReportPage.tsx`, not mounted by any route since the
+     * Report tab became a list of sessions. `TheSessionsReport.tsx`'s `sessionAndWhoCheckedIn` is
+     * the live equivalent - same rule, a real count rather than an invented one, named against the
+     * session it is for.
+     */
+    expect(sessionAndWhoCheckedIn(3, 12, 2, 4)).toBe('Session 3 of 12. 2 of 4 people checked in.')
+    /* No planned total is said as "Session N." alone, never a fabricated "of M". */
+    expect(sessionAndWhoCheckedIn(3, null, 2, 4)).toBe('Session 3. 2 of 4 people checked in.')
   })
   it('the entry report labels the turn count as depth, with no bar and no grade word', () => {
     const entry = code('enter/EntryChatPage.tsx')

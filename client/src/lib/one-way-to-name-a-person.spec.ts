@@ -71,7 +71,14 @@ describe('nothing renders an address where a name belongs', () => {
     /lead\?\.email \?\? "your lead"/,
   ]
 
-  for (const page of ['pages/grounds/GroundAdminPage.tsx', 'pages/report/ReportPage.tsx']) {
+  /* 'pages/report/ReportPage.tsx' came off this list 1 October 2026, the moment ReportBody - its
+     only content, and the only thing on this page that ever called personLabel - was deleted. See
+     the comment at the top of ReportPage.tsx for where each of its name-resolving sections went:
+     SessionReportPage.tsx and the components it draws (WhatToProbeThemOn.tsx,
+     UpdatesToTheRecord.tsx) go through peopleLabels rather than personLabel directly, and
+     BoardPage.tsx (already on this list's sibling sweep below) is where the board's own names are
+     resolved. */
+  for (const page of ['pages/grounds/GroundAdminPage.tsx']) {
     it(`${page} names people with a helper`, () => {
       const code = read(page)
       expect(ADDRESS_AS_IDENTITY.filter(re => re.test(code))).toEqual([])

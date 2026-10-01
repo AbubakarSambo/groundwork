@@ -34,7 +34,9 @@ const read = (...p: string[]) =>
 const SURFACES = {
   'the check-in header': read('pages', 'grounds', 'GroundAdminPage.tsx'),
   'the chat': read('pages', 'chat', 'ChatPage.tsx'),
-  'the report': read('pages', 'report', 'ReportPage.tsx'),
+  /* 'the report' pointed at ReportPage.tsx, whose only content (ReportBody) is deleted - see the
+     comment at the top of that file. The live report surface is the per-session page. */
+  'the report': read('pages', 'report', 'SessionReportPage.tsx'),
   'the participant page': read('pages', 'grounds', 'GroundParticipantPage.tsx'),
   'the scenario cards': read('pages', 'grounds', 'CreateGroundPage.tsx'),
   'the history panel': read('components', 'gw', 'HowThisHasMoved.tsx'),

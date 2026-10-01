@@ -26,7 +26,12 @@ const strip = (f: string) =>
 const SCREENS = {
   'the roster': strip('GroundAdminPage.tsx'),
   'the setup flow': strip('CreateGroundPage.tsx'),
-  'the report': strip('../report/ReportPage.tsx'),
+  /*
+   * MOVED FROM THE DEAD REPORT BODY (1 October 2026). The report's own add-a-hidden-contributor
+   * flow lived in `ReportBody` (`ReportPage.tsx`), not mounted by any route since the Report tab
+   * became a list of sessions. The same flow is now `HiddenContributorRow` on the board.
+   */
+  'the board': strip('../board/BoardPage.tsx'),
 }
 
 describe('every way in says why it refused', () => {

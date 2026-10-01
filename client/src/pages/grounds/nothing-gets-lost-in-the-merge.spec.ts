@@ -64,6 +64,9 @@ const PAGES = [
   '../report/SessionReportPage.tsx',
   '../report/RoundReportPage.tsx',
   '../../components/gw/TheReportIsAListOfSessions.tsx',
+  /* "Did this feel fair" - moved here from the dead ReportBody, onto the board, where everyone
+     reads how a closed check-in ended. */
+  '../../components/gw/OutcomeFeedback.tsx',
   '../../components/gw/TheSessionsReport.tsx',
   '../../components/gw/WhoIsStillOut.tsx',
   /*
@@ -101,8 +104,18 @@ const OPERATIONS: Record<string, string[]> = {
      there-is-no-reveal.spec.ts - so requiring a caller for it would require the button back. */
   reports: ['reportsApi.get(', 'reportsApi.release(', 'reportsApi.sessionReport('],
   nudging: ['conversationApi.remind('],
-  'my record': ['getMyRecord(', 'getMySoloReport(', 'getMySpecificity(', 'setMySoloReportShared(', 'getMyCheckinStatus('],
+  'my record': ['getMyRecord(', 'getMySoloReport(', 'getMySpecificity(', 'setMySoloReportShared('],
   /*
+   * `getMyCheckinStatus(` CAME OFF THIS LIST 1 OCTOBER 2026, AND THE CAPABILITY DID NOT GO WITH IT.
+   * On these four pages it was called once, inside the dead `ReportBody` (`ReportPage.tsx`), to
+   * list a party's own completed sessions for the download button. The download button moved to
+   * `SessionReportPage.tsx` and now downloads the one session that page is already about, which
+   * needs no roster lookup - so the call has no remaining reason to exist on these four surfaces.
+   * The capability itself is alive and well outside this inventory's four pages
+   * (`YourNextCheckIn.tsx`, `TheDonePage.tsx`, `ChatPage.tsx` all still call it), which is why this
+   * is a removal rather than a loss: this list tracks what the FOUR MERGED PAGES can do, not every
+   * caller of every endpoint in the product.
+   *
    * `signOff(` is off this list because the control is gone, on her instruction. It was a
    * confirmation step at the foot of My record on a page nobody had been asked to confirm anything
    * on. The client method went with it rather than sitting declared and uncalled; the column and
@@ -158,9 +171,11 @@ describe('nothing the check-in pages can do gets lost in a merge', () => {
      */
     /* 43 until `signOff` was removed with the control that called it - a capability dropped on
        purpose, which is the one reason this number is allowed to go down. 42 until `activate`
-       went the same way with the reveal: see there-is-no-reveal.spec.ts. */
+       went the same way with the reveal: see there-is-no-reveal.spec.ts. 39 since
+       `getMyCheckinStatus` came off this list 1 October 2026 - a capability still alive outside
+       these four pages, see the note above, not a capability lost from the product. */
     const total = Object.values(OPERATIONS).reduce((n, c) => n + c.length, 0)
-    expect(total).toBe(40)
+    expect(total).toBe(39)
   })
 })
 

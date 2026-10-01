@@ -30,9 +30,15 @@ const PARTICIPANT = strip(readFileSync(path.join(__dirname, '../grounds/GroundPa
 const PARTY_REPORT = strip(readFileSync(path.join(__dirname, '../../components/gw/SharedReportForAParty.tsx'), 'utf8'))
 
 describe('one report, not two', () => {
-  it('the report body is a component, not a page only', () => {
-    expect(REPORT).toMatch(/export function ReportBody\(/)
-  })
+  /*
+   * "THE REPORT BODY IS A COMPONENT, NOT A PAGE ONLY" RETIRED WITH THE FILE.
+   *
+   * `ReportBody` and its inner components (`ResolutionSection`, `OutcomeFeedbackSection`,
+   * `PatternBlock`, `WhereTheRecordIsThin`, `WhatTheGroundCanTellYou`, `HiddenContributorsSection`
+   * and the rest) are deleted - every rule they enforced either held already on a live surface or
+   * was moved to one (see `docs/the-old-team-report-against-the-report-tab.md`). This was always
+   * expected to retire with the file; the rule that survives it is below.
+   */
 
   it('and no page carries a second report body at all', () => {
     /*
@@ -94,14 +100,6 @@ describe('one report, not two', () => {
   /** And the page it redirects to has to be able to open on that tab, or the redirect is a downgrade. */
   it('and the page opens on the tab the url asks for', () => {
     expect(ADMIN).toContain("searchParams.get('tab')")
-  })
-
-  /**
-   * Embedded, the surrounding page already says which check-in this is and how to get back, so the
-   * full-bleed wrapper and the dark header would be a second set of both.
-   */
-  it('the page chrome is dropped when embedded', () => {
-    expect(REPORT).toMatch(/if \(embedded\) return/)
   })
 
   /**

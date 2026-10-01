@@ -51,22 +51,31 @@ describe('but peers still see the tally, because there it is true', () => {
   })
 })
 
-describe('and the wording lives in one place', () => {
-  const REPORT = readFileSync(join(__dirname, '../pages/report/ReportPage.tsx'), 'utf8')
+describe('and the live surface never invents a vote nobody has', () => {
+  /*
+   * MOVED FROM THE DEAD REPORT BODY. `ResolutionSection`, inside `ReportBody` (`ReportPage.tsx`),
+   * used `openStatusLine`/`closedByLine` from this file directly and is deleted - it has not been
+   * mounted by any route since the Report tab became a list of sessions. The live resolution flow,
+   * `ResolutionPanel.tsx` (used on the board and the ending page), is a fuller rebuild that grew its
+   * own wording rather than calling these two functions verbatim - but it was built to the same
+   * rule this file protects, and that is what these assertions check: the per-party tally renders
+   * only where every answer is genuinely awaited, never where the lead decides alone.
+   */
+  const PANEL = readFileSync(join(__dirname, '../components/gw/ResolutionPanel.tsx'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-  it('the report page does not word the tally itself', () => {
-    /** The root cause was this sentence existing twice, in two components, one of which knew the rule. */
-    expect(REPORT).not.toMatch(/parties have confirmed an end state/)
-    expect(REPORT).toContain('openStatusLine(data)')
-    expect(REPORT).toContain('closedByLine(data)')
+  it('the per-party tally is gated on the lead not deciding alone', () => {
+    expect(PANEL).toMatch(/totalActive > 0 && !leadDecides && \(/)
   })
 
-  it('and only lists per-party rows where every answer is awaited', () => {
-    expect(REPORT).toMatch(/!data\.leadDecides && \(/)
+  it('and no sentence on the panel claims a quorum where there is none', () => {
+    /** The exact phrase that made two people look like they were withholding on a decision that was
+        the lead's alone. The live panel earns the same guarantee with its own words. */
+    expect(PANEL).not.toMatch(/parties have confirmed an end state/)
   })
 
-  it('and reads the shared type rather than a private copy of it', () => {
-    expect(REPORT).toMatch(/type ResolutionStatus = ResolutionState & \{ groundStatus: string \}/)
+  it('and reads the field off the shared resolution type, not a private copy of it', () => {
+    expect(PANEL).toMatch(/import \{ resolutionApi \} from '@\/api\/resolution'/)
+    expect(PANEL).toMatch(/const leadDecides = !!data\?\.leadDecides/)
   })
 })
