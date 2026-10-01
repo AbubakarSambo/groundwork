@@ -6967,4 +6967,25 @@ No suite is switched on in the test organisation, so every board has only been s
 
 The pictures are in the scratchpad's `pictures/g2d/`. The review of all of group 2 is under way.
 
+**Group 2's review sent back Today, the check-ins list, You and the To-dos board.** The background, the phone width and the one-navy rule held on every page.
+- The API sent no rating, score, judgement, private note or label to anyone.
+- A participant is refused the admin boards by the server itself.
+- Nothing protected was lost.
+- The review switched Role map, To-dos and Customers on through the Suites page, as the admin, to see real rows, then switched all three off again. All ten suites read off afterwards.
+
+The faults in the screens workspace's own part are being fixed now:
+- goals on the You board that are not sentences ("shops. You have 0 of 4.");
+- to-dos written as raw first-person words with no name ("ask Chandarana for the signed agreement");
+- the admin welcome card's fragments;
+- "Morning, Rukia Otieno";
+- the Reviews intro;
+- small Company and Equipment lines;
+- the You board's layout.
+
+The faults in what the server sends for Today and the check-ins list are the engine's, as request 97:
+- one check-in shown with three different session numbers;
+- "All three people have answered" for a check-in of six;
+- starting a check-in labelled as a decision;
+- the check-ins list's summaries for a participant.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
