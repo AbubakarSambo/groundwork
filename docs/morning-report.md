@@ -6,6 +6,38 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## SUMMARY OF THE NIGHT, 30 SEPTEMBER TO 1 OCTOBER (read this first)
+
+**The model is reachable.** From this Mac the regional address the product uses (us-central1) still times out, so every local run tonight used Google's global address, set only on the commands I started (`GEMINI_LOCATION=global`). No file, key or setting of the real product changed. To undo it, start the local API without that setting.
+
+**Pattern steadiness: one check-in reaches the aim; what people are shown after three periods does not yet.**
+- The same check-in now gives the same patterns 8 times in 10 (80%, up from 36% with one read at the start of the day), and still finds as many real patterns. This comes from reading each check-in five times at the steady setting and keeping what three agree on, and from giving the detector the person's own earlier record.
+- What a person is actually shown after three periods, the same conversations read twice: about 7 in 10 (68% to 73% on two small sets of 30 to 38 shown patterns). Every difference sits exactly on the three-period line: a pattern seen in two periods in one reading and three in the other. Between two separate runs, where the simulated people say different things, it is far lower (32%), which is the conversations differing, not the detector.
+- **Not steady enough for release by the aim of 8 in 10 on what people are shown.** My recommendation: judge it on a longer run with more people reaching three periods, because on 30 to 40 shown patterns one flip moves the number by three points. No pattern was removed, merged or weakened.
+
+**What was finished tonight** (all tested and pushed; the whole API suite passed at 12,587 tests before the last few pieces):
+- **Privacy first.** Performance plans, promotions and renewals are now kept from admins who were not given access (decision 5, request 78): a real gap, the reading rule had let any admin open them. The board no longer sends colleagues' contribution and coverage reads to people who may not read them (request 88). The lead no longer receives a tally of how many of a person's commitments were kept (decision 24). After a paste, every heading says truthfully who will read those lines (request 92).
+- **Hafsah's decisions 60 to 68 recorded and built**, including the first threshold for extra support, old patterns starting on release day, who confirms setup, Ask Groundwork opened from inside a check-in, the shared note that lifts the invite block, and "what people say can run ahead of what happened" with coaching lines for the lead on every pattern.
+- **Ask Groundwork as the one chat:** documents' numbers said back before they are saved, the setup conversation's six faults and their follow-ups fixed and proven live, items 10, 11, 15 and 16 proven live through both doors. The old context chat stays on until the screens confirm their screens live.
+- **The screens' requests:** 5, 17 (parts a to d), 18, 25, 28 (a), 37, 70 (seven sections), 75, 78, 79, 80, 82, 84 to 96. Seventeen (e) is now week 20; 17 (f), (g) and 28 (b) wait for Hafsah.
+- **Every week of the weekly plan is now built:** 6b, 8b (counted, weights switched off), 11, 12b, 12c, 17 to 26, and 12, 14, 15, 16 found already built on earlier nights.
+- **Tonight's one full run (run-21)** is scored below once it finishes.
+
+**Decided for Hafsah to confirm** (each is written in full further down):
+1. Admins without access to a check-in do not see the contribution and coverage reads (request 88), going further than decision 5.
+2. A performance plan, promotion or renewal set up by a lead who is not an admin waits for approval, because an admin without access cannot see it to approve it.
+3. An admin still reads an appealed suggestion, because decision 6 says an admin decides appeals.
+4. The lead does not get each person's own coaching note, as the report never gives it to them.
+5. The Sales lead sees only the Sales steps of a blocker's chain, not Finance's (request 18).
+6. The product proposes a review when one falls due and never starts one by itself (week 11).
+7. Leave, hours and spending are approved by the person's line manager, or an admin when there is none; running a check-in does not make someone an approver (week 21).
+8. When someone is away, the lead reads "Yemi is on leave until Friday 2 October, so this round does not wait for Yemi.", the person and a colleague read the sentences in week 23's section (dates only).
+9. Rules a lead keeps for the organisation are given to participants' check-ins as context, never quoted; that is an instruction to the model, not a wall (week 20).
+10. The learned weights of week 8b are counted but switched off until a scenario run proves them and Hafsah agrees.
+11. Still open from before: whether the "confirmed because the lead has left" sentence should also appear inside the person's own check-in (decision 63).
+
+---
+
 ## 30 SEPTEMBER, LATE MORNING: HAFSAH'S DECISIONS 60 TO 65, AND WHAT RUNS NEXT
 
 Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settled as proposed (60), the first threshold for week 10 (61), old patterns start the person-first process on release day (62), only the lead confirms setup unless the lead has left the organisation (63), the setup part of "how the leading is landing" restored without the three-period rule (64), and Ask Groundwork opened inside a check-in knows which one (65).
