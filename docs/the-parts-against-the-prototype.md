@@ -41,6 +41,7 @@ Where a part has no rule of its own in the prototype's CSS (because the prototyp
 | | note | `13.5px`, muted (`.note`) | `13.5px`, muted | same |
 | **Panel** (`.panel`, `.pad`) | corner radius | `12px` | `12px` | same |
 | | inside padding | `20px 22px` | `20px 22px` | same |
+| | **dark tone** (`gwui-panel-dark`, group 3, piece 5) | no prototype class for a dark panel; this keeps `Panel`'s own radius and padding and swaps in `--gw-dark` (`#0A1628`, already used elsewhere for a dark surface) and white text | n/a (new) | added: a person's private report, previewed on the lead's own roster once they have shared it, replacing a page's own `style={{ background: 'var(--gw-dark)', ... }}` div on `GroundAdminPage.tsx` |
 | | border | `1px solid var(--rule)` | `1px solid var(--gw-border)` (= `#EDE5D6`) | same |
 | **EdgeRow** (`.list`, `.item`, `.sp`) | grid | `4px minmax(0,1fr) auto`, gap 16px | same | same |
 | | row padding | `16px 0` | `16px 0` | same |
@@ -55,6 +56,7 @@ Where a part has no rule of its own in the prototype's CSS (because the prototyp
 | **ChoiceCards** | chosen outline | `2px solid var(--ink)` equivalent (white rows) | `inset 0 0 0 2px var(--gw-text)` | same |
 | **Toggle** | size | no named prototype class for a settings toggle (the prototype's `.sharew` is the nearest: `30px x 18px` track); this part instead follows the shape of a standard switch at `48x28`, closer to iOS/Android convention than `.sharew`'s narrower one | `48px x 28px` | unchanged - flagged here as the one part with no exact prototype counterpart, nearest taken deliberately wider for a clearer on/off read, not from a miscopied number |
 | **SwitchRow** | layout | no prototype class; built to read a heading (16px/700) beside a sentence (14.5px, muted), matching the type scale used everywhere else | 16px/700 title, 14.5px muted detail | unchanged |
+| **Button row** (`gwui-button-row`, group 3, piece 5) | gap | no prototype class (the prototype hand-writes `style="display:flex;gap:Npx"` wherever two buttons sit together, e.g. s41.js's closing-session buttons); this follows the same 8px gap | n/a (new) | added: two or more `Button`s side by side, replacing a page's own one-off `style={{ display: 'flex', gap: 8 }}` rows on `GroundAdminPage.tsx`'s check-ins tab |
 | **FormFields** (`label.f`, `.input`) | label | `14.5px`/700 | `14.5px`/700 | same |
 | | field height | `48px`, radius `10px`, border `1.5px solid var(--rule2)` | same | same |
 | **Button** (`.btn`) | height / two sizes | `44px` min, `.big` `54px`, `.sm` `36px` | same | same |
@@ -69,10 +71,12 @@ Where a part has no rule of its own in the prototype's CSS (because the prototyp
 | | tones | `rec`/`att`/`act`/`con`/`plain`, each tinted bg + matching ink, plus a `1px` matching outline in the dark-mode-and-after rules (line 193) | proven/attention/action/concern/plain, each with the matching `box-shadow: inset 0 0 0 1px` outline | same |
 | **Note / Empty / Callout** | note | `13.5px`, muted | `13.5px`, muted | same |
 | | empty panel heading | `21px`/700 (`.t-h2`) | `21px`/700 | same |
+| | **Callout's `concern` tone** (`gwui-callout-concern`, group 3, piece 5) | no prototype class for a tinted red callout (the prototype only ever shows red as `.btn.danger` or plain red text); this follows the same red the product already uses for a `concern`-toned `Tag` and `PersonRow` help strip (`--con` `#791F1F` on `--gw-red-bg`) | n/a (new) | added: a banner for something broken that needs fixing, such as a bounced invite, replacing a page's own one-off red `style={{...}}` block on `GroundAdminPage.tsx`'s check-ins tab |
 | **Toast** | position/size | `bottom:90px`, `12px 18px`, radius `10px`, `15px` | same | same |
 | **Modal** | width/padding/radius | `520px` max, `24px` inside, `14px` | same | same |
 | **Mark** (the three bars, `.brand`) | size | `17px`/700 wordmark, navy, `22x17` mark (lines 210-211, the SVG bars) | `18px`/700 (`gwui-mark`) - a small, deliberate difference from the prototype's `17px` sidebar brand, since this part is also used at a slightly larger scale on the invitation and sign-in pages | unchanged; noted, not fixed, since the difference is a size choice for a different context, not a stray number |
 | **SubHeading** | size/weight | no direct class (the prototype writes these by hand in its JS at `14.5px`/700, the same as `.f` labels) | `14.5px`/700 | same |
+| | **dark tone** (`gwui-subheading-dark`, group 3, piece 5) | no prototype class; follows `kit.tsx`'s own `Sec on="dark"`, which used `rgba(255,255,255,.45)` for the same faint label-on-dark | n/a (new) | added: replaces `Sec title=... on="dark"` on `GroundAdminPage.tsx`'s private-report preview, the one old-kit import left in that file after this group's earlier parts |
 | **Steps** | row height / marks | no direct class; a `Panel`-shaped list (`20px 22px` pad, `12px` radius) with rows on a hand-picked `38px` pitch and `16px`/700 marks, following the prototype's own step lists in its JS at the same sizes | `38px` row, `16px`/700 mark | unchanged |
 | **Stack** | gaps | the prototype's `.stack` sets no gap of its own (`display:flex;flex-direction:column`) - spacing between children is set ad hoc in its JS per screen; this part's numeric gaps (`0/10/12/18/19px`) are taken from those per-screen numbers, not one prototype rule | as listed | unchanged |
 | **Bubble** (`.bub`) | max width / radius / padding | `82%`, `16px`, `12px 16px` | same | same |
@@ -266,3 +270,9 @@ there was out of scope for this piece.
 every spec touching `ReportPage.tsx`, `SessionReportPage.tsx` or `TheCheckInHeader.tsx` pass (39
 spec files, 246+ tests), none with an assertion changed beyond the guard's own false-positive fix
 above.
+
+## Group 3, piece 5 (the lead's check-in page): a part moved into the shared parts
+
+| Part | Where it is used | What it follows |
+| --- | --- | --- |
+| `gwui-person-head` | The roster row on the lead's check-in page (`GroundAdminPage.tsx`): the status dot, the avatar and the name kept on one line | The prototype's own avatar-to-name gap, 10px (app.css `.person`). It was first added to the old stylesheet as `ga-row-head`, outside both class guards; it is now a shared part, and the old stylesheet is frozen too. |

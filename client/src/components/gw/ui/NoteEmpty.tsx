@@ -28,8 +28,10 @@ export function Callout({ tone, title, role, children }: {
    * passwordless account told it has been emailed a link, a session that expired).
    * 'info' for an instruction that matters now but is neither of those (blue, group 3, piece 4:
    * "Save this to receive the report.").
+   * 'concern' for something broken that needs fixing, not only knowing (red, group 3, piece 5: an
+   * invite that bounced, with nobody able to get in until the lead acts).
    */
-  tone?: 'success' | 'warning' | 'info'
+  tone?: 'success' | 'warning' | 'info' | 'concern'
   /**
    * A bold first line above the sentence, the same two-line shape `AuthNotice` (auth-kit.tsx)
    * already draws for its amber notices - added here so every tone can use it, not only warning.
@@ -39,7 +41,7 @@ export function Callout({ tone, title, role, children }: {
   role?: React.AriaRole
   children: React.ReactNode
 }) {
-  const cls = tone === 'success' ? 'gwui-callout-success' : tone === 'warning' ? 'gwui-callout-warning' : tone === 'info' ? 'gwui-callout-info' : null
+  const cls = tone === 'success' ? 'gwui-callout-success' : tone === 'warning' ? 'gwui-callout-warning' : tone === 'info' ? 'gwui-callout-info' : tone === 'concern' ? 'gwui-callout-concern' : null
   const className = cls ? `gwui-callout ${cls}` : 'gwui-callout'
   if (title) {
     return (

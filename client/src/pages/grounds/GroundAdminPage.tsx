@@ -11,6 +11,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { YourWork } from '@/components/gw/checkin/YourWork'
 import { Note } from '@/components/gw/ui/Note'
+import { Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading } from '@/components/gw/ui'
+import { initialsOf } from '@/pages/org/people-here'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
@@ -28,7 +30,7 @@ import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
-import { Sec, TextAction } from '@/components/gw/kit'
+import { TextAction } from '@/components/gw/kit'
 import { theLeadsNote, waitsForItsStart } from '@/lib/the-leads-note'
 import { useOpenSession } from '@/hooks/useOpenSession'
 import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
@@ -1746,8 +1748,12 @@ export function GroundAdminPage() {
           <div>
             {/* Who is overdue belongs with who has answered, and Remind is on the rows just below. */}
             {(ground.overdue ?? 0) > 0 && (
-              <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid #C5D9EF', borderRadius: 8, padding: '10px 12px', marginBottom: 14, lineHeight: 1.5 }}>
-                <strong>{ground.overdue} {ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.</strong> A missed session is not a lost session. Use Remind - the most common reason is the email went to spam. Their next check-in picks up where they left off.
+              <div className="gwui-mb-14">
+                <Callout tone="info" title={`${ground.overdue} ${ground.overdue === 1 ? 'participant is' : 'participants are'} overdue.`}>
+                  A missed session is not a lost session. Use Remind. The most common reason a
+                  session is missed is that the email went to spam. Their next check-in picks up
+                  where they left off.
+                </Callout>
               </div>
             )}
 
@@ -1762,25 +1768,27 @@ export function GroundAdminPage() {
               Adding somebody and sharing the join link come with it, because they are the same
               job: deciding who gives an account of this.
             */}
-            <div style={{ marginBottom: 16 }}>
+            <div className="gwui-mb-16">
               {(() => {
                 const bounced = ground.participants.filter((p: any) => p.inviteDeliveryStatus === 'BOUNCED')
                 if (bounced.length === 0) return null
                 return (
-                  <div style={{ background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b-soft)', borderRadius: 8, padding: '10px 14px', marginBottom: 10, fontSize: 12.5, color: 'var(--gw-red-t)', lineHeight: 1.5 }}>
-                    <strong>{bounced.length === 1 ? '1 invite never arrived (bounced).' : `${bounced.length} invites never arrived (bounced).`}</strong> Fix the address below and resend - until then {bounced.length === 1 ? 'that person has' : 'those people have'} no way in.
+                  <div className="gwui-mb-10">
+                    <Callout tone="concern" title={bounced.length === 1 ? '1 invite never arrived, because it bounced.' : `${bounced.length} invites never arrived, because they bounced.`}>
+                      Fix the address below and resend it. Until then, {bounced.length === 1 ? 'that person has' : 'those people have'} no way in.
+                    </Callout>
                   </div>
                 )
               })()}
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Participants</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {ground.participants.map((p: any, i: number) => {
+              <SubHeading>Participants</SubHeading>
+              <Stack gap={10}>
+                {ground.participants.map((p: any) => {
                   const myCheckIn = ground.checkIns?.find(c => c.participantId === p.id)
                   /**
                    * EVERY SESSION THIS PERSON HAS, NOT THE FIRST ONE FOUND.
                    *
                    * The row's dot came from `.find()` - one check-in per person - so somebody two
-                   * sessions into six showed a single status and the row could not say which session
+                   * sessions into six showed a single state and the row could not say which session
                    * it was about. That is why the tab needed a separate flat list of cards underneath
                    * repeating the same information a different way.
                    */
@@ -1792,14 +1800,13 @@ export function GroundAdminPage() {
                    * THE ROW'S STATE IS ALL THEIR SESSIONS, NOT WHICHEVER ONE `.find()` REACHED FIRST.
                    *
                    * Seen the moment the cells went in: a row read "Completed" beside a session-2 cell
-                   * that had not started - both drawn from the same person, contradicting each other,
-                   * because the label came from one arbitrary check-in and the cells from all of them.
-                   * The label had been wrong on its own for as long as anybody had two sessions; it
+                   * that had not started - same person, two statements, one of them false. The label
+                   * had been wrong on its own for as long as anybody had two sessions; it
                    * only became visible once something true stood next to it.
                    */
                   const allDone = theirSessions.length > 0 && theirSessions.every((c: any) => c.status === 'COMPLETED')
                   const anyGoing = theirSessions.some((c: any) => c.status === 'IN_PROGRESS')
-                  const statusColor = allDone ? 'var(--gw-green-b)' : anyGoing ? 'var(--gw-amber-b)' : 'var(--gw-border)'
+                  const statusDotClass = allDone ? 'ga-status-dot-done' : anyGoing ? 'ga-status-dot-going' : 'ga-status-dot-waiting'
                   const statusLabel = allDone
                     ? 'Every session done'
                     : anyGoing
@@ -1808,20 +1815,99 @@ export function GroundAdminPage() {
                         ? 'Some sessions done, some still open'
                         : 'Not started'
                   const sharedReport = p.sharedSoloReport as Record<string, unknown> | null
+                  /* This is the lead's own roster - they invited these people by typing the
+                     addresses - so `personLabel`, which falls back to the address, is both
+                     truthful and useful here. With no address either, the engine's words: "one
+                     colleague", "another colleague". Never the lead's note, which is shown below
+                     as theirs. */
+                  const name = personLabel(p)
+
+                  /*
+                   * WHAT THIS ROW NEEDS YOU TO KNOW BEFORE IT NEEDS YOU TO ACT (group 3, piece 5).
+                   *
+                   * Four states used to read as four differently-coloured pills squeezed between
+                   * the name and the row's own actions - "Email bounced - fix & resend" chief among
+                   * them, a label built by joining a dash onto a fragment. Each is now a plain
+                   * sentence in the same strip PersonRow's own rows use for "something to look at"
+                   * or "a problem": amber for something only an admin or time can fix, red for
+                   * something broken that needs fixing right now.
+                   */
+                  let statusTag: React.ReactNode = null
+                  let help: { tone: 'look' | 'concern'; text: React.ReactNode; action?: React.ReactNode } | undefined
+                  if (!p.userId && p.inviteDeliveryStatus === 'BOUNCED') {
+                    help = fixingEmailId === p.id ? {
+                      tone: 'concern',
+                      text: 'Type the corrected address and send it again.',
+                      action: (
+                        <div className="gwui-button-row">
+                          <TextField
+                            autoFocus
+                            type="email"
+                            value={fixingEmailValue}
+                            onChange={e => setFixingEmailValue(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && looksLikeAnAddress(fixingEmailValue)) fixEmail.mutate({ participantId: p.id, email: fixingEmailValue }) }}
+                            placeholder="corrected@email.com"
+                            aria-label={`${name}'s corrected email address`}
+                          />
+                          <Button
+                            size="small"
+                            disabled={fixEmail.isPending || !looksLikeAnAddress(fixingEmailValue)}
+                            onClick={() => fixEmail.mutate({ participantId: p.id, email: fixingEmailValue })}
+                          >
+                            {fixEmail.isPending ? 'Sending...' : 'Send it'}
+                          </Button>
+                          <Button kind="quiet" size="small" onClick={() => { setFixingEmailId(null); setFixingEmailValue('') }}>Cancel</Button>
+                        </div>
+                      ),
+                    } : {
+                      tone: 'concern',
+                      text: 'This invitation bounced. Fix the address and send it again.',
+                      action: <Button kind="quiet" size="small" onClick={() => { setFixingEmailId(p.id); setFixingEmailValue(p.email) }}>Fix and resend</Button>,
+                    }
+                  } else if (!p.userId && p.inviteDeliveryStatus === 'COMPLAINED') {
+                    help = { tone: 'concern', text: 'They marked the invitation as spam.' }
+                  } else if (p.awaitingSeat) {
+                    /*
+                      ON THE CHECK-IN, NOT WRITTEN TO. Adding somebody when the account is full no
+                      longer refuses the lead - the person is added and the invitation is held
+                      until an admin makes room. Without a row saying so it reads as "Invite
+                      pending", which is a lie in the direction that matters: the lead waits for a
+                      reply to a mail that was never sent, and chases the person instead of the
+                      admin.
+                    */
+                    help = {
+                      tone: 'look',
+                      action: <Button kind="quiet" size="small" onClick={() => navigate('/org/members')}>Go to People</Button>,
+                      text: 'Your plan has no seat for them yet. An admin has to make room before their invitation goes out.',
+                    }
+                  } else if (!p.userId) {
+                    statusTag = <Tag tone="plain">{p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered' : 'Invite pending'}</Tag>
+                  } else if (p.user?.awaitingOrgApproval) {
+                    /*
+                      WAITING ON YOUR ORGANISATION, NOT ON THEM. "You see pending org approval and
+                      not pending check-in." This row said "Invite pending" for somebody whose
+                      invitation had gone out and who is held by an admin in the lead's OWN
+                      organisation - so the lead reads it as the person ignoring their email, and
+                      chases the wrong thing. It goes where the approval is, because a lead can do
+                      nothing about it from here and an admin can do it in two clicks.
+                    */
+                    help = {
+                      tone: 'look',
+                      action: <Button kind="quiet" size="small" onClick={() => navigate('/org/members')}>Go to People</Button>,
+                      text: 'Waiting on your organisation. An admin there has to let them in.',
+                    }
+                  }
+
                   return (
                     <div key={p.id}>
                       <div className="ga-participant-row">
-                        <div className="ga-status-dot" style={{ background: statusColor }} title={statusLabel} />
-                        <div className={`gw-av gw-av-${i % 6}`}>{(p.email || '?').charAt(0).toUpperCase()}</div>
-                        <div style={{ flex: 1 }}>
-                          {/* This is the lead's own roster - they invited these people by typing
-                              the addresses - so `personLabel`, which falls back to the address, is
-                              both truthful and useful here. With no address either, the engine's
-                              words: "one colleague", "another colleague". Never the lead's note,
-                              which is shown below as theirs. */}
-                          <div style={{ fontSize: 13, fontWeight: 600 }}>{personLabel(p)}</div>
+                        <div className="gwui-person-head">
+                        <div className={`ga-status-dot ${statusDotClass}`} title={statusLabel} />
+                        <Avatar initials={initialsOf(name)} />
+                        <div className="ga-name-cell">
+                          <div className="gwui-person-name">{personLabel(p)}</div>
                           {labelInASentence(p) !== p.email && (
-                            <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{p.email}</div>
+                            <div className="gwui-person-email">{p.email}</div>
                           )}
                           {/*
                             A BARE NAME SAYS NOTHING ABOUT WHERE THEY ARE (U.8 re-review).
@@ -1831,13 +1917,11 @@ export function GroundAdminPage() {
                             to somebody mid-session. Same fact, same words, here too.
                           */}
                           {!p.userId && (
-                            <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginTop: 2 }}>
-                              {atTheStart(labelInASentence(p))} has not joined yet.
-                            </div>
+                            <div className="gwui-note">{atTheStart(labelInASentence(p))} has not joined yet.</div>
                           )}
                           {editingRoleId === p.id ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                              <input
+                            <div className="gwui-button-row">
+                              <TextField
                                 autoFocus
                                 value={editingRoleValue}
                                 onChange={e => setEditingRoleValue(e.target.value)}
@@ -1845,118 +1929,68 @@ export function GroundAdminPage() {
                                   if (e.key === 'Enter') updateRole.mutate({ participantId: p.id, role: editingRoleValue })
                                   if (e.key === 'Escape') { setEditingRoleId(null); setEditingRoleValue('') }
                                 }}
-                                style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, border: '1px solid var(--gw-border)', outline: 'none', fontFamily: 'inherit', width: 120 }}
+                                aria-label={`${name}'s role, as described`}
                               />
-                              <button onClick={() => updateRole.mutate({ participantId: p.id, role: editingRoleValue })} style={{ fontSize: 10, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Save</button>
-                              <button onClick={() => { setEditingRoleId(null); setEditingRoleValue('') }} style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                              <Button kind="quiet" size="small" onClick={() => updateRole.mutate({ participantId: p.id, role: editingRoleValue })}>Save</Button>
+                              <Button kind="quiet" size="small" onClick={() => { setEditingRoleId(null); setEditingRoleValue('') }}>Cancel</Button>
                             </div>
                           ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
+                            <div className="gwui-button-row">
                               {/* "Your note" to the lead who wrote it, never to an admin (U.7 review). */}
-                              {isInitiator && p.roleAsDescribed && <span data-leads-note style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
-                              {/* What someone is answerable for is the lead's to
-                                  set, or their own. Every party could edit every
-                                  other party's remit, on a ground that may be
-                                  deciding whether they keep their job. */}
-                              {/* REVIEW ROUND 3, ITEM 5: THE BARE "✎" HAD NO WORDS - a title
-                                  attribute is not read until a mouse hovers it, so on a phone,
-                                  or for anyone not hovering, this was an unlabelled glyph. */}
+                              {isInitiator && p.roleAsDescribed && <span data-leads-note className="gwui-note">{theLeadsNote(p.roleAsDescribed)}</span>}
+                              {/* What someone is answerable for is the lead's to set, or their own.
+                                  Every party could edit every other party's remit, on a ground
+                                  that may be deciding whether they keep their job.
+                                  REVIEW ROUND 3, ITEM 5: THE BARE "✎" HAD NO WORDS - a title
+                                  attribute is not read until a mouse hovers it, so on a phone, or
+                                  for anyone not hovering, this was an unlabelled glyph. */}
                               {(isInitiator || p.userId === user?.id) && (
-                                <button
-                                  onClick={() => { setEditingRoleId(p.id); setEditingRoleValue(p.roleAsDescribed ?? '') }}
-                                  style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1, display: 'inline-flex', alignItems: 'center', gap: 3 }}
-                                ><span aria-hidden>✎</span> Edit</button>
+                                <Button kind="quiet" size="small" onClick={() => { setEditingRoleId(p.id); setEditingRoleValue(p.roleAsDescribed ?? '') }}>
+                                  <span aria-hidden>✎</span> Edit
+                                </Button>
                               )}
                             </div>
                           )}
                           {/* Says the same thing as the dot, and now it is true of every session. */}
-                          <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{statusLabel}</div>
+                          <div className="gwui-note">{statusLabel}</div>
                         </div>
+                        </div>
+                        <div className="gwui-button-row">
                         {/* Chasing people is the lead's job. A peer nudging a peer
                             on an evaluation ground is a different act entirely.
                             REVIEW ROUND 3, ITEM 5: NOT FOR HERSELF. `p.userId !== user?.id` was
                             missing, so a lead whose own session was still open saw "Remind" on
                             her own row - there is nobody to remind there but her. */}
                         {isInitiator && myCheckIn?.id && status !== 'COMPLETED' && p.userId && p.userId !== user?.id && (
-                          <button onClick={() => remind.mutate(myCheckIn.id)} style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Remind</button>
+                          <Button kind="quiet" size="small" onClick={() => remind.mutate(myCheckIn.id)}>Remind</Button>
                         )}
-                        {!p.userId && p.inviteDeliveryStatus === 'BOUNCED' ? (
-                          <button
-                            onClick={() => { setFixingEmailId(p.id); setFixingEmailValue(p.email) }}
-                            style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-red-t)', background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b-soft)', borderRadius: 12, padding: '2px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
-                            title="The invite email bounced - it never reached this address"
-                          >
-                            Email bounced - fix &amp; resend
-                          </button>
-                        ) : !p.userId && p.inviteDeliveryStatus === 'COMPLAINED' ? (
-                          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '2px 10px' }} title="They marked the invite as spam">Marked as spam</span>
-                        ) : p.awaitingSeat ? (
-                          /*
-                            ON THE CHECK-IN, NOT WRITTEN TO.
-
-                            Adding somebody when the account is full no longer refuses the lead -
-                            the person is added and the invitation is held until an admin makes
-                            room. Without a row saying so it reads as "Invite pending", which is a
-                            lie in the direction that matters: the lead waits for a reply to a mail
-                            that was never sent, and chases the person instead of the admin.
-                          */
-                          <button
-                            onClick={() => navigate('/org/members')}
-                            title="Your plan has no seat for them yet - an admin here has to make room"
-                            style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '2px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
-                          >
-                            Waiting for a seat
-                          </button>
-                        ) : !p.userId ? (
-                          <span style={{ fontSize: 11, color: 'var(--gw-muted)' }} title={p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered to their inbox' : 'Invite sent'}>
-                            {p.inviteDeliveryStatus === 'DELIVERED' ? 'Invite delivered' : 'Invite pending'}
-                          </span>
-                        ) : p.user?.awaitingOrgApproval ? (
-                          /*
-                            WAITING ON YOUR ORGANISATION, NOT ON THEM.
-
-                            "You see pending org approval and not pending check-in." This row said
-                            "Invite pending" for somebody whose invitation had gone out and who is
-                            held by an admin in the lead's OWN organisation - so the lead reads it
-                            as the person ignoring their email, and chases the wrong thing.
-
-                            It goes where the approval is, because a lead can do nothing about it
-                            from here and an admin can do it in two clicks.
-                          */
-                          <button
-                            onClick={() => navigate('/org/members')}
-                            title="An admin in your organisation has to let them in"
-                            style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 12, padding: '2px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
-                          >
-                            Waiting on your organisation
-                          </button>
-                        ) : null}
+                        {statusTag}
                         {/* Available for anyone who has not joined yet, whatever
                             the delivery status says - "delivered" only means the
                             mail server accepted it, not that a person saw it. */}
                         {isInitiator && !p.userId && (
-                          <button
+                          <Button
+                            kind="quiet"
+                            size="small"
                             disabled={copyInviteLink.isPending}
                             onClick={() => copyInviteLink.mutate(p.id)}
-                            style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                            title="Copy their invite link so you can send it yourself"
                           >
                             {copyInviteLink.isPending && copyInviteLink.variables === p.id ? 'Copying...' : 'Copy invite link'}
-                          </button>
+                          </Button>
                         )}
                         {/* Once they have accepted, every action above goes quiet - each one is
                             gated on not having joined. This is the row's only action from that
                             point, and it answers the same question: they cannot find it, send it
                             to them. */}
                         {isInitiator && p.userId && (
-                          <button
+                          <Button
+                            kind="quiet"
+                            size="small"
                             disabled={copyCheckInLink.isPending}
                             onClick={() => copyCheckInLink.mutate(p.id)}
-                            style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                            title="Copy the link to their open check-in so you can send it yourself"
                           >
                             {copyCheckInLink.isPending && copyCheckInLink.variables === p.id ? 'Copying...' : 'Copy check-in link'}
-                          </button>
+                          </Button>
                         )}
                         {/*
                           The plainer action, and the one a lead reaches for first: send it again.
@@ -1965,19 +1999,26 @@ export function GroundAdminPage() {
                         */}
                         {/* U.6 review: not for an invitation still waiting for its start day. */}
                         {isInitiator && !p.userId && waitsForItsStart(p as any) && (
-                          <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>Their invitation goes out on the morning the check-in starts.</span>
+                          <span className="gwui-note">Their invitation goes out on the morning the check-in starts.</span>
                         )}
                         {isInitiator && !p.userId && !waitsForItsStart(p as any) && (
-                          <button
+                          <Button
+                            kind="quiet"
+                            size="small"
                             disabled={resendInvite.isPending}
                             onClick={() => resendInvite.mutate(p.id)}
-                            style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                            title="Send the invite email again, with a fresh link"
                           >
                             {resendInvite.isPending && resendInvite.variables === p.id ? 'Sending...' : 'Resend invite'}
-                          </button>
+                          </Button>
                         )}
+                        </div>
                       </div>
+                      {help && (
+                        <div className={`gwui-person-help gwui-person-help-${help.tone} ga-row-indent`}>
+                          <span>{help.text}</span>
+                          {help.action}
+                        </div>
+                      )}
                       {/*
                         ONE ROW PER PERSON, A CELL PER SESSION. The grid this tab was meant to be.
                         
@@ -1990,12 +2031,12 @@ export function GroundAdminPage() {
                         your own open session is the one you can click.
                       */}
                       {theirSessions.length > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, marginLeft: 40, flexWrap: 'wrap' }}>
+                        <div className="gwui-button-row ga-row-indent">
                           {/* Two bare numerals sat under a person's name with the meaning in a tooltip nobody hovers.
    The row says what it is.
    REVIEW ROUND 3, ITEM 5: NOT SHOUTED IN CAPITALS - CLAUDE.md's wording rule keeps labels
    in plain sentence case everywhere a person reads them. */}
-                          <span style={{ fontSize: 10, color: 'var(--gw-muted)', marginRight: 6 }}>Sessions</span>
+                          <span className="gwui-note">Sessions</span>
                           {theirSessions.map((ci: any) => {
                             const done = ci.status === 'COMPLETED'
                             const going = ci.status === 'IN_PROGRESS'
@@ -2017,6 +2058,7 @@ export function GroundAdminPage() {
                              * wall, and it is the reason this condition existed at all.
                              */
                             const isMine = p.userId === user?.id
+                            const tone = done ? 'proven' : going ? 'attention' : 'plain'
                             return (
                               <button
                                 key={ci.id}
@@ -2024,15 +2066,9 @@ export function GroundAdminPage() {
                                 onClick={isMine ? () => navigate(`/checkin/${ci.id}`, {
                                   state: { sessionNumber: ci.sessionNumber, isFinal: ci.isFinal ?? false, groundLabel: ground.label, groundId: id, isInitiator: isInitiator },
                                 }) : undefined}
-                                title={`Session ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + whenItWas(ci.completedAt, 'day') : ''}` : going ? 'in progress' : 'not started'}${isMine ? (done ? ' - yours, open it to read your report' : ' - yours, open it') : ` - only ${p.email} can open their own session`}`}
+                                title={`Session ${ci.sessionNumber}: ${done ? `completed${ci.completedAt ? ' ' + whenItWas(ci.completedAt, 'dayAndMonthLong') : ''}` : going ? 'in progress' : 'not started'}${isMine ? (done ? ' - yours, open it to read your report' : ' - yours, open it') : ` - only ${p.email} can open their own session`}`}
                                 aria-label={`Session ${ci.sessionNumber}: ${done ? 'completed' : going ? 'in progress' : 'not started'}${isMine ? ', yours' : `, only ${p.email} can open it`}`}
-                                style={{
-                                  fontSize: 10.5, fontWeight: 700, fontFamily: 'inherit', minWidth: 22,
-                                  padding: '2px 6px', borderRadius: 4, cursor: isMine ? 'pointer' : 'default',
-                                  border: `1px solid ${done ? 'var(--gw-green-b)' : going ? 'var(--gw-amber-b)' : 'var(--gw-border)'}`,
-                                  background: done ? 'var(--gw-green-bg)' : going ? 'var(--gw-amber-bg)' : 'white',
-                                  color: done ? 'var(--gw-green-t)' : going ? 'var(--gw-amber-t)' : 'var(--gw-muted)',
-                                }}
+                                className={`gwui-tag gwui-tag-${tone}`}
                               >
                                 {ci.sessionNumber}
                               </button>
@@ -2042,7 +2078,7 @@ export function GroundAdminPage() {
                             WHAT IS EXPECTED OF THEM, AS A STATE. One line, three answers, and the
                             words themselves live on Context where everyone reads them - a target is
                             not set on any tab any more, it comes out of the lead's own conversation.
-                            
+
                             "Seen" is the one that matters: being measured against something you have
                             never laid eyes on is a different problem from disagreeing with it.
                           */}
@@ -2053,11 +2089,7 @@ export function GroundAdminPage() {
                             point of publishing it at all. So the state is a link to the words rather
                             than a summary of them.
                           */}
-                          <button
-                            onClick={() => setTab('docs')}
-                            title="Read the expectations, on the Context and resources tab"
-                            style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginLeft: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline dotted' }}
-                          >
+                          <Button kind="quiet" size="small" onClick={() => setTab('docs')}>
                             {/* Read on the Sessions tab, directly under "Some sessions done, some still
                                 open": "nothing expected of them yet". Two facts about two different
                                 things, and the second did not say which thing. It is about the
@@ -2069,42 +2101,23 @@ export function GroundAdminPage() {
                               : p.objective.seenBySubject
                                 ? 'Expectation set. They have seen it.'
                                 : 'Expectation set. Not seen yet.'}
-                          </button>
-                        </div>
-                      )}
-                      {fixingEmailId === p.id && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, marginLeft: 40 }}>
-                          <input
-                            autoFocus
-                            type="email"
-                            value={fixingEmailValue}
-                            onChange={e => setFixingEmailValue(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter' && looksLikeAnAddress(fixingEmailValue)) fixEmail.mutate({ participantId: p.id, email: fixingEmailValue }) }}
-                            placeholder="corrected@email.com"
-                            style={{ fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--gw-red-b-soft)', outline: 'none', fontFamily: 'inherit', width: 240 }}
-                          />
-                          <button
-                            disabled={fixEmail.isPending || !looksLikeAnAddress(fixingEmailValue)}
-                            onClick={() => fixEmail.mutate({ participantId: p.id, email: fixingEmailValue })}
-                            style={{ fontSize: 12, fontWeight: 700, color: 'white', background: 'var(--gw-red-t)', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit', opacity: fixEmail.isPending ? 0.6 : 1 }}
-                          >
-                            {fixEmail.isPending ? 'Resending...' : 'Resend invite'}
-                          </button>
-                          <button onClick={() => { setFixingEmailId(null); setFixingEmailValue('') }} style={{ fontSize: 12, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                          </Button>
                         </div>
                       )}
                       {sharedReport && (
-                        <div style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 8, padding: '12px 14px', marginTop: 4, marginLeft: 40 }}>
-                          <Sec title={`${personLabel(p)}'s private report (shared by them)`} on="dark" />
-                          {/* The same walk the participant's own page does. One component now, so the
-                              report cannot read differently depending on who is looking at it. */}
-                          <SoloReportBody report={sharedReport as Record<string, unknown>} dense />
+                        <div className="ga-row-indent">
+                          <Panel className="gwui-panel-dark">
+                            <SubHeading tone="dark">{personLabel(p)}'s private report, shared by them</SubHeading>
+                            {/* The same walk the participant's own page does. One component now, so the
+                                report cannot read differently depending on who is looking at it. */}
+                            <SoloReportBody report={sharedReport as Record<string, unknown>} dense />
+                          </Panel>
                         </div>
                       )}
                     </div>
                   )
                 })}
-              </div>
+              </Stack>
             </div>
 
             {/*
@@ -2133,19 +2146,20 @@ export function GroundAdminPage() {
                */
               const releasedAt = (ground as any).report?.releasedAt as string | null | undefined
               return (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 12px', marginBottom: 16, lineHeight: 1.55, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                  <span>
-                    {releasedAt
-                      ? `This report was already shared, on ${whenItWas(releasedAt, 'day')}, before everybody had checked in.`
-                      : <>The picture builds as each person answers, and you can read what it has so far.
-                          It is only released to everybody once all {ground.participants.length} are in.</>}
-                  </span>
-                  <button
-                    onClick={() => setTab('report')}
-                    style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', flexShrink: 0 }}
-                  >
-                    {releasedAt ? 'Read it' : 'Read it so far'}
-                  </button>
+                <div className="gwui-mb-16">
+                  <Callout tone="info">
+                    <span className="gwui-switch-row">
+                      <span>
+                        {releasedAt
+                          ? `This report was already shared, on ${whenItWas(releasedAt, 'day')}, before everybody had checked in.`
+                          : <>The picture builds as each person answers, and you can read what it has so far.
+                              It is only released to everybody once all {ground.participants.length} are in.</>}
+                      </span>
+                      <Button kind="quiet" size="small" onClick={() => setTab('report')}>
+                        {releasedAt ? 'Read it' : 'Read it so far'}
+                      </Button>
+                    </span>
+                  </Callout>
                 </div>
               )
             })()}
@@ -2177,38 +2191,41 @@ export function GroundAdminPage() {
             }
 
             {pendingRequests.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '8px 12px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--gw-amber-b)', flexShrink: 0, display: 'inline-block' }} />
-                  Pending participant requests ({pendingRequests.length})
+              <div className="gwui-mb-16">
+                <div className="gwui-mb-10">
+                  <Callout tone="warning" role="status">
+                    {pendingRequests.length === 1
+                      ? 'One person has asked to join this check-in.'
+                      : `${pendingRequests.length} people have asked to join this check-in.`}
+                  </Callout>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Stack gap={10}>
                   {pendingRequests.map(req => (
-                    <div key={req.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 14px' }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>
-                        {req.requestedName ? `${req.requestedName} (${req.requestedEmail})` : req.requestedEmail}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 8 }}>Requested by {req.requestedByEmail}</div>
-                      <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, marginBottom: 12 }}>{req.reason}</div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button
+                    <Panel key={req.id}>
+                      <p className="gwui-panel-text">
+                        <strong>{req.requestedName ? `${req.requestedName} (${req.requestedEmail})` : req.requestedEmail}</strong>
+                      </p>
+                      <p className="gwui-note">Requested by {req.requestedByEmail}</p>
+                      <p className="gwui-panel-text">{req.reason}</p>
+                      <div className="gwui-button-row">
+                        <Button
+                          kind="secondary"
                           onClick={() => approveRequest.mutate(req)}
                           disabled={approveRequest.isPending}
-                          style={{ flex: 1, padding: '8px 12px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: approveRequest.isPending ? 0.6 : 1 }}
                         >
                           Add participant
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          kind="quiet"
                           onClick={() => dismissRequest.mutate(req.id)}
                           disabled={dismissRequest.isPending}
-                          style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit', opacity: dismissRequest.isPending ? 0.6 : 1 }}
                         >
                           Dismiss
-                        </button>
+                        </Button>
                       </div>
-                    </div>
+                    </Panel>
                   ))}
-                </div>
+                </Stack>
               </div>
             )}
 
@@ -2229,22 +2246,27 @@ export function GroundAdminPage() {
               typed rather than after the button is pressed.
             */}
             {isInitiator && !['RESOLVED', 'CLOSED', 'STALLED', 'AWAITING_LEAD'].includes(ground.status) && (
-              <div style={{ marginTop: 20 }}>
+              <div className="gwui-mt-20">
                 {confirmClosing ? (
-                  <div style={{ border: '1px solid var(--gw-amber-b-soft)', background: 'var(--gw-amber-bg)', borderRadius: 8, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Begin the closing session?</div>
-                    <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.5, marginBottom: 10 }}>
-                      Everyone's next check-in becomes their final one - same conversation, marked as closing. The final report reads the whole record, then you and the others agree the end state.
+                  <>
+                    <Callout tone="warning" title="Begin the closing session?">
+                      Everyone's next check-in becomes their final one. It is the same conversation,
+                      marked as closing. The final report reads the whole record, then you and the
+                      others agree the end state.
+                    </Callout>
+                    <div className="gwui-mt-10">
+                      <div className="gwui-button-row">
+                        <Button kind="secondary" redText onClick={() => closingSession.mutate()} disabled={closingSession.isPending}>
+                          Begin closing session
+                        </Button>
+                        <Button kind="quiet" onClick={() => setConfirmClosing(false)}>Cancel</Button>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => closingSession.mutate()} disabled={closingSession.isPending} style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-amber-t)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Begin closing session</button>
-                      <button onClick={() => setConfirmClosing(false)} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-amber-t)', border: 'none', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                    </div>
-                  </div>
+                  </>
                 ) : (
-                  <button onClick={() => setConfirmClosing(true)} style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'none', color: 'var(--gw-amber-t)', fontSize: 13, fontWeight: 600, border: '1px dashed var(--gw-amber-b-soft)', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Begin the closing session →
-                  </button>
+                  <Button kind="secondary" redText wide onClick={() => setConfirmClosing(true)}>
+                    Begin the closing session
+                  </Button>
                 )}
               </div>
             )}
