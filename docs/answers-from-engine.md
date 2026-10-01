@@ -1006,3 +1006,19 @@ A guest can change only a commitment they said themselves, in the check-in they 
 **Change for the screens.** `POST /ask/answer` used to refuse every guest with "There is nothing waiting for your yes." It now takes a guest's yes or no for the one change above that was said back to them last, and still refuses a stale yes, somebody else's, or a yes after they have asked something else. If the guest screen hid the yes and no buttons because a guest never had a `proposal` block, show them when one arrives, as for a member.
 
 Questions, answers and waiting requests for a guest are kept under their own key only, as before. Tests: `ask/ask-groundwork-as-each-reader-reads-it.spec.ts`, "a guest asks about their own work in their own check-in (week 24)". One older test changed: `assistant/what-they-said-and-what-is-next-as-each-reader-reads-it.spec.ts` pinned "What should I do next?" as the question "mine" for a guest, which listed everything they said they would do. It is now its own question, `next_step`.
+
+## Week 21: the approver is told on Today (requests 21, 22 and 26)
+
+Today now carries what is waiting for the reader to approve: leave requests, hours and requests to spend. It is a new kind of item in `needs`, with the same shape as the others: `kind: "decide"`, a `title`, a `detail`, an `action` and an empty `groundId` (there is no check-in behind it). The `key` is `approve-leave-N`, `approve-hours-N` or `approve-spend-N`, or `approve-leave`, `approve-hours` and `approve-spend` for a count. Please show `title` and then `detail` as they are.
+
+It is told only to the person who approves it, by the same rule as the boards (`mayApproveFor`): the person's manager in the directory when that manager is a lead or an admin, otherwise an admin, and never to the person themselves. A member, a guest, a colleague and an admin who is not the approver for that person read nothing. Nothing appears while a suite is switched off.
+
+Up to two of a kind are each said. Three or more are said once, with the count. Each links to its board.
+
+- Leave (title, then detail; dates only, never the reason or kind, and one day is said as "on"): "Amani asked for leave from Thursday 8 October to Friday 9 October." "It is waiting for you to approve." Action: "Look at it", `/suite/leave`. Count: "3 leave requests are waiting for you to approve." Action: "Look at them".
+- Hours (what was sent, never how much somebody works): "Baraka sent 6 hours on Atlas for Thursday 1 October." "They are waiting for you to approve." When the hours are on more than one day: "Baraka sent 9 hours on Atlas and Zeta for the week of Monday 28 September." Action: "Look at them", `/suite/time`. Count: "Hours from 3 people are waiting for you to approve."
+- Spending: "Baraka asked to spend KES 12,000 on fuel for the Kisumu trip." "It is waiting for you to approve." Action: "Look at it", `/suite/spend`. Count: "3 requests to spend are waiting for you to approve."
+
+These items are in the count beside Today and in the "new" count on "Choose an organisation", because they are in `needs`. The time sheets board rows also now carry `days`, the days of that week that have hours.
+
+Tests: `grounds/what-is-waiting-for-you-to-approve-as-each-reader-reads-it.spec.ts`.
