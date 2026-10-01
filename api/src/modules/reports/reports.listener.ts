@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds';
 import { ReportsService } from './reports.service';
+import { TheWeeklyReportService } from './the-weekly-report.service';
 import { EmailService } from '../email/email.service';
 import { GroundworkEvents, CheckInCompletedEvent, GroundActivatedEvent } from '../../common';
 import { GroundStatus, PartyType, ReportActivationStatus, CheckInStatus } from '@prisma/client';
@@ -30,6 +31,7 @@ export class ReportsListener {
     private reports: ReportsService,
     private email: EmailService,
     private config: ConfigService,
+    @Optional() private weekly?: TheWeeklyReportService,
   ) {}
 
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
@@ -56,6 +58,12 @@ export class ReportsListener {
       // contributed yet (rule 3), so a partial picture never fabricates
       // agreement that isn't there - it just shows what's known so far.
       await this.reports.synthesize(event.groundId);
+
+      /* THE WEEKLY REPORT AGAIN, NOW THAT THE SESSION'S REPORT IS IN, so what it keeps (what only the lead
+         can settle, where people said different things) reads the newest report. Never on opening. */
+      await this.weekly?.build(event.groundId).catch((err: any) =>
+        this.logger.warn(`The weekly report for ${event.groundId} could not be built after the report: ${err?.message}`),
+      );
 
       /*
        * WORD THE READS NOW, NOT WHEN SOMEBODY OPENS THE PAGE. The session report and the shared
