@@ -223,6 +223,19 @@ That is roughly eight to twelve more hours. The five kinds whose boards are of t
 
 Batch 2 is next: the prototype's own sections where their data is already sent, and the participant's short view.
 
+**Board batch 2 is done (2 October, early).**
+- The lead's board has one "Blockers" section, built from what blocks work and who waits on whom, with "Waiting on", "Raised" and "What the proof shows". Where the record has nothing for "Affects" or "Would clear it", nothing is drawn.
+- There is one "What needs you in this check-in", made of Today's items, the lead's actions and the decisions together.
+- The participant's board leads with the prototype's short view: whether today's picture is shared, "Read your own report", and their own records, marked "Only yours". Everything else they could read before is in one fold, "The whole check-in".
+- Four prototype pieces cannot be drawn without a field the engine does not send: the headline question, a pace word for each target, the record key, and "Where this is heading". That is request 108.
+- The button test passes 51 of 51, with known gaps marked, and the page-colour test passes 4 of 4. The pictures of all eleven kinds are in the scratchpad's `pictures/boards-fix2/`.
+
+**The sixth merge of the engine's work (2 October, 1:20).** It merged with no conflicts, and the API is rebuilt and restarted. Two answers in it matter here:
+- Request 107 (a) is done. Each question still waiting for an answer now comes as one sentence for the reader, such as "In session 1, you were asked, "How are you making your number?" You have not answered it yet.", and batch 3 draws it.
+- Decision 74: patterns are never switched off. They reach at least the person themselves.
+
+**Board batch 3 is next:** the board's one-off classes become shared parts, and the new waiting-question sentence is drawn.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
