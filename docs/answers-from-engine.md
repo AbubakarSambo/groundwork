@@ -1259,3 +1259,8 @@ On the combined code the guard counted 63 against 60. I went through every match
 - Skip test data the way `.spec.` files are skipped: in `everyFile`, also pass over any path containing `/__fixtures__/` (for example `if (name === 'node_modules' || name === 'dist' || name === '__fixtures__') continue`).
 
 With both, the count on the combined code is 56. Without them it is 62. The other matches are older than today and were inside the 60 already.
+
+
+## 1 October: please send where Ask Groundwork was opened from (decision 65)
+
+In the live check of item 6, after the setup conversation the lead's next question anywhere ("How do we get a quote signed off?") was answered as part of setup ("Groundwork does not manage processes ..."). The engine takes the next message as the parked setup turn because the request carries no `openedFrom`. Please send `openedFrom` on every `/ask` call (`check_in_setup` only from inside a check-in's setup, and the page's own name elsewhere), so a question asked from anywhere else is answered as itself.
