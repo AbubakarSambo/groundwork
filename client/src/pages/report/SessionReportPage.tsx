@@ -12,8 +12,10 @@ import { WhatThisCheckInStillNeeds } from '@/components/gw/WhatThisCheckInStillN
 import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
 import { WhatWasTakenFromWhatYouSaid } from '@/components/gw/WhatWasTakenFromWhatYouSaid'
 import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
+import { UpdatesToTheRecord } from '@/components/gw/UpdatesToTheRecord'
 import { HowSpecificThisSessionWas } from '@/components/gw/HowSpecificThisSessionWas'
 import { useAuthStore } from '@/stores/auth'
+import { peopleLabels } from '@/lib/utils'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
@@ -138,7 +140,37 @@ export default function SessionReportPage() {
     onError: () => toast.error('That did not start. Nothing has changed - try again.'),
   })
 
+  /**
+   * "THIS RECORD IS YOURS. IT IS PORTABLE AND PERMANENT" - WHICH USED TO BE SAID WITH NO WAY TO
+   * TAKE IT ANYWHERE.
+   *
+   * Moved from the dead Report tab body (ReportBody), which looped over every one of a person's
+   * completed sessions and offered a download button for each. This page already IS one of those
+   * sessions, so there is exactly one button to offer rather than a list.
+   */
+  const downloadRecord = useMutation({
+    mutationFn: () => conversationApi.download(checkInId!),
+    onSuccess: () => toast.success('Your record is downloading.'),
+    onError: () => toast.error('Could not download that record. Please try again.'),
+  })
+
   const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
+
+  /**
+   * A PARTICIPANT ID, SAID AS A NAME, THE WAY THIS READER MAY READ IT.
+   *
+   * `peopleLabels` is the one function that decides this correctly for a given reader (a real name
+   * for the lead, plain words such as "another colleague" for anybody else) - built once here so
+   * every section of this page that names a participant (the updates trail, the lead-only probe
+   * surface) reads the same person the same way.
+   */
+  const myParticipant = ((ground as any)?.participants ?? []).find((p: any) => p.userId === viewerUserId)
+  const nameFor = (participantId: string): string => {
+    const labels = peopleLabels((ground as any)?.participants ?? [], {
+      forTheLead: amTheInitiator, readerId: myParticipant?.id ?? null, readerIsInIt: !!myParticipant,
+    })
+    return labels.get(participantId) ?? 'a colleague'
+  }
 
   return (
     <Page>
@@ -442,6 +474,29 @@ export default function SessionReportPage() {
             </>
           )}
 
+          {/*
+            "THIS RECORD IS YOURS. IT IS PORTABLE AND PERMANENT" - offered wherever that is true,
+            which is once the session is finished, not only when a stored report happens to exist
+            (the branch above). A session run while signed in has no stored `data.report` but is
+            just as much a finished session whose record is yours to take away.
+          */}
+          {data?.finishedAt && (
+            <div className="gwui-mt-10">
+              <div className="gwui-fs-13 gwui-ink-sub gwui-mb-6" style={{ lineHeight: 1.55 }}>
+                This record is yours. It is portable and permanent.
+              </div>
+              <button
+                type="button"
+                disabled={downloadRecord.isPending}
+                onClick={() => downloadRecord.mutate()}
+                className="gwui-plain-link gwui-fs-13"
+                aria-label={`Download your session ${data.sessionNumber} record`}
+              >
+                {downloadRecord.isPending ? 'Downloading…' : 'Download your record'}
+              </button>
+            </div>
+          )}
+
           {/* Your own rows, before the coaching that is built from them. */}
           {data?.groundId && data?.sessionNumber && (
             <WhatWasTakenFromWhatYouSaid rows={(groundReport as any)?.myRows} groundId={data.groundId} sessionNumber={data.sessionNumber} />
@@ -503,6 +558,9 @@ export default function SessionReportPage() {
             sessionNumber={data.sessionNumber}
             totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), data.sessionNumber, (ground as any).scenario).length : null}
           />
+          {/* A self-correction shows up as a flagged, dated entry rather than being blended in
+              silently. Visible to everyone who reads this report, same as the report itself. */}
+          <UpdatesToTheRecord updates={(groundReport as any)?.updates} nameFor={nameFor} />
         </Panel>
       )}
       {/*
@@ -517,6 +575,11 @@ export default function SessionReportPage() {
         reads={(groundReport as any)?.probes}
         weigh={(groundReport as any)?.whatTheGroundCanTellYou}
         weighNote={(groundReport as any)?.whatTheGroundCanTellYouNote}
+        restedOn={(groundReport as any)?.whatItRestedOn}
+        startedAt={(groundReport as any)?.whereThisStarted}
+        softSpots={(groundReport as any)?.softSpots}
+        arcAdvisories={(groundReport as any)?.arcAdvisories}
+        nameFor={nameFor}
       />
 
       {/*

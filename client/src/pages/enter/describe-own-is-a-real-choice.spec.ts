@@ -28,7 +28,14 @@ describe('describing it in your own words', () => {
     const everything = [...document.querySelectorAll('textarea, button, input, a')]
     expect(everything[0]).toBe(box)
     const go = screen.getByRole('button', { name: 'Continue' })
-    expect(go.className).toBe('gw-btn')
+    /*
+     * Was `expect(go.className).toBe('gw-btn')`, pinning the old kit's one class. Group 3, piece
+     * 4d-1 rebuilt TheDoor.tsx from the shared `Button` (`components/gw/ui`), whose default kind is
+     * "primary" - the prototype's one solid navy button, never the dashed/ghost/transparent look
+     * this test exists to rule out. Checking the kind class directly keeps that same guarantee
+     * without pinning the whole class string, which a shared part is free to add to (e.g. `wide`).
+     */
+    expect(go.className).toMatch(/\bgwui-btn-primary\b/)
     expect(go.getAttribute('style') ?? '').not.toMatch(/dashed|transparent/)
   })
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import '@/components/gw/ui/gw-ui.css'
 
 /**
  * THE CHECK-IN'S HEADER (B3, docs/prototype/screens/B3-the-check-in/check-in-start.txt).
@@ -15,6 +16,10 @@ import { useEffect, useRef, useState } from 'react'
  *   Skip this check-in  the existing decline, which still asks first and says what follows
  * No prototype screen shows the menu open, so its words are the fewest plain ones, listed in the
  * morning report for Hafsah.
+ *
+ * GROUP 3, PIECE 3: rebuilt from the shared parts - every size, colour and spacing it draws now
+ * lives in gw-ui.css's `.gwui-ci-*` classes rather than an inline style, the same as the rest of
+ * this screen.
  */
 export function TheCheckInHeader({
   title,
@@ -47,33 +52,33 @@ export function TheCheckInHeader({
   }, [open])
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '14px 18px', borderBottom: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
-      <div style={{ minWidth: 0 }}>
-        <h1 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--gw-text)', lineHeight: 1.35, overflowWrap: 'anywhere' }}>{title}</h1>
-        {underTitle && <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 2 }}>{underTitle}</div>}
+    <div className="gwui-ci-header">
+      <div className="gwui-ci-header-text">
+        <h1 className="gwui-ci-header-title">{title}</h1>
+        {underTitle && <div className="gwui-ci-header-sub">{underTitle}</div>}
       </div>
       {mayPause && (onStopForNow || onSkip) && (
-        <div ref={box} style={{ position: 'relative', flexShrink: 0 }}>
+        <div ref={box} className="gwui-ci-pause-wrap">
           <button
             type="button"
             onClick={() => setOpen(o => !o)}
             aria-expanded={open}
             aria-haspopup="true"
-            style={{ background: 'none', border: 'none', padding: '6px 4px', fontSize: 14, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', minHeight: 36 }}
+            className="gwui-ci-pause-btn"
           >
             Pause
           </button>
           {open && (
-            <div role="menu" style={{ position: 'absolute', right: 0, top: 40, zIndex: 30, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6, width: 260 }}>
+            <div role="menu" className="gwui-ci-menu">
               {onStopForNow && (
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => { setOpen(false); onStopForNow() }}
-                  style={menuItem}
+                  className="gwui-ci-menu-item"
                 >
-                  <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>Stop for now</span>
-                  <span style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.45 }}>Everything you have said is saved. You can come back to it any time.</span>
+                  <span className="gwui-ci-menu-item-title">Stop for now</span>
+                  <span className="gwui-ci-menu-item-note">Everything you have said is saved. You can come back to it any time.</span>
                 </button>
               )}
               {onSkip && (
@@ -81,10 +86,10 @@ export function TheCheckInHeader({
                   type="button"
                   role="menuitem"
                   onClick={() => { setOpen(false); onSkip() }}
-                  style={menuItem}
+                  className="gwui-ci-menu-item"
                 >
-                  <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>Skip this check-in</span>
-                  <span style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.45 }}>You can say no. You will see what that means before anything is recorded.</span>
+                  <span className="gwui-ci-menu-item-title">Skip this check-in</span>
+                  <span className="gwui-ci-menu-item-note">You can say no. You will see what that means before anything is recorded.</span>
                 </button>
               )}
             </div>
@@ -93,10 +98,4 @@ export function TheCheckInHeader({
       )}
     </div>
   )
-}
-
-const menuItem: React.CSSProperties = {
-  display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, width: '100%',
-  padding: '10px 12px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer',
-  fontFamily: 'inherit', fontSize: 14, textAlign: 'left',
 }

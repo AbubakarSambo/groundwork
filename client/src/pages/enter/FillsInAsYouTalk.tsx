@@ -1,6 +1,7 @@
 import type { Cadence } from '@/components/gw/when-the-check-ins-land'
 import { workingDaysOf } from '@/components/gw/when-the-check-ins-land'
 import { HOW_OFTEN } from './TheSetup'
+import '@/components/gw/ui/gw-ui.css'
 
 /*
  * THE PANEL THAT FILLS IN AS YOU TALK (U.6, B1): the side of #/new and #/start/chat.
@@ -13,6 +14,15 @@ import { HOW_OFTEN } from './TheSetup'
  * Not here: the prototype's "Change" buttons (the name is changed in the header, and the rest on the
  * save card) and "Add their emails in the chat" (people's addresses are added on the save card, not
  * in the chat). See item 17 of docs/morning-report-ui.md.
+ *
+ * 4D-4: every inline style moved to named classes on the shared gw-ui.css (gwui-fit-*), the same
+ * sheet every other rebuilt part of this page already draws from - not a new one-off page-local
+ * sheet copying the old pixel values, which the task's own rule against restyling this way calls
+ * out by name. Its own sizes (10px corners, 16px inside) are a deliberate narrower choice for this
+ * sidebar rather than the shared Panel's 12px/20-22px, the same kind of "nearest equivalent, not a
+ * literal prototype rule" already recorded for other parts in
+ * docs/the-parts-against-the-prototype.md. Every size under 13px (several rows were 12.5px) is now
+ * 13px, the house style's own floor.
  */
 
 export const FILLS_IN = {
@@ -75,23 +85,23 @@ export function FillsInAsYouTalk(k: WhatSetupKnows) {
   const rows = theRows(k)
   const addedNotYet = k.added.length ? notYetAdded(k) : []
   return (
-    <aside aria-label={FILLS_IN.help} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 16 }}>
-      {k.name.trim() && <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)' }}>{k.name.trim()}</div>}
-      {k.situation && <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2 }}>{k.situation}</div>}
-      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginTop: 8 }}>{FILLS_IN.howMuch(rows.filter((r) => r.set).length)}</div>
-      <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5, margin: '2px 0 12px' }}>{FILLS_IN.help}</p>
-      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
+    <aside aria-label={FILLS_IN.help} className="gwui-fit-aside">
+      {k.name.trim() && <div className="gwui-fit-name">{k.name.trim()}</div>}
+      {k.situation && <div className="gwui-fit-situation">{k.situation}</div>}
+      <div className="gwui-fit-count">{FILLS_IN.howMuch(rows.filter((r) => r.set).length)}</div>
+      <p className="gwui-fit-help">{FILLS_IN.help}</p>
+      <ul className="gwui-fit-list">
         {rows.map((r) => (
-          <li key={r.label} style={{ display: 'flex', gap: 8 }}>
-            <span aria-hidden="true" style={{ width: 16, flexShrink: 0, color: r.set ? 'var(--gw-green-t)' : 'var(--gw-muted)', fontWeight: 700 }}>{r.set ? '✓' : '○'}</span>
+          <li key={r.label} className="gwui-fit-row">
+            <span aria-hidden="true" className={`gwui-fit-mark ${r.set ? 'gwui-fit-mark-set' : 'gwui-fit-mark-unset'}`}>{r.set ? '✓' : '○'}</span>
             <span>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>{r.label}</span>
-              {r.value && <span style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.45 }}>{r.value}</span>}
+              <span className="gwui-fit-label">{r.label}</span>
+              {r.value && <span className="gwui-fit-value">{r.value}</span>}
               {r.label === FILLS_IN.whoIsIn && k.added.length > 0 && (
                 <>
-                  {k.added.map((a) => <span key={a} style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.45 }}>{a}</span>)}
+                  {k.added.map((a) => <span key={a} className="gwui-fit-value gwui-fit-value-name">{a}</span>)}
                   {addedNotYet.length > 0 && (
-                    <span style={{ display: 'block', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.45, marginTop: 4 }}>
+                    <span className="gwui-fit-value gwui-fit-more">
                       {`${addedNotYet.length} more you mentioned: ${andList(addedNotYet)}.`}
                     </span>
                   )}

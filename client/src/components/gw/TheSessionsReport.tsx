@@ -737,9 +737,18 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         <Row n={next()} label="What people said this session">
           <div className="gwui-gap-10 gwui-mb-8" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
             <span className="gwui-fs-13 gwui-ink-sub">Each person&apos;s own work, in their own words.</span>
+            {/*
+              HAFSAH'S BUTTON-COUNT REVIEW (1 October 2026): THIS SWITCHES BETWEEN TWO VIEWS OF THE
+              SAME LIST, IT DOES NOT GO ANYWHERE OR SEND ANYTHING. A boxed button read as a second
+              action on a page whose one real action is "Correct it", so this is the shared quiet
+              text link (`.gwui-plain-link`) that names what it switches to, same as every other
+              view-only control on a rebuilt page.
+            */}
             <button
+              type="button"
               onClick={() => setByPerson(v => !v)}
-              className="gwui-p-0 gwui-rule-none gwui-fs-13 gwui-ink-navy" style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', flexShrink: 0 }}
+              className="gwui-plain-link"
+              style={{ flexShrink: 0 }}
             >
               {byPerson ? 'Group by theme' : 'Group by person'}
             </button>

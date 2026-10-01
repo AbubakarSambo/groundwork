@@ -29,7 +29,14 @@ const GROUNDS_API = read('api/grounds.ts')
 const CONVERSATION_API = read('api/conversation.ts')
 const FEEDBACK_API = read('api/feedback.ts')
 const PROMPTS_API = read('api/prompts.ts')
-const REPORT_PAGE = read('pages/report/ReportPage.tsx')
+/*
+ * MOVED FROM THE DEAD REPORT BODY (1 October 2026). `REPORT_PAGE` used to read `ReportPage.tsx`'s
+ * `ReportBody`, which nothing has mounted since the Report tab became a list of sessions - see the
+ * comment at the top of `ReportPage.tsx` for where each capability went. The download now lives on
+ * `SESSION_REPORT_PAGE` and "did this feel fair" on `OUTCOME_FEEDBACK`.
+ */
+const SESSION_REPORT_PAGE = read('pages/report/SessionReportPage.tsx')
+const OUTCOME_FEEDBACK = read('components/gw/OutcomeFeedback.tsx')
 const ADMIN_PAGE = read('pages/grounds/GroundAdminPage.tsx')
 const BOARD_PAGE = read('pages/board/BoardPage.tsx')
 const DASHBOARD = read('pages/admin/AdminDashboardPage.tsx')
@@ -67,13 +74,13 @@ describe('the record the report page promises is portable', () => {
   })
 
   it('the page that makes the promise offers it', () => {
-    expect(REPORT_PAGE).toMatch(/conversationApi\.download/)
-    expect(REPORT_PAGE).toMatch(/portable and permanent/)
+    expect(SESSION_REPORT_PAGE).toMatch(/conversationApi\.download/)
+    expect(SESSION_REPORT_PAGE).toMatch(/portable and permanent/)
   })
 
   it('offers it only for sessions that finished', () => {
     // There is nothing settled to take away from a session still in progress.
-    expect(REPORT_PAGE).toMatch(/\.filter\(c => c\.completedAt\)/)
+    expect(SESSION_REPORT_PAGE).toMatch(/data\?\.finishedAt && \(/)
   })
 })
 
@@ -85,12 +92,17 @@ describe("the caller's own check-in status", () => {
     expect(GROUNDS_API).toMatch(/skipForbiddenToast: true/)
   })
 
-  it('is what supplies the check-in ids the download needs', () => {
-    // The shared report does not carry them and should not: this is the only
-    // route that hands a person their own ids, resolved from their own user id.
-    expect(REPORT_PAGE).toMatch(/getMyCheckinStatus/)
-    expect(REPORT_PAGE).toMatch(/myStatus\?\.checkIns/)
-  })
+  /*
+   * "IS WHAT SUPPLIES THE CHECK-IN IDS THE DOWNLOAD NEEDS" RETIRED, NOT TRANSLATED.
+   *
+   * `ReportBody` downloaded from a list of ALL of a party's completed sessions, fetched by
+   * `getMyCheckinStatus` because the ground-level report carries no check-in ids. The download now
+   * lives on `SessionReportPage.tsx`, which already IS one specific session - its `checkInId` comes
+   * straight off the route, so there is no roster to look up and this endpoint has no remaining
+   * reason to supply it here. The endpoint itself is not orphaned: `ChatPage.tsx`, `TheDonePage.tsx`
+   * and `YourNextCheckIn.tsx` all still call it, which is a different capability (your current
+   * check-in state) that this file does not track.
+   */
 })
 
 describe('did this feel fair - the only outcome signal there is', () => {
@@ -104,8 +116,8 @@ describe('did this feel fair - the only outcome signal there is', () => {
   it('is asked only once the check-in has closed', () => {
     // Asking mid-ground asks someone to rate a conversation they are still in,
     // and implies the process has ended when it has not.
-    expect(REPORT_PAGE).toMatch(/if \(!closed\) return null/)
-    expect(REPORT_PAGE).toMatch(/status === 'RESOLVED' \|\| \(ground as any\)\.status === 'CLOSED'/)
+    expect(BOARD_PAGE).toMatch(/groundEnded && \(/)
+    expect(BOARD_PAGE).toMatch(/<OutcomeFeedback groundId=\{id!\} \/>/)
   })
 
   it('makes "no" exactly as easy to press as "yes"', () => {
@@ -113,15 +125,15 @@ describe('did this feel fair - the only outcome signal there is', () => {
     // one - hidden behind a link, an extra step, a required explanation - this
     // collects flattery, and the number stops meaning anything. Both are plain
     // buttons calling the same mutation with a different boolean.
-    expect(REPORT_PAGE).toMatch(/onClick=\{\(\) => submit\.mutate\(true\)\}/)
-    expect(REPORT_PAGE).toMatch(/onClick=\{\(\) => submit\.mutate\(false\)\}/)
-    expect(REPORT_PAGE).toMatch(/It did not/)
+    expect(OUTCOME_FEEDBACK).toMatch(/onClick=\{\(\) => submit\.mutate\(true\)\}/)
+    expect(OUTCOME_FEEDBACK).toMatch(/onClick=\{\(\) => submit\.mutate\(false\)\}/)
+    expect(OUTCOME_FEEDBACK).toMatch(/It did not/)
     // And the note must not be required to say no.
-    expect(REPORT_PAGE).toMatch(/placeholder="Anything you want to add \(optional\)"/)
+    expect(OUTCOME_FEEDBACK).toMatch(/placeholder="Anything you want to add \(optional\)"/)
   })
 
   it('tells the person their answer is not shown to the other parties', () => {
-    expect(REPORT_PAGE).toMatch(/not shown to the other parties/)
+    expect(OUTCOME_FEEDBACK).toMatch(/not shown to the other parties/)
   })
 })
 

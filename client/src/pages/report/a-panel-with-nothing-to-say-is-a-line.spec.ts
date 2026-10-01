@@ -9,57 +9,32 @@ import { join } from 'path'
  * findings. The lead scrolls all of it every time, including past panels announcing they have
  * nothing in them.
  *
- * THIS IS NOT A REORDERING, AND THE REORDERING WAS THE WRONG IDEA. `reportWaitingForMe` is
- * `mine && releasedAt && !activated`, and `activated` is `isInitiator || ...` - so it is
- * structurally false for a lead. Nothing in this product tells a lead to read their own report.
- * What summons them is "report ready - you release it" and "The lead decides this one". Their two
- * jobs are release and resolve, and jobs belong above the content they act on.
+ * MOVED FROM THE DEAD REPORT BODY (`ReportPage.tsx`, `ReportBody`), now deleted. Two of this file's
+ * original assertions tested the dead body directly and are retired with it, each for a different
+ * reason, recorded here rather than silently dropped:
  *
- * So the panels stay where they are. What changes is that a panel earns its space by having
- * something in it.
+ *   RESOLUTION, ONE LINE UNTIL THERE IS ONE. `ReportBody`'s `ResolutionSection` showed a single
+ *   quiet line ("Resolution. Not set yet.") rather than nothing. The live `ResolutionPanel` (used
+ *   on the board and the ending page) does not carry an equivalent for "nothing yet, far from the
+ *   end" - it renders nothing at all until a decision is near or under way. That is a stronger form
+ *   of the same rule (a panel with nothing to say now takes NO space, not one line), and it is the
+ *   live, richer replacement for the whole resolution flow, not a regression introduced here. Kept
+ *   as a note rather than a passing assertion, because asserting against the dead file again would
+ *   test nothing live.
  *
- * THE RULE ALREADY EXISTED HERE, half-applied: `one-list-not-three` says a count of nothing does
- * not get a tile and the signal returns the moment there is a number, and "How this report is put
- * together" was already a <details>. This finishes it.
- *
- * Measured after: content at 589px instead of 856, 18% instead of 24%, page 3,329px instead of
- * 3,498 - on a report where the reveal row still had work to show. A settled one collapses further.
+ *   STALENESS NEVER CONDITIONAL ON BEING SETTLED. `ReportBody` polled the ground-level report and
+ *   banner-warned "someone has checked in since this was written, you are reading the previous
+ *   version". The per-session report (`TheSessionsReport.tsx`) is fetched fresh on each visit
+ *   instead of cached with a staleness flag, and says when it was last updated
+ *   (`lastChangedLine`/`lastUpdated`) rather than warning that what is on screen might be behind.
+ *   Whether a live "you are reading an old version" banner is still needed on the rebuilt page is
+ *   a product question rather than a mechanical move, so it is left as a note for Hafsah rather than
+ *   decided here.
  */
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
-const REPORT = strip(readFileSync(join(__dirname, 'ReportPage.tsx'), 'utf8'))
 const ADMIN = strip(readFileSync(join(__dirname, '..', 'grounds', 'GroundAdminPage.tsx'), 'utf8'))
 
 describe('a panel with nothing to say is a line', () => {
-  it('reads the real files, so an empty one cannot pass', () => {
-    expect(REPORT.length).toBeGreaterThan(5000)
-    expect(ADMIN.length).toBeGreaterThan(5000)
-  })
-
-  it('resolution is one line until there is a resolution', () => {
-    expect(REPORT).toMatch(/if \(!resolutionState && !data\?\.resolution\) \{/)
-    /*
-     * GROUP 3, PIECE 2: "Resolution · not set yet" is two fragments joined by a middle dot, which
-     * the wording rule in CLAUDE.md refuses ("No pieces joined with colons, dots or arrows"). It
-     * is the screen's own line, not the engine's, so it is this piece's to fix: rewritten as two
-     * short, plain sentences with the same meaning and the same one-line footprint.
-     */
-    expect(REPORT).toMatch(/Resolution\. Not set yet\./)
-    /* The section it replaced, which announced its own emptiness at full size. */
-    expect(REPORT).not.toMatch(/>No resolution state set yet\.</)
-  })
-
-  it('and comes back whole the moment there is one to act on', () => {
-    /* The early return is guarded on BOTH being absent, so any resolution renders the section. */
-    const early = REPORT.slice(REPORT.indexOf('if (!resolutionState && !data?.resolution)'), REPORT.indexOf('if (!resolutionState && !data?.resolution)') + 400)
-    expect(early).toMatch(/return \(/)
-    /*
-     * GROUP 3, PIECE 2: the "Resolution" eyebrow moved off an inline `style={{...}}` onto the
-     * shared kit's utility classes (gwui-fs-13/gwui-ink-muted/gwui-mb-10), inside a `Panel` rather
-     * than a hand-rolled bordered div - a rename, not a wording or behaviour change.
-     */
-    expect(REPORT).toMatch(/<div className="gwui-fs-13 gwui-ink-muted gwui-mb-10"[^>]*>Resolution<\/div>/)
-  })
-
   it('the reveal row shows who to chase, and says nothing extra when there is nobody', () => {
     /*
      * The panel this was written about went with the report tab's body. The rule it protects -
@@ -73,14 +48,5 @@ describe('a panel with nothing to say is a line', () => {
     expect(VIEW).toContain('has checked in.')
     expect(VIEW).toContain('has not checked in yet.')
     expect(ADMIN).not.toMatch(/allActivated/)
-  })
-
-  it('THE ONE THAT MUST NOT COLLAPSE: staleness is never conditional on being settled', () => {
-    /*
-     * "What you are reading is the previous version" changes whether a reader trusts everything
-     * below it. It is not a status panel and must never be folded away with them.
-     */
-    const banner = REPORT.slice(REPORT.indexOf('previous version') - 600, REPORT.indexOf('previous version'))
-    expect(banner).not.toMatch(/allActivated|resolutionState/)
   })
 })

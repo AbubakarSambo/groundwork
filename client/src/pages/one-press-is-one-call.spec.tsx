@@ -16,7 +16,10 @@ describe('guarded submits', () => {
   it('the anonymous save has an in-flight flag, and Enter goes through the same form', () => {
     const entry = read('enter/EntryChatPage.tsx')
     expect(entry).toMatch(/async function handleSave\(\) \{\s*if \(saving\) return\s*setSaving\(true\)/)
-    expect(entry).toContain("{saving ? 'Saving…' : 'Save my check-in →'}")
+    /* 4d-3: the save card's own button is a plain sentence now, not an arrow (CLAUDE.md's wording
+       rule - "no pieces joined with... arrows"), and the shared Button part reads its own
+       disabled/pending state, so the guard only needs the label itself. */
+    expect(entry).toContain("{saving ? 'Saving…' : 'Save my check-in'}")
   })
   it('choosing a password returns while a save is pending', () => {
     expect(read('auth/ChoosePasswordPage.tsx')).toMatch(/function submit\(\) \{\s*if \(save\.isPending\) return/)

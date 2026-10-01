@@ -21,19 +21,36 @@ export function Note({ tone, children }: { tone?: 'error'; children: React.React
   )
 }
 
-export function Callout({ tone, role, children }: {
+export function Callout({ tone, title, role, children }: {
   /**
    * 'success' for a fact that just became true, e.g. "You are in." (green, `role="status"`).
    * 'warning' for something the person should know, not an error (amber, group 3, piece 1: a
    * passwordless account told it has been emailed a link, a session that expired).
+   * 'info' for an instruction that matters now but is neither of those (blue, group 3, piece 4:
+   * "Save this to receive the report.").
    */
-  tone?: 'success' | 'warning'
+  tone?: 'success' | 'warning' | 'info'
+  /**
+   * A bold first line above the sentence, the same two-line shape `AuthNotice` (auth-kit.tsx)
+   * already draws for its amber notices - added here so every tone can use it, not only warning.
+   * Leaving it out keeps the single-paragraph shape every existing caller already renders.
+   */
+  title?: string
   role?: React.AriaRole
   children: React.ReactNode
 }) {
-  const cls = tone === 'success' ? 'gwui-callout-success' : tone === 'warning' ? 'gwui-callout-warning' : null
+  const cls = tone === 'success' ? 'gwui-callout-success' : tone === 'warning' ? 'gwui-callout-warning' : tone === 'info' ? 'gwui-callout-info' : null
+  const className = cls ? `gwui-callout ${cls}` : 'gwui-callout'
+  if (title) {
+    return (
+      <div className={className} role={role}>
+        <p className="gwui-callout-title">{title}</p>
+        <p className="gwui-callout-body">{children}</p>
+      </div>
+    )
+  }
   return (
-    <p className={cls ? `gwui-callout ${cls}` : 'gwui-callout'} role={role}>
+    <p className={className} role={role}>
       {children}
     </p>
   )

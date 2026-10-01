@@ -51,18 +51,29 @@ describe('waits are statuses', () => {
          minute."), nested inside the same status element rather than a second live region - so
          the pin no longer requires the div's only child to be the opening sentence. */
       ['pages/chat/ChatPage.tsx', /<div role="status"[^>]*>\s*Opening your session…/],
-      /* GROUP 3, PIECE 2: the inline style moved to a className (`gwui-rule-bottom`) plus a
-         `background` kept inline (not a banned prop), so `className` now sits between
-         `aria-live` and `style` - same element, same two attributes, same amber background. */
-      ['pages/report/ReportPage.tsx', /<div role="status" aria-live="polite" className="gwui-rule-bottom" style=\{\{ background: 'var\(--gw-amber-bg\)'/],
     ]
+    /*
+     * ONE PIN RETIRED RATHER THAN TRANSLATED (1 October 2026).
+     *
+     * `ReportBody`'s "Picture forming - X of Y checked in for session N" status banner is deleted
+     * with the rest of `ReportBody` (`ReportPage.tsx`, not mounted by any route since the Report
+     * tab became a list of sessions - see the comment at the top of that file). The same fact (who
+     * has checked in, and for which session) is said on the live Report tab and on
+     * `TheSessionsReport.tsx`, but as plain rendered sentences rather than inside a status region,
+     * because the page loads it rather than polling it live. Whether a "picture forming" status
+     * region is still needed on the rebuilt surfaces is a product question, not a mechanical move,
+     * so it is left as a note for Hafsah rather than invented here.
+     */
     for (const [rel, re] of pins) expect(strip(readFileSync(path.join(SRC, rel), 'utf8'))).toMatch(re)
     void BUSY; void ALLOWED_BARE
   })
   it('the two message lists are live regions and the long report wait is a status', () => {
     const entry = strip(readFileSync(path.join(SRC, 'pages/enter/EntryChatPage.tsx'), 'utf8'))
     expect(entry.match(/ref=\{msgsRef\}\s*aria-live="polite"/g)?.length).toBe(2)
-    expect(entry).toMatch(/<div style=\{\{ marginBottom: 18 \}\} role="status" aria-live="polite">/)
+    /* 4d-3: the generating-report wait moved from an inline `style={{ marginBottom: 18 }}` to the
+       named class `gwui-ec-savecard-status` (CLAUDE.md: no inline style props on a rebuilt range) -
+       the guarantee this checks, `role="status" aria-live="polite"`, is unchanged. */
+    expect(entry).toMatch(/<div className="gwui-ec-savecard-status" role="status" aria-live="polite">/)
     /**
      * ROUND 5, ITEM B: ChatPage.tsx's message list moved into ConversationCard.tsx's own scrolling
      * body (components/gw/ui/ConversationCard.tsx), which sets `aria-live="polite"` unconditionally

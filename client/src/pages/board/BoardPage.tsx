@@ -10,6 +10,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckInLinks } from './CheckInLinks'
 import { boardApi, type BoardPresent, type CoverageVariant } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
+import { participantRequestsApi } from '@/api/participantRequests'
+import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
@@ -18,6 +20,7 @@ import { toast } from 'sonner'
 import { todayApi, type Need } from '@/api/today'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
+import { OutcomeFeedback } from '@/components/gw/OutcomeFeedback'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whatWentWrong, whyYouCannotSeeThis } from '@/pages/report/why-you-cannot-see-this'
 import { TheJudgement } from '@/components/gw/TheJudgement'
@@ -223,6 +226,102 @@ function whereTheRunIs(data: any, ground: any): { nearTheEnd: boolean; lastSessi
  * builds the same "Session N of M. Runs until DATE." sentence, so this is now a shared function
  * rather than a second copy of it there.
  */
+
+/**
+ * A HIDDEN CONTRIBUTOR, WITH A REAL ACTION. Moved from the dead Report tab body (`ReportBody`'s
+ * `HiddenContributorsSection`), which nothing has rendered since the Report tab became a list of
+ * sessions. The board already names people the record references who are not themselves a party
+ * (`b.hiddenContributors`); this is what was missing - a way to actually do something about it.
+ *
+ * The initiator can add the person directly, since the check-in already exists. A participant
+ * cannot add anyone themselves, so they get the existing ParticipantRequest flow instead, which the
+ * initiator already has an approval UI for (GroundAdminPage.tsx pendingRequests).
+ */
+function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
+  groundId: string
+  label: string
+  evidence: string
+  isInitiator: boolean
+}) {
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const [name, setName] = useState('')
+  const [reason, setReason] = useState('')
+  const [done, setDone] = useState(false)
+
+  const addParticipant = useMutation({
+    mutationFn: (vars: { email: string; note: string }) => groundsApi.addParticipant(groundId, { email: vars.email, note: vars.note }),
+    onSuccess: () => {
+      setDone(true)
+      setOpen(false)
+      qc.invalidateQueries({ queryKey: ['ground', groundId] })
+      toast.success('Invited.')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add them. Try again.'),
+  })
+
+  const requestAddition = useMutation({
+    mutationFn: (vars: { requestedEmail: string; requestedName?: string; reason: string }) =>
+      participantRequestsApi.create(groundId, vars),
+    onSuccess: () => {
+      setDone(true)
+      setOpen(false)
+      toast.success('Request sent to the lead.')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not send the request. Try again.'),
+  })
+
+  return (
+    <div className="gwui-panel-row">
+      <div className="gwui-fs-16 gwui-ink-text gwui-mb-4" style={{ fontWeight: 600 }}>{label}</div>
+      <div className="gwui-fs-15 gwui-ink-sub gwui-mb-6" style={{ lineHeight: 1.55 }}>{evidence}</div>
+      {done ? (
+        <div className="gwui-fs-13 gwui-ink-green" style={{ fontWeight: 600 }}>{isInitiator ? 'Invited.' : 'Request sent.'}</div>
+      ) : open ? (
+        <div className="gwui-gap-6" style={{ display: 'flex', flexDirection: 'column' }}>
+          <input
+            type="email" autoFocus placeholder="their@email.com"
+            value={email} onChange={e => setEmail(e.target.value)}
+            className="gwui-rule gwui-fs-13 gwui-pt-7 gwui-pb-7 gwui-pl-10 gwui-pr-10"
+            style={{ borderRadius: 6, fontFamily: 'inherit', outline: 'none' }}
+          />
+          {!isInitiator && (
+            <input
+              type="text" placeholder="Their name (optional)"
+              value={name} onChange={e => setName(e.target.value)}
+              className="gwui-rule gwui-fs-13 gwui-pt-7 gwui-pb-7 gwui-pl-10 gwui-pr-10"
+              style={{ borderRadius: 6, fontFamily: 'inherit', outline: 'none' }}
+            />
+          )}
+          {emailError && <div className="gwui-fs-13 gwui-ink-red">{emailError}</div>}
+          <div className="gwui-gap-6" style={{ display: 'flex' }}>
+            <UIButton
+              kind="secondary"
+              onClick={() => {
+                if (!looksLikeAnAddress(email)) { setEmailError(NOT_AN_ADDRESS); return }
+                setEmailError('')
+                if (isInitiator) addParticipant.mutate({ email: email.trim(), note: evidence })
+                else requestAddition.mutate({ requestedEmail: email.trim(), requestedName: name.trim() || undefined, reason: reason.trim() || evidence })
+              }}
+              disabled={addParticipant.isPending || requestAddition.isPending}
+            >
+              {isInitiator ? 'Add them' : 'Send request'}
+            </UIButton>
+            <UIButton kind="secondary" onClick={() => { setOpen(false); setEmail(''); setName(''); setReason('') }}>
+              Cancel
+            </UIButton>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => { setOpen(true); setEmail(''); setName(''); setReason(evidence) }} className="gwui-plain-link gwui-fs-13">
+          {isInitiator ? 'Add them' : 'Request they be added'}
+        </button>
+      )}
+    </div>
+  )
+}
 
 export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const { id: idFromRoute } = useParams<{ id: string }>()
@@ -788,6 +887,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             lastSessionDone={lastSessionDone}
           />
         </div>
+
+        {/*
+          DID THIS FEEL FAIR? Moved here from the dead Report tab body (ReportBody), which nothing
+          has rendered since the Report tab became a list of sessions. This is where everyone reads
+          how a closed check-in ended, so the one question that follows that reading belongs right
+          under it. See OutcomeFeedback.tsx.
+        */}
+        {groundEnded && (
+          <div className="gwui-mt-14">
+            <OutcomeFeedback groundId={id!} />
+          </div>
+        )}
 
         {/*
           WHAT NEEDS YOU IN THIS CHECK-IN (board-as-lead.txt), for whoever runs it. Not a second read:
@@ -1995,10 +2106,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <Section heading="Named here, and not in this check-in" note="Built from what people said.">
             <Panel pad={false}>
               {b.hiddenContributors.rows.map((r, i) => (
-                <div key={r.label + i} className="gwui-panel-row">
-                  <div className="gwui-fs-16 gwui-ink-text gwui-mb-4" style={{fontWeight: 600}}>{r.label}</div>
-                  <div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.55}}>{r.evidence}</div>
-                </div>
+                <HiddenContributorRow
+                  key={r.label + i}
+                  groundId={id!}
+                  label={r.label}
+                  evidence={r.evidence}
+                  isInitiator={viewerRunsThisCheckIn}
+                />
               ))}
               <div className="gwui-panel-row">
                 <div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.6}}>{b.hiddenContributors.why}</div>

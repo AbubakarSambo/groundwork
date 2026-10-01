@@ -21,7 +21,13 @@ const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
  * in these files quote the old names to explain why they went.
  */
 describe('the report has one question, under one name', () => {
-  const PAGES = ['pages/board/BoardPage.tsx', 'pages/report/ReportPage.tsx', 'components/gw/the-shared-picture-a-party-reads.tsx']
+  /* 'pages/report/ReportPage.tsx' came off this list 1 October 2026, the moment ReportBody - its
+     only content, and the only thing on that page that ever drew `<WhatToSettleTogether`, was
+     deleted (see the comment at the top of ReportPage.tsx). The per-session report
+     (`TheSessionsReport.tsx`) draws the session-scoped `theConversationWorthHaving` instead, in its
+     own boxed treatment rather than through this shared component - a deliberate difference from
+     the ground-level `centralQuestion` this file is about, not an omission of it. */
+  const PAGES = ['pages/board/BoardPage.tsx', 'components/gw/the-shared-picture-a-party-reads.tsx']
 
   it('no page writes a heading for it of its own', () => {
     for (const p of PAGES) {

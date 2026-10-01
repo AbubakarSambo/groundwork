@@ -19,7 +19,8 @@ export function Composer({
   value, onChange, onKeyDown, onSend, onPlus, plusOpen, plusMenu,
   disabled, sendDisabled, plusDisabled, plusLabel = 'Add a photo, a document or some text',
   sendLabel = 'Send',
-  inputRef, placeholder = 'Type, or hold to speak', ariaLabel = 'Your answer', maxLength,
+  sendText, plusGlyph = '+',
+  inputRef, placeholder = 'Type, or hold to speak', ariaLabel = 'Your answer', maxLength, autoFocus,
 }: {
   value: string
   onChange: (value: string) => void
@@ -38,12 +39,23 @@ export function Composer({
       condition than the field and send button (e.g. still offered while a session is opening). */
   plusDisabled?: boolean
   plusLabel?: string
+  /** The send button's accessible name, always. */
   sendLabel?: string
+  /**
+   * THE SETUP CONVERSATION'S OWN COMPOSER READS "SEND", NOT AN ARROW (B1, new.txt/start-chat.txt:
+   * a literal "Send" button, not the check-in composer's "↑"). Given, the button shows this text
+   * instead of the arrow; the arrow stays the default so the check-in composer (B3) is unchanged.
+   */
+  sendText?: string
+  /** The "+" button's own glyph - B1's door composer uses a paperclip (new.jpg), not B3's "+". */
+  plusGlyph?: string
   inputRef?: React.RefObject<HTMLTextAreaElement | null>
   placeholder?: string
   ariaLabel?: string
   maxLength?: number
+  autoFocus?: boolean
 }) {
+  const plusWide = plusGlyph.length > 1
   return (
     <div style={{ padding: '12px 16px', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 8, alignItems: 'center', background: 'var(--gw-page)', position: 'relative' }}>
       {plusOpen && plusMenu && (
@@ -56,16 +68,23 @@ export function Composer({
           type="button"
           onClick={onPlus}
           disabled={plusDisabled ?? disabled}
-          aria-label={plusLabel}
+          /* Only when the glyph is a plain icon (the check-in's own "+") does it need an aria-label
+             standing in for its name - a readable glyph like "+ Doc" already is one, and
+             overriding it would hide the very text a person just read on the button. */
+          aria-label={plusWide ? undefined : plusLabel}
           aria-expanded={plusMenu ? plusOpen : undefined}
           title={plusLabel}
-          style={{
+          style={plusWide ? {
+            padding: '0 12px', height: 48, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', borderRadius: 10, background: 'white', border: '1.5px solid var(--gw-rule-2)', color: 'var(--gw-navy)',
+            cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+          } : {
             width: 48, height: 48, padding: 0, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 20, borderRadius: 10, background: 'white', border: '1.5px solid var(--gw-rule-2)', color: 'var(--gw-text)',
             cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
           }}
         >
-          +
+          {plusGlyph}
         </button>
       )}
       {/*
@@ -84,6 +103,7 @@ export function Composer({
         placeholder={placeholder}
         aria-label={ariaLabel}
         maxLength={maxLength}
+        autoFocus={autoFocus}
         rows={1}
         style={{
           flex: 1, minWidth: 0, resize: 'none', outline: 'none',
@@ -96,14 +116,19 @@ export function Composer({
         onClick={onSend}
         disabled={disabled || sendDisabled}
         aria-label={sendLabel}
-        style={{
+        style={sendText ? {
+          padding: '0 16px', height: 48, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, fontWeight: 700, borderRadius: 10, background: 'var(--gw-navy)', color: 'white', border: 'none',
+          cursor: (disabled || sendDisabled) ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+          opacity: (disabled || sendDisabled) ? 0.6 : 1,
+        } : {
           width: 48, height: 48, padding: 0, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 20, borderRadius: 10, background: 'var(--gw-navy)', color: 'white', border: 'none',
           cursor: (disabled || sendDisabled) ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
           opacity: (disabled || sendDisabled) ? 0.6 : 1,
         }}
       >
-        ↑
+        {sendText ?? '↑'}
       </button>
     </div>
   )

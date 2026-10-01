@@ -131,14 +131,44 @@ export const REBUILT_PAGES: string[] = [
    */
   'pages/report/SessionReportPage.tsx',
   /*
-   * GROUP 3, PIECE 2 (continued): `ReportPage.tsx`. Its default export, `ReportPage`, is a
-   * three-line redirect to the Report tab and draws nothing itself. The rest of the file,
-   * `ReportBody`, is not mounted by any route today (confirmed against the file's own regression
-   * tests - the-sharp-part-first.spec.ts, no-label-is-the-leads-note.spec.tsx,
-   * one-report-not-two.spec.ts and others each say so in their own comment) - its logic, text and
-   * every conditional are unchanged; only its styling moved off inline fontSize/color/margin/
-   * padding/border onto the shared kit and gw-ui.css's utility classes, so it stops carrying old
-   * style debt even though nobody reads it today. See docs/the-parts-against-the-prototype.md.
+   * GROUP 3, PIECE 2 (continued): `ReportPage.tsx` came OFF this list (1 October 2026), the moment
+   * its only content, `ReportBody`, was deleted - see the comment at the top of `ReportPage.tsx`
+   * for where each of its sections went. What is left is a three-line redirect to the Report tab
+   * with no styling of its own to guard: a page with no inline style and no kit import trivially
+   * satisfies this guard and no longer needs an entry to prove it.
    */
-  'pages/report/ReportPage.tsx',
+  /*
+   * GROUP 3, PIECE 3 (the check-in conversation, docs/prototype/screens/B3-the-check-in):
+   * `ChatPage.tsx` and the components it draws from `components/gw/checkin` that still carried an
+   * inline style or an old-kit import - `TheCheckInHeader.tsx` and `TheEndCard.tsx`. New shared
+   * CSS this piece added: the `.gwui-ci-*` classes in gw-ui.css (the header, its Pause menu, the
+   * banners, the footer strip, the attach menu, the two bottom sheets, the document-assessment
+   * card, the end card, and the settled/declined/finished states). `TheDonePage.tsx` and
+   * `SuggestedAnswers.tsx` were already built this way from U.8 and are reused unchanged;
+   * `TheDonePage.tsx` keeps `StageLadder` from `kit.tsx` on purpose - see the comment at the top of
+   * that file.
+   */
+  'pages/chat/ChatPage.tsx',
+  'components/gw/checkin/TheCheckInHeader.tsx',
+  'components/gw/checkin/TheEndCard.tsx',
+  /*
+   * GROUP 3, PIECE 4 (starting a check-in, docs/prototype/screens/B1-starting-a-check-in):
+   * `SaveCard.tsx` so far - the anonymous entry chat's own "keep this conversation" card. New
+   * shared parts this piece added: `Callout`'s `title` prop (so a tinted banner can carry a bold
+   * first line in any tone, not only warning) and its new `tone="info"` (blue, for an instruction
+   * rather than a fact just confirmed or a warning) - see docs/the-parts-against-the-prototype.md.
+   * `CreateGroundPage.tsx` and `EntryChatPage.tsx` are the rest of this piece and are not on this
+   * list yet - see the morning report for why.
+   */
+  'pages/home/SaveCard.tsx',
+  /*
+   * GROUP 3, PIECE 4 (continued, 4d-4): `EntryChatPage.tsx` itself, the live way to start a
+   * check-in at /start - done in four parts (4d-1 the frame/header/composer, 4d-2 the attach menu
+   * and sheets, 4d-3 the save card, 4d-4 everything left: the "fills in as you talk" side panel's
+   * own wrapper, the check-in phase's composer and bubbles, and the lead's first-check-in briefing,
+   * seemingly unreachable today - see that screen's own comment). `CreateGroundPage.tsx` stays off
+   * this list; its own render is unreachable (see the morning report), so rebuilding it would guard
+   * dead code rather than anything a person can open.
+   */
+  'pages/enter/EntryChatPage.tsx',
 ]

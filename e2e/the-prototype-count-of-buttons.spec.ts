@@ -171,6 +171,35 @@ const SCREENS: Record<string, Counterpart> = {
      who is not a party to that session - both checked live by the picture round and by
      your-report-as-each-reader-reads-it.spec.tsx, not by this static count. */
   'pages/report/SessionReportPage.tsx': { productPath: '/checkin/92ae925e-90b5-42f6-a0d4-6187724049dc/report', reader: 'lead', hash: '#/c/sales/session/37', persona: 'lead' },
+  /*
+   * GROUP 3, PIECE 3 (the check-in conversation, docs/prototype/screens/B3-the-check-in).
+   * `TheCheckInHeader.tsx` and `TheEndCard.tsx` are pieces of this one screen, not screens of
+   * their own, so they are marked null below.
+   *
+   * OPENS RUKIA'S OWN COMPLETED, SOLO CHECK-IN (614f5ad3-eace-4c01-ac58-0226a51c1b6b), not a
+   * session still waiting for her to open it. Every check-in on this Mac that is not finished yet
+   * is NOT_STARTED - opening one would call the engine and start a real session, which this test
+   * (like the reviewer walking the product by hand) must never do. A finished check-in with
+   * nobody else on it (`aTeamReportComes: false`) renders the prototype's own "done" shape
+   * (done.txt) with no second, "team's report" card - the one state on this Mac whose button
+   * count actually matches the prototype's own picture; every other finished check-in here
+   * already has its team report released, which done.jpg catches a moment earlier ("Not shared
+   * yet"), and counting that real difference in the data as a button-count failure would be
+   * testing the data, not the screen.
+   */
+  'pages/chat/ChatPage.tsx': { productPath: '/checkin/614f5ad3-eace-4c01-ac58-0226a51c1b6b', reader: 'lead', hash: '#/c/sales/done', persona: 'part' },
+  'components/gw/checkin/TheCheckInHeader.tsx': null, // a piece of the check-in conversation above
+  'components/gw/checkin/TheEndCard.tsx': null, // a piece of the check-in conversation above
+  /*
+   * GROUP 3, PIECE 4 (starting a check-in, docs/prototype/screens/B1-starting-a-check-in), now
+   * done in full (4d-1 through 4d-4): EntryChatPage.tsx, opened as Rukia, the same lead persona
+   * the prototype's own "start" screen (start.txt/start.jpg) is drawn for. This opens /start as
+   * it first shows itself - the single "What do you want your team to check in about?" box, one
+   * "Send" and the "See every situation" link - not the later onboarding, check-in or save-card
+   * states the conversation moves through, which the entry-chat specs in client/src/pages/enter/
+   * already cover with mocked data rather than a live session.
+   */
+  'pages/enter/EntryChatPage.tsx': { productPath: '/start', reader: 'lead', hash: '#/start', persona: 'lead' },
 };
 
 /* Sign-in is by the emailed link, through the one mail catcher every browser test shares

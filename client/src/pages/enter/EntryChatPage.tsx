@@ -39,6 +39,7 @@ import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-t
 import { copy } from '@/components/gw/copying-can-fail'
 import { whatIsSetAndWhatIsNot, whenTheCheckInsLand } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
+import { Button, Callout, Note, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal } from '@/components/gw/ui'
 
 /*
  * A COLLEAGUE ON THE INVITE LIST, BY ID (U.4). The list of colleagues carries no addresses, so a
@@ -105,16 +106,16 @@ interface OnboardingSelections {
  * settled is a design call, and silently picking one here would be making it by accident.
  */
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 4 }}>{children}</div>
+  return <div className="gwui-ec-field-label">{children}</div>
 }
 
 function CardTitle({ children, weight = 600 }: { children: React.ReactNode; weight?: 600 | 700 }) {
-  return <div style={{ fontSize: 13, fontWeight: weight, color: 'var(--gw-text)', marginBottom: 2 }}>{children}</div>
+  return <div className={`gwui-ec-card-title${weight === 700 ? ' gwui-ec-card-title-700' : ''}`}>{children}</div>
 }
 
 /** The hairline either side of an "or" divider. */
 function Rule() {
-  return <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+  return <div className="gwui-ec-rule" />
 }
 
 function saveSession(s: EntrySession) {
@@ -1159,6 +1160,19 @@ export function fallbackGroundName(situation?: string, where?: string): string {
  * steps advance on a timer because they describe stages of one request, and the
  * last one stays until the report arrives however long that takes.
  */
+/*
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: this page's own `kind="primary"` Buttons never render at once.
+ * - "Start my check-in" (showAdminBriefing) is an early `return` - it replaces this component's
+ *   whole output, so nothing else in this file renders alongside it.
+ * - "Save this" (signed in), "Save my check-in" (anonymous) and "Done" (once the email is sent)
+ *   come from one three-way ternary keyed on `user` and `emailSent` - exactly one branch mounts.
+ * - "Invite and finish" renders only from the closed-bar's own `closed && !showSave` branch, the
+ *   alternative of which is the check-in composer (never a primary button).
+ * - "Add to session" (the doc-context dialog) only mounts while `docContextMode && uploadedDoc`,
+ *   and is a full-screen Modal in front of anything else, so even granting it could in principle
+ *   coexist with the save card's own hidden primary (see the-entry-chats-own-test-helpers.ts for
+ *   why that one is hidden from a person regardless), nobody ever sees two navy buttons at once.
+ */
 export function EntryChatPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -2146,12 +2160,6 @@ export function EntryChatPage() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
 
-  function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setInput(e.target.value)
-    e.target.style.height = '38px'
-    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
-  }
-
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -2652,46 +2660,48 @@ export function EntryChatPage() {
     sendOnboarding(text, null)
   }
 
+  /* Seemingly unreachable, the same finding the previous commit made about CreateGroundPage's own
+     render: nothing in this file calls `setShowAdminBriefing(true)`, only this block's own
+     `setShowAdminBriefing(false)`. Documented rather than deleted, same as that finding - a page
+     losing a screen is a bigger decision than a rendering rebuild, so this still gets the same
+     shared-parts treatment as everything else, in case something upstream starts reaching it. */
   if (showAdminBriefing) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-page)', padding: '24px 20px' }}>
-        <div style={{ maxWidth: 480, width: '100%' }}>
-          <div style={{ marginBottom: 24 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Groundwork</span>
+      <div className="gwui-ec-briefing">
+        <div className="gwui-ec-briefing-inner">
+          <div className="gwui-ec-briefing-brand">
+            <span className="gwui-ec-briefing-wordmark">Groundwork</span>
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.2, marginBottom: 8 }}>You're up first.</h1>
-          <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 24 }}>
+          <h1 className="gwui-ec-briefing-title">You're up first.</h1>
+          <p className="gwui-ec-briefing-sub">
             Yours is the first one in. Here is what to expect.
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>⏱</span>
+          <div className="gwui-ec-briefing-list">
+            <div className="gwui-ec-briefing-card">
+              <span className="gwui-ec-briefing-icon">⏱</span>
               <div>
                 <CardTitle weight={700}>About 10 minutes</CardTitle>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Answer in your own words. The questions are based on what you just described. There are no right answers.</div>
+                <div className="gwui-ec-briefing-card-body">Answer in your own words. The questions are based on what you just described. There are no right answers.</div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>📨</span>
+            <div className="gwui-ec-briefing-card">
+              <span className="gwui-ec-briefing-icon">📨</span>
               <div>
                 <CardTitle weight={700}>Invite links come after</CardTitle>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Once you finish, you will get invite links to send to the other people involved. They check in independently.</div>
+                <div className="gwui-ec-briefing-card-body">Once you finish, you will get invite links to send to the other people involved. They check in independently.</div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>📄</span>
+            <div className="gwui-ec-briefing-card">
+              <span className="gwui-ec-briefing-icon">📄</span>
               <div>
                 <CardTitle weight={700}>The shared report</CardTitle>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>When everyone is in, the report shows where the team agrees, where it differs, and what to do next.</div>
+                <div className="gwui-ec-briefing-card-body">When everyone is in, the report shows where the team agrees, where it differs, and what to do next.</div>
               </div>
             </div>
           </div>
-          <button
-            onClick={() => { setShowAdminBriefing(false); startCheckin.mutate() }}
-            style={{ width: '100%', padding: '14px 20px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-          >
+          <Button kind="primary" wide onClick={() => { setShowAdminBriefing(false); startCheckin.mutate() }}>
             Start my check-in
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -2715,35 +2725,34 @@ export function EntryChatPage() {
   return (
     /* The viewport less the nav strip pinned over it, and dvh so a phone's address bar sliding away
        does not leave the composer under the fold. See --gw-bottom-nav in AppShell. */
-    <div style={{ height: 'calc(100dvh - var(--gw-bottom-nav, 0px))', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)', position: 'relative', overflow: 'hidden' }}>
+    <div className="gwui-ec-frame">
 
       {/* Session header */}
       {/* U.6 review: not on the setup conversation, which start-chat.txt draws without a name, a plan or steps. */}
       {!atTheDoor && phase !== 'onboarding' && (
-      <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--gw-border)', flexShrink: 0, background: 'white', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="gwui-ec-session-header">
         {user && (
-          <button type="button" onClick={() => navigate('/grounds')} style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>← Check-ins</button>
+          <button type="button" onClick={() => navigate('/grounds')} className="gwui-plain-link gwui-ec-session-back">← Check-ins</button>
         )}
-        <div style={{ flex: 1 }}>
+        <div className="gwui-ec-session-name-row">
           {renamingGround ? (
-            <input
+            <TextField
               ref={groundRenameRef}
               value={renameInput}
               onChange={e => setRenameInput(e.target.value)}
               onBlur={() => { setGroundName(renameInput.trim() || groundName); setRenamingGround(false) }}
               onKeyDown={e => { if (e.key === 'Enter') { setGroundName(renameInput.trim() || groundName); setRenamingGround(false) } if (e.key === 'Escape') setRenamingGround(false) }}
-              style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', border: '1px solid var(--gw-border)', borderRadius: 5, padding: '2px 8px', fontFamily: 'inherit', outline: 'none', width: '100%', maxWidth: 320 }}
               autoFocus
             />
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div className="gwui-ec-picked-row">
               {groundName ? (
                 <>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)' }}>{groundName}</span>
-                  <button onClick={() => { setRenameInput(groundName); setRenamingGround(true) }} style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }} title="Rename">✎</button>
+                  <span className="gwui-ec-session-name">{groundName}</span>
+                  <button type="button" onClick={() => { setRenameInput(groundName); setRenamingGround(true) }} className="gwui-plain-link" title="Rename">✎</button>
                 </>
               ) : (
-                <button onClick={() => { setRenameInput(''); setRenamingGround(true) }} style={{ background: 'none', border: '1px dashed var(--gw-border)', borderRadius: 5, color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: '2px 10px', fontFamily: 'inherit', fontWeight: 500 }}>
+                <button type="button" onClick={() => { setRenameInput(''); setRenamingGround(true) }} className="gwui-plain-link">
                   {/* "Name this ground" used the product's own word for a thing
                       the reader has not met yet - on the first screen a stranger
                       sees, before anything explains what a ground is. Judged
@@ -2753,22 +2762,22 @@ export function EntryChatPage() {
               )}
             </div>
           )}
-          <div style={{ fontSize: 11, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+          <div className="gwui-ec-session-status">
             {phase === 'checkin' ? (
               <>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-green-live)', display: 'inline-block', flexShrink: 0 }} />
+                <span className="gwui-ec-live-dot" />
                 Session 1 in progress
               </>
-            ) : 'Getting started · session is about 10 minutes'}
+            ) : 'Getting started, and this session is about 10 minutes.'}
           </div>
         </div>
 
         {/* Sessions counter */}
-        <div style={{ flexShrink: 0, textAlign: 'right' }}>
+        <div className="gwui-ec-sessions-count">
           {editingSessions ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>sessions:</span>
-              <input
+            <span className="gwui-invite-link-row">
+              <span className="gwui-fine">sessions:</span>
+              <TextField
                 type="number" min={1}
                 value={sessionsInput}
                 onChange={e => setSessionsInput(e.target.value)}
@@ -2783,15 +2792,15 @@ export function EntryChatPage() {
                   if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
                   if (e.key === 'Escape') setEditingSessions(false)
                 }}
-                style={{ width: 44, fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 5, padding: '2px 6px', fontFamily: 'inherit', outline: 'none', textAlign: 'center' }}
                 autoFocus
               />
-            </div>
+            </span>
           ) : (
-            <button
+            <Button
+              kind="secondary"
+              size="small"
               onClick={() => { setSessionsInput(String(sessions)); setEditingSessions(true) }}
-              style={{ background: 'none', border: '1px solid var(--gw-border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}
-              title={plannedFrom ? `${sessions} ${sessions === 1 ? 'session' : 'sessions'} - from ${plannedFrom.timelineDays} days, ${plannedFrom.cadence.toLowerCase()}. Click to change.` : 'Edit number of sessions'}
+              aria-label={plannedFrom ? `${sessions} ${sessions === 1 ? 'session' : 'sessions'}, planned from ${plannedFrom.timelineDays} days, ${plannedFrom.cadence.toLowerCase()}. Click to change.` : 'Edit number of sessions'}
             >
               {/*
                 This read "1/{sessions}" - so during setup, before anyone has
@@ -2807,12 +2816,8 @@ export function EntryChatPage() {
                 timeline and cadence the engine extracted (see onboard, above)
                 and traceable to them in the button's title.
               */}
-              {/* The space is in the STRING: two spans separated by a margin read as "12sessions planned" in every text extraction. */}
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-text)' }}>{plannedNow}</span>
-              <span style={{ fontSize: 10, color: 'var(--gw-sub)' }}>
-                {' '}{plannedNow === 1 ? 'session planned' : 'sessions planned'}
-              </span>
-            </button>
+              {plannedNow} {plannedNow === 1 ? 'session planned' : 'sessions planned'}
+            </Button>
           )}
         </div>
       </div>
@@ -2833,19 +2838,8 @@ export function EntryChatPage() {
           'Save this and invite the people involved.',
         ]
         return (
-          <div style={{ padding: '7px 20px', borderBottom: '1px solid var(--gw-border)', background: 'var(--gw-paper)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {labels.map((l, i) => (
-                <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ width: 15, height: 15, borderRadius: '50%', fontSize: 9.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: i + 1 === step ? 'var(--gw-navy)' : (i + 1 < step ? 'var(--gw-green-b)' : '#E5E2DC'), color: i + 1 <= step ? 'white' : 'var(--gw-muted)' }}>{i + 1 < step ? '✓' : i + 1}</span>
-                    <span style={{ fontSize: 11.5, fontWeight: i + 1 === step ? 700 : 500, color: i + 1 === step ? 'var(--gw-text)' : 'var(--gw-muted)' }}>{l}</span>
-                  </div>
-                  {i < labels.length - 1 && <span style={{ color: 'var(--gw-border)', fontSize: 11 }}>→</span>}
-                </div>
-              ))}
-            </div>
-            <div style={{ fontSize: 10.5, color: 'var(--gw-sub)', marginTop: 2 }}>{hints[step - 1]}</div>
+          <div className="gwui-ec-phase-bar">
+            <PhaseSteps labels={labels} hints={hints} current={step} />
           </div>
         )
       })()}
@@ -2866,21 +2860,21 @@ export function EntryChatPage() {
         * a stray click.
         */}
       {!atTheDoor && (
-        <div style={{ padding: phase === 'onboarding' ? '12px 20px' : '6px 20px', borderBottom: '1px solid var(--gw-border)', background: 'white', display: 'flex', alignItems: 'center', justifyContent: phase === 'onboarding' ? 'space-between' : 'flex-end', gap: 12, flexWrap: 'wrap', flexShrink: 0 }}>
+        <div className={`gwui-ec-bar${phase === 'onboarding' ? ' gwui-ec-bar-onboarding' : ''}`}>
           {/* U.6 review: the setup conversation's title, from start-chat.txt and new.txt. */}
           {phase === 'onboarding' && (
-            <h1 style={{ fontFamily: 'var(--gw-font-name)', fontSize: 22, fontWeight: 500, color: 'var(--gw-text)', margin: 0 }}>Set up a check-in</h1>
+            <h1 className="gwui-ec-onboarding-title">Set up a check-in</h1>
           )}
           {confirmClear ? (
-            <span style={{ fontSize: 12, color: 'var(--gw-sub)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className="gwui-ec-confirm-clear">
               {closed
                 ? 'This will throw away this session and everything in it. Are you sure?'
                 : phase === 'checkin' ? 'This will clear your check-in. Are you sure?' : 'This will start over. Are you sure?'}
-              <button onClick={handleClearSession} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Yes, clear</button>
-              <button onClick={() => setConfirmClear(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 12, padding: 0, fontFamily: 'inherit' }}>Cancel</button>
+              <button type="button" onClick={handleClearSession} className="gwui-plain-link">Yes, clear</button>
+              <button type="button" onClick={() => setConfirmClear(false)} className="gwui-plain-link">Cancel</button>
             </span>
           ) : (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span className="gwui-ec-which-row">
               {/*
                 * PICK A DIFFERENT SITUATION, which is the thing somebody actually wants.
                 *
@@ -2915,17 +2909,14 @@ export function EntryChatPage() {
                 const chosen = onboardingSelections.classifiedScenario || pickedScenario || scenario
                 const label = chosen ? sentenceCase(scenarioLabel(chosen, onboardingSelections.brief)) : null
                 return (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span className="gwui-ec-picked-row">
                     {/* U.6 review: start-chat.txt's words, "This sounds like" and "It’s something else". */}
                     {label && (
-                      <span style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>
-                        This sounds like <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>{label}</span>.
+                      <span className="gwui-panel-text-muted">
+                        This sounds like <b>{label}</b>.
                       </span>
                     )}
-                    <button
-                      onClick={pickADifferentSituation}
-                      style={{ background: 'none', border: 'none', color: 'var(--gw-navy)', cursor: 'pointer', fontSize: 12.5, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
-                    >
+                    <button type="button" onClick={pickADifferentSituation} className="gwui-plain-link">
                       It’s something else
                     </button>
                   </span>
@@ -2937,8 +2928,9 @@ export function EntryChatPage() {
                   straight through. Once a session has CLOSED it always confirms: that is the state
                   where somebody has the most written down and the least expectation of losing it. */}
               <button
+                type="button"
                 onClick={() => (phase === 'checkin' || closed || onboardingHistory.length > 1) ? setConfirmClear(true) : handleClearSession()}
-                style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
+                className="gwui-plain-link"
               >
                 {closed ? 'Start over' : phase === 'checkin' ? 'Clear check-in' : 'Start over'}
               </button>
@@ -2949,29 +2941,27 @@ export function EntryChatPage() {
 
       {/* Sessions upgrade prompt */}
       {showSessionsUpgrade && (
-        <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-          <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
-            {/* There is no per-session billing. The old copy told a brand-new
-                person "additional sessions are $5 each" at the moment they were
-                deciding whether to start - and it was not even true: their
-                first ground is free with unlimited sessions. */}
-            <strong>{sessions} sessions</strong> means signing in, and it is free. Save your session below to get set up.
-          </div>
-          <button onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}
-            style={{ flexShrink: 0, background: 'var(--gw-navy)', color: 'white', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-            Save &amp; set up →
+        <Callout tone="info" role="status">
+          {/* There is no per-session billing. The old copy told a brand-new
+              person "additional sessions are $5 each" at the moment they were
+              deciding whether to start - and it was not even true: their
+              first ground is free with unlimited sessions. */}
+          <b>{sessions} sessions</b> means signing in, and it is free. Save your session below to get set up.{' '}
+          <button type="button" className="gwui-plain-link" onClick={() => { setShowSessionsUpgrade(false); setShowSave(true) }}>
+            Save and set up
           </button>
-          <button onClick={() => setShowSessionsUpgrade(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 14 }}>✕</button>
-        </div>
+          {' '}
+          <button type="button" className="gwui-plain-link" onClick={() => setShowSessionsUpgrade(false)}>Not now</button>
+        </Callout>
       )}
 
       {/* Main content area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div className="gwui-ec-main">
 
         {/* PHASE: ONBOARDING (AI-driven) */}
         {phase === 'onboarding' && (
-          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
+          <div className="gwui-ec-onboarding">
+          <div className="gwui-ec-onboarding-col">
             {/*
               * SAID BEFORE THE SETUP WORK, NOT AFTER IT.
               *
@@ -2985,21 +2975,11 @@ export function EntryChatPage() {
               * save, after giving their whole account.
               */}
             {refusedByThePlan && (
-              <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-bd)', padding: '12px 20px', flexShrink: 0 }}>
-                <div style={{ maxWidth: 680, margin: '0 auto' }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
-                    {whetherTheyMayOpenOne.data?.noPlan ? 'No plan yet' : 'You have used all of your free check-ins'}
-                  </div>
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                    {refusedByThePlan} You can still set this one up and it stays on this device, but it cannot be saved to your account until then.
-                  </div>
-                  <button
-                    onClick={() => navigate('/billing')}
-                    style={{ padding: '8px 16px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    See plans
-                  </button>
-                </div>
+              <div className="gwui-ec-refusal-band">
+                <Callout tone="warning" title={whetherTheyMayOpenOne.data?.noPlan ? 'No plan yet' : 'You have used all of your free check-ins'}>
+                  {refusedByThePlan} You can still set this one up and it stays on this device, but it cannot be saved to your account until then.{' '}
+                  <button type="button" className="gwui-plain-link" onClick={() => navigate('/billing')}>See plans</button>
+                </Callout>
               </div>
             )}
 
@@ -3018,7 +2998,7 @@ export function EntryChatPage() {
               // The picker needs the width for a multi-column grid so all 8
               // cards sit above the fold at laptop heights; conversation
               // bubbles keep the narrow reading column.
-              style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: onboardingHistory.length === 1 && !pickedSituation && phase === 'onboarding' ? 1080 : 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
+              className={`gwui-ec-messages ${onboardingHistory.length === 1 && !pickedSituation && phase === 'onboarding' ? 'gwui-ec-messages-wide' : 'gwui-ec-messages-narrow'}`}
             >
               {onboardingHistory.map((m, i) => {
                 /*
@@ -3041,33 +3021,18 @@ export function EntryChatPage() {
                 const picked = m.role === 'user' && SITUATION_CARDS.find((c) => c.message === m.content)
                 if (picked) {
                   return (
-                    <div key={i} style={{ alignSelf: 'flex-end', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 12px', border: '1px solid var(--gw-border)', borderRadius: 999, background: 'white' }}>
-                      You picked <strong style={{ color: 'var(--gw-text)' }}>{picked.label}</strong>
+                    <div key={i} className="gwui-ec-picked-chip">
+                      You picked <b>{picked.label}</b>
                     </div>
                   )
                 }
                 return (
-                <div
-                  key={i}
-                  style={{
-                    maxWidth: '82%',
-                    alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                    background: m.role === 'user' ? 'var(--gw-navy)' : 'white',
-                    color: m.role === 'user' ? 'white' : 'var(--gw-text)',
-                    border: m.role === 'assistant' ? '1px solid var(--gw-border)' : 'none',
-                    borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
-                    padding: '10px 14px',
-                    fontSize: 14,
-                    lineHeight: 1.65,
-                    whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
-                    boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
-                  }}
-                >
-                  {/* THE LAST PLACE BEFORE A READER'S EYES. `[[SESSION_COMPLETE]]` was photographed
-                      in a bubble in production, with its markdown asterisks intact. Stripped on the
-                      server too - this is a net, not the fix. */}
-                  {nothingInternalReachesTheBubble(m.content)}
-                </div>
+                  <Bubble key={i} mine={m.role === 'user'}>
+                    {/* THE LAST PLACE BEFORE A READER'S EYES. `[[SESSION_COMPLETE]]` was photographed
+                        in a bubble in production, with its markdown asterisks intact. Stripped on the
+                        server too - this is a net, not the fix. */}
+                    {nothingInternalReachesTheBubble(m.content)}
+                  </Bubble>
                 )
               })}
 
@@ -3079,7 +3044,7 @@ export function EntryChatPage() {
                 * grid did.
                 */}
               {atTheDoor && (
-                <div style={{ alignSelf: 'stretch', width: '100%', paddingTop: 24 }}>
+                <div className="gwui-ec-door-slot">
                   {seeingEverySituation ? (
                     <EverySituation
                       signedIn={!!user}
@@ -3099,31 +3064,24 @@ export function EntryChatPage() {
               )}
 
               {onboardingLoading && (
-                <div className="gw-msg-loading" style={{
-                  maxWidth: '82%', alignSelf: 'flex-start', background: 'white', color: 'var(--gw-text)',
-                  border: '1px solid var(--gw-border)', borderRadius: '4px 16px 16px 16px',
-                  padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
-                  boxShadow: '0 1px 3px rgba(0,0,0,.06)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
-                }}>
+                <Bubble mine={false}>
                   {onboardingDraft ? onboardingDraft : (
-                    <>
-                      <span style={{ marginRight: 6, fontStyle: 'normal', color: 'var(--gw-muted)', fontSize: 11 }}>Thinking</span>
-                      <span className="gw-dot" /><span className="gw-dot" /><span className="gw-dot" />
-                    </>
+                    <span className="gwui-ci-dots">
+                      <span className="gwui-ec-thinking">Thinking</span>
+                      {[0, 1, 2].map(i => (
+                        <span key={i} className="gwui-ci-dot" style={{ animationDelay: `${i * 0.2}s` }} />
+                      ))}
+                    </span>
                   )}
-                </div>
+                </Bubble>
               )}
 
               {/* The fork, shown when the AI signals ready. Replaces the old
                   "are you involved?" question (which drove nothing but
                   check-in-vs-skip; ownership was never derived from it). */}
               {onboardingReady && !onboardingLoading && flowPath !== 'lead' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: '82%', alignSelf: 'flex-start', marginTop: 4 }}>
-                  <div style={{
-                    background: 'white', color: 'var(--gw-text)', border: '1px solid var(--gw-border)',
-                    borderRadius: '4px 16px 16px 16px', padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
-                    boxShadow: '0 1px 3px rgba(0,0,0,.06)', marginBottom: 4,
-                  }}>
+                <div className="gwui-ec-fork">
+                  <Bubble mine={false}>
                     {/*
                       * IT IS ONE QUESTION, AND IT IS ABOUT WHO ANSWERS THE QUESTIONS. W15-3.
                       *
@@ -3155,7 +3113,7 @@ export function EntryChatPage() {
                     {(() => {
                       const sum = summariseSetup(onboardingSelections, yourRole, sessions, needsPeople)
                       return (
-                        <div style={{ marginBottom: 10 }}>
+                        <div className="gwui-ec-sofar">
                           {/*
                             A CHECK, NOT A DOCUMENT.
 
@@ -3170,18 +3128,18 @@ export function EntryChatPage() {
                             paragraph is the model's own writing and is in the chat three inches
                             above. So one-word labels, and every value clipped to two lines.
                           */}
-                          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: .3, color: 'var(--gw-sub)', marginBottom: 5 }}>
+                          <div className="gwui-ec-sofar-heading">
                             What I've got so far
                           </div>
                           {sum.have.map((h) => (
-                            <div key={h.label} style={{ display: 'flex', gap: 7, fontSize: 12.5, lineHeight: 1.5, marginBottom: 3 }}>
-                              <span style={{ color: 'var(--gw-sub)', fontWeight: 700, flex: '0 0 56px' }}>{shortLabel(h.label)}</span>
-                              <span style={{ color: 'var(--gw-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{h.value}</span>
+                            <div key={h.label} className="gwui-ec-sofar-row">
+                              <span className="gwui-ec-sofar-label">{shortLabel(h.label)}</span>
+                              <span className="gwui-ec-sofar-value">{h.value}</span>
                             </div>
                           ))}
                           {sum.missing.length > 0 && (
-                            <div style={{ fontSize: 12.5, lineHeight: 1.55, marginTop: 6, color: 'var(--gw-amber-t)' }}>
-                              <span style={{ fontWeight: 700 }}>Not said yet: </span>
+                            <div className="gwui-ec-sofar-missing">
+                              <b>Not said yet: </b>
                               {sum.missing.join(', ')}. You can add it in your check-in.
                             </div>
                           )}
@@ -3215,29 +3173,18 @@ export function EntryChatPage() {
                         words. "You said" put a sentence in their mouth; this attributes it to their text,
                         and the button beside it is how they change it. */}
                     {yourRole === 'a_party' ? (
-                      <div style={{ fontWeight: 700 }}>From what you wrote, you are one of the people involved.</div>
+                      <div className="gwui-ec-fork-note">From what you wrote, you are one of the people involved.</div>
                     ) : null}
-                  </div>
-                  <button
-                    onClick={startSelfPath}
-                    style={{
-                      padding: '11px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                      border: '1px solid var(--gw-border)', background: 'white',
-                      color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    }}
-                  >
+                  </Bubble>
+                  {/* Two equal, parallel choices - neither is this screen's one primary action, so
+                      both stay secondary (white, bordered), matching the prototype's own weight for
+                      a choice between two options rather than a single way forward. */}
+                  <Button kind="secondary" wide onClick={startSelfPath}>
                     I set this up and check in myself
-                  </button>
-                  <button
-                    onClick={othersGiveTheAccounts}
-                    style={{
-                      padding: '11px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                      border: '1px solid var(--gw-border)', background: 'white',
-                      color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    }}
-                  >
+                  </Button>
+                  <Button kind="secondary" wide onClick={othersGiveTheAccounts}>
                     I check in once to set the context, then only they check in
-                  </button>
+                  </Button>
                 </div>
               )}
 
@@ -3254,94 +3201,73 @@ export function EntryChatPage() {
                 * them it is a string, and nothing in the build says so.
                 */}
               {startCheckin.isPending && (
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 16 }}>
+                <p className="gwui-fine gwui-fine-centre">
                   Starting your session…
-                </div>
+                </p>
               )}
             </div>
 
             {/* Text input for onboarding - hidden once ready, loading checkin, or cards not yet dismissed */}
             {!startCheckin.isPending && !onboardingReady && !(onboardingHistory.length === 1 && !pickedSituation) && (
-              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
+              <div className="gwui-ec-composer-wrap">
                 {/* Doc-add panel: paste or upload a document + context; the AI reads it. */}
                 {showDocPanel && (
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--gw-border)', background: 'var(--gw-paper-2)' }}>
-                    <div style={{ maxWidth: 680, margin: '0 auto' }}>
-                      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                  <div className="gwui-ec-doc-panel">
+                    <div className="gwui-ec-doc-panel-inner">
+                      <div className="gwui-ec-doc-panel-tabs">
                         {(['paste', 'upload'] as const).map(t => (
-                          <button key={t} onClick={() => setDocTab(t)}
-                            style={{ fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
-                              border: `1px solid ${docTab === t ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                              background: docTab === t ? 'var(--gw-navy)' : 'white', color: docTab === t ? 'white' : 'var(--gw-sub)' }}>
+                          <Button key={t} kind={docTab === t ? 'primary' : 'secondary'} size="small" onClick={() => setDocTab(t)}>
                             {t === 'paste' ? 'Paste text' : 'Upload file'}
-                          </button>
+                          </Button>
                         ))}
-                        <div style={{ flex: 1 }} />
-                        <button onClick={() => setShowDocPanel(false)} style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                        <span className="gwui-ec-doc-panel-spacer" />
+                        <button type="button" onClick={() => setShowDocPanel(false)} className="gwui-plain-link">Cancel</button>
                       </div>
                       {docTab === 'upload' && (
-                        <label style={{ display: 'block', border: '1px dashed var(--gw-border)', borderRadius: 8, padding: '14px', textAlign: 'center', fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer', marginBottom: 8, background: 'white' }}>
+                        <label className="gwui-ec-doc-upload-label">
                           📎 Choose a text file (.txt, .md, .csv). For PDF or Word, paste the text instead.
-                          <input type="file" accept=".txt,.md,.csv,.json,.log" style={{ display: 'none' }}
+                          <input type="file" accept=".txt,.md,.csv,.json,.log" className="gwui-sr-only"
                             onChange={e => { const f = e.target.files?.[0]; if (f) handleDocFileUpload(f) }} />
                         </label>
                       )}
                       {/* U.8 review, found on the way: this field had a placeholder and nothing a screen
                           reader announces as its name - a placeholder disappears the moment somebody
                           types, and is not read as a label to begin with. */}
-                      <input type="text" aria-label="What is it?" placeholder="What is this? e.g. the onboarding guide I shared" value={docLabel}
-                        onChange={e => setDocLabel(e.target.value)}
-                        style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }} />
-                      <textarea placeholder={docTab === 'upload' ? 'File contents will appear here once read. You can edit before sending.' : 'Paste the document text here…'}
-                        value={docPasteText} onChange={e => setDocPasteText(e.target.value)} rows={5}
-                        style={{ width: '100%', padding: '8px 10px', fontSize: 12, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', marginBottom: 6 }} />
-                      <input type="text" placeholder="Anything to note about it? (optional)" value={docContextNote}
-                        onChange={e => setDocContextNote(e.target.value)}
-                        style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
-                      <button onClick={submitOnboardingDoc} disabled={!docPasteText.trim() || onboardingLoading}
-                        style={{ padding: '9px 16px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', opacity: (docPasteText.trim() && !onboardingLoading) ? 1 : 0.4 }}>
+                      <TextField type="text" aria-label="What is it?" placeholder="What is this? e.g. the onboarding guide I shared" value={docLabel}
+                        onChange={e => setDocLabel(e.target.value)} />
+                      <TextArea placeholder={docTab === 'upload' ? 'File contents will appear here once read. You can edit before sending.' : 'Paste the document text here…'}
+                        value={docPasteText} onChange={e => setDocPasteText(e.target.value)} rows={5} />
+                      <TextField type="text" placeholder="Anything to note about it? (optional)" value={docContextNote}
+                        onChange={e => setDocContextNote(e.target.value)} />
+                      <Button kind="secondary" onClick={submitOnboardingDoc} disabled={!docPasteText.trim() || onboardingLoading}>
                         Add document and let Groundwork read it
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
                 {/* The composer keeps its own stacking context so a floating control can never take
                     a click meant for Send. It happened: the feedback button's mobile position put it
                     exactly on top of Send at 375px. See gw-fb-trigger-chat-mobile-safe. */}
-                <div style={{ padding: '10px 16px', position: 'relative', zIndex: 101 }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', maxWidth: 680, margin: '0 auto' }}>
-                    <button
-                      onClick={() => setShowDocPanel(v => !v)}
-                      disabled={onboardingLoading}
-                      title="Add a document (paste or upload) instead of typing it out"
-                      style={{ padding: '0 12px', borderRadius: 6, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)', cursor: 'pointer', fontSize: 13, fontWeight: 700, height: 38, whiteSpace: 'nowrap', opacity: onboardingLoading ? 0.5 : 1 }}
-                    >
-                      + Doc
-                    </button>
+                <div className="gwui-ec-composer-inner">
+                  <div className="gwui-ec-messages-narrow">
                     {/* A textarea, like the check-in composer two screens later: Enter sends, Shift+Enter breaks a
                         line, and a multi-line setup answer keeps its shape. Same position, same handler. */}
-                    <textarea
-                      placeholder="Type your response, or add a document with + Doc"
+                    <Composer
                       value={input}
-                      onChange={e => setInput(e.target.value)}
+                      onChange={setInput}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (input.trim()) sendOnboarding(input) } }}
+                      onSend={() => { if (input.trim()) sendOnboarding(input) }}
+                      onPlus={() => setShowDocPanel(v => !v)}
+                      plusGlyph="+ Doc"
+                      plusLabel="Add a document (paste or upload) instead of typing it out"
+                      plusDisabled={onboardingLoading}
                       disabled={onboardingLoading}
-                      rows={1}
-                      style={{
-                        flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid var(--gw-border)', resize: 'none', minHeight: 38, maxHeight: 120, lineHeight: 1.4,
-                        borderRadius: 6, fontFamily: 'inherit', outline: 'none', background: 'white',
-                        color: 'var(--gw-text)', opacity: onboardingLoading ? 0.5 : 1,
-                      }}
+                      sendDisabled={!input.trim()}
+                      sendText="Send"
+                      sendLabel="Send message"
+                      placeholder="Type your response, or add a document with + Doc"
                       autoFocus
                     />
-                    <button
-                      onClick={() => { if (input.trim()) sendOnboarding(input) }}
-                      disabled={!input.trim() || onboardingLoading}
-                      aria-label="Send message"
-                      style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (input.trim() && !onboardingLoading) ? 1 : 0.35 }}
-                    >
-                      ↑
-                    </button>
                   </div>
                 </div>
               </div>
@@ -3350,7 +3276,7 @@ export function EntryChatPage() {
           {/* U.6: the panel that fills in as you talk (new.txt), beside the conversation on a wide
               screen. Built only from what this page already holds from the conversation. */}
           {!atTheDoor && (
-            <div className="gw-fills-in" style={{ width: 300, flexShrink: 0, padding: '18px 20px 18px 0', overflowY: 'auto' }}>
+            <div className="gw-fills-in gwui-ec-fills-in">
               <FillsInAsYouTalk
                 name={groundName}
                 situation={(() => {
@@ -3372,11 +3298,11 @@ export function EntryChatPage() {
 
         {/* PHASE: CHECK-IN (AI-driven, message 15+) */}
         {phase === 'checkin' && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div className="gwui-ec-checkin">
             {/* Not-signed-up reminder: the entry user has no account until they save. */}
             {!user && (
-              <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-b-soft)', padding: '8px 16px', flexShrink: 0 }}>
-                <div style={{ maxWidth: 680, margin: '0 auto', fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
+              <div className="gwui-ec-checkin-notice">
+                <div className="gwui-ec-checkin-notice-inner">
                   You are not signed up yet. Your answers are saved to this device as you go, but save your email at the end to keep this record.
                 </div>
               </div>
@@ -3384,10 +3310,10 @@ export function EntryChatPage() {
             <div
               ref={msgsRef}
               aria-live="polite"
-              style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
+              className="gwui-ec-checkin-messages"
             >
               {startCheckin.isPending && (
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24 }}>Starting your session…</div>
+                <div className="gwui-ec-checkin-starting">Starting your session…</div>
               )}
               {/*
                 W1. THE SEAM BETWEEN SETUP AND THE CHECK-IN.
@@ -3406,21 +3332,21 @@ export function EntryChatPage() {
                 seam the comment above it explains, said as a sentence a person would actually read.
               */}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 12px 10px' }}>
+                <div className="gwui-ec-checkin-seam">
                   <Rule />
-                  <span style={{ fontSize: 11.5, color: 'var(--gw-sub)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  <span className="gwui-ec-checkin-seam-text">
                     Setup is done. Your check-in starts here.
                   </span>
                   <Rule />
                 </div>
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '4px 12px 8px', lineHeight: 1.5 }}>
+                <div className="gwui-ec-checkin-note">
                   What you say from here is yours, and it goes on your private record. About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
                 </div>
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', fontSize: 12, color: 'var(--gw-sub)', padding: '0 12px 10px', lineHeight: 1.5 }}>
+                <div className="gwui-ec-checkin-note gwui-ec-checkin-note-row">
                   <VennIcon size={22} />
                   <span>Your individual report is private. The shared report shows where everyone agrees and where they differ.</span>
                 </div>
@@ -3435,94 +3361,64 @@ export function EntryChatPage() {
                 session afterwards runs on memory alone.
               */}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '0 12px 12px', lineHeight: 1.5 }}>
-                  Anything else the check-ins should be held against - a plan, a brief, a spreadsheet - goes on the Context and resources tab once this is saved. You can add it any time.
+                <div className="gwui-ec-checkin-note">
+                  Anything else the check-ins should be held against, such as a plan, a brief or a spreadsheet, goes on the Context and resources tab once this is saved. You can add it any time.
                 </div>
               )}
               {displayedHistory.map((m, i) => {
+                const typing = m.content === '…'
                 return (
-                  <div
-                    key={i}
-                    style={{
-                      maxWidth: '82%',
-                      alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                      background: m.role === 'user' ? 'var(--gw-navy)' : 'white',
-                      color: m.role === 'user' ? 'white' : 'var(--gw-text)',
-                      border: m.role === 'assistant' ? '1px solid var(--gw-border)' : 'none',
-                      borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
-                      padding: '10px 14px',
-                      fontSize: 14,
-                      lineHeight: 1.65,
-                      whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
-                      opacity: (m.content === '…') ? 0.45 : 1,
-                      transition: 'opacity .3s',
-                      boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
-                    }}
-                  >
-                    {m.content === '…' ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Bubble key={i} mine={m.role === 'user'} opacity={typing ? 0.45 : 1}>
+                    {typing ? (
+                      <span className="gwui-ci-dots">
                         {[0, 1, 2].map(i2 => (
-                          <span key={i2} style={{
-                            display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-                            background: 'var(--gw-sub)',
-                            animation: 'gwDotBounce 1.2s ease-in-out infinite',
-                            animationDelay: `${i2 * 0.2}s`,
-                          }} />
+                          <span key={i2} className="gwui-ci-dot" style={{ animationDelay: `${i2 * 0.2}s` }} />
                         ))}
-                        <style>{`@keyframes gwDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }`}</style>
                       </span>
                     ) : nothingInternalReachesTheBubble(m.content)}
-                    {streamingIdx === i && <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--gw-navy)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .7s step-end infinite' }} />}
-                  </div>
+                    {streamingIdx === i && <span className="gwui-ci-caret" />}
+                  </Bubble>
                 )
               })}
             </div>
 
             {/* Natural close prompt */}
             {showEndPrompt && !closed && (
-              <div style={{ padding: '12px 20px', background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-blue-b)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
+              <div className="gwui-ec-natural-close">
+                <Callout tone="info">
                   This session has reached a natural close. Would you like to end and see your report?
+                </Callout>
+                <div className="gwui-ec-natural-close-actions">
+                  <Button kind="secondary" size="small" onClick={() => { setShowEndPrompt(false); setEndPromptDismissed(true) }}>
+                    Keep going
+                  </Button>
+                  <Button kind="secondary" redText size="small" onClick={() => setShowEndConfirm(true)}>
+                    End session
+                  </Button>
                 </div>
-                <button
-                  onClick={() => { setShowEndPrompt(false); setEndPromptDismissed(true) }}
-                  style={{ padding: '7px 12px', borderRadius: 6, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
-                >
-                  Keep going
-                </button>
-                <button
-                  onClick={() => setShowEndConfirm(true)}
-                  style={{ padding: '7px 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
-                >
-                  End session
-                </button>
               </div>
             )}
 
             {/* Quick action chips */}
             {!closed && displayedHistory.length >= 1 && (
-              <div style={{ padding: '8px 16px', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', flexShrink: 0, background: 'white', alignItems: 'center' }}>
+              <div className="gwui-ec-quick-actions">
                 {QUICK_ACTIONS.map(a => (
-                  <button key={a.label} onClick={() => send(a.msg)} disabled={loading}
-                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}>
+                  <button key={a.label} type="button" className="gwui-ec-quick-action" onClick={() => send(a.msg)} disabled={loading}>
                     {a.label}
                   </button>
                 ))}
-                <button onClick={() => send('What patterns are you noticing in what I have shared so far?')} disabled={loading}
-                  style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}>
+                <button type="button" className="gwui-ec-quick-action" onClick={() => send('What patterns are you noticing in what I have shared so far?')} disabled={loading}>
                   Patterns
                 </button>
-                <label htmlFor="entry-doc-upload-chip" title="Upload a document"
-                  style={{ padding: '5px 10px', borderRadius: 20, fontSize: 13, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}>
-                  📎
+                <label htmlFor="entry-doc-upload-chip" title="Upload a document" className="gwui-ec-quick-action gwui-ec-quick-action-attach">
+                  Attach a document
                 </label>
-                <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" style={{ display: 'none' }} onChange={handleFileChange} />
-                <div style={{ marginLeft: 'auto' }}>
+                <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" className="gwui-sr-only" onChange={handleFileChange} />
+                <div className="gwui-ec-quick-actions-end">
                   {/* No arrow (U.8 review): a button says what it does, and the other "End session"
                       button on this same screen (the natural-close prompt above) already says it
                       without one. */}
-                  <button onClick={() => setShowEndConfirm(true)} disabled={loading}
-                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, opacity: loading ? 0.5 : 1 }}>
+                  <button type="button" className="gwui-ec-quick-action gwui-ec-quick-action-navy" onClick={() => setShowEndConfirm(true)} disabled={loading}>
                     End session
                   </button>
                 </div>
@@ -3531,43 +3427,36 @@ export function EntryChatPage() {
 
             {/* Attached doc pill */}
             {uploadedDoc && (
-              <div style={{ padding: '6px 16px', background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-blue-b)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                <span style={{ fontSize: 12, color: 'var(--gw-navy)', flex: 1 }}>📎 {uploadedDoc.name}</span>
-                <button onClick={() => setUploadedDoc(null)} style={{ fontSize: 11, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer' }}>× remove</button>
+              <div className="gwui-ec-doc-pill">
+                <span className="gwui-ec-doc-pill-name">📎 {uploadedDoc.name}</span>
+                <button type="button" className="gwui-plain-link" onClick={() => setUploadedDoc(null)}>Remove</button>
               </div>
             )}
 
             {/* Input bar / save CTA */}
             {closed && !showSave ? (
-              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{'What you said is on record.'}</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{skippedCheckin ? 'After this one, only the people you invite check in. You read what comes back.' : 'Invite others to check in - the shared report releases when all parties are in.'}</div>
+              <div className="gwui-ec-invite-bar">
+                <div className="gwui-ec-invite-bar-text">
+                  <div className="gwui-ec-invite-bar-title">{'What you said is on record.'}</div>
+                  <div className="gwui-ec-invite-bar-sub">{skippedCheckin ? 'After this one, only the people you invite check in. You read what comes back.' : 'Invite others to check in. The shared report releases when all parties are in.'}</div>
                 </div>
-                <button
-                  onClick={() => setShowSave(true)}
-                  style={{ flexShrink: 0, padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Invite &amp; finish →
-                </button>
+                <Button kind="primary" onClick={() => setShowSave(true)}>
+                  Invite and finish
+                </Button>
               </div>
             ) : !closed && (
-              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
-                <div style={{ padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'flex-end', maxWidth: 680, margin: '0 auto' }}>
-                  <textarea
-                    ref={taRef}
-                    placeholder="Type your response."
-                    value={input}
-                    onChange={autoResize}
-                    onKeyDown={handleCheckinKey}
-                    disabled={loading}
-                    style={{ flex: 1, resize: 'none', height: 38, maxHeight: 120, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, border: '1px solid var(--gw-border)', borderRadius: 6, background: 'white', fontFamily: 'inherit', outline: 'none', color: 'var(--gw-text)' }}
-                  />
-                  <button onClick={() => send()} disabled={loading || !input.trim()} aria-label="Send message"
-                    style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (loading || !input.trim()) ? 0.35 : 1 }}>
-                    ↑
-                  </button>
-                </div>
+              <div className="gwui-ec-checkin-composer-wrap">
+                <Composer
+                  value={input}
+                  onChange={setInput}
+                  onKeyDown={handleCheckinKey}
+                  onSend={() => send()}
+                  disabled={loading}
+                  sendDisabled={loading || !input.trim()}
+                  sendLabel="Send message"
+                  placeholder="Type your response."
+                  inputRef={taRef}
+                />
               </div>
             )}
           </div>
@@ -3576,24 +3465,22 @@ export function EntryChatPage() {
 
       {/* Doc context overlay */}
       {docContextMode && uploadedDoc && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div style={{ background: 'white', borderRadius: '14px 14px 0 0', padding: '20px 20px 32px', width: '100%', maxWidth: 560 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📎 {uploadedDoc.name}</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.55 }}>
-              What context does this document support from what you have shared so far?
-            </div>
-            <textarea autoFocus placeholder="e.g. This is the brief I referenced when I mentioned the project scope…"
-              value={docContext} onChange={e => setDocContext(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitDocContext() } }}
-              style={{ width: '100%', resize: 'none', minHeight: 80, padding: '10px 12px', fontSize: 13, lineHeight: 1.55, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
-            />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => { setDocContextMode(false); setUploadedDoc(null) }} style={{ padding: '10px 16px', borderRadius: 8, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={submitDocContext} style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add to session</button>
-            </div>
+        <Modal title={`📎 ${uploadedDoc.name}`} onClose={() => { setDocContextMode(false); setUploadedDoc(null) }}>
+          <Note>
+            What context does this document support from what you have shared so far?
+          </Note>
+          <TextArea
+            autoFocus
+            placeholder="e.g. This is the brief I referenced when I mentioned the project scope…"
+            value={docContext}
+            onChange={e => setDocContext(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitDocContext() } }}
+          />
+          <div className="gwui-ec-modal-actions">
+            <Button kind="secondary" onClick={() => { setDocContextMode(false); setUploadedDoc(null) }}>Cancel</Button>
+            <Button kind="primary" onClick={submitDocContext}>Add to session</Button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/*
@@ -3608,31 +3495,24 @@ export function EntryChatPage() {
         * 50 is this page's own number for a full-screen modal: the document panel a few lines up
         * already uses it. Two overlays on one screen at two different heights is the bug itself.
         */}
-      <div style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 50,
-        opacity: showSave ? 1 : 0, pointerEvents: showSave ? 'auto' : 'none',
-        // visibility keeps the hidden modal out of the accessibility tree and
-        // tab order - opacity alone leaves "Your account is on record" readable
-        // by screen readers on step 1, before anything is on record.
-        visibility: showSave ? 'visible' : 'hidden',
-        transition: 'opacity .3s, visibility .3s',
-        overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        padding: '24px 16px 48px',
-      }}>
-        <div style={{ width: '100%', maxWidth: 640, background: 'white', borderRadius: 14, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,.22)' }}>
+      <div className={`gwui-ec-savecard-overlay ${showSave ? 'gwui-ec-savecard-overlay-shown' : 'gwui-ec-savecard-overlay-hidden'}`}>
+        {/* visibility (in the hidden class) keeps the hidden card out of the accessibility tree
+            and tab order - opacity alone leaves "Your account is on record" readable by screen
+            readers on step 1, before anything is on record. */}
+        <div className="gwui-ec-savecard">
 
           {/* Report header */}
-          <div style={{ background: 'var(--gw-dark)', color: 'white', padding: '20px 22px 16px' }}>
+          <div className="gwui-ec-savecard-header">
             {/* Full sentence, no dot, no capitals label (U.8 review): CLAUDE.md's wording rule
                 applies here the same as everywhere else a person reads. */}
-            <div style={{ fontSize: 11.5, color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'This is session 1. You set the context here.' : 'This is session 1. It is your private report.'}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || 'What you said is on record.'}</div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
-              <div style={{ flexShrink: 0, marginTop: 2, background: 'white', borderRadius: 4, padding: '2px 3px' }}><VennIcon size={22} /></div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.6)', lineHeight: 1.5 }}>
+            <div className="gwui-ec-savecard-eyebrow">{skippedCheckin ? 'This is session 1. You set the context here.' : 'This is session 1. It is your private report.'}</div>
+            <div className="gwui-ec-savecard-title">{groundName || 'What you said is on record.'}</div>
+            <div className="gwui-ec-savecard-venn-row">
+              <div className="gwui-ec-savecard-venn-icon"><VennIcon size={22} /></div>
+              <div className="gwui-ec-savecard-venn-text">
                 {skippedCheckin
-                  ? <>You did the first check-in; after this one, only the people you invite check in. Once everyone has checked in, a <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where they agree and where they differ.</>
-                  : <>This individual report is private to you. Once everyone has checked in, a separate <b style={{ color: 'rgba(255,255,255,.85)' }}>shared report</b> shows where everyone agrees and where they differ.</>}
+                  ? <>You did the first check-in; after this one, only the people you invite check in. Once everyone has checked in, a <b>shared report</b> shows where they agree and where they differ.</>
+                  : <>This individual report is private to you. Once everyone has checked in, a separate <b>shared report</b> shows where everyone agrees and where they differ.</>}
               </div>
             </div>
             {history.filter(m => m.role === 'user').length > 0 && !reportFailed && (() => {
@@ -3658,14 +3538,14 @@ export function EntryChatPage() {
               const said = `You gave ${turns} ${turns === 1 ? 'answer' : 'answers'}.`
               const more = turns < 4 ? ' More answers make the report stronger.' : ''
               return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>{said}{more}</span>
+                <div className="gwui-ec-savecard-stat-row">
+                  <span className="gwui-ec-savecard-stat">{said}{more}</span>
                 </div>
               )
             })()}
           </div>
 
-          <div style={{ padding: '18px 20px 28px' }}>
+          <div className="gwui-ec-savecard-body">
 
             {/*
               Generating state.
@@ -3683,23 +3563,20 @@ export function EntryChatPage() {
               work, not a progress bar pretending to know.
             */}
             {generatingReport && !sessionReport && (
-              <div style={{ marginBottom: 18 }} role="status" aria-live="polite">
+              <div className="gwui-ec-savecard-status" role="status" aria-live="polite">
                 <SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. It is the only slow step." />
               </div>
             )}
 
             {/* ISSUE 15: report failed - show retry option */}
             {reportFailed && (
-              <div style={{ background: 'var(--gw-clay-bg)', borderRadius: 10, padding: '14px 16px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-clay)', lineHeight: 1.5 }}>
+              <div className="gwui-ec-savecard-retry">
+                <div className="gwui-ec-savecard-retry-text">
                   We could not generate your report. Your responses are saved.
                 </div>
-                <button
-                  onClick={() => generateSessionReport(reportTurnsForRetry)}
-                  style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 7, background: 'var(--gw-clay)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
+                <Button kind="secondary" size="small" onClick={() => generateSessionReport(reportTurnsForRetry)}>
                   Retry
-                </button>
+                </Button>
               </div>
             )}
 
@@ -3718,36 +3595,32 @@ export function EntryChatPage() {
                 }
                 renderAdd={(key, label) =>
                   queuedFromSuggestion.has(key) ? (
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', fontWeight: 600, marginTop: 6 }}>✓ Added to invite list</div>
+                    <div className="gwui-ec-savecard-add-pending">✓ Added to invite list</div>
                   ) : addingContributorFor === key ? (
                     <>
-                      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                        <input
+                      <div className="gwui-ec-savecard-add-row">
+                        <TextField
                           type="email" autoFocus placeholder="their@email.com"
                           value={addingContributorEmail} onChange={e => { setAddingContributorEmail(e.target.value); setAddingContributorError('') }}
                           onKeyDown={e => e.key === 'Enter' && queueSuggestedContributor(key, label)}
-                          style={{ flex: 1, padding: '6px 9px', borderRadius: 6, border: '1px solid var(--gw-border)', fontSize: 12, fontFamily: 'inherit', outline: 'none' }}
                         />
-                        <button onClick={() => queueSuggestedContributor(key, label)} style={{ padding: '6px 10px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                        <Button kind="secondary" size="small" onClick={() => queueSuggestedContributor(key, label)}>Add</Button>
                       </div>
                       {addingContributorError && (
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-red-t)', marginTop: 4 }}>{addingContributorError}</div>
+                        <div className="gwui-ec-savecard-add-error">{addingContributorError}</div>
                       )}
                     </>
                   ) : colleagueNamed(label) ? (
                     /* Already in the organisation: one click, no address to type. */
-                    <button
-                      onClick={() => queueColleague(colleagueNamed(label)!, label, key)}
-                      style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
-                      + Add {colleagueNamed(label)!.name}{colleagueNamed(label)!.team ? ` (${colleagueNamed(label)!.team})` : ''}
+                    <button type="button" className="gwui-plain-link" onClick={() => queueColleague(colleagueNamed(label)!, label, key)}>
+                      Add {colleagueNamed(label)!.name}{colleagueNamed(label)!.team ? ` (${colleagueNamed(label)!.team})` : ''}
                     </button>
                   ) : (
                     <button
+                      type="button" className="gwui-plain-link"
                       onClick={() => { setAddingContributorFor(key); setAddingContributorEmail(''); setAddingContributorLabel(label); setAddingContributorError('') }}
-                      style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
                     >
-                      + Add them
+                      Add them
                     </button>
                   )
                 }
@@ -3755,11 +3628,11 @@ export function EntryChatPage() {
                    correction conversation as the summary does; nothing separate to maintain. */
                 renderCorrect={(about) => (!showCorrection ? (
                   <button
+                    type="button" className="gwui-plain-link"
                     onClick={() => { setCorrectionText(`"${about}" is not right: `); setShowCorrection(true) }}
                     disabled={generatingReport}
-                    style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--gw-navy)', cursor: generatingReport ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
                   >
-                    This isn't right - correct it
+                    This isn't right, correct it
                   </button>
                 ) : null)}
                 correctionSlot={
@@ -3768,15 +3641,15 @@ export function EntryChatPage() {
                               not a one-shot patch. See the comment block above buildCorrectionTurn. */}
                           {!showCorrection ? (
                             <button
+                              type="button" className="gwui-plain-link"
                               onClick={() => setShowCorrection(true)}
                               disabled={generatingReport}
-                              style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--gw-green-b)', cursor: generatingReport ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
                             >
-                              This isn't right - correct it
+                              This isn't right, correct it
                             </button>
                           ) : (
-                            <div style={{ marginTop: 10 }}>
-                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginBottom: 6 }}>
+                            <div>
+                              <div className="gwui-ec-correction-intro">
                                 {/*
                                   W8. "We may ask a follow-up" reads like a warning that
                                   something might go wrong, and next to a button marked
@@ -3786,23 +3659,14 @@ export function EntryChatPage() {
                                   conversation is the difference between "the deadline is
                                   wrong" and a correction the record can act on.
                                 */}
-                                What did we get wrong? Say it plainly. This is a conversation, not a form - we will usually ask one thing back before the report changes, because "the deadline is wrong" does not say what the deadline is.
+                                What did we get wrong? Say it plainly. This is a conversation, not a form, and we will usually ask one thing back before the report changes, because "the deadline is wrong" does not say what the deadline is.
                               </div>
                               {correctionExchange.length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+                                <div className="gwui-ec-correction-thread">
                                   {correctionExchange.map((m, i) => (
                                     <div
                                       key={i}
-                                      style={{
-                                        alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                                        maxWidth: '88%',
-                                        padding: '7px 10px',
-                                        borderRadius: 8,
-                                        fontSize: 12.5,
-                                        lineHeight: 1.5,
-                                        background: m.role === 'user' ? 'var(--gw-green-b)' : 'rgba(255,255,255,.1)',
-                                        color: m.role === 'user' ? 'var(--gw-dark)' : 'rgba(255,255,255,.9)',
-                                      }}
+                                      className={`gwui-ec-correction-bubble ${m.role === 'user' ? 'gwui-ec-correction-bubble-user' : 'gwui-ec-correction-bubble-assistant'}`}
                                     >
                                       {m.role === 'user' && m.content.startsWith(CORRECTION_PREFIX)
                                         ? m.content.slice(CORRECTION_PREFIX.length).trim()
@@ -3816,29 +3680,29 @@ export function EntryChatPage() {
                                 value={correctionText}
                                 onChange={e => setCorrectionText(e.target.value)}
                                 placeholder="e.g. The deadline is not May - it is March 1."
-                                style={{ width: '100%', minHeight: 64, padding: '8px 10px', fontSize: 13, lineHeight: 1.55, border: 'none', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', resize: 'vertical', background: 'rgba(255,255,255,.94)', color: 'var(--gw-text)' }}
+                                className="gwui-ec-correction-field"
                               />
-                              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                                <button
+                              <div className="gwui-ec-correction-actions">
+                                <Button
+                                  kind="secondary" size="small"
                                   onClick={submitReportCorrection}
                                   disabled={!correctionText.trim() || correctionLoading || generatingReport}
-                                  style={{ padding: '7px 14px', borderRadius: 7, background: 'var(--gw-green-b)', color: 'var(--gw-dark)', fontSize: 12, fontWeight: 700, border: 'none', cursor: !correctionText.trim() || correctionLoading || generatingReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: !correctionText.trim() || correctionLoading || generatingReport ? 0.6 : 1 }}
                                 >
                                   {generatingReport ? 'Redoing your report...' : correctionLoading ? 'Sending...' : correctionExchange.length > 0 ? 'Send' : 'Start'}
-                                </button>
+                                </Button>
                                 {correctionExchange.length > 0 && (
-                                  <button
+                                  <Button
+                                    kind="secondary" size="small"
                                     onClick={finishCorrection}
                                     disabled={correctionLoading || generatingReport}
-                                    style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-green-b)', fontSize: 12, border: '1px solid rgba(93,202,165,.5)', cursor: 'pointer', fontFamily: 'inherit' }}
                                   >
                                     I'm done, redo my report
-                                  </button>
+                                  </Button>
                                 )}
                                 <button
+                                  type="button" className="gwui-plain-link"
                                   onClick={() => { setShowCorrection(false); setCorrectionText(''); setCorrectionStartIndex(null) }}
                                   disabled={correctionLoading || generatingReport}
-                                  style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'rgba(255,255,255,.6)', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                                 >
                                   Cancel
                                 </button>
@@ -3885,9 +3749,9 @@ export function EntryChatPage() {
                 onEndsOn={(d) => { setEndChosen(true); setLastCheckInBy(d) }}
               />
 
-              <div style={{ background: '#F0F4FA', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.06em' }}>What happens next</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="gwui-ec-savecard-whatnext">
+                <div className="gwui-ec-savecard-whatnext-title">What happens next</div>
+                <div className="gwui-ec-savecard-whatnext-list">
                   {(user
                     ? [
                       startsLater ? `Save this. Nobody is invited before ${theDay(new Date(`${checkInBy}T00:00:00`))}.` : 'Save this. You then see who was invited and who has to wait.',
@@ -3898,9 +3762,9 @@ export function EntryChatPage() {
                       'Open the confirmation link we email you. That saves it, then shows who was invited and who has to wait.',
                       'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
                     ]).map((step, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
-                      <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55 }}>{step}</div>
+                    <div key={i} className="gwui-ec-savecard-whatnext-row">
+                      <div className="gwui-ec-savecard-whatnext-num">{i + 1}</div>
+                      <div className="gwui-ec-savecard-whatnext-text">{step}</div>
                     </div>
                   ))}
                 </div>
@@ -3918,40 +3782,32 @@ export function EntryChatPage() {
               * straight to their account.
               */}
             {user && !emailSent ? (
-              <div style={{ marginBottom: 20 }}>
-                <button
-                  onClick={saveAsSignedInUser}
-                  disabled={savingAsUser || (generatingReport && !sessionReport)}
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: savingAsUser ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: savingAsUser ? 0.6 : 1 }}
-                >
-                  {savingAsUser ? 'Saving…' : 'Save this →'}
-                </button>
-                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
+              <div className="gwui-ec-savecard-section">
+                <Button kind="primary" wide onClick={saveAsSignedInUser} disabled={savingAsUser || (generatingReport && !sessionReport)}>
+                  {savingAsUser ? 'Saving…' : 'Save this'}
+                </Button>
+                <div className="gwui-ec-savecard-helper">
                   Saving to {user.email}. No confirmation needed, you are already signed in.
                 </div>
                 {/* A WAY OUT OF THE CARD. It covers the whole page, including the page's own Start over,
                     so a card that cannot save (an old empty lead session) was a screen with one button
                     that failed. Seen 10 Sep 2026. Confirmed, like the page's own control. */}
-                <div style={{ textAlign: 'center', paddingTop: 6, fontSize: 11.5, color: 'var(--gw-muted)' }}>
+                <div className="gwui-ec-savecard-clear-row">
                   {confirmClearInCard ? (
-                    <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center' }}>
+                    <span className="gwui-ec-savecard-clear-confirm">
                       This throws away this session and everything in it.
-                      <button type="button" onClick={handleClearSession} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 11.5, fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>Start over</button>
-                      <button type="button" onClick={() => setConfirmClearInCard(false)} style={{ background: 'none', border: 'none', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit' }}>Keep it</button>
+                      <button type="button" className="gwui-plain-link gwui-ec-savecard-clear-danger" onClick={handleClearSession}>Start over</button>
+                      <button type="button" className="gwui-plain-link" onClick={() => setConfirmClearInCard(false)}>Keep it</button>
                     </span>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmClearInCard(true)}
-                      style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 11.5, padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}
-                    >
+                    <button type="button" className="gwui-plain-link" onClick={() => setConfirmClearInCard(true)}>
                       Start over instead
                     </button>
                   )}
                 </div>
               </div>
             ) : !emailSent ? (
-              <div style={{ marginBottom: 20 }}>
+              <div className="gwui-ec-savecard-section">
                 {/*
                   * THE ORGANISATION'S NAME, ASKED BEFORE EITHER DOOR.
                   *
@@ -3966,23 +3822,23 @@ export function EntryChatPage() {
                   * above the email rather than below it: it is about the account being made, and
                   * the email is the thing that makes it.
                   */}
-                <input
+                <TextField
                   type="text" placeholder="Organisation name (optional)" value={orgName}
                   onChange={e => setOrgName(e.target.value)}
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 14, fontFamily: 'inherit', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
+                  className="gwui-ec-savecard-field"
                 />
                 {trap.field}
                 {/* A form, so Enter and the button are one path and the page's own message is the only channel (noValidate). */}
                 <form noValidate onSubmit={e => { e.preventDefault(); handleSave() }}>
-                <input type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
-                  style={{ width: '100%', padding: '11px 13px', borderRadius: 8, border: `1px solid ${emailError ? 'var(--gw-danger)' : 'var(--gw-border)'}`, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
+                <TextField type="email" placeholder="your@email.com" value={email} onChange={e => { setEmail(e.target.value); setEmailError('') }}
+                  className={`gwui-ec-savecard-field ${emailError ? 'gwui-ec-savecard-field-error' : ''}`}
                 />
-                {emailError && <div style={{ fontSize: 12, color: 'var(--gw-red-t)', marginBottom: 6 }}>{emailError}</div>}
-                <button type="submit" disabled={saving || (generatingReport && !sessionReport)} style={{ width: '100%', padding: '12px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: saving ? 'wait' : generatingReport && !sessionReport ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: saving || (generatingReport && !sessionReport) ? 0.5 : 1 }}>
-                  {saving ? 'Saving…' : 'Save my check-in →'}
-                </button>
+                {emailError && <div className="gwui-ec-savecard-error">{emailError}</div>}
+                <Button kind="primary" wide type="submit" disabled={saving || (generatingReport && !sessionReport)}>
+                  {saving ? 'Saving…' : 'Save my check-in'}
+                </Button>
                 </form>
-                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
+                <div className="gwui-ec-savecard-helper">
                   {/* U.6 review: it promised the invites went out on opening the link, which a later start (or a
                       seat, or an admin who must accept it) makes untrue. The same sentences as after saving. */}
                   {`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(inviteAdded.length, startsLater ? checkInBy : null)}`}
@@ -4000,24 +3856,21 @@ export function EntryChatPage() {
                     Google's own error page. */}
                 {authMethods?.google && (
                   <>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0 8px' }}>
+                    <div className="gwui-ec-savecard-or-row">
                       <Rule />
-                      <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>or</span>
+                      <span className="gwui-ec-savecard-or-text">or</span>
                       <Rule />
                     </div>
-                    <button
-                      onClick={continueWithGoogle}
-                      style={{ width: '100%', padding: '11px 16px', borderRadius: 8, background: 'white', color: 'var(--gw-text)', fontSize: 14, fontWeight: 700, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
+                    <Button kind="secondary" wide onClick={continueWithGoogle}>
                       Continue with Google
-                    </button>
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
-                      No confirmation email needed - your check-in is created as soon as you come back.
+                    </Button>
+                    <div className="gwui-ec-savecard-helper">
+                      No confirmation email needed. Your check-in is created as soon as you come back.
                     </div>
                   </>
                 )}
                 {/* The only way out of a full-screen save card, and a keyboard user inside it could not dismiss it. */}
-                <button type="button" onClick={() => setShowSave(false)} style={{ display: 'block', margin: '0 auto', background: 'none', border: 'none', fontFamily: 'inherit', textAlign: 'center', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', paddingTop: 10 }}>
+                <button type="button" className="gwui-plain-link" onClick={() => setShowSave(false)}>
                   Not now
                 </button>
               </div>
@@ -4057,18 +3910,18 @@ export function EntryChatPage() {
                   // subtree, and four unrelated specs went red on a scroll.
                   if (el) scrollTo(el)
                 }}
-                style={{ position: 'sticky', top: 8, zIndex: 5, background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 20, boxShadow: '0 2px 10px rgba(0,0,0,.06)' }}
+                className="gwui-ec-savecard-confirm-box"
               >
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)', marginBottom: 4 }}>Check your email</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
+                <div className="gwui-ec-savecard-confirm-title">Check your email</div>
+                <div className="gwui-ec-savecard-confirm-body">We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
                 {inviteAdded.length > 0 ? (
-                  <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
+                  <div className="gwui-ec-savecard-confirm-sub">
                     {whoIsWaiting()} Nobody is invited before you confirm your email.
                   </div>
                 ) : (
                   /* Saying nothing here read as "you have left something
                      undone". Nobody added is a perfectly good place to stop. */
-                  <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
+                  <div className="gwui-ec-savecard-confirm-sub">
                     No one added yet. You can invite people whenever you're ready.
                   </div>
                 )}
@@ -4078,20 +3931,20 @@ export function EntryChatPage() {
             {/* Admin setup - only shown after email sent */}
             {emailSent && (
             <div>
-            <div style={{ borderTop: '1px solid var(--gw-border)', marginBottom: 18 }} />
+            <div className="gwui-ec-savecard-divider" />
 
             {/* Ground + org naming */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 6 }}>Name this situation</div>
-              <input
+            <div className="gwui-ec-savecard-name-block">
+              <div className="gwui-ec-savecard-name-label">Name this situation</div>
+              <TextField
                 type="text" placeholder="e.g. Kwame, first 90 days" value={groundName}
                 onChange={e => setGroundName(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginBottom: 8 }}
+                className="gwui-ec-savecard-field"
               />
               {/* Asked one step earlier now, where both the email and Google paths pass. */}
 
               {/* U.6: the schedule is set before saving now, in TheSetup. What is still missing stays said here. */}
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+              <div className="gwui-ec-savecard-name-hint">
                 {whatIsSetAndWhatIsNot({
                   name: groundName,
                   cadenceChosen,
@@ -4120,12 +3973,12 @@ export function EntryChatPage() {
                 ? 'Send them a link so they can give their own version of the same work. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
                 : 'Each person gives their own version of the shared work, including their own part in it. When everyone has answered, the report shows where people agree, where they differ, and what the gap means for the work.'
               return (
-            <div style={{ borderBottom: '1px solid var(--gw-border)', marginBottom: 16, paddingBottom: 16 }}>
+            <div className="gwui-ec-savecard-invite-block">
               <FieldLabel>{inviteHeading}</FieldLabel>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 10 }}>
+              <div className="gwui-ec-savecard-invite-subtext">
                 {inviteSubtext}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '8px 11px', lineHeight: 1.5, marginBottom: 10 }}>
+              <div className="gwui-ec-savecard-invite-banner">
                 Add them here now. Anyone you added from the report above is already on this list. Nobody is invited before you save this check-in and confirm your email.
                 {' '}
                 {/*
@@ -4149,7 +4002,7 @@ export function EntryChatPage() {
                   night to think: someone opening a PIP or a co-founder dispute
                   is being asked to name the other party at the moment they are
                   least sure, and silence about a later made that feel final. */}
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 10 }}>
+              <div className="gwui-ec-savecard-invite-later">
                 Not ready? You can add people any time from the check-in itself. Nothing goes out until you do.
               </div>
               {(() => {
@@ -4161,16 +4014,16 @@ export function EntryChatPage() {
                 }
                 const notice = notices[s ?? '']
                 return notice ? (
-                  <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55 }}>
+                  <div className="gwui-ec-savecard-invite-notice">
                     {notice}
                   </div>
                 ) : null
               })()}
 
               {inviteAdded.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                <div className="gwui-ec-savecard-invite-list">
                   {inviteAdded.map(e => (
-                    <div key={e} style={{ fontSize: 12, color: 'var(--gw-green-t)', background: 'var(--gw-green-bg)', borderRadius: 6, padding: '5px 10px' }}>✓ {shownEntry(e)}</div>
+                    <div key={e} className="gwui-ec-savecard-invite-chip">✓ {shownEntry(e)}</div>
                   ))}
                 </div>
               )}
@@ -4188,43 +4041,44 @@ export function EntryChatPage() {
               )}
 
               {inviteContextFor ? (
-                <div style={{ background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{inviteContextFor}</div>
+                <div className="gwui-ec-savecard-invite-context">
+                  <div className="gwui-ec-savecard-invite-context-head">
+                    <div className="gwui-ec-savecard-invite-context-name">{inviteContextFor}</div>
                     {bulkQueue.length > 0 && (
-                      <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{bulkQueue.length} more after this</div>
+                      <div className="gwui-ec-savecard-invite-context-more">{bulkQueue.length} more after this</div>
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>What do you want them to focus on or cover?</div>
-                  <textarea autoFocus placeholder="e.g. They are the other side of this. They own the delivery timeline."
+                  <div className="gwui-ec-savecard-invite-context-ask">What do you want them to focus on or cover?</div>
+                  <TextArea autoFocus placeholder="e.g. They are the other side of this. They own the delivery timeline."
                     value={inviteContext} onChange={e => setInviteContext(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInviteContext() } }}
-                    style={{ width: '100%', resize: 'none', minHeight: 60, padding: '8px 10px', fontSize: 13, lineHeight: 1.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                    className="gwui-ec-savecard-field"
                   />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => {
+                  <div className="gwui-ec-savecard-row-gap8 gwui-ec-savecard-row-gap8-grow-last">
+                    <Button kind="secondary" size="small" onClick={() => {
                       // Add without context, then advance queue
                       const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, inviteContextFor]
                       setInviteAdded(newAdded)
                       setInviteContext('')
                       const [next, ...rest] = bulkQueue
                       if (next) { setBulkQueue(rest); setInviteContextFor(next) } else { setInviteContextFor(null) }
-                    }} style={{ padding: '8px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Skip</button>
-                    <button onClick={submitInviteContext} style={{ flex: 1, padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add person</button>
+                    }}>Skip</Button>
+                    <Button kind="secondary" size="small" onClick={submitInviteContext}>Add person</Button>
                   </div>
                 </div>
               ) : bulkInviteMode ? (
                 <div>
-                  <textarea
+                  <TextArea
                     autoFocus
                     placeholder="Paste emails separated by commas or line breaks&#10;e.g. alice@co.com, bob@co.com"
                     value={bulkInviteText}
                     onChange={e => setBulkInviteText(e.target.value)}
-                    style={{ width: '100%', resize: 'none', minHeight: 80, padding: '10px 12px', fontSize: 13, lineHeight: 1.5, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
+                    className="gwui-ec-savecard-field"
                   />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => { setBulkInviteMode(false); setBulkInviteText('') }} style={{ padding: '9px 14px', borderRadius: 7, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                    <button
+                  <div className="gwui-ec-savecard-row-gap8 gwui-ec-savecard-row-gap8-grow-last">
+                    <Button kind="secondary" size="small" onClick={() => { setBulkInviteMode(false); setBulkInviteText('') }}>Cancel</Button>
+                    <Button
+                      kind="secondary" size="small"
                       onClick={() => {
                         const emails = bulkInviteText
                           .split(/[\n,]+/)
@@ -4240,37 +4094,32 @@ export function EntryChatPage() {
                         setInviteContextFor(first)
                         setInviteContext('')
                       }}
-                      style={{ flex: 1, padding: '9px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Add all
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
                 <>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <input type="email" placeholder="name@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                  <div className="gwui-ec-savecard-invite-add-row">
+                    <TextField type="email" placeholder="name@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && addInviteEmail()}
-                      style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
                     />
-                    <button onClick={addInviteEmail} style={{ flexShrink: 0, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add</button>
+                    <Button kind="secondary" size="small" onClick={addInviteEmail}>Add</Button>
                   </div>
-                  <button
-                    onClick={() => setBulkInviteMode(true)}
-                    style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', padding: 0, textDecoration: 'underline', marginBottom: 10 }}
-                  >
+                  <button type="button" className="gwui-plain-link" onClick={() => setBulkInviteMode(true)}>
                     Paste multiple emails
                   </button>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ flex: 1, fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 7, padding: '8px 10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div className="gwui-ec-savecard-link-row">
+                    <div className="gwui-ec-savecard-link-box">
                       {window.location.origin}/invite?token={inviteToken}
                     </div>
-                    <button onClick={copyInviteLink} style={{ flexShrink: 0, padding: '8px 12px', borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-text)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <Button kind="secondary" size="small" onClick={copyInviteLink}>
                       {copiedLink ? 'Copied!' : 'Copy link'}
-                    </button>
+                    </Button>
                   </div>
-                  <input type="text" placeholder="Add a note to send with your link (optional)" value={inviteNote} onChange={e => setInviteNote(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none', marginTop: 8 }}
+                  <TextField type="text" placeholder="Add a note to send with your link (optional)" value={inviteNote} onChange={e => setInviteNote(e.target.value)}
+                    className="gwui-ec-savecard-field"
                   />
                 </>
               )}
@@ -4296,7 +4145,7 @@ export function EntryChatPage() {
               just closes the panel.
             */}
             {closed && emailSent ? (
-              <div style={{ textAlign: 'center', paddingTop: 8 }}>
+              <div className="gwui-ec-savecard-done">
                 {/*
                   AND IT THREW AWAY THE PERSON SHE HAD JUST TYPED IN.
                   Adding somebody takes two clicks: the email opens a note box,
@@ -4316,12 +4165,9 @@ export function EntryChatPage() {
                   second click is a convenience for adding several people, not a
                   consent gate - the consent was typing the address.
                 */}
-                <button
-                  onClick={() => { if (inviteContextFor) submitInviteContext(); setShowSave(false) }}
-                  style={{ padding: '11px 28px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
+                <Button kind="primary" onClick={() => { if (inviteContextFor) submitInviteContext(); setShowSave(false) }}>
                   Done
-                </button>
+                </Button>
                 {/*
                   W7. "DONE" CLOSED THE PANEL AND SAID NOTHING ABOUT THE EMAIL.
                   She pressed it and was left on the report with no sign that
@@ -4329,7 +4175,7 @@ export function EntryChatPage() {
                   in her inbox. The panel closing is the only feedback there was,
                   and a panel closing is what "Cancel" looks like.
                 */}
-                <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', paddingTop: 8, lineHeight: 1.6 }}>
+                <div className="gwui-ec-savecard-done-text">
                   {/*
                     Counts the person still sitting in the note box, because "Done"
                     now commits them. Reading inviteAdded alone made this sentence
@@ -4344,7 +4190,7 @@ export function EntryChatPage() {
                 </div>
               </div>
             ) : closed ? null : (
-              <button type="button" onClick={() => setShowSave(false)} style={{ display: 'block', margin: '0 auto', background: 'none', border: 'none', fontFamily: 'inherit', textAlign: 'center', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', paddingTop: 4 }}>
+              <button type="button" className="gwui-plain-link" onClick={() => setShowSave(false)}>
                 Later
               </button>
             )}
@@ -4354,14 +4200,15 @@ export function EntryChatPage() {
 
       {/* New scenario conflict modal */}
       {showNewScenarioConflict && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>You have a check-in in progress</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
+        <div className="gwui-ec-confirm-overlay">
+          <div className="gwui-ec-confirm-box">
+            <div className="gwui-ec-confirm-title">You have a check-in in progress</div>
+            <div className="gwui-ec-confirm-body">
               Starting a new one clears the one you were setting up, and nothing you said in it is kept. Carry on with it to pick up where you left off.
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
+            <div className="gwui-ec-confirm-actions">
+              <Button
+                kind="secondary"
                 onClick={() => {
                   setShowNewScenarioConflict(false); setPendingNewScenario(null)
                   /*
@@ -4373,12 +4220,12 @@ export function EntryChatPage() {
                   if (saved) restoreTheSavedSetup(saved)
                   if (wantsANewOne || scenario || urlInitial) navigate('/start', { replace: true })
                 }}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 {/* U.6 review: plain words, where it said "Keep current session" / "Start new scenario". */}
                 Carry on with this one
-              </button>
-              <button
+              </Button>
+              <Button
+                kind="danger"
                 onClick={() => {
                   if (pendingNewScenario) {
                     clearEntrySession()
@@ -4414,10 +4261,9 @@ export function EntryChatPage() {
                   setShowNewScenarioConflict(false)
                   setPendingNewScenario(null)
                 }}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Start a new one
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -4425,31 +4271,18 @@ export function EntryChatPage() {
 
       {/* End session confirmation modal */}
       {showEndConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>End this session?</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
-              Your answers are saved on this device. Ending this session generates your report, and this session's answers then lock.
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
-              Once you save the record below, you can revisit and correct it any time from your report. The shared report releases once all parties have checked in.
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => setShowEndConfirm(false)}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Keep going
-              </button>
-              <button
-                onClick={() => { setShowEndConfirm(false); handleEndSession() }}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                End session
-              </button>
-            </div>
+        <Modal title="End this session?" onClose={() => setShowEndConfirm(false)}>
+          <Note>
+            Your answers are saved on this device. Ending this session generates your report, and this session's answers then lock.
+          </Note>
+          <Note>
+            Once you save the record below, you can revisit and correct it any time from your report. The shared report releases once all parties have checked in.
+          </Note>
+          <div className="gwui-ec-modal-actions">
+            <Button kind="secondary" onClick={() => setShowEndConfirm(false)}>Keep going</Button>
+            <Button kind="danger" onClick={() => { setShowEndConfirm(false); handleEndSession() }}>End session</Button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

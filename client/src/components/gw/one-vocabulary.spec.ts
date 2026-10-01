@@ -77,23 +77,17 @@ describe('the palette is named', () => {
 })
 
 describe('the heading comes from the kit', () => {
-  const REPORT = strip(readFileSync(join(SRC, 'pages/report/ReportPage.tsx'), 'utf8'))
-
-  it('the report\'s section heading delegates rather than re-implementing', () => {
-    /*
-     * GROUP 3, PIECE 2: `ReportPage.tsx` joined REBUILT_PAGES, whose guard refuses any import of
-     * kit.tsx's old parts (`Sec` among them) - so `SecH` now delegates to `Section`, the same
-     * kind of heading under its newer, shared name, rather than the old one.
-     */
-    expect(REPORT).toMatch(/import \{ Page, Section, Panel, Button, Note \} from '@\/components\/gw\/ui'/)
-    expect(REPORT).toMatch(/return <Section heading=\{String\(children\)\} \/>/)
-  })
-
-  it('and no longer carries its own values for it', () => {
-    // The exact numbers that made the report's headings a slightly worse copy of the board's.
-    expect(REPORT).not.toMatch(/letterSpacing: '\.09em'/)
-  })
-
+  /*
+   * "THE REPORT'S SECTION HEADING DELEGATES RATHER THAN RE-IMPLEMENTING" RETIRED WITH ReportBody.
+   *
+   * `SecH` was `ReportBody`'s own wrapper around `Section`, inside `ReportPage.tsx`. `ReportBody`
+   * is deleted (see the comment at the top of `ReportPage.tsx` for where each of its sections
+   * went); the file left behind is a three-line redirect with no heading markup of its own, so
+   * there is nothing here to re-implement the kit's heading, and nothing for this assertion to
+   * protect. The rule itself - one shared heading component, not a bespoke one per page - is
+   * still enforced below, on settings, and by `the-rebuilt-pages-use-only-the-new-parts.spec.ts`
+   * for every page on that list.
+   */
   it('settings uses it too, rather than a sixth copy of the same label', () => {
     /*
      * UPDATED, GROUP 1 REBUILD: SettingsPage.tsx no longer imports kit.tsx's `Sec` at all - it is

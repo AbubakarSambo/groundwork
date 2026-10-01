@@ -101,7 +101,7 @@ for (const reader of READERS) {
  * a stranger reaches from a dead invitation or a cut-short join link. None of these needs
  * signing in - the whole point is that they are what a stranger sees - so no `signIn` call here.
  */
-const SIGNED_OUT_PATHS = ['/auth', '/auth?mode=signup', '/join', '/verify-email'];
+const SIGNED_OUT_PATHS = ['/auth', '/auth?mode=signup', '/join', '/verify-email', '/start'];
 
 test('every signed-out page is cream too', async ({ page }) => {
   const wrong: string[] = [];

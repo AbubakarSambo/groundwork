@@ -7042,4 +7042,68 @@ A push of mine was refused once, because I had chained it with another command. 
 - The session report shows 7 buttons against the prototype's 5. That is being fixed now, without losing any of the controls.
 - The whole screen suite passes (3,669 tests).
 
+The session report now has 2 buttons, inside the prototype's 5, with nothing lost:
+- "Your check-in" and "Ask" are quiet links, because they only go elsewhere or open a panel.
+- "Inferences we made" is a fold, and its note says "There is one for you to check."
+- "Group by person" and "Something here is not what I said" are quiet text links.
+- "Correct this", which sends something, stays a button.
+- The same header on the round report page got the same fix.
+
+The button test passes on all 27 screens, and the page-colour test passes 4 of 4. The whole screen suite passes (3,671 tests).
+
+**The old team report is compared, what it had is moved, and it is removed (your decision of 1 October).** The section-by-section table is in `docs/the-old-team-report-against-the-report-tab.md`. Most of its sections were already live on the rebuilt pages. Six things were not, and are now moved, built from the shared parts, for the same readers as before:
+- the lead's "What to ask each person" now also shows what each finding rested on, where it started, the soft spots across people, and the warnings about how the check-in is going. A raw "[INFERRED: …]" marker that would have reached the lead is now shown as a label instead. Both the module's own note and its standing caveat now show, where before only one could.
+- the visible trail of updates to the record, on the session report;
+- "Did this feel fair", on the board once a check-in has ended;
+- adding or asking to add someone who helped but is not on the check-in, on the board's existing list;
+- downloading your record of the one session, on the session report.
+
+**Patterns, coaching, roles and probes:** nothing is lost. All were already live, and stay so: the manager's alignment on the board, "What to ask each person" for the lead, and the resolution panel. The old page's redirect stays, because links point at it.
+
+**Tests:** 23 test files read the old page. Two sets that tested only its inner workings were retired. Every other test was pointed at the live place that now holds the same rule, including the privacy test that the lead's private note never names anyone, which now covers the updates trail and the record-shape flag. The whole screen suite passes (3,653 tests).
+
+Three of the engine's own tests read the old file as a guard against removing it early. They now fail, and that is request 99.
+
+The builder's attempt to check out the old version for a "before" picture was refused by the safety check. It was not retried.
+
+Two things kept as they are now, for you to know:
+- the resolution panel shows nothing far from the end, where the old page said "Resolution. Not set yet.";
+- the session report reads fresh each time, rather than showing a "picture forming" banner.
+
+**Group 3, third piece: the check-in conversation screen is rebuilt from the shared parts (1 October).**
+- No call to the engine, and no step of the conversation, changed. Only the markup did.
+- The 111 tests for the conversation pass unchanged, and so do the 78 API tests that read these files.
+- The end card and the conversation's header no longer use the old parts.
+- The page shown when a check-in is finished has one navy button, "Open the team board".
+- The button test passes on all 28 screens, and the page-colour test passes 4 of 4. The whole screen suite passes (3,652 tests).
+
+Not yet compared with the prototype's pictures: the conversation itself, while it is going. On this Mac every check-in that is not finished has not started yet, and opening one would start a real session. Done screens and finished check-ins were pictured as Amani and Rukia. Group 3's review will picture the conversation from a preview page drawn with test data, the way the reports already have one, so no session is started.
+
+**Group 3, fourth piece, starting a check-in, is split in three.** The save card is rebuilt from the shared parts, word for word. It turned out to be drawn by no page, though: the live entry chat draws its own save card. The other two files are far bigger than one piece. CreateGroundPage is an eight-step setup with 76 inline styles, and the entry chat is 4,500 lines with 271. The builder stopped and said so, rather than pushing them through unchecked. They now go in parts:
+- CreateGroundPage's picker, coach and billing steps (under way);
+- its timeline, people and brief steps;
+- the entry chat.
+
+CreateGroundPage's situation picker, coach and billing steps are rebuilt, with every situation's wording unchanged, and the whole screen suite passes (3,657 tests). The page then turned out to be unreachable too: its address sends people on to the entry chat. So the rest of it is not being rebuilt, and whether to compare it and remove it is under "Decided for Hafsah to confirm". The entry chat, the live way to start a check-in, is now being rebuilt in four parts.
+
+The entry chat's first part is done: the door, the frame, the header, the steps, the messages and the box you type in.
+- The door you see first, signed out, now matches the prototype's start picture closely: the heading, the box, the five example pills and "Continue".
+- The chat's bubbles now use the same shared part as the check-in conversation.
+- "Getting started · session is about 10 minutes" became a sentence.
+- Nothing was typed or sent.
+- The whole screen suite passes (3,681 tests).
+
+One difference for group 3's review: signed out, the product shows the sidebar with a "Not saved yet" card, where the prototype shows no sidebar. The other three parts are with a fresh builder.
+
+**The entry chat is rebuilt in all four parts, and now counts as rebuilt.**
+- The attach menu's two overlays are now one shared dialog.
+- The save card and everything after saving are rebuilt.
+- The check-in phase's bubbles are now the prototype's cream and navy, where before they were white with a border.
+- Its clipped and joined labels became sentences ("Invite & finish →" became "Invite and finish").
+- No call to the server changed, and nothing was typed or sent.
+- The whole screen suite passes (3,750 tests). The button test passes on all 29 screens, and the page-colour test passes.
+- The lead's first-check-in briefing in the entry chat seems unreachable: nothing in the file opens it. It was left in place, with a note.
+
+But the builders moved the old page's values into 153 new page-only classes, and the check-in conversation did the same with 88. That is the same drift your one-off decision is about, under another name. A second guard now freezes every class there is today, and a new one must be a written-up shared part. Group 3's review replaces these copies, and the reasoning is under "Decided for Hafsah to confirm".
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.

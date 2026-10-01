@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { THE_DOOR_SIGNED_IN, THE_DOOR_SIGNED_OUT, THE_EXAMPLES, RATHER_PICK } from './the-way-in'
+import { Panel, FieldLabel, TextArea, Button, QuickReplies, Stack } from '@/components/gw/ui'
 
 /*
  * THE FIRST SCREEN OF A NEW CHECK-IN (U.6, B1): #/start signed out, #/new signed in.
@@ -7,6 +8,13 @@ import { THE_DOOR_SIGNED_IN, THE_DOOR_SIGNED_OUT, THE_EXAMPLES, RATHER_PICK } fr
  * One box and one question. The examples put their words in the box; nothing is sent until the
  * person presses the button, and what they send opens the setup conversation exactly as describing
  * it in their own words always has. The list of every situation is one link away.
+ *
+ * REBUILT FROM THE SHARED PARTS (group 3, piece 4d-1, B1-starting-a-check-in): `Panel` for the
+ * white bordered box, `FieldLabel`/`TextArea` for the question and the field, `Button` for
+ * "Continue"/"Send", and `QuickReplies` (B3's own outlined pill, already the shared part for a row
+ * of clickable suggestions) for the five examples - the same shape `start.jpg` draws them in. No
+ * wording changed: every string still comes from `the-way-in.ts`, copied from the prototype's own
+ * `start.txt`/`new.txt`.
  */
 export function TheDoor({
   signedIn,
@@ -22,58 +30,35 @@ export function TheDoor({
   const send = () => { if (text.trim()) onSend(text.trim()) }
 
   return (
-    <div style={{ width: '100%', maxWidth: 684, margin: '0 auto' }}>
+    <div className="gwui-door">
       {signedIn && (
-        <nav aria-label="Where you are" style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 10 }}>
+        <nav aria-label="Where you are" className="gwui-pt-crumb">
           {THE_DOOR_SIGNED_IN.crumbs[0]} <span aria-hidden="true">/</span> {THE_DOOR_SIGNED_IN.crumbs[1]}
         </nav>
       )}
-      <h1 style={{ fontFamily: 'var(--gw-font-name)', fontSize: 'clamp(26px, 5vw, 34px)', fontWeight: 500, lineHeight: 1.2, color: 'var(--gw-text)', margin: '0 0 6px' }}>
-        {words.heading}
-      </h1>
-      <p style={{ fontSize: 15.5, color: 'var(--gw-sub)', lineHeight: 1.6, margin: '0 0 14px' }}>{words.help}</p>
-      <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 14 }}>
-        {signedIn && (
-          <label htmlFor="gw-door-box" style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>
-            {THE_DOOR_SIGNED_IN.question}
-          </label>
-        )}
-        <textarea
-          id="gw-door-box"
-          className="gw-ta"
-          rows={3}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-          placeholder={words.placeholder}
-          aria-label={signedIn ? undefined : words.heading}
-          style={{ width: '100%', boxSizing: 'border-box' }}
-        />
-        {!signedIn && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '10px 0 0' }}>
-            {THE_EXAMPLES.map((example) => (
-              <button
-                key={example}
-                type="button"
-                onClick={() => setText(example)}
-                style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 999, padding: '7px 13px', fontSize: 13.5, color: 'var(--gw-text)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
-              >
-                {example}
-              </button>
-            ))}
-          </div>
-        )}
-        <button type="button" className="gw-btn" onClick={send} disabled={!text.trim()} style={{ marginTop: 12 }}>
-          {words.button}
-        </button>
-      </div>
-      <p style={{ fontSize: 13.5, color: 'var(--gw-text)', margin: '12px 0 0' }}>
+      <h1 className="gwui-door-heading">{words.heading}</h1>
+      <p className="gwui-door-help">{words.help}</p>
+      <Panel>
+        <Stack gap={10}>
+          {signedIn && <FieldLabel htmlFor="gw-door-box">{THE_DOOR_SIGNED_IN.question}</FieldLabel>}
+          <TextArea
+            id="gw-door-box"
+            rows={3}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+            placeholder={words.placeholder}
+            aria-label={signedIn ? undefined : words.heading}
+          />
+          {!signedIn && (
+            <QuickReplies items={[...THE_EXAMPLES]} onPick={setText} label="Examples" />
+          )}
+          <Button onClick={send} disabled={!text.trim()}>{words.button}</Button>
+        </Stack>
+      </Panel>
+      <p className="gwui-door-rather">
         {RATHER_PICK.before}{' '}
-        <button
-          type="button"
-          onClick={onSeeEverySituation}
-          style={{ background: 'none', border: 0, padding: 0, font: 'inherit', color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
-        >
+        <button type="button" onClick={onSeeEverySituation} className="gwui-plain-link">
           {RATHER_PICK.link}
         </button>
         .
