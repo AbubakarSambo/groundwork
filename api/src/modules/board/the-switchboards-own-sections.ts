@@ -242,6 +242,18 @@ export interface ARisk {
 
 const MOST_RISKS = 10;
 
+/** When a wait was first said, what was tried, and the time given, in full sentences. */
+function theFactsOfAWait(d: AHandoff, who: string): string {
+  const since = day(d.createdAt);
+  const facts: string[] = [];
+  if (since) facts.push(`It was first said on ${saidAsDate(since)}.`);
+  facts.push(whatWasTriedSaid(d, who) ?? 'Nobody has said what has been tried.');
+  facts.push(theTimeGivenSaid(d, who) ?? 'No time has been given for it.');
+  return facts.join(' ');
+}
+
+const isOpen = (d: AHandoff) => String(d.status).toUpperCase() !== 'CLEARED' && !d.clearedAt;
+
 export function theRisks(
   commitments: ACommitment[],
   handoffs: AHandoff[],
@@ -262,12 +274,7 @@ export function theRisks(
     const says = blocking
       ? (on ? `${who} cannot move on ${what} until it comes from ${on}.` : `${who} cannot move on ${what}, and nobody has been named to provide it.`)
       : (on ? `${who} ${isAre(who)} waiting on ${on} for ${what}.` : `${who} ${isAre(who)} waiting for ${what}, and nobody has been named to provide it.`);
-    const since = day(d.createdAt);
-    const facts: string[] = [];
-    if (since) facts.push(`It was first said on ${saidAsDate(since)}.`);
-    facts.push(whatWasTriedSaid(d, who) ?? 'Nobody has said what has been tried.');
-    facts.push(theTimeGivenSaid(d, who) ?? 'No time has been given for it.');
-    out.push({ id: `handoff-${d.id}`, says, because: facts.join(' ') });
+    out.push({ id: `handoff-${d.id}`, says, because: theFactsOfAWait(d, who) });
   }
 
   /* 2. Commitments still open with no time, and ones said again and again and still open. */
@@ -548,4 +555,86 @@ export function theBusyOrMoving(
     eachPerson,
     cannotTellYou: 'These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that.',
   };
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * LEAD ACTIONS: what the person who runs the check-in needs to do, from the record
+ * ---------------------------------------------------------------------------------------------- */
+
+export interface ALeadAction {
+  id: string;
+  /** What the lead needs to do, as a full sentence. To the lead, "You"; to anybody else who runs it, the lead's name. */
+  says: string;
+  /** The facts it rests on, in full sentences, or null when the sentence above already says them. */
+  because: string | null;
+}
+
+const MOST_LEAD_ACTIONS = 10;
+
+/**
+ * Only for whoever runs the check-in. A participant never reads the lead's own list (decision 6 and
+ * CLAUDE.md: a participant never reads the lead's judgement), and an admin with no access reads nothing.
+ * A goal the lead set and has not told the person about is the lead's own private note (decision 56), so
+ * it reaches the lead alone: `untoldGoals` is empty for anybody else.
+ */
+export function theLeadActions(
+  commitments: ACommitment[],
+  handoffs: AHandoff[],
+  sessions: ASession[],
+  untoldGoals: { participantId: string }[],
+  r: WhoIsReading,
+): ALeadAction[] {
+  if (!r.mayReadEveryone || !r.theLeadsId) return [];
+  const lead = whoIs(r, r.theLeadsId);
+  const needs = lead === 'You' ? 'You need' : `${lead} needs`;
+  const leadInASentence = midSentence(lead);
+  const out: ALeadAction[] = [];
+
+  /* 1. Somebody is waiting on the lead. */
+  for (const d of handoffs) {
+    if (!isOpen(d) || d.onParticipantId !== r.theLeadsId || d.fromParticipantId === r.theLeadsId) continue;
+    if (!r.handoffMayBeRead(d)) continue;
+    const who = whoIs(r, d.fromParticipantId);
+    out.push({
+      id: `waiting-on-the-lead-${d.id}`,
+      says: `${needs} to get back to ${midSentence(who)}, who ${isAre(who)} waiting on ${leadInASentence} for ${inASentence(d.what)}.`,
+      because: theFactsOfAWait(d, who),
+    });
+  }
+
+  /* 2. Somebody is waiting and nobody has been named to provide it. */
+  for (const d of handoffs) {
+    if (!isOpen(d) || d.onParticipantId || d.onLabel?.trim()) continue;
+    if (!r.handoffMayBeRead(d)) continue;
+    const who = whoIs(r, d.fromParticipantId);
+    const what = inASentence(d.what);
+    out.push({
+      id: `nobody-named-${d.id}`,
+      says: d.fromParticipantId === r.theLeadsId
+        ? `${needs} to find out who can provide ${what}, because nobody has been named yet.`
+        : `${needs} to find out who can provide ${what} ${midSentence(who)} ${isAre(who)} waiting for, because nobody has been named yet.`,
+      because: theFactsOfAWait(d, who),
+    });
+  }
+
+  /* 3. A goal the lead set for somebody and has not told them about (decision 56, items 1 and 3). */
+  const toldOf = new Set<string>();
+  for (const g of untoldGoals) {
+    if (!g.participantId || toldOf.has(g.participantId) || !r.personMayBeRead(g.participantId)) continue;
+    toldOf.add(g.participantId);
+    const who = r.nameOf(g.participantId) ?? r.aColleague(g.participantId);
+    out.push({
+      id: `tell-${g.participantId}`,
+      says: `${needs} to talk ${who} through a goal ${leadInASentence} set for this work, because ${who} has not been told about it yet.`,
+      because: 'The goal still counts, and Groundwork will not tell its number until it has been talked through.',
+    });
+  }
+
+  /* 4. What the lead committed to and nobody has said happened, in the sentence the work plan and the report write for it. */
+  for (const row of theWorkPlan(commitments.filter((c) => c.participantId === r.theLeadsId), sessions, r)) {
+    if (row.state !== 'open') continue;
+    out.push({ id: `own-${row.id}`, says: row.says, because: null });
+  }
+
+  return out.slice(0, MOST_LEAD_ACTIONS);
 }

@@ -681,6 +681,27 @@ For the screens. Thirteen of the 22 needed no new field, and are in the table ab
 
 Left, and why. Forecast: the record holds no projected figure, so nothing is served (the work-record section still says "not known" for sales org and MarketView Q4). Where the time went: the record does not hold how anybody's time was spent, so nothing is served. Contradictions inside one person's own answers across sessions, and a contract's own clauses for Obligations: not in the record, not served. `overTime` is still served to the lead only, so the lead's Commitments followed over time, Actions and their results and Requirements review read from it; the other readers get their own commitments in `workPlan`.
 
+### The rest of the switchboard's sections (request 70, second pass, 1 October)
+
+Each section below is a new top-level field on `GET /grounds/:id/board`, built the same way as the seven above: from rows the record already holds, with no model and nothing written, so opening the board never changes it, and absent (never an empty list) when there is nothing in it. The readers are the same as above unless a section says otherwise.
+
+#### Lead actions: `leadActions`
+
+`[{ id, says, because }]`, at most 10. What the person who runs the check-in needs to do, from the record: somebody waiting on the lead, a wait nobody was named to provide, a goal the lead set for somebody and has not told them about (decision 56), and what the lead committed to that nobody has said happened. `because` is the facts behind it, or null when `says` already holds them.
+
+Who reads it. Whoever runs the check-in: the lead reads "You"; the admin who set it up, and an admin of the organisation on a check-in that is not an evaluation, read the lead's name. The untold goal is the lead's own private note, so only the lead reads that line, and never the goal's words or number. A participant, and the person reviewed on an evaluation check-in, read no lead actions at all. An admin with no access to an evaluation check-in reads no board.
+
+What Bisi (the lead, sales run) reads:
+
+- "You need to get back to Kwame Mensah, who is waiting on you for the approval of five applications." because: "It was first said on 16 September. Nobody has said what has been tried. No time has been given for it."
+- "You need to find out who can provide the bank statements Femi Okonkwo is waiting for, because nobody has been named yet."
+- "You need to talk Kwame Mensah through a goal you set for this work, because Kwame Mensah has not been told about it yet." because: "The goal still counts, and Groundwork will not tell its number until it has been talked through."
+- "In session 2, you said, "I'll follow up directly with the committee members." Nobody has said yet whether it happened."
+
+What an admin who reads it reads: "Bisi Adeyemi needs to get back to Kwame Mensah, who is waiting on Bisi Adeyemi for the approval of five applications."
+
+Test: `lead-actions-on-the-board-as-each-reader-reads-them.spec.ts`.
+
 ## Week 11: the ending page's suggestion, signals and questions, and reviews that fall due from inside the product
 
 ### The ending page (`GET /grounds/:groundId/resolution`)
