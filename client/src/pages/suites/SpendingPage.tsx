@@ -1,19 +1,24 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { spendApi, type SpendBoard, type SpendWaiting } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Button } from '@/components/gw/kit'
+import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, Select, TextField } from '@/components/gw/ui'
 
 /**
- * SPENDING AND BUDGETS (E7, #/suite/spend, U.17). What each reader is given is the server's (GET
- * /suites/spend/board): an admin every request and budget, a lead only their own team's, and nobody
- * else. The wording is copied from docs/prototype/screens/E-suites/suite-spend.txt: "People ask to
- * spend by telling Groundwork. It checks the budget and the rules, then sends the request to the right
- * person.", "Waiting for a yes or no", "Kamau: KES 18,000 for fuel for Kisumu deliveries", "Operations
- * has KES 38,000 left this month. Kamau’s lead can approve this.", "This is over KES 20,000, so Grace
- * must approve it.", "Approve", "Decline", "Each team’s budget this month", "Team", "Budget", "Spent so
- * far", "Left" and "Spending comes from the requests people make here."
+ * SPENDING AND BUDGETS (E7, #/suite/spend, group 2 piece 4). What each reader is given is the server's
+ * (GET /suites/spend/board): an admin every request and budget, a lead only their own team's, and
+ * nobody else. The wording is copied from docs/prototype/screens/E-suites/suite-spend.txt: "People ask
+ * to spend by telling Groundwork. It checks the budget and the rules, then sends the request to the
+ * right person.", "Waiting for a yes or no", "Kamau: KES 18,000 for fuel for Kisumu deliveries",
+ * "Operations has KES 38,000 left this month. Kamau’s lead can approve this.", "This is over KES
+ * 20,000, so Grace must approve it.", "Approve", "Decline", "Each team’s budget this month", "Team",
+ * "Budget", "Spent so far", "Left" and "Spending comes from the requests people make here."
+ *
+ * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (crumbs, subtitle), `Section` for "Waiting for a
+ * yes or no", "Each team's budget this month" and "Set a team's budget for this month",
+ * `RowList`/`Row` for the requests, `.gwui-record-table` for the budgets table,
+ * `FieldLabel`/`Select`/`TextField` for setting a budget, `Button` for Approve/Decline/Save, and
+ * `Note`/`Empty` for loading, error and empty states.
  *
  * LEFT OUT (item 28): "Once your accounting tool is connected under Connections, the real figures are
  * shown instead.", because no accounting tool can be connected yet; and "How people use it", because
@@ -55,18 +60,20 @@ export function SpendingPage() {
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
 
   return (
-    <div className="gw-you gw-suites">
-      <nav className="gw-people-crumb" aria-label="Breadcrumb"><Link to="/settings/suites">Suites</Link> / Spending and budgets</nav>
-      <h1 className="gw-t-title gw-suites-h1">Spending and budgets</h1>
-      <p className="gw-you-sub">People ask to spend by telling Groundwork. It checks the budget and the rules, then sends the request to the right person.</p>
+    <Page>
+      <PageTitle
+        crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Spending and budgets' }]}
+        title="Spending and budgets"
+        subtitle="People ask to spend by telling Groundwork. It checks the budget and the rules, then sends the request to the right person."
+      />
 
-      {isLoading && <p className="gw-t-body gw-you-quiet">Loading…</p>}
+      {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <p role="alert" className="gw-t-body">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</p>
+          <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</Note>
         ) : (
-          <div role="alert" className="gw-you-quiet">
-            <p className="gw-t-body">The board did not load.</p>
+          <div>
+            <Note tone="error">The board did not load.</Note>
             <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
           </div>
         )
@@ -74,20 +81,22 @@ export function SpendingPage() {
 
       {data && (
         <>
-          <section className="gw-suites-group" aria-labelledby="spend-waiting">
-            <h2 id="spend-waiting" className="gw-t-h2">Waiting for a yes or no</h2>
+          <Section heading="Waiting for a yes or no">
             {data.waiting.length === 0
-              ? <p className="gw-t-body gw-you-quiet">Nothing is waiting for a yes or no.</p>
-              : <ul className="gw-leave-list">{data.waiting.map(w => <ARequest key={w.id} w={w} board={data} />)}</ul>}
-          </section>
-
-          <section className="gw-suites-group" aria-labelledby="spend-budgets">
-            <h2 id="spend-budgets" className="gw-t-h2">Each team’s budget this month</h2>
-            {data.budgets.length === 0
-              ? <p className="gw-t-body gw-you-quiet">No budget is set for this month.</p>
+              ? <Empty>Nothing is waiting for a yes or no.</Empty>
               : (
-                <div className="gw-you-card gw-time-table-wrap">
-                  <table className="gw-suite-table">
+                <RowList label="Waiting for a yes or no">
+                  {data.waiting.map(w => <ARequest key={w.id} w={w} board={data} />)}
+                </RowList>
+              )}
+          </Section>
+
+          <Section heading="Each team’s budget this month">
+            {data.budgets.length === 0
+              ? <Empty>No budget is set for this month.</Empty>
+              : (
+                <Panel>
+                  <table className="gwui-record-table">
                     <thead>
                       <tr><th scope="col">Team</th><th scope="col">Budget</th><th scope="col">Spent so far</th><th scope="col">Left</th></tr>
                     </thead>
@@ -102,15 +111,15 @@ export function SpendingPage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </Panel>
               )}
-            <p className="gw-you-quiet">Spending comes from the requests people make here.</p>
-          </section>
+            <p className="gwui-panel-text-muted">Spending comes from the requests people make here.</p>
+          </Section>
 
           {data.teams.length > 0 && <SetABudget teams={data.teams} />}
         </>
       )}
-    </div>
+    </Page>
   )
 }
 
@@ -124,21 +133,21 @@ function ARequest({ w, board }: { w: SpendWaiting; board: SpendBoard }) {
   })
   const title = `${w.firstName}: ${withCurrency(board.currency, w.amount)} for ${w.what}`
   return (
-    <li className="gw-leave-row">
+    <Row columns="minmax(0, 1fr) auto">
       <div>
         <b>{title}</b>
-        <p>{whatToKnow(w, board.currency, board.limit)}</p>
-        {problem && <p className="gw-auth-error" role="alert">{problem}</p>}
+        <p className="gwui-panel-text">{whatToKnow(w, board.currency, board.limit)}</p>
+        {problem && <Note tone="error">{problem}</Note>}
       </div>
       {w.mayDecide && (
-        <div className="gw-leave-acts">
+        <div className="gwui-edge-acts">
           <Button kind="secondary" size="small" onClick={() => decide.mutate('approve')} disabled={decide.isPending}
             aria-label={`Approve ${w.firstName}’s request`}>Approve</Button>
           <Button kind="quiet" size="small" onClick={() => decide.mutate('decline')} disabled={decide.isPending}
             aria-label={`Decline ${w.firstName}’s request`}>Decline</Button>
         </div>
       )}
-    </li>
+    </Row>
   )
 }
 
@@ -154,23 +163,24 @@ function SetABudget({ teams }: { teams: string[] }) {
   })
   const ok = !!team && amount.trim() !== '' && Number.isFinite(Number(amount)) && Number(amount) >= 0
   return (
-    <section className="gw-suites-group gw-you-card" aria-labelledby="spend-set">
-      <h2 id="spend-set" className="gw-t-h3">Set a team’s budget for this month</h2>
-      <form className="gw-suite-ask" onSubmit={e => { e.preventDefault(); if (ok) save.mutate() }}>
-        <div className="gw-suite-q">
-          <label htmlFor="spend-team">Team</label>
-          <select id="spend-team" value={team} onChange={e => setTeam(e.target.value)}>
-            <option value="">Choose a team</option>
-            {teams.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-        <div className="gw-suite-q">
-          <label htmlFor="spend-amount">Budget</label>
-          <input id="spend-amount" type="number" min={0} inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} />
-        </div>
-        <div><Button type="submit" size="small" disabled={!ok || save.isPending}>Save</Button></div>
-        {problem && <p className="gw-auth-error" role="alert">{problem}</p>}
-      </form>
-    </section>
+    <Section heading="Set a team’s budget for this month">
+      <Panel>
+        <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); if (ok) save.mutate() }}>
+          <div className="gwui-suite-q">
+            <FieldLabel htmlFor="spend-team">Team</FieldLabel>
+            <Select id="spend-team" value={team} onChange={e => setTeam(e.target.value)}>
+              <option value="">Choose a team</option>
+              {teams.map(t => <option key={t} value={t}>{t}</option>)}
+            </Select>
+          </div>
+          <div className="gwui-suite-q">
+            <FieldLabel htmlFor="spend-amount">Budget</FieldLabel>
+            <TextField id="spend-amount" type="number" min={0} inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} />
+          </div>
+          <div><Button type="submit" size="small" disabled={!ok || save.isPending}>Save</Button></div>
+          {problem && <Note tone="error">{problem}</Note>}
+        </form>
+      </Panel>
+    </Section>
   )
 }
