@@ -55,6 +55,11 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    the cascade and cancel the gap - live on the expired-link page, whose foot line touched the
    button above it. */
 .gwui-page-wrap.gwui-page-wrap > * + *, .gwui-page-narrow.gwui-page-narrow > * + * { margin-top: 30px; }
+/* THE WHITE CARD BEHIND SIGN-UP AND THE OTHER NARROW ACCOUNT SCREENS (group 3 review, batch B;
+   signup.jpg, verify-expired.jpg): `AuthCard` (auth-kit.tsx) now wraps its mark, heading and form
+   in a `Panel`, one level deeper inside `Page narrow` than before - this gives that panel's own
+   direct children the same 30px rhythm the rule above gives a bare `Page narrow`. */
+.gwui-auth-card.gwui-auth-card > * + * { margin-top: 30px; }
 @media (max-width: 860px) {
   .gwui-page-main { padding: 20px 18px 100px; }
 }

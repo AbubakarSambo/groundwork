@@ -16,6 +16,18 @@ describe('AuthCard and AuthSplit', () => {
     expect(screen.getByText('We will email you a link.')).toBeTruthy()
   })
 
+  /*
+   * GROUP 3 REVIEW, BATCH B: signup.jpg and verify-expired.jpg both draw a white card (app.css's
+   * `.panel`) behind the mark, heading and form - this used to sit loose on the cream page.
+   */
+  it('draws its content inside the shared white panel, as the prototype does', () => {
+    render(<AuthCard title="That link has expired" sub="Nothing is lost; ask for a fresh one." />)
+    const heading = screen.getByRole('heading', { level: 1, name: 'That link has expired' })
+    const panel = heading.closest('.gwui-panel')
+    expect(panel).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Groundwork' }).closest('.gwui-panel')).toBe(panel)
+  })
+
   it('the split screen carries the prototype\'s panel, word for word', () => {
     render(<AuthSplit title="Sign in" />)
     expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeTruthy()

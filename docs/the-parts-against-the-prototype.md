@@ -310,3 +310,9 @@ check"/"What we read from it" labels, the "photo" tag, the visibility pill) now 
 above, per the floor every rebuilt page keeps. `.gwui-line-row` is written up here because it was
 added for the lines under "What people are down as doing" and "Strategy, notes and how we work" in
 this same piece's next commit - see that commit for where it is actually drawn from.
+
+## Group 3 review, batch B (1 October): a small part added
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| `.gwui-auth-card` | spacing between a narrow account screen's mark, heading and form | `Page narrow`'s own `.gwui-page-narrow > * + * { margin-top: 30px }` (gw-ui.css), for a `Page narrow`'s direct children | the same 30px, moved one level deeper: `AuthCard` (auth-kit.tsx) now wraps its mark, heading and form in the shared `Panel` - the white card signup.jpg and verify-expired.jpg both draw and `AuthCard` had been missing entirely - so those three are no longer `Page narrow`'s own direct children, and need the same rhythm restated on the panel that now holds them |

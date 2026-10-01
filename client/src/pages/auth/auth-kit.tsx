@@ -1,7 +1,7 @@
 import { useId } from 'react'
 import type { ReactNode } from 'react'
 import {
-  Mark, Page, PageTitle, FieldLabel, TextField, Note,
+  Mark, Page, Panel, PageTitle, FieldLabel, TextField, Note,
   PasswordField as SharedPasswordField, SplitPage, SplitPanelLine, SplitPanelList,
 } from '@/components/gw/ui'
 import { todaysPasswordRules } from './password-rules'
@@ -31,8 +31,15 @@ export function AuthBrand() {
 }
 
 /**
- * A narrow column in the middle of the cream page: forgot, reset, choose a password, check your
+ * A white card in the middle of the cream page: forgot, reset, choose a password, check your
  * email, Google did not finish, signed out, create an account.
+ *
+ * GROUP 3 REVIEW, BATCH B: signup.jpg and verify-expired.jpg both draw this column inside a white
+ * card with a rule and rounded corners (app.css's `.panel`) - this used to be `Page narrow` with
+ * nothing else, so every one of these screens sat directly on the cream page. The shared `Panel`
+ * draws that same card; `.gwui-auth-card` restores the 30px rhythm `Page narrow`'s own direct
+ * children get (gw-ui.css), now that the mark, heading and form are nested one level deeper,
+ * inside the panel rather than directly inside the page.
  */
 export function AuthCard({ title, sub, children }: {
   title: string
@@ -41,9 +48,11 @@ export function AuthCard({ title, sub, children }: {
 }) {
   return (
     <Page narrow>
-      <Mark />
-      <PageTitle title={title} subtitle={sub} />
-      {children}
+      <Panel className="gwui-auth-card">
+        <Mark />
+        <PageTitle title={title} subtitle={sub} />
+        {children}
+      </Panel>
     </Page>
   )
 }
