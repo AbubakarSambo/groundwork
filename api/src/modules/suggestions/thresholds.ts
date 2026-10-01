@@ -4,8 +4,8 @@ import { VERDICTS, type Verdict } from './a-suggestion-told-like-a-signal';
  * THE THRESHOLDS FOR A SUGGESTION (decision 33, and decision 53's "Week 10 is built the more
  * private way"). Decision 33: "the thresholds for verdicts are decided later, when that work
  * starts." Week 10 is that work, so it is built so that a suggestion can be reached only once a
- * threshold for that verdict is set, and no threshold is set by default - the settings row starts
- * empty, and stays empty until Hafsah sets one.
+ * threshold for that verdict is set. Decision 61 set the first one, for extra support, from the
+ * start: see DEFAULT_SUGGESTION_THRESHOLDS and thresholdsInForce below.
  *
  * One row, in `platform_settings` beside the free-ground limit and the WhatsApp toggle
  * (billing/pricing.service.ts, whatsapp/whatsapp.service.ts): this is a platform-wide setting, not
@@ -83,6 +83,17 @@ export function readSuggestionThresholds(stored: unknown): SuggestionThresholds 
     if (isAThreshold(t)) out[verdict] = { keptBelow: t.keptBelow, overPeriods: t.overPeriods };
   }
   return out;
+}
+
+/**
+ * THE THRESHOLDS IN FORCE, FROM THE STORED ROW (decision 61). One rule for every reader of the row, so
+ * the admin page and the engine can never disagree: a database with no row at all has decision 61's
+ * first threshold (the migration writes the same value), and a row that exists - even one an admin
+ * emptied - is read exactly as stored. Before this, the admin page showed decision 61's values on a
+ * database with no row while the engine read `{}` there and reached nothing for anybody.
+ */
+export function thresholdsInForce(row: { value: unknown } | null | undefined): SuggestionThresholds {
+  return row ? readSuggestionThresholds(row.value) : DEFAULT_SUGGESTION_THRESHOLDS;
 }
 
 /** The threshold for one verdict, or null when none is set - the only case a suggestion is not reached from a plain "no threshold" reading. */

@@ -101,6 +101,7 @@ function world(opts: { scenario?: GroundScenario; decided?: boolean; createdByUs
 async function withASuggestion(w: ReturnType<typeof world>, decided = false) {
   const made = aSuggestionFromTheRecord('g1', {
     aboutParticipantId: 'p-kwame', aboutLabel: labelsForParties(participants as any).get('p-kwame')!,
+    leadLabel: labelsForParties(participants as any).get('p-wairimu')!,
     commitmentsSettledRecently: { kept: 2, of: 8 }, ownWords: 'Onboarding stock took three weeks.',
   }, DEFAULT_SUGGESTION_THRESHOLDS)!;
   expect(made).not.toBeNull();
@@ -123,8 +124,8 @@ describe('Wairimu, who runs the check-in, reads the suggestion, the signals and 
     expect(page.suggestions).toHaveLength(1);
     const s = page.suggestions[0];
     expect(s.headline).toBe('Groundwork suggests extra support for Kwame');
-    expect(s.why).toBe('Commitments have been kept less often than Groundwork looks for, over several check-ins.');
-    expect(s.whatWouldChangeIt).toBe('Keeping more of what is agreed, over the next few check-ins.');
+    expect(s.why).toBe('In the last four weeks, Kwame has kept fewer of the commitments made in this check-in than Groundwork looks for.');
+    expect(s.whatWouldChangeIt).toBe('If Kwame keeps more of the commitments made in this check-in over the next four weeks.');
     expect(s.theirOwnAnswer).toBe('Onboarding stock took three weeks.');
     expect(s.otherChoices).toEqual(['Keep things as they are', 'Talk it through with Kwame before deciding']);
     /* decision 53: no count for the lead, anywhere in what the page hands her. */
@@ -184,9 +185,9 @@ describe('Kwame, the person it is about, reads his own facts and the decision wi
     expect(page.questions).toEqual([]);
     expect(page.aboutYou).toHaveLength(1);
     expect(page.aboutYou[0].facts).toBe(
-      'In the last few check-ins, you kept 2 of 8 commitments. That is 25 in 100. When fewer are kept than Groundwork looks for, Groundwork suggests extra support to your lead.',
+      'In the last four weeks, you kept two of your eight commitments in this check-in. When fewer than half are kept, Groundwork suggests extra help to Wairimu.',
     );
-    expect(page.aboutYou[0].whatWouldChangeIt).toBe('Keeping more of what you agree to, over the next few check-ins.');
+    expect(page.aboutYou[0].whatWouldChangeIt).toBe('Keeping at least half of your commitments in this check-in over the next four weeks.');
     expect(page.aboutYou[0].decision).toBeNull();
     expect(served(page)).not.toMatch(/Groundwork suggests extra support for/);
     expect(served(page)).not.toMatch(LABELS);

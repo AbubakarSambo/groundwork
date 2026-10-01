@@ -1,6 +1,7 @@
 import { aSuggestionFromTheRecord } from './a-suggestion-reached-from-the-record';
 import { A_LABEL_ON_A_PERSON } from './a-suggestion-told-like-a-signal';
 import { DEFAULT_SUGGESTION_THRESHOLDS } from './thresholds';
+import { aShareInWords } from './a-suggestion-reached-from-the-record';
 
 /**
  * REACHING A SUGGESTION FROM THE RECORD (week 10). No threshold, no suggestion (decision 33). A
@@ -50,8 +51,8 @@ describe('aSuggestionFromTheRecord', () => {
     expect(s.headline).toBe('Groundwork suggests extra support for Tobi X');
     expect(s.theirOwnAnswer).toBe('Most of my time has gone on the new customer records.');
 
-    /* The count stays the person's alone (decision 24 / week 9). */
-    expect(s.factsForThem).toContain('kept 2 of 8');
+    /* The count stays the person's alone (decision 24 / week 9), in the You board's own words. */
+    expect(s.factsForThem).toContain('you kept two of your eight commitments in this check-in.');
 
     /* No count reaches what the lead would be given: no fraction, no "of", no digits at all. */
     for (const field of [s.headline, s.why, s.whatWouldChangeIt, s.ifYouAgree, ...(s.otherChoices ?? [])]) {
@@ -101,5 +102,44 @@ describe('decision 61: the first threshold, applied as the default actually read
     for (const field of [s.headline, s.why, s.whatWouldChangeIt, s.ifYouAgree, ...(s.otherChoices ?? [])]) {
       expect(field).not.toMatch(/\d/);
     }
+  });
+});
+
+/**
+ * WHAT EACH READER READS, AS FULL SENTENCES, at decision 61's threshold (1 October). The person's
+ * facts used to read "In the last few check-ins, you kept 2 of 8 commitments. That is 25 in 100.
+ * When fewer are kept than Groundwork looks for, Groundwork suggests extra support to your lead.":
+ * "few check-ins" for a count that is four weeks, a share nobody asked for, and no line said. The
+ * lead's why named nobody ("Commitments have been kept less often..."). Both now follow the
+ * prototype's "Where you stand" (C3 what-daniel-sees.txt) and Daniel's board (suggestion-daniel.txt).
+ */
+describe('the sentences each reader is given, in the prototype\'s words', () => {
+  const s = aSuggestionFromTheRecord('g-1', record({ leadLabel: 'Wairimu X', commitmentsSettledRecently: { kept: 2, of: 8 } }), DEFAULT_SUGGESTION_THRESHOLDS)!;
+
+  it('the person reads their count, the line, and who it is suggested to, by name', () => {
+    expect(s.factsForThem).toBe('In the last four weeks, you kept two of your eight commitments in this check-in. When fewer than half are kept, Groundwork suggests extra help to Wairimu X.');
+    expect(s.whatWouldChangeItForThem).toBe('Keeping at least half of your commitments in this check-in over the next four weeks.');
+  });
+
+  it('the lead reads what happened, by name, with no count and no number', () => {
+    expect(s.headline).toBe('Groundwork suggests extra support for Tobi X');
+    expect(s.why).toBe('In the last four weeks, Tobi X has kept fewer of the commitments made in this check-in than Groundwork looks for.');
+    expect(s.whatWouldChangeIt).toBe('If Tobi X keeps more of the commitments made in this check-in over the next four weeks.');
+    expect(s.ifYouAgree).toBe('Extra support for Tobi X over the next four weeks, agreed with Tobi X.');
+    expect(s.otherChoices).toEqual(['Keep things as they are', 'Talk it through with Tobi X before deciding']);
+  });
+
+  it('past ten, the count is in figures, as the You board says it', () => {
+    const big = aSuggestionFromTheRecord('g-1', record({ leadLabel: 'Wairimu X', commitmentsSettledRecently: { kept: 5, of: 12 } }), DEFAULT_SUGGESTION_THRESHOLDS)!;
+    expect(big.factsForThem).toBe('In the last 4 weeks, you kept 5 of your 12 commitments in this check-in. When fewer than half are kept, Groundwork suggests extra help to Wairimu X.');
+  });
+
+  it('with nobody named to suggest it to, the person is told who in words', () => {
+    const noLead = aSuggestionFromTheRecord('g-1', record({ commitmentsSettledRecently: { kept: 2, of: 8 } }), DEFAULT_SUGGESTION_THRESHOLDS)!;
+    expect(noLead.factsForThem).toMatch(/Groundwork suggests extra help to the person who runs this check-in\.$/);
+  });
+
+  it.each([[0.5, 'half'], [0.6, 'six in ten'], [0.8, 'eight in ten'], [0.45, '45 in 100']])('a line of %s is said as "%s"', (f, says) => {
+    expect(aShareInWords(f as number)).toBe(says);
   });
 });

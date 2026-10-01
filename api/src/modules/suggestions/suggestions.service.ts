@@ -18,7 +18,7 @@ import {
   type WhoIsWho,
 } from './a-suggestion-told-like-a-signal';
 import { aSuggestionFromTheRecord, type TheRecordForOnePerson } from './a-suggestion-reached-from-the-record';
-import { readSuggestionThresholds, SUGGESTION_THRESHOLDS_KEY, type SuggestionThresholds } from './thresholds';
+import { thresholdsInForce, SUGGESTION_THRESHOLDS_KEY, type SuggestionThresholds } from './thresholds';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const REFUSED = {
@@ -147,14 +147,14 @@ export class SuggestionsService {
   }
 
   /**
-   * The live thresholds (thresholds.ts), or nothing set (decision 33). Never throws: a missing or
-   * malformed row must mean "nothing set", never a made-up threshold that reaches a suggestion
-   * nobody asked for.
+   * The live thresholds (thresholds.ts, thresholdsInForce): decision 61's first threshold where no row
+   * exists, the row exactly as stored where one does. Never throws: a malformed row, or a database
+   * that cannot be read, means "nothing set", never a made-up threshold.
    */
   async thresholds(): Promise<SuggestionThresholds> {
     try {
       const row = await this.prisma.platformSetting.findUnique({ where: { key: SUGGESTION_THRESHOLDS_KEY } });
-      return readSuggestionThresholds(row?.value);
+      return thresholdsInForce(row);
     } catch {
       return {};
     }

@@ -257,7 +257,7 @@ describe('What Groundwork noticed, written from the record when Wairimu says yes
       appealOutcome: null, appealReason: null, appealDecidedById: null, appealDecidedAt: null, createdAt: new Date('2026-09-01T00:00:00Z'),
     });
     const w1: any = await w.svc.one(w.as('u-wairimu'), w.id);
-    expect(w1.suggestion).toMatchObject({ headline: 'Groundwork suggests extra support for Kwame', why: 'Commitments have been kept less often than Groundwork looks for, over several check-ins.' });
+    expect(w1.suggestion).toMatchObject({ headline: 'Groundwork suggests extra support for Kwame', why: 'In the last four weeks, Kwame has kept fewer of the commitments made in this check-in than Groundwork looks for.' });
     expect(JSON.stringify(w1)).not.toMatch(/\d+ of \d+|\d+ in 100|\d+%/);
     expect((await w.svc.one(w.as('u-grace'), w.id) as any).suggestion).toBeNull();
     expect(JSON.stringify(await w.svc.one(w.as('u-kwame'), w.id))).not.toContain('Groundwork suggests');

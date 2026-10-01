@@ -19,8 +19,8 @@ import {
   CORRECTION_WINDOW_KEY, DEFAULT_CORRECTION_WINDOW_DAYS, MAX_CORRECTION_WINDOW_DAYS, isAWindow,
 } from '../conversation/the-window-for-correcting-a-record';
 import {
-  SUGGESTION_THRESHOLDS_KEY, DEFAULT_SUGGESTION_THRESHOLDS, SUGGESTION_THRESHOLD_LABELS, isValidSuggestionThresholds,
-  readSuggestionThresholds, type SuggestionThresholds,
+  SUGGESTION_THRESHOLDS_KEY, SUGGESTION_THRESHOLD_LABELS, isValidSuggestionThresholds,
+  thresholdsInForce, type SuggestionThresholds,
 } from '../suggestions/thresholds';
 
 @Injectable()
@@ -171,11 +171,12 @@ export class AdminService implements OnApplicationBootstrap {
    * sets from day one. The migration `20260930110000_the_first_threshold_for_extra_support` writes
    * the row so this should not happen in practice, but the read falls back properly too, only when
    * the row itself is missing - a row that exists, even empty, is something an admin set and is
-   * read exactly as stored, never overwritten by a default here.
+   * read exactly as stored, never overwritten by a default here. The rule is `thresholdsInForce`,
+   * the same one the engine reads with, so this page never shows a threshold the engine is not using.
    */
   async getSuggestionThresholds(): Promise<{ thresholds: SuggestionThresholds; labels: typeof SUGGESTION_THRESHOLD_LABELS }> {
     const row = await this.prisma.platformSetting.findUnique({ where: { key: SUGGESTION_THRESHOLDS_KEY } }).catch(() => null);
-    const thresholds = row ? readSuggestionThresholds(row.value) : DEFAULT_SUGGESTION_THRESHOLDS;
+    const thresholds = thresholdsInForce(row);
     return { thresholds, labels: SUGGESTION_THRESHOLD_LABELS };
   }
 

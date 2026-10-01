@@ -42,7 +42,7 @@ import { EmailService } from '../email/email.service';
 import { BillingService } from '../billing';
 import { UsageService } from '../usage/usage.service';
 import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dto';
-import { GroundworkEvents, GroundActivatedEvent } from '../../common';
+import { GroundworkEvents, GroundActivatedEvent, CommitmentsSettledEvent } from '../../common';
 import { createHash } from 'node:crypto';
 import { ContextItemKind, GroundScenario, GroundStatus, PartyType, CheckInStatus, Cadence, UsageEventType, TokenType, Prisma, GroundMoment, ContextNoteAudience, DocumentVisibility } from '@prisma/client';
 import { endStatesFor } from '../resolution/end-states';
@@ -4484,6 +4484,10 @@ export class GroundsService {
       select: { id: true, text: true, status: true, participantId: true },
     });
     this.logger.log(`Ground ${groundId}: somebody moved their own to-do to ${clean}.`);
+    /* Settled by hand is something new too (decision 7): what is counted from settled commitments reads it now. */
+    if (clean === 'DONE' || clean === 'NOT_DONE') {
+      this.events?.emit?.(GroundworkEvents.COMMITMENTS_SETTLED, { groundId, participantId: row.participantId } satisfies CommitmentsSettledEvent);
+    }
     return moved;
   }
 

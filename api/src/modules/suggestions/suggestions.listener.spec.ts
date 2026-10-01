@@ -70,10 +70,17 @@ function setup(opts: { thresholdRow?: any; kept?: number; notDone?: number }) {
 const event = { checkInId: 'c-1', groundId: 'g-tobi', participantId: 'p-tobi', sessionNumber: 1 } as any;
 
 describe('the listener runs when a round comes in, never when a page is opened', () => {
-  it('with no threshold set, nothing is written for anybody (decision 33)', async () => {
-    const { listener, suggestions } = setup({});
+  /* CHANGED 1 October: "no row" used to mean nothing set; decision 61 sets the first threshold from the start (see thresholdsInForce). */
+  it('with the threshold emptied by an admin, nothing is written for anybody (decision 33)', async () => {
+    const { listener, suggestions } = setup({ thresholdRow: { value: {} } });
     await listener.onCheckInCompleted(event);
     expect(suggestions).toHaveLength(0);
+  });
+
+  it('with no settings row at all, decision 61\'s threshold is the one in force', async () => {
+    const { listener, suggestions } = setup({ kept: 2, notDone: 6 });
+    await listener.onCheckInCompleted(event);
+    expect(suggestions).toHaveLength(1);
   });
 
   it('with a threshold set and crossed, one suggestion is written, about the person it crosses for', async () => {
@@ -105,9 +112,10 @@ describe('the listener runs when a round comes in, never when a page is opened',
   it('a failure for one person is caught and logged, and never rejects the event handler', async () => {
     const thresholdRow = { value: { support: { keptBelow: 0.6, overPeriods: 4 } } };
     const { listener, prisma, suggestions } = setup({ thresholdRow, kept: 2, notDone: 6 });
-    prisma.checkIn.findFirst = jest.fn(async () => { throw new Error('boom'); });
+    /* CHANGED 1 October: the last thing they typed is no longer read (see the listener), so the failure is the commitments lookup. */
+    prisma.groundCommitment.findMany = jest.fn(async () => { throw new Error('boom'); });
     await expect(listener.onCheckInCompleted(event)).resolves.toBeUndefined();
-    /* Reaching still runs for the person, own-words lookup failing is caught per-person, not fatal. */
+    /* The lookup failing is caught per person, not fatal. */
     expect(suggestions).toHaveLength(0);
   });
 });

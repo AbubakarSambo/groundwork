@@ -699,11 +699,12 @@ The read the ending page already makes now also carries `theEndingPage`. It is b
 What a lead reads, for a person the suggestion was reached for:
 
 - "Groundwork suggests extra support for Kwame"
-- Why: "Commitments have been kept less often than Groundwork looks for, over several check-ins."
-- What would change it: "Keeping more of what is agreed, over the next few check-ins."
+- Why: "In the last four weeks, Kwame has kept fewer of the commitments made in this check-in than Groundwork looks for."
+- What would change it: "If Kwame keeps more of the commitments made in this check-in over the next four weeks."
 - Questions: "Were Kwame's goals clear enough from the first day?" and "Is there something Kwame needed from you or from the team that has not been given yet?"
+- `theirOwnAnswer` is now always `null`: the lead reads the person's answer as `theirSide` (changed 1 October; it used to be the last thing they typed in a check-in, mostly a goodbye). Draw "Kwame's side" when there is one.
 
-What the person reads: "In the last few check-ins, you kept 2 of 8 commitments. That is 25 in 100. When fewer are kept than Groundwork looks for, Groundwork suggests extra support to your lead." and, once decided, the decision with its reasons.
+What the person reads: "In the last four weeks, you kept two of your eight commitments in this check-in. When fewer than half are kept, Groundwork suggests extra help to Wairimu." and "What would change this: Keeping at least half of your commitments in this check-in over the next four weeks.", and, once decided, the decision with its reasons.
 
 Until the threshold in decision 61 is crossed (fewer than half kept, at least 6 settled), there is no suggestion, so `suggestions` and `aboutYou` are empty lists, and the page should draw nothing for them rather than a line saying nothing was found.
 
