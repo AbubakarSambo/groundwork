@@ -176,26 +176,38 @@ Why that is not enough to call any of them done:
 - **The engine has changed the board in four merges since,** and the boards have not been pictured again.
 - **New board fields from the engine are not drawn yet:** the two parts of "What keeps coming up", with the lead's "coach towards" and "one step" (request 82); who said each record (request 89); someone an admin did not let in (request 85); "in 1 session" (request 87); and the switchboard's 22 sections.
 
-| Kind of work | Status |
-| --- | --- |
-| Sales team (sales org) | Partly done. Rebuilt, reviewed, re-reviewed, and the final check was on this one. The new engine fields are not drawn yet. |
-| Engineering release | Partly done. Rebuilt and reviewed. Not re-checked since the engine's changes. |
-| Support desk | Partly done, the same. |
-| Distribution operations | Partly done, the same. |
-| Trader training programme | Partly done, the same. |
-| Founder's own check-in | Partly done, the same. |
-| Asset loans | Partly done, the same. |
-| Choosing where to focus next (MarketView where next) | Partly done, the same. |
-| Subscriptions and payments (MarketView Q4) | Partly done, the same. |
-| A law firm matter | Partly done, the same. |
-| A government programme | Partly done, the same. |
+**Updated after the board's review, 1 October, night: none of the eleven is done.** None matches its prototype example yet, as the lead or as a participant. The builder's own comparison said six matched, and the review found that wrong.
+
+| Kind of work | Lead | Participant |
+| --- | --- | --- |
+| Engineering release | Not done. Differs because of the screen: the prototype's headline question, "Where each target stands", "What needs you in this check-in", the record table's key and a blockers section are missing, and about 15 sections the prototype does not have come first. Also the engine: no "Next" or proof kind per row. | Not done. The full board, where the prototype shows a short personal view. Also the engine: no field for your own share. |
+| Founder's own check-in | Not done, the same, plus the wrong table heading and columns. | Cannot be compared: the test check-in has no participant. |
+| Distribution operations | Not done, the same. Also the engine: no "By site". | Not done, the same as engineering. |
+| Trader training programme | Not done, the same, and a heading differs. Also the engine: no "By county". | Not done, the same. |
+| Sales team | Not done, the same. Also the engine: no "By team" and no "reported against criteria met". | Not done. The prototype's participant board is this kind, so the gap shows most here. |
+| Support desk | Not done, the same. Also the engine: no "By queue". | Not done, the same. |
+| A government programme | Not done. Differs mainly because of what the engine sends: nothing for "What each level understood" or "The three counties". Also the screen: more buttons than the prototype. | Not done, the same. |
+| Asset loans | Not done. Mainly the engine: nothing for "Where the cohort stands". Also the screen. | Not done, the same. |
+| A law firm matter | Not done. Mainly the engine: nothing for "Where the matter stands", "What you need to decide" or "What changed this week". Also the screen. | Not done, the same. |
+| Choosing where to focus next | Not done. Mainly the engine: nothing for "By who they are". Also the screen. | Not done, the same. |
+| Subscriptions and payments | Not done. Mainly the engine: nothing for "What the systems show". The borrowed check-in is still about onboarding, so this is not a fair test of the kind yet. | Cannot be compared: Amani has not answered it. |
+
+What holds on every board:
+- **Privacy, from what the API sends each reader.** A participant gets no judgement, no coaching about others, no lead's actions or questions, only their own line in each person's part, and no one's ratings.
+- **Layout.** The page colour is right, and nothing scrolls sideways on a phone.
 
 **Next, straight after batch C:** the board for every kind of work.
 1. Draw the engine's new board fields.
 2. Picture all eleven kinds, as the lead and as a participant, at 1440 and 375, against their prototype examples.
 3. Review them and fix what is found, with the drift on the board's pages replaced by shared parts as for every group.
 
-It will take roughly six to eight hours of work: about two to three to draw the new fields, about one to picture and compare 44 screens, and two to four for the review and the fixes it finds.
+The first estimate was six to eight hours. After the review, the remaining work is larger:
+- the screen's own faults: the "Share it" offered to a participant, the broken sentences, the future dates and "the lead" for "you";
+- each prototype section whose data is already sent;
+- the participant's own short view;
+- the 638 one-off class uses on the board, and about 400 more in the board's parts.
+
+That is roughly eight to twelve more hours. The five kinds whose boards are of their own shape also wait on the engine (requests 105 and 107).
 
 ## In short, for the morning
 
