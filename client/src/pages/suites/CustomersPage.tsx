@@ -1,16 +1,19 @@
-import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { customersApi } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Button } from '@/components/gw/kit'
+import { Page, PageTitle, Panel, Button, Note, Empty } from '@/components/gw/ui'
 
 /**
- * CUSTOMERS AND DEALS (E9, #/suite/customers, U.17). What each reader is given is the server's (GET
- * /suites/customers/board): an admin every customer, a lead only those their team owns, and nobody
- * else. The wording is copied from docs/prototype/screens/E-suites/suite-customers.txt: "One list of
- * customers and deals for the whole company. The sales check-ins keep it up to date, so nobody has to
- * update it by hand.", "Customer", "Where it stands", "Who owns it" and "Last contact".
+ * CUSTOMERS AND DEALS (E9, #/suite/customers, group 2 piece 4). What each reader is given is the
+ * server's (GET /suites/customers/board): an admin every customer, a lead only those their team owns,
+ * and nobody else. The wording is copied from docs/prototype/screens/E-suites/suite-customers.txt:
+ * "One list of customers and deals for the whole company. The sales check-ins keep it up to date, so
+ * nobody has to update it by hand.", "Customer", "Where it stands", "Who owns it" and "Last contact".
+ *
+ * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (crumbs, subtitle), `Panel` with
+ * `.gwui-record-table`, and `Note`/`Empty` for loading, error and empty states. No new parts were
+ * needed.
  *
  * LEFT OUT (item 28): "Changing something here tells the person who owns the customer, in their next
  * check-in.", because nothing can be changed here: each customer is the organisation's own record, and
@@ -31,27 +34,29 @@ export function CustomersPage() {
   const refused = (error as { response?: { status?: number; data?: { message?: string } } } | null)?.response
 
   return (
-    <div className="gw-you gw-suites">
-      <nav className="gw-people-crumb" aria-label="Breadcrumb"><Link to="/settings/suites">Suites</Link> / Customers and deals</nav>
-      <h1 className="gw-t-title gw-suites-h1">Customers and deals</h1>
-      <p className="gw-you-sub">One list of customers and deals for the whole company. The sales check-ins keep it up to date, so nobody has to update it by hand.</p>
+    <Page>
+      <PageTitle
+        crumbs={[{ label: 'Suites', to: '/settings/suites' }, { label: 'Customers and deals' }]}
+        title="Customers and deals"
+        subtitle="One list of customers and deals for the whole company. The sales check-ins keep it up to date, so nobody has to update it by hand."
+      />
 
-      {isLoading && <p className="gw-t-body gw-you-quiet">Loading…</p>}
+      {isLoading && <Note>Loading…</Note>}
       {isError && (
         refused?.status === 403 || refused?.status === 404 ? (
-          <p role="alert" className="gw-t-body">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</p>
+          <Note tone="error">{refused.data?.message ?? 'Only an admin or a lead can open this board.'}</Note>
         ) : (
-          <div role="alert" className="gw-you-quiet">
-            <p className="gw-t-body">The board did not load.</p>
+          <div>
+            <Note tone="error">The board did not load.</Note>
             <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
           </div>
         )
       )}
 
-      {data && data.customers.length === 0 && <p className="gw-t-body gw-you-quiet">No customers are known yet.</p>}
+      {data && data.customers.length === 0 && <Empty>No customers are known yet.</Empty>}
       {data && data.customers.length > 0 && (
-        <div className="gw-you-card gw-time-table-wrap">
-          <table className="gw-suite-table">
+        <Panel>
+          <table className="gwui-record-table">
             <thead>
               <tr><th scope="col">Customer</th><th scope="col">Where it stands</th><th scope="col">Who owns it</th><th scope="col">Last contact</th></tr>
             </thead>
@@ -66,8 +71,8 @@ export function CustomersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Panel>
       )}
-    </div>
+    </Page>
   )
 }
