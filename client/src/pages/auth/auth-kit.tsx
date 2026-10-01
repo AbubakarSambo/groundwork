@@ -1,97 +1,80 @@
-import { useId, useState } from 'react'
-import { MARKETING_URL } from '@/lib/marketing'
+import { useId } from 'react'
+import type { ReactNode } from 'react'
+import {
+  Mark, Page, PageTitle, FieldLabel, TextField, Note,
+  PasswordField as SharedPasswordField, SplitPage, SplitPanelLine, SplitPanelList,
+} from '@/components/gw/ui'
 import { todaysPasswordRules } from './password-rules'
 
 /**
- * THE PARTS EVERY SIGN-IN SCREEN IS BUILT FROM (A2).
+ * THE PARTS EVERY SIGN-IN SCREEN IS BUILT FROM (A2) - REBUILT FROM `components/gw/ui` ONLY (group
+ * 3, piece 1, "signing in and joining").
  *
  * The prototype draws nine account screens, and eight of them are the same shape: the Groundwork
- * mark in the corner, a white card on the cream page, a Literata heading, one plain sentence under
- * it, and the fields. Sign-in is the ninth, and it is that card with a dark panel beside it.
+ * mark in the corner, a narrow column, a Literata heading, one plain sentence under it, and the
+ * fields - exactly the shape `Page narrow` / `Mark` / `PageTitle` already give the invitation and
+ * "Almost in". Sign-in is the ninth, and it is that same column with a dark panel beside it
+ * (`SplitPage`, added here because no earlier screen needed one).
  *
- * Built once here, from the U.1 look, so the screens cannot drift apart again the way the old
- * sign-in, "check your email" and "choose a password" pages did, each with its own header and its
- * own idea of a heading.
+ * This file keeps the names every other auth page already imports (`AuthCard`, `AuthSplit`,
+ * `AuthField`, `PasswordField`, `PasswordRules`, `PasswordStrength`, `AuthError`, `AuthNotice`,
+ * `GoogleMark`, `AuthBrand`) - only what each one is built from changed, so `AuthPage.tsx`,
+ * `LinkExpired.tsx`, `EmailConfirmed.tsx`, `LinkSentPanel.tsx`, `GoogleFailedPage.tsx`,
+ * `SignOutPage.tsx` and `ChoosePasswordPage.tsx` all draw the new parts without each having to be
+ * rewritten on its own.
  */
 
-/** The three bars, drawn in the text colour. The same mark as the sidebar's. */
-function Bars() {
-  return (
-    <svg width="22" height="17" viewBox="0 0 22 17" aria-hidden focusable="false">
-      <rect x="5" y="0" width="12" height="3" rx="1.5" fill="currentColor" opacity="0.45" />
-      <rect x="2" y="6" width="18" height="3" rx="1.5" fill="currentColor" opacity="0.72" />
-      <rect x="0" y="12" width="22" height="3" rx="1.5" fill="currentColor" />
-    </svg>
-  )
-}
-
-/** The mark and the name. It always goes back to the marketing site, as every Groundwork mark does. */
+/** The mark and the name, top-left of every account screen. `Arrival.tsx` still imports this by
+    name for the pages this task does not touch, so the export stays. */
 export function AuthBrand() {
-  return (
-    <a href={MARKETING_URL} className="gw-auth-brand">
-      <Bars />
-      <span>Groundwork</span>
-    </a>
-  )
-}
-
-/** The heading and the one sentence under it. */
-function AuthHead({ title, sub }: { title: string; sub?: React.ReactNode }) {
-  return (
-    <>
-      <h1 className="gw-auth-title">{title}</h1>
-      {sub && <p className="gw-auth-sub">{sub}</p>}
-    </>
-  )
+  return <Mark />
 }
 
 /**
- * A white card in the middle of the cream page: forgot, reset, choose a password, check your
- * email, Google did not finish, signed out.
+ * A narrow column in the middle of the cream page: forgot, reset, choose a password, check your
+ * email, Google did not finish, signed out, create an account.
  */
 export function AuthCard({ title, sub, children }: {
   title: string
-  sub?: React.ReactNode
-  children?: React.ReactNode
+  sub?: ReactNode
+  children?: ReactNode
 }) {
   return (
-    <div className="gw-auth-page">
-      <div className="gw-auth-card">
-        <AuthBrand />
-        <AuthHead title={title} sub={sub} />
-        {children}
-      </div>
-    </div>
+    <Page narrow>
+      <Mark />
+      <PageTitle title={title} subtitle={sub} />
+      {children}
+    </Page>
   )
 }
 
 /**
- * The sign-in screen's two halves: the form on the cream side, and the dark panel with the one line
- * about what Groundwork is. On a phone the panel goes, because the form is the only thing somebody
- * on that screen came to do.
+ * The sign-in screen's two halves: the form on the cream side, and the dark panel with the one
+ * line about what Groundwork is (`SplitPage`). On a phone the panel goes, because the form is the
+ * only thing somebody on that screen came to do.
  */
 export function AuthSplit({ title, sub, children }: {
   title: string
-  sub?: React.ReactNode
-  children?: React.ReactNode
+  sub?: ReactNode
+  children?: ReactNode
 }) {
   return (
-    <div className="gw-auth-split">
-      <section className="gw-auth-split-form">
-        <AuthBrand />
-        <div className="gw-auth-split-body">
-          <AuthHead title={title} sub={sub} />
-          {children}
-        </div>
-      </section>
-      <aside className="gw-auth-split-panel" aria-label="What Groundwork is">
-        <p className="gw-auth-panel-line">Short check-ins, and proof of what actually moved.</p>
-        <ul className="gw-auth-panel-list">
-          <li><span className="gw-auth-dot gw-auth-dot-said" aria-hidden />What people say, in their own words</li>
-          <li><span className="gw-auth-dot gw-auth-dot-proven" aria-hidden />What a photo, a payment or a document shows</li>
-        </ul>
-      </aside>
-    </div>
+    <SplitPage
+      panel={
+        <>
+          <SplitPanelLine>Short check-ins, and proof of what actually moved.</SplitPanelLine>
+          <SplitPanelList
+            items={[
+              { dot: 'said', text: 'What people say, in their own words' },
+              { dot: 'proven', text: 'What a photo, a payment or a document shows' },
+            ]}
+          />
+        </>
+      }
+    >
+      <PageTitle title={title} subtitle={sub} />
+      {children}
+    </SplitPage>
   )
 }
 
@@ -107,11 +90,10 @@ export function AuthField({ id, label, type = 'text', value, onChange, autoCompl
   autoFocus?: boolean
 }) {
   return (
-    <div className="gw-auth-fld">
-      <label className="gw-auth-label" htmlFor={id}>{label}</label>
-      <input
+    <FieldLabel htmlFor={id}>
+      {label}
+      <TextField
         id={id}
-        className="gw-auth-input"
         type={type}
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -119,59 +101,13 @@ export function AuthField({ id, label, type = 'text', value, onChange, autoCompl
         placeholder={placeholder}
         autoFocus={autoFocus}
       />
-    </div>
+    </FieldLabel>
   )
 }
 
-/**
- * A PASSWORD FIELD WITH "SHOW".
- *
- * The prototype puts "Show" inside every password box. Somebody typing on a phone cannot see what
- * their thumb hit, and a password that fails for a typo they could not see reads as the product
- * refusing them. The button is a real button, so the keyboard reaches it and a screen reader says
- * whether the password is showing.
- */
-export function PasswordField({ id, label, value, onChange, autoComplete, autoFocus, spokenAs }: {
-  id: string
-  label: string
-  /** What "Show the …" says aloud. Defaults to the label ("Show the new password"); a second box
-      says "the password you typed again", because "Show the type it again" is not a sentence. */
-  spokenAs?: string
-  value: string
-  onChange: (v: string) => void
-  autoComplete: 'current-password' | 'new-password'
-  autoFocus?: boolean
-}) {
-  const [shown, setShown] = useState(false)
-  return (
-    <div className="gw-auth-fld">
-      <label className="gw-auth-label" htmlFor={id}>{label}</label>
-      <span className="gw-auth-pw">
-        <input
-          id={id}
-          className="gw-auth-input"
-          type={shown ? 'text' : 'password'}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          autoComplete={autoComplete}
-          autoFocus={autoFocus}
-          autoCapitalize="off"
-          spellCheck={false}
-        />
-        <button
-          type="button"
-          className="gw-auth-show"
-          onClick={() => setShown(s => !s)}
-          aria-controls={id}
-          aria-pressed={shown}
-          aria-label={`${shown ? 'Hide' : 'Show'} the ${spokenAs ?? label.toLowerCase()}`}
-        >
-          {shown ? 'Hide' : 'Show'}
-        </button>
-      </span>
-    </div>
-  )
-}
+/** A password box with "Show" inside it. The shared part now lives in `components/gw/ui`
+    (`PasswordField.tsx`); kept under this name so every caller is unchanged. */
+export const PasswordField = SharedPasswordField
 
 /**
  * THE RULES A NEW PASSWORD HAS TO MEET, TICKED AS THEY ARE MET.
@@ -185,12 +121,12 @@ export function PasswordRules({ password, confirm, email }: { password: string; 
   const listId = useId()
   const rules = todaysPasswordRules(password, confirm, email)
   return (
-    <ul className="gw-auth-rules" id={listId} aria-label="What your password needs">
+    <ul className="gwui-rules" id={listId} aria-label="What your password needs">
       {rules.map(r => (
-        <li key={r.text} className={r.met ? 'met' : undefined}>
-          <span className="gw-auth-rule-mark" aria-hidden>{r.met ? '✓' : '○'}</span>
+        <li key={r.text} className={r.met ? 'gwui-rule-met' : undefined}>
+          <span aria-hidden>{r.met ? '✓' : '○'}</span>
           {/* Read aloud as "Met, at least 8 characters" or "Not met yet, at least 8 characters". */}
-          <span className="gw-sr-only">{r.met ? 'Met, ' : 'Not met yet, '}</span>
+          <span className="gwui-sr-only">{r.met ? 'Met, ' : 'Not met yet, '}</span>
           {r.text}
         </li>
       ))}
@@ -211,27 +147,32 @@ export function PasswordStrength({ password, email }: { password: string; email?
   const rules = todaysPasswordRules(password, undefined, email)
   const allMet = rules.every(r => r.met)
   return (
-    <div className="gw-auth-strength">
-      <div className="gw-auth-strength-bar" aria-hidden>
-        {rules.map(r => <span key={r.text} className={r.met ? 'on' : undefined} />)}
+    <div>
+      <div className="gwui-strength-bar" aria-hidden>
+        {rules.map(r => <span key={r.text} className={r.met ? 'gwui-strength-on' : undefined} />)}
       </div>
-      {allMet && <p className="gw-auth-strength-ok" role="status">Strong enough</p>}
+      {allMet && <p className="gwui-strength-ok" role="status">Strong enough</p>}
       <PasswordRules password={password} email={email} />
     </div>
   )
 }
 
 /** A line saying something went wrong, read out as soon as it appears. */
-export function AuthError({ children }: { children: React.ReactNode }) {
-  return <p className="gw-auth-error" role="alert">{children}</p>
+export function AuthError({ children }: { children: ReactNode }) {
+  return <Note tone="error">{children}</Note>
 }
 
-/** A calm notice: not an error, something the person should know. */
-export function AuthNotice({ title, children, role = 'status' }: { title?: string; children: React.ReactNode; role?: 'status' | 'alert' }) {
+/**
+ * A calm notice: not an error, something the person should know. The same amber tone as `Callout`
+ * (`tone="warning"`), but its own two lines rather than `Callout`'s single paragraph: a title of
+ * its own ("Check your email") above the sentence under it, the same shape the prototype's account
+ * screens draw this in.
+ */
+export function AuthNotice({ title, children, role = 'status' }: { title?: string; children: ReactNode; role?: 'status' | 'alert' }) {
   return (
-    <div className="gw-auth-notice" role={role}>
-      {title && <p className="gw-auth-notice-h">{title}</p>}
-      <p>{children}</p>
+    <div className="gwui-callout gwui-callout-warning" role={role}>
+      {title && <p className="gwui-callout-title">{title}</p>}
+      <p className="gwui-callout-body">{children}</p>
     </div>
   )
 }
