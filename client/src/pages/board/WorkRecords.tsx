@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { boardApi, KIND_OF_WORK_OPTIONS, type AServedWorkSection, type AServedWorkRow, type KindOfWork, type WorkItemInput } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
-import { Section, Panel, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack } from '@/components/gw/ui'
+import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack } from '@/components/gw/ui'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -203,8 +203,8 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
       : 'Nobody has said what kind of work this check-in is about yet.')
 
   return (
-    <div className="gwui-gap-10 gwui-mt-8 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
-      <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>{sentence}</p>
+    <div className="gwui-gap-10 gwui-mt-8" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+      <p className="gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>{sentence}</p>
       {canEdit && (
         <Button kind="quiet" size="small" onClick={() => setOpen(true)} aria-label={kindOfWork ? 'Change the kind of work' : 'Choose the kind of work'}>
           {kindOfWork ? 'Change' : 'Choose'}
@@ -262,13 +262,13 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
 function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
   if (row.from === 'lead') {
     const addedBy = readerIsLead ? 'You' : (leadFirstName ?? 'The person running this check-in')
-    return <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>{`${addedBy} added it.`}</p>
+    return <p className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>{`${addedBy} added it.`}</p>
   }
   const saidBy = row.saidBy?.trim()
   return (
     <div className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>
       <div>{saidBy ? `In ${saidBy}'s words,` : 'In the words of someone in this check-in,'}</div>
-      {row.said && <p className="gwui-mt-2 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{fontStyle: 'italic'}}>{`“${row.said}”`}</p>}
+      {row.said && <p className="gwui-mt-2" style={{fontStyle: 'italic'}}>{`“${row.said}”`}</p>}
     </div>
   )
 }
@@ -502,17 +502,21 @@ function TimelineList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
   })
   return (
     <Panel pad={false}>
-      {ordered.map((row) => (
-        <div key={row.id} className="gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
-          <div>
-            <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-15">
-              {row.due ? `${row.name} is due on ${whenItWas(row.due, 'weekdayAndDay')}.` : `${row.name}. No date said yet.`}
-            </p>
-            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
-          </div>
-          {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
-        </div>
-      ))}
+      <RowList label="Every deadline">
+        {ordered.map((row) => (
+          <Row key={row.id} columns="1fr">
+            <div className="gwui-pl-16 gwui-pr-16" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
+              <div>
+                <p className="gwui-ink-text gwui-fs-15">
+                  {row.due ? `${row.name} is due on ${whenItWas(row.due, 'weekdayAndDay')}.` : `${row.name}. No date said yet.`}
+                </p>
+                <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
+              </div>
+              {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
+            </div>
+          </Row>
+        ))}
+      </RowList>
     </Panel>
   )
 }
@@ -530,19 +534,23 @@ function PartiesList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
 }) {
   return (
     <Panel pad={false}>
-      {rows.map((row) => (
-        <div key={row.id} className="gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
-          <div>
-            <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{row.name}</p>
-            {/* What the record says about this party, as the prototype does ("Pwani Mills, the other side"): each field's value, in words. */}
-            {Object.values(row.fields ?? {}).filter(Boolean).length > 0 && (
-              <p className="gwui-mt-2 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-15 gwui-ink-sub">{atTheStartOf(Object.values(row.fields ?? {}).filter(Boolean).join('. '))}.</p>
-            )}
-            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
-          </div>
-          {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
-        </div>
-      ))}
+      <RowList label="The parties">
+        {rows.map((row) => (
+          <Row key={row.id} columns="1fr">
+            <div className="gwui-pl-16 gwui-pr-16" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
+              <div>
+                <p className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{row.name}</p>
+                {/* What the record says about this party, as the prototype does ("Pwani Mills, the other side"): each field's value, in words. */}
+                {Object.values(row.fields ?? {}).filter(Boolean).length > 0 && (
+                  <p className="gwui-mt-2 gwui-fs-15 gwui-ink-sub">{atTheStartOf(Object.values(row.fields ?? {}).filter(Boolean).join('. '))}.</p>
+                )}
+                <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
+              </div>
+              {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
+            </div>
+          </Row>
+        ))}
+      </RowList>
     </Panel>
   )
 }
@@ -563,24 +571,28 @@ function ThemesList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
 }) {
   return (
     <Panel pad={false}>
-      {rows.map((row, i) => {
-        const details = Object.values(row.fields ?? {}).filter(Boolean)
-        return (
-          <div key={row.id} className="gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
-            <div>
-              <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{`${i + 1}. ${row.name}`}</p>
-              {details.length > 0 && (
-                <div className="gwui-mt-4">
-                  <div className="gwui-fs-13 gwui-ink-muted">From how many said it, and who</div>
-                  {details.map((v, di) => <div key={di} className="gwui-fs-15 gwui-ink-sub gwui-mt-2">{v}</div>)}
+      <RowList label="Where next, ranked">
+        {rows.map((row, i) => {
+          const details = Object.values(row.fields ?? {}).filter(Boolean)
+          return (
+            <Row key={row.id} columns="1fr">
+              <div className="gwui-pl-16 gwui-pr-16" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
+                <div>
+                  <p className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{`${i + 1}. ${row.name}`}</p>
+                  {details.length > 0 && (
+                    <div className="gwui-mt-4">
+                      <div className="gwui-fs-13 gwui-ink-muted">From how many said it, and who</div>
+                      {details.map((v, di) => <div key={di} className="gwui-fs-15 gwui-ink-sub gwui-mt-2">{v}</div>)}
+                    </div>
+                  )}
+                  <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
                 </div>
-              )}
-              <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
-            </div>
-            {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
-          </div>
-        )
-      })}
+                {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
+              </div>
+            </Row>
+          )
+        })}
+      </RowList>
     </Panel>
   )
 }
@@ -626,7 +638,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   if (section.state === 'not-known') {
     return (
       <Section heading={heading}>
-        <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-13-5 gwui-ink-muted" style={{fontStyle: 'italic', lineHeight: 1.5}}>{section.why}</p>
+        <p className="gwui-fs-13-5 gwui-ink-muted" style={{fontStyle: 'italic', lineHeight: 1.5}}>{section.why}</p>
       </Section>
     )
   }
@@ -636,7 +648,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   if (section.state === 'none-yet') {
     return (
       <Section heading={heading}>
-        <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-sub gwui-fs-15" style={{lineHeight: 1.55}}>
+        <p className="gwui-ink-sub gwui-fs-15" style={{lineHeight: 1.55}}>
           {`No ${section.holds} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`}
         </p>
         {canAdd && (
@@ -701,7 +713,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 
       {!!section.stages?.length && (
         <div className="gwui-mt-14">
-          <p className="gwui-mt-0 gwui-mr-0 gwui-mb-8 gwui-ml-0 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
+          <p className="gwui-mb-8 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
           <StageTrack stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
         </div>
       )}
@@ -761,14 +773,18 @@ export function YourOwnRecordsSections({ kindOfWork, sections, myParticipantId, 
   return (
     <Section heading={`Your own ${itemNoun}s, day by day`} note="Only yours.">
       <Panel pad={false}>
-        {mine.map((row) => (
-          <div key={row.id} className="gwui-panel-row">
-            <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{row.name}</div>
-            {row.stage && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2"><Tag tone="plain">{row.stage}</Tag></div>}
-            {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
-            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={false} /></div>
-          </div>
-        ))}
+        <RowList label={`Your own ${itemNoun}s, day by day`}>
+          {mine.map((row) => (
+            <Row key={row.id} columns="1fr">
+              <div className="gwui-pl-16 gwui-pr-16">
+                <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{row.name}</div>
+                {row.stage && <div className="gwui-mt-2"><Tag tone="plain">{row.stage}</Tag></div>}
+                {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
+                <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={false} /></div>
+              </div>
+            </Row>
+          ))}
+        </RowList>
       </Panel>
     </Section>
   )
