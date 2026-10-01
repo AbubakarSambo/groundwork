@@ -4,6 +4,7 @@ import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
 import { useAskStore } from '@/stores/ask'
 import type { GroundCadence } from '@/api/grounds'
+import './ui/gw-ui.css'
 
 /**
  * U.10 ITEM 2: THE CHECK-IN'S OWN HEADER AND TABS, THE PROTOTYPE'S SHAPE, AS ONE COMPONENT.
@@ -134,16 +135,23 @@ export function TheCheckInHeader({
             (board-as-lead.txt); a party's says "Start my check-in" (board-as-participant.txt). Both
             go to the same place - the same the "Check-in" tab opens.
           */}
+          {/*
+            GROUP 3, PIECE 2 REVIEW: THIS HEADER'S OWN ACTIONS ARE LINKS, NOT BUTTONS.
+            Both only take you somewhere else - "Your check-in"/"Start my check-in" opens the
+            conversation tab, "Ask" opens the Ask Groundwork panel - neither sends anything or
+            changes a record, so neither earns a boxed, navy-filled control (Hafsah, 30 September:
+            "no more buttons than the prototype's own version of that screen has"). This header
+            draws only the session report and round report pages (every other check-in page has
+            its own, separately reviewed, header), and the prototype's own report screen has no
+            button here at all. The quiet link style (`.gwui-plain-link`) says the same thing a
+            plain, visible link would.
+          */}
           {(canRunThisCheckIn || isAParty) && (
-            <Link to={`/grounds/${id}`} className="gwui-ci-link-btn">
+            <Link to={`/grounds/${id}`} className="gwui-plain-link">
               {isAParty && !canRunThisCheckIn ? 'Start my check-in' : 'Your check-in'}
             </Link>
           )}
-          <button
-            type="button"
-            onClick={showAsk}
-            style={{ background: 'none', border: 'none', padding: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-          >
+          <button type="button" onClick={showAsk} className="gwui-plain-link">
             Ask
           </button>
         </div>
