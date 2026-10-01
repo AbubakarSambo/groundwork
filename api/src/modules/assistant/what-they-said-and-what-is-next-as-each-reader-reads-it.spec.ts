@@ -296,7 +296,9 @@ describe('as a guest from another organisation (Kofi)', () => {
   });
 
   it('is answered what to do next from his own commitments only', () => {
-    expect(whichQuestion('What should I do next?')).toBe('mine');
+    /* Week 24: "what should I do next" is its own question for a guest now, one thing put first from his own commitments. This pinned the older answer, which listed them all. */
+    expect(whichQuestion('What should I do next?')).toBe('next_step');
+    expect(whichQuestion('What did I commit to?')).toBe('mine');
     const served = fromTheServedReport({
       overTime: { commitments: [
         { participantId: 'p-kofi', say: 'You said in session 1 that you would send the Harbor Foods price list by Friday.' },

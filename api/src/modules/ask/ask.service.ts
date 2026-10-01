@@ -8,9 +8,17 @@ import { aGuestsOwnKey, isAGuestsKey } from '../assistant/a-guests-questions-are
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { runsIt } from '../grounds/who-may-read-this-check-in';
 import {
-  A_GUEST_IN_MORE_THAN_ONE, A_GUEST_WITH_NO_CHECK_IN, NEEDS_THE_REPORT, TheReportAsServed,
-  answerAGuest, fromTheServedReport, whichQuestion,
+  A_GUEST_IN_MORE_THAN_ONE, A_GUEST_WITH_NO_CHECK_IN, NEEDS_THE_REPORT, TheReportAsServed, TheirOwnCommitment,
+  NOTHING_OF_THEIRS_TO_CHANGE, answerAGuest, fromTheServedReport, readAGuestsTick, whatTheCheckInIsFor, whatTheySaid,
+  whatTheyShouldDoNext, whichQuestion, whoReadsWhatTheySay,
 } from './a-guest-asks-only-about-their-own-check-in';
+import { whatAParticipantIsToldAboutThis } from '../grounds/what-a-participant-is-told-about-this';
+import { cleanText } from '../reports/what-the-record-actually-holds';
+import { whichToDo } from '../assistant/a-to-do-is-yours';
+import { Reply, rules, text as aTextBlock } from '../assistant/a-reply-is-a-payload-not-a-string';
+import {
+  AMove, ATick, NOTHING_WAS_CHANGED, moveDone, moveProposal, readAMove, readTheDay, thereIsNoMoveToRead, tickDone, tickProposal,
+} from '../assistant/a-change-said-back-first';
 
 /**
  * ASK GROUNDWORK, IN THE PRODUCT (D1, U.14).
@@ -288,10 +296,17 @@ export class AskService {
       ? theirs.find((g) => g.id === input.groundId)
       : theirs.length === 1 ? theirs[0] : undefined;
     const question = whichQuestion(message);
+    /* Whatever was waiting for a yes is over once something else is asked: a stale yes can never fire. */
+    await this.prisma.assistantProposal.updateMany({
+      where: { organizationId: asker.organizationId, personExternalId: aGuestsOwnKey(asker.userId), state: 'PARKED' },
+      data: { state: 'DROPPED', resolvedAt: new Date() },
+    });
 
-    let reply;
+    let reply: any;
     if (!ground) {
       reply = { blocks: [{ type: 'text' as const, body: theirs.length ? A_GUEST_IN_MORE_THAN_ONE : A_GUEST_WITH_NO_CHECK_IN }], composedBy: 'rules' as const, lane: 'guest_which_check_in' };
+    } else if (['said', 'purpose', 'who_reads', 'next_step', 'done', 'move'].includes(question)) {
+      reply = await this.answerWithinTheirOwnWork(asker, ground, question, message);
     } else if (question === 'next') {
       const mine = await this.grounds.getMyCheckinStatus(ground.id, asker.userId).catch(() => null);
       if (!mine) throw new ForbiddenException(NOT_IN_IT);
@@ -312,7 +327,7 @@ export class AskService {
       reply = answerAGuest(question, ground.label, {});
     }
 
-    const said = reply.blocks.find((b) => b.type === 'text') as { body?: string } | undefined;
+    const said = (reply.blocks as any[]).find((b: any) => b.type === 'text') as { body?: string } | undefined;
     const key = aGuestsOwnKey(asker.userId);
     await this.prisma.assistantTurn.createMany({
       data: [
@@ -321,6 +336,156 @@ export class AskService {
       ],
     }).catch(() => undefined);
     return reply;
+  }
+
+  /**
+   * THE SIX THINGS A GUEST MAY ASK ABOUT THEIR OWN WORK IN THEIR OWN CHECK-IN (week 24).
+   *
+   * Every read here carries this guest's own participant id, found from their own account by
+   * `getMyCheckinStatus`, which refuses anybody who is not a party to the check-in. Nothing is read
+   * by the check-in alone: their own record lines, their own commitments, and the check-in's own
+   * description as a participant is told it. A change is parked as a question and written only by
+   * `answerTheGuestsYes`.
+   */
+  private async answerWithinTheirOwnWork(asker: Asker, ground: { id: string; label: string }, question: string, message: string): Promise<Reply> {
+    const mine = await this.grounds.getMyCheckinStatus(ground.id, asker.userId).catch(() => null);
+    if (!mine) throw new ForbiddenException(NOT_IN_IT);
+    const participantId: string = mine.participantId;
+
+    if (question === 'said') {
+      const ids = (mine.checkIns as any[]).map((c) => c.id).filter(Boolean);
+      const rows = ids.length
+        ? await this.prisma.recordEntry.findMany({
+          where: { participantId, disputedAt: null, checkInId: { in: ids } },
+          select: { text: true },
+          orderBy: { createdAt: 'asc' },
+          take: 12,
+        })
+        : [];
+      /* A line the product only inferred is not something they said. */
+      const lines = rows.filter((r) => !/\[INFERRED/i.test(r.text ?? '')).map((r) => cleanText(r.text ?? '').trim()).filter(Boolean);
+      return whatTheySaid(ground.label, lines);
+    }
+
+    if (question === 'purpose' || question === 'who_reads') {
+      const g: any = await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { brief: true, toldToParticipants: true, scenario: true } });
+      if (question === 'who_reads') return whoReadsWhatTheySay(ground.label, g?.scenario ?? null);
+      return whatTheCheckInIsFor(ground.label, whatAParticipantIsToldAboutThis(g?.brief ?? null, [], { told: g?.toldToParticipants ?? null, readerParticipantId: participantId }));
+    }
+
+    const own = await this.theirOwnOpenCommitments(ground.id, participantId);
+    if (question === 'next_step') return whatTheyShouldDoNext(ground.label, own);
+
+    /* A change to their own commitment: said back, and nothing written until a yes. */
+    const lane = question === 'move' ? 'guest_move' : 'guest_done';
+    const said = question === 'move' ? readAMove(message)!.what : readAGuestsTick(message)!;
+    if (!own.length) return rules(lane, aTextBlock(NOTHING_OF_THEIRS_TO_CHANGE(ground.label)));
+    const which = whichToDo(said, own.map((c) => ({ ...c, id: c.id })));
+    if ('none' in which) {
+      return rules(lane, aTextBlock(`Nothing you said you would do in ${ground.label} reads like "${said}". Say part of the words of the commitment you mean.`));
+    }
+    if ('several' in which) {
+      return rules(lane, aTextBlock(`More than one of these could be it. Which?\n${which.several.map((t) => `- ${t.text}`).join('\n')}`));
+    }
+    const one = which.one as TheirOwnCommitment;
+    let proposal: AMove | ATick;
+    let summary: string;
+    let kind: 'guest_move' | 'guest_tick';
+    if (question === 'move') {
+      const m = readAMove(message)!;
+      const day = readTheDay(m.whenSaid, new Date());
+      if ('ask' in day) return rules(lane, aTextBlock(day.ask));
+      const move: AMove = {
+        commitmentId: one.id, text: one.text, ownerExternalId: '', ownerFirstName: null,
+        was: { at: one.dueAt ? one.dueAt.toISOString() : null, said: one.dueAt ? null : one.dueSaid },
+        toISO: day.date.toISOString(), toSaid: m.whenSaid,
+      };
+      proposal = move; summary = moveProposal(move); kind = 'guest_move';
+    } else {
+      const tick: ATick = { kind: 'commitment', id: one.id, text: one.text };
+      proposal = tick; summary = tickProposal(tick); kind = 'guest_tick';
+    }
+    const parked = await this.prisma.assistantProposal.create({
+      data: {
+        organizationId: asker.organizationId, personExternalId: aGuestsOwnKey(asker.userId), kind, summary,
+        payload: { groundId: ground.id, participantId, objectiveId: one.id, change: proposal } as any,
+      },
+    });
+    return { lane, composedBy: 'rules', blocks: [aTextBlock(summary), { type: 'proposal', proposalId: parked.id, summary }] } as Reply;
+  }
+
+  /** What this guest said they would do in this check-in, and has not finished. Their own, only. */
+  private async theirOwnOpenCommitments(groundId: string, participantId: string): Promise<TheirOwnCommitment[]> {
+    const rows: any[] = await this.prisma.personObjective.findMany({
+      where: { groundId, participantId, status: 'OPEN', authoredBy: 'self', kind: { in: ['TODO', 'COMMITMENT'] } },
+      select: { id: true, text: true, dueSaid: true, dueDate: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((r) => ({ id: r.id, text: r.text, dueSaid: r.dueSaid ?? null, dueAt: r.dueDate ?? null, statedAt: r.createdAt }));
+  }
+
+  /**
+   * THE YES, OR THE NO, FROM A GUEST. Taken only for the guest's own newest waiting question, and the
+   * write is checked again now: they are still in the check-in, it is still open, and the commitment
+   * is still theirs and still open. Otherwise nothing is written, and they are told so.
+   */
+  private async answerTheGuestsYes(asker: Asker, input: { proposalId: string; answer: 'yes' | 'no' }) {
+    const key = aGuestsOwnKey(asker.userId);
+    const waiting: any = await this.prisma.assistantProposal.findFirst({
+      where: { organizationId: asker.organizationId, personExternalId: key, state: 'PARKED' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, kind: true, payload: true },
+    });
+    if (!waiting || waiting.id !== input.proposalId || !['guest_move', 'guest_tick'].includes(waiting.kind)) {
+      throw new ConflictException(NOTHING_WAITING);
+    }
+    const lane = waiting.kind === 'guest_move' ? 'guest_move' : 'guest_done';
+    const settle = (state: 'ACCEPTED' | 'DECLINED' | 'DROPPED') =>
+      this.prisma.assistantProposal.update({ where: { id: waiting.id }, data: { state, resolvedAt: new Date() } });
+    const keep = async (reply: Reply) => {
+      const said = reply.blocks.find((b) => b.type === 'text') as { body?: string } | undefined;
+      await this.prisma.assistantTurn.createMany({
+        data: [
+          { organizationId: asker.organizationId, personExternalId: key, role: 'person', content: input.answer === 'yes' ? 'Yes' : 'No' },
+          { organizationId: asker.organizationId, personExternalId: key, role: 'assistant', content: said?.body ?? '', lane: reply.lane, composedBy: reply.composedBy },
+        ],
+      }).catch(() => undefined);
+      return reply;
+    };
+    if (input.answer === 'no') {
+      await settle('DECLINED');
+      return keep(rules(lane, aTextBlock(NOTHING_WAS_CHANGED)));
+    }
+    const p = waiting.payload as { groundId: string; participantId: string; objectiveId: string; change: AMove | ATick };
+    const stillIn = (await this.whatItMayBeAbout(asker)).some((g) => g.id === p.groundId);
+    const mine = stillIn ? await this.grounds.getMyCheckinStatus(p.groundId, asker.userId).catch(() => null) : null;
+    const row: any = mine && mine.participantId === p.participantId
+      ? await this.prisma.personObjective.findFirst({
+        where: { id: p.objectiveId, groundId: p.groundId, participantId: p.participantId, status: 'OPEN', authoredBy: 'self' },
+        select: { id: true, text: true },
+      })
+      : null;
+    if (!row) {
+      await settle('DROPPED');
+      return keep(rules(lane, aTextBlock(`"${(p.change as any).text}" is no longer open for you here, so I have changed nothing.`)));
+    }
+    if (waiting.kind === 'guest_tick') {
+      await this.prisma.personObjective.update({ where: { id: row.id }, data: { status: 'MET', statusChangedAt: new Date() } });
+      await this.prisma.commitment.updateMany({
+        where: { organizationId: asker.organizationId, sourcePersonObjectiveId: row.id, state: 'OPEN' },
+        data: { state: 'KEPT', resolvedAt: new Date() },
+      });
+      await settle('ACCEPTED');
+      return keep(rules(lane, aTextBlock(tickDone(p.change as ATick))));
+    }
+    const m = p.change as AMove;
+    await this.prisma.personObjective.update({ where: { id: row.id }, data: { dueDate: new Date(m.toISO), dueSaid: m.toSaid } });
+    await this.prisma.commitment.updateMany({
+      where: { organizationId: asker.organizationId, sourcePersonObjectiveId: row.id },
+      data: { dueAt: new Date(m.toISO), dueSaid: m.toSaid },
+    });
+    await settle('ACCEPTED');
+    return keep(rules(lane, aTextBlock(moveDone(m))));
   }
 
   /**
@@ -375,8 +540,8 @@ export class AskService {
    * been answered or dropped, must not reach it.
    */
   async answer(asker: Asker, input: { proposalId: string; answer: 'yes' | 'no' }) {
-    /* Nothing is ever said back to a guest for a yes, so there is never anything waiting for one. */
-    if (await this.isAGuest(asker)) throw new ConflictException(NOTHING_WAITING);
+    /* A guest's yes is for the one change to their own commitment that was said back to them, and nothing else. */
+    if (await this.isAGuest(asker)) return this.answerTheGuestsYes(asker, input);
     const me = await this.whoIsAsking(asker);
     const waiting = await this.prisma.assistantProposal.findFirst({
       where: { organizationId: asker.organizationId, personExternalId: me.externalId, state: 'PARKED' },
