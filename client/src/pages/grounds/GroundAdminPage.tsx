@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { YourWork } from '@/components/gw/checkin/YourWork'
 import { Note } from '@/components/gw/ui/Note'
-import { Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty } from '@/components/gw/ui'
+import { Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty, Folded } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
@@ -1529,7 +1529,7 @@ export function GroundAdminPage() {
               {parts.join(' ')}
               {/* Before anybody has finished a session, the guide written for this moment is one click away. */}
               {sessionsDone === 0 && !ended && (
-                <>{parts.length ? ' ' : ''}<TextAction to="/org/guide" size={13}>How to run one</TextAction></>
+                <>{parts.length ? ' ' : ''}<Link className="gwui-plain-link" to="/org/guide">How to run one</Link></>
               )}
             </p>
           )
@@ -2359,9 +2359,11 @@ export function GroundAdminPage() {
           <div>
             {/* A shared report needs two people; a check-in with one on it says so here rather than "forming" for ever (B17). */}
             {whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length < 2 && (
-              <div role="status" style={{ marginBottom: 12, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
-                The shared report compares two accounts. Add somebody and this will build.{' '}
-                <TextAction onClick={() => setTab('checkins')} size={13}>Add a person</TextAction>
+              <div className="gwui-mb-12">
+                <Callout tone="warning" role="status">
+                  The shared report compares two accounts. Add somebody and this will build.{' '}
+                  <button type="button" className="gwui-plain-link" onClick={() => setTab('checkins')}>Add a person</button>
+                </Callout>
               </div>
             )}
             {/* The lead's one press to get this round's report to everyone who answered and asked for it. */}
@@ -2393,50 +2395,41 @@ export function GroundAdminPage() {
             */}
             {/* Folded, under the board and the session list: it is the exception, not the page. */}
             {isInitiator && (ground as any).report && !(ground as any).report.releasedAt && (
-              <details style={{ marginTop: 14 }}>
-                <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px' }}><span>Closing a round early</span></summary>
-              <div style={{ marginTop: 6, border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px' }}>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              <Folded summary="Closing a round early">
+                <Note>
                   When the last person answers, the report goes out to everybody on its own - you do
                   not have to do anything. If you need to stop waiting, you can close this round now
                   and publish what there is; it will be missing whoever has not answered.
-                </div>
+                </Note>
                 {!showReleaseConfirm ? (
-                  <button
-                    onClick={() => setShowReleaseConfirm(true)}
-                    style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                  >
-                    Close this round now and publish what there is
-                  </button>
+                  <div className="gwui-mt-10">
+                    <Button kind="quiet" size="small" onClick={() => setShowReleaseConfirm(true)}>
+                      Close this round now and publish what there is
+                    </Button>
+                  </div>
                 ) : (
-                  <div style={{ marginTop: 10, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '11px 13px' }}>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6, marginBottom: 10 }}>
+                  <div className="gwui-mt-10">
+                    <Callout tone="warning">
                       {/* "Everybody reads the same thing at the same moment" was here and is not
                           true: everyone is emailed, but each person has to show theirs before they
                           can read it, and the lead does not. A false reassurance in the
                           confirmation for something that cannot be undone. */}
                       Everybody is emailed. This cannot be undone, and
                       anybody who has not answered loses their turn on this round.
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button
-                        onClick={() => releaseReport.mutate()}
-                        disabled={releaseReport.isPending}
-                        style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: releaseReport.isPending ? 0.6 : 1 }}
-                      >
-                        {releaseReport.isPending ? 'Publishing…' : 'Publish it now'}
-                      </button>
-                      <button
-                        onClick={() => setShowReleaseConfirm(false)}
-                        style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12.5, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                      >
-                        Keep waiting
-                      </button>
+                    </Callout>
+                    <div className="gwui-mt-10">
+                      <div className="gwui-button-row">
+                        <Button kind="secondary" redText size="small" disabled={releaseReport.isPending} onClick={() => releaseReport.mutate()}>
+                          {releaseReport.isPending ? 'Publishing…' : 'Publish it now'}
+                        </Button>
+                        <Button kind="quiet" size="small" onClick={() => setShowReleaseConfirm(false)}>
+                          Keep waiting
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
-              </div>
-              </details>
+              </Folded>
             )}
           </div>
         )}
