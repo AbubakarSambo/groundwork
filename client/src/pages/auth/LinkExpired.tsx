@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { authApi } from '@/api/auth'
-import { Button } from '@/components/gw/kit'
+import { Button, Stack } from '@/components/gw/ui'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { whatIsWrongWithTheAddress } from './the-address-typed'
 import { AuthCard, AuthError, AuthField } from './auth-kit'
@@ -87,11 +87,11 @@ function AskForAFreshLink({ kind, title, sub, button }: { kind: 'sign-in' | 'res
         {trap.field}
         <AuthField id="expired-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); setError('') }} autoFocus />
         {error && <AuthError>{error}</AuthError>}
-        <div className="gw-auth-actions">
+        <Stack gap={10}>
           <Button type="submit" wide disabled={send.isPending}>
             {send.isPending ? 'Sending…' : button}
           </Button>
-        </div>
+        </Stack>
       </form>
     </AuthCard>
   )
@@ -104,9 +104,9 @@ function AskForAFreshLink({ kind, title, sub, button }: { kind: 'sign-in' | 'res
 export function LinkAlreadyResent({ sentence }: { sentence: string }) {
   return (
     <AuthCard title="Check your email" sub={sentence}>
-      <div className="gw-auth-actions">
+      <Stack gap={10}>
         <Button kind="quiet" wide to="/auth">Go to sign in</Button>
-      </div>
+      </Stack>
     </AuthCard>
   )
 }

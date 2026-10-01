@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Button } from '@/components/gw/kit'
+import { Button, Stack } from '@/components/gw/ui'
 import { AuthCard, AuthError } from './auth-kit'
 
 /**
@@ -67,7 +67,7 @@ export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent, forRes
         : <>We sent a sign-in link to <strong>{email}</strong>. Open it on any device.</>}
     >
       {failed && <AuthError>{failed}</AuthError>}
-      <div className="gw-auth-actions">
+      <Stack gap={10}>
         <Button
           kind="secondary"
           wide
@@ -76,20 +76,20 @@ export function LinkSentPanel({ email, resend: sendAgain, onUseDifferent, forRes
         >
           {resend.isPending ? 'Sending…' : 'Send it again'}
         </Button>
-      </div>
+      </Stack>
       {/* Only the news is announced. The countdown is not in a live region, or a screen reader would
           read it out every second. */}
-      <p className="gw-auth-small" role="status">
+      <p className="gwui-fine" role="status">
         {sentAgain ? 'We sent it again. Use the newest email, because it replaces the one before.' : ''}
       </p>
       {countdown > 0 && (
-        <p className="gw-auth-small" style={{ marginTop: 4 }}>
+        <p className="gwui-fine">
           You can send it again in {countdown} {countdown === 1 ? 'second' : 'seconds'}.
         </p>
       )}
-      <div className="gw-auth-links">
+      <div className="gwui-auth-links">
         {/* The only way off this page for a mistyped address: a button, so the keyboard reaches it. */}
-        <button type="button" className="gw-auth-link" onClick={onUseDifferent}>Wrong address? Use a different one</button>
+        <Button kind="quiet" onClick={onUseDifferent}>Wrong address? Use a different one</Button>
       </div>
     </AuthCard>
   )
