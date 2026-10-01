@@ -509,7 +509,16 @@ export class BoardService {
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
        board runs the same engines over all of them, so the two share a vocabulary and differ only in
        scope. Same tiles, same settled-and-open, same question engine. */
-    const sessionShape: any = await this.everySessionThroughTheReportEngines(groundId, ground as any, checkIns as any[], openRound, { participantId: me?.id ?? null, isLead: isInitiator }).catch((err: any) => {
+    /* Whether a colleague's own words are walled from this reader: the person an evaluation check-in is
+       about, or an admin without access to it (the same rule as Who owns what, further down). */
+    const colleaguesWordsWalled = viewerIsTheSubjectOfAnEvaluationCheckIn({
+      scenario: (ground as any).scenario,
+      isLead: isInitiator || runsItForAPattern(ground as any, requestingUserId),
+      viewerParticipantId: me?.id ?? null,
+      participants: ground.participants as any,
+    }) || (adminHere && !runsItForAPattern(ground as any, requestingUserId) && isEvaluationCheckIn((ground as any).scenario));
+    const theMovementsReader = { participantId: me?.id ?? null, isLead: isInitiator, colleaguesWordsWalled };
+    const sessionShape: any = await this.everySessionThroughTheReportEngines(groundId, ground as any, checkIns as any[], openRound, theMovementsReader).catch((err: any) => {
       this.logger.warn(`Board could not run the report engines over ${groundId}: ${err?.message}`);
       return null;
     });
@@ -1441,7 +1450,7 @@ export class BoardService {
       if (sessionShape?.atAGlance?.length) {
         out.quickRead = sessionShape.atAGlance;
       } else {
-        const held = await whatThisSessionHolds(this.prisma, groundId, openRound, { participantId: me?.id ?? null, isLead: isInitiator });
+        const held = await whatThisSessionHolds(this.prisma, groundId, openRound, theMovementsReader);
         /*
          * THE DIFFERENCE THE PAGE IS SHOWING IS THE DIFFERENCE THE TILE COUNTS. Read live, 22 Sep
          * 2026: the tile said "Nothing to compare yet" on a board whose own session report, one
@@ -2849,7 +2858,7 @@ export class BoardService {
    * dependency, every OPEN document: the same pure functions the session report runs, with the
    * ground's rows instead of one session's. Names go through the same labels the board already uses.
    */
-  private async everySessionThroughTheReportEngines(groundId: string, ground: any, checkIns: any[], openRound: number, reader: { participantId: string | null; isLead: boolean }) {
+  private async everySessionThroughTheReportEngines(groundId: string, ground: any, checkIns: any[], openRound: number, reader: { participantId: string | null; isLead: boolean; colleaguesWordsWalled?: boolean }) {
     const completed = checkIns.filter((c) => c.status === CheckInStatus.COMPLETED);
     const [entries, docs, baseline, deps] = await Promise.all([
       this.prisma.recordEntry.findMany({

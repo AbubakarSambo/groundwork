@@ -1,5 +1,6 @@
 import { aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
 import { targetsFor } from '../board/whose-number-is-whose-business';
+import { labelsForParties, namesVisibleTo } from './party-labels';
 import { peopleSaidDifferentThingsAbout } from './what-people-said-differently-about';
 import { cleanText } from './what-the-record-actually-holds';
 import { PrismaService } from '../prisma/prisma.service';
@@ -125,6 +126,12 @@ export interface WhoReadsTheMovement {
   participantId: string | null;
   /** Whoever set the targets reads every one of them. */
   isLead: boolean;
+  /**
+   * The person an evaluation check-in is about, or an admin without access to it: a colleague's own
+   * words are walled from them (colleagues-exact-words-stay-with-the-manager), so the tile gives them
+   * only how many worries there are, never a colleague's words.
+   */
+  colleaguesWordsWalled?: boolean;
 }
 
 /**
@@ -170,14 +177,20 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
       : Promise.resolve([] as { status: string; fromParticipantId: string; onParticipantId: string | null; what: string; onLabel: string | null }[]),
     /* Every count, as Since the last round reads them; `targetsSet` counts the ones with a number. */
     prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, count: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true } }),
-    (prisma as any).ground?.findUnique?.({ where: { id: groundId }, select: { whoSeesTargets: true } })?.catch?.(() => null) ?? null,
+    (prisma as any).ground?.findUnique?.({
+      where: { id: groundId },
+      select: {
+        whoSeesTargets: true, peersVisibleToEachOther: true,
+        participants: { select: { id: true, userId: true, partyType: true, email: true, createdAt: true, roleAsDescribed: true, nameGiven: true, organisationGiven: true, user: { select: { firstName: true, lastName: true } } } },
+      },
+    })?.catch?.(() => null) ?? null,
     raisedIn.length
       ? prisma.recordEntry.findMany({
           where: { disputedAt: null, checkInId: { in: raisedIn.map((c) => c.id) }, type: { in: ['WORRY', 'TENSION'] as any } },
-          select: { text: true },
+          select: { text: true, participantId: true, saidWordForWord: true },
           orderBy: { createdAt: 'asc' },
         })
-      : Promise.resolve([] as { text: string }[]),
+      : Promise.resolve([] as { text: string; participantId: string | null; saidWordForWord: boolean | null }[]),
   ]);
   const worries = worried.length;
   /*
@@ -199,10 +212,32 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
    * took that sentence out and left a fragment. A worry that would lose a piece is passed over for
    * one that would not, and with none the tile says how many there are.
    */
+  /*
+   * AND IT IS SAID AS THEIRS (review of 1 October 2026). The tile served a worry in the person's own
+   * first-person words with nobody's name: "I still set up the meetings. There are 4 more worries on
+   * record, ...". It is now their words in quotation marks after their name ("Amina Yusuf said, "I
+   * still set up the meetings.""), "You said, ..." to them, and "A colleague said, ..." where this
+   * reader may not be told who. Where a colleague's words are walled from this reader (the person an
+   * evaluation is about), only their own worry can be named, and otherwise the tile gives the count.
+   * A line with quotation marks of its own is passed over, so no quote is put inside another, and so is
+   * a line the record did not keep word for word: only what somebody said in those words is put in
+   * quotation marks (a-quote-built-at-the-read), and the tile then gives the count instead.
+   */
   const quotable = worried.length ? await theRecordAQuoteMayComeFrom(prisma as any, groundId) : [];
+  const parties = (((theGround as any)?.participants ?? []) as any[]);
+  const labels = labelsForParties(parties as any);
+  const visible = namesVisibleTo(reader.participantId, parties as any, (theGround as any)?.peersVisibleToEachOther ?? undefined);
+  const whoSaid = (pid: string | null | undefined): string => {
+    if (pid && pid === reader.participantId) return 'You';
+    const name = pid ? visible.get(labels.get(pid) ?? '') : null;
+    return name?.trim() || 'A colleague';
+  };
   const theFirstWorry = worried
-    .map((w) => theFirstSentenceThatFits(w?.text ? cleanText(w.text) : null))
-    .find((line): line is string => !!line && quotesBuiltAtTheRead(line, quotable) === line) ?? null;
+    .filter((w: any) => w.saidWordForWord === true)
+    .filter((w: any) => !reader.colleaguesWordsWalled || (!!w.participantId && w.participantId === reader.participantId))
+    .map((w: any) => ({ who: w.participantId as string | null, line: theFirstSentenceThatFits(w?.text ? cleanText(w.text) : null) }))
+    .filter((w): w is { who: string | null; line: string } => !!w.line && !/["“”]/.test(w.line) && quotesBuiltAtTheRead(w.line, quotable) === w.line)
+    .map((w) => `${whoSaid(w.who)} said, "${/[.!?]$/.test(w.line) ? w.line : `${w.line}.`}"`)[0] ?? null;
   const real = deps.filter((d) => !(d.onParticipantId && d.onParticipantId === d.fromParticipantId));
   const blocked = real.filter((d) => d.status === 'BLOCKING').length;
   const waiting = real.filter((d) => d.status === 'WAITING').length;

@@ -93,13 +93,14 @@ describe('the first worry is one whose line survives the quote rule whole', () =
     groundObjectiveSnapshot: { findMany: async () => [] },
     groundCommitment: { findMany: async () => [] },
     ground: { findUnique: async () => ({ brief: null, participants: [] }) },
-    recordEntry: { findMany: async (args: any) => (args?.where?.type ? rows.map((r) => ({ text: r.text })) : rows) },
+    recordEntry: { findMany: async (args: any) => (args?.where?.type ? rows.map((r) => ({ text: r.text, saidWordForWord: r.saidWordForWord })) : rows) },
   });
 
   it('passes over Amina\'s line, whose quote is not the record\'s words, for the next one', async () => {
     const held = await whatThisSessionHolds(prisma(ROWS), 'g', 1, { participantId: null, isLead: true });
     expect(held.worries).toBe(4);
-    expect(held.theFirstWorry).toBe("I'm just not sure the brief was clear enough on that one point.");
+    /* Nobody on this record has a name this reader may read, so it is a colleague's, in their words. */
+    expect(held.theFirstWorry).toBe('A colleague said, "I\'m just not sure the brief was clear enough on that one point."');
   });
 
   it('and with none that stands whole, there is no first worry, and the tile says the count', async () => {

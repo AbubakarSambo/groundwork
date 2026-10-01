@@ -3104,7 +3104,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * not this reader's slice of them (P3-010).
      */
     const [held, saidInAll, documentedInAll, whoAnswered] = await Promise.all([
-      whatThisSessionHolds(this.prisma, groundId, sessionNumber, { participantId: me?.id ?? null, isLead: viewerIsLead }),
+      whatThisSessionHolds(this.prisma, groundId, sessionNumber, {
+        participantId: me?.id ?? null,
+        isLead: viewerIsLead,
+        /* A colleague's own words are walled from the person an evaluation is about, and from an admin without access to it. */
+        colleaguesWordsWalled: viewerIsTheSubjectOfAnEvaluationCheckIn({
+          scenario: (ground as any).scenario,
+          isLead: isInitiator || evaluationWordsRunsIt,
+          viewerParticipantId: me?.id ?? null,
+          participants: ground.participants as any,
+        }) || (isOrgAdmin && !evaluationWordsRunsIt && isEvaluationCheckIn((ground as any).scenario)),
+      }),
       this.prisma.recordEntry.count({ where: { disputedAt: null, participant: { groundId }, checkIn: { sessionNumber } } }),
       this.prisma.recordEntry.count({ where: { disputedAt: null, participant: { groundId }, checkIn: { sessionNumber }, recallBased: false, anchoredOrigin: { in: [...COUNTS_AS_A_SOURCE] as any } } }),
       howManyHaveAnswered(this.prisma, groundId, sessionNumber),
