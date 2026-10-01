@@ -1963,9 +1963,15 @@ export const EXPECTATION_PROMPT = `From the transcript of the person RUNNING thi
 
 Anything under THEY ATTACHED "filename" is a document they gave us, and it counts as theirs the same as a sentence they typed. A sheet of names and numbers is where a manager usually keeps the targets, so read it for them.
 
-1. groundAims: what this check-in as a whole is aiming at, in the speaker's own words. One entry per aim.
+The first line, THE PERSON SPEAKING, gives the name of the person who said all of this.
 
-   - name: the aim as one plain, full sentence, in their words. It is read on its own beside the other aims, so somebody who reads only this sentence should know what is being aimed at. "They want to sell 500 trucks by the end of the year", not "Sales objective" and not "Sell 500 trucks".
+1. groundAims: what this check-in as a whole is aiming at, keeping what they said it is for. One entry per aim.
+
+   - name: the aim as one plain, full sentence about whoever holds it, by name. It is read on its own beside the other aims, by the speaker and by everybody else on the check-in, so somebody who reads only this sentence should know who is aiming at what. "Bisi is aiming for 40 approved facilities this quarter", "The team is aiming for 500 trucks sold by the end of the year". Not "Sales objective", not "Sell 500 trucks" and not "approved facilities".
+
+     Never "I", "we", "my", "the person" or "the speaker": the speaker is called by their first name, from THE PERSON SPEAKING. "I stop being invited to every single call" is "Amina stops being invited to every single call". Where the aim is the whole team's, say "The team".
+
+     Write every number the way a person reads it: "120 million naira", not "N120m" or "120000000"; "254,000", not "254k".
 
    - target: the NUMBER they are aiming at, where they said one. 500 for "sell 500 trucks by the end of the year". 150 for "150 each". Leave it out where no number was said: an aim without a number is a real aim and a wrong number is worse than none.
 
@@ -1993,7 +1999,7 @@ Anything under THEY ATTACHED "filename" is a document they gave us, and it count
    line was read live and the 50 was dropped: the whole of section 3 below is about other people, so
    a lead's own number had nowhere to go and was the only one on the board that went missing.
 
-   - name: what the number is for, in their words. "Contracts", "Closed deals".
+   - name: one plain, full sentence about the speaker by their first name, saying what the number is for. "Bisi is aiming for 50 contracts", not "Contracts".
    - target: the number.
 
    Leave it out entirely where they did not give themselves one. A lead who sets targets for a team
@@ -2310,7 +2316,7 @@ export const EXPECTATION_SCHEMA = {
         items: {
           type: 'object',
           properties: {
-            name: { type: 'string', description: 'The aim as one plain, full sentence, in their own words. It is read on its own beside the other aims, so never a heading and never a fragment.' },
+            name: { type: 'string', description: 'The aim as one plain, full sentence about whoever holds it, by first name, or "The team". Never "I", "we", "the person" or "the speaker", never a heading and never a fragment. Numbers as a person reads them: "120 million naira", "254,000".' },
             target: { type: 'number', description: 'The number they are aiming at. Omit where no number was said.' },
             by: { type: 'string', description: 'When it should be true by, in their words. Omit where not said.' },
           },
@@ -2321,7 +2327,7 @@ export const EXPECTATION_SCHEMA = {
         type: 'object',
         description: "The number the speaker said they themselves are aiming at. Omit where they gave themselves none.",
         properties: {
-          name: { type: 'string', description: "What the number is for, in their words." },
+          name: { type: 'string', description: 'One plain, full sentence about the speaker by first name, saying what the number is for. "Bisi is aiming for 50 contracts", not "Contracts".' },
           target: { type: 'number' },
         },
         required: ['name', 'target'],

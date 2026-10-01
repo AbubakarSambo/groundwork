@@ -8,6 +8,7 @@ import { theLeadByName, mentionsTheLeadByALabel } from './the-lead-has-a-name';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { aSentenceStartsWithACapital } from './a-sentence-starts-with-a-capital';
 import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
+import { theSpeakerLine } from './the-person-speaking';
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE } from './where-this-document-came-from';
 import { cleanText } from '../reports/what-the-record-actually-holds';
@@ -8880,7 +8881,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         /** REFERENCE only: where the work is tracked. Never its state. */
         trackedUrl?: string;
       }[];
-    }>(EXPECTATION_PROMPT, [{ role: 'user', content: transcript }], EXPECTATION_SCHEMA as any);
+    }>(EXPECTATION_PROMPT, [{ role: 'user', content: `${theSpeakerLine(me)}\n\n${transcript}` }], EXPECTATION_SCHEMA as any);
     if (!result) return;
 
     /** The same resolver as work mentions: a name that matches nobody is dropped, never guessed. */

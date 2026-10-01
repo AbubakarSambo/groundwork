@@ -39,8 +39,9 @@ describe('the sales board: one count per thing, and nobody with something open i
       expect(forty).toHaveLength(1);
       /* An admin standing outside the check-in reads no number on it at all (decision 53), so one row and no count. */
       if (role === 'ADMIN') expect(forty[0].journey.say).toBe('');
-      else expect(forty[0].journey.say).toBe('0 at the start, 11 now, said 40.');
-      expect(JSON.stringify(b.objectives)).not.toContain('0 at the start, 0 now, said 40.');
+      /* The same count, as one full sentence since 1 October (the review rules out "0 at the start, 11 now, said 40."). */
+      else expect(forty[0].journey.say).toBe('It was 0 at the start and is 11 now, and the aim is 40.');
+      expect(JSON.stringify(b.objectives)).not.toContain('It was 0 at the start and is 0 now, and the aim is 40.');
     });
 
     it(`${who} is not told nothing was found beside the difference that was`, async () => {

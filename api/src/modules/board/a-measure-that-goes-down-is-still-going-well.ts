@@ -22,6 +22,8 @@
  * line, that anybody can check.
  */
 
+import { aNumberPeopleCanRead } from './an-aim-is-a-sentence-about-somebody';
+
 export type Direction = 'up' | 'down' | 'unknown';
 
 export interface Journey {
@@ -58,6 +60,16 @@ function howFar(start: number, now: number, target: number): number {
   return wrongWay ? 0 : Math.max(0, Math.min(100, Math.round((done / whole) * 100)));
 }
 
+/*
+ * THE LINE IS A FULL SENTENCE, WITH NUMBERS A PERSON CAN READ (review of 1 October 2026). Read on the
+ * run: "0 at the start, 0 now, said 120000000." and "0 at the start, 254000 now. That is where you
+ * said." - pieces joined with commas, a number nobody can read at a glance, and a "you" that was the
+ * lead's to a participant too. Now: "It was 0 at the start and is 0 now, and the aim is 120 million."
+ * One sentence, so a reader who may not see the aim loses the whole line and never half of it (the
+ * hidden-target net takes out a sentence with the number in it, and an admin outside reads no number).
+ */
+const read = (n: number) => aNumberPeopleCanRead(n);
+
 export function theJourneySoFar(a: { start: number | null; now: number; target: number | null }): Journey {
   const { start, now, target } = a;
   const direction = whichWayIsGood(start, target);
@@ -67,7 +79,7 @@ export function theJourneySoFar(a: { start: number | null; now: number; target: 
        comment says a qualitative objective is tracked and not counted. */
     return {
       direction, start, now, target,
-      say: start != null && start !== now ? `${start} at the start, ${now} now.` : `${now} so far.`,
+      say: start != null && start !== now ? `It was ${read(start)} at the start and is ${read(now)} now.` : now === 0 ? 'Nothing has been counted for it yet.' : `It is ${read(now)} so far.`,
       covered: null,
     };
   }
@@ -75,7 +87,7 @@ export function theJourneySoFar(a: { start: number | null; now: number; target: 
   if (start == null) {
     /* No first snapshot: the target predates anybody counting, or the round never completed. Saying
        where it is and what was said is still true; claiming distance covered would not be. */
-    return { direction, start, now, target, say: `${now} now, said ${target}.`, covered: null };
+    return { direction, start, now, target, say: `It is ${read(now)} now, and the aim is ${read(target)}.`, covered: null };
   }
 
   const covered = howFar(start, now, target);
@@ -86,8 +98,8 @@ export function theJourneySoFar(a: { start: number | null; now: number; target: 
     now,
     target,
     say: reached
-      ? `${start} at the start, ${now} now. That is where you said.`
-      : `${start} at the start, ${now} now, said ${target}.`,
+      ? `It was ${read(start)} at the start and is ${read(now)} now, so the aim of ${read(target)} has been reached.`
+      : `It was ${read(start)} at the start and is ${read(now)} now, and the aim is ${read(target)}.`,
     covered,
   };
 }

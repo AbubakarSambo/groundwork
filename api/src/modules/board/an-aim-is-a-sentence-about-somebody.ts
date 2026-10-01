@@ -1,0 +1,159 @@
+/**
+ * AN AIM IS A SENTENCE ABOUT SOMEBODY, BY NAME (review of 1 October 2026).
+ *
+ * What the lead and every participant read as the names of the targets on the boards of that run:
+ *
+ *   "I'm aiming for N120 million disbursed this quarter."          (sales: first person, "N120")
+ *   "approved facilities"                                           (sales: a fragment)
+ *   "I stop being invited to every single call."                    (seniorhire: first person)
+ *   "The person wants introductions to decision-makers at Equity Bank, KCB, and Co-operative Bank."
+ *   "Tunde owns the technical side ..., enabling the speaker to focus on business growth"
+ *
+ * The names are written by the extraction that reads the lead's own session (EXPECTATION_PROMPT), so
+ * "I", "the person" and "the speaker" are all the person who set the aim. A row that only says what is
+ * counted ("approved facilities") is the number somebody holds, so it is said as that person aiming
+ * at that number.
+ *
+ * WRITTEN IN LABELS, THEN NAMED FOR THE READER. The person is written as their label, and the board
+ * then puts the text through the same `withNames` every report goes through, so the reader's own label
+ * becomes "you" with its verb, a name they may read becomes the name, and one they may not becomes "a
+ * colleague". Nothing here decides who may read whose name.
+ *
+ * It is not a quote: an aim is never served between quotation marks, so changing "I" to the person's
+ * name changes no words anybody is shown as having said.
+ */
+
+/** A number the way a person reads it: "120 million", "1.5 million", "254,000", "40". */
+export function aNumberPeopleCanRead(n: number): string {
+  if (!Number.isFinite(n)) return String(n);
+  const abs = Math.abs(n);
+  const inUnits = (unit: number, word: string): string | null => {
+    const v = n / unit;
+    const oneDecimal = Math.round(v * 10) / 10;
+    return Math.abs(oneDecimal - v) < 1e-9 ? `${oneDecimal} ${word}` : null;
+  };
+  if (abs >= 1e9) { const s = inUnits(1e9, 'billion'); if (s) return s; }
+  if (abs >= 1e6) { const s = inUnits(1e6, 'million'); if (s) return s; }
+  return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+const SCALE: Record<string, number> = { k: 1e3, thousand: 1e3, m: 1e6, million: 1e6, bn: 1e9, b: 1e9, billion: 1e9 };
+
+/**
+ * The numbers inside a sentence, written so a person can read them. "N120 million" and "N120m" are
+ * "120 million naira"; "254k" is "254,000"; "120000000" is "120 million". A number under 10,000
+ * with no scale is left as it is, so a year, a "40" or a "14" never changes.
+ */
+export function theNumbersPeopleCanRead(text: string): string {
+  if (!text) return text;
+  const value = (digits: string, scale?: string) => Number(digits.replace(/,/g, '')) * (scale ? SCALE[scale.toLowerCase()] ?? 1 : 1);
+  return text
+    /* Naira: "N120 million", "N120m", "₦120m", "N 254,000". */
+    .replace(/(?<![\p{L}\p{N}])(?:N|₦)\s?(\d[\d,]*(?:\.\d+)?)(?:\s?(million|thousand|billion|bn|m|k|b)(?![\p{L}]))?/gu,
+      (_m, d: string, s?: string) => `${aNumberPeopleCanRead(value(d, s))} naira`)
+    /* A scale written as a letter: "254k", "1.5m", "2bn". */
+    .replace(/(?<![\p{L}\p{N}.,])(\d[\d,]*(?:\.\d+)?)(k|m|bn)(?![\p{L}\p{N}])/gu,
+      (_m, d: string, s: string) => aNumberPeopleCanRead(value(d, s)))
+    /* A long bare number: "120000000". */
+    .replace(/(?<![\p{L}\p{N}.,])(\d{5,})(?![\p{N},.]\d|[\p{L}])/gu, (_m, d: string) => aNumberPeopleCanRead(Number(d)));
+}
+
+const MODALS = new Set(['will', 'would', 'can', 'could', 'should', 'must', 'may', 'might', 'shall', 'did', 'was', 'had']);
+
+/** The verb that goes with one person: "stop" -> "stops", "need" -> "needs", "have" -> "has". */
+function forOnePerson(verb: string): string {
+  const w = verb.toLowerCase();
+  if (MODALS.has(w)) return verb;
+  if (w === 'am') return 'is';
+  if (w === 'have') return 'has';
+  if (w === 'do') return 'does';
+  if (w === "don't") return "doesn't";
+  if (w === 'go') return 'goes';
+  if (/(?:s|sh|ch|x|z|o)$/.test(w)) return `${verb}es`;
+  if (/[^aeiou]y$/.test(w)) return `${verb.slice(0, -1)}ies`;
+  return `${verb}s`;
+}
+
+/**
+ * "I'm aiming for", "I stop", "the speaker", "the person", "my", "me" become the person who set the
+ * aim, as their label, with the verb for one person. Only "I" and its forms, and only these two
+ * phrases for the speaker, so nothing else in the sentence moves.
+ */
+export function aboutTheSpeaker(text: string, speaker: string): string {
+  const S = speaker;
+  let out = text
+    .replace(/(^|[^\p{L}'’])I(?:'|’)m\b/gu, `$1${S} is`)
+    .replace(/(^|[^\p{L}'’])I am\b/gu, `$1${S} is`)
+    .replace(/(^|[^\p{L}'’])I(?:'|’)ve\b/gu, `$1${S} has`)
+    .replace(/(^|[^\p{L}'’])I(?:'|’)ll\b/gu, `$1${S} will`)
+    .replace(/(^|[^\p{L}'’])I(?:'|’)d\b/gu, `$1${S} would`)
+    .replace(/(^|[^\p{L}'’])I ([a-z][a-z'’]*)\b/gu, (_m, before: string, verb: string) => `${before}${S} ${forOnePerson(verb)}`)
+    .replace(/\bthe speaker(?:'|’)s\b/gi, `${S}'s`)
+    .replace(/\bthe speaker\b/gi, S)
+    .replace(/^The person\b/, S)
+    .replace(/\bmy\b/g, `${S}'s`)
+    .replace(/\bme\b/g, S);
+  if (out !== text) out = out.charAt(0).toUpperCase() + out.slice(1);
+  return out;
+}
+
+/** A row that only says what is counted: "approved facilities", "Contracts". Never a sentence. */
+export function onlySaysWhatIsCounted(name: string): boolean {
+  const t = name.trim();
+  if (!t) return false;
+  if (/^[\p{Ll}\p{N}]/u.test(t)) return true;
+  return !/[.!?]$/.test(t) && t.split(/\s+/).length <= 3;
+}
+
+export interface WhoAnAimIsAbout {
+  /** The label of the person who set it, for "I", "the speaker" and "the person". */
+  speaker: string | null;
+  /** The label of the person who holds the number, or null for the team. */
+  holder: string | null;
+  target: number | null;
+}
+
+/**
+ * The name of an aim, as one full sentence about a person, in labels. The board names it for the
+ * reader with `withNames` after this.
+ */
+export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {
+  let t = theNumbersPeopleCanRead((name ?? '').trim());
+  if (!t) return t;
+  if (onlySaysWhatIsCounted(t)) {
+    const holder = who.holder ?? 'the team';
+    /* "Aisha’s sales" held by Aisha is "sales": the holder is already said. A first word is made lower
+       case only where it is an ordinary word ("Sales", "Contracts"), not part of a name ("Equity Bank"). */
+    const words = t.replace(/[.,;:]+$/, '').split(/\s+/);
+    /* "Aisha’s share", held by Aisha: "Aisha's share is 12." (and "Your share is 12." to her). A word
+       that is a number of things ("Aisha’s sales") is "Aisha is aiming for 5 sales.", below. */
+    if (words.length > 1 && /(?:'|’)s$/i.test(words[0]) && who.holder && /^(?:share|target|quota|number|part|portion)$/i.test(words.slice(1).join(' '))) {
+      const rest = words.slice(1).join(' ').toLowerCase();
+      t = who.target != null ? `${who.holder}'s ${rest} is ${aNumberPeopleCanRead(who.target)}.` : `This is ${who.holder}'s ${rest}.`;
+      return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+    if (words.length > 1 && /(?:'|’)s$/i.test(words[0]) && who.holder) words.shift();
+    if (/^\p{Lu}\p{Ll}*$/u.test(words[0] ?? '') && (words.length === 1 || /^\p{Ll}/u.test(words[1]))) words[0] = words[0].toLowerCase();
+    const what = words.join(' ');
+    const howMany = who.target != null && !/^\d/.test(what) ? `${aNumberPeopleCanRead(who.target)} ` : '';
+    t = who.target != null ? `${holder} is aiming for ${howMany}${what}.` : `${holder} is working on ${what}.`;
+  } else if (who.speaker) {
+    t = aboutTheSpeaker(t, who.speaker);
+  }
+  t = t.charAt(0).toUpperCase() + t.slice(1);
+  return /[.!?]$/.test(t) ? t : `${t}.`;
+}
+
+/**
+ * "You need to meet her renewal targets" is the reader's own targets: once the sentence is about the
+ * reader ("You ..." at its start), "his" or "her" before a word is theirs, so it is "your". Only where
+ * nobody else is named in it, so "You agree with Tobi on his plan" is left as it is.
+ */
+export function yourOwnWhereYouAreTheSubject(text: string, otherNames: Iterable<string>): string {
+  if (!/^You\b/.test(text)) return text;
+  for (const n of otherNames) {
+    const name = (n ?? '').trim();
+    if (name.length > 1 && new RegExp(`(?<![\\p{L}])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}])`, 'iu').test(text)) return text;
+  }
+  return text.replace(/\b(?:his|her)\s+(?=\p{Ll})/gu, 'your ');
+}

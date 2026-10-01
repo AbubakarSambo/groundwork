@@ -42,17 +42,19 @@ describe('The goal the lead has set and not told, on the board of the person it 
     expect(all).not.toContain('eight renewals');
     expect((b.objectives ?? []).some((o: any) => o.target === 8)).toBe(false);
     /* The team's own objective, which names nobody, is still hers to read. */
-    expect((b.objectives ?? []).map((o: any) => o.name)).toContain('Keep the Westgate account');
+    /* Every aim is served as a full sentence, with its full stop (1 October 2026). */
+    expect((b.objectives ?? []).map((o: any) => o.name)).toContain('Keep the Westgate account.');
   });
 
   it('Amina, who set the goal, reads every objective as before', async () => {
     const b = await boardAs(RECORD, ...AMINA);
-    expect(b.objectives.map((o: any) => o.name)).toEqual([AIM_SAID, NUMBER_FOR_HER, 'Keep the Westgate account']);
+    expect(b.objectives.map((o: any) => o.name)).toEqual([AIM_SAID, `${NUMBER_FOR_HER}.`, 'Keep the Westgate account.']);
   });
 
   it('once Amina has told her, Rukia reads them', async () => {
     const b = await boardAs({ ...RECORD, personObjectives: [goal({ awareness: 'TOLD' })] }, ...RUKIA);
-    expect(b.objectives.map((o: any) => o.name)).toContain(AIM_SAID);
+    /* As "you", since the aim is about her (1 October 2026): she used to read her own name and "her". */
+    expect(b.objectives.map((o: any) => o.name)).toContain('You need to meet your renewal targets of eight per quarter.');
   });
 
   it('a week on, Rukia reads only that Amina has set a goal about this work, and no number', async () => {

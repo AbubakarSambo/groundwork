@@ -1034,3 +1034,9 @@ The check-in's own read (`GET /grounds/:id`) and each row of the list now carry 
 On every other check-in it is null. Please show it beside the lead's switch for "people see each other", and on the page of the person reviewed where the list of who is on it would be. `peersVisibleEffective` is now worked out for the reader: it is false for the person reviewed, and true for the lead and for a colleague giving a view when the lead switched it on. Before this, it read false for everybody on those check-ins, the lead included, even with the switch on.
 
 Tests: `grounds/decision-17-on-the-check-in-page.spec.ts` and `reports/decision-17-wins-over-the-leads-switch.spec.ts`.
+
+## 1 October: the name of each aim on the board, and the line under it (review row 113)
+
+`board.objectives[*].name` is now one full sentence about a person by name, and "you" for the reader. For example, on the sales board Bisi reads "You are aiming for 120 million naira disbursed this quarter." and Ngozi reads "Bisi Adeyemi is aiming for 120 million naira disbursed this quarter." and "You are aiming for 14 approved facilities." Please show `name` as it comes. The Context page (`GET /grounds/:id`) still serves the name as stored, because that is the field the lead edits.
+
+`board.objectives[*].journey.say` is now one full sentence with numbers a person can read: "It was 0 at the start and is 11 now, and the aim is 40.", "It is 0 now, and the aim is 120 million.", "It was 0 at the start and is 254,000 now, so the aim of 180,000 has been reached.", and "Nothing has been counted for it yet." where nothing is counted. `BoardPage.tsx` (around line 1023) builds its own line from `o.count`, `o.journey.start` and `o.target`, so it prints "120000000". Please show `journey.say` there instead, or write the numbers the same way. An admin outside the check-in who may not see a number gets an empty `say`.

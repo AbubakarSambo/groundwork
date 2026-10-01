@@ -40,7 +40,8 @@ import {
   sectionsForARunOf,
 } from './board-families';
 import { totalSessionsFor } from '../grounds/session-count';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody, plainWordsByPerson, atTheStart } from '../reports/party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody, plainWordsByPerson, atTheStart, withNames } from '../reports/party-labels';
+import { anAimAsASentence, yourOwnWhereYouAreTheSubject } from './an-aim-is-a-sentence-about-somebody';
 import {
   CoverageKind,
   CoverageRead,
@@ -965,6 +966,33 @@ export class BoardService {
 
     /* One row per thing, with one count. See one-count-per-thing. */
     if (Array.isArray(out.objectives)) out.objectives = oneCountPerThing(out.objectives as any[], theLeadsRow);
+
+    /*
+     * EACH AIM, AS A FULL SENTENCE ABOUT SOMEBODY, NAMED FOR THIS READER (review of 1 October 2026).
+     * After one-count-per-thing, which joins rows on the words as they were stored. "I", "the speaker"
+     * and "the person" are whoever set the aim; a row that only says what is counted is its holder
+     * aiming at its number. Then the same naming every report goes through, so the reader's own name
+     * is "you". The sentences the board wrote itself above (an untold goal) are already finished.
+     */
+    if (Array.isArray(out.objectives)) {
+      const labels = labelsForParties(ground.participants as any);
+      const readerLabel = me?.id ? labels.get(me.id) ?? null : null;
+      const stored = new Map(((ground.objectives ?? []) as any[]).map((o) => [o.id, o]));
+      const othersNames = (ground.participants as any[]).filter((p) => p.id !== me?.id)
+        .flatMap((p) => [p.user?.firstName, p.user?.lastName, p.nameGiven].filter(Boolean) as string[]);
+      out.objectives = (out.objectives as any[]).map((o) => {
+        const row = stored.get(o.id);
+        if (!row) return o;
+        const setBy = row.setByParticipantId ?? row.ownerParticipantId ?? theLeadsRow;
+        const inLabels = anAimAsASentence(o.name, {
+          speaker: setBy ? labels.get(setBy) ?? null : null,
+          holder: o.ownerParticipantId ? labels.get(o.ownerParticipantId) ?? null : null,
+          target: o.target ?? null,
+        });
+        const named = withNames(inLabels, visibleNames, labels.values(), { viewerLabel: readerLabel });
+        return { ...o, name: yourOwnWhereYouAreTheSubject(named, othersNames) };
+      });
+    }
 
     if (has('divergence') && reportSafe) {
       /*

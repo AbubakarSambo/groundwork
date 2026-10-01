@@ -176,14 +176,15 @@ describe('the read-only note', () => {
 describe('what a target assumes', () => {
   it('the lead reads what every target assumes', async () => {
     const b = await boardFor('u-wairimu').board;
+    /* Each name is a full sentence about whoever holds it since 1 October; "Sales" and "Aisha’s sales" were not. */
     const byName = Object.fromEntries((b.objectives ?? []).map((o: any) => [o.name, o.assumes]));
-    expect(byName['Sales']).toEqual(['6 reps each close about 4 sales.', 'Stock arrives within a week of an order.']);
-    expect(byName['Aisha’s sales']).toEqual(['Aisha keeps her two supermarket buyers.']);
+    expect(byName['The team is aiming for 25 sales.']).toEqual(['6 reps each close about 4 sales.', 'Stock arrives within a week of an order.']);
+    expect(byName['Aisha Otieno is aiming for 5 sales.']).toEqual(['Aisha keeps her two supermarket buyers.']);
   });
 
   it('Miriam reads the team target’s, and nothing about Aisha’s number', async () => {
     const b = await boardFor('u-miriam').board;
-    expect((b.objectives ?? []).map((o: any) => o.name)).toEqual(['Sales']);
+    expect((b.objectives ?? []).map((o: any) => o.name)).toEqual(['The team is aiming for 25 sales.']);
     expect(JSON.stringify(b)).not.toContain('supermarket buyers');
   });
 });

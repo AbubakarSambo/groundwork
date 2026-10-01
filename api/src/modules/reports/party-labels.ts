@@ -1177,7 +1177,7 @@ const aWordThatIsAVerbAfterYou = (word: string): boolean => {
 };
 const A_CLAUSE_OPENS = '(?:and|but|while|until|unless|because|so|if|when|whereas|since|though|although|once)';
 const SHARES_ITS_YOU = new RegExp(
-  `(,\\s+(?:and\\s+|but\\s+)?|\\s+(?:and|but)\\s+)${ADVERBS}(is|has|was|does|reviews|stays|shares|confirms|sends|expects|wants|needs|believes|says|thinks|feels|plans|knows|works|leads|waits|asks|agrees|keeps|takes|makes|owns|holds|sees|remains|continues|hopes|intends|accepts|tracks|manages|uses|gets|shows|follows|attends|handles|decides|chooses|answers|aims|relies|depends)\\b`,
+  `(,\\s+(?:and\\s+|but\\s+)?|\\s+(?:and|but)\\s+)${ADVERBS}(is|has|was|does|reviews|stays|shares|confirms|sends|expects|wants|needs|believes|says|thinks|feels|plans|knows|works|leads|waits|asks|agrees|keeps|takes|makes|owns|holds|sees|remains|continues|hopes|intends|accepts|tracks|manages|uses|gets|shows|follows|attends|handles|decides|chooses|answers|aims|relies|depends|builds)\\b`,
   'g',
 );
 /* "You have no visibility of these facts, and so has understood..." - but never "and so is the
