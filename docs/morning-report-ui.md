@@ -7182,4 +7182,20 @@ The rest of batch A (six contradictions, six more sentences and the pictures) is
 
 Two of my pushes were refused tonight, because I had chained the push with another command. Each was run again on its own, as the check's message allows.
 
+**Batch A is done.**
+- Juma's way to the reports now lands on the board, where they are. Before, it sent him to Context.
+- An admin is told "You can let Faraji Odhiambo in on People." on every tab.
+- Amani reads "Faraji Odhiambo is waiting to be let in."
+- The next check-in's date is said once.
+- The lead's note and the summary are two lines.
+- Rukia's own share reads "You. Seen by you."
+- A solo report's headings are "What you said" and "What to carry into next time".
+- Rukia's own row says "Your expectation is set."
+- The Done screen's two colon-joined lines are each a heading and a sentence.
+- "Read how to run one" is its own line.
+- The Done screen's "Groundwork did not pick this up this time" reads the right field, but the engine computed it before its own fix of 29 September. That is request 103.
+- "Rewrite" stays for admins; see "Decided for Hafsah to confirm".
+
+The whole screen suite passes (3,792 tests), except the wording guard, which is request 95. The button test passes on all 31 screens, and the page-colour test passes 4 of 4. The pictures are in the scratchpad's `pictures/g3-fixA/`. Batch B, the look, is next.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
