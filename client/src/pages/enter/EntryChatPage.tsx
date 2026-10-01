@@ -39,7 +39,7 @@ import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-t
 import { copy } from '@/components/gw/copying-can-fail'
 import { whatIsSetAndWhatIsNot, whenTheCheckInsLand } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
-import { Button, Callout, TextField, TextArea, Bubble, Composer, PhaseSteps } from '@/components/gw/ui'
+import { Button, Callout, Note, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal } from '@/components/gw/ui'
 
 /*
  * A COLLEAGUE ON THE INVITE LIST, BY ID (U.4). The list of colleagues carries no addresses, so a
@@ -3397,49 +3397,41 @@ export function EntryChatPage() {
 
             {/* Natural close prompt */}
             {showEndPrompt && !closed && (
-              <div style={{ padding: '12px 20px', background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-blue-b)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1, fontSize: 13, color: 'var(--gw-navy)', lineHeight: 1.5 }}>
+              <div className="gwui-ec-natural-close">
+                <Callout tone="info">
                   This session has reached a natural close. Would you like to end and see your report?
+                </Callout>
+                <div className="gwui-ec-natural-close-actions">
+                  <Button kind="secondary" size="small" onClick={() => { setShowEndPrompt(false); setEndPromptDismissed(true) }}>
+                    Keep going
+                  </Button>
+                  <Button kind="secondary" redText size="small" onClick={() => setShowEndConfirm(true)}>
+                    End session
+                  </Button>
                 </div>
-                <button
-                  onClick={() => { setShowEndPrompt(false); setEndPromptDismissed(true) }}
-                  style={{ padding: '7px 12px', borderRadius: 6, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
-                >
-                  Keep going
-                </button>
-                <button
-                  onClick={() => setShowEndConfirm(true)}
-                  style={{ padding: '7px 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
-                >
-                  End session
-                </button>
               </div>
             )}
 
             {/* Quick action chips */}
             {!closed && displayedHistory.length >= 1 && (
-              <div style={{ padding: '8px 16px', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', flexShrink: 0, background: 'white', alignItems: 'center' }}>
+              <div className="gwui-ec-quick-actions">
                 {QUICK_ACTIONS.map(a => (
-                  <button key={a.label} onClick={() => send(a.msg)} disabled={loading}
-                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}>
+                  <button key={a.label} type="button" className="gwui-ec-quick-action" onClick={() => send(a.msg)} disabled={loading}>
                     {a.label}
                   </button>
                 ))}
-                <button onClick={() => send('What patterns are you noticing in what I have shared so far?')} disabled={loading}
-                  style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}>
+                <button type="button" className="gwui-ec-quick-action" onClick={() => send('What patterns are you noticing in what I have shared so far?')} disabled={loading}>
                   Patterns
                 </button>
-                <label htmlFor="entry-doc-upload-chip" title="Upload a document"
-                  style={{ padding: '5px 10px', borderRadius: 20, fontSize: 13, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', opacity: loading ? 0.5 : 1 }}>
-                  📎
+                <label htmlFor="entry-doc-upload-chip" title="Upload a document" className="gwui-ec-quick-action gwui-ec-quick-action-attach">
+                  Attach a document
                 </label>
-                <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" style={{ display: 'none' }} onChange={handleFileChange} />
-                <div style={{ marginLeft: 'auto' }}>
+                <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" className="gwui-sr-only" onChange={handleFileChange} />
+                <div className="gwui-ec-quick-actions-end">
                   {/* No arrow (U.8 review): a button says what it does, and the other "End session"
                       button on this same screen (the natural-close prompt above) already says it
                       without one. */}
-                  <button onClick={() => setShowEndConfirm(true)} disabled={loading}
-                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, opacity: loading ? 0.5 : 1 }}>
+                  <button type="button" className="gwui-ec-quick-action gwui-ec-quick-action-navy" onClick={() => setShowEndConfirm(true)} disabled={loading}>
                     End session
                   </button>
                 </div>
@@ -3448,9 +3440,9 @@ export function EntryChatPage() {
 
             {/* Attached doc pill */}
             {uploadedDoc && (
-              <div style={{ padding: '6px 16px', background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-blue-b)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                <span style={{ fontSize: 12, color: 'var(--gw-navy)', flex: 1 }}>📎 {uploadedDoc.name}</span>
-                <button onClick={() => setUploadedDoc(null)} style={{ fontSize: 11, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer' }}>× remove</button>
+              <div className="gwui-ec-doc-pill">
+                <span className="gwui-ec-doc-pill-name">📎 {uploadedDoc.name}</span>
+                <button type="button" className="gwui-plain-link" onClick={() => setUploadedDoc(null)}>Remove</button>
               </div>
             )}
 
@@ -3493,24 +3485,22 @@ export function EntryChatPage() {
 
       {/* Doc context overlay */}
       {docContextMode && uploadedDoc && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div style={{ background: 'white', borderRadius: '14px 14px 0 0', padding: '20px 20px 32px', width: '100%', maxWidth: 560 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📎 {uploadedDoc.name}</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.55 }}>
-              What context does this document support from what you have shared so far?
-            </div>
-            <textarea autoFocus placeholder="e.g. This is the brief I referenced when I mentioned the project scope…"
-              value={docContext} onChange={e => setDocContext(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitDocContext() } }}
-              style={{ width: '100%', resize: 'none', minHeight: 80, padding: '10px 12px', fontSize: 13, lineHeight: 1.55, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
-            />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => { setDocContextMode(false); setUploadedDoc(null) }} style={{ padding: '10px 16px', borderRadius: 8, background: 'none', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={submitDocContext} style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Add to session</button>
-            </div>
+        <Modal title={`📎 ${uploadedDoc.name}`} onClose={() => { setDocContextMode(false); setUploadedDoc(null) }}>
+          <Note>
+            What context does this document support from what you have shared so far?
+          </Note>
+          <TextArea
+            autoFocus
+            placeholder="e.g. This is the brief I referenced when I mentioned the project scope…"
+            value={docContext}
+            onChange={e => setDocContext(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitDocContext() } }}
+          />
+          <div className="gwui-ec-modal-actions">
+            <Button kind="secondary" onClick={() => { setDocContextMode(false); setUploadedDoc(null) }}>Cancel</Button>
+            <Button kind="primary" onClick={submitDocContext}>Add to session</Button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/*
@@ -4342,31 +4332,18 @@ export function EntryChatPage() {
 
       {/* End session confirmation modal */}
       {showEndConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>End this session?</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 8 }}>
-              Your answers are saved on this device. Ending this session generates your report, and this session's answers then lock.
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
-              Once you save the record below, you can revisit and correct it any time from your report. The shared report releases once all parties have checked in.
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => setShowEndConfirm(false)}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Keep going
-              </button>
-              <button
-                onClick={() => { setShowEndConfirm(false); handleEndSession() }}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                End session
-              </button>
-            </div>
+        <Modal title="End this session?" onClose={() => setShowEndConfirm(false)}>
+          <Note>
+            Your answers are saved on this device. Ending this session generates your report, and this session's answers then lock.
+          </Note>
+          <Note>
+            Once you save the record below, you can revisit and correct it any time from your report. The shared report releases once all parties have checked in.
+          </Note>
+          <div className="gwui-ec-modal-actions">
+            <Button kind="secondary" onClick={() => setShowEndConfirm(false)}>Keep going</Button>
+            <Button kind="danger" onClick={() => { setShowEndConfirm(false); handleEndSession() }}>End session</Button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )
