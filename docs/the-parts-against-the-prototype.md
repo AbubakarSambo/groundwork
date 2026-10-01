@@ -225,3 +225,44 @@ Every other part these four files use was already in the kit: `Page`/`Mark`/`Pag
 **`auth-kit.tsx` keeps every export's name**, so `LinkExpired.tsx`, `EmailConfirmed.tsx`, `LinkSentPanel.tsx`, `GoogleFailedPage.tsx`, `SignOutPage.tsx` and `ChoosePasswordPage.tsx` - none of them named in this task - draw the new parts too, the moment `AuthCard`/`AuthField`/`AuthError`/`PasswordField`/`PasswordRules`/`PasswordStrength` changed underneath them. Each of those six files also had its own `Button` import and old wrapper classnames (`gw-auth-actions`, `gw-auth-links`, `gw-auth-small`, `gw-auth-link`, a raw `gw-b gw-b-quiet` anchor) swapped for the shared `Button`/`Stack`/`.gwui-fine`/`.gwui-auth-links`, so none of the six auth screens mixes old and new button styles inside the same rebuilt card.
 
 **What was checked live, and what it found.** `cd client && npx tsc -b` is clean. Every spec touching sign-in or auth-kit passes (one test's helper needed `.gwui-sr-only` added beside the old `.gw-sr-only` it already stripped, two needed `getByRole('radio', ...)` in place of `getByLabelText(...)` now that the sign-in choice is `Choices` rather than a native radio with a wrapping `<label>`, and a few pinned exact old DOM shapes - the password-manager `htmlFor` count, a merged welcome sentence, a straight vs typographic apostrophe, a missing "✓" - were updated with the reason in each commit). The whole client suite (3671 tests) passes but for one pre-existing, unrelated failure (`the-reveal-row-names-who-you-are-waiting-on.spec.ts`, confirmed present before this task's first commit by stashing it and re-running). The wording guard (`copy-does-not-sound-like-yoda.spec.ts`) stayed at 60: moving `MagicVerifyPage`'s "we couldn't find your session" text from JSX children into a `PageTitle` `subtitle` string briefly exposed an existing "If you finished your session..." sentence to the guard for the first time (it had never been inside a quoted string literal before), so that sentence was rewritten rather than excused. The eight API specs that read these files pass unchanged. `e2e/the-page-is-cream.spec.ts` passes for all three readers, proving the emailed sign-in link still works end to end through the rebuilt pages. `e2e/the-prototype-count-of-buttons.spec.ts` passes unchanged (26 tests); `auth-kit.tsx`, `AuthPage.tsx`, `MagicVerifyPage.tsx` and `JoinPage.tsx` are marked `null` there, since every one of them is a signed-out screen and this test signs a reader in before opening anything - their one-primary-button rule is instead checked by the static `primaryButtonCount` in `the-rebuilt-pages-use-only-the-new-parts.spec.ts`, which now covers all four.
+
+## Group 3, piece 2 (the reports): the parts this piece added
+
+Rebuilding `SessionReportPage.tsx` (the live per-session report, `/checkin/:checkInId/report`)
+from the shared parts needed a small set of additions to `gw-ui.css`, all at the sizes this page
+already used before the rebuild (the prototype's own B4 screens - `docs/prototype/screens/
+B4-reports-and-sharing/` - draw a session's own report by hand per screen, with no dedicated CSS
+rule for most of these shapes):
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| **`.gwui-fs-20`/`.gwui-fs-22`** (the session heading, "Session 4") | font-size | the page's own prior `fontSize: 20` | unchanged |
+| **`.gwui-rule-left`/`-amber`/`-green`** (a found-area's own left edge marker) | border-left | the page's own prior one-off `borderLeft` values | unchanged |
+| **`.gwui-ink-green-soft`** | colour | `var(--gw-green-t-soft)`, a token already defined and already referenced inline elsewhere on this page | unchanged |
+| several `mt`/`mb`/`pt`/`pl`/`gap` numeric classes (24, 30, 32, 40, 1, 3, 5, 11, 20, 22, 34, 17, 2, 18) | spacing | the page's own prior inline values | unchanged |
+
+**`ReportPage.tsx`'s own `ReportBody`** (everything below its three-line `ReportPage` redirect) is
+not mounted by any route today - confirmed against the file's own regression tests
+(`the-sharp-part-first.spec.ts`, `no-label-is-the-leads-note.spec.tsx`, `one-report-not-two.spec.ts`
+and others, each of which says so in its own comment) and against every caller of `GroundAdminPage`/
+`GroundParticipantPage`, which draw `TheSessionsReport`/`SoloReportBody` directly and never
+`ReportBody`. Rebuilding dead markup to match the prototype pixel for pixel serves no reader, so
+this piece left it as it was rather than churn ~250 lines of regression-locked source for a screen
+nobody opens - see the morning report for the recommendation to delete it (and its own tests) in a
+later task, once Hafsah confirms nothing still links to it from an old email or a bookmark.
+
+**Two things this piece found and fixed, not specific to the report screens**: `oldClassesUsed()`
+(`the-rebuilt-pages-use-only-the-new-parts.spec.ts`) matched the CSS custom property
+`var(--gw-card)` as the old class `gw-card` by plain substring - true of several already-correct
+components (`HowSpecificThisSessionWas.tsx`, `WhatToWorkOnNext.tsx`, `TheReportYouSawAtTheEnd.tsx`,
+`TheCheckInYouJustFinished.tsx`) that this piece was the first to import from a listed page.
+Narrowed the match to not fire inside a `--` token. And `TheCheckInHeader.tsx` (drawn by the
+session report page, the board, and every other check-in page) passed two style objects through as
+`style={}` - moved to `.gwui-ci-link-btn`/`.gwui-ci-tab`/`.gwui-ci-tab-on` in `index.css`, same
+pixel values, because this is a shared component many unlisted pages still draw and a value change
+there was out of scope for this piece.
+
+**What was checked live, and what it found.** `cd client && npx tsc -b` is clean. The guard test and
+every spec touching `ReportPage.tsx`, `SessionReportPage.tsx` or `TheCheckInHeader.tsx` pass (39
+spec files, 246+ tests), none with an assertion changed beyond the guard's own false-positive fix
+above.

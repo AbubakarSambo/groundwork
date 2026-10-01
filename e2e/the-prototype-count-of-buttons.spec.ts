@@ -164,6 +164,13 @@ const SCREENS: Record<string, Counterpart> = {
   'pages/suites/TodosPage.tsx': { productPath: '/suite/todos', reader: 'admin', hash: '#/suite/todos', persona: 'admin', mustShow: 'The to-dos suite is not switched on.' },
   'pages/suites/CustomersPage.tsx': { productPath: '/suite/customers', reader: 'admin', hash: '#/suite/customers', persona: 'admin', mustShow: 'The customers and deals suite is not switched on.' },
   'pages/suites/EquipmentPage.tsx': { productPath: '/suite/equipment', reader: 'admin', hash: '#/suite/equipment', persona: 'admin', mustShow: 'The equipment suite is not switched on.' },
+  /* Group 3, piece 2 (the reports). The lead's own completed session on "Sales team, Q3"
+     (9028f0ad-293b-4592-9a4e-25b680dd91cd) - the prototype's closest counterpart is B4's
+     "one-session" screen (#/c/sales/session/37), read as the lead. This one product page also
+     serves a participant their own session report (own-report.txt's wording) and refuses anyone
+     who is not a party to that session - both checked live by the picture round and by
+     your-report-as-each-reader-reads-it.spec.tsx, not by this static count. */
+  'pages/report/SessionReportPage.tsx': { productPath: '/checkin/92ae925e-90b5-42f6-a0d4-6187724049dc/report', reader: 'lead', hash: '#/c/sales/session/37', persona: 'lead' },
 };
 
 /* Sign-in is by the emailed link, through the one mail catcher every browser test shares

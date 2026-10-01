@@ -30,8 +30,8 @@ type Reader = { who: string; email: string; paths: string[] };
 const READERS: Reader[] = process.env.PAGE_COLOUR_READERS
   ? JSON.parse(process.env.PAGE_COLOUR_READERS)
   : [
-      { who: 'participant', email: 'amani.u8@example.test', paths: ['/today', `/grounds/${CHECK_IN}/p`, `/grounds/${CHECK_IN}/board`, '/you', '/company', '/settings'] },
-      { who: 'lead', email: 'rukia.u8lead@example.test', paths: ['/today', `/grounds/${CHECK_IN}`, `/grounds/${CHECK_IN}/board`, '/settings/people', '/boards', '/billing', '/billing/checkout', '/settings/billing', '/settings/suites'] },
+      { who: 'participant', email: 'amani.u8@example.test', paths: ['/today', `/grounds/${CHECK_IN}/p`, `/grounds/${CHECK_IN}/board`, '/you', '/company', '/settings', '/checkin/7bad4943-5da2-4bf5-aced-a0aec2682e2d/report'] },
+      { who: 'lead', email: 'rukia.u8lead@example.test', paths: ['/today', `/grounds/${CHECK_IN}`, `/grounds/${CHECK_IN}/board`, '/settings/people', '/boards', '/billing', '/billing/checkout', '/settings/billing', '/settings/suites', '/checkin/92ae925e-90b5-42f6-a0d4-6187724049dc/report'] },
       { who: 'admin', email: 'juma.u8admin@example.test', paths: ['/today', `/grounds/${CHECK_IN}/board`, '/settings/people', '/company', '/settings/suites', '/suite/time', '/suite/reviews', '/suite/onboard', '/suite/leave', '/suite/leaving', '/suite/roles', '/suite/spend', '/suite/todos', '/suite/customers', '/suite/equipment'] },
     ];
 
