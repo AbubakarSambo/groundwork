@@ -28,7 +28,7 @@ export interface ProbeRead {
 }
 
 /* U.9 RE-REVIEW, ITEM A: a plain heading, not a shout ("WORTH ASKING", "WORTH SAYING"). */
-function Block({ title, lines, markInferred }: { title: string; lines: string[]; markInferred?: boolean }) {
+function Block({ title, lines, markInferred, note }: { title: string; lines: string[]; markInferred?: boolean; note?: string }) {
   if (!lines.length) return null
   return (
     <div style={{ marginTop: 10 }}>
@@ -51,6 +51,7 @@ function Block({ title, lines, markInferred }: { title: string; lines: string[];
           )
         })}
       </div>
+      {note && <p className="gwui-panel-text-muted">{note}</p>}
     </div>
   )
 }
@@ -95,7 +96,7 @@ export interface SoftSpot { line: string; wouldRaiseIt: string }
  */
 export interface ArcAdvisory { participantId: string; note: string; features: string[] }
 
-export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt, softSpots, arcAdvisories, nameFor }: {
+export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt, softSpots, arcAdvisories, nameFor, readerRunsIt = true }: {
   reads?: ProbeRead[] | null
   /**
    * WHAT YOU SAID GOOD MEANS, AND WHAT THE RECORD HOLDS AGAINST IT.
@@ -126,6 +127,13 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
   arcAdvisories?: ArcAdvisory[] | null
   /** How to say a participant id as a name, for the soft-spots and record-shape lists. */
   nameFor?: (participantId: string) => string
+  /**
+   * WHO IS READING (Hafsah, 1 October). The server sends the weigh part to the lead and also to
+   * the one person a check-in with a single account is about. That person must not be called the
+   * lead: for them the section speaks to them ("What your lead said good would mean"), and it
+   * stays visible to them.
+   */
+  readerRunsIt?: boolean
 }) {
   const spotPeople = softSpots ? Object.entries(softSpots).filter(([, list]) => list.length) : []
   /* Nothing to ask, nothing to weigh, nothing thin and nothing flagged is the only empty state. */
@@ -138,20 +146,21 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
       }}
     >
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-        <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>What to ask each person</h2>
-        <span style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>Yours as the lead</span>
+        <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>{readerRunsIt ? 'What to ask each person' : 'What your lead is looking for'}</h2>
+        {readerRunsIt && <span style={{ fontSize: 13, color: 'var(--gw-muted)', flexShrink: 0 }}>Yours as the lead</span>}
       </div>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '2px 0 4px', lineHeight: 1.55, maxWidth: '68ch' }}>
-        Built from the record, not from a read on anybody. Each person has already been asked to
-        move the same things, so none of this will be news to them.
+        {readerRunsIt
+          ? 'Built from the record, not from a read on anybody. Each person has already been asked to move the same things, so none of this will be news to them.'
+          : 'Built from the record, not from a read on you. It is what your lead said they were looking for, and what has been said about it so far.'}
       </div>
 
       <div style={{ display: 'grid', gap: 18, marginTop: 14 }}>
       {weigh && (
         <div style={{ marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--gw-border)' }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>What you said you were looking for, and what people have said about it</div>
+          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>{readerRunsIt ? 'What you said you were looking for, and what people have said about it' : 'What your lead said they were looking for, and what people have said about it'}</div>
           {weigh.whatYouSaidGoodMeans.length > 0 && (
-            <Block title="What you said good would mean" lines={weigh.whatYouSaidGoodMeans.map(x => x.text)} markInferred />
+            <Block title={readerRunsIt ? 'What you said good would mean' : 'What your lead said good would mean'} lines={weigh.whatYouSaidGoodMeans.map(x => x.text)} markInferred />
           )}
           {weigh.whatTheRecordHolds.length > 0 && (
             <Block title="What people have said about that" lines={weigh.whatTheRecordHolds.map(x => x.text)} markInferred />
@@ -160,14 +169,14 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
               the part of this block that earns it. */}
           <Block
             title="What nobody has mentioned yet"
-            lines={weigh.whatNobodyHasEvidenceFor.length > 0 ? weigh.whatNobodyHasEvidenceFor : ['Everything you named was reached by something somebody said.']}
+            lines={weigh.whatNobodyHasEvidenceFor.length > 0 ? weigh.whatNobodyHasEvidenceFor : [readerRunsIt ? 'Everything you named was reached by something somebody said.' : 'Everything your lead named was reached by something somebody said.']}
             markInferred={weigh.whatNobodyHasEvidenceFor.length > 0}
           />
           {startedAt && startedAt.length > 0 && (
-            <Block title="Where this stood at the start" lines={startedAt.map(s => s.session > 1 ? `${s.text} Added at session ${s.session}.` : s.text)} />
+            <Block title="Where this stood at the start" lines={startedAt.map(s => s.session > 1 ? `${s.text} Added at session ${s.session}.` : s.text)} note="Written at the beginning and left as it was. Read what people shared above against it." />
           )}
           {restedOn && restedOn.length > 0 && (
-            <Block title="What you said it rested on" lines={restedOn} />
+            <Block title={readerRunsIt ? 'What you said it rested on' : 'What your lead said it rested on'} lines={restedOn} note="These were not in their hands. Read anything unmet above against them first." />
           )}
           {/*
             TWO NOTES, NOT ONE. `weigh.note` is this ground's own reading of its gaps; `weighNote` is

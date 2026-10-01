@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { conversationApi } from '@/api/conversation'
@@ -21,7 +22,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
-import { Page, Button, Panel } from '@/components/gw/ui'
+import { Page, Button, Panel, Callout } from '@/components/gw/ui'
 
 /**
  * U.9 RE-REVIEW: "WHAT YOU SHARED:" IS A LABEL BOLTED ONTO A SENTENCE WITH A COLON.
@@ -103,6 +104,9 @@ export default function SessionReportPage() {
     queryFn: () => groundsApi.get(data!.groundId as string),
     enabled: !!data?.groundId,
     retry: false,
+    /* Read again once a minute, so someone checking in after you opened this is noticed (below).
+       Reading only: opening or watching a report never rebuilds it. */
+    refetchInterval: 60_000,
   })
 
   /* Only the person who runs the check-in is offered these: a party cannot change either, and
@@ -120,12 +124,21 @@ export default function SessionReportPage() {
     onError: () => toast.error('That did not save. Nothing has changed - try again.'),
   })
 
+  /*
+   * YOU ARE READING THE PREVIOUS VERSION (Hafsah, 1 October, decision 71). The old team report's
+   * banner, carried over: when somebody has checked in after the team's report was last written, it
+   * is being updated, and the page says so and reads it again until the new one is there. When it
+   * was last written is `updatedAt` (a regenerated report is upserted, so `createdAt` stays at the
+   * first one), with `createdAt` only for a report written before that column existed.
+   */
   const { data: groundReport } = useQuery({
     queryKey: ['report', data?.groundId],
     queryFn: () => reportsApi.get(data!.groundId as string),
     enabled: !!data?.groundId,
     retry: false,
+    refetchInterval: (q: any) => (theTeamsReportIsBehind(q?.state?.data, ground) ? 5_000 : false),
   })
+  const readingThePreviousVersion = useMemo(() => theTeamsReportIsBehind(groundReport, ground), [groundReport, ground])
 
   /**
    * CORRECTING IT, from the page that shows it.
@@ -528,6 +541,11 @@ export default function SessionReportPage() {
         Your own report sat on an inset surface and the shared report sat on the bare page, so one
         read as a thing and the other as leftovers under it. Two boxes, two headers, same grammar.
       */}
+      {data?.groundId && data?.sessionNumber && readingThePreviousVersion && (
+        <Callout tone="info">
+          Someone has checked in since this was written, so it is being updated now. What you are reading is the previous version. It will refresh on its own.
+        </Callout>
+      )}
       {data?.groundId && data?.sessionNumber && (
         <Panel as="section">
           <div className="gwui-sentence-row">
@@ -580,6 +598,7 @@ export default function SessionReportPage() {
         softSpots={(groundReport as any)?.softSpots}
         arcAdvisories={(groundReport as any)?.arcAdvisories}
         nameFor={nameFor}
+        readerRunsIt={!(myParticipant && !amTheInitiator)}
       />
 
       {/*
@@ -627,4 +646,15 @@ export default function SessionReportPage() {
       )}
     </Page>
   )
+}
+
+/** Somebody finished a check-in after the team's report was last written. */
+export function theTeamsReportIsBehind(report: any, ground: any): boolean {
+  const writtenAt = report?.updatedAt ?? report?.createdAt
+  const written = writtenAt ? new Date(writtenAt).getTime() : 0
+  if (!written) return false
+  const newest = ((ground?.checkIns ?? []) as { completedAt?: string | null }[])
+    .map((c) => (c.completedAt ? new Date(c.completedAt).getTime() : 0))
+    .reduce((m, t) => Math.max(m, t), 0)
+  return newest > written
 }

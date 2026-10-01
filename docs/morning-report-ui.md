@@ -289,6 +289,12 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
 
+**1 October, the moved report sections (from the engine's answer to request 99).**
+- The two explaining sentences dropped in the move are back, word for word. Under "What you said it rested on": "These were not in their hands. Read anything unmet above against them first." Under "Where this stood at the start": "Written at the beginning and left as it was. Read what people shared above against it." Done.
+- The resolution panel shows nothing until a decision is near, as the prototype does, with no "Resolution. Not set yet." line. It already did this, and a test now holds it.
+- The "you are reading an old version" notice stays on the rebuilt session report. Done. It says "Someone has checked in since this was written, so it is being updated now. What you are reading is the previous version. It will refresh on its own." when that is true, and reads the report again until the new one is there.
+- On a check-in about one person, that person's session report does not call them the lead. The section reads "What your lead is looking for", with "What your lead said good would mean", and it stays visible to them. Done.
+
 **1 October, the one-off style classes and the old team report.**
 - The small one-off style classes (`gwui-fs-20`, `gwui-mt-…` and the rest) are not left for later, because they are how screens drift from the prototype. No new one may be added; the guard test now holds this. From now on, each group's review replaces the ones on that group's pages with the proper shared parts, and the pages already reviewed are gone back over, group by group. Each page still gets its picture check afterwards.
 - The unused old team report page is compared with the rebuilt Report tab before it goes. Any section the tab lacks is moved into it first, from the shared parts, especially anything about patterns, coaching, roles or probes. Then the old page is removed, and the report says what, if anything, was moved.

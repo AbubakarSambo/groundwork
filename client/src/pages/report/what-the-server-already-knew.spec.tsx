@@ -119,3 +119,41 @@ describe('what must not appear', () => {
     expect(PROBE_SRC).not.toMatch(/whatALeaderCanWeigh\(/)
   })
 })
+
+/*
+ * HAFSAH, 1 OCTOBER (request 99). The two explaining sentences dropped in the move are back, word for
+ * word, and the person a one-person check-in is about is never called the lead.
+ */
+describe('the two sentences under the starting point and what it rested on', () => {
+  const startedAt = [{ text: 'Two shops were open.', session: 1 }]
+  const restedOn = ['The supplier delivers on time.']
+  it('"What you said it rested on" carries its sentence, word for word', () => {
+    render(<WhatToProbeThemOn weigh={weigh} restedOn={restedOn} startedAt={startedAt} />)
+    expect(screen.getByText('What you said it rested on')).toBeTruthy()
+    expect(screen.getByText('These were not in their hands. Read anything unmet above against them first.')).toBeTruthy()
+  })
+  it('"Where this stood at the start" carries its sentence, word for word', () => {
+    render(<WhatToProbeThemOn weigh={weigh} restedOn={restedOn} startedAt={startedAt} />)
+    expect(screen.getByText('Where this stood at the start')).toBeTruthy()
+    expect(screen.getByText('Written at the beginning and left as it was. Read what people shared above against it.')).toBeTruthy()
+  })
+})
+
+describe('the person a check-in is about reads it as theirs, not as the lead', () => {
+  it('is never called the lead, and still sees the section, worded for them', () => {
+    const { container } = render(<WhatToProbeThemOn weigh={weigh} restedOn={['The supplier delivers on time.']} readerRunsIt={false} />)
+    const text = container.textContent ?? ''
+    expect(text).not.toContain('Yours as the lead')
+    expect(text).not.toContain('What you said good would mean')
+    expect(screen.getByText('What your lead is looking for')).toBeTruthy()
+    expect(screen.getByText('What your lead said good would mean')).toBeTruthy()
+    expect(screen.getByText('What your lead said it rested on')).toBeTruthy()
+    expect(screen.getByText('These were not in their hands. Read anything unmet above against them first.')).toBeTruthy()
+    expect(screen.getByText('The rota is written down and held to')).toBeTruthy()
+  })
+  it('and the lead still reads it as the lead', () => {
+    render(<WhatToProbeThemOn weigh={weigh} />)
+    expect(screen.getByText('Yours as the lead')).toBeTruthy()
+    expect(screen.getByText('What to ask each person')).toBeTruthy()
+  })
+})

@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { YourWork } from '@/components/gw/checkin/YourWork'
 import { Note } from '@/components/gw/ui/Note'
-import { Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading } from '@/components/gw/ui'
+import { Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
@@ -989,33 +989,21 @@ export function GroundAdminPage() {
    * The list page already separates these two and says which happened; this is the same treatment.
    */
   if (isError && !definitelyGone) return (
-    <Shell>
-      <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em' }}>
-          We could not load this check-in
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 340, margin: '0 auto 18px' }}>
-          This is a connection problem, not a lost record. Nothing you have written is affected.
-        </div>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: isFetching ? 'default' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
-        >{isFetching ? 'Trying…' : 'Try again'}</button>
-      </div>
-    </Shell>
+    <Page narrow>
+      <Empty title="We could not load this check-in" action={<Button kind="secondary" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Trying…' : 'Try again'}</Button>}>
+        This is a connection problem, not a lost record. Nothing you have written is affected.
+      </Empty>
+    </Page>
   )
 
-  if (isLoading) return <Shell><div style={{ padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div></Shell>
+  if (isLoading) return <Page narrow><Note>Loading…</Note></Page>
   /* Not loading and nothing came back: the address is wrong or this is not yours. "Loading…" forever said neither. */
   if (!ground) return (
-    <Shell>
-      <div style={{ padding: 24, maxWidth: 480 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>No check-in at this address</div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>The link may be out of date, or this check-in is not one you are in.</div>
-        <button onClick={() => navigate('/grounds')} style={{ padding: '9px 14px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Back to your check-ins</button>
-      </div>
-    </Shell>
+    <Page narrow>
+      <Empty title="No check-in at this address" action={<Button kind="secondary" onClick={() => navigate('/grounds')}>Back to your check-ins</Button>}>
+        The link may be out of date, or this check-in is not one you are in.
+      </Empty>
+    </Page>
   )
 
   /**
@@ -1029,25 +1017,21 @@ export function GroundAdminPage() {
   if (!canRunThisGround) {
     const amAParty = (ground.participants ?? []).some((p: any) => p.userId === user?.id)
     return (
-      <Shell>
-        <div style={{ maxWidth: 460, margin: '48px auto', padding: '0 20px' }}>
-          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>
-            This view is for whoever runs this check-in.
-          </div>
-          <div style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 18 }}>
-            Setting up a check-in, inviting people and releasing the report belong to its lead, or to
-            an admin in your organisation. {amAParty
-              ? 'Your own check-ins and the record are on your page.'
-              : 'You are not a participant in this check-in, so there is nothing here for you.'}
-          </div>
-          <button
-            onClick={() => navigate(amAParty ? `/grounds/${id}/p` : '/grounds')}
-            style={{ padding: '11px 18px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 700, fontFamily: 'inherit' }}
-          >
-            {amAParty ? 'Go to my check-ins →' : 'Back to check-ins'}
-          </button>
-        </div>
-      </Shell>
+      <Page narrow>
+        <Empty
+          title="This view is for whoever runs this check-in."
+          action={(
+            <Button kind="secondary" onClick={() => navigate(amAParty ? `/grounds/${id}/p` : '/grounds')}>
+              {amAParty ? 'Go to my check-ins' : 'Back to check-ins'}
+            </Button>
+          )}
+        >
+          Setting up a check-in, inviting people and releasing the report belong to its lead, or to
+          an admin in your organisation. {amAParty
+            ? 'Your own check-ins and the record are on your page.'
+            : 'You are not a participant in this check-in, so there is nothing here for you.'}
+        </Empty>
+      </Page>
     )
   }
 
@@ -1288,7 +1272,7 @@ export function GroundAdminPage() {
     })
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
+    <div className="gwui-page-shell">
       {/*
         HAFSAH, 30 SEPTEMBER, THE SETTING ROW, ITEM 3: THE SHARED PAGE FRAME, NOT A NARROWER ONE OF
         THIS PAGE'S OWN.
@@ -1307,7 +1291,7 @@ export function GroundAdminPage() {
           title={ground.label}
           subtitle={(ground as any).cadence ? `${cadenceLabel((ground as any).cadence)}.` : undefined}
           action={(
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+            <div>
               {/*
                 ROUND 5, ITEM H1: ONLY OFFERED TO SOMEBODY WHO ANSWERS IT.
                 "Your check-in" (board-as-lead.txt) is the same place the Check-in tab opens - which,
@@ -1330,16 +1314,15 @@ export function GroundAdminPage() {
                  * directly (`/checkin/:id`), the same place the Check-in tab's effect above
                  * sends her, or land on the Check-in tab when she has none open right now.
                  */
-                <button
-                  type="button"
+                <Button
+                  size="small"
                   onClick={() => {
                     if (myOpenCheckInId) navigate(`/checkin/${myOpenCheckInId}`)
                     else goTab('chat')
                   }}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   Your check-in
-                </button>
+                </Button>
               )}
               {/*
                 HAFSAH, 30 SEPTEMBER, ITEM 4: NOT HERE EITHER. "Ask" only sits in the header on the
@@ -1424,13 +1407,13 @@ export function GroundAdminPage() {
         {isInitiator && (() => {
           const a = attention
           const say =
-            a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn - 1 day late' : `Your turn - ${a.daysLate} days late`, c: 'var(--gw-amber-t)' }
-            : a.kind === 'yours' ? { t: 'Your turn', c: 'var(--gw-navy)' }
+            a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn. It is 1 day late.' : `Your turn. It is ${a.daysLate} days late.`, cls: 'gwui-ink-amber' }
+            : a.kind === 'yours' ? { t: 'Your turn.', cls: 'gwui-ink-navy' }
             /* U.9 re-review, item B: a sentence, not a label and a fraction. */
-            : a.kind === 'waiting' ? { t: `${a.total - a.done} of the ${a.total} have not answered yet.`, c: 'var(--gw-sub)' }
+            : a.kind === 'waiting' ? { t: `${a.total - a.done} of the ${a.total} have not answered yet.`, cls: 'gwui-ink-sub' }
             : null
           return say
-            ? <div style={{ padding: '0 16px 4px', fontSize: 14, fontWeight: 700, color: say.c, letterSpacing: '-.01em' }}>{say.t}</div>
+            ? <p className={`gwui-fs-14 ${say.cls}`}>{say.t}</p>
             : null
         })()}
         {/*
@@ -1459,43 +1442,41 @@ export function GroundAdminPage() {
           if (left.state === 'fine') return null
           const said = sayHowLongIsLeft(left, ground.overdue ?? 0)
           return (
-            <div style={{ margin: '0 16px 12px', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--gw-amber-bd)', background: 'var(--gw-amber-bg)' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
-                {left.state === 'out' ? 'Time is up' : left.daysLeft === 1 ? 'Runs out tomorrow' : `Runs out in ${left.daysLeft} days`}
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{said}</div>
+            <div className="gwui-mb-12">
+              <Callout tone="warning" title={left.state === 'out' ? 'Time is up' : left.daysLeft === 1 ? 'Runs out tomorrow' : `Runs out in ${left.daysLeft} days`}>
+                {said}
+              </Callout>
               {ground.viewerRunsThisGround && (
-                <button
-                  type="button"
-                  onClick={() => { goTab('settings'); setOpenTimeframe(true); scrollToId('how-long-this-runs') }}
-                  style={{ marginTop: 10, fontSize: 12.5, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', border: 'none', borderRadius: 6, padding: '7px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Give it more time
-                </button>
+                <div className="gwui-mt-10">
+                  <Button kind="secondary" size="small" onClick={() => { goTab('settings'); setOpenTimeframe(true); scrollToId('how-long-this-runs') }}>
+                    Give it more time
+                  </Button>
+                </div>
               )}
             </div>
           )
         })()}
         {hasStalled(ground.status) && (
-          <div style={{ margin: '0 16px 12px', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--gw-amber-b)', background: 'var(--gw-amber-bg)' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Out of time</div>
-            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+          <div className="gwui-mb-12">
+            <Callout tone="warning" title="Out of time">
               {itRanOutOfTime(!!ground.viewerRunsThisGround)}
-            </div>
+            </Callout>
             {ground.viewerRunsThisGround && (
-              <button
-                type="button"
-                onClick={() => {
-                  goTab('settings')
-                  setOpenTimeframe(true)
-                  /* Through the one helper - see lib/scroll-to, which exists because a raw smooth
-                     scroll ignores reduced-motion and fights the page's own scroll container. */
-                  scrollToId('how-long-this-runs')
-                }}
-                style={{ marginTop: 10, fontSize: 12.5, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', border: 'none', borderRadius: 6, padding: '7px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Give it more time
-              </button>
+              <div className="gwui-mt-10">
+                <Button
+                  kind="secondary"
+                  size="small"
+                  onClick={() => {
+                    goTab('settings')
+                    setOpenTimeframe(true)
+                    /* Through the one helper - see lib/scroll-to, which exists because a raw smooth
+                       scroll ignores reduced-motion and fights the page's own scroll container. */
+                    scrollToId('how-long-this-runs')
+                  }}
+                >
+                  Give it more time
+                </Button>
+              </div>
             )}
           </div>
         )}
@@ -1542,8 +1523,9 @@ export function GroundAdminPage() {
             parts.push(`${reportState.charAt(0).toUpperCase()}${reportState.slice(1)}.`)
           }
           if (!parts.length && sessionsDone !== 0) return null
+          const cls = ended && hasStalled(ground.status) ? 'gwui-ink-amber' : ended ? 'gwui-ink-green' : 'gwui-ink-sub'
           return (
-            <p style={{ fontSize: 13.5, color: ended && hasStalled(ground.status) ? 'var(--gw-amber-t)' : ended ? 'var(--gw-green-t)' : 'var(--gw-sub)', lineHeight: 1.55, margin: '8px 16px 0' }}>
+            <p className={`gwui-fs-13-5 ${cls}`}>
               {parts.join(' ')}
               {/* Before anybody has finished a session, the guide written for this moment is one click away. */}
               {sessionsDone === 0 && !ended && (
@@ -2555,6 +2537,6 @@ export function GroundAdminPage() {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <div style={{ minHeight: '100vh', background: 'var(--gw-page)' }}>{children}</div>
+  return <div className="gwui-page-shell">{children}</div>
 }
 
