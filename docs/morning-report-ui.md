@@ -209,6 +209,20 @@ The first estimate was six to eight hours. After the review, the remaining work 
 
 That is roughly eight to twelve more hours. The five kinds whose boards are of their own shape also wait on the engine (requests 105 and 107).
 
+**Board fix batch 1, the screen's own faults, is done (2 October, early).**
+- A participant reads "Not shared yet. Rukia shares it.", with no "Share it".
+- The quick read's sentences are whole: "A target moved by 96 this session." and "One thing is blocking work. Work is held up by owners with dates."
+- The Reports list says when a session really opened, and "opens on" for one that has not.
+- The lead reads "What needs you in this check-in", "Questions for you" and "You set these targets." Others read the lead's name.
+- "This is progress you reported." replaces "…they reported".
+- The switchboard's headings are plain: "What each person has done so far", "What is blocking work, and since when", "Who is busy and who is free" and "Who is waiting on whom".
+- "Your check-in" is the shared navy button.
+- The button test now checks every kind's board as the lead and as a participant. The sales, engineering, founder, support, operations and programme boards are within their prototype examples' counts for the lead. The government programme, asset loans, law firm, "where next" and MarketView Q4 boards are still over, because their prototype boards are of their own shape (request 105). The participant boards wait on the short personal view, which is batch 2. Each such gap is marked in the test with its reason, and the test says so the day it closes.
+- The whole screen suite passes, except the wording guard (request 95), and the page-colour test passes 4 of 4.
+- The pictures are in the scratchpad's `pictures/boards-fix1/`.
+
+Batch 2 is next: the prototype's own sections where their data is already sent, and the participant's short view.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
