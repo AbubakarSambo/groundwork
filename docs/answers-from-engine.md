@@ -712,6 +712,18 @@ What Bisi reads, for her own side: promised "In session 2, you said, "I'll follo
 
 Test: `obligations-on-the-board-as-each-reader-reads-them.spec.ts`.
 
+#### Forecast: `forecast` (decided for Hafsah to confirm)
+
+`[{ objectiveId, about, says, restsOn, cannotTellYou }]`. Where a team's number would be by the last session if it keeps the pace the record shows, carried forward in a straight line from the counts stored when each session closed. `about` is the sentence the board already serves for that target, so the screens can draw `says` under it. The earlier answer said nothing would be served; the prototype's board does show a forecast, so this is the closest thing the record can honestly give, and it is listed for Hafsah to confirm.
+
+When it is served. Only for a target with a number and no owner: a target that belongs to one person is never forecast, because the prototype says a forecast about one person reads like a judgement on them. Only with two sessions counted, and only while the check-in still runs past the last count. Never on an evaluation check-in (a performance plan, a promotion, a renewal). It is built from the targets this reader is already served, so `targetsFor`, an untold goal (decision 56), the lead's direction (decision 69) and the word guess where none is set all hold.
+
+Who reads it. It says the aim or the limit, so it follows decision 73, as the weekly report does: whoever runs the check-in and the admin who set it up read it; a person in it reads it only where the check-in's "who sees targets" is everybody; an admin who only reads keeps the counts alone and reads no forecast.
+
+What Bisi reads, for "The team is aiming for 40 approved facilities this quarter.": "If it keeps moving at the pace it has since session 1, it would be about 21 by session 4, against an aim of 40." restsOn: "It was 6 in session 1 and 11 in session 2, and this check-in runs for 4 sessions." cannotTellYou: "This carries the pace so far forward in a straight line. It is not a promise, and anything that changes the pace changes where it ends." Where the number has not moved: "It has not moved since session 1, so if nothing changes it would still be 2 by session 4, against a limit of 5."
+
+Test: `a-forecast-on-the-board-as-each-reader-reads-it.spec.ts`.
+
 ## Week 11: the ending page's suggestion, signals and questions, and reviews that fall due from inside the product
 
 ### The ending page (`GET /grounds/:groundId/resolution`)

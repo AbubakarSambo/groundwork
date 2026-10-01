@@ -1,4 +1,5 @@
 import { aCommitmentSaid, looksLikeATimeOrADate, inOurVoice } from '../reports/what-the-record-shows-over-time';
+import { aNumberPeopleCanRead } from './an-aim-is-a-sentence-about-somebody';
 
 /**
  * THE SWITCHBOARD'S OWN SECTIONS: THE ONES NO OTHER FIELD OF THE BOARD CARRIES (request 70).
@@ -688,5 +689,64 @@ export function theObligations(
     outside.set(key, [...(outside.get(key) ?? [label]), waitSaid(d)]);
   }
   for (const [, [label, ...lines]] of outside) out.push({ participantId: null, who: label, promised: [], othersWaitFor: lines });
+  return out;
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * FORECAST: where a team number is heading, if it keeps the pace the record shows
+ * ---------------------------------------------------------------------------------------------- */
+
+export interface AForecast {
+  objectiveId: string;
+  /** The target, in the sentence the board already serves this reader for it. */
+  about: string;
+  /** Where the pace so far would take it by the last session, against the aim or the limit. */
+  says: string;
+  /** The counts it rests on, read when each session closed. */
+  restsOn: string;
+  /** What it cannot tell anybody. */
+  cannotTellYou: string;
+}
+
+export const WHAT_A_FORECAST_CANNOT_TELL_YOU =
+  'This carries the pace so far forward in a straight line. It is not a promise, and anything that changes the pace changes where it ends.';
+
+/**
+ * A team's number only (decided for Hafsah to confirm, 1 October): a target with an owner is about one
+ * person, and the prototype keeps a forecast about one person off ("a forecast about one person feels
+ * like a judgement on them"), so it is never forecast here, and nothing is forecast on an evaluation
+ * check-in. Built only from targets this reader is already served (targetsFor, decision 56's untold
+ * goals and who-sees-targets have run before this), from the counts stored when each session closed.
+ * Needs a number to aim at, two sessions counted, and the check-in still to run past the last count.
+ */
+export function theForecast(
+  targets: { id: string; about: string; target: number | null; ownerParticipantId: string | null; direction: 'AIM' | 'LIMIT' }[],
+  counts: { objectiveId: string; sessionNumber: number; count: number }[],
+  totalSessions: number | null,
+): AForecast[] {
+  if (!totalSessions) return [];
+  const read = (n: number) => aNumberPeopleCanRead(n);
+  const out: AForecast[] = [];
+  for (const t of targets) {
+    if (t.ownerParticipantId || typeof t.target !== 'number' || !t.about?.trim()) continue;
+    const mine = counts.filter((c) => c.objectiveId === t.id).sort((a, b) => a.sessionNumber - b.sessionNumber);
+    if (mine.length < 2) continue;
+    const first = mine[0];
+    const last = mine[mine.length - 1];
+    if (last.sessionNumber <= first.sessionNumber || last.sessionNumber >= totalSessions) continue;
+    const pace = (last.count - first.count) / (last.sessionNumber - first.sessionNumber);
+    const ends = Math.max(0, Math.round(last.count + pace * (totalSessions - last.sessionNumber)));
+    const against = t.direction === 'LIMIT' ? `against a limit of ${read(t.target)}` : `against an aim of ${read(t.target)}`;
+    const says = pace === 0
+      ? `It has not moved since session ${first.sessionNumber}, so if nothing changes it would still be ${read(last.count)} by session ${totalSessions}, ${against}.`
+      : `If it keeps moving at the pace it has since session ${first.sessionNumber}, it would be about ${read(ends)} by session ${totalSessions}, ${against}.`;
+    out.push({
+      objectiveId: t.id,
+      about: t.about.trim(),
+      says,
+      restsOn: `It was ${read(first.count)} in session ${first.sessionNumber} and ${read(last.count)} in session ${last.sessionNumber}, and this check-in runs for ${totalSessions} sessions.`,
+      cannotTellYou: WHAT_A_FORECAST_CANNOT_TELL_YOU,
+    });
+  }
   return out;
 }

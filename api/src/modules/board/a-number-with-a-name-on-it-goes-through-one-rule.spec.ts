@@ -97,7 +97,10 @@ describe('every surface that hands out whose number it is', () => {
     /* Week 12b (d45afaca): the shape of one target in a week, and the sentence for it. It is handed only
        the rows the-weekly-report.service.ts has already passed through targetsFor for this reader. */
     'modules/reports/the-weekly-report.ts': 'the shape and sentence of a target in a week; its service asks targetsFor before handing rows in',
-    'modules/board/__fixtures__/a-page-that-contradicts-itself.ts':'test rows for a-board-that-does-not-contradict-itself; the board asks targetsFor',
+    /* Request 70: the forecast reads the owner only to leave out a target that is one person's. It is handed
+       `out.objectives` after the board has asked targetsFor, so it only ever sees what this reader may read. */
+    'modules/board/the-switchboards-own-sections.ts': 'the forecast reads the owner only to leave one person\'s number out; it is handed rows the board passed through targetsFor',
+    'modules/board/__fixtures__/a-page-that-contradicts-itself.ts': 'test rows for a-board-that-does-not-contradict-itself; the board asks targetsFor',
   };
 
   it('goes through the one rule, or says why it is not a reader', () => {
