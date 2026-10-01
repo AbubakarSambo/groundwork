@@ -1,5 +1,6 @@
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
 import { aPartyOutside } from './a-thing-is-not-somebody';
+import { whatEachSessionSays } from './one-count-for-the-sessions';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
@@ -494,6 +495,8 @@ export class BoardService {
         /* The check-in's read of how checkable the answers were, for "Nothing checkable" on the rows
            only whoever runs the check-in reads. See saidAnythingCheckable. */
         completedAt: true, specificityLevel: true, specificityDimensions: true,
+        /* When each session opened, for the session lines (request 107 e). */
+        availableFrom: true, startedAt: true,
       },
       orderBy: { sessionNumber: 'asc' },
     });
@@ -817,22 +820,37 @@ export class BoardService {
     };
 
     if (has('phaseSpine')) {
+      /*
+       * ONE COUNT, FROM THE BOARD'S OWN CLOCK (request 107 e). The header and every session's line are
+       * served as sentences from the same open round, capped at the last planned session as the list
+       * and Today are (request 97 a), so "Session 1 of 12" never sits beside "Session 2 opened on ...".
+       * See one-count-for-the-sessions.
+       */
+      const planned = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null;
+      const theRound = planned && planned > 0 ? Math.min(openRound, planned) : openRound;
+      const roundNumbers = Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b);
+      /* The header is drawn from these two numbers ("Session 1 of 12."); see theHeaderSays for its words. */
       out.phaseSpine = {
         startsAt: ground.startsAt,
         endsAt: ground.endsAt,
-        currentSession: openRound,
-        sessions: Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b).map((n) => {
+        currentSession: theRound,
+        plannedSessions: planned,
+        sessions: roundNumbers.map((n) => {
           const forSession = checkIns.filter((c) => c.sessionNumber === n);
           const allDone = forSession.length > 0 && forSession.every((c) => c.status === CheckInStatus.COMPLETED);
           /* WHEN IT OPENS, FOR A SESSION NOBODY HAS DONE. The team "complained about not knowing when the
              next sessions will start" (Hafsah, 22 Sep 2026); the pill said "Session 2" and nothing else.
              The earliest availableFrom across that session's check-ins is the day it opens. */
           const opens = forSession.map((c: any) => c.availableFrom).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
+          const line = whatEachSessionSays(n, mine as any[], theRound);
           return {
             n,
-            state: n < openRound || allDone ? 'done' : n === openRound ? 'current' : 'upcoming',
+            state: n < theRound || allDone ? 'done' : n === theRound ? 'current' : 'upcoming',
             date: forSession.find((c) => c.completedAt)?.completedAt ?? null,
             opensOn: opens,
+            /* The day it opened, never the day somebody finished it, and its line in a full sentence. */
+            openedOn: line.openedOn,
+            says: line.says,
           };
         }),
       };

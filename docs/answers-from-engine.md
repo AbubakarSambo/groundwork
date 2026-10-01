@@ -1308,3 +1308,20 @@ The quick read's Movement tile served one target's own change as its value ("+96
 How far each one moved is said once, in "Since the last round", in the reader's own words ("Your approved facilities went from 4 to 100."), so the tile and that sentence tell one story. The report's tile is built by the same function and reads the same.
 
 Four tests asserted the sum ("+5", "+31 million", "+14", "+2"), which was the defect; they now expect the count. Decided for Hafsah to confirm: the tile counts a target that went down as one that moved.
+
+## Request 107 (e): one count for the sessions, from the board's own clock (2 October)
+
+The header was counted from the open round (`whichRoundIsOpen`: the lowest round somebody has started and not finished), and the screen wrote "Session 2 opened on 30 September" from `date`, which is the day somebody first finished session 2. Two clocks on one board. Also, the board never read `availableFrom`, so `opensOn` was always empty.
+
+Now, in `phaseSpine`:
+- `currentSession` is the open round, capped at the last planned session, as the list and Today are since request 97 (a). `plannedSessions` is served beside it. Please draw the header from these two with the prototype's words, "Session 1 of 12." (the engine's own sentence for it is `theHeaderSays` in `board/one-count-for-the-sessions.ts`, and it ends "Session 12 of 12, finished." at the end). I did not serve the header as a sentence on the board, because a privacy test reads the board for a hidden target of 4 and "Session 3 of 4" would have matched it; the numbers carry the same count.
+- Each session has `says`, a full sentence from the same open round, and `openedOn`, the day it opened (the earliest day it was made available that has come, or else the earliest day anybody started it, never the day somebody finished it). Please draw `says` in place of building "Session N opened on ...".
+
+What every reader reads (the lead, Rukia and Baraka, an admin who only reads, and the admin who set it up; the lines name nobody), on a weekly check-in of 4 sessions where Baraka has not finished session 1 and Rukia has done session 2:
+- Header: "Session 1 of 4."
+- "Session 1 opened on 15 September, and it is still open."
+- "Session 2 has started for some people, while session 1 is still open."
+
+Once Baraka finishes session 1: header "Session 2 of 4.", then "Session 1 finished on 18 September." and "Session 2 opened on 29 September, and it is still open." A later session reads "Session 3 opens on 7 October." where a day is set, and "Session 3 has not opened yet." where none is.
+
+Decided for Hafsah to confirm: the header follows the open round, so while one person has not finished session 1 the header stays on session 1, and the line for session 2 says it has started for some people.
