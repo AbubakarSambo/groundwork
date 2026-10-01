@@ -7200,4 +7200,17 @@ Two of my pushes were refused tonight, because I had chained the push with anoth
 
 The whole screen suite passes (3,792 tests), except the wording guard, which is request 95. The button test passes on all 31 screens, and the page-colour test passes 4 of 4. The pictures are in the scratchpad's `pictures/g3-fixA/`. Batch B, the look, is next.
 
+**Batch B, the look, is done.**
+- Your own bubble is the prototype's ink (#1A1916), no longer navy.
+- Suggested answers stack one per line.
+- The end card keeps "Pause", and its "What happens next" has bullets again.
+- Sign-up and a bad link get the prototype's white card.
+- The lead's and the participant's tabs use the page's full width, as the prototype's pictures do. Only the conversation keeps its reading width.
+- "Send the report to everyone who asked for it" is now a short line with a white button, after "Every session".
+- Signed out, `/start` has no sidebar, just the mark and a "Sign in" link, as in the prototype. The Feedback button no longer covers "See every situation" on a phone.
+- On a phone, the chosen tab scrolls into view.
+- The whole screen suite passes (3,804 tests), except the wording guard, which is request 95. The pictures are in the scratchpad's `pictures/g3-fixB/`.
+
+Batch C, the drift list, comes next, page by page: every one-off and page-only class on group 3's pages is replaced with the shared part the review named, then pictured again.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
