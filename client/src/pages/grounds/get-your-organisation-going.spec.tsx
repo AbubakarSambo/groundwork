@@ -53,17 +53,17 @@ describe('the new admin', () => {
     /* Rebuilt from the shared parts (group 2): `gw-welcome-door` -> `gwui-welcome-door`. */
     const doors = [...document.querySelectorAll('.gwui-welcome-door')].map(a => [a.querySelector('b')?.textContent, a.querySelector('span')?.textContent, a.getAttribute('href')])
     expect(doors).toEqual([
-      ['People', 'Invite people, set roles and teams, let guests in', '/org/members'],
-      ['Connections', 'Your numbers, your own address', '/settings/connections'],
-      ['Suites', 'Leave, spending and onboarding, switched on as needed', '/settings/suites'],
-      ['Plan and billing', 'Seats, the card and invoices', '/billing'],
+      ['People', 'Invite people, set their roles and teams, and let guests in.', '/org/members'],
+      ['Connections', 'Bring in your numbers, and use your own address.', '/settings/connections'],
+      ['Suites', 'Switch on leave, spending and onboarding when you need them.', '/settings/suites'],
+      ['Plan and billing', 'Your seats, your card and your invoices.', '/billing'],
     ])
   })
 
   it('the Connections door names WhatsApp only while WhatsApp is switched on', async () => {
     open(ADMIN, { ...NEW, whatsappOn: true })
     await screen.findByRole('heading', { name: 'You’re an admin at Nyali Foods' })
-    expect(screen.getByText('WhatsApp, your numbers, your own address')).toBeTruthy()
+    expect(screen.getByText('Connect WhatsApp, bring in your numbers, and use your own address.')).toBeTruthy()
   })
 
   it('with WhatsApp switched on, the fourth row, and "0 of 4 done", as the prototype has it', async () => {
