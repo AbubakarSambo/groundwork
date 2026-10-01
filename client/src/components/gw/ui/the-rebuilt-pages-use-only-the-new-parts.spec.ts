@@ -392,6 +392,7 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/board/TheSwitchboardsSections.tsx',
       'components/gw/ui/PatternPanel.tsx',
       'components/gw/WhatTheRecordShows.tsx',
+      'components/gw/OutcomeFeedback.tsx',
     ])
   })
 

@@ -222,4 +222,16 @@ export const REBUILT_PAGES: string[] = [
    * they already used (neither prop is banned - size, colour, margin, padding and border are).
    */
   'components/gw/WhatTheRecordShows.tsx',
+  /*
+   * BOARD TASK, BATCH 3, PART 2: `OutcomeFeedback.tsx`'s question and its privacy sentence are now
+   * one `Callout` (title and body) in place of two separately-styled one-off divs. `Choices` is not
+   * used for the "It felt fair"/"It did not" pair: the file's own doc comment is explicit that
+   * "neither [button is] the page's one navy button - this pair's whole point is a green and an
+   * amber of equal visual weight" (the three deliberate choices carried over from the old report
+   * body, unchanged) - `Choices`' own selected state is navy, which is exactly the look this pair
+   * was built to avoid, and its 40px/15px sizing does not match either. Both buttons keep their
+   * existing classes/inline styles (fontWeight, background, borderRadius, cursor, fontFamily -
+   * none of which the guard bans).
+   */
+  'components/gw/OutcomeFeedback.tsx',
 ]

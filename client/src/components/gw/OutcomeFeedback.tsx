@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { outcomeFeedbackApi } from '@/api/feedback'
-import { Panel } from './ui'
+import { Panel, Callout } from './ui'
 
 /**
  * DID THIS FEEL FAIR? MOVED FROM THE DEAD REPORT BODY TO THE BOARD, WHERE A CLOSED CHECK-IN
@@ -67,11 +67,10 @@ export function OutcomeFeedback({ groundId }: { groundId: string }) {
         </div>
       )}
 
-      <div className="gwui-fs-13-5 gwui-mb-8" style={{ lineHeight: 1.55 }}>
-        Did this process feel fair, and grounded in what was actually said?
-      </div>
-      <div className="gwui-fs-13 gwui-ink-sub gwui-mb-10" style={{ lineHeight: 1.5 }}>
-        Your answer is not shown to the other parties.
+      <div className="gwui-mb-10">
+        <Callout title="Did this process feel fair, and grounded in what was actually said?">
+          Your answer is not shown to the other parties.
+        </Callout>
       </div>
 
       <textarea
