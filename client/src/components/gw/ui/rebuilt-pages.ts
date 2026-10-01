@@ -137,4 +137,18 @@ export const REBUILT_PAGES: string[] = [
    * with no styling of its own to guard: a page with no inline style and no kit import trivially
    * satisfies this guard and no longer needs an entry to prove it.
    */
+  /*
+   * GROUP 3, PIECE 3 (the check-in conversation, docs/prototype/screens/B3-the-check-in):
+   * `ChatPage.tsx` and the components it draws from `components/gw/checkin` that still carried an
+   * inline style or an old-kit import - `TheCheckInHeader.tsx` and `TheEndCard.tsx`. New shared
+   * CSS this piece added: the `.gwui-ci-*` classes in gw-ui.css (the header, its Pause menu, the
+   * banners, the footer strip, the attach menu, the two bottom sheets, the document-assessment
+   * card, the end card, and the settled/declined/finished states). `TheDonePage.tsx` and
+   * `SuggestedAnswers.tsx` were already built this way from U.8 and are reused unchanged;
+   * `TheDonePage.tsx` keeps `StageLadder` from `kit.tsx` on purpose - see the comment at the top of
+   * that file.
+   */
+  'pages/chat/ChatPage.tsx',
+  'components/gw/checkin/TheCheckInHeader.tsx',
+  'components/gw/checkin/TheEndCard.tsx',
 ]
