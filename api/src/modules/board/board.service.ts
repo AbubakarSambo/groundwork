@@ -912,7 +912,7 @@ export class BoardService {
       const { kept: mayReadUntold } = withoutWhatTheLeadHasNotToldThemAbout(mayRead as any[], untoldRows, ground.participants as any[], isInitiator);
 
       out.objectives = (mayReadUntold as typeof ground.objectives).map((o) => ({
-        journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target }),
+        journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target, name: o.name }),
         /** The lead's own sentence about what is unsettled here, where there is one. Never a block. */
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledLines),
         id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,

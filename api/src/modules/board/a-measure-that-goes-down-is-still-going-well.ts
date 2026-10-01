@@ -70,9 +70,23 @@ function howFar(start: number, now: number, target: number): number {
  */
 const read = (n: number) => aNumberPeopleCanRead(n);
 
-export function theJourneySoFar(a: { start: number | null; now: number; target: number | null }): Journey {
+/*
+ * A LIMIT IS NOT AN AIM (1 October 2026). The workplan run stored "The requested spending of 254k needs
+ * to be reconciled with the quarterly budget of 180k." with 254,000 counted against 180,000, and the
+ * line said "so the aim of 180,000 has been reached": a budget passed by 74,000, told as a success.
+ * Where the name says the number is a budget, a cap, a limit or a ceiling, or "no more than", "at
+ * most", "within" or "under" it, the line says how far over or within it is. Where nothing says
+ * whether the number is a limit or an aim, and the count started at 0 and is now above it, the line
+ * says only where it is against the number, because "reached" could be the opposite of true.
+ */
+const SAYS_IT_IS_A_LIMIT = /\b(?:budgets?|limits?|ceilings?|caps?|capped|no more than|at most|maximum|within|under)\b/i;
+const SAYS_IT_IS_AN_AIM = /\b(?:aims?|aiming|targets?|goals?)\b/i;
+
+export function theJourneySoFar(a: { start: number | null; now: number; target: number | null; name?: string | null }): Journey {
   const { start, now, target } = a;
+  const name = a.name ?? '';
   const direction = whichWayIsGood(start, target);
+  const where = start != null ? `It was ${read(start)} at the start and is ${read(now)} now` : `It is ${read(now)} now`;
 
   if (target == null) {
     /* Tracked rather than counted. GroundObjective.target is nullable for exactly this, and its own
@@ -82,6 +96,21 @@ export function theJourneySoFar(a: { start: number | null; now: number; target: 
       say: start != null && start !== now ? `It was ${read(start)} at the start and is ${read(now)} now.` : now === 0 ? 'Nothing has been counted for it yet.' : `It is ${read(now)} so far.`,
       covered: null,
     };
+  }
+
+  /* A limit: over it, or within it. Lower is the good way, and there is no distance to fill. */
+  if (SAYS_IT_IS_A_LIMIT.test(name)) {
+    return {
+      direction: 'down', start, now, target, covered: null,
+      say: now > target
+        ? `${where}, which is ${read(now - target)} over the limit of ${read(target)}.`
+        : `${where}, within the limit of ${read(target)}.`,
+    };
+  }
+
+  /* Nothing says which way is good, it started at 0, and it is past the number: say only where it is. */
+  if (!SAYS_IT_IS_AN_AIM.test(name) && (start == null || start === 0) && now > target) {
+    return { direction: 'unknown', start, now, target, covered: null, say: `${where}, against ${read(target)}.` };
   }
 
   if (start == null) {

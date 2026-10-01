@@ -101,12 +101,47 @@ describe('the workplan board (run-21): numbers a person can read', () => {
   }
 });
 
+/*
+ * A SPENDING LIMIT THAT HAS BEEN PASSED IS NOT A SUCCESS (1 October 2026). The workplan run counted the
+ * requested 254,000 against the quarterly budget of 180,000, and the line read "It was 0 at the start
+ * and is 254,000 now, so the aim of 180,000 has been reached."
+ */
+describe('the workplan board (run-21): the line under a budget', () => {
+  const people = [person('p-helen', 'u-helen', 'Helen', 'Oyelaran', PartyType.INITIATOR), person('p-chidi', 'u-chidi', 'Chidi', 'Eze')];
+  const BUDGET = aim('o-1', 'The requested spending of 254k needs to be reconciled with the quarterly budget of 180k.', 180000, null, 'p-helen', 254000);
+  const OVER = 'It was 0 at the start and is 254,000 now, which is 74,000 over the limit of 180,000.';
+  const linesAs = async (objectives: any[], userId: string, role = 'MEMBER') =>
+    ((await boardAs({ people, initiatorId: 'u-helen', objectives, checkIns: [], snapshots: [{ objectiveId: 'o-1', count: 0 }] }, userId, role)).objectives ?? [])
+      .filter((o: any) => o.id === 'o-1').map((o: any) => o.journey.say);
+  for (const [who, userId, role] of [['Helen, the lead', 'u-helen', 'MEMBER'], ['Chidi', 'u-chidi', 'MEMBER'], ['an admin outside the check-in', 'u-admin', 'ADMIN']]) {
+    it(`${who} reads that it is 74,000 over the limit`, async () => {
+      expect(await linesAs([BUDGET], userId, role)).toEqual([OVER]);
+    });
+  }
+  /* Where the 180,000 is also Helen's own number, which an admin outside may not read (decision 53),
+     the admin loses the whole line, never half of it. Chidi and Helen still read it. */
+  it('an admin who may not read the number loses the whole line, and nobody else does', async () => {
+    const withHers = [BUDGET, aim('o-2', 'Helen is keeping spending within 180,000 this quarter.', 180000, 'p-helen', 'p-helen', 0)];
+    expect(await linesAs(withHers, 'u-admin', 'ADMIN')).toEqual(['']);
+    expect(await linesAs(withHers, 'u-chidi')).toEqual([OVER]);
+    expect(await linesAs(withHers, 'u-helen')).toEqual([OVER]);
+  });
+});
+
 describe('the line under each aim', () => {
+  it('says how far over or within a limit, and claims nothing where it cannot tell', () => {
+    expect(theJourneySoFar({ start: 0, now: 150000, target: 180000, name: 'The quarterly budget of 180k.' }).say).toBe('It was 0 at the start and is 150,000 now, within the limit of 180,000.');
+    expect(theJourneySoFar({ start: 0, now: 254000, target: 180000, name: 'Spending this quarter.' }).say).toBe('It was 0 at the start and is 254,000 now, against 180,000.');
+    expect(theJourneySoFar({ start: 0, now: 254000, target: 180000, name: 'Spending this quarter.' }).say).not.toMatch(/reached|aim/);
+    expect(theJourneySoFar({ start: 0, now: 45, target: 40, name: 'Bisi is aiming for 40 approved facilities.' }).say).toBe('It was 0 at the start and is 45 now, so the aim of 40 has been reached.');
+  });
+
   it('reads the run\'s numbers as full sentences', () => {
     /* Read on the run: "0 at the start, 0 now, said 120000000." */
     expect(theJourneySoFar({ start: 0, now: 0, target: 120000000 }).say).toBe('It was 0 at the start and is 0 now, and the aim is 120 million.');
     /* Read on the run: "0 at the start, 254000 now. That is where you said." */
-    expect(theJourneySoFar({ start: 0, now: 254000, target: 180000 }).say).toBe('It was 0 at the start and is 254,000 now, so the aim of 180,000 has been reached.');
+    expect(theJourneySoFar({ start: 0, now: 254000, target: 180000, name: 'The requested spending of 254k needs to be reconciled with the quarterly budget of 180k.' }).say)
+      .toBe('It was 0 at the start and is 254,000 now, which is 74,000 over the limit of 180,000.');
     /* Read on the run: "0 so far." */
     expect(theJourneySoFar({ start: null, now: 0, target: null }).say).toBe('Nothing has been counted for it yet.');
   });

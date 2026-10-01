@@ -51,6 +51,8 @@ export interface Setup {
   /** Other people than Amina, Rukia and Baraka, with the sign-in of whoever runs it. */
   people?: any[];
   initiatorId?: string;
+  /** Each target's count at its first session (GroundObjectiveSnapshot), where it started. */
+  snapshots?: { objectiveId: string; count: number }[];
 }
 
 export const commitment = (id: string, participantId: string | null, text: string, more: Record<string, any> = {}) => ({
@@ -90,6 +92,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     ground: model({ findUnique: jest.fn(async () => clone(ground)) }),
     user: model({ findUnique: jest.fn(async () => ({ role, organizationId: 'org-1' })) }),
     checkIn: model({ findMany: jest.fn(async () => clone(checkIns)) }),
+    groundObjectiveSnapshot: model({ findMany: jest.fn(async () => clone(setup.snapshots ?? [])) }),
     conversationTurn: model({ findMany: jest.fn(async (args: any) => clone((setup.turns ?? []).filter((t) => (args?.where?.checkInId?.in ?? []).includes(t.checkInId)))) }),
     personObjective: model({ findMany: jest.fn(async (args: any) => clone((setup.personObjectives ?? []).filter((o: any) => !args?.where?.awareness || o.awareness === args.where.awareness))) }),
     groundCommitment: model({ findMany: jest.fn(async () => clone(setup.commitments ?? [])) }),
