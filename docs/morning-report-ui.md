@@ -7070,4 +7070,13 @@ Two things kept as they are now, for you to know:
 - the resolution panel shows nothing far from the end, where the old page said "Resolution. Not set yet.";
 - the session report reads fresh each time, rather than showing a "picture forming" banner.
 
+**Group 3, third piece: the check-in conversation screen is rebuilt from the shared parts (1 October).**
+- No call to the engine, and no step of the conversation, changed. Only the markup did.
+- The 111 tests for the conversation pass unchanged, and so do the 78 API tests that read these files.
+- The end card and the conversation's header no longer use the old parts.
+- The page shown when a check-in is finished has one navy button, "Open the team board".
+- The button test passes on all 28 screens, and the page-colour test passes 4 of 4. The whole screen suite passes (3,652 tests).
+
+Not yet compared with the prototype's pictures: the conversation itself, while it is going. On this Mac every check-in that is not finished has not started yet, and opening one would start a real session. Done screens and finished check-ins were pictured as Amani and Rukia. Group 3's review will picture the conversation from a preview page drawn with test data, the way the reports already have one, so no session is started.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
