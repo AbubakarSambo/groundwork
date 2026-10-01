@@ -1022,3 +1022,15 @@ Up to two of a kind are each said. Three or more are said once, with the count. 
 These items are in the count beside Today and in the "new" count on "Choose an organisation", because they are in `needs`. The time sheets board rows also now carry `days`, the days of that week that have hours.
 
 Tests: `grounds/what-is-waiting-for-you-to-approve-as-each-reader-reads-it.spec.ts`.
+
+## 1 October: why the person reviewed is not told who else gave a view (decision 17)
+
+On a performance plan, a recognition or promotion round, or a contract renewal, the person the check-in is about is never told who else gave a view, whatever the lead switched for "people see each other". Everybody else still follows the lead's switch: a colleague giving a view reads who is on it when the lead switched it on, and the lead and an admin with access read everybody.
+
+The check-in's own read (`GET /grounds/:id`) and each row of the list now carry `whyThePersonReviewedIsNotTold`. On those three kinds of check-in it reads:
+
+"On a check-in about one person, that person is never told who else gave a view."
+
+On every other check-in it is null. Please show it beside the lead's switch for "people see each other", and on the page of the person reviewed where the list of who is on it would be. `peersVisibleEffective` is now worked out for the reader: it is false for the person reviewed, and true for the lead and for a colleague giving a view when the lead switched it on. Before this, it read false for everybody on those check-ins, the lead included, even with the switch on.
+
+Tests: `grounds/decision-17-on-the-check-in-page.spec.ts` and `reports/decision-17-wins-over-the-leads-switch.spec.ts`.

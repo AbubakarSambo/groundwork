@@ -55,7 +55,7 @@ import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
 import { theStoryHasSomeoneToPointTo, withoutAStoredCount } from '../reports/the-picture-in-plain-sentences';
 import { whoseIsIt } from './a-blocker-that-says-her-or-his';
-import { peersAreNamedOn, peersAreNamedByDefaultOn } from '../reports/peers-are-named';
+import { peersAreNamedOn, peersAreNamedByDefaultOn, theReaderBySignIn, whyThePersonReviewedIsNotTold } from '../reports/peers-are-named';
 import { runIntake } from '../conversation/intake';
 import { objectiveState, describeObjective, mayBeReadAgainst, canShowMovement, BASELINE_IS_FROZEN } from './an-objective-belongs-to-a-person';
 import { cleanText } from '../reports/what-the-record-actually-holds';
@@ -1292,7 +1292,7 @@ export class GroundsService {
          * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
          * user field comes through.
          */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
         checkIns: {
           /** `isSetup` so a setup conversation can be kept out of every session count. GW-EXP-6. */
           /**
@@ -1371,7 +1371,7 @@ export class GroundsService {
          * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
          * user field comes through.
          */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
             checkIns: {
               /** Must match the sibling query above: both feed the same list. GW-EXP-6. */
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
@@ -1530,7 +1530,7 @@ export class GroundsService {
          * themselves: their own row, their own sessions, and only what is owed to or by them.
          * Today and "N new" read this list, so they follow.
          */
-        const peersVisibleEffective = peersAreNamedOn(rest as any);
+        const peersVisibleEffective = peersAreNamedOn(rest as any, theReaderBySignIn(rest as any, userId));
         const hidePeers = !peersVisibleEffective && !runsIt;
         const isMe = (p: any) => !!userId && p.userId === userId;
         const participants = ((allParticipants ?? []) as any[])
@@ -1577,6 +1577,8 @@ export class GroundsService {
           checkIns: checkInsShown,
           dependencies: dependenciesShown,
           peersVisibleEffective,
+          /* Decision 17, said plainly: on a check-in about one person the switch never reaches them. */
+          whyThePersonReviewedIsNotTold: whyThePersonReviewedIsNotTold(rest as any),
           ...(runsIt ? { joinToken } : {}),
           report: fullReport ? { releasedAt: fullReport.releasedAt ?? null } : null,
           alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName,
@@ -1991,7 +1993,7 @@ export class GroundsService {
     // where it does not. The lead always sees everyone - running the ground is
     // the job.
     /* One copy of the rule, shared with the board, the reports and the interview. See peers-are-named. */
-    const peersVisible = peersAreNamedOn(ground as any);
+    const peersVisible = peersAreNamedOn(ground as any, theReaderBySignIn(ground as any, requestingUserId));
     const hidePeers = !peersVisible && !viewerRunsThisGround;
 
     /**
@@ -2569,6 +2571,12 @@ export class GroundsService {
        */
       peersVisibleEffective: peersVisible,
       peersDefaultVisible: peersAreNamedByDefaultOn(ground as any),
+      /**
+       * WHY THE SWITCH DOES NOT REACH EVERYBODY, in one plain sentence (decision 17). On a performance
+       * plan, a recognition round or a contract renewal, the person reviewed is never told who else gave
+       * a view, whatever the lead switched. Null on every other check-in.
+       */
+      whyThePersonReviewedIsNotTold: whyThePersonReviewedIsNotTold(ground as any),
       /*
        * AND THE TWO THAT HAD NO WAY IN. Both were read by the board and the conversation and
        * travelled to nobody, so a control for either would have read its own default forever and

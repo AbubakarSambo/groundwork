@@ -83,3 +83,32 @@ export function peersAreNamedOn(
 export function peersAreNamedByDefaultOn(ground: { scenario?: any } | null | undefined): boolean {
   return ![BoardFamily.EVALUATION, BoardFamily.COHORT].includes(familyFor((ground as any)?.scenario));
 }
+
+/**
+ * THE READER, BY THEIR SIGN-IN, for a caller that knows who is reading but not their row on this
+ * check-in. Their row is looked up among the check-in's own participants; somebody with no row (an
+ * admin, a stranger) is `participantId: null`, which is never the person reviewed.
+ *
+ * The participants must carry `partyType`, and `createdAt` and `managingOnly` where they can, or the
+ * person reviewed cannot be told apart from a colleague. A list cut down to the reader alone is safe:
+ * the reader is then the only one left to be the person reviewed, so they are told nobody's name.
+ */
+export function theReaderBySignIn(
+  ground: { participants?: readonly any[] | null } | null | undefined,
+  userId: string | null | undefined,
+): TheReader {
+  const mine = userId ? ((ground as any)?.participants ?? []).find((p: any) => p?.userId === userId) : null;
+  return { participantId: mine?.id ?? null };
+}
+
+/**
+ * WHY THE PERSON REVIEWED IS NOT TOLD WHO ELSE GAVE A VIEW, in one plain sentence the screens can show
+ * beside the lead's switch. Served on every evaluation check-in, because there the switch never reaches
+ * the person reviewed (decision 17).
+ */
+export const WHY_THE_PERSON_REVIEWED_IS_NOT_TOLD =
+  'On a check-in about one person, that person is never told who else gave a view.';
+
+export function whyThePersonReviewedIsNotTold(ground: { scenario?: any } | null | undefined): string | null {
+  return familyFor((ground as any)?.scenario) === BoardFamily.EVALUATION ? WHY_THE_PERSON_REVIEWED_IS_NOT_TOLD : null;
+}

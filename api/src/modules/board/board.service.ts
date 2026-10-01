@@ -432,7 +432,7 @@ export class BoardService {
      * of the organisation. The rule is between the parties.
      */
     /* One copy of the rule, shared with the grounds page, the reports and the interview. See peers-are-named. */
-    const peersVisible = peersAreNamedOn(ground as any);
+    const peersVisible = peersAreNamedOn(ground as any, { participantId: me?.id ?? null });
     /* `viewer` and `adminHere` are read once at the door above - see the note there. */
     const runsThisGround = isInitiator || isSetupAdmin || adminHere;
     const whoMaySee = { peersHidden: !peersVisible && !runsThisGround, meParticipantId: me?.id ?? null };

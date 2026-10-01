@@ -2,7 +2,7 @@ import { GroundScenario } from '@prisma/client';
 import { ReportsService } from './reports.service';
 import { theSentencesOf } from './the-mark-on-every-line';
 import { peersAreNamedOn } from './peers-are-named';
-import { boardAs, RUKIA, AMINA, commitment } from '../board/the-switchboards-sections-harness';
+import { boardAs, RUKIA, AMINA, BARAKA, commitment } from '../board/the-switchboards-sections-harness';
 
 /**
  * DECISION 17 WINS OVER THE LEAD'S SWITCH (the 1 October review).
@@ -133,6 +133,18 @@ describe.each(EVALUATIONS)('on %s, with the lead\'s switch "people see each othe
     }, ...RUKIA);
     expect(served(b)).not.toMatch(/Baraka/);
     expect(served(b)).toContain('Westgate quote');
+  });
+
+  /* A colleague giving a view is not the person reviewed, so the lead's switch still names people to
+     them. Before the board said who was reading, it hid everybody from everybody on these check-ins. */
+  it('Baraka, a colleague giving a view, still reads who is on it on the board, as the lead chose', async () => {
+    const b = await boardAs({
+      scenario: (GroundScenario as any)[scenario], peersVisibleToEachOther: true,
+      commitments: [commitment('k-1', 'p-baraka', 'I will send the pricing sheet.'), commitment('k-2', 'p-rukia', 'I will send the Westgate quote.')],
+    }, ...BARAKA);
+    expect((b.checkInGrid.rows as any[]).map((r) => r.name)).toEqual(['Amina Wanjiru', 'Rukia Mwangi', 'Baraka Otieno']);
+    /* What each person said they would do stays with them on an evaluation check-in (request 78), whatever the switch. */
+    expect(served(b)).not.toContain('Westgate quote');
   });
 
   it('Amina, who runs it, still reads the colleague on the board', async () => {

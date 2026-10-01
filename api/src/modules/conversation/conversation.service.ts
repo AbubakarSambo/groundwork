@@ -3238,7 +3238,7 @@ export class ConversationService {
      * `plainWords` is the wording the reports already use for somebody this reader may not have
      * the name of. The three rules for choosing between them are in whatToCallThem.
      */
-    const peersMayBeNamed = peersAreNamedOn(ground as any);
+    const peersMayBeNamed = peersAreNamedOn(ground as any, { participantId: checkIn.participantId });
     const whoIsHere = whoIsOnThisGround((ground.participants ?? []) as any);
     const plainWords = plainWordsForEveryoneElse((ground.participants ?? []) as any, checkIn.participantId);
 
@@ -5052,7 +5052,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       if (!latestMessage.trim()) return '';
       const ground = await this.prisma.ground.findUnique({
         where: { id: checkIn.groundId },
-        select: { mode: true, scenario: true, peersVisibleToEachOther: true },
+        select: { mode: true, scenario: true, peersVisibleToEachOther: true, participants: { select: { id: true, partyType: true, managingOnly: true, createdAt: true } } },
       });
       if (ground?.mode !== 'SHARED') return '';
       /*
@@ -5064,7 +5064,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
        * person being reviewed in the next question. The fact still gets said; without the names it
        * reads "Somebody else on this check-in has already named the same thing".
        */
-      const mayName = peersAreNamedOn(ground as any);
+      const mayName = peersAreNamedOn(ground as any, { participantId: checkIn.participantId });
       const rows = await this.prisma.groundDependency.findMany({
         where: {
           groundId: checkIn.groundId,

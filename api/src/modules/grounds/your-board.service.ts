@@ -110,7 +110,7 @@ export class YourBoardService {
               id: true, groundId: true, fromParticipantId: true, onParticipantId: true, onLabel: true,
               what: true, status: true, namedTheThing: true, createdAt: true, dueSaid: true, dueOn: true, blockerKind: true,
               fromParticipant: { select: { userId: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
-              ground: { select: { label: true, initiatorId: true, scenario: true, peersVisibleToEachOther: true } },
+              ground: { select: { label: true, initiatorId: true, scenario: true, peersVisibleToEachOther: true, participants: { select: { id: true, userId: true, partyType: true, managingOnly: true, createdAt: true } } } },
             },
             orderBy: { createdAt: 'asc' },
           })

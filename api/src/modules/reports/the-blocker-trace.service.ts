@@ -60,7 +60,7 @@ export class TheBlockerTraceService {
         id: true, label: true, initiatorId: true, scenario: true, peersVisibleToEachOther: true,
         report: { select: { sharedAs: true } },
         participants: {
-          select: { id: true, userId: true, partyType: true, roleAsDescribed: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, user: { select: { firstName: true, lastName: true } } },
+          select: { id: true, userId: true, partyType: true, managingOnly: true, roleAsDescribed: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, user: { select: { firstName: true, lastName: true } } },
         },
       },
     });
@@ -68,6 +68,7 @@ export class TheBlockerTraceService {
     const mayOpen = new Map<string, ACheckInTheReaderMayOpen>(rows.map((g) => [g.id, {
       id: g.id, label: g.label, initiatorId: g.initiatorId, scenario: g.scenario, peersVisibleToEachOther: g.peersVisibleToEachOther,
       readersParticipantId: g.participants.find((p) => p.userId === reader.userId)?.id ?? null,
+      participants: g.participants as any,
     }]));
 
     /* One name, for one person, in one check-in, through the wrapper every report goes through. */

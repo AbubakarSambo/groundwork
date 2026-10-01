@@ -43,6 +43,8 @@ export interface ACheckInTheReaderMayOpen {
   peersVisibleToEachOther?: boolean | null;
   /** The reader's own place in it, if they have one. */
   readersParticipantId: string | null;
+  /** Who is on it, so the person reviewed can be told apart from a colleague (decision 17). */
+  participants?: { id: string; partyType: string; managingOnly?: boolean | null; createdAt?: Date | string | null }[] | null;
 }
 
 export interface TheTraceForThisReader {
@@ -61,7 +63,7 @@ export function theTraceForThisReader(
     const g = mayOpen.get(s.groundId);
     if (!g || !(g.label ?? '').trim()) return false;
     const runsIt = (!!g.initiatorId && g.initiatorId === reader.userId) || reader.role === 'ADMIN';
-    if (runsIt || peersAreNamedOn(g as any)) return true;
+    if (runsIt || peersAreNamedOn(g as any, { participantId: g.readersParticipantId })) return true;
     return !!g.readersParticipantId && s.personId === g.readersParticipantId;
   };
   const steps = Array.isArray(trace.steps) ? trace.steps : [];

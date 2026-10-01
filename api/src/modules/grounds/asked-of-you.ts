@@ -1,6 +1,6 @@
 import { DependencyStatus } from '@prisma/client';
 import { blockerHasSubstance, dedupeDependencies, type ReadDependency } from '../board/reads';
-import { peersAreNamedOn } from '../reports/peers-are-named';
+import { peersAreNamedOn, theReaderBySignIn } from '../reports/peers-are-named';
 import { theDueFields } from './when-a-handoff-is-due';
 
 /**
@@ -48,6 +48,8 @@ export interface AskedOfYouRow {
     initiatorId: string | null;
     scenario?: any;
     peersVisibleToEachOther?: boolean | null;
+    /** Who is on it, so the person reviewed can be told apart from a colleague (decision 17). */
+    participants?: { id: string; userId: string | null; partyType: string; managingOnly?: boolean | null; createdAt?: Date | string | null }[] | null;
   } | null;
 }
 
@@ -105,7 +107,7 @@ export function askedOfYou(
   const items: SomethingAskedOfYou[] = kept.map((r) => {
     const g = r.ground ?? null;
     const youRunIt = !!g?.initiatorId && g.initiatorId === reader.userId;
-    const mayName = youRunIt || reader.role === 'ADMIN' || peersAreNamedOn(g as any);
+    const mayName = youRunIt || reader.role === 'ADMIN' || peersAreNamedOn(g as any, theReaderBySignIn(g as any, reader.userId));
     return {
       id: r.id,
       who: mayName ? nameOf(r.fromParticipant) : null,
