@@ -1062,3 +1062,8 @@ The answers can be worded "Something to reach" and "A limit not to go over".
 **What the board then says.** A limit the lead set reads "It was 0 at the start and is 254,000 now, which is 74,000 over the limit of 180,000." whatever the name says, and its name reads "The team is keeping spending to no more than 180,000." An aim the lead set reads "It was 0 at the start and is 254,000 now, so the aim of 180,000 has been reached." even where its name says "budget".
 
 Tests: `board/a-target-is-an-aim-or-a-limit-as-each-reader-reads-it.spec.ts` and `grounds/a-target-is-an-aim-or-a-limit-when-it-is-made.spec.ts`.
+
+
+## 1 October: each goal's name is now a full sentence (check-in screen)
+
+Each item in a check-in's brief objectives is now `{ name, target, direction }`, and `name` is a full sentence for the person reading it, for example "You are aiming for 14 approved facilities." or "Bisi is aiming for 120 million naira disbursed this quarter." The number is already in the sentence. `ChatPage.tsx` adds "(14)" after the name when there is no prose summary, which would read "You are aiming for 14 approved facilities. (14)". Please show `name` on its own.
