@@ -390,6 +390,7 @@ describe('a rebuilt page never falls back to the old parts', () => {
       /* Board task, batch 3, part 2. See the comment on REBUILT_PAGES in rebuilt-pages.ts. */
       'components/gw/where-each-person-is.tsx',
       'pages/board/TheSwitchboardsSections.tsx',
+      'components/gw/ui/PatternPanel.tsx',
     ])
   })
 

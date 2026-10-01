@@ -203,4 +203,13 @@ export const REBUILT_PAGES: string[] = [
    * section rather than beside one row.
    */
   'pages/board/TheSwitchboardsSections.tsx',
+  /*
+   * BOARD TASK, BATCH 3, PART 2: `PatternPanel.tsx` rebuilt from `Note`/`Stack`/`Callout` in place
+   * of fifteen inline styles for size, colour, border and spacing - PROTECTED (every field this
+   * one pattern card draws, for exactly the readers it reaches now, stays exactly as it was): the
+   * amber card is `gwui-panel-caution` (already used elsewhere for the same colours); three runs
+   * of paragraphs that already shared one gap (6px) group under `Stack`; the "question you could
+   * ask" box, previously a left-rule aside, is now `Callout`, at that part's own size and tint.
+   */
+  'components/gw/ui/PatternPanel.tsx',
 ]
