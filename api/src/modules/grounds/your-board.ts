@@ -206,7 +206,12 @@ export function keptLatelySays(kept: number, of: number): string {
  * into a date), so the day it was made, the day of the check-in it was said in, is the one used.
  * Open ones count in neither number, and a dropped one is not a miss.
  */
-export function keptLately(rows: readonly { status: string | null; createdAt?: Date | string | null }[], now: Date): KeptLately | null {
+export function keptLately(
+  rows: readonly { status: string | null; createdAt?: Date | string | null }[],
+  now: Date,
+  /** Approved leave, as whole days (week 23): a promise not kept from a day spent on leave is not a miss. */
+  leave: readonly { from: Date; to: Date }[] = [],
+): KeptLately | null {
   const from = now.getTime() - THE_LAST_FOUR_WEEKS_MS;
   let kept = 0;
   let of = 0;
@@ -214,6 +219,7 @@ export function keptLately(rows: readonly { status: string | null; createdAt?: D
     if (r.status !== 'DONE' && r.status !== 'NOT_DONE') continue;
     const t = time(r.createdAt);
     if (!t || t < from || t > now.getTime()) continue;
+    if (r.status === 'NOT_DONE' && leave.some((l) => t >= l.from.getTime() && t <= l.to.getTime())) continue;
     of++;
     if (r.status === 'DONE') kept++;
   }
@@ -236,8 +242,9 @@ export function keptLately(rows: readonly { status: string | null; createdAt?: D
 export function commitmentsKeptInTheLastFourWeeks(
   rows: readonly { status: string | null; createdAt?: Date | string | null }[],
   now: Date = new Date(),
+  leave: readonly { from: Date; to: Date }[] = [],
 ): { kept: number; of: number } | null {
-  const r = keptLately(rows, now);
+  const r = keptLately(rows, now, leave);
   return r ? { kept: r.kept, of: r.of } : null;
 }
 
@@ -285,6 +292,8 @@ export function yourBoard(
     commitments: GroundCommitmentRow[];
     coaching: CoachingRow[];
     todos: TodoRow[];
+    /** The reader's own approved leave, whole days (week 23). Nothing from those days counts against them. */
+    leave?: { from: Date; to: Date }[];
   },
   now: Date = new Date(),
 ): YourBoard {
@@ -415,6 +424,6 @@ export function yourBoard(
       .map((t) => ({ id: t.id, text: t.text.trim(), when: whenInOneForm(t.dueSaid) })),
     coaching,
     ownReports: ownReports.sort((a, b) => b.t - a.t).map(({ t: _t, ...r }) => r),
-    keptLately: keptLately(mineCommitments, now),
+    keptLately: keptLately(mineCommitments, now, rows.leave ?? []),
   };
 }

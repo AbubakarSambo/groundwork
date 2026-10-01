@@ -1,4 +1,5 @@
 import { Injectable, Optional, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { theirApprovedLeave } from '../suites/who-is-away';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -616,7 +617,9 @@ export class PatternsService {
       //    is broken - reset the consecutive counter back to 0 so the next
       //    observation restarts the streak properly.
       const lastP = det.lastPeriodNumber ?? 0;
-      if (lastP < currentPeriod) {
+      /* A period spent on approved leave is not a period they went quiet in: the streak is paused,
+         not broken (week 23). */
+      if (lastP < currentPeriod && !(await this.wasAwayThisPeriod(det.participantId, latest?.createdAt ?? null))) {
         await this.prisma.patternDetection.update({
           where: { id: det.id },
           data: { periodsObserved: 0 },
@@ -628,6 +631,18 @@ export class PatternsService {
     await this.surfacePatterns(groundId);
 
     this.logger.log(`startNewPeriod: ground ${groundId}, period boundary at session ${currentPeriod}`);
+  }
+
+  /** Whether this person had approved leave at any time since the period began (week 23). */
+  private async wasAwayThisPeriod(participantId: string | null, since: Date | null): Promise<boolean> {
+    if (!participantId) return false;
+    const p = await this.prisma.groundParticipant
+      .findUnique({ where: { id: participantId }, select: { userId: true, ground: { select: { organizationId: true } } } })
+      .catch(() => null);
+    if (!p?.userId) return false;
+    const now = new Date();
+    const start = since ?? new Date(now.getTime() - 7 * 86_400_000);
+    return (await theirApprovedLeave(this.prisma as any, p.userId, p.ground?.organizationId ?? null)).some((l) => l.from <= now && l.to >= start);
   }
 
   /**
