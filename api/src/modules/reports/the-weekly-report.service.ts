@@ -8,6 +8,7 @@ import { labelsForParties, namesVisibleTo, viewerLabelOf, withNames } from './pa
 import { peersAreNamedOn } from './peers-are-named';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
 import { theSentenceAbout, theSentenceIsSafe, theWeekOf, type AWeeksLine } from './the-weekly-sentence-about-each-person';
+import { awayUntilOn, fallsInLeave, leaveOfThePeopleOn, type Stretch } from '../suites/who-is-away';
 import { howSolid } from './a-figure-nobody-can-check-says-so';
 import { whatMoreThanOnePersonNamed } from './what-more-than-one-person-named';
 import { whatTodayReads } from './what-today-reads-from-the-record';
@@ -131,6 +132,16 @@ export class TheWeeklyReportService {
     } as any);
     if (!checkedIn.size && !rows.length) return null;
 
+    /*
+     * WHO WAS ON LEAVE THIS WEEK (week 23): approved leave, by its dates only. Somebody away is not
+     * written up as not having checked in, and a check-in that opened while they were away, or that
+     * waits for them while they are away now, is not one of the check-ins due (found live, 1 October
+     * 2026, item 6: the lead read "1 of the 5 check-ins due this week was made" with one of the five
+     * belonging to somebody on leave all week).
+     */
+    const leave = await leaveOfThePeopleOn(this.prisma as any, [groundId]).catch(() => new Map<string, Stretch[]>());
+    const awayThisWeek = (pid: string) => (leave.get(pid) ?? []).some((l) => l.from.getTime() <= at.getTime() && l.to.getTime() >= start.getTime());
+
     /* THE SENTENCE ABOUT EACH PERSON. */
     const eachPerson: { participantId: string; says: string }[] = [];
     for (const p of parties) {
@@ -142,7 +153,7 @@ export class TheWeeklyReportService {
       const here = checkedIn.has(p.id);
       /* The lead who ran it and did not check in this week is not someone the week is about. */
       if (p.partyType === PartyType.INITIATOR && !here && !lines.length) continue;
-      const says = theSentenceAbout({ label, checkedIn: here, lines });
+      const says = theSentenceAbout({ label, checkedIn: here, lines, onLeave: awayThisWeek(p.id) });
       if (says && theSentenceIsSafe(says, { label, lines })) eachPerson.push({ participantId: p.id, says });
     }
 
@@ -153,7 +164,10 @@ export class TheWeeklyReportService {
     } as any) as Promise<any[]>).catch(() => [])) ?? []) as any[];
     const inTheWeek = (d: any) => !!d && new Date(d).getTime() >= start.getTime() && new Date(d).getTime() <= at.getTime();
     const due = all.filter((c) => c && !c.isSetup && !c.isClarification && !c.isSelfCorrection && c.status !== undefined)
-      .filter((c) => (c.status === CheckInStatus.COMPLETED && inTheWeek(c.completedAt)) || (c.status !== CheckInStatus.COMPLETED && inTheWeek(c.availableFrom ?? c.createdAt)));
+      .filter((c) => (c.status === CheckInStatus.COMPLETED && inTheWeek(c.completedAt)) || (c.status !== CheckInStatus.COMPLETED && inTheWeek(c.availableFrom ?? c.createdAt)))
+      /* Not one that opened while its person was away, nor one that waits for somebody away now. */
+      .filter((c) => c.status === CheckInStatus.COMPLETED
+        || !(fallsInLeave(new Date(c.availableFrom ?? c.createdAt), leave.get(c.participantId) ?? []) || awayUntilOn(leave.get(c.participantId), at)));
     const made = due.filter((c) => c.status === CheckInStatus.COMPLETED).length;
 
     /* WHAT WAS SAID, AND HOW MUCH OF IT HAS SOMETHING BEHIND IT. Never the rating of an answer. */

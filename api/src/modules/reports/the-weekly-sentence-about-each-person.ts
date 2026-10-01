@@ -33,6 +33,8 @@ export interface AWeeksPerson {
   label: string;
   /** Whether they finished a check-in this week. */
   checkedIn: boolean;
+  /** Whether approved leave covered any day of this week so far (week 23). Dates only, never the kind of leave. */
+  onLeave?: boolean;
   lines: AWeeksLine[];
 }
 
@@ -102,6 +104,12 @@ export function theSentenceAbout(p: AWeeksPerson): string | null {
   const who = p.label;
   const said = p.lines.filter((l) => l.type !== 'SUCCESS_DEFINITION');
   if (!p.checkedIn && !said.length) {
+    /*
+     * BEING AWAY IS NOT COUNTED AGAINST ANYBODY (week 23, found live 1 October 2026, item 6). The lead
+     * read "Amani has not checked in this week" about a person on approved leave all week, and so did
+     * Amani. It now says why there is nothing, and that it is not counted against them.
+     */
+    if (p.onLeave) return `${who} has been on leave this week, so there is nothing here yet about what ${who} is working on. That is not counted against ${who}.`;
     return `${who} has not checked in this week, so there is nothing here yet about what ${who} is working on.`;
   }
   const got = whatWasNamedIn(p.lines);

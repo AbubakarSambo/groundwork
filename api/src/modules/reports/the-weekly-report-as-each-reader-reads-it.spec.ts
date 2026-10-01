@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { TheWeeklyReportService } from './the-weekly-report.service';
-import { theWeeksHeading, aTargetThisWeek } from './the-weekly-report';
+import { theWeeksHeading, aTargetThisWeek, theCheckInsMade } from './the-weekly-report';
 
 /**
  * THE WEEKLY REPORT, AS EACH READER READS IT (week 12b, screens request 9 part d, decisions 7, 38, 43,
@@ -70,7 +70,7 @@ const PATTERNS = [
 ];
 const LEADS_PRIVATE_NOTE = { id: 'n-1', text: 'Whether to hire a second driver', kind: 'DECISION', closedAt: null };
 
-function aCheckIn(scenario = 'SALES_TEAM_CHECK') {
+function aCheckIn(scenario = 'SALES_TEAM_CHECK', leave: { userId: string; startsOn: Date; endsOn: Date }[] | null = null) {
   let stored: any = null;
   const ground = {
     id: 'g1', organizationId: 'org', initiatorId: 'u-lead', createdByUserId: 'u-lead', scenario, peersVisibleToEachOther: true,
@@ -91,6 +91,10 @@ function aCheckIn(scenario = 'SALES_TEAM_CHECK') {
     report: { findUnique: jest.fn(async () => ({ divergences: [] })) },
     patternDetection: { findMany: jest.fn(async () => PATTERNS) },
     groundContextItem: { findMany: jest.fn(async () => [LEADS_PRIVATE_NOTE]) },
+    ...(leave ? {
+      groundParticipant: { findMany: jest.fn(async () => PARTIES.filter((p) => p.userId).map((p) => ({ id: p.id, userId: p.userId, ground: { organizationId: 'org' } }))) },
+      leaveRequest: { findMany: jest.fn(async () => leave.map((l) => ({ ...l, organizationId: 'org' }))) },
+    } : {}),
     weeklyReport: {
       upsert: jest.fn(async ({ create, update }: any) => { stored = { ...(stored ?? create), ...(update ?? {}), weekStart: create.weekStart, builtAt: new Date() }; return stored; }),
       findFirst: jest.fn(async () => stored),
@@ -396,5 +400,51 @@ describe('every earlier week stays readable, and a new week never overwrites an 
     const c = withEveryWeekKept();
     expect((await c.svc.read('g1', LEAD, AT, '2026-08-03')).saying).toBe('There is no weekly report for that week.');
     await expect(c.svc.read('g1', LEAD, AT, 'last week')).rejects.toThrow(/date of its Monday/);
+  });
+});
+
+/*
+ * BEING AWAY IS NOT COUNTED AGAINST ANYBODY (week 23). Found live, 1 October 2026 (item 6,
+ * journey/memory-requests-and-being-away-live.ts): with Amani on approved leave all week, the lead
+ * read "1 of the 5 check-ins due this week was made" and "Amani Wekesa has not checked in this week",
+ * and Amani read "You have not checked in this week". Here Chidi is on approved leave from Monday 21
+ * to Friday 25 September, and his check-in that opened on the Monday is still not started.
+ */
+describe('somebody on leave this week, as each reader reads it', () => {
+  const CHIDI_AWAY = [{ userId: 'u-chidi', startsOn: new Date('2026-09-21T00:00:00Z'), endsOn: new Date('2026-09-25T00:00:00Z') }];
+  const CHIDI = { userId: 'u-chidi', role: 'MEMBER', organizationId: 'org' };
+  async function servedWithLeave(reader: any) {
+    const c = aCheckIn('SALES_TEAM_CHECK', CHIDI_AWAY);
+    await c.svc.build('g1', AT);
+    return c.svc.read('g1', reader, AT);
+  }
+
+  it('the lead reads that Chidi was on leave, not that he did not check in, and his check-in is not one of those due', async () => {
+    const r = await servedWithLeave(LEAD);
+    expect(r.eachPerson.find((e) => e.who === 'Chidi')?.says).toBe('Chidi has been on leave this week, so there is nothing here yet about what Chidi is working on. That is not counted against Chidi.');
+    expect(r.inNumbers?.[0]).toEqual({ figure: '100%', of: 'of check-ins made this week', says: 'Both check-ins due this week were made.' });
+    expect(JSON.stringify(r)).not.toMatch(/Chidi has not checked in/);
+  });
+
+  it('Chidi reads it about himself, as you', async () => {
+    const r = await servedWithLeave(CHIDI);
+    expect(r.eachPerson.map((e) => e.says)).toEqual(['You have been on leave this week, so there is nothing here yet about what you are working on. That is not counted against you.']);
+  });
+
+  it('leave that is not approved changes nothing', async () => {
+    const r = await served(LEAD);
+    expect(r.r.eachPerson.find((e) => e.who === 'Chidi')?.says).toBe('Chidi has not checked in this week, so there is nothing here yet about what Chidi is working on.');
+  });
+});
+
+describe('the check-ins made, said the way a person says a count', () => {
+  it.each([
+    [2, 2, 'Both check-ins due this week were made.'],
+    [2, 0, 'Neither of the two check-ins due this week has been made yet.'],
+    [3, 0, 'None of the 3 check-ins due this week has been made yet.'],
+    [3, 3, 'All 3 check-ins due this week were made.'],
+    [3, 2, '2 of the 3 check-ins due this week were made.'],
+  ])('%i due, %i made', (due, made, says) => {
+    expect(theCheckInsMade(due, made)?.says).toBe(says);
   });
 });

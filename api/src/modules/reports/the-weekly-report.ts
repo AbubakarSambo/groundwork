@@ -168,7 +168,12 @@ export function theCheckInsMade(due: number, made: number): AFigure | null {
   const m = Math.min(made, due);
   const says = due === 1
     ? m === 1 ? 'The one check-in due this week was made.' : 'The one check-in due this week has not been made yet.'
-    : m === due ? `All ${due} check-ins due this week were made.` : `${m} of the ${due} check-ins due this week ${were(m)} made.`;
+    /* Two is "both" and "neither", never "all 2"; none is "none", never "0 of the 3" (the reviewer's read, as on the You board). */
+    : due === 2 && m === 2 ? 'Both check-ins due this week were made.'
+    : due === 2 && m === 0 ? 'Neither of the two check-ins due this week has been made yet.'
+    : m === due ? `All ${due} check-ins due this week were made.`
+    : m === 0 ? `None of the ${due} check-ins due this week has been made yet.`
+    : `${m} of the ${due} check-ins due this week ${were(m)} made.`;
   return { figure: `${Math.round((m / due) * 100)}%`, of: 'of check-ins made this week', says };
 }
 
