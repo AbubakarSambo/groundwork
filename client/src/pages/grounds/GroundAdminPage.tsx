@@ -489,14 +489,24 @@ export function GroundAdminPage() {
    * every reader, including the lead and a party arriving on `?tab=chat`, was sent to
    * Context for an instant. Waiting for the check-in to load before asking who the reader
    * is fixes that: by the time this can fire, the two flags are the server's real answer.
+   *
+   * GROUP 3'S REVIEW, CONTRADICTION 1: "?tab=report" LANDED SOMEWHERE WITH NO REPORT IN IT.
+   * The note under the tabs tells a read-only admin "You can read this check-in's board and
+   * reports", which is true - the reports live on the Board page (`/grounds/:id/board`), opened
+   * from the Board tab, where each session is listed with an "Open" link to its report - but a
+   * link carrying `?tab=report` used to land this reader on Context, one tab away from either
+   * "reports" word in that sentence. `?tab=report` now takes this reader to the Board page
+   * itself, the one of their three tabs that actually gets them there; `checkins` and `myrecord`
+   * still go to Context, since neither name is a promise this reader was given.
    */
   useEffect(() => {
     if (isLoading || !ground) return
     if (isInitiator || viewerIsAParty) return
-    const inMyWorkGroup = (['report', 'checkins', 'myrecord'] as Tab[]).includes(tab)
+    if (tab === 'report') { navigate(`/grounds/${id}/board`, { replace: true }); return }
+    const inMyWorkGroup = (['checkins', 'myrecord'] as Tab[]).includes(tab)
     if (tab !== 'chat' && !inMyWorkGroup) return
     goTab('docs')
-  }, [isLoading, ground, isInitiator, viewerIsAParty, tab])
+  }, [isLoading, ground, isInitiator, viewerIsAParty, tab, id, navigate])
 
   /**
    * A LEAD'S OWN RECORD, FETCHED ONLY WHEN THEY ARE IN THE CHECK-IN.
