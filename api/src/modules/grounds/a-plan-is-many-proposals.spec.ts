@@ -181,6 +181,15 @@ describe('the plan routes', () => {
     expect(tables).toEqual(['GroundObjective', 'GroundParticipant', 'GroundCommitment', 'GroundContextItem']);
   });
 
+  it('a goal confirmed with the lead\'s answer to "Is 25 something to reach, or a limit not to go over?" is written with it (decision 69)', async () => {
+    const { svc, board } = aService();
+    const got = await svc.read('g1', 'u-lead', { text: PLAN });
+    expect(got.proposals[0].whichWay).toBe('Is 25 something to reach, or a limit not to go over?');
+    expect(got.proposals[0].directionSuggested).toBe('AIM');
+    await svc.confirm('g1', 'u-lead', 'pp-1', { direction: 'LIMIT' });
+    expect(board.createObjective).toHaveBeenCalledWith('g1', 'u-lead', { name: 'freezer sales', target: 25, ownerParticipantId: null, direction: 'LIMIT' });
+  });
+
   it('a second confirm is refused and writes nothing more', async () => {
     const { svc, writes } = aService();
     await svc.read('g1', 'u-lead', { text: PLAN });
@@ -193,7 +202,8 @@ describe('the plan routes', () => {
     const { svc, board, prisma } = aService();
     await svc.read('g1', 'u-lead', { text: PLAN });
     await svc.confirm('g1', 'u-lead', 'pp-1');
-    expect(board.createObjective).toHaveBeenCalledWith('g1', 'u-lead', { name: 'freezer sales', target: 25, ownerParticipantId: null });
+    /* No direction sent with the confirm, so none is set (decision 69): the suggestion stays a suggestion. */
+    expect(board.createObjective).toHaveBeenCalledWith('g1', 'u-lead', { name: 'freezer sales', target: 25, ownerParticipantId: null, direction: null });
     await svc.confirm('g1', 'u-lead', 'pp-3');
     expect(prisma.groundCommitment.create.mock.calls[0][0].data).toMatchObject({ participantId: 'p-samuel', text: 'call every butchery in Ikeja', whenSaid: 'Friday 10 October', explicit: false });
   });

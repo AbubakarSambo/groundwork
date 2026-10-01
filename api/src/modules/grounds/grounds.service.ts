@@ -88,7 +88,7 @@ import { EVALUATION_SCENARIOS } from '../reports/is-this-an-evaluation-check-in'
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
-import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
+import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExactQuestion, theLeadsOwnQuestionIfAddressedToThem, THE_EXACT_QUESTION_PROMPT, THE_EXACT_QUESTION_TOOL, whatGroundworkWillAsk, type AQuestionForAPerson } from './a-question-asked-word-for-word';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
@@ -3971,6 +3971,11 @@ export class GroundsService {
       const read = await this.whatAPasteGives(groundId, thePaste).catch(() => null);
       /* What participants are told is written only if the list the lead is answering said it. */
       if (read) read.toldToParticipants = theTellingInTheList(dto.history as any);
+      /* And each number's direction only as that list said it (decision 69); a number it did not show stays not set. */
+      if (read) {
+        const ways = theDirectionsInTheList(dto.history as any);
+        read.teamTargets = read.teamTargets.map((t) => ({ ...t, direction: t.target != null ? ways.get(aNameKey(t.name)) ?? null : null }));
+      }
       let got = read;
       /*
        * "YES, BUT NOT THE 12M" TAKES THE REST AND LEAVES THAT.
@@ -4141,7 +4146,9 @@ export class GroundsService {
       await this.prisma.groundObjective.createMany({
         data: proposal.targets.map((t, i) => ({
           groundId, name: t.name, target: t.target, sortOrder: existing + i,
-        })),
+          /* Decision 69: the direction the say-back stated, which the lead has just said yes to. */
+          direction: t.direction ?? null,
+        })) as any,
       });
       return { changed: 'targets', say: proposal.say };
     }
@@ -4224,18 +4231,19 @@ export class GroundsService {
        - "signed" and "signed sales" - and two names for one number is two answers. See theSameMeasure. */
     const held: { owner: string; name: string }[] = existing.map((o) => ({ owner: o.ownerParticipantId ?? 'team', name: (o.name ?? '').trim() }));
     const alreadyHeld = (owner: string, name: string) => held.some((h) => h.owner === owner && theSameMeasure(h.name, name));
-    const rows: { groundId: string; name: string; target: number | null; ownerParticipantId: string | null; sortOrder: number }[] = [];
+    const rows: { groundId: string; name: string; target: number | null; ownerParticipantId: string | null; sortOrder: number; direction?: string | null }[] = [];
     let sortOrder = existing.length;
     for (const t of got.teamTargets) {
       if (alreadyHeld('team', t.name)) continue;
       held.push({ owner: 'team', name: t.name });
-      rows.push({ groundId, name: t.name, target: t.target, ownerParticipantId: null, sortOrder: sortOrder++ });
+      /* Decision 69: only a direction the lead said yes to on the list; otherwise not set. */
+      rows.push({ groundId, name: t.name, target: t.target, ownerParticipantId: null, sortOrder: sortOrder++, direction: t.direction ?? null });
     }
     for (const p of got.forPeople) {
       for (const t of p.targets) {
         if (alreadyHeld(p.participantId, t.name)) continue;
         held.push({ owner: p.participantId, name: t.name });
-        rows.push({ groundId, name: t.name, target: t.number, ownerParticipantId: p.participantId, sortOrder: sortOrder++ });
+        rows.push({ groundId, name: t.name, target: t.number, ownerParticipantId: p.participantId, sortOrder: sortOrder++, direction: null });
       }
     }
     if (rows.length) {

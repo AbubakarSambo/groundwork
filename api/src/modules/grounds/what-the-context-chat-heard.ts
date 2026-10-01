@@ -1,6 +1,7 @@
 import { worthRecording, verbatimQuote, verbatimExpectation, readablePhrase } from './what-setup-agreed';
 import { whoTheyMeant } from './who-they-meant';
 import { saidUntilIEndIt } from './nothing-proposed-that-nobody-said';
+import { whatTheWordsSuggest, whichWayItIsSaid, type TargetDirection } from '../board/an-aim-or-a-limit';
 /**
  * THE HALF THE CONTEXT CHAT WAS MISSING: what it heard, and what may be done with it. Stage 3.
  *
@@ -80,7 +81,8 @@ export type Proposal =
   | { kind: 'cadence'; cadence: Cadence; say: string }
   | { kind: 'success'; text: string; say: string }
   | { kind: 'expectation'; participantId: string; personLabel: string; firstName: string; text: string; say: string }
-  | { kind: 'targets'; targets: { name: string; target: number | null }[]; say: string }
+  /** `direction` is what the say-back told the lead (decision 69): a yes to `say` is a yes to it. Null without a number. */
+  | { kind: 'targets'; targets: { name: string; target: number | null; direction: TargetDirection | null }[]; say: string }
   /**
    * THE LEAD'S READ OF A NAMED PERSON, KEPT AS THEIR OWN PRIVATE NOTE. FIX 4, inventory items 10-11.
    *
@@ -169,11 +171,18 @@ export function proposalFrom(
       return { kind: 'none', why: 'Nothing in that answer reads as a measure, so nothing was set.' };
     }
     const counted = targets.filter((t) => t.target != null).length;
+    /*
+     * AN AIM TO REACH, OR A LIMIT NOT TO GO OVER, SAID BACK BEFORE ANYTHING IS SAVED (decision 69).
+     * Suggested from the words of each name and stated in the say-back, one sentence per number, so
+     * the lead's yes confirms it. The same words give the same suggestion when the yes lands.
+     */
+    const withWays = targets.map((t) => ({ ...t, direction: t.target != null ? whatTheWordsSuggest(t.name) : null }));
+    const ways = withWays.filter((t) => t.target != null).map((t) => whichWayItIsSaid(t.name, t.target as number, t.direction as TargetDirection));
     return {
       kind: 'targets',
-      targets,
+      targets: withWays,
       say: counted
-        ? `Set ${targets.length === 1 ? 'one measure' : `${targets.length} measures`}, ${counted} of them with a number to count against. You can change any of them on the board.`
+        ? `Set ${targets.length === 1 ? 'one measure' : `${targets.length} measures`}, ${counted} of them with a number to count against. ${ways.join(' ')} You can change any of them on the board, including whether a number is an aim or a limit.`
         : `Set ${targets.length === 1 ? 'one measure' : `${targets.length} measures`}, tracked rather than counted, because no number was named for them.`,
     };
   }

@@ -111,6 +111,8 @@ export interface WhoAnAimIsAbout {
   /** The label of the person who holds the number, or null for the team. */
   holder: string | null;
   target: number | null;
+  /** The lead said this number is a limit not to go over, or an aim to reach (decision 69). Null: not said. */
+  direction?: 'AIM' | 'LIMIT' | null;
 }
 
 /**
@@ -136,7 +138,10 @@ export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {
     if (/^\p{Lu}\p{Ll}*$/u.test(words[0] ?? '') && (words.length === 1 || /^\p{Ll}/u.test(words[1]))) words[0] = words[0].toLowerCase();
     const what = words.join(' ');
     const howMany = who.target != null && !/^\d/.test(what) ? `${aNumberPeopleCanRead(who.target)} ` : '';
-    t = who.target != null ? `${holder} is aiming for ${howMany}${what}.` : `${holder} is working on ${what}.`;
+    /* A limit the lead set is not something anybody is aiming for (decision 69). */
+    t = who.target != null && who.direction === 'LIMIT'
+      ? `${holder} is keeping ${what} to no more than ${aNumberPeopleCanRead(who.target)}.`
+      : who.target != null ? `${holder} is aiming for ${howMany}${what}.` : `${holder} is working on ${what}.`;
   } else if (who.speaker) {
     t = aboutTheSpeaker(t, who.speaker);
   }

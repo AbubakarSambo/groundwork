@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common';
-import { IsString, IsInt, IsOptional, IsArray, IsBoolean, MaxLength, Min, ArrayMaxSize, ValidateNested } from 'class-validator';
+import { IsString, IsInt, IsOptional, IsArray, IsBoolean, IsIn, MaxLength, Min, ArrayMaxSize, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BoardService, type WorkItemInput } from './board.service';
@@ -39,6 +39,15 @@ class ObjectiveDto {
    */
   @IsOptional() @IsBoolean()
   isADecisionAboutAPerson?: boolean;
+
+  /**
+   * AN AIM TO REACH ("AIM") OR A LIMIT NOT TO GO OVER ("LIMIT"), AS THE LEAD CHOSE IT (decision 69).
+   * Optional. Absent leaves it as it is; null puts it back to not set, where the board reads the words
+   * of the name as it always has. The board serves `directionSuggested` and `directionQuestion` to the
+   * lead for a screen to ask with. This route is already the lead's alone.
+   */
+  @IsOptional() @IsIn(['AIM', 'LIMIT'])
+  direction?: 'AIM' | 'LIMIT' | null;
 }
 
 class ProposePersonDto {

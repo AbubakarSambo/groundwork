@@ -43,8 +43,13 @@ describe('a dump is many things at once', () => {
   it('lists everything it took, one line per person, carrying every number of theirs', () => {
     const said = whatWeTookFromThat(got)!;
     expect(said).toContain('What doing well looks like is "I want to know what each of them is really doing week to week');
-    expect(said).toContain('- Q4 sales: 180m');
-    expect(said).toContain('- credit as a share of sales: 35, not to be passed');
+    /* Decision 69: the receipt says only a direction the lead said yes to, and none was here. Asking,
+       each number says which way it goes, so the yes confirms it. */
+    expect(said).toContain('- Q4 sales: 180m\n');
+    expect(said).toContain('- credit as a share of sales: 35\n');
+    const asking = whatWeTookFromThat(got, { asking: true })!;
+    expect(asking).toContain('- Q4 sales: 180m, an aim to reach');
+    expect(asking).toContain('- credit as a share of sales: 35, a limit not to go over');
     expect(said).toContain('- Chika Nwosu: "I want her at N35m and at least 4 new dealers signed." (Q4 sales: 35m; new dealers signed: 4)');
     /* Her line once, not once per number. */
     expect(said.match(/Chika Nwosu/g)).toHaveLength(1);

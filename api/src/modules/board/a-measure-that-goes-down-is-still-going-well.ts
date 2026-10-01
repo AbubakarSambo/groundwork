@@ -12,6 +12,12 @@
  * Where it started, where it is, and what was said are three numbers the product already keeps, and
  * three numbers that disagree with a direction flag are three numbers that are right.
  *
+ * OVERRULED FOR THE LIMIT, 1 October 2026 (decision 69). Guessing a limit from the words of a name
+ * read "Pumps sold under the new scheme" as a ceiling. Hafsah: each target carries a direction, an aim
+ * to reach or a limit not to go over, suggested from the words and confirmed by the lead when the
+ * target is made (GroundObjective.direction, see an-aim-or-a-limit.ts). Where it is set it is used;
+ * where it is null the reading below is unchanged.
+ *
  * SO IT IS DERIVED, AND FROM THE FIRST SNAPSHOT RATHER THAN FROM TODAY. A target added at session
  * six has its start at session six, which is honest: nobody gets credit for distance covered before
  * anybody was counting.
@@ -79,13 +85,36 @@ const read = (n: number) => aNumberPeopleCanRead(n);
  * whether the number is a limit or an aim, and the count started at 0 and is now above it, the line
  * says only where it is against the number, because "reached" could be the opposite of true.
  */
-const SAYS_IT_IS_A_LIMIT = /\b(?:budgets?|limits?|ceilings?|caps?|capped|no more than|at most|maximum|within|under)\b/i;
+/*
+ * "UNDER" ONLY BEFORE A NUMBER (decision 69, 1 October 2026). "First response under four hours" is a
+ * limit; "Pumps sold under the new scheme" is an aim, and the bare word read it as a ceiling, so a
+ * count of 45 against 40 would have been told as 5 over a limit. The word counts only where a number
+ * follows it, written as figures or as a word.
+ */
+const UNDER_A_NUMBER = String.raw`under\s+(?:about\s+|around\s+)?(?:[^\s\d]{0,4}\d|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a\s+hundred|a\s+thousand|a\s+million|half)\b)`;
+const SAYS_IT_IS_A_LIMIT = new RegExp(String.raw`\b(?:(?:budgets?|limits?|ceilings?|caps?|capped|no more than|at most|maximum|within)\b|${UNDER_A_NUMBER})`, 'i');
 const SAYS_IT_IS_AN_AIM = /\b(?:aims?|aiming|targets?|goals?)\b/i;
 
-export function theJourneySoFar(a: { start: number | null; now: number; target: number | null; name?: string | null }): Journey {
+/** What the words of a target's name suggest, the guess the board falls back on when nobody has said. */
+export function theWordsSayItIsALimit(name: string | null | undefined): boolean {
+  return SAYS_IT_IS_A_LIMIT.test(name ?? '');
+}
+
+/**
+ * AN AIM TO REACH, OR A LIMIT NOT TO GO OVER, AS THE LEAD SAID IT (decision 69, 1 October 2026).
+ *
+ * Hafsah: "instead of guessing, give each target a direction field, set when the target is made". So
+ * where `direction` is set it is the answer, whatever the name says. Where it is null nobody has said,
+ * and the words of the name are read exactly as they were before the field existed.
+ */
+export type TargetDirection = 'AIM' | 'LIMIT';
+
+export function theJourneySoFar(a: { start: number | null; now: number; target: number | null; name?: string | null; direction?: TargetDirection | null }): Journey {
   const { start, now, target } = a;
   const name = a.name ?? '';
-  const direction = whichWayIsGood(start, target);
+  const said = a.direction === 'AIM' || a.direction === 'LIMIT' ? a.direction : null;
+  /* An aim the lead set is reached by going up to it, wherever it started. */
+  const direction = said === 'AIM' ? (start == null || start === target ? whichWayIsGood(start, target) : 'up') : whichWayIsGood(start, target);
   const where = start != null ? `It was ${read(start)} at the start and is ${read(now)} now` : `It is ${read(now)} now`;
 
   if (target == null) {
@@ -99,7 +128,7 @@ export function theJourneySoFar(a: { start: number | null; now: number; target: 
   }
 
   /* A limit: over it, or within it. Lower is the good way, and there is no distance to fill. */
-  if (SAYS_IT_IS_A_LIMIT.test(name)) {
+  if (said === 'LIMIT' || (said == null && SAYS_IT_IS_A_LIMIT.test(name))) {
     return {
       direction: 'down', start, now, target, covered: null,
       say: now > target
@@ -109,7 +138,7 @@ export function theJourneySoFar(a: { start: number | null; now: number; target: 
   }
 
   /* Nothing says which way is good, it started at 0, and it is past the number: say only where it is. */
-  if (!SAYS_IT_IS_AN_AIM.test(name) && (start == null || start === 0) && now > target) {
+  if (said == null && !SAYS_IT_IS_AN_AIM.test(name) && (start == null || start === 0) && now > target) {
     return { direction: 'unknown', start, now, target, covered: null, say: `${where}, against ${read(target)}.` };
   }
 
@@ -119,8 +148,9 @@ export function theJourneySoFar(a: { start: number | null; now: number; target: 
     return { direction, start, now, target, say: `It is ${read(now)} now, and the aim is ${read(target)}.`, covered: null };
   }
 
-  const covered = howFar(start, now, target);
-  const reached = direction === 'down' ? now <= target : now >= target;
+  /* An aim the lead set that started above its number has already been reached: nothing to fill. */
+  const covered = said === 'AIM' && start > target ? 100 : howFar(start, now, target);
+  const reached = said === 'AIM' ? now >= target : direction === 'down' ? now <= target : now >= target;
   return {
     direction,
     start,

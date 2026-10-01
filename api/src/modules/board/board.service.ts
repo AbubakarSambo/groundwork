@@ -60,6 +60,7 @@ import { GroundsService } from '../grounds/grounds.service';
 import { theSessionReport } from '../reports/the-session-report';
 import { isThisACascade } from './is-this-a-cascade';
 import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
+import { asADirection, whatTheWordsSuggest, theQuestionAboutWhichWay, type TargetDirection } from './an-aim-or-a-limit';
 import { onlyWhoIsActuallyOutside, WHY_THIS_IS_HERE } from './somebody-carrying-work-with-no-account';
 import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
 import { whyNothingIsCrossReferenced } from './why-nothing-is-cross-referenced';
@@ -853,8 +854,8 @@ export class BoardService {
        *
        * The lowest session we have a snapshot for, per objective. A target added at session six
        * starts at session six - nobody gets credit for distance covered before anybody was
-       * counting. See a-measure-that-goes-down-is-still-going-well.ts for why this is derived
-       * rather than asked: a direction column can be set wrong, and three numbers cannot.
+       * counting. See a-measure-that-goes-down-is-still-going-well.ts. Since decision 69 the lead
+       * can also say which way is good (GroundObjective.direction), and where they have, that wins.
        */
       const firstSnapshots = await this.prisma.groundObjectiveSnapshot.findMany({
         where: { groundId },
@@ -912,7 +913,17 @@ export class BoardService {
       const { kept: mayReadUntold } = withoutWhatTheLeadHasNotToldThemAbout(mayRead as any[], untoldRows, ground.participants as any[], isInitiator);
 
       out.objectives = (mayReadUntold as typeof ground.objectives).map((o) => ({
-        journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target, name: o.name }),
+        /* The lead's own direction where they set one (decision 69); otherwise the words of the name, as before. */
+        journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target, name: o.name, direction: asADirection((o as any).direction) }),
+        /*
+         * AN AIM TO REACH, OR A LIMIT NOT TO GO OVER, AS THE LEAD SET IT (decision 69). Null: not set.
+         * To whoever may read the target, because it is part of the target. The suggestion and the
+         * question go to the lead alone, the only person who can answer it (assertInitiatorOfBoardGround
+         * on the update route), and only while nobody has answered it.
+         */
+        direction: asADirection((o as any).direction),
+        directionSuggested: isInitiator && o.target != null && asADirection((o as any).direction) == null ? whatTheWordsSuggest(o.name) : null,
+        directionQuestion: isInitiator && asADirection((o as any).direction) == null ? theQuestionAboutWhichWay(o.target) : null,
         /** The lead's own sentence about what is unsettled here, where there is one. Never a block. */
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledLines),
         id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
@@ -958,6 +969,7 @@ export class BoardService {
           (out.objectives as any[]).push({
             journey: { direction: 'unknown', start: null, now: 0, target: null, say: '', covered: null },
             notSettled: null, id: `lead-set-goal-${(out.objectives as any[]).length}`, name: say, count: 0, prevCount: 0, target: null,
+            direction: null, directionSuggested: null, directionQuestion: null,
             assumes: [], ownerParticipantId: me?.id ?? null, owner: null, delta: 0, isNew: false, suggestedCount: null, suggestedSaid: null, askedOf: null,
           });
         }
@@ -988,6 +1000,7 @@ export class BoardService {
           speaker: setBy ? labels.get(setBy) ?? null : null,
           holder: o.ownerParticipantId ? labels.get(o.ownerParticipantId) ?? null : null,
           target: o.target ?? null,
+          direction: asADirection(row.direction),
         });
         const named = withNames(inLabels, visibleNames, labels.values(), { viewerLabel: readerLabel });
         return { ...o, name: yourOwnWhereYouAreTheSubject(named, othersNames) };
@@ -2465,7 +2478,7 @@ export class BoardService {
   async createObjective(
     groundId: string,
     requestingUserId: string,
-    dto: { name: string; target?: number | null; ownerParticipantId?: string | null; isADecisionAboutAPerson?: boolean },
+    dto: { name: string; target?: number | null; ownerParticipantId?: string | null; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const owner = await this.whoOnThisGround(groundId, dto.ownerParticipantId);
@@ -2498,7 +2511,10 @@ export class BoardService {
            guessed from its wording. This route is already the lead's alone - assertInitiatorOfBoardGround
            above. */
         isADecisionAboutAPerson: dto.isADecisionAboutAPerson === true,
-      },
+        /* Decision 69: an aim to reach or a limit not to go over, as the lead chose it. Absent is null,
+           not set, and the board keeps reading the words of the name until the lead says. */
+        direction: asADirection(dto.direction),
+      } as any,
     });
   }
 
@@ -2562,7 +2578,7 @@ export class BoardService {
     groundId: string,
     objectiveId: string,
     requestingUserId: string,
-    dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; isADecisionAboutAPerson?: boolean },
+    dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
@@ -2579,7 +2595,9 @@ export class BoardService {
         ...(dto.count !== undefined ? { count: dto.count, prevCount: existing.count } : {}),
         /* Decision 46: the lead alone (assertInitiatorOfBoardGround above), set plainly, never guessed. */
         ...(dto.isADecisionAboutAPerson !== undefined ? { isADecisionAboutAPerson: dto.isADecisionAboutAPerson === true } : {}),
-      },
+        /* Decision 69: the lead sets or changes which way is good here; null puts it back to not set. */
+        ...(dto.direction !== undefined ? { direction: asADirection(dto.direction) } : {}),
+      } as any,
     });
   }
 
