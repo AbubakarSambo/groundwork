@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { onceAcrossCopies, theDay, theWeek } from '../prisma/once-across-copies';
+import { theReleaseMoment, reachedTheWarningPointBefore } from './the-release-moment';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { deadlineOf } from './when-the-clock-starts';
 import { A_GROUND_IS_OVER, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED } from './a-ground-that-has-ended';
@@ -53,7 +55,7 @@ const NUDGE_THROTTLE_DAYS = 3;
 const OPEN_STATUSES: CheckInStatus[] = [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS];
 
 @Injectable()
-export class GroundsCron {
+export class GroundsCron implements OnApplicationBootstrap {
   private readonly logger = new Logger(GroundsCron.name);
 
   constructor(
@@ -66,6 +68,19 @@ export class GroundsCron {
     /** Last, so the specs that build this positionally keep compiling. The sweep only decides which sessions are stale; finishing one is the conversation module's job. */
     private conversation: ConversationService,
   ) {}
+
+  /**
+   * THE FIRST START OF THIS VERSION WRITES THE RELEASE MOMENT (decision 74, item 7). See
+   * the-release-moment.ts. Never throws: the warning job writes it too, if this could not.
+   */
+  async onApplicationBootstrap() {
+    try {
+      const at = await theReleaseMoment(this.prisma);
+      this.logger.log(`Warnings that a check-in is about to run out of time go only to check-ins that reach that point after ${at.toISOString()}.`);
+    } catch (err: any) {
+      this.logger.warn(`The release moment could not be read or written yet: ${err?.message ?? err}`);
+    }
+  }
 
   /**
    * Daily sweep: transition any ground past its timelineDays to STALLED.
@@ -91,7 +106,7 @@ export class GroundsCron {
    */
   @Cron('0 6 * * *', { timeZone: 'UTC' })
   async inviteJoinersWhoStartToday() {
-    await this.prisma.withAdvisoryLock(CronLock.DEFERRED_INVITES, async () => {
+    await onceAcrossCopies(this.prisma, 'invite-joiners-who-start-today', theDay(), () => this.prisma.withAdvisoryLock(CronLock.DEFERRED_INVITES, async () => {
       const now = new Date();
       const due = await this.prisma.groundParticipant.findMany({
         where: {
@@ -141,7 +156,7 @@ export class GroundsCron {
           this.logger.error(`Deferred invite for participant ${p.id} did not send; it will be retried tomorrow. ${(err as Error).message}`);
         }
       }
-    });
+    }));
   }
 
   /**
@@ -162,7 +177,18 @@ export class GroundsCron {
    */
   @Cron('0 2 * * *', { timeZone: 'UTC' })
   async warnBeforeTimeRunsOut() {
-    await this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
+    await onceAcrossCopies(this.prisma, 'warn-before-time-runs-out', theDay(), () => this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
+      /*
+       * NOT FOR WHAT REACHED THIS POINT BEFORE THE RELEASE (decision 74, item 7). See
+       * the-release-moment.ts. When the moment cannot be read, nobody is emailed tonight.
+       */
+      let releasedAt: Date;
+      try {
+        releasedAt = await theReleaseMoment(this.prisma);
+      } catch (err: any) {
+        this.logger.error(`No warning was sent tonight, because the release moment could not be read: ${err?.message ?? err}`);
+        return;
+      }
       const candidates = await this.prisma.ground.findMany({
         where: {
           status: { notIn: [...TERMINAL, ...HELD, ...STOPPED] },
@@ -189,6 +215,9 @@ export class GroundsCron {
          * date gets the notice tonight and is stalled tomorrow if nobody acts.
          */
         if (daysLeft > DAYS_OF_NOTICE) continue;
+        /* Already this close, or past its end, before the release: no email, no stamp, so it is not
+           stalled either. It stays as it is until its lead ends or extends it. */
+        if (reachedTheWarningPointBefore(deadline, DAYS_OF_NOTICE, releasedAt)) continue;
         /* Stamped before the send, so a mailer that throws cannot turn one notice into a daily one. */
         await this.prisma.ground.update({ where: { id: g.id }, data: { stallWarningSentAt: new Date() } });
         const to = g.initiator?.email;
@@ -199,12 +228,12 @@ export class GroundsCron {
         warned += 1;
       }
       if (warned) this.logger.log(`Warned ${warned} lead(s) that a check-in is about to run out of time.`);
-    });
+    }));
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM, { timeZone: 'UTC' })
   async stallOverdueGrounds() {
-    await this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
+    await onceAcrossCopies(this.prisma, 'stall-overdue-check-ins', theDay(), () => this.prisma.withAdvisoryLock(CronLock.STALL_GROUNDS, async () => {
       /*
        * NOTHING STALLS THAT WAS NEVER WARNED.
        *
@@ -272,7 +301,7 @@ export class GroundsCron {
             .catch((err: any) => this.logger.error(`Stalled notification failed for ground ${g.id}: ${err.message}`));
         }
       }
-    });
+    }));
   }
 
   /**
@@ -290,6 +319,10 @@ export class GroundsCron {
    */
   @Cron('0 5 * * 1', { timeZone: 'UTC' }) // Every Monday at 05:00 UTC
   async weeklyPeriodBoundary() {
+    await onceAcrossCopies(this.prisma, 'weekly-period-boundary', theWeek(), () => this.weeklyPeriodBoundaryHere());
+  }
+
+  private async weeklyPeriodBoundaryHere() {
     const activeGrounds = await this.prisma.ground.findMany({
       where: { status: { in: [GroundStatus.ACTIVE, GroundStatus.AWAITING_PARTIES, GroundStatus.REPORT_READY] } },
       select: { id: true },
@@ -330,6 +363,10 @@ export class GroundsCron {
    */
   @Cron('30 5 * * 1', { timeZone: 'UTC' }) // Every Monday at 05:30 UTC
   async weeklyConcentrationRisk() {
+    await onceAcrossCopies(this.prisma, 'weekly-concentration-risk', theWeek(), () => this.weeklyConcentrationRiskHere());
+  }
+
+  private async weeklyConcentrationRiskHere() {
     // Collect distinct org IDs from active grounds.
     const activeGrounds = await this.prisma.ground.findMany({
       where: { status: { in: [GroundStatus.ACTIVE, GroundStatus.AWAITING_PARTIES, GroundStatus.REPORT_READY] } },
@@ -521,7 +558,7 @@ export class GroundsCron {
    */
   @Cron('0 7 * * *', { timeZone: 'UTC' })
   async tellThemBeforeAnInviteLapses() {
-    await this.prisma.withAdvisoryLock(CronLock.INVITE_EXPIRY, async () => {
+    await onceAcrossCopies(this.prisma, 'tell-them-before-an-invite-lapses', theDay(), () => this.prisma.withAdvisoryLock(CronLock.INVITE_EXPIRY, async () => {
       const now = new Date();
       const soon = new Date(now.getTime() + WARN_BEFORE_IT_LAPSES_DAYS * 24 * 60 * 60 * 1000);
       const frontend = this.config.get<string>('resend.frontendUrl') || '';
@@ -554,7 +591,7 @@ export class GroundsCron {
         }
       }
       if (aboutToLapse.length || lapsed.length) this.logger.log(`Invite expiry: warned ${aboutToLapse.length}, told the lead about ${lapsed.length}.`);
-    });
+    }));
   }
 
   /**
@@ -567,7 +604,7 @@ export class GroundsCron {
    */
   @Cron(CronExpression.EVERY_DAY_AT_9AM, { timeZone: 'UTC' })
   async sendReminders() {
-    await this.prisma.withAdvisoryLock(CronLock.SEND_REMINDERS, async () => this.sendRemindersInner());
+    await onceAcrossCopies(this.prisma, 'send-reminders', theDay(), () => this.prisma.withAdvisoryLock(CronLock.SEND_REMINDERS, async () => this.sendRemindersInner()));
   }
 
   /**
@@ -820,7 +857,7 @@ export class GroundsCron {
    */
   @Cron('0 4 * * *', { timeZone: 'UTC' })
   async synthesisBackstop() {
-    await this.prisma.withAdvisoryLock(CronLock.SYNTHESIS_BACKSTOP, async () => {
+    await onceAcrossCopies(this.prisma, 'synthesis-backstop', theDay(), () => this.prisma.withAdvisoryLock(CronLock.SYNTHESIS_BACKSTOP, async () => {
       const grounds = await this.prisma.ground.findMany({
         where: { status: { notIn: [...TERMINAL, ...HELD] } },
         select: { id: true },
@@ -879,7 +916,7 @@ export class GroundsCron {
       if (triggered > 0) {
         this.logger.warn(`Synthesis backstop: re-triggered ${triggered} round(s) that closed and were never recorded or released`);
       }
-    });
+    }));
   }
 
   /**
@@ -890,6 +927,10 @@ export class GroundsCron {
    */
   @Cron('0 10 * * *', { timeZone: 'UTC' })
   async sendFeedbackRequests() {
+    await onceAcrossCopies(this.prisma, 'send-feedback-requests', theDay(), () => this.sendFeedbackRequestsHere());
+  }
+
+  private async sendFeedbackRequestsHere() {
     const now = new Date();
     const closedAfter = new Date(now.getTime() - 72 * 60 * 60 * 1000);
     const closedBefore = new Date(now.getTime() - 24 * 60 * 60 * 1000);

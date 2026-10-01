@@ -1,4 +1,5 @@
 import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
+import { onceAcrossCopies, theDay } from '../prisma/once-across-copies';
 import { awayUntilOn, fallsInLeave, leaveOfThePeopleOn, theirApprovedLeave, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
@@ -223,6 +224,11 @@ export class RemindService {
   // timeZone pinned to UTC - previously implicit, same fix as grounds.cron.ts.
   @Cron(CronExpression.EVERY_DAY_AT_8AM, { timeZone: 'UTC' })
   async sendScheduledNudges(): Promise<void> {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'send-scheduled-nudges', theDay(), () => this.sendScheduledNudgesHere());
+  }
+
+  private async sendScheduledNudgesHere(): Promise<void> {
     const now = new Date();
     const frontendUrl = (this.email as any).frontendUrl ?? 'http://localhost:5173';
 

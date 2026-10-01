@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { onceAcrossCopies, theDay } from '../prisma/once-across-copies';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { sweepUnverifiedAccounts, UNVERIFIED_MAX_AGE_DAYS } from './unverified-sweep';
@@ -17,6 +18,11 @@ export class EntryCron {
   // timeZone pinned to UTC - previously implicit, same fix as grounds.cron.ts.
   @Cron(CronExpression.EVERY_DAY_AT_3AM, { timeZone: 'UTC' })
   async purgeAbandonedDrafts(): Promise<void> {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'purge-abandoned-drafts', theDay(), () => this.purgeAbandonedDraftsHere());
+  }
+
+  private async purgeAbandonedDraftsHere(): Promise<void> {
     const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
     const res = await this.prisma.entryDraft.deleteMany({
       where: { consumedAt: null, updatedAt: { lt: cutoff } },
@@ -39,6 +45,11 @@ export class EntryCron {
    */
   @Cron(CronExpression.EVERY_DAY_AT_4AM, { timeZone: 'UTC' })
   async sweepUnverifiedAccounts(): Promise<void> {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'sweep-unverified-accounts', theDay(), () => this.sweepUnverifiedAccountsHere());
+  }
+
+  private async sweepUnverifiedAccountsHere(): Promise<void> {
     const r = await sweepUnverifiedAccounts(this.prisma, new Date(), UNVERIFIED_MAX_AGE_DAYS);
     if (r.usersDeleted > 0 || r.skippedNotEmpty > 0) {
       this.logger.log(

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
+import { onceAcrossCopies, oneOrganisationAtATime, theDay } from '../prisma/once-across-copies';
 import { GroundworkEvents } from '../../common/events';
 import { EVALUATION_SCENARIOS } from '../reports/is-this-an-evaluation-check-in';
 import { labelsForParties } from '../reports/party-labels';
@@ -32,8 +33,11 @@ export class RoleGapNotesService {
 
   @Cron('45 3 * * *', { timeZone: 'UTC' })
   async nightly() {
-    const orgs = await this.prisma.role.findMany({ distinct: ['organizationId'], select: { organizationId: true } }).catch(() => []);
-    for (const o of orgs as { organizationId: string }[]) await this.rebuild(o.organizationId);
+    /* Once across every copy of the API, one organisation at a time (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'the-role-gap-notes', theDay(), async () => {
+      const orgs = await this.prisma.role.findMany({ distinct: ['organizationId'], select: { organizationId: true } }).catch(() => []);
+      await oneOrganisationAtATime((orgs as { organizationId: string }[]).map((o) => o.organizationId), (id) => this.rebuild(id));
+    });
   }
 
   private async forTheGround(groundId?: string) {

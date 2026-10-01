@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { onceAcrossCopies, theDay, theHour } from '../prisma/once-across-copies';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { DayOfCalls, isARead, isAReportRead, isATranscriptRead, whatLooksWrong } from './the-api-is-watched';
@@ -23,6 +24,11 @@ export class ApiWatchCron {
    */
   @Cron('0 1 * * *', { timeZone: 'UTC' })
   async pruneIdempotencyRecords() {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'prune-idempotency-records', theDay(), () => this.pruneIdempotencyRecordsHere());
+  }
+
+  private async pruneIdempotencyRecordsHere() {
     try {
       const before = new Date(Date.now() - KEEP_RECORDS_HOURS * 3600_000);
       const gone = await this.prisma.idempotencyRecord.deleteMany({ where: { createdAt: { lt: before } } });
@@ -34,6 +40,11 @@ export class ApiWatchCron {
 
   @Cron(CronExpression.EVERY_HOUR)
   async sweep() {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'api-watch-sweep', theHour(), () => this.sweepHere());
+  }
+
+  private async sweepHere() {
     try {
       const since = new Date(Date.now() - 24 * 3600_000);
       const calls = await this.prisma.apiCall.findMany({

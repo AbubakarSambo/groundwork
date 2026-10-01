@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
+import { onceAcrossCopies, oneOrganisationAtATime, theDay } from '../prisma/once-across-copies';
 import { PromptsService } from '../prompts';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { GroundworkEvents } from '../../common/events';
@@ -58,8 +59,13 @@ export class CompanyPictureService {
   /** The nightly look: a change to the priorities in the organisation's own system arrives no other way. */
   @Cron('30 3 * * *', { timeZone: 'UTC' })
   async nightly() {
-    const orgs = await this.prisma.subject.findMany({ distinct: ['organizationId'], select: { organizationId: true } }).catch(() => []);
-    for (const o of orgs as { organizationId: string }[]) await this.rebuild(o.organizationId);
+    /* Once across every copy of the API, and one organisation at a time with a pause after each model
+       call, so the first night does not make every organisation's call at once (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'the-company-picture', theDay(), async () => {
+      const orgs = await this.prisma.subject.findMany({ distinct: ['organizationId'], select: { organizationId: true } }).catch(() => []);
+      const { withWork } = await oneOrganisationAtATime((orgs as { organizationId: string }[]).map((o) => o.organizationId), (id) => this.rebuild(id));
+      if (withWork) this.logger.log(`The company picture was written again for ${withWork} organisation(s) tonight.`);
+    });
   }
 
   private async forTheGround(groundId?: string) {

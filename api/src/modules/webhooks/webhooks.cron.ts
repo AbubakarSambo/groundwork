@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { onceAcrossCopies, theDay } from '../prisma/once-across-copies';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { WebhooksService } from './webhooks.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -41,6 +42,11 @@ export class WebhooksCron {
    */
   @Cron(CronExpression.EVERY_DAY_AT_7AM)
   async escalateStaleHandoffs() {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'escalate-stale-handoffs', theDay(), () => this.escalateStaleHandoffsHere());
+  }
+
+  private async escalateStaleHandoffsHere() {
     if (this.escalating) return;
     this.escalating = true;
     try {

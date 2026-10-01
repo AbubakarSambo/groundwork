@@ -1,4 +1,5 @@
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { onceAcrossCopies, theHour, theWeek } from '../prisma/once-across-copies';
 import { theJudgementWithItsConversationPoints } from './the-judgement-and-a-goal-not-told';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
@@ -7268,6 +7269,11 @@ A previous attempt had to be discarded in part. Rewrite it so that no field name
    */
   @Cron('35 * * * *', { timeZone: 'UTC' })
   async catchUpReportsLeftBehind(): Promise<void> {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'catch-up-reports-left-behind', theHour(), () => this.catchUpReportsLeftBehindHere());
+  }
+
+  private async catchUpReportsLeftBehindHere(): Promise<void> {
     try {
       const reports = await this.prisma.report.findMany({
         where: { ground: { status: { notIn: [GroundStatus.CLOSED, GroundStatus.RESOLVED] } } },
@@ -7294,6 +7300,11 @@ A previous attempt had to be discarded in part. Rewrite it so that no field name
 
   @Cron('20 * * * *', { timeZone: 'UTC' })
   async finishClosingSynthesesThatFailed(): Promise<void> {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'finish-closing-syntheses-that-failed', theHour(), () => this.finishClosingSynthesesThatFailedHere());
+  }
+
+  private async finishClosingSynthesesThatFailedHere(): Promise<void> {
     try {
       const candidates = await this.prisma.ground.findMany({
         where: {
@@ -7333,6 +7344,11 @@ A previous attempt had to be discarded in part. Rewrite it so that no field name
 
   @Cron('0 8 * * 1', { timeZone: 'UTC' })
   async weeklyOutcomeLearningReport(): Promise<void> {
+    /* Once for its time across every copy of the API (decision 74, item 7). */
+    await onceAcrossCopies(this.prisma, 'weekly-outcome-learning-report', theWeek(), () => this.weeklyOutcomeLearningReportHere());
+  }
+
+  private async weeklyOutcomeLearningReportHere(): Promise<void> {
     this.logger.log('Weekly outcome learning report: starting');
     try {
       const outcomes = await this.prisma.outcome.findMany({
