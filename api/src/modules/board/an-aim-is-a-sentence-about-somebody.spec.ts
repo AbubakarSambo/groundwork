@@ -1,7 +1,7 @@
 import { PartyType } from '@prisma/client';
 import { boardAs, person } from './the-switchboards-sections-harness';
 import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
-import { theNumbersPeopleCanRead } from './an-aim-is-a-sentence-about-somebody';
+import { theNumbersPeopleCanRead, aboutTheSpeaker } from './an-aim-is-a-sentence-about-somebody';
 
 /**
  * THE NAME OF EVERY AIM, AS EACH PERSON READS IT ON THE BOARD (review of 1 October 2026, row 113).
@@ -147,5 +147,11 @@ describe('the line under each aim', () => {
   });
   it('leaves a year and a small number alone', () => {
     expect(theNumbersPeopleCanRead('By 2026, 40 approved facilities and N31m disbursed.')).toBe('By 2026, 40 approved facilities and 31 million naira disbursed.');
+  });
+});
+
+describe('an aim that starts with "My" (re-d, sales, Ngozi)', () => {
+  it('is about the person who set it, never "my"', () => {
+    expect(aboutTheSpeaker('My goal is 14 approved facilities this quarter.', 'Ngozi')).toBe("Ngozi's goal is 14 approved facilities this quarter.");
   });
 });

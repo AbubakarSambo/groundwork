@@ -91,6 +91,7 @@ export function aboutTheSpeaker(text: string, speaker: string): string {
     .replace(/\bthe speaker(?:'|’)s\b/gi, `${S}'s`)
     .replace(/\bthe speaker\b/gi, S)
     .replace(/^The person\b/, S)
+    .replace(/(^|[.!?]\s+)My\b/g, `$1${S}'s`)
     .replace(/\bmy\b/g, `${S}'s`)
     .replace(/\bme\b/g, S);
   if (out !== text) out = out.charAt(0).toUpperCase() + out.slice(1);
