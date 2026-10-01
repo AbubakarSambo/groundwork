@@ -6973,7 +6973,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         continue;
       }
       /* The same promise said twice in one breath, once with its time on the end, is one promise. */
-      const same = (theirs as any[]).find((h) => !(h.statedInSession === row.sessionNumber && nameTwoDifferentDates({ text: h.text ?? '', when: h.whenSaid }, { text: c.action, when: c.when })) && (theSameMeasure(h.text ?? '', c.action)
+      /* Said in another session at another length, it is its own record and the earlier one is left as it was. */
+      const same = (theirs as any[]).find((h) => !(h.statedInSession !== row.sessionNumber && theFullerPromise({ text: h.text ?? '', when: h.whenSaid }, { text: c.action, when: c.when })) && !(h.statedInSession === row.sessionNumber && nameTwoDifferentDates({ text: h.text ?? '', when: h.whenSaid }, { text: c.action, when: c.when })) && (theSameMeasure(h.text ?? '', c.action)
         || (!!aCommitmentKey(c.action, c.when) && aCommitmentKey(h.text ?? '', h.whenSaid) === aCommitmentKey(c.action, c.when))));
       if (same) {
         /* Already settled by a person: saying it again does not reopen it and is not counted. */
