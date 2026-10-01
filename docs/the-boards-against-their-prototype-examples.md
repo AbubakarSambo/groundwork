@@ -186,3 +186,44 @@ reviewer's finding, not this one.
 `.../scratchpad/pictures/boards3/` - `w1440-<lead\|part>-<path>.png`/`.txt`/`.api.json` and
 `w375-<lead\|part>-<path>.png`/`.txt`/`.api.json` for all 22 boards, plus `fixcheck-lead-...png`
 (the gov board at 375px after the overflow fix, confirming `scrollW` now equals `innerW`).
+
+## Phase 2's own picture pass (2 October), after the fixes above
+
+All 11 kinds, as the lead and (10 of them) as a participant, at 1440px and 375px -
+`.../scratchpad/pictures/boards-fix2/` - `w1440-<lead|part>-<path>.png`, `w375-<lead|part>-<path>.png`
+and `w1440text-<lead|part>-<path>.txt` (the page's own `innerText`, which a real browser already
+hides for a closed `<details>` - a participant's folded "whole check-in" correctly does not appear
+in these text captures, the same way it is really hidden from the reader until they open it).
+Found, read against these pictures:
+
+- **The merged "What needs you in this check-in"** renders for the lead on every kind that sends
+  `leadActions`/`decisions`/Today items (confirmed on eng, gov, sales), with no separate "Decisions
+  needed" heading anywhere on a lead's board any more. A participant's own board (where "Decisions
+  needed" still belongs) was not directly checked this pass, since it now sits inside "The whole
+  check-in" fold and does not appear in an `innerText` capture - this is expected (see above), not
+  a gap; `TheSwitchboardsSections.spec.tsx`'s own test for it (`"for a participant, 'Decisions
+  needed' is still its own section, as before"`) checks the DOM directly instead.
+- **The joined "Blockers" section** renders correctly where the server actually sends
+  `blockerCheck` - confirmed on the MarketView Q4 board (the one kind of the eleven whose test data
+  carries it today): "Blockers", "Each with its history and the one thing that would clear it,
+  where the record has it.", one card with "Blocking", "Waiting on: IT holds it.", "Raised: since
+  27 September", "What the proof shows: Nobody has said what has been tried. No time has been given
+  for it." - matching the prototype's own card shape exactly, for the fields the server sends.
+  `eng`'s own test data does not currently carry `blockerCheck` at all (only the general `risks`
+  and `dependencies` it always had), so no Blockers card draws there - correct behaviour (a section
+  with nothing to show draws nothing), not a defect.
+- **The participant's personal view** renders on every participant board checked (eng, sales,
+  loans): the sharing-status sentence (in both states - "isn't ready yet", naming the lead, and "is
+  ready" once a round has closed), "Read your own report" (linking to `/grounds/:id/report`), and
+  "The whole check-in" folded below, closed by default. "Your own records, day by day" only draws
+  where this reader actually owns a row in `workRecords` - it was absent on every board checked
+  this pass because none of the three participants read here (Aisha, Amani, Miriam) owns a record
+  on their own test check-in yet; this is the section correctly drawing nothing rather than an
+  empty heading, not a gap in the section itself.
+- **At 375px**, every board checked kept its background at the one cream colour throughout (the
+  `bgprobe375` background probe found no stray colour at any sampled point on any of the 20 boards
+  pictured), and the personal view's own panel and fold read cleanly in the narrow column (see the
+  eng participant picture).
+
+Nobody is marked "done" by this pass - that is the reviewer's own finding to make, not the
+builder's.
