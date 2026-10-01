@@ -212,4 +212,14 @@ export const REBUILT_PAGES: string[] = [
    * ask" box, previously a left-rule aside, is now `Callout`, at that part's own size and tint.
    */
   'components/gw/ui/PatternPanel.tsx',
+  /*
+   * BOARD TASK, BATCH 3, PART 2: `WhatTheRecordShows.tsx` rebuilt from `SubHeading`/`RowList`/
+   * `Row`/`Note` in place of thirty-one one-off `gwui-fs-*`/`gwui-ink-*`/`gwui-mt-*`/`gwui-pt-*`/
+   * `gwui-pb-*` combinations and its own local `Head`/`Line` helpers. `Callout` is not used here:
+   * its own two tinted boxes ("Settle these before deciding anything", "What this cannot tell
+   * you") each hold several sentences, and `Callout` draws one sentence (or a title and one body),
+   * so neither box is that part's shape; both stay the inline `background`/`borderRadius` pair
+   * they already used (neither prop is banned - size, colour, margin, padding and border are).
+   */
+  'components/gw/WhatTheRecordShows.tsx',
 ]

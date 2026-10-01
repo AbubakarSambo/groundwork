@@ -391,6 +391,7 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'components/gw/where-each-person-is.tsx',
       'pages/board/TheSwitchboardsSections.tsx',
       'components/gw/ui/PatternPanel.tsx',
+      'components/gw/WhatTheRecordShows.tsx',
     ])
   })
 

@@ -1,3 +1,5 @@
+import { SubHeading, RowList, Row, Note } from './ui'
+
 /**
  * WHAT THE RECORD SHOWS ACROSS EVERY SESSION, ON THE LEAD'S BOARD.
  *
@@ -34,23 +36,16 @@ export interface TheRecordOverTime {
 }
 
 /**
- * U.10 (e/f): FROM THE SHARED PARTS, AT THE PROTOTYPE'S OWN SIZES. `Head` is a small muted kicker
- * over one block inside a wider read (not a whole page section, so not `Section`'s 21px, and not
- * `SubHeading`'s 15px ink fact-label either) - the prototype's own `.note`, 13.5px. `Line` is the
- * record's own sentence, the main thing a reader is here for - the prototype's body/list-row line,
- * 15px, with a rule above every row but the first (`gwui-inner-row`, a CSS `:first-child` rule,
- * not an `i === 0` ternary).
+ * U.10 (e/f); BOARD TASK, BATCH 3, PART 2: FROM THE SHARED PARTS, AT THE PROTOTYPE'S OWN SIZES.
+ * `Head` is now `SubHeading` `tone="kicker"` - a small muted kicker over one block inside a wider
+ * read (not a whole page section, so not `Section`'s 21px, and not `SubHeading`'s own default
+ * 14.5px ink fact-label either) - the prototype's own `.note`, 13.5px, named as the heading part's
+ * own option rather than left as a local one-off. `Line` is the record's own sentence, the main
+ * thing a reader is here for, now a `RowList`/`Row` the same shape as this product's other plain
+ * lists - a line above the first row and under each - rather than a bare `gwui-inner-row` div.
  */
 const Head = ({ children }: { children: React.ReactNode }) => (
-  <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-18 gwui-mb-7" style={{ fontWeight: 700, letterSpacing: '.1px' }}>
-    {children}
-  </div>
-)
-
-const Line = ({ children }: { children: React.ReactNode }) => (
-  <div className="gwui-fs-15 gwui-ink-text gwui-inner-row gwui-pt-6 gwui-pb-6" style={{ lineHeight: 1.55 }}>
-    {children}
-  </div>
+  <SubHeading tone="kicker">{children}</SubHeading>
 )
 
 export function WhatTheRecordShows({ it }: { it: TheRecordOverTime | null | undefined }) {
@@ -80,26 +75,34 @@ export function WhatTheRecordShows({ it }: { it: TheRecordOverTime | null | unde
       {!!open.length && (
         <>
           <Head>What people said they would do{it.inSessions ? `, ${it.inSessions}` : (it.sessions ? `, over ${it.sessions} sessions` : '')}</Head>
-          {open.map((c, i) => <Line key={i}>{c.say}</Line>)}
+          <RowList label="What people said they would do">
+            {open.map((c, i) => <Row key={i} columns="1fr">{c.say}</Row>)}
+          </RowList>
         </>
       )}
 
       {!!it.dependencies?.length && (
         <>
           <Head>Who is waiting on whom</Head>
-          {it.dependencies.map((d, i) => <Line key={i}>{d.say}</Line>)}
+          <RowList label="Who is waiting on whom">
+            {it.dependencies.map((d, i) => <Row key={i} columns="1fr">{d.say}</Row>)}
+          </RowList>
         </>
       )}
 
       {!!surfaced.length && (
         <>
           <Head>Seen often enough to be a pattern</Head>
-          {surfaced.map((p, i) => (
-            <Line key={i}>
-              <div>{p.observation}</div>
-              <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-3">{p.who} · {p.name} · {p.say}</div>
-            </Line>
-          ))}
+          <RowList label="Seen often enough to be a pattern">
+            {surfaced.map((p, i) => (
+              <Row key={i} columns="1fr">
+                <div>
+                  <div>{p.observation}</div>
+                  <div className="gwui-mt-3"><Note>{p.who} · {p.name} · {p.say}</Note></div>
+                </div>
+              </Row>
+            ))}
+          </RowList>
         </>
       )}
 
@@ -107,19 +110,25 @@ export function WhatTheRecordShows({ it }: { it: TheRecordOverTime | null | unde
       {!!candidates.length && (
         <>
           <Head>Seen once or twice, not yet a pattern</Head>
-          {candidates.map((p, i) => (
-            <Line key={i}>
-              <div>{p.observation}</div>
-              <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-3">{p.who} · {p.name} · {p.say}</div>
-            </Line>
-          ))}
+          <RowList label="Seen once or twice, not yet a pattern">
+            {candidates.map((p, i) => (
+              <Row key={i} columns="1fr">
+                <div>
+                  <div>{p.observation}</div>
+                  <div className="gwui-mt-3"><Note>{p.who} · {p.name} · {p.say}</Note></div>
+                </div>
+              </Row>
+            ))}
+          </RowList>
         </>
       )}
 
       {!!it.gaps?.length && (
         <>
           <Head>The role, beside what the record holds</Head>
-          {it.gaps.map((g, i) => <Line key={i}>{g.say}</Line>)}
+          <RowList label="The role, beside what the record holds">
+            {it.gaps.map((g, i) => <Row key={i} columns="1fr">{g.say}</Row>)}
+          </RowList>
         </>
       )}
 
