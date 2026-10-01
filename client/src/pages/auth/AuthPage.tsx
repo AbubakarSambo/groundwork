@@ -17,7 +17,7 @@ import { LinkSentPanel } from './LinkSentPanel'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
 import { whatIsWrongWithTheAddress } from './the-address-typed'
-import { Button } from '@/components/gw/kit'
+import { Button, Stack, Choices, Callout } from '@/components/gw/ui'
 import { AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField, PasswordRules } from './auth-kit'
 import { meetsTodaysPasswordRules } from './password-rules'
 import { theFreeTrialSentence } from '@/lib/the-free-trial'
@@ -31,6 +31,15 @@ import { keepThePasswordKey } from './the-password-key'
  * create account", reachable from the fourth line of small print.
  */
 type View = 'password' | 'link' | 'create' | 'forgot'
+
+/**
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: this component has five mutually exclusive `return`s - sign in
+ * (view === 'password'), "check your email" (linkSent), create an account (view === 'create'),
+ * get a sign-in link (view === 'link'), and forgot/reset your password - and only one of them is
+ * ever on screen at once. Each writes its own one primary (navy) button: "Sign in", "Create
+ * account", "Email me a sign-in link", and "Email me a reset link". None of the four can appear
+ * beside another.
+ */
 
 /**
  * The small text controls under a form ("Forgot your password?", "Create an
@@ -470,7 +479,7 @@ export function AuthPage() {
             onChange={v => { setPassword(v); clearNotices() }}
           />
           {error && <AuthError>{error}</AuthError>}
-          <div className="gw-auth-actions">
+          <Stack gap={10}>
             <Button type="submit" wide disabled={signIn.isPending}>
               {signIn.isPending ? 'Signing you in…' : 'Sign in'}
             </Button>
@@ -485,12 +494,12 @@ export function AuthPage() {
               {sendLink.isPending ? 'Sending…' : 'Email me a sign-in link instead'}
             </Button>
             {googleButton('Sign in with Google')}
-          </div>
+          </Stack>
         </form>
 
-        <div className="gw-auth-links">
-          <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('forgot') }}>Forgot password?</button>
-          <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</button>
+        <div className="gwui-auth-links">
+          <Button kind="quiet" onClick={() => { clearNotices(); setView('forgot') }}>Forgot password?</Button>
+          <Button kind="quiet" onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</Button>
         </div>
       </AuthSplit>
     )
@@ -529,18 +538,14 @@ export function AuthPage() {
           read it here, while they are deciding, rather than find out on their first invoice.
           See what-is-waiting-for-this-address.ts and the API's on-the-house route.
         */}
-        {freeRun && (
-          <p style={{ margin: '0 0 18px', padding: '11px 14px', borderRadius: 8, background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)', fontSize: 15, lineHeight: 1.5 }}>
-            {freeRun}
-          </p>
-        )}
+        {freeRun && <Callout tone="success" role="status">{freeRun}</Callout>}
 
         {/* Google first, as the prototype draws it. Same door as sign-in: an existing Google account
             signs in, a new one gets its own organisation. findOrCreateGoogleUser decides which. */}
         {google && (
           <>
-            <div className="gw-auth-actions">{google}</div>
-            <p className="gw-auth-or">or with your email</p>
+            <Stack gap={10}>{google}</Stack>
+            <p className="gwui-auth-or">or with your email</p>
           </>
         )}
 
@@ -556,7 +561,7 @@ export function AuthPage() {
           {!fromAnInviteLink && (
             <>
               <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgTouched(true); setOrgName(v); clearNotices() }} />
-              <p className="gw-auth-small" style={{ margin: '-8px 0 16px' }}>
+              <p className="gwui-field-help">
                 {!orgTouched && suggestedOrg && orgName === suggestedOrg
                   ? 'We suggested this from your email address. You can change it now or later.'
                   : 'What your organisation will be called. You can change it later.'}
@@ -564,17 +569,18 @@ export function AuthPage() {
             </>
           )}
 
-          <fieldset className="gw-auth-choice">
-            <legend className="gw-auth-label">How would you like to sign in?</legend>
-            <label>
-              <input type="radio" name="sign-in-by" value="link" checked={signInBy === 'link'} onChange={() => { setSignInBy('link'); clearNotices() }} />
-              With a link we email you
-            </label>
-            <label>
-              <input type="radio" name="sign-in-by" value="password" checked={signInBy === 'password'} onChange={() => { setSignInBy('password'); clearNotices() }} />
-              With a password
-            </label>
-          </fieldset>
+          <div>
+            <p className="gwui-field-label">How would you like to sign in?</p>
+            <Choices
+              label="How would you like to sign in?"
+              value={signInBy}
+              onChange={k => { setSignInBy(k as 'link' | 'password'); clearNotices() }}
+              options={[
+                { key: 'link', label: 'With a link we email you' },
+                { key: 'password', label: 'With a password' },
+              ]}
+            />
+          </div>
 
           {signInBy === 'password' && (
             <>
@@ -586,16 +592,16 @@ export function AuthPage() {
           )}
 
           {error && <AuthError>{error}</AuthError>}
-          <div className="gw-auth-actions">
+          <Stack gap={10}>
             <Button type="submit" wide disabled={createAccount.isPending}>
               {createAccount.isPending ? 'Sending…' : 'Create account'}
             </Button>
-          </div>
+          </Stack>
         </form>
 
-        <p className="gw-auth-small">
+        <p className="gwui-fine">
           Already have an account?{' '}
-          <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('password') }}>Sign in</button>
+          <Button kind="quiet" onClick={() => { clearNotices(); setView('password') }}>Sign in</Button>
         </p>
       </AuthCard>
     )
@@ -613,14 +619,14 @@ export function AuthPage() {
           {trap.field}
           <AuthField id="link-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} autoFocus />
           {error && <AuthError>{error}</AuthError>}
-          <div className="gw-auth-actions">
+          <Stack gap={10}>
             <Button type="submit" wide disabled={sendLink.isPending}>
               {sendLink.isPending ? 'Sending…' : 'Email me a sign-in link'}
             </Button>
-          </div>
+          </Stack>
         </form>
-        <div className="gw-auth-links">
-          <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('password') }}>Sign in with a password instead</button>
+        <div className="gwui-auth-links">
+          <Button kind="quiet" onClick={() => { clearNotices(); setView('password') }}>Sign in with a password instead</Button>
         </div>
       </AuthCard>
     )
@@ -644,15 +650,15 @@ export function AuthPage() {
         {/* "Email", not the prototype's "Work email": which label to use is waiting for Hafsah. */}
         <AuthField id="forgot-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} autoFocus />
         {error && <AuthError>{error}</AuthError>}
-        <div className="gw-auth-actions">
+        <Stack gap={10}>
           <Button type="submit" wide disabled={sendReset.isPending}>
             {sendReset.isPending ? 'Sending…' : 'Email me a reset link'}
           </Button>
-        </div>
+        </Stack>
       </form>
-      <div className="gw-auth-links">
-        <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('password') }}>Back to sign in</button>
-        <button type="button" className="gw-auth-link" onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</button>
+      <div className="gwui-auth-links">
+        <Button kind="quiet" onClick={() => { clearNotices(); setView('password') }}>Back to sign in</Button>
+        <Button kind="quiet" onClick={() => { clearNotices(); setView('create') }}>New here? Sign up</Button>
       </div>
     </AuthCard>
   )
