@@ -4,7 +4,7 @@ import { deadlineOf } from './when-the-clock-starts';
 import { A_GROUND_IS_OVER, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED } from './a-ground-that-has-ended';
 import { AN_ANSWER } from './an-answer-includes-a-refusal';
 import { recordRoundCompletion } from './round-completion';
-import { whoOnACheckInIsAway } from '../suites/who-is-away';
+import { awayUntilOn, leaveOfThePeopleOn, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -259,11 +259,14 @@ export class GroundsCron {
       // GW-06: notify all parties that their ground has stalled.
       const stalledGrounds = await this.prisma.ground.findMany({
         where: { id: { in: staleIds } },
-        select: { id: true, label: true, participants: { select: { email: true } } },
+        select: { id: true, label: true, participants: { select: { id: true, email: true } } },
       });
       const frontend = this.config.get<string>('resend.frontendUrl') || '';
       for (const g of stalledGrounds) {
+        /* Somebody on approved leave is not told they have let it lapse (week 23). */
+        const away = await whoOnACheckInIsAway(this.prisma, g.id);
         for (const p of g.participants) {
+          if (away.has(p.id)) continue;
           await this.email
             .sendStalledNotification(p.email, g.label, `${frontend}/grounds/${g.id}`)
             .catch((err: any) => this.logger.error(`Stalled notification failed for ground ${g.id}: ${err.message}`));
@@ -597,6 +600,7 @@ export class GroundsCron {
       },
       select: {
         id: true,
+        groundId: true,
         participant: {
           select: {
             id: true,
@@ -612,8 +616,13 @@ export class GroundsCron {
       take: 200,
     });
 
+    /* Nobody on approved leave today is told a check-in is open. It is not stamped as told, so they
+       hear on the first day they are back (week 23). */
+    const leave = await leaveOfThePeopleOn(this.prisma, [...new Set(newlyOpen.map((c: any) => c.groundId).filter(Boolean))]);
+
     for (const ci of newlyOpen) {
       const p = ci.participant;
+      if (awayUntilOn(leave.get(p.id), now)) continue;
       const checkInUrl = this.email.buildCheckInUrl(ci.id);
       try {
         /**

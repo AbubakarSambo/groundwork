@@ -66,12 +66,27 @@ export interface WhatTheyWant {
    * must not get the report; the nudges checked this and the broadcasts did not.
    */
   stillHere?: boolean | null;
+  /**
+   * The last day of approved leave that covers today, when they are away (week 23). Dates only: no
+   * reason or kind of leave is ever read. A reminder or a "you have missed" mail does not go to
+   * somebody who is away.
+   */
+  awayUntil?: string | null;
 }
 
 export type WhetherToSend = { send: true } | { send: false; because: string };
 
 /** The senders each per-kind switch governs. */
 export const GOVERNED_BY_THE_DIGEST_SWITCH: ReadonlySet<string> = new Set(['sendRoundDigest']);
+/**
+ * THE MAILS THAT CHASE A PERSON TO ANSWER, WHICH DO NOT GO TO SOMEBODY ON APPROVED LEAVE (week 23).
+ * A mail that tells the lead something about the ground is not in this list; only the ones that ask
+ * the person themselves to do something, or tell them they have missed it.
+ */
+export const NOT_SENT_WHILE_AWAY: ReadonlySet<string> = new Set([
+  'sendNudge', 'sendAbsenceReminder', 'sendSessionReady', 'sendInviteAboutToLapse', 'sendFeedbackRequest',
+]);
+
 export const GOVERNED_BY_THE_NUDGE_SWITCH: ReadonlySet<string> = new Set(['sendNudge', 'sendAbsenceReminder']);
 
 /**
@@ -95,6 +110,10 @@ export function whetherToSend(kind: WhatKindOfMail, they: WhatTheyWant | null, s
   }
 
   if (kind !== 'we decided to send it') return { send: true };
+
+  if (they.awayUntil && sender && NOT_SENT_WHILE_AWAY.has(sender)) {
+    return { send: false, because: `they are on approved leave until ${they.awayUntil}, and a reminder does not go to somebody who is away` };
+  }
 
   if (they.unsubscribedAt) {
     return {
