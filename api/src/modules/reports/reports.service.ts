@@ -6757,6 +6757,8 @@ happened, and what is in the way.`;
       base.sharedPicture = deeplyWithoutColleaguesQuotesForTheSubject(base.sharedPicture, subjectRecord);
       base.theOpening = deeplyWithoutColleaguesQuotesForTheSubject(base.theOpening, subjectRecord);
       base.agreements = deeplyWithoutColleaguesQuotesForTheSubject(base.agreements, subjectRecord);
+      /* The shared picture sentence by sentence, with its marks: the same words, so the same wall (1 October review). */
+      if (Array.isArray(base.sharedPictureLines)) base.sharedPictureLines = deeplyWithoutColleaguesQuotesForTheSubject(base.sharedPictureLines, subjectRecord).filter((l: any) => !(l && typeof l.text === 'string' && !l.text.trim()));
       if (Array.isArray(base.findings)) {
         base.findings = base.findings.map((f: any) => (f && typeof f === 'object'
           ? { ...f, text: deeplyWithoutColleaguesQuotesForTheSubject(f.text, subjectRecord) ?? '' }

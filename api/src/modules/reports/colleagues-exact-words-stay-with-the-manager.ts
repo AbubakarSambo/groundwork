@@ -47,6 +47,10 @@ import { quotationsIn, theRecordsWordsFor } from './a-quote-is-what-they-said';
 const THE_FACTS_ONLY =
   "A colleague's own words are not shown to you here. What was found, and the decision with its reasons, are below.";
 
+/** The same, where the side that is not shown is the lead's own, who is not a colleague. */
+const THE_FACTS_ONLY_LEAD =
+  'The words your lead used are not shown to you here. What was found, and the decision with its reasons, are below.';
+
 /* A generic, plain sentence for the one case there is no way to keep the rest of a sentence
    grammatical once a colleague's quoted words come out of it. */
 const A_COLLEAGUE_PUT_IT_DIFFERENTLY = 'A colleague described this differently.';
@@ -70,7 +74,16 @@ function sentencesOf(text: string): { text: string; start: number; end: number }
  * as", "said that", "called it") - both leave a sentence that reads as cut off rather than replaced.
  */
 const DANGLES_ON_A_REPORTING_WORD =
-  /\b(?:said|says|saying|stated|explained|described|wrote|added|noted|mentioned|called|put it|according to|as|that|like|whether|because|since|though|if|when)\s*[:,]?$/i;
+  /\b(?:said|says|saying|stated|explained|described|wrote|added|noted|mentioned|called|put it|according to|as|that|like|whether|because|since|though|if|when|been|be|is|are|was|were|have|has|had|of|to|in|for|with|about|on|by|and|or|but|the|a|an)\s*[:,]?$/i;
+
+/*
+ * THE WORD JUST BEFORE A QUOTE THAT CAME OUT. A quote that stood in the middle of a sentence ("describes the
+ * same discussions as 'operational noise' and not a significant issue") leaves a hole the end of the sentence
+ * does not show. Where the word before it needs something after it, the sentence is replaced, never left
+ * with the hole.
+ */
+const NEEDS_SOMETHING_AFTER =
+  /\b(?:as|that|like|been|be|is|are|was|were|called|of|to|with|by|and|or|but|the|a|an|said|says|described|describes|confirms|confirmed|puts it|put it)\s*[:,]?\s*$/i;
 
 /**
  * A QUOTE IN THE TEAM REPORT (`sharedPicture`, `theOpening`, `findings[].text`, `agreements`, and
@@ -111,6 +124,7 @@ export function withoutColleaguesQuotesForTheSubject(
   for (const s of sentencesOf(text)) {
     const mine = notTheirs.filter((q) => q.start >= s.start && q.end <= s.end);
     if (!mine.length) { out += s.text; continue; }
+    const leavesAHole = mine.some((q) => NEEDS_SOMETHING_AFTER.test(text.slice(s.start, q.start)) && !/^\s*[.!?]/.test(text.slice(q.end, s.end)));
     let modified = s.text;
     for (const q of [...mine].sort((a, b) => b.start - a.start)) {
       modified = modified.slice(0, q.start - s.start) + modified.slice(q.end - s.start);
@@ -123,10 +137,27 @@ export function withoutColleaguesQuotesForTheSubject(
     const body = modified.replace(/\s+$/, '');
     const trailingSpace = modified.slice(body.length);
     const words = body.match(/\p{L}+/gu) ?? [];
-    const keeps = words.length >= 5 && !DANGLES_ON_A_REPORTING_WORD.test(body.replace(/[.!?]+$/, '').trim()) && !/^[.,;:!?\s]*$/.test(body);
+    const keeps = !leavesAHole && words.length >= 5 && !DANGLES_ON_A_REPORTING_WORD.test(body.replace(/[.!?]+$/, '').trim()) && !/^[.,;:!?\s]*$/.test(body);
     out += keeps ? `${body}${trailingSpace}` : `${A_COLLEAGUE_PUT_IT_DIFFERENTLY}${trailingSpace}`;
   }
   return out;
+}
+
+/**
+ * A SENTENCE THAT SAYS WHAT A COLLEAGUE IS, to the person an evaluation check-in is about (decision 17).
+ *
+ * "A colleague is the account manager." names who the colleague is by their job, which gives them away. The
+ * rule is "never a job title or detail that would give them away", so a sentence whose subject is an unnamed
+ * colleague and which says what they are, or where they work, is taken out. Said about a colleague only: the
+ * lead's own job is not a secret from the person the lead is reviewing.
+ */
+const A_COLLEAGUE = '(?:(?:a|one|another|the same|the \\w+|an? \\w+th|a third|a fourth|a fifth) colleague)';
+const SAYS_WHAT_A_COLLEAGUE_IS = new RegExp(`(?:^|[.!?]\\s+|\\n)\\s*${A_COLLEAGUE}(?:'s role)?\\s+(?:(?:is|was)\\s+(?:the|a|an|our|their|his|her|your)\\b|works\\s+(?:as|in|for|on)\\b|(?:leads|manages|runs|heads|reports to|sits in)\\b)`, 'i');
+
+export function withoutWhatGivesAColleagueAway(text: string | null | undefined): string {
+  if (!text) return text ?? '';
+  if (!SAYS_WHAT_A_COLLEAGUE_IS.test(text)) return text;
+  return sentencesOf(text).filter((s) => !SAYS_WHAT_A_COLLEAGUE_IS.test(s.text.trimStart().replace(/^/, '. '))).map((s) => s.text).join('').trim();
 }
 
 /* The same keys `a-quote-is-what-they-said` leaves alone: a label or an identifier, never prose -
@@ -141,7 +172,7 @@ const NOT_PROSE_HERE = /^(label|participantLabel|who|on|from|fieldId|code|status
  */
 export function deeplyWithoutColleaguesQuotesForTheSubject<T>(value: T, subjectRecord: readonly string[]): T {
   const walk = (v: any): any => {
-    if (typeof v === 'string') return withoutColleaguesQuotesForTheSubject(v, subjectRecord);
+    if (typeof v === 'string') return withoutWhatGivesAColleagueAway(withoutColleaguesQuotesForTheSubject(v, subjectRecord));
     if (v === null || v === undefined || v instanceof Date) return v;
     if (Array.isArray(v)) return v.map(walk);
     if (typeof v === 'object') {
@@ -226,23 +257,36 @@ export function divergenceForTheSubject<T extends { positions?: readonly any[]; 
    * word, exactly the same exception `their-own-words-stay.ts` carves out the other way round.
    */
   viewerNames: readonly (string | null | undefined)[] = [],
+  /**
+   * `subjectRecord`: the subject's own lines, so a quote of theirs inside the evidence stays and a colleague's
+   * comes out. `leadNames`: how the lead's own side is named here, so it is not told as "a colleague".
+   */
+  more: { subjectRecord?: readonly string[]; leadNames?: readonly (string | null | undefined)[] } = {},
 ): T[] {
   if (!Array.isArray(items)) return (items ?? []) as T[];
-  const mine = new Set(viewerNames.filter((n): n is string => !!n && n.trim().length > 0).map((n) => n.trim().toLowerCase()));
+  /* The reader's own side is always named "You" on the board, whatever their name is. */
+  const mine = new Set([...viewerNames, 'You'].filter((n): n is string => !!n && n.trim().length > 0).map((n) => n.trim().toLowerCase()));
+  const lead = new Set((more.leadNames ?? []).filter((n): n is string => !!n && n.trim().length > 0).map((n) => n.trim().toLowerCase()));
+  const labelOf = (side: any) => String(side?.who ?? side?.participantLabel ?? '').trim().toLowerCase();
   const isTheirs = (side: any) => {
-    const label = String(side?.who ?? side?.participantLabel ?? '').trim().toLowerCase();
+    const label = labelOf(side);
     return !!label && mine.has(label);
   };
   const stripSide = (side: any) => {
     if (!side || typeof side !== 'object' || isTheirs(side)) return side;
+    const said = lead.has(labelOf(side)) ? THE_FACTS_ONLY_LEAD : THE_FACTS_ONLY;
     const out = { ...side };
-    if (typeof out.view === 'string' && out.view) out.view = THE_FACTS_ONLY;
-    if (typeof out.position === 'string' && out.position) out.position = THE_FACTS_ONLY;
+    if (typeof out.view === 'string' && out.view) out.view = said;
+    if (typeof out.position === 'string' && out.position) out.position = said;
     return out;
   };
+  /* The evidence is the engine's sentences about what somebody said, with their words inside it. */
+  const record = more.subjectRecord ?? [];
+  const stripEvidence = (e: any) => (typeof e === 'string' ? withoutWhatGivesAColleagueAway(withoutColleaguesQuotesForTheSubject(e, record)) : e);
   return items.map((d) => ({
     ...d,
     ...(Array.isArray((d as any).positions) ? { positions: (d as any).positions.map(stripSide) } : {}),
     ...(Array.isArray((d as any).perspectives) ? { perspectives: (d as any).perspectives.map(stripSide) } : {}),
+    ...(Array.isArray((d as any).evidence) ? { evidence: (d as any).evidence.map(stripEvidence) } : {}),
   }));
 }

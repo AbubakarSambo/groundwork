@@ -102,6 +102,7 @@ import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '..
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
 import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
+import { theRecordAQuoteMayComeFromByParticipant } from '../reports/a-quote-built-at-the-read';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
@@ -1924,7 +1925,10 @@ export class BoardService {
         if (Array.isArray(walled.divergence?.items)) {
           walled.divergence = {
             ...walled.divergence,
-            items: divergenceForTheSubject(walled.divergence.items, [me?.id ? nameOf(me.id) : null]),
+            items: divergenceForTheSubject(walled.divergence.items, [me?.id ? nameOf(me.id) : null], {
+              subjectRecord: me?.id ? ((await theRecordAQuoteMayComeFromByParticipant(this.prisma as any, groundId).catch(() => new Map<string, string[]>())).get(me.id) ?? []) : [],
+              leadNames: [theLeadsRow ? nameOf(theLeadsRow) : null, 'Your lead', 'The lead', 'your lead', 'the lead'],
+            }),
           };
         }
       }
