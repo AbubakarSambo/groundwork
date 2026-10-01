@@ -580,6 +580,7 @@ export default function SessionReportPage() {
         softSpots={(groundReport as any)?.softSpots}
         arcAdvisories={(groundReport as any)?.arcAdvisories}
         nameFor={nameFor}
+        readerRunsIt={!(myParticipant && !amTheInitiator)}
       />
 
       {/*
