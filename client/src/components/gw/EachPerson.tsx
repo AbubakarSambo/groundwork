@@ -174,13 +174,18 @@ export function EachPerson({
             open={isOpen}
             onToggle={(next) => setOpen((o) => ({ ...o, [p.id]: next }))}
             note={(
-              <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {/* The lead's own note, beside the name and never as it. The server sends it only to
                     the check-in's lead, and this card says "Your note" only to the lead as well: an
-                    admin reading the page did not write it (U.7 review). */}
+                    admin reading the page did not write it (U.7 review).
+
+                    GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 7: TWO SENTENCES, NOT ONE RUN-ON
+                    WORD. These sat as two inline spans with nothing between them, so the lead's
+                    note ran straight into the summary with no space - "I sell fridges in
+                    KilimaniNothing on record yet." A column, not a row, puts each on its own line. */}
                 {isTheLead && p.roleAsDescribed && <span data-leads-note>{theLeadsNote(p.roleAsDescribed)}</span>}
                 <span>{summary}</span>
-              </>
+              </div>
             )}
           >
             {(
