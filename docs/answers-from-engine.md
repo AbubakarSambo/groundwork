@@ -1099,3 +1099,44 @@ Merged your three commits. Both sentences are back word for word, the person rea
 ## Decision 72: who may rewrite what a check-in is for (1 October)
 
 The server now allows only the lead to rewrite a check-in's brief, unless the lead has left the organisation; then an admin of it may. Anybody else is refused with decision 63's message (it names the lead). When an admin rewrote it because the lead left, `GET /grounds/:id` serves `briefChangedByAnAdmin` to everybody on the check-in, participants included, as one plain sentence: "Otieno Kamau changed what this check-in is for because Wanjiru Mwangi has left the organisation." It is null otherwise. `briefChangedBy` (first name, `isYou`, `isTheLead`) still goes only to whoever runs the check-in, as before.
+
+
+## Request 9, part (d): the rest of the weekly report (1 October 2026, week 12b)
+
+`GET /grounds/:groundId/report/week` now serves the whole weekly report, not only the sentence about each person. Everything it said before is unchanged (`weekStart`, `builtAt`, `saying`, `eachPerson`), so nothing on the screens breaks. The new fields, all optional, all full sentences, and all already named for the reader:
+
+```
+{ heading?: string,            // "This week, 21 to 23 Sep, so far" (a finished week: "The week of 28 Sep to 2 Oct")
+  whatThisIs?: string,         // the sentence under the heading
+  inNumbers?: [{ figure: string, of: string, says: string }],   // "The week in numbers"
+  eachPerson: [...as before],  // "What this week shows", one sentence each
+  acrossTheTeam?: string[],    // also under "What this week shows", after the sentences
+  threeInARow?: [{ who: string, isYou: boolean, says: string }],  // "Things that happened in three check-ins in a row"
+  saidAndProof?: string | null,                                  // "What people said, and what the proof shows"
+  whatChanged?: { moved: string[], dropped: string[], result: string[] },  // "What changed": Moved, Dropped, Result
+  forNextWeek?: [{ do: string, why: string, comesFrom: string }] }        // "For you to do next week"
+```
+
+Draw `figure` large with `of` under it, as the prototype's tiles do; `says` is the same thing as a sentence, for the phone or a screen reader. Each list in `whatChanged` always has at least one sentence ("Nothing was dropped this week."), so draw it as it comes. Leave a section out when its field is missing.
+
+**What the lead reads** (a check-in with Wairimu leading Aisha, Baraka and Chidi, on Wednesday 23 September):
+- "This week, 21 to 23 Sep, so far" and "The report for each check-in shows that check-in. This weekly report shows what kept happening for three check-ins in a row or more." (A daily check-in reads "The daily reports show each day." first, as the prototype does.)
+- 67% "of check-ins made this week" ("2 of the 3 check-ins due this week were made."); 1 "things people said this week with a photo or document behind them"; 17 "freezers sold" ("The team's freezers sold went from 12 to 17 this week, against the aim of 40."); 254,000 "spending this quarter" ("The team's spending this quarter went from 200,000 to 254,000 this week, against the limit of 180,000. That is 74,000 over the limit."); 9 "visits made, Aisha's number" ("It stayed at 9 this week.").
+- "Green Mart came up in what Aisha and Baraka said this week."
+- Baraka: "The work stops until there is another call. This came up in 3 check-ins, in sessions 3, 4 and 5."
+- "This week, people said 5 things in their check-ins. 1 of them has a photo or document behind it. 1 number was given as an estimate, and 1 number was given from memory with nothing attached, so they cannot be checked yet. It is worth confirming them before acting on them."
+- Moved: "Aisha committed to call Mama Fresh by Thursday, and it is now done." and "Baraka is no longer waiting on you for the price list." Dropped: "Baraka committed to visit Kwik Stores, and it has been dropped." Result: the targets that moved, as above.
+- For you to do next week: "Decide whether a price range counts as a budget." / "Aisha is waiting on you for it." / "This comes from a blocker."; "Talk with Baraka about “The work stops until there is another call”." / "Baraka has seen this and has not answered yet." / "This comes from something that kept happening."; "Decide whether to hire a second driver." / "You wrote this down as still to decide." / "This comes from something you wrote down to decide." Where people said different things, it reads "This comes from a disagreement in the team.", as the prototype does.
+
+**What a person in the check-in reads** (Baraka): only their own sentence, as "you"; the team's check-ins made and the targets they may already read, without the aim or the limit; "0 things you said this week with a photo or document behind them"; their own patterns, first ("The work stops until there is another call. This came up in 3 of your check-ins, in sessions 3, 4 and 5."), including one the lead cannot read yet; "This week, you said 2 things in your check-ins. ..."; their own moved and dropped ("You are no longer waiting on Wairimu for the price list.", "You committed to visit Kwik Stores, and it has been dropped."); and, for next week, what they said this week they would do and have not settled ("Send Green Mart the price list on Monday." / "You said this week that you would do this, and it is still open." / "This comes from what you said you would do."). Never a colleague's sentence, number, pattern or commitment, never what came up across the team, and never the lead's list.
+
+**What an admin who does not run the check-in reads** (an ordinary check-in): the lead's view of the week, without the aim or the limit, without the targets that are decisions about a person, without any pattern (decision 58), and with no `forNextWeek` at all, since that list holds the lead's own notes. An admin not given an evaluation check-in gets "Check-in not found", as before.
+
+**When it is worked out.** When a check-in comes in, and again once that session's report is written, so the lead's list reads the newest report. Opening the page builds nothing and reads no record line; it words the kept facts for the reader. The facts are kept without names, by report label, and the names go in through `withNames` when served. No model is asked, so no prompt and no prompt version is involved. Patterns are read when the page is opened, under the same rule as everywhere else (three periods, the person first), and only the ones seen in this week's check-ins are shown.
+
+**What is not there, and why.**
+- The prototype's opening line ("People are busy, but some sales move forward much more than others.") compares people. A sentence the product writes from counts cannot say that honestly, and there is no model step for the weekly report, so it is not written.
+- "Adapted" ("Brian now asks about the budget on his first visit") has nothing in the record to come from: nothing records a change in how somebody works. It is not served. Please draw Moved, Dropped and Result only.
+- The prototype's "9 customers said the price was too high, and none named a competitor" needs a reading of what each claim was about, which needs a model. The engine says what it can count instead: how many things were said, how many have something behind them, and how many numbers were estimates or from memory.
+- Figures such as "14 deals moved stage", "5 sales closed" and "3 deals hit the stall rule" come from the stages and the stall rule, which are not in the record yet (week 6b's marks). Today the numbers are the check-ins made, the things with proof, and every target the reader may read.
+- The week is kept in the existing weekly report row; nothing in the database changed.
