@@ -126,6 +126,7 @@ import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTh
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
 import { withoutARecordClaimNobodyHolds } from './a-record-claim-nobody-holds';
 import { withoutADateNobodyGave } from './a-date-nobody-gave';
+import { aNameNobodyTyped } from './a-record-line-with-a-name-nobody-typed';
 import { commitmentsTheyNeverMade } from './a-commitment-is-read-back-from-a-commitment';
 import { withoutAThingTheLeadListedAsTheirs } from './a-thing-the-lead-listed-is-not-theirs';
 import { aCutThatLeavesAFragment, afterTheCut } from './a-cut-never-leaves-a-fragment';
@@ -7786,6 +7787,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return countCheckableSpecifics(t) === 0;
     };
 
+    /* EVERYBODY IN THIS CHECK-IN BY NAME, for the line that puts the wrong one on somebody's work. */
+    const roster: string[] = await (async () => {
+      const ci = await this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { groundId: true } });
+      if (!ci?.groundId) return [] as string[];
+      const rows: any[] = (await this.prisma.groundParticipant?.findMany?.({ where: { groundId: ci.groundId }, select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } } as any)) ?? [];
+      return rows.flatMap((r) => [r.user?.firstName ?? r.nameGiven ?? '', r.user?.lastName ?? '']).filter(Boolean);
+    })().catch(() => [] as string[]);
+
     /* And belt-and-braces on the way out: an entry that quotes a remark anyway - by reaching into
        an AI turn that repeated it back - is dropped. The thing it prevents ends up on a board. */
     const valid = notARemarkAboutUs(result?.entries ?? []).filter(
@@ -7805,7 +7814,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
          * The prompt now says so. This is what makes it hold, because a prompt asking a model
          * politely not to confuse two speakers is the thing that just failed.
          */
-        isTheirs(e.text, whatTheySaid),
+        isTheirs(e.text, whatTheySaid) &&
+        /*
+         * AND IT CARRIES NO NAME THEY NEVER TYPED. "He did. He set them up." was written as "Amina set up
+         * the client meetings I am still attending" - the lead's own name on the hire's work, in the
+         * lead's own list. See a-record-line-with-a-name-nobody-typed.
+         */
+        !aNameNobodyTyped(e.text, whatTheySaid, roster).length,
     );
 
     /*
