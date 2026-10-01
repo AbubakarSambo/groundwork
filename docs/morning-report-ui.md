@@ -7170,4 +7170,16 @@ What did not hold, most serious first:
 
 The text the engine writes that reaches the wrong reader is request 101. That includes advice to the lead sent to participants, "0 check-ins on record" about someone not let in, and "Rukia Otieno" written to Rukia. The fixes go in three batches, one builder at a time: what is untrue (under way), then the look, then the drift list, page by page. The review's pictures are in the scratchpad's `pictures/review-g3/`.
 
+**Batch A, first half, done.**
+- A closed session's report now keeps a later check-in's material in its own section, "Since then, in the latest check-in". A per-session copy is asked for in request 102.
+- The privacy sentences are true now. The switch says "The people in this check-in, including your manager, can see what you say in it, once the team's report is shared. You are named to each other." The end card again says what the team will see, from the check-in's real setting.
+- One error message shows on a bad join link, not three.
+- Opening someone else's report says "This report is not yours to open. Each person's own report can only be read by that person."
+- A promise with a date reads "You said "9 October"", where before it said "no date agreed".
+- Many of the screen's own sentences are fixed: "Baraka Mwangi said…" instead of "Baraka Mwangi:", "Tell Groundwork how this team works", "Begin the last check-in", and "What we worked out from what you said".
+
+The rest of batch A (six contradictions, six more sentences and the pictures) is with a fresh builder. One of this workspace's tests had broken because the engine now asks who may be named for each reader. It was pointed at the new call, and the promise it checks is unchanged.
+
+Two of my pushes were refused tonight, because I had chained the push with another command. Each was run again on its own, as the check's message allows.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
