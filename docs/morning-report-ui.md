@@ -7051,4 +7051,23 @@ The session report now has 2 buttons, inside the prototype's 5, with nothing los
 
 The button test passes on all 27 screens, and the page-colour test passes 4 of 4. The whole screen suite passes (3,671 tests).
 
+**The old team report is compared, what it had is moved, and it is removed (your decision of 1 October).** The section-by-section table is in `docs/the-old-team-report-against-the-report-tab.md`. Most of its sections were already live on the rebuilt pages. Six things were not, and are now moved, built from the shared parts, for the same readers as before:
+- the lead's "What to ask each person" now also shows what each finding rested on, where it started, the soft spots across people, and the warnings about how the check-in is going. A raw "[INFERRED: …]" marker that would have reached the lead is now shown as a label instead. Both the module's own note and its standing caveat now show, where before only one could.
+- the visible trail of updates to the record, on the session report;
+- "Did this feel fair", on the board once a check-in has ended;
+- adding or asking to add someone who helped but is not on the check-in, on the board's existing list;
+- downloading your record of the one session, on the session report.
+
+**Patterns, coaching, roles and probes:** nothing is lost. All were already live, and stay so: the manager's alignment on the board, "What to ask each person" for the lead, and the resolution panel. The old page's redirect stays, because links point at it.
+
+**Tests:** 23 test files read the old page. Two sets that tested only its inner workings were retired. Every other test was pointed at the live place that now holds the same rule, including the privacy test that the lead's private note never names anyone, which now covers the updates trail and the record-shape flag. The whole screen suite passes (3,653 tests).
+
+Three of the engine's own tests read the old file as a guard against removing it early. They now fail, and that is request 99.
+
+The builder's attempt to check out the old version for a "before" picture was refused by the safety check. It was not retried.
+
+Two things kept as they are now, for you to know:
+- the resolution panel shows nothing far from the end, where the old page said "Resolution. Not set yet.";
+- the session report reads fresh each time, rather than showing a "picture forming" banner.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
