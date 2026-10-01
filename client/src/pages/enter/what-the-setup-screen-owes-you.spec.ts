@@ -16,7 +16,10 @@ describe('what the setup screen owes you', () => {
     /* U.6 review: said in start-chat.txt's words now, "This sounds like", with "It’s something else". */
     expect(PAGE).toContain('This sounds like')
     expect(PAGE).toContain('It’s something else')
-    const at = PAGE.indexOf('This sounds like <span')
+    /* Was `<span style={{ fontWeight: 700, ... }}>` (group 3, piece 4d-1 rebuilt the surrounding bar
+       from the shared parts and dropped the inline style, which a listed page may not carry - the
+       label is still bold, now a plain `<b>`). */
+    const at = PAGE.indexOf('This sounds like <b')
     expect(PAGE.slice(at - 900, at)).toMatch(/classifiedScenario/)
   })
 
