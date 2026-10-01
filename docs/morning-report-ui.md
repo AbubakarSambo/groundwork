@@ -6997,4 +6997,8 @@ The screens workspace's faults are fixed, and the review is checking them again:
 
 The whole screen suite passes, except the known wording guard (request 95). The API tests for the changed parts pass (1,478 for check-ins, 146 for suites and the You board), and so does the button test (26 of 26).
 
+The second review passed all of that, except one fault. The To-dos board still showed the short copy of each promise ("File the bundle") where the You board shows the fuller one, because it does not read where the fuller copies are kept. That is being fixed now.
+
+The whole API suite after these changes: 12,117 of 12,119 pass. One failure is the engine's comment guard (request 94). The other is an engine test that looks for a promise in lowercase. Our fix now writes it with a capital letter, and it is still listed once. That is request 98.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
