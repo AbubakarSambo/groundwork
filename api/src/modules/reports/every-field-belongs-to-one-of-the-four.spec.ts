@@ -228,19 +228,15 @@ describe('the dead body is where ten rules are true', () => {
     }
   });
 
-  it('and the body is still there, because none of them has a live home yet', () => {
-    /*
-     * This asserts the presence of dead code, which is not something to be comfortable with. It is
-     * here because the alternative is deleting ten enforced rules on the day the code that broke
-     * them last comes out. When the last entry leaves the list, this test and the file go together.
-     */
-    /* Comments stripped first, which is the repo's rule for any assertion about source: the
-       paragraph above this one mentions ReportBody by name, and a guard a comment satisfies is not
-       a guard. */
-    const body = readFileSync(join(REPORT_SPECS, 'ReportPage.tsx'), 'utf8')
+  it('and the body is gone, now that every rule it held has a live home', () => {
+    /* The test before this one held the dead body in place while the list had entries, and said it
+       would go with the file once the last entry left. The last entries left on 1 October
+       (decisions 70 and 71, request 99), so it now guards the other way: the body does not come
+       back, and nothing new is added to a list whose job is done. Comments stripped first. */
+    const page = readFileSync(join(REPORT_SPECS, 'ReportPage.tsx'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '');
-    expect(body).toContain('export function ReportBody(');
-    expect(BEFORE_THE_DEAD_BODY_CAN_GO.length).toBeGreaterThan(0);
+    expect(page).not.toContain('function ReportBody(');
+    expect(BEFORE_THE_DEAD_BODY_CAN_GO).toEqual([]);
   });
 });
