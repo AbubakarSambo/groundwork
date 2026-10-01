@@ -159,6 +159,8 @@ export function whatNeedsYou(
   reader: Reader,
   waiting: WaitingForApproval[] = [],
   now: Date = new Date(),
+  /** What is waiting for this reader to approve, already said (waiting-for-you-to-approve.ts). Only ever the approver's. */
+  toApprove: Need[] = [],
 ): WhatNeedsYou {
   const at = now.getTime();
   const isAdmin = reader.role === 'ADMIN';
@@ -337,6 +339,7 @@ export function whatNeedsYou(
     }
   }
 
+  decisions.push(...toApprove);
   const needs = [...firstTurns, ...lateTurns, ...reports, ...decisions, ...otherTurns, ...ownReports];
   const said = (line as { text: string } | null)?.text ?? (myOpenTurn ? `Your check-in for ${myOpenTurn} is open.` : null);
   return {

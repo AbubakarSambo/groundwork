@@ -23,7 +23,7 @@ export interface AWeek {
   weekOf: Day;
   /** The clients and projects with hours this week, in the order the admin listed them. */
   clients: string[];
-  people: { personId: string; name: string; minutes: Record<string, number>; total: number; approved: boolean; mayApprove: boolean }[];
+  people: { personId: string; name: string; minutes: Record<string, number>; total: number; approved: boolean; mayApprove: boolean; /** The days of this week that have hours, so a sentence can say which. */ days: Day[] }[];
 }
 
 export interface Agreement { client: string; work: string; hours: number; span: 'whole' | 'month'; usedMinutes: number }
@@ -99,6 +99,7 @@ export class TimeSheetsService {
         if (!name) continue;
         rows.push({
           personId: userId, name, minutes, total,
+          days: [...new Set(theirs.map((e) => dayOf(e.onDay)))].sort(),
           approved: approvedAt.get(`${w}|${userId}`) === total,
           mayApprove: await mayApproveFor(this.prisma, {
             organizationId: reader.organizationId, readerId: reader.userId, readerRole: role, personUserId: userId,
