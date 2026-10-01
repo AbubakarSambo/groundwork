@@ -28,7 +28,7 @@ export interface ProbeRead {
 }
 
 /* U.9 RE-REVIEW, ITEM A: a plain heading, not a shout ("WORTH ASKING", "WORTH SAYING"). */
-function Block({ title, lines }: { title: string; lines: string[] }) {
+function Block({ title, lines, markInferred }: { title: string; lines: string[]; markInferred?: boolean }) {
   if (!lines.length) return null
   return (
     <div style={{ marginTop: 10 }}>
@@ -36,12 +36,35 @@ function Block({ title, lines }: { title: string; lines: string[] }) {
         {title}
       </div>
       <div style={{ display: 'grid', gap: 6 }}>
-        {lines.map((l, i) => (
-          <p key={i} style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>{l}</p>
-        ))}
+        {lines.map((l, i) => {
+          if (!markInferred) return <p key={i} style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>{l}</p>
+          const { text, inferred } = splitInference(l)
+          return (
+            <p key={i} style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>
+              {text}
+              {inferred && (
+                <span title={inferred} style={{ marginLeft: 6, padding: '1px 5px', borderRadius: 4, border: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>
+                  inferred
+                </span>
+              )}
+            </p>
+          )
+        })}
       </div>
     </div>
   )
+}
+
+/**
+ * `[INFERRED: ...]` IS MACHINERY, AND IT MUST NOT REACH THE READER RAW. Moved from the dead Report
+ * tab body (`ReportBody`'s `splitInference`), which split a worked-out claim out of the lead's "own
+ * words" rather than either printing it raw or deleting it silently - deleting it would present an
+ * inference as a quotation, in the one section whose whole promise is the lead's own words.
+ */
+function splitInference(text: string): { text: string; inferred: string | null } {
+  const m = text.match(/\s*\[INFERRED:\s*([^\]]*)\]\s*/i)
+  if (!m) return { text, inferred: null }
+  return { text: text.replace(m[0], ' ').trim(), inferred: (m[1] || '').trim() || 'inferred from what was said' }
 }
 
 /** `whatALeaderCanWeigh`, as the server sends it. Lead-only, like everything on this surface. */
@@ -52,7 +75,27 @@ export interface WeighSection {
   note: string
 }
 
-export function WhatToProbeThemOn({ reads, weigh, weighNote }: {
+/**
+ * WHERE THE RECORD IS THIN, PER PERSON. Moved from the dead Report tab body (`WhereTheRecordIsThin`
+ * in the old `ReportBody`), which was the only renderer of `report.softSpots` - lead-only, keyed by
+ * participant id, and guaranteed by the server to never travel without `wouldRaiseIt`.
+ *
+ * ABOUT THE PICTURE, NEVER ABOUT THE PERSON (confidence-in-the-picture.ts): "we are not confident
+ * this part of the picture is complete" rather than "low specificity" - the same fact without the
+ * verdict. A record can be thin. A person cannot be thin.
+ */
+export interface SoftSpot { line: string; wouldRaiseIt: string }
+
+/**
+ * A REVIEWER FLAG ON THE RECORD'S SHAPE, NEVER A VERDICT ON A PERSON. Moved from the dead Report
+ * tab body (`ReportBody`'s `arcAdvisories` block), lead and org-admin only - the server strips it
+ * from a participant's own read. `note` and `features` are the engine's own sentences about the
+ * RECORD; the person is named only through `nameFor`, never through any field on the row itself, so
+ * a private note never ends up standing in for a person's name.
+ */
+export interface ArcAdvisory { participantId: string; note: string; features: string[] }
+
+export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt, softSpots, arcAdvisories, nameFor }: {
   reads?: ProbeRead[] | null
   /**
    * WHAT YOU SAID GOOD MEANS, AND WHAT THE RECORD HOLDS AGAINST IT.
@@ -64,10 +107,29 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote }: {
    */
   weigh?: WeighSection | null
   weighNote?: string | null
+  /**
+   * WHAT YOU SAID IT RESTED ON (`report.whatItRestedOn`). The conditions that had to be true for a
+   * standard to be met and were not in anybody's hands. Shown only when the lead named some, so an
+   * unmet standard is never read without the thing it depended on.
+   */
+  restedOn?: string[] | null
+  /**
+   * WHERE THIS STOOD AT THE START (`report.whereThisStarted`). What was actually true on day one,
+   * in the lead's own words, frozen - different from `restedOn`, which is the yardstick rather than
+   * the starting position. The server withholds this until a later session exists to hold it
+   * against (`canShowMovement`), so it is drawn only when it is sent.
+   */
+  startedAt?: { text: string; session: number }[] | null
+  /** `report.softSpots`, keyed by participant id. See the SoftSpot note above. */
+  softSpots?: Record<string, SoftSpot[]> | null
+  /** `report.arcAdvisories`. See the ArcAdvisory note above. */
+  arcAdvisories?: ArcAdvisory[] | null
+  /** How to say a participant id as a name, for the soft-spots and record-shape lists. */
+  nameFor?: (participantId: string) => string
 }) {
-  /* Nothing to ask AND nothing to weigh is the only empty state. The weigh section can stand on
-     its own at a closing session when nobody is left to probe. */
-  if (!reads?.length && !weigh) return null
+  const spotPeople = softSpots ? Object.entries(softSpots).filter(([, list]) => list.length) : []
+  /* Nothing to ask, nothing to weigh, nothing thin and nothing flagged is the only empty state. */
+  if (!reads?.length && !weigh && spotPeople.length === 0 && !arcAdvisories?.length) return null
   return (
     <section
       style={{
@@ -89,17 +151,79 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote }: {
         <div style={{ marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--gw-border)' }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8 }}>What you said you were looking for, and what people have said about it</div>
           {weigh.whatYouSaidGoodMeans.length > 0 && (
-            <Block title="What you said good would mean" lines={weigh.whatYouSaidGoodMeans.map(x => x.text)} />
+            <Block title="What you said good would mean" lines={weigh.whatYouSaidGoodMeans.map(x => x.text)} markInferred />
           )}
           {weigh.whatTheRecordHolds.length > 0 && (
-            <Block title="What people have said about that" lines={weigh.whatTheRecordHolds.map(x => x.text)} />
+            <Block title="What people have said about that" lines={weigh.whatTheRecordHolds.map(x => x.text)} markInferred />
           )}
-          {weigh.whatNobodyHasEvidenceFor.length > 0 && (
-            <Block title="What nobody has mentioned yet" lines={weigh.whatNobodyHasEvidenceFor} />
+          {/* Absence is invisible in a list, so an empty one says so rather than disappearing -
+              the part of this block that earns it. */}
+          <Block
+            title="What nobody has mentioned yet"
+            lines={weigh.whatNobodyHasEvidenceFor.length > 0 ? weigh.whatNobodyHasEvidenceFor : ['Everything you named was reached by something somebody said.']}
+            markInferred={weigh.whatNobodyHasEvidenceFor.length > 0}
+          />
+          {startedAt && startedAt.length > 0 && (
+            <Block title="Where this stood at the start" lines={startedAt.map(s => s.session > 1 ? `${s.text} Added at session ${s.session}.` : s.text)} />
           )}
-          {(weighNote ?? weigh.note) && (
-            <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 6, maxWidth: '68ch' }}>{weighNote ?? weigh.note}</div>
+          {restedOn && restedOn.length > 0 && (
+            <Block title="What you said it rested on" lines={restedOn} />
           )}
+          {/*
+            TWO NOTES, NOT ONE. `weigh.note` is this ground's own reading of its gaps; `weighNote` is
+            the standing caveat that this is material, never a verdict. Picking only one of them with
+            `??` was dropping whichever one was not asked for - both ship with the section and say
+            different things, so both are shown.
+          */}
+          {weigh.note && (
+            <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.55, marginTop: 8, maxWidth: '68ch' }}>{weigh.note}</div>
+          )}
+          {weighNote && (
+            <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginTop: 6, maxWidth: '68ch' }}>{weighNote}</div>
+          )}
+        </div>
+      )}
+      {spotPeople.length > 0 && (
+        <div style={{ marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--gw-border)' }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>Where this picture is thin</div>
+          <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 8, maxWidth: '68ch' }}>
+            Not a mark on anybody. It is what the record cannot yet support, and what would settle it.
+          </div>
+          {spotPeople.map(([participantId, list]) => (
+            <div key={participantId} style={{ marginTop: 10 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>
+                {`In what ${nameFor ? nameFor(participantId) : 'a colleague'} said`}
+              </div>
+              <div style={{ display: 'grid', gap: 7 }}>
+                {list.map((s, i) => (
+                  <div key={i} style={{ borderLeft: '2px solid var(--gw-border)', paddingLeft: 10 }}>
+                    <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>{s.line}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--gw-muted)' }}>What would settle it</p>
+                    <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, maxWidth: '68ch' }}>{s.wouldRaiseIt}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {arcAdvisories && arcAdvisories.length > 0 && (
+        <div style={{ marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid var(--gw-border)' }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>For your review, about the record itself</div>
+          <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 8, maxWidth: '68ch' }}>
+            A flag about how an account was given, never a judgement on the person who gave it.
+          </div>
+          {arcAdvisories.map((a) => (
+            <div key={a.participantId} style={{ marginTop: 10 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>
+                {nameFor ? nameFor(a.participantId) : 'A colleague'}
+              </div>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, maxWidth: '68ch' }}>{a.note}</p>
+              {a.features.map((f, i) => (
+                <p key={i} style={{ margin: '2px 0 0', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5, maxWidth: '68ch' }}>{f}</p>
+              ))}
+            </div>
+          ))}
         </div>
       )}
         {(reads ?? []).map((r) => (
