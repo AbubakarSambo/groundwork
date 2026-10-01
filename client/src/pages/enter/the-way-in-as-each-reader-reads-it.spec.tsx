@@ -119,7 +119,10 @@ describe('someone signed out opens /start', () => {
 describe('someone signed in starts a check-in', () => {
   it('reads new.txt’s words, with no examples and nothing about an account', () => {
     render(<TheDoor signedIn onSend={() => {}} onSeeEverySituation={() => {}} />)
-    expect(text(screen.getByRole('navigation', { name: 'Where you are' }))).toBe('Check-ins / New check-in')
+    /* TheDoor's crumb now comes from the shared PageTitle (group 3 drift list, piece 1), whose "/"
+       separator is spaced with CSS margin rather than literal text - the same text shape every other
+       PageTitle crumb already reads (e.g. 'Suites/Customers and deals'), not a wording change. */
+    expect(text(screen.getByRole('navigation', { name: 'Where you are' }))).toBe('Check-ins/New check-in')
     expect(screen.getByRole('heading', { level: 1, name: 'Set up a check-in' })).toBeTruthy()
     expect(screen.getByText('Describe it in your own words. Nothing is sent to anyone until you press send.')).toBeTruthy()
     expect(screen.getByLabelText('What do you want your team to check in about?')).toBeTruthy()

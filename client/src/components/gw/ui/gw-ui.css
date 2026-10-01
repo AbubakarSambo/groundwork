@@ -1490,9 +1490,6 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    TheDoor.tsx: one box, one question. serif heading at the prototype's own clamp, then help text,
    the panel, then the quiet "Rather pick from a list?" line. */
 .gwui-door { width: 100%; max-width: 684px; margin: 0 auto; }
-.gwui-door-heading { font-family: var(--gw-font-name); font-size: clamp(26px, 5vw, 34px); font-weight: 500; line-height: 1.2; color: var(--gw-text); margin: 0 0 6px; }
-.gwui-door-help { font-size: 15.5px; color: var(--gw-sub); line-height: 1.6; margin: 0 0 14px; }
-.gwui-door-rather { font-size: 13.5px; color: var(--gw-text); margin: 12px 0 0; }
 
 /* ── PHASE STEPS (group 3, piece 4d-1, the entry chat's own progress bar) ──────────────────
    No prototype screen draws this exact track; values are the house style's own. */

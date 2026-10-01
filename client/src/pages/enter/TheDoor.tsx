@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { THE_DOOR_SIGNED_IN, THE_DOOR_SIGNED_OUT, THE_EXAMPLES, RATHER_PICK } from './the-way-in'
-import { Panel, FieldLabel, TextArea, Button, QuickReplies, Stack } from '@/components/gw/ui'
+import { Panel, PageTitle, FieldLabel, TextArea, Button, QuickReplies, Stack, Note } from '@/components/gw/ui'
 
 /*
  * THE FIRST SCREEN OF A NEW CHECK-IN (U.6, B1): #/start signed out, #/new signed in.
@@ -31,13 +31,11 @@ export function TheDoor({
 
   return (
     <div className="gwui-door">
-      {signedIn && (
-        <nav aria-label="Where you are" className="gwui-pt-crumb">
-          {THE_DOOR_SIGNED_IN.crumbs[0]} <span aria-hidden="true">/</span> {THE_DOOR_SIGNED_IN.crumbs[1]}
-        </nav>
-      )}
-      <h1 className="gwui-door-heading">{words.heading}</h1>
-      <p className="gwui-door-help">{words.help}</p>
+      <PageTitle
+        crumbs={signedIn ? THE_DOOR_SIGNED_IN.crumbs.map(label => ({ label })) : undefined}
+        title={words.heading}
+        subtitle={words.help}
+      />
       <Panel>
         <Stack gap={10}>
           {signedIn && <FieldLabel htmlFor="gw-door-box">{THE_DOOR_SIGNED_IN.question}</FieldLabel>}
@@ -56,13 +54,13 @@ export function TheDoor({
           <Button onClick={send} disabled={!text.trim()}>{words.button}</Button>
         </Stack>
       </Panel>
-      <p className="gwui-door-rather">
+      <Note>
         {RATHER_PICK.before}{' '}
         <button type="button" onClick={onSeeEverySituation} className="gwui-plain-link">
           {RATHER_PICK.link}
         </button>
         .
-      </p>
+      </Note>
     </div>
   )
 }
