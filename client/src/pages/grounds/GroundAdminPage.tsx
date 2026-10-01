@@ -1883,11 +1883,21 @@ export function GroundAdminPage() {
                       organisation - so the lead reads it as the person ignoring their email, and
                       chases the wrong thing. It goes where the approval is, because a lead can do
                       nothing about it from here and an admin can do it in two clicks.
+
+                      GROUP 3'S REVIEW, CONTRADICTION 3: SAID AS IF NOBODY READING IT COULD BE THE
+                      ADMIN. Rukia is an admin of this organisation, so this exact wait is also
+                      what People and setup's own roster (WhosInItRoster.tsx) tells her, in words
+                      true of her: "You can let Faraji Odhiambo in on People." This row used to say
+                      "Waiting on your organisation. An admin there has to let them in." to her too
+                      - true of a lead who is not an admin, false of the admin reading it about
+                      herself. Same check as that roster (`isOrgAdmin`), same true sentence.
                     */
                     help = {
                       tone: 'look',
                       action: <Button kind="quiet" size="small" onClick={() => navigate('/org/members')}>Go to People</Button>,
-                      text: 'Waiting on your organisation. An admin there has to let them in.',
+                      text: isOrgAdmin
+                        ? `You can let ${name} in on People.`
+                        : 'Waiting on your organisation. An admin there has to let them in.',
                     }
                   }
 
