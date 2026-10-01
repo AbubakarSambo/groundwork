@@ -799,10 +799,23 @@ export function whoWaitedOnWhom(handoffs: AHandoff[], r: WhoIsReading): AWait[] 
 
 export interface AContradiction {
   id: string;
+  /** The commitment both things are about. */
+  commitmentId: string;
   participantId: string | null;
   who: string;
   /** Both things the record says, in one full sentence, with the sessions. */
   says: string;
+}
+
+/**
+ * A commitment named at the start of a sentence: in their words where the stored text is a passage of what
+ * they typed (as the work plan quotes it, followed by a comma), otherwise in ours.
+ */
+function aCommitmentNamed(c: ACommitment, who: string): string {
+  const theirWords = c.saidWordForWord === true ? c.text.trim().replace(/[.!?]+$/, '') : '';
+  if (theirWords) return `${possessive(who)} commitment, "${theirWords}",`;
+  const clause = clauseOf(c);
+  return clause ? `${possessive(who)} commitment to ${clause}` : `A commitment of ${who === 'You' ? 'yours' : `${who}'s`}`;
 }
 
 /**
@@ -827,18 +840,97 @@ export function theContradictions(commitments: ACommitment[], sessions: ASession
     if (!later.length) continue;
     const who = whoIs(r, c.participantId);
     const clause = clauseOf(c);
-    /* In their words where the stored text is a passage of what they typed (as the work plan quotes it), otherwise in ours. */
-    const theirWords = c.saidWordForWord === true ? c.text.trim().replace(/[.!?]+$/, '') : '';
-    const theCommitment = theirWords
-      ? `${possessive(who)} commitment, "${theirWords}",`
-      : clause ? `${possessive(who)} commitment to ${clause}` : `A commitment of ${who === 'You' ? 'yours' : `${who}'s`}`;
+    const theCommitment = aCommitmentNamed(c, who);
     const again = later.length === 1 ? `session ${later[0]}` : `sessions ${listed(later.map(String))}`;
     out.push({
       id: `again-after-${state.replace(' ', '-')}-${c.id}`,
+      commitmentId: c.id,
       participantId: c.participantId,
       who,
       says: `${theCommitment} was marked ${state} in session ${settledSession}, and in ${again} ${midSentence(who)} said it again as something still to do.`,
     });
   }
   return out;
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * QUESTIONS FOR THE LEAD: what only the person who runs the check-in can answer
+ * ---------------------------------------------------------------------------------------------- */
+
+export interface AQuestionForTheLead {
+  id: string;
+  /** One question, as a full sentence. */
+  question: string;
+  /** Why it is asked: what the record holds, and what it cannot say. */
+  because: string;
+}
+
+const MOST_QUESTIONS = 10;
+
+/**
+ * Questions, never conclusions, each built from rows so the same facts always ask the same questions:
+ * a commitment said again and again with no outcome, a commitment the record says two things about, and
+ * a wait nobody has gone back about. Only for whoever runs the check-in, as the rest of the lead's own
+ * reading is. What the lead themselves needs to do is in `leadActions`, not here.
+ */
+export function theQuestionsForTheLead(
+  commitments: ACommitment[],
+  handoffs: AHandoff[],
+  sessions: ASession[],
+  r: WhoIsReading,
+): AQuestionForTheLead[] {
+  if (!r.mayReadEveryone || !r.theLeadsId) return [];
+  const lead = whoIs(r, r.theLeadsId);
+  const onlyTheLead = lead === 'You' ? 'only you can find out' : `only ${lead} can find out`;
+  const out: AQuestionForTheLead[] = [];
+
+  /* 1. Said in three sessions or more, and nobody has said whether it happened. */
+  for (const c of commitments) {
+    if (stateOf(c.status) !== 'open' || (c.saidAgainIn ?? []).length < 2 || !c.participantId) continue;
+    if (!r.personMayBeRead(c.participantId) || !r.commitmentMayBeRead(c)) continue;
+    const who = whoIs(r, c.participantId);
+    const named = aCommitmentNamed(c, who).replace(/^Your\b/, 'your').replace(/^A commitment/, 'a commitment');
+    const said = [c.statedInSession ?? 1, ...[...(c.saidAgainIn ?? [])].sort((a, b) => a - b)].map(String);
+    out.push({
+      id: `said-again-${c.id}`,
+      question: `Has ${named} happened, or is it still wanted?`,
+      because: `${who} said it in sessions ${listed(said)}, and nobody has said whether it happened.`,
+    });
+  }
+
+  /* 2. Where the record says two things about one commitment. */
+  const byId = new Map(commitments.map((c) => [c.id, c]));
+  for (const x of theContradictions(commitments, sessions, r)) {
+    const c = byId.get(x.commitmentId);
+    if (!c) continue;
+    const named = aCommitmentNamed(c, x.who).replace(/^Your\b/, 'your').replace(/^A commitment/, 'a commitment');
+    out.push({ id: `which-${x.id}`, question: `Is ${named} done, or still to do?`, because: x.says });
+  }
+
+  /* 3. A wait on somebody in the check-in, other than the lead, that nobody has gone back about. */
+  for (const d of handoffs) {
+    if (!isOpen(d) || d.triedSaid?.trim() || !d.onParticipantId || d.onParticipantId === r.theLeadsId || d.onParticipantId === d.fromParticipantId) continue;
+    if (!r.handoffMayBeRead(d)) continue;
+    const who = whoIs(r, d.fromParticipantId);
+    const on = whoIsWaitedOn(r, d);
+    out.push({
+      id: `went-back-${d.id}`,
+      question: `Has anybody gone back to ${on} about ${inASentence(d.what)}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
+      because: `Nothing on record says anybody has, so ${onlyTheLead} whether it was raised outside the check-in.`,
+    });
+  }
+
+  /* 4. A wait on somebody outside the check-in that nobody has chased. */
+  for (const d of handoffs) {
+    if (!isOpen(d) || d.triedSaid?.trim() || d.onParticipantId || !d.onLabel?.trim()) continue;
+    if (!r.handoffMayBeRead(d)) continue;
+    const who = whoIs(r, d.fromParticipantId);
+    out.push({
+      id: `chased-${d.id}`,
+      question: `What has been tried to get ${inASentence(d.what)} from ${d.onLabel.trim()}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
+      because: `Nothing on record says anybody has chased it, so ${onlyTheLead} what was done outside the check-in.`,
+    });
+  }
+
+  return out.slice(0, MOST_QUESTIONS);
 }

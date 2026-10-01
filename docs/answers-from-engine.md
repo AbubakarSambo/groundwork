@@ -736,13 +736,28 @@ Test: `who-waited-on-whom-on-the-board-as-each-reader-reads-it.spec.ts`.
 
 #### Contradictions: `contradictions`
 
-`[{ id, participantId, who, says }]`. Where one person's own record says two different things: a commitment marked done, not done or dropped in one session, and said again in a later session as something still to do. Where two people said different things, it stays in `divergence` (unchanged), so the screens draw both under "Contradictions". The commitment is quoted only where its stored text is a passage of what the person typed, as the work plan quotes it.
+`[{ id, commitmentId, participantId, who, says }]`. Where one person's own record says two different things: a commitment marked done, not done or dropped in one session, and said again in a later session as something still to do. Where two people said different things, it stays in `divergence` (unchanged), so the screens draw both under "Contradictions". The commitment is quoted only where its stored text is a passage of what the person typed, as the work plan quotes it.
 
 Who reads it. The work plan's wall: whoever runs the check-in, the admin who set it up, and an admin on an ordinary check-in read everyone's; a person reads their own, and a colleague's only where people see each other and it is not an evaluation check-in.
 
 What Bisi reads: "Kwame Mensah's commitment, "I'll be following up with each client directly over the next week to chase down the missing documents", was marked done in session 1, and in session 2 Kwame Mensah said it again as something still to do." Kwame reads "Your commitment, "...", was marked done in session 1, and in session 2 you said it again as something still to do."
 
 Test: `contradictions-on-the-board-as-each-reader-reads-them.spec.ts`.
+
+#### Questions for the lead: `questionsForTheLead`
+
+`[{ id, question, because }]`, at most 10. Questions, never conclusions, each built from rows so the same facts ask the same questions: a commitment said in three sessions or more with nobody saying whether it happened, a commitment the record says two things about (see Contradictions), a wait on somebody in the check-in nobody has gone back about, and a wait on somebody outside it nobody has chased. What the lead needs to do themselves is in `leadActions`, not here. `overTime.toSettleFirst` (the report's own list, the lead only) is unchanged.
+
+Who reads it. Whoever runs the check-in, the admin who set it up, and an admin on an ordinary check-in. Nobody taking part, and never the person reviewed. The lead reads "only you can find out"; anybody else reads the lead's name.
+
+What Bisi reads:
+
+- "Has Femi Okonkwo's commitment, "I will call them again", happened, or is it still wanted?" because: "Femi Okonkwo said it in sessions 1, 2 and 3, and nobody has said whether it happened."
+- "Is Kwame Mensah's commitment, "I'll be following up with each client directly over the next week to chase down the missing documents", done, or still to do?" because: the contradiction's own sentence.
+- "Has anybody gone back to Ngozi Eze about the Head of Credit's contact, which Femi Okonkwo is waiting for?" because: "Nothing on record says anybody has, so only you can find out whether it was raised outside the check-in."
+- "What has been tried to get a date for the credit decision from Mr. Adebayo, which Ngozi Eze is waiting for?" because: "Nothing on record says anybody has chased it, so only you can find out what was done outside the check-in."
+
+Test: `questions-for-the-lead-on-the-board-as-each-reader-reads-them.spec.ts`.
 
 ## Week 11: the ending page's suggestion, signals and questions, and reviews that fall due from inside the product
 
