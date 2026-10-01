@@ -213,6 +213,11 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    previewed on the lead's own roster after they have shared it (`GroundAdminPage.tsx`'s check-ins
    tab). Pass as an extra className alongside `Panel`, which forwards one. */
 .gwui-panel-dark { background: var(--gw-dark); border-color: var(--gw-dark); color: #fff; }
+/* THE PRIVATE HALF OF A SESSION'S REPORT (SessionReportPage.tsx, group 3 drift list, piece 1): a
+   Panel, inset and tinted, so a reader's own report does not read as the same card as the shared
+   report below it - a deliberate distinction this page already drew (own-report.txt has no prototype
+   equivalent for two reports on one page), kept rather than flattened to the plain Panel. */
+.gwui-panel-private { background: var(--gw-paper-2); border-radius: 14px; }
 
 /* ── EDGE LIST / EDGE ROW (prototype: .list, .item, .sp) ─────────────────── */
 .gwui-edge-list { border-top: 1px solid var(--gw-border); list-style: none; margin: 0; padding: 0; }

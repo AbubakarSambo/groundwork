@@ -44,7 +44,11 @@ describe('waits are statuses', () => {
          invite…" (CLAUDE.md: plain, full sentences) - still role="status", still the only thing on
          the screen while the preview loads. */
       ['pages/invite/InvitePage.tsx', /<p role="status"[^>]*>Loading your invitation…<\/p>/],
-      ['pages/report/SessionReportPage.tsx', /<div role="status" aria-live="polite"[^>]*>Getting your report\.\.\.<\/div>/],
+      /* Group 3 drift list, piece 1 (1 October 2026): rebuilt from the shared `Note`, which renders a
+         <p>, not a <div>, and carries only `role="status"` - `aria-live="polite"` is implicit on that
+         role, so the explicit attribute was redundant and is not reproduced. Still the only thing on
+         the screen while the report loads. */
+      ['pages/report/SessionReportPage.tsx', /<Note role="status">Getting your report\.\.\.<\/Note>/],
       ['pages/board/BoardPage.tsx', /<div role="status"[^>]*>Loading the board…<\/div>/],
       /* U.8 review: opening a session can take up to a minute, and after four seconds of silence
          the status now also says so ("Getting your first question ready. This can take up to a
