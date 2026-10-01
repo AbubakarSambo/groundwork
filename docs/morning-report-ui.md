@@ -7141,4 +7141,13 @@ Two things are being fixed now, as group 3's sixth piece:
 - On this tab the lead's page shows 32 buttons against the prototype's 21. The extras come from each person's part (`EachPerson.tsx`) and the targets band: fold arrows, and "Done" and "Not doing it" on every to-do.
 - The participant's check-in page still uses the old parts in its loading, header and "not in this check-in" screens.
 
+Both are fixed, and group 3's pages are all built from the shared parts now.
+- The lead's Context and resources tab shows 21 buttons, the same as the prototype. Each person's fold arrow became the shared fold. "Done" and "Not doing it" on each to-do are quiet text links. "Attach it", which sends a file, stays a button.
+- The participant's check-in page is rebuilt, and is on the rebuilt list.
+- The button test now leaves out the check-in page's own tabs, which are its navigation, like the sidebar. It also counts the prototype's reply chips as buttons, because the prototype draws that screen as a picture, with each chip as a plain text box. With that, the comparison is like for like, and the participant's page shows the same five controls as the prototype's between-check-ins screen. The button test passes on all 31 screens.
+
+**The fourth merge of the engine's work (1 October, afternoon).** It merged with no conflicts. The new database change is applied locally, and the API is rebuilt and restarted. The engine's new review (`docs/review-1-october.md`) asked the screens two things. Both were already right: the board hides "nothing reads as a difference" when differences are listed, and never shows an internal kind-of-work label. That is answered as request 100.
+
+**Before group 3's review:** a dev-only preview page, `/dev/conversation`, is being added. It draws the check-in conversation from its real parts with the prototype's own example words, and calls the server for nothing. So the live conversation can finally be pictured against the prototype without starting anyone's session.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
