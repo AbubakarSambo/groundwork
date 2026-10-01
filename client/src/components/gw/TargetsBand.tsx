@@ -71,19 +71,32 @@ export function TargetsBand({
   const leadFirst = lead ? first(lead) : null
   const personOf = (pid?: string | null) => (pid ? participants.find((p: any) => p.id === pid) : null)
 
-  /** Who else reads this row, said from the reader's side. */
+  /**
+   * WHO ELSE READS THIS ROW, SAID FROM THE READER'S SIDE.
+   *
+   * GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 8: ON HER OWN SHARE, THE LEAD READ HER OWN NAME
+   * BACK AT HER, TWICE. This checked `isTheLead` before `readerIsOwner`, so on the lead's own
+   * share - where she is both the lead and the owner - `ownerFirst` was her own first name and the
+   * row read "Rukia / Seen by Rukia and you": the same one person, named once and then called
+   * "you", as if two different people saw it. `readerIsOwner` is checked first now, same as it is
+   * for anybody else's share, so a share that is hers and nobody else's reads "Seen by you" - true
+   * of who actually sees it, since the lead reading her own share is one person, not two.
+   */
   const seenBy = (t: Target): string => {
     if (!t.ownerParticipantId || numbersShared) return 'Seen by everyone'
     const owner = personOf(t.ownerParticipantId)
     const ownerFirst = owner ? first(owner) : null
     const readerIsOwner = !!viewerUserId && owner?.userId === viewerUserId
+    if (readerIsOwner) return !isTheLead && leadFirst ? `Seen by you and ${leadFirst}` : 'Seen by you'
     if (isTheLead) return ownerFirst ? `Seen by ${ownerFirst} and you` : 'Seen by you'
-    if (readerIsOwner) return leadFirst ? `Seen by you and ${leadFirst}` : 'Seen by you'
     return ownerFirst && leadFirst ? `Seen by ${ownerFirst} and ${leadFirst}` : 'Seen by the lead'
   }
   const whose = (t: Target): string => {
     if (!t.ownerParticipantId) return 'The whole team'
     const owner = personOf(t.ownerParticipantId)
+    /* The reader's own share reads "You", the same rule YourWork already uses for the reader's own
+       row (see the matching fix in YourWork.tsx) - never their own name read back at them. */
+    if (!!viewerUserId && owner?.userId === viewerUserId) return 'You'
     return owner ? atTheStart(first(owner)) : 'Someone'
   }
 
