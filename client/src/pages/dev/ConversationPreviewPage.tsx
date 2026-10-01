@@ -111,7 +111,14 @@ function ConversationFrame({
           <TheCheckInHeader
             title={title}
             underTitle={underTitle}
-            mayPause={!endCard}
+            /*
+              GROUP 3 REVIEW, BATCH B: this used to hide Pause once the end card was showing
+              (`mayPause={!endCard}`). check-in-end-card.jpg keeps "Pause" in the header - the
+              real ChatPage.tsx already does the same (its `mayPause` only turns off once the
+              session is `completed` or `declined`, not merely `done`), so this preview was
+              the one place out of step with its own prototype source.
+            */
+            mayPause
             onStopForNow={noop}
             onSkip={noop}
           />

@@ -71,6 +71,10 @@ describe('the conversation preview page calls nothing', () => {
     expect(screen.getByText('That’s right, finish')).toBeTruthy()
     expect(screen.getByText('Change something')).toBeTruthy()
 
+    // GROUP 3 REVIEW, BATCH B: check-in-end-card.jpg keeps "Pause" in the header, so it shows
+    // in all three states drawn on this page, not only the two still in conversation.
+    expect(screen.getAllByText('Pause').length).toBe(3)
+
     // The three headings, one per state.
     expect(screen.getByText(/As it opens/)).toBeTruthy()
     expect(screen.getByText(/Part-way through, with suggested answers/)).toBeTruthy()
