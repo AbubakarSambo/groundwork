@@ -105,20 +105,20 @@ describe('1. the Movement tile counts only the targets this reader may read', ()
   };
   it('Bisi, who runs it, reads that it moved by 5', async () => {
     const r = await readAs(w, 'u-bisi');
-    expect(r.movement).toEqual({ value: '+5', sub: 'Targets moved this session.' });
+    expect(r.movement).toEqual({ value: '1 target', sub: '1 target moved this session.' });
     expect(r.sinceLast).toBe("Kwame's approved facilities went from 0 to 5, against the aim of 14.");
   });
   it('Kwame, whose target it is, reads that it moved by 5', async () => {
     const r = await readAs(w, 'u-kwame');
-    expect(r.movement).toEqual({ value: '+5', sub: 'Targets moved this session.' });
+    expect(r.movement).toEqual({ value: '1 target', sub: '1 target moved this session.' });
     expect(r.sinceLast).toBe('Your approved facilities went from 0 to 5.');
   });
-  it('Ngozi, who may not read Kwame’s number, reads that nothing moved, and never "+5"', async () => {
+  it('Ngozi, who may not read Kwame’s number, reads that nothing moved, and never Kwame’s target', async () => {
     const r = await readAs(w, 'u-ngozi');
     expect(r.movement).toEqual({ value: 'None', sub: 'No target moved this session.' });
     expect(r.sinceLast).toBe('');
   });
-  it('an admin outside the check-in reads that nothing moved, and never "+5"', async () => {
+  it('an admin outside the check-in reads that nothing moved, and never Kwame’s target', async () => {
     const r = await readAs(w, 'u-grace', 'ADMIN');
     expect(r.movement).toEqual({ value: 'None', sub: 'No target moved this session.' });
     expect(r.sinceLast).toBe('');
@@ -133,7 +133,7 @@ describe('2. the tile and Since the last round tell one story (re-d, sales, sess
   };
   it.each([['Bisi, who runs it', 'u-bisi', 'MEMBER'], ['Ngozi, in it', 'u-ngozi', 'MEMBER'], ['an admin outside it', 'u-grace', 'ADMIN']])('%s reads the same movement on the tile and in the sentence', async (_who, userId, role) => {
     const r = await readAs(w, userId, role);
-    expect(r.movement).toEqual({ value: '+31 million', sub: 'Targets moved this session.' });
+    expect(r.movement).toEqual({ value: '1 target', sub: '1 target moved this session.' });
     expect(r.sinceLast).toBe("The team is aiming for 120 million naira disbursed. The team's total went from 0 to 31 million naira.");
   });
 
@@ -156,12 +156,35 @@ describe('3. a number the lead accepts later goes where its round closed, so the
     await bisiAccepts(w, 'o-team', 31000000);
     expect(w.snapshots[2]).toEqual([{ objectiveId: 'o-team', count: 31000000 }]);
     const r = await readAs(w, userId, role);
-    expect(r.movement).toEqual({ value: '+31 million', sub: 'Targets moved this session.' });
+    expect(r.movement).toEqual({ value: '1 target', sub: '1 target moved this session.' });
     expect(r.sinceLast).toBe("The team is aiming for 120 million naira disbursed. The team's total went from 0 to 31 million naira.");
   });
   it('a number the lead types that was not the one offered leaves the closed round as it was', async () => {
     const w = fresh();
     await bisiAccepts(w, 'o-team', 29000000);
     expect(w.snapshots[2]).toEqual([{ objectiveId: 'o-team', count: 0 }]);
+  });
+});
+
+describe('4. the tile says how many targets moved, never one target’s own change (request 107 d)', () => {
+  /* One target moved by 96: the tile read "+96", a number with nothing to say what it counted. */
+  const one: World = {
+    objectives: [DISBURSED(31000000), KWAMES(100)],
+    snapshots: { 1: [{ objectiveId: 'o-team', count: 31000000 }, { objectiveId: 'o-kwame', count: 4 }], 2: [{ objectiveId: 'o-team', count: 31000000 }, { objectiveId: 'o-kwame', count: 100 }] },
+  };
+  it.each([['Bisi, who runs it', 'u-bisi', 'MEMBER'], ['Kwame, whose target it is', 'u-kwame', 'MEMBER']])('%s reads that 1 target moved', async (_who, userId, role) => {
+    const r = await readAs(one, userId, role);
+    expect(r.movement).toEqual({ value: '1 target', sub: '1 target moved this session.' });
+    expect(r.movement.value).not.toMatch(/\+|96/);
+  });
+  it('Ngozi, who may not read Kwame’s number, reads that nothing moved', async () => {
+    expect((await readAs(one, 'u-ngozi')).movement).toEqual({ value: 'None', sub: 'No target moved this session.' });
+  });
+  it('a target that went down is a target that moved, and two are never added together', async () => {
+    const two: World = {
+      objectives: [DISBURSED(25000000), KWAMES(100)],
+      snapshots: { 1: [{ objectiveId: 'o-team', count: 31000000 }, { objectiveId: 'o-kwame', count: 4 }], 2: [{ objectiveId: 'o-team', count: 25000000 }, { objectiveId: 'o-kwame', count: 100 }] },
+    };
+    expect((await readAs(two, 'u-bisi')).movement).toEqual({ value: '2 targets', sub: '2 targets moved this session.' });
   });
 });

@@ -1296,3 +1296,15 @@ Each sentence is fixed at its source, and the same shape is fixed wherever else 
 Tests: `board/request-107-b-every-sentence-for-its-reader.spec.ts` serves the board as Amina (the lead), Rukia and Baraka (participants, with and without seeing each other), Juma (an admin who only reads, on a team check-in and on a performance plan) and the admin who set it up, and reads the sentences above. 18 of its 21 cases fail on the code before this change. Two older tests asserted "them" ("waiting on them", "showing them", "stopped them raising it"), which was the defect; they now expect the name.
 
 Decided for Hafsah to confirm: the Owner of a difference, and of a decision the lead wrote down, is the person running the check-in by name, where it said "Lead and team". The prototype's own line is "The operations lead needs to decide."
+
+## Request 107 (d): the Movement tile says how many targets moved (2 October)
+
+The quick read's Movement tile served one target's own change as its value ("+96"), a number with nothing to say what it counted. It now serves how many targets moved, up or down, for the targets this reader may read (the rule fixed on 1 October is unchanged). What each reader reads, with Kwame's target moving from 4 to 100 and the team's staying where it was:
+
+- The lead (Bisi) and Kwame: value "1 target", line "1 target moved this session." Before: "+96" and "Targets moved this session."
+- Ngozi, who may not read Kwame's number, and an admin outside the check-in: "None" and "No target moved this session.", as before.
+- Two targets that moved, one up and one down: "2 targets" and "2 targets moved this session." A target that went down was not counted before.
+
+How far each one moved is said once, in "Since the last round", in the reader's own words ("Your approved facilities went from 4 to 100."), so the tile and that sentence tell one story. The report's tile is built by the same function and reads the same.
+
+Four tests asserted the sum ("+5", "+31 million", "+14", "+2"), which was the defect; they now expect the count. Decided for Hafsah to confirm: the tile counts a target that went down as one that moved.
