@@ -1568,17 +1568,18 @@ export function GroundAdminPage() {
         */}
 
       {/*
-        PEOPLE AND SETUP IS FULL WIDTH, LIKE EVERY OTHER REBUILT PAGE.
-        The other tabs here are a conversation and a list of sessions, which read better narrow
-        (600px) - the prototype agrees, drawing its own chat and session views narrow too. People and
-        setup is a settings page, and the prototype draws it the full width of the content column
-        (docs/prototype/screens/A4-people-roles-and-access/check-in-people-and-setup.jpg), as wide as
-        `Page`'s own frame allows (1150px, see the note above where `Page` replaced this page's old,
-        narrower hand-rolled wrapper). So only this one tab gets that width; the others are unchanged.
+        ONLY THE CONVERSATION KEEPS A NARROW, CENTRED COLUMN.
+        GROUP 3 REVIEW, BATCH B: every tab here used to sit in a 600px column under a full-width
+        header, with only "People and setup" drawn at the page's own width. But the prototype's
+        own sessions.jpg (the list of sessions, this page's "report" tab) and context.jpg (this
+        page's "Context" tab, `docs`) both draw at the page's full width too - as does my-record.jpg
+        ("My work", this page's `myrecord`/`checkins`). The one screen the prototype itself narrows
+        is the check-in's own conversation (check-in-start.jpg): that is `chat` here, and it alone
+        keeps the 600px reading width, centred under the full-width header.
       */}
       <div
-        className={`gw-bd gwui-pt-12${tab === 'settings' ? '' : ' gwui-ml-auto gwui-mr-auto'}`}
-        style={{ maxWidth: tab === 'settings' ? 1150 : 600, width: '100%' }}
+        className={`gw-bd gwui-pt-12${tab === 'chat' ? ' gwui-ml-auto gwui-mr-auto' : ''}`}
+        style={{ maxWidth: tab === 'chat' ? 600 : 1150, width: '100%' }}
       >
 
         {/* OVERVIEW */}

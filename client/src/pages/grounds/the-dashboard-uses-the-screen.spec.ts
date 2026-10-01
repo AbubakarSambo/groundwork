@@ -50,28 +50,27 @@ describe('the dashboard uses the screen it is given', () => {
     expect(LIST).not.toMatch(/maxWidth: 1160/)
   })
 
-  it('and the pages that ARE reading keep theirs', () => {
-    /* The point is not "wider everywhere". A check-in, a report and a party's own documents are
-       read, not scanned, and 600 is right for them.
-       UPDATED 29 SEPT, PEOPLE AND SETUP REBUILD: GroundAdminPage.tsx's own conversation, sessions
-       list, documents and report tabs still cap at 600 - only "People and setup" (a settings page,
-       not a column of prose) now widens to the shared Page frame's own maximum, 1150 (see the next
-       test). This still proves the reading tabs keep 600; it no longer requires the literal
-       `maxWidth: 600` substring, which the settings-only ternary broke without changing what any
-       tab actually does.
-       UPDATED 30 SEPT, THE SIDE-BY-SIDE STYLE CHECK OF B3-THE-CHECK-IN: the same was true of
-       GroundParticipantPage.tsx's "My work" tab, and the picture check found it - my-record.jpg
-       draws "Your work" and "Something that keeps coming up"/"What you said you'd do"/"Your
-       reports" as two columns side by side, not a single 600px column of prose, the same shape
-       "People and setup" already gets on the lead's own page for the same reason (a page of tiles
-       and lists, not paragraphs to read top to bottom). `record` now widens the same way
-       `settings` already does, on this page; `report` and `docs` (Context and resources) are
-       unchanged and still cap at 600, since nothing in this round found those two to be wrong. */
-    expect(CHECK_IN).toMatch(/maxWidth: tab === 'settings' \? \d+ : 600/)
-    expect(PARTY).toMatch(/maxWidth: \(tab === 'settings' \|\| tab === 'record'\) \? \d+ : 600/)
+  it('and the one page that IS reading keeps its narrow column', () => {
+    /* The point is not "wider everywhere". A live conversation is read, not scanned, and 600 is
+       right for it.
+       GROUP 3 REVIEW, BATCH B (1 October): sessions.jpg (GroundAdminPage.tsx's "report" tab, the
+       list of sessions) and context.jpg (its "Context" tab, `docs`) both turned out to draw at the
+       prototype's own full page width, not the 600px reading column this page had capped every tab
+       at except "People and setup" - the previous round's picture check had found the settings tab
+       alone, and quietly left every other tab under a full-width header narrowed to 600. The
+       prototype draws the header and tabs at the page's full width throughout; the only screen it
+       narrows is the conversation itself (check-in-start.jpg). So GroundAdminPage.tsx now narrows
+       only `chat`, and everything else - `checkins`, `myrecord`, `docs`, `report`, `settings` -
+       widens to the shared `Page` frame's own maximum, 1150. */
+    expect(CHECK_IN).toMatch(/maxWidth: tab === 'chat' \? 600 : \d+/)
+    /* GroundParticipantPage.tsx's own `docs` tab draws the very same `ContextPage` the lead's page
+       does, and context.jpg is the same screen either way - so it widens here too, beside `record`
+       and `settings`; the conversation and the party's own report (own-report.jpg draws it as a
+       narrow column, the same measure as the chat) are what stay narrow now. */
+    expect(PARTY).toMatch(/maxWidth: \(tab === 'settings' \|\| tab === 'record' \|\| tab === 'docs'\) \? \d+ : 600/)
   })
 
-  it("and People and setup is the one exception - a settings page, not a reading column", () => {
+  it("and People and setup, Context, sessions and My work are the exceptions - none of them a reading column", () => {
     /*
      * CHANGED, 30 SEPTEMBER (Hafsah, the setting row, item 3): this used to check for 1060, matching
      * this page's own header, which was ALSO wrong - both were a narrower, hand-rolled copy of the
@@ -80,16 +79,21 @@ describe('the dashboard uses the screen it is given', () => {
      * about 315 to 1375, against the board's 304 to 1386. Both now render inside `<Page>` itself,
      * whose own wrap caps at 1150 - so this tab widens to 1150, not 1060, and no longer needs its
      * own hand-rolled maxWidth for the header (removed; `Page` supplies it).
+     *
+     * GROUP 3 REVIEW, BATCH B: widened from "People and setup" alone to every tab except the
+     * conversation - see the test above for why.
      */
-    expect(CHECK_IN).toMatch(/tab === 'settings' \? 1150 : 600/)
+    expect(CHECK_IN).toMatch(/tab === 'chat' \? 600 : 1150/)
     expect(CHECK_IN).toMatch(/from '@\/components\/gw\/ui\/Page'/)
   })
 
-  it("and on the party's page, My work is now the same exception, beside People and setup", () => {
+  it("and on the party's page, My work and Context and resources are the same exception, beside People and setup", () => {
     /* 30 SEPTEMBER, THE SIDE-BY-SIDE STYLE CHECK: see the comment above. Both settings pages this
-       page has - Setup and My work - now widen to 1150; only the conversation, the report and
-       Context and resources stay at the reading width. */
-    expect(PARTY).toMatch(/\(tab === 'settings' \|\| tab === 'record'\) \? 1150 : 600/)
+       page has - Setup and My work - widen to 1150.
+       GROUP 3 REVIEW, BATCH B: Context and resources (`docs`) joins them - context.jpg draws it at
+       the same full width, and it is the same `ContextPage` component GroundAdminPage.tsx draws.
+       Only the conversation and the party's own report stay at the reading width now. */
+    expect(PARTY).toMatch(/\(tab === 'settings' \|\| tab === 'record' \|\| tab === 'docs'\) \? 1150 : 600/)
   })
 
   it('it is a cap, not a fixed width, so it still fits a narrow screen', () => {

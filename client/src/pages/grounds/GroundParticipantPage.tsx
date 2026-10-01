@@ -652,16 +652,18 @@ export function GroundParticipantPage() {
       )}
 
       {/* READING WIDTH, EXCEPT WHERE THE PAGE ISN'T PROSE (see the-dashboard-uses-the-screen.spec.ts).
-          "Report" and "Context and resources" are read, so they keep the 600px measure the
-          conversation itself uses. "My work" is not: my-record.jpg draws it as two columns side by
-          side (the stat tiles and any deals beside the pattern, commitments and reports), the same
-          shape GroundAdminPage.tsx already gives "People and setup" for the same reason - a settings
-          or overview page, not a column of prose - so `record` widens the same way `settings`
-          already does on the lead's own page, rather than folding that two-column layout down to
-          one. */}
+          "Report" is read, so it keeps the 600px measure the conversation itself uses - own-report.jpg
+          draws it exactly that narrow. "My work" and "Context and resources" are not: my-record.jpg
+          draws "My work" as two columns side by side, and context.jpg draws "Context and resources"
+          the page's own full width, the same shape GroundAdminPage.tsx already gives "People and
+          setup" and its own "Context" tab for the same reason - a settings, overview or resource page,
+          not a column of prose.
+          GROUP 3 REVIEW, BATCH B: `docs` used to stay at the reading width here, with only `record`
+          and `settings` widened - the one tab this page draws from the very same `ContextPage`
+          GroundAdminPage.tsx now widens, left narrower by mistake. */}
       <div
-        className={`gw-bd gwui-pt-16${(tab === 'settings' || tab === 'record') ? '' : ' gwui-ml-auto gwui-mr-auto'}`}
-        style={{ maxWidth: (tab === 'settings' || tab === 'record') ? 1150 : 600, width: '100%' }}
+        className={`gw-bd gwui-pt-16${(tab === 'settings' || tab === 'record' || tab === 'docs') ? '' : ' gwui-ml-auto gwui-mr-auto'}`}
+        style={{ maxWidth: (tab === 'settings' || tab === 'record' || tab === 'docs') ? 1150 : 600, width: '100%' }}
       >
 
         {/**
