@@ -27,6 +27,13 @@
  * SCENARIOS=sales,pip,... limits either mode to a comma list of scenario names, since RECALL does
  * six reads per check-in and need not run the whole folder.
  *
+ * PRODUCT=1 COPIES=6 TAG=-x reads every check-in thirty times through the product's own whatOneReadKeeps, kept
+ * as six copies of five; MORE=1 then walks each person's periods through the product's own rule for split
+ * periods (whatCountsThisPeriod) with no model call, for journey/what-each-person-is-shown-read-twice.py
+ * (decision 68, 1 October 2026):
+ *   PRODUCT=1 COPIES=4 TAG=-four GEMINI_LOCATION=global DATABASE_URL=... npx ts-node -T journey/the-detector-read-twice.ts all-24/six-a
+ *   MORE=1 READS=product-reads-5-four.json,product-reads-5-extra.json ARRANGEMENTS="0+1/2+3;2+3/4+5;4+5/0+1" TAG=-six DATABASE_URL=... npx ts-node -T journey/the-detector-read-twice.ts all-24/six-a
+ *
  * Usage (from api/, local test database only):
  *   DATABASE_URL=postgresql://hafsahjumare@localhost:5432/gw_pw9_1786222102 \
  *     npx ts-node -T journey/the-detector-read-twice.ts all-24/run-20
@@ -48,6 +55,10 @@ import { isAgainstAGoalTheyStated, whatTheySaidThisWasFor } from '../src/modules
 import { saysSomethingCheckable } from '../src/modules/board/reads';
 import { shouldThisCodeBeAboutThem } from '../src/modules/patterns/a-chaser-is-not-the-blocker';
 import { PATTERN_DETECTION_PROMPT, PATTERN_DETECTION_SCHEMA, isBadFaithCode, isPositiveCode, isCarryingCode } from '../src/modules/patterns/pattern-library';
+import { theirOwnEarlierRecord, earlierRecordQuery } from '../src/modules/patterns/the-detector-reads-their-own-earlier-record';
+import { theReadsWereSplit, couldChangeWhatIsShown, whatCountsThisPeriod, votesOf } from '../src/modules/patterns/a-period-at-the-line-is-settled-on-all-the-evidence';
+import { PERIODS_BEFORE_A_PATTERN_IS_SHOWN } from '../src/modules/patterns/who-reads-a-pattern';
+import { READS_THAT_MUST_AGREE } from '../src/modules/patterns/patterns.service';
 import { jaccard } from './pattern-steadiness';
 
 if (!/localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL ?? '') || !/gw_/.test(process.env.DATABASE_URL ?? '')) {
@@ -67,6 +78,58 @@ type AnOptions = { temperature?: number; seed?: number; thinkingBudget?: number 
 
 async function main() {
   const folder = path.resolve(__dirname, process.argv[2] ?? 'all-24/run-20');
+  if (process.env.MORE === '1') {
+    /*
+     * WHAT EACH PERSON WOULD BE SHOWN, THROUGH THE PRODUCT'S OWN RULE, FROM STORED READS (decision 68, 1 October 2026).
+     * No model call: it reads the dumps PRODUCT=1 wrote (READS=a comma list of files in the folder, merged by
+     * check-in, each check-in then holding several copies of five reads) and walks each person's periods in order
+     * exactly as analyzeCheckIn does, with whatCountsThisPeriod and couldChangeWhatIsShown: the first five reads of
+     * one copy, and, when a code is split on a pattern not yet shown, the five reads of a second copy as the five
+     * more reads. "Before" walks the same first copies with no more reads (three of five, as before the change).
+     * ARRANGEMENTS says which copies play which part: "first+more" for one reading, "/" between the two readings
+     * compared, ";" between arrangements. Written to shown-<TAG>.json for journey/what-each-person-is-shown-read-twice.py.
+     */
+    const files = (process.env.READS ?? 'product-reads-5.json').split(',');
+    const byId = new Map<string, any>();
+    for (const f of files) for (const d of JSON.parse(fs.readFileSync(path.join(folder, f), 'utf8'))) {
+      const had = byId.get(d.checkInId);
+      if (had) had.reads.push(...d.reads); else byId.set(d.checkInId, { ...d, reads: [...d.reads] });
+    }
+    const PER = 5;
+    const rows = [...byId.values()];
+    const copy = (d: any, c: number) => d.reads.slice(c * PER, (c + 1) * PER).map((codes: string[]) => codes.map((code) => ({ code, observation: '' })));
+    const people = new Map<string, any[]>();
+    for (const d of rows) { const k = `${d.scenario}::${d.person}`; (people.get(k) ?? people.set(k, []).get(k)!).push(d); }
+    let moreTaken = 0, checkInReadings = 0;
+    const walk = (list: any[], first: number, more: number | null) => {
+      const counted = new Map<string, number[]>();
+      for (const d of [...list].sort((a, b) => a.period - b.period)) {
+        const toSettle = (code: string, n: number) => theReadsWereSplit(n, READS_THAT_MUST_AGREE) && couldChangeWhatIsShown(counted.get(code) ?? [], d.period, PERIODS_BEFORE_A_PATTERN_IS_SHOWN);
+        const firstReads = copy(d, first);
+        const anySplit = more !== null && [...votesOf(firstReads)].some(([code, { count }]) => toSettle(code, count));
+        if (more !== null) { checkInReadings++; if (anySplit) moreTaken++; }
+        const counts = whatCountsThisPeriod(firstReads, anySplit ? copy(d, more!) : [], toSettle, READS_THAT_MUST_AGREE);
+        for (const code of counts.keys()) counted.set(code, [...(counted.get(code) ?? []), d.period]);
+      }
+      return Object.fromEntries([...counted].map(([code, ps]) => [code, ps.length]));
+    };
+    const arrangements = (process.env.ARRANGEMENTS ?? '0+1/2+3').split(';').map((a) => a.split('/').map((r) => r.split('+').map(Number)));
+    const out: any[] = [];
+    arrangements.forEach((pair, i) => {
+      for (const [key, list] of people) {
+        out.push({
+          arrangement: i, person: key,
+          before: pair.map(([f]) => walk(list, f, null)),
+          after: pair.map(([f, m]) => walk(list, f, m)),
+        });
+      }
+    });
+    const file = path.join(folder, `shown${process.env.TAG ?? ''}.json`);
+    fs.writeFileSync(file, JSON.stringify({ arrangements: process.env.ARRANGEMENTS ?? '0+1/2+3', rows: out, moreTaken, checkInReadings }));
+    console.log(`Walked ${people.size} people in ${arrangements.length} arrangements; five more reads were taken on ${moreTaken} of ${checkInReadings} check-in readings. Kept in ${file}.`);
+    process.exit(0);
+  }
+
   const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error'] });
   const prisma = app.get(PrismaService);
   const model = app.get(AnthropicService);
@@ -75,7 +138,8 @@ async function main() {
   const scenarios = fs.readdirSync(folder).filter((f) => f.endsWith('.json')).map((f) => {
     const d = JSON.parse(fs.readFileSync(path.join(folder, f), 'utf8'));
     return { name: f.replace(/\.json$/, ''), groundId: d.groundId as string };
-  }).filter((s) => !ONLY_SCENARIOS || ONLY_SCENARIOS.has(s.name));
+  }).filter((s) => !!s.groundId) /* only the scenarios themselves: a reads file has no groundId, and an empty one would read every check-in */
+    .filter((s) => !ONLY_SCENARIOS || ONLY_SCENARIOS.has(s.name));
 
   async function readOnce(checkIn: any, content: string, block: string, statedGoals: string[], lastPeriod: any[], deps: any[], options: AnOptions = {}): Promise<ARead> {
     const result = await model.extract<{ detections: { code: string; observation: string }[] }>(
@@ -118,7 +182,15 @@ async function main() {
     const statedGoals = goals.map((r) => r.text);
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     const recordText = records.map((r) => `(${r.type}) ${r.text}`).join('\n');
-    const content = `PERIOD ${period}\n\nTRANSCRIPT:\n${transcript}\n\nEXTRACTED RECORD:\n${recordText}${whatTheySaidThisWasFor(statedGoals)}`;
+    /* The same text analyzeCheckIn builds, their own earlier record included (634569fc). */
+    const earlier = await prisma.recordEntry.findMany(earlierRecordQuery(checkIn.participantId, checkIn.sessionNumber) as any);
+    const content = `PERIOD ${period}\n\nTRANSCRIPT:\n${transcript}\n\nEXTRACTED RECORD:\n${recordText}${whatTheySaidThisWasFor(statedGoals)}${theirOwnEarlierRecord(earlier as any, period)}`;
+    /* What the person said, for the "rests on a record nobody holds" filter (fe85e9d2), as analyzeCheckIn passes it. */
+    const whatThePersonSaid = [
+      ...turns.filter((t) => t.role !== TurnRole.AI).map((t) => t.content ?? ''),
+      ...records.map((r) => r.text),
+      ...(earlier as any[]).map((r) => r?.text ?? ''),
+    ];
     const lastPeriod = await prisma.patternDetection.findMany({
       where: { participantId: checkIn.participantId, lastPeriodNumber: { gte: period - HOW_FAR_BACK, lte: period - 1 } },
       select: { code: true, observationText: true, lastPeriodNumber: true },
@@ -128,53 +200,85 @@ async function main() {
       where: { groundId: checkIn.groundId, fromParticipantId: checkIn.participantId },
       select: { onParticipantId: true, status: true, what: true },
     });
-    return { content, block, statedGoals, lastPeriod, deps };
+    return { content, block, statedGoals, lastPeriod, deps, earlier, whatThePersonSaid, period };
   }
 
+  /** At most LIMIT model reads in flight at once, so a whole folder does not open hundreds of calls together. */
+  const LIMIT = Number(process.env.LIMIT ?? 12);
+  let inFlight = 0; const waiting: (() => void)[] = [];
+  async function limited<T>(fn: () => Promise<T>): Promise<T> {
+    if (inFlight >= LIMIT) await new Promise<void>((r) => waiting.push(r));
+    inFlight++;
+    try { return await fn(); } finally { inFlight--; waiting.shift()?.(); }
+  }
+  const personOf = (checkIn: any) => (checkIn.participant?.user?.email ?? 'unknown').split('@')[0].split('.')[0];
+  const checkInsOf = (groundId: string) => prisma.checkIn.findMany({
+    where: { groundId, patternsAnalyzedAt: { not: null } },
+    select: { id: true, groundId: true, participantId: true, sessionNumber: true, completedAt: true, startedAt: true, createdAt: true,
+      ground: { select: { cadence: true } }, participant: { select: { user: { select: { email: true } } } } },
+    orderBy: { sessionNumber: 'asc' },
+  });
+
   if (process.env.PRODUCT === '1') {
-    /* Through the product's own code (a1455696): whatOneReadKeeps is exactly what analyzeCheckIn runs five
-       times. Ten reads per check-in make two separate five-read majorities to compare. Nothing is written. */
-    /* PER=5 AGREE=3 is what the product does today; other numbers try more reads. */
-    const PER = Number(process.env.PER ?? 5), AGREE = Number(process.env.AGREE ?? 3);
-    const pairsA: Record<string, Set<string>> = {}, pairsB: Record<string, Set<string>> = {};
-    let same = 0, total = 0;
-    const dump: any[] = [];
-    const most = (reads: string[][]) => {
-      const n: Record<string, number> = {};
-      reads.forEach((r) => new Set(r).forEach((c) => { n[c] = (n[c] ?? 0) + 1; }));
-      return new Set(Object.keys(n).filter((c) => n[c] >= AGREE));
+    /* Through the product's own code: whatOneReadKeeps is exactly what analyzeCheckIn runs five times.
+       COPIES separate five-read majorities per check-in (default 2) make readings to compare; with
+       COPIES=4 two copies are compared and the other two are the independent reference for "real
+       patterns", and the other way round. Nothing is written. PER=5 AGREE=3 is what the product does. */
+    const PER = Number(process.env.PER ?? 5), AGREE = Number(process.env.AGREE ?? 3), COPIES = Number(process.env.COPIES ?? 2);
+    const out = path.join(folder, `product-reads-${PER}${process.env.TAG ?? ''}.json`);
+    /* ONLY_MISSING=1 keeps what an earlier run of this mode already read and reads only the check-ins it lost. */
+    const dump: any[] = process.env.ONLY_MISSING === '1' && fs.existsSync(out) ? JSON.parse(fs.readFileSync(out, 'utf8')) : [];
+    const already = new Set(dump.map((d) => d.checkInId));
+    /*
+     * A BUSY MODEL MUST NOT LOOK LIKE A QUIET PERIOD. whatOneReadKeeps treats a confirming call that fails as
+     * "not confirmed" (the product's own safe default), so under a burst of 429s a read silently keeps less. Here
+     * the confirming call is asked again with a pause, and if it still fails the whole read is marked failed and
+     * read again, so every read kept in the dump is a read the model actually answered.
+     */
+    const { AsyncLocalStorage } = require('async_hooks');
+    const thisRead = new AsyncLocalStorage();
+    const confirmOnce = patterns.confirmDetection.bind(patterns);
+    patterns.confirmDetection = async (...args: any[]) => {
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        try { return await confirmOnce(...args); } catch { await new Promise((r) => setTimeout(r, 8000 * attempt)); }
+      }
+      const store = thisRead.getStore(); if (store) store.failed = true;
+      throw new Error('the confirming call did not come back');
+    };
+    /* A read the model did not answer is asked again (up to four times), so one busy minute does not drop a check-in. */
+    const oneRead = async (checkIn: any, ctx: any, getInput: () => any): Promise<string[] | null> => {
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        const store = { failed: false };
+        try {
+          /* Never wait on one read for more than five minutes: a call that never answers must not hold a slot for ever. */
+          const k = await limited(() => Promise.race([
+            thisRead.run(store, () => patterns.whatOneReadKeeps(checkIn.id, ctx.content, ctx.block, ctx.lastPeriod, ctx.statedGoals, ctx.deps, getInput, ctx.whatThePersonSaid)),
+            new Promise((_, no) => setTimeout(() => no(new Error('the read took more than five minutes')), 300000)),
+          ]));
+          if (!store.failed) return (k as { code: string }[]).map((x) => x.code);
+          process.stderr.write(`read lost a confirming call (attempt ${attempt}); reading again\n`);
+        } catch (e: any) { process.stderr.write(`read failed (attempt ${attempt}): ${String(e?.message ?? e).slice(0, 160)}\n`); }
+        await new Promise((r) => setTimeout(r, 10000 * attempt));
+      }
+      return null;
     };
     for (const s of scenarios) {
-      const checkIns = await prisma.checkIn.findMany({
-        where: { groundId: s.groundId, patternsAnalyzedAt: { not: null } },
-        select: { id: true, groundId: true, participantId: true, sessionNumber: true, completedAt: true, startedAt: true, createdAt: true,
-          ground: { select: { cadence: true } }, participant: { select: { user: { select: { email: true } } } } },
-      });
+      const checkIns = (await checkInsOf(s.groundId)).filter((c: any) => !already.has(c.id));
       await Promise.all(checkIns.map(async (checkIn: any) => {
         const ctx = await contextFor(checkIn);
         if (!ctx) return;
         const getInput = () => patterns.buildDetectionInputForParticipant(checkIn.participantId);
-        const reads = await Promise.all(Array.from({ length: 2 * PER }, () =>
-          patterns.whatOneReadKeeps(checkIn.id, ctx.content, ctx.block, ctx.lastPeriod, ctx.statedGoals, ctx.deps, getInput)
-            .then((k: { code: string }[]) => k.map((x) => x.code)).catch((e: any) => { process.stderr.write(`read failed: ${String(e?.message ?? e).slice(0, 160)}\n`); return null; })));
+        const reads = await Promise.all(Array.from({ length: COPIES * PER }, () => oneRead(checkIn, ctx, getInput)));
         const okReads = reads.filter((r): r is string[] => !!r);
-        if (okReads.length < 2 * PER) { process.stderr.write(`check-in ${checkIn.id}: only ${okReads.length} of ${2 * PER} reads came back\n`); return; }
-        dump.push({ scenario: s.name, checkInId: checkIn.id, period: periodOf({ sessionNumber: checkIn.sessionNumber, when: checkIn.completedAt ?? checkIn.startedAt ?? checkIn.createdAt }, checkIn.ground), person: (checkIn.participant?.user?.email ?? 'unknown').split('@')[0].split('.')[0], reads: okReads });
-        const a = most(okReads.slice(0, PER)), b = most(okReads.slice(PER));
-        const person = (checkIn.participant?.user?.email ?? 'unknown').split('@')[0].split('.')[0];
-        total++; if ([...a].sort().join() === [...b].sort().join()) same++;
-        (pairsA[s.name] ??= new Set()); (pairsB[s.name] ??= new Set());
-        a.forEach((c) => pairsA[s.name].add(`${person}::${c}`)); b.forEach((c) => pairsB[s.name].add(`${person}::${c}`));
+        if (okReads.length < COPIES * PER) { process.stderr.write(`check-in ${checkIn.id}: only ${okReads.length} of ${COPIES * PER} reads came back\n`); return; }
+        dump.push({ scenario: s.name, checkInId: checkIn.id, period: ctx.period, person: personOf(checkIn), reads: okReads });
+        process.stderr.write(`read ${s.name} ${personOf(checkIn)} period ${ctx.period}\n`);
       }));
+      fs.writeFileSync(out, JSON.stringify(dump)); /* after every scenario, so a stopped run keeps what it read */
       process.stderr.write(`product-read ${s.name}\n`);
     }
-    let sh = 0, un = 0;
-    for (const k of new Set([...Object.keys(pairsA), ...Object.keys(pairsB)])) {
-      const A = pairsA[k] ?? new Set<string>(), B = pairsB[k] ?? new Set<string>();
-      sh += [...A].filter((x) => B.has(x)).length; un += new Set([...A, ...B]).size;
-    }
-    fs.writeFileSync(path.join(folder, `product-reads-${PER}.json`), JSON.stringify(dump));
-    console.log(`Through the product's own code, two separate majorities of ${PER} reads (at least ${AGREE} agreeing): ${sh} of ${un} person-and-pattern pairs the same (${un ? Math.round(100 * sh / un) : 100}%); exactly the same patterns on ${same} of ${total} check-ins.`);
+    fs.writeFileSync(out, JSON.stringify(dump));
+    console.log(`Through the product's own code: ${dump.length} check-ins, ${COPIES} copies of ${PER} reads each (at least ${AGREE} agreeing), kept in ${out}. Compare with journey/what-each-person-is-shown-read-twice.py.`);
     await app.close();
     process.exit(0);
   }
