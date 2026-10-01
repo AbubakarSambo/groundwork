@@ -17,7 +17,7 @@ import { whatTheRecordsReach, NEVER_CONCLUDE_ABOUT_SHIPPING } from '../public-ap
 import { whatCouldBeChecked, AClaim, COULD_NOT_WORK_IT_OUT } from './what-nothing-here-could-check';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
-import { confidenceInThePicture, CURRENT_BEST_READING } from './confidence-in-the-picture';
+import { confidenceInThePicture, CURRENT_BEST_READING, theFiveReadings } from './confidence-in-the-picture';
 import { softSpots, whatWouldRaiseIt } from './harder-to-fool';
 import { markWhatOnlyTheLeadSaid, whyItWasDropped } from './a-lead-note-is-not-evidence';
 import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT, whoIsReadingTheWeighing } from './what-a-leader-can-weigh';
@@ -36,7 +36,8 @@ import { wordedByTheModel, type Drafted, type Compose } from './the-engine-draft
 import { rememberedCompose } from './a-line-worded-once-is-kept';
 import { wordPatternEvidence } from './pattern-evidence-in-plain-words';
 import { runAtOnce, READERS_WARMED_TOGETHER } from './run-at-once-with-a-cap';
-import { Syntheses, theSentenceWhileItIsWritten } from './the-report-is-being-written';
+import { Syntheses, theSentenceWhileItIsWritten, withoutTheCountWhileItIsWritten } from './the-report-is-being-written';
+import { itWasTakenFurther } from './what-they-said-they-did-about-it';
 import { OneAtATime } from './one-warm-up-at-a-time';
 import { stillRaised, notRaisedAgain, sayingWhatWentQuiet } from '../board/a-blocker-nobody-raised-again';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
@@ -512,6 +513,14 @@ AND ONLY WHAT WAS REFERENCED. If you are reasoning from what success would imply
 13. LEAD-SUPPLIED CONTEXT IS DIRECTION, NEVER A CLAIM. The LEAD-SUPPLIED CONTEXT section is private background from the initiator, not a party's statement. Use it only to decide what to weigh and what to probe. Never attribute it to a party, never quote it, never present it as an established fact, and never let it become a claim in the report. Every claim you write must trace to a party's own record entry - if lead context points at something no party's record supports, do not assert it.
 
 15. AND HOW EVERY SENTENCE OF IT IS WRITTEN. These two blocks are the product's one wording rulebook, and they override anything above or below them that disagrees.
+16. ONE PAGE TELLS ONE STORY. The opening, the agreements, the divergences and the central question are read on one page, and none of them may say the opposite of another. Before you return, read them against each other:
+  - If the opening says people disagree on something, that thing is in divergences. If divergences is empty, the opening does not say anybody disagrees.
+  - Never say people disagree on a point and, anywhere else, that they agree on the same point. Where they agree on part of it and differ on the rest, say which part is which: "Both of you say Tobi owns the five largest clients. You differ on whether that includes pricing and renewals."
+  - If you say there is one thing they disagree on, there is one, and it is the same one everywhere it is named.
+  - A number, a target or a fact is stated once, the same way, everywhere. Do not write "you have not set individual targets" in one place and "the individual targets add up to 40" in another. Where two people say different things about it, that is a divergence: say who said which.
+  - Where you name a cause, it is the cause the record gives. If one section says a difference comes from how the loan was designed, no other section says it comes from what people were told.
+  - Write about the latest session. Where somebody's account changed, say what they say now, and that it changed; do not keep an earlier sentence that the latest session contradicts.
+
 
 ${PLAIN_WORDS_EXAMPLES}
 
@@ -2044,7 +2053,14 @@ Close the report by framing - neutrally, without recommending one - the choice n
       const label = labelById.get(p.id) ?? 'a party';
       specificityNotes.push({
         label,
-        dimensions: Object.entries(dims).map(([dim, level]) => ({
+        /*
+         * THE FIVE READINGS, AND NOT A SIXTH KEY THE SCORER ALSO STORES (review of 1 October 2026).
+         * `checkable` sits in the same column as a summary flag, not one of the five, and it came
+         * out as "In session 1, what was said about checkable was specific." under a confidence line
+         * that said "What is here is general rather than checkable", about the same reader, on the
+         * same page. Only the five the confidence is read from are said here.
+         */
+        dimensions: theFiveReadings(dims).map(([dim, level]) => ({
           dim,
           level,
           /**
@@ -3437,7 +3453,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       started(() => this.prisma.workMention.findMany({ where: { groundId }, select: { sourceParticipantId: true, aboutParticipantId: true, kind: true, sessionNumber: true } }), [] as any[]),
       started(() => this.prisma.groundDependency.findMany({
         where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
-        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, escalatedAt: true, blockerKind: true, sourceCheckInId: true },
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, escalatedAt: true, triedSaid: true, blockerKind: true, sourceCheckInId: true },
       }), [] as any[]),
     ]);
 
@@ -3695,7 +3711,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             who: nameFor(d.fromParticipantId),
             on: d.onParticipantId ? nameFor(d.onParticipantId) : d.onLabel,
             onIsPerson: !!d.onParticipantId,
-            what: d.what, kind: (d.blockerKind as any) ?? null, escalated: !!d.escalatedAt,
+            what: d.what, kind: (d.blockerKind as any) ?? null, escalated: itWasTakenFurther(d),
             /* Whether they named the thing: the model's answer where we have it, the word-list rule
                on the rows written before that column existed. The finding's sentence branches on it. */
             named: theyNamedWhatTheyAreWaitingOn(d),
@@ -3992,7 +4008,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }),
       this.prisma.groundDependency.findMany({
         where: { groundId, status: 'WAITING' },
-        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true, blockerKind: true },
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true, triedSaid: true, blockerKind: true },
       }),
       this.prisma.delivery.findMany({ where: { groundId }, select: { participantId: true, objectiveId: true, text: true } }),
       /*
@@ -4033,7 +4049,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           openBlockers: mine.map((b) => ({
             what: b.what,
             onName: b.onParticipantId ? (labelById.get(b.onParticipantId) ?? null) : (b.onLabel ?? null),
-            escalated: !!b.escalatedAt,
+            escalated: itWasTakenFurther(b),
           })),
           progress: deliveries.filter((d) => d.participantId === o.participantId).map((d) => ({ text: d.text })),
           saidWhy: saidWhyByParticipant.get(o.participantId) ?? null,
@@ -4142,7 +4158,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
        * identically as "one person waiting on another", and they need different people in the
        * room - so the argument was being settled by whoever described it best.
        */
-      lines.push(`- ${from}: ${howToSayIt(b.blockerKind as any, b.what, on)}${b.escalatedAt ? ' Already raised.' : ''}`);
+      lines.push(`- ${from}: ${howToSayIt(b.blockerKind as any, b.what, on)}${itWasTakenFurther(b) ? ' Already raised.' : ''}`);
     }
 
     return `WHAT IS ON THE RECORD, AND WHAT IT SHOWS.
@@ -4247,7 +4263,7 @@ happened, and what is in the way.`;
       (this.prisma.groundDependency?.findMany?.({
         where: { groundId },
         orderBy: { createdAt: 'asc' },
-        select: { what: true, fromParticipantId: true, onParticipantId: true, onLabel: true, status: true, escalatedAt: true, createdAt: true },
+        select: { what: true, fromParticipantId: true, onParticipantId: true, onLabel: true, status: true, escalatedAt: true, triedSaid: true, createdAt: true },
       }) ?? Promise.resolve([])).catch(() => [] as any[]),
       (this.prisma.patternDetection?.findMany?.({
         where: { groundId },
@@ -5477,7 +5493,7 @@ happened, and what is in the way.`;
         where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
         select: {
           fromParticipantId: true, onParticipantId: true, onLabel: true,
-          what: true, createdAt: true, escalatedAt: true,
+          what: true, createdAt: true, escalatedAt: true, triedSaid: true,
           /* What kind of thing is in the way, and therefore who can move it. The row has carried
              this all along and both coaching surfaces said "waiting on X" without reading it. */
           blockerKind: true,
@@ -5652,7 +5668,7 @@ happened, and what is in the way.`;
              Only a resolved participant is somebody you can be waiting on. */
           who: d.onParticipantId ? nameOf(d.onParticipantId, null) : null,
           daysOld: held.wholeDays(d.createdAt),
-          escalated: !!d.escalatedAt,
+          escalated: itWasTakenFurther(d),
           kind: (d.blockerKind as any) ?? null,
         })),
       holdingUp: held.dependencies
@@ -5661,7 +5677,7 @@ happened, and what is in the way.`;
           what: d.what,
           who: nameOf(d.fromParticipantId, null),
           daysOld: held.wholeDays(d.createdAt),
-          escalated: !!d.escalatedAt,
+          escalated: itWasTakenFurther(d),
           kind: (d.blockerKind as any) ?? null,
         })),
       saidSomethingSpecific: mine.length > 0,
@@ -5846,7 +5862,7 @@ happened, and what is in the way.`;
              Only a resolved participant is somebody you can be waiting on. */
           who: d.onParticipantId ? nameOf(d.onParticipantId, null) : null,
               daysOld: held.wholeDays(d.createdAt),
-              escalated: !!d.escalatedAt,
+              escalated: itWasTakenFurther(d),
               kind: (d.blockerKind as any) ?? null,
             })),
           holdingUp: held.dependencies
@@ -6199,7 +6215,7 @@ happened, and what is in the way.`;
     const answeredIds = new Set(answered.map((c) => c.participantId));
     const labels = labelsForParties(ground.participants ?? []);
     const who = (ground.participants ?? []).filter((p: any) => answeredIds.has(p.id) && !p.managingOnly && p.userId !== requestingUserId).map((p: any) => labels.get(p.id) as string).filter(Boolean);
-    return { ...(served as any), beingWritten: { since: since.toISOString(), sentence: theSentenceWhileItIsWritten(who) } };
+    return { ...withoutTheCountWhileItIsWritten(served as any), beingWritten: { since: since.toISOString(), sentence: theSentenceWhileItIsWritten(who) } };
   }
 
   /**

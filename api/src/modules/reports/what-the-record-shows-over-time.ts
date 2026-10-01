@@ -27,6 +27,7 @@
 
 
 import { THE_LEADS_LABEL } from './party-labels';
+import { whatWasTried, somebodyWentBackAboutIt, itWasTakenFurther } from './what-they-said-they-did-about-it';
 
 export interface ACommitmentOverTime {
   participantId: string | null;
@@ -348,6 +349,8 @@ export interface ADependencyRow {
   onLabel: string | null;
   status: string;
   escalatedAt: Date | null;
+  /** What they said they had done about it, in their own words, where they said anything. */
+  triedSaid?: string | null;
   /** The session the person was in when they first said it. */
   statedInSession?: number | null;
 }
@@ -382,11 +385,26 @@ export function dependenciesOverTime(
       const howLong = sessionsWaiting !== null && sessionsWaiting > 0
         ? ` for ${sessionsWaiting} ${sessionsWaiting === 1 ? 'session' : 'sessions'} now`
         : '';
+      /*
+       * ONE SENTENCE, SO WHAT WAS TRIED NEVER STANDS WITHOUT THE THING IT WAS TRIED ON, AND READ FROM
+       * WHAT THEY SAID AS WELL AS FROM THE PRODUCT'S OWN STAMP (review of 1 October 2026).
+       *
+       * Two sentences let the quote check take the first and leave "Nothing on record says anybody
+       * has chased it since." on its own, about nothing, at the top of the lead's list. And the second
+       * read only `escalatedAt`, the overnight sweep's stamp, so Ngozi Eze, who had said "I have
+       * chased the committee four times in writing ... I also escalated to the Head of Credit", was
+       * the one person told nobody had chased. See what-they-said-they-did-about-it.
+       */
+      const tried = whatWasTried(d);
+      const since = d.escalatedAt
+        ? 'somebody went back about it after that'
+        : tried === 'went-around' ? 'another way through has been tried'
+          : itWasTakenFurther(d) ? 'it has been taken above the person it was with'
+            : tried === 'escalated' || tried === 'asked-again' ? 'it has been chased more than once since'
+              : tried === 'asked-once' ? 'it has been asked about once since'
+                : 'nothing on record says anybody has chased it since';
       const sentences = [
-        `${from} is waiting on ${on ?? 'somebody outside this check-in'} for "${d.what}"${howLong}.`,
-        d.escalatedAt
-          ? 'Somebody went back about it after that.'
-          : 'Nothing on record says anybody has chased it since.',
+        `${from} is waiting on ${on ?? 'somebody outside this check-in'} for "${d.what}"${howLong}, and ${since}.`,
       ];
       /*
        * THE DIRECTION IS THE FINDING, AND IT IS SAID PLAINLY BECAUSE IT KEEPS BEING READ BACKWARDS.
@@ -400,7 +418,7 @@ export function dependenciesOverTime(
         on,
         onParticipantId: d.onParticipantId,
         sessionsWaiting,
-        chased: !!d.escalatedAt,
+        chased: somebodyWentBackAboutIt(d),
         status: d.status,
         say: sentences.join(' '),
       };
@@ -701,15 +719,40 @@ export function inSessions(n: number | null | undefined): string | null {
   return `in ${count} ${count === 1 ? 'session' : 'sessions'}`;
 }
 
+/**
+ * A LINE ABOUT WHAT IS STILL OPEN NAMES WHAT IS STILL OPEN (review of 1 October 2026).
+ *
+ * The lead's list of what is still open read, on the sales run, "Nothing on record says anybody has
+ * chased it since.", "Nobody has said yet whether it happened." and "The time Femi Okonkwo gave for
+ * it was tomorrow. Nobody has said yet whether it happened.": the sentence that said what "it" was
+ * had been taken out by the quote check, and the sentences after it stayed. A line that starts with
+ * one of those after-sentences has lost its subject, and is not served.
+ */
+const A_LINE_THAT_LOST_ITS_SUBJECT = /^\s*(?:nothing on record says|somebody went back about it|nobody has said(?: yet)? whether it happened|it has been open for|the time .{1,80}? gave for it was|this is work .{1,80}? owes|it is marked|a document .{1,80}? shows it was done|the colleague who received it)/i;
+export function theThingIsNamed(line: unknown): boolean {
+  return typeof line === 'string' && !!line.trim() && !A_LINE_THAT_LOST_ITS_SUBJECT.test(line);
+}
+
 export function overTimeAsServed(it: WhatTheRecordShowsOverTime | null | undefined): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
+  /* The sentence is rebuilt from the row, so a report stored before it was rewritten reads it too. */
+  const commitments = (it.commitments ?? []).map((c) => (c && typeof c.what === 'string' && typeof c.who === 'string' && typeof c.theySaidIt === 'boolean'
+    ? { ...c, say: aCommitmentSaid({ ...c, restatedIn: c.restatedIn ?? [] }, it.sessions ?? 0) }
+    : c));
+  /*
+   * AND WHAT IS STILL OPEN IS BUILT FROM THE SAME ROWS, as it was when the report was written: what
+   * each person is waiting on, then the promises nobody closed, each in the sentence the list above
+   * serves. A line that lost the sentence naming its thing is left out. See theThingIsNamed.
+   */
+  /* Only rows this read can rebuild: a row stored before the commitment carried who said it keeps its stored list. */
+  const rebuilt = Array.isArray(it.dependencies) && Array.isArray(it.commitments) && it.commitments.some((c) => typeof c?.theySaidIt === 'boolean')
+    ? [...it.dependencies.map((d) => d?.say), ...theOnesStillOpen(commitments as ACommitmentOverTime[]).slice(0, 10).map((c) => c.say)]
+    : (it.stillOpen ?? []);
   return {
     ...it,
     inSessions: inSessions(it.sessions),
-    /* The sentence is rebuilt from the row, so a report stored before it was rewritten reads it too. */
-    commitments: (it.commitments ?? []).map((c) => (c && typeof c.what === 'string' && typeof c.who === 'string' && typeof c.theySaidIt === 'boolean'
-      ? { ...c, say: aCommitmentSaid({ ...c, restatedIn: c.restatedIn ?? [] }, it.sessions ?? 0) }
-      : c)),
+    commitments,
+    stillOpen: (rebuilt as unknown[]).filter(theThingIsNamed) as string[],
     patterns: [],
     toSettleFirst: (it.toSettleFirst ?? []).filter((q) => !String(q).endsWith(A_QUESTION_BUILT_FROM_A_PATTERN_ENDS)),
   };

@@ -172,7 +172,8 @@ describe('what the record shows over time', () => {
       expect(d.say).toContain('Amina Bello is waiting on Marcus Oyelaran');
       expect(d.say).toContain('This is work Marcus Oyelaran owes Amina Bello, not the other way round');
       expect(d.say).toContain('4 sessions');
-      expect(d.say).toContain('Nothing on record says anybody has chased it since');
+      /* One sentence with the thing it is about since 1 October 2026: see the next test. */
+      expect(d.say).toContain('and nothing on record says anybody has chased it since');
     });
 
     /*
@@ -189,9 +190,14 @@ describe('what the record shows over time', () => {
         what: 'the signed lease', fromParticipantId: 'amina', onParticipantId: 'marcus',
         onLabel: null, status: 'WAITING', escalatedAt: null, statedInSession: 2,
       }], labelOf, 6);
+      /*
+       * CHANGED 1 OCTOBER 2026 (review of 1 October, section 3). What was tried is now in the same
+       * sentence as the thing it was tried on. As two sentences, the quote check could take the
+       * first and leave "Nothing on record says anybody has chased it since." on its own, about
+       * nothing, at the top of the lead's list of what is still open.
+       */
       expect(d.say).toBe(
-        'Amina Bello is waiting on Marcus Oyelaran for "the signed lease" for 4 sessions now. '
-        + 'Nothing on record says anybody has chased it since. '
+        'Amina Bello is waiting on Marcus Oyelaran for "the signed lease" for 4 sessions now, and nothing on record says anybody has chased it since. '
         + 'This is work Marcus Oyelaran owes Amina Bello, not the other way round.',
       );
       expect(d.say).not.toMatch(/\b(escalat\w*|bottleneck|alignment|leverage|stakeholder|deliverable|cadence|pipeline)\b/i);
@@ -207,7 +213,8 @@ describe('what the record shows over time', () => {
         what: 'the signed lease', fromParticipantId: 'amina', onParticipantId: 'marcus',
         onLabel: null, status: 'WAITING', escalatedAt: new Date('2026-09-01'), statedInSession: 2,
       }], labelOf, 6);
-      expect(d.say).toContain('Somebody went back about it after that.');
+      /* In the same sentence as the thing, since 1 October 2026 (see above). */
+      expect(d.say).toContain('for 4 sessions now, and somebody went back about it after that.');
       expect(d.chased).toBe(true);
       expect(Object.keys(d)).not.toContain('escalated');
     });
