@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
 import { whatNeedsYou, type WhatNeedsYou } from './what-needs-you';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
+import { whoIsAwayOn } from '../suites/who-is-away';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { waitingForYouToApprove } from './waiting-for-you-to-approve';
@@ -74,7 +75,9 @@ export class WhatNeedsYouService {
     if (declined.size) {
       for (const g of here) g.participants = (g.participants ?? []).map((p: any) => (p.userId && declined.has(p.userId) ? { ...p, notLetIn: true } : p));
     }
-    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval }, waiting.map((w) => ({ ...w, organizationId })), new Date(), toApprove);
+    /* On approved leave today (week 23): their own check-in says the round does not wait for them. Dates only. */
+    const awayUntil = (await whoIsAwayOn(this.prisma, [userId], organizationId).catch(() => new Map<string, string>())).get(userId) ?? null;
+    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), toApprove);
     /* A net: no address stands in for a name in any sentence on Today (week 12c). */
     const called = new Map<string, string>();
     for (const g of here as any[]) {

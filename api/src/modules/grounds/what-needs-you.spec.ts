@@ -207,3 +207,26 @@ describe('Today, for a session that was started before its own date', () => {
     expect(r.comingUp).toEqual([{ at: ahead(150), what: 'Your second check-in for Sales team, Q3 opens.', to: '/grounds/g-early' }]);
   });
 });
+
+/*
+ * BEING AWAY (week 23). Found live, 1 October 2026 (item 6, journey/memory-requests-and-being-away-live.ts):
+ * Amani, on approved leave until Friday 2 October, read "About two minutes." under her check-in on
+ * Today, exactly as somebody the round waits for, while the check-in page told her the round did not.
+ */
+describe('a turn of your own while you are on leave', () => {
+  const first = { ...sales, checkIns: [{ id: 'm1', participantId: 'p-m', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: ago(200) }] };
+
+  it('says the round does not wait for you, and that you may still answer, never how long it has been open', () => {
+    const r = whatNeedsYou([first], { userId: MIRIAM, role: 'MEMBER', organizationId: 'org', awayUntil: '2026-10-02' }, [], NOW);
+    expect(r.needs[0]).toMatchObject({
+      title: 'Your first check-in for Sales team, Q3',
+      detail: 'You are on leave until Friday 2 October, so this round does not wait for you. You can still answer it if you want to.',
+      action: { label: 'Start it', to: '/checkin/m1' },
+    });
+  });
+
+  it('reads as before for somebody who is not away', () => {
+    const notAway = whatNeedsYou([first], { userId: MIRIAM, role: 'MEMBER', organizationId: 'org' }, [], NOW);
+    expect(notAway.needs[0].detail).toBe('About two minutes. It opened 8 days ago.');
+  });
+});
