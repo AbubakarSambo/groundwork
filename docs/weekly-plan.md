@@ -129,7 +129,7 @@ It needs week 8's marks, and week 9's kept and missed commitments, to have signa
 
 **Week 22. Spending through chat.** *Built 1 October: checked against the budget and the rules before the yes.* The same, checked against the budget and the rules. This is screens request 26.
 
-**Week 23. Being away.** The dates of approved leave, dates only (decision 31), are copied to where the engine reads them. While someone is away:
+**Week 23. Being away.** *Built 1 October (`6efda69e` to `c2ed3add`): not waited on, no reminders, nothing counted against them.* The dates of approved leave, dates only (decision 31), are copied to where the engine reads them. While someone is away:
 - the board and the round count do not wait for them;
 - no reminders or "you have missed" emails go to them;
 - nothing counts against them.
