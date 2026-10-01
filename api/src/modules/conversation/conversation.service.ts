@@ -1165,7 +1165,7 @@ export class ConversationService {
       : `${await this.composeSystemPrompt(checkIn, undefined, { forTheOpener: true })}\n\n${THE_OPENER_IS_ONE_MESSAGE}`;
     if (!alreadyWritten) this.logger.log(`Check-in ${checkIn.id}: opener prompt ${openerSystem.length} chars.`);
     /* The opener is saved through the same step as every turn, so it is read against its own prompt. */
-    if (openerSystem) this.promptForThisTurn.set(checkIn.id, openerSystem);
+    if (openerSystem) this.setThePromptForThisTurn(checkIn.id, openerSystem);
 
     const beginMessage = (checkIn as any).isFinal
       ? '<<BEGIN_CHECK_IN>> The person has just arrived for their CLOSING session. Open by telling them plainly, in your first sentence, that this is their closing check-in - the last word on their record, worth documenting thoroughly - and then continue per your runtime context.'
@@ -1290,7 +1290,9 @@ export class ConversationService {
      * the rhythm block, copied out. Cut here, where every reply is saved, against the whole prompt this
      * turn was given. See our-instructions-never-reach-them.
      */
-    const thePrompt = (checkIn as any)?.id ? this.promptForThisTurn.get((checkIn as any).id) ?? '' : '';
+    const thePrompt = (checkIn as any)?.id
+      ? [this.promptForThisTurn.get((checkIn as any).id) ?? '', ...(this.retryInstructionsForThisTurn.get((checkIn as any).id) ?? [])].filter(Boolean).join('\n\n')
+      : '';
     if (thePrompt) {
       const theirWordsHere: string[] = await (this.prisma.conversationTurn?.findMany?.({ where: { checkInId: (checkIn as any).id, role: TurnRole.PERSON }, select: { content: true } }) ?? Promise.resolve([]))
         .then((rows: any[]) => (rows ?? []).map((r) => r.content ?? '')).catch(() => [] as string[]);
@@ -1455,7 +1457,7 @@ export class ConversationService {
     this.logger.warn(`Check-in ${checkInId}: the opener ${wrong.map((w) => w.why).join(' and ')}; asking again.`);
 
     const second = await this.anthropic
-      .respond(`${fullSystem}\n\n${wrong.map((w) => w.instruction).join('\n\n')}`, [{ role: 'user', content: beginMessage }])
+      .respond(this.keptForTheLeakCheck(checkInId, `${fullSystem}\n\n${wrong.map((w) => w.instruction).join('\n\n')}`), [{ role: 'user', content: beginMessage }])
       .then((t) => forHumans(t))
       .catch(() => '');
     if (second.trim() && faults(second).length === 0) {
@@ -1719,7 +1721,7 @@ export class ConversationService {
     const fullSystem = [composed, aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null]
       .filter(Boolean)
       .join('\n\n');
-    this.promptForThisTurn.set(checkIn.id, fullSystem);
+    this.setThePromptForThisTurn(checkIn.id, fullSystem);
 
     // Persist the person's turn.
     const personTurn = await this.prisma.conversationTurn.create({
@@ -1929,7 +1931,7 @@ export class ConversationService {
       if (alreadyAskedTwice(screened.text, earlierAsks)) {
         this.logger.warn(`Check-in ${checkIn.id}: the same question a third time; asking again.`);
         const moved = await this.anthropic
-          .respond(`${fullSystem}\n\n${ASKED_IT_TWICE_ALREADY}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${ASKED_IT_TWICE_ALREADY}`), history)
           .catch(() => '');
         const second = moved.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
@@ -1974,7 +1976,7 @@ export class ConversationService {
         if (askedAgain) {
           this.logger.warn(`Check-in ${checkIn.id}: asked again about ${JSON.stringify(askedAgain.thing.what)} after it was answered; asking for another turn.`);
           const moved = await this.anthropic
-            .respond(`${fullSystem}\n\n${theyAlreadyAnsweredThat(askedAgain.thing.what, askedAgain.answer)}`, history)
+            .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${theyAlreadyAnsweredThat(askedAgain.thing.what, askedAgain.answer)}`), history)
             .catch(() => '');
           const second = moved.trim()
             ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
@@ -2011,7 +2013,7 @@ export class ConversationService {
           const askedSentence = lastAskHere.split(/(?<=[.!?])\s+/).find((x) => /\?\s*$/.test(x)) ?? lastAskHere;
           this.logger.warn(`Check-in ${checkIn.id}: asked a question again after it was answered; asking for another turn.`);
           const moved = await this.anthropic
-            .respond(`${fullSystem}\n\n${theyAlreadyAnsweredThat(`this - ${JSON.stringify(askedSentence.slice(0, 160))}`, again.answer)}`, history)
+            .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${theyAlreadyAnsweredThat(`this - ${JSON.stringify(askedSentence.slice(0, 160))}`, again.answer)}`), history)
             .catch(() => '');
           const second = moved.trim()
             ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
@@ -2040,7 +2042,7 @@ export class ConversationService {
       if (isAVerdictAboutSomebodyElse(message, screened.text)) {
         this.logger.warn(`Check-in ${checkIn.id}: a verdict about somebody not in the room; asking again.`);
         const hers = await this.anthropic
-          .respond(`${fullSystem}\n\n${HERS_TO_DRAW}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${HERS_TO_DRAW}`), history)
           .catch(() => '');
         const second = hers.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(hers), theirWords), known, readerName, conversationSoFar)
@@ -2070,7 +2072,7 @@ export class ConversationService {
       if (untoldGoalsHere.length && saysWhatAnUntoldGoalWithholds(screened.text, untoldGoalsHere)) {
         this.logger.warn(`Check-in ${checkIn.id}: a reply named a number or a goal the lead has not told them about; asking again.`);
         const withheld = await this.anthropic
-          .respond(`${fullSystem}\n\n${IT_NAMED_THE_UNTOLD_NUMBER}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${IT_NAMED_THE_UNTOLD_NUMBER}`), history)
           .catch(() => '');
         const second = withheld.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(withheld), theirWords), known, readerName, conversationSoFar)
@@ -2095,7 +2097,7 @@ export class ConversationService {
         if (lastAsk && asksTheSameThingAgain(lastAsk, screened.text)) {
           this.logger.warn(`Check-in ${checkIn.id}: they ${declined ? 'declined it' : 'said the questions were wrong'} and the reply asked it again; asking again.`);
           const heard = await this.anthropic
-            .respond(`${fullSystem}\n\n${declined ? THEY_DECLINED_IT : THEY_ALREADY_SAID_NO}`, history)
+            .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${declined ? THEY_DECLINED_IT : THEY_ALREADY_SAID_NO}`), history)
             .catch(() => '');
           const second = heard.trim()
             ? screen(withoutQuotesTheyDidNotSay(forHumans(heard), theirWords), known, readerName, conversationSoFar)
@@ -2127,7 +2129,7 @@ export class ConversationService {
         /* The offending sentence goes back with the instruction. Asking for "no restatement" in the
            abstract lost 58 times out of 75 across nineteen live check-ins. */
         const straight = await this.anthropic
-          .respond(`${fullSystem}\n\n${doNotSayItBack(message, screened.text)}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${doNotSayItBack(message, screened.text)}`), history)
           .catch(() => '');
         const second = straight.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(straight), theirWords), known, readerName, conversationSoFar)
@@ -2216,7 +2218,7 @@ export class ConversationService {
            for what a close is FOR, or the retry trims a paragraph that should not exist at all. */
         const askFor = thisIsTheClosingTurn ? A_CLOSE_IS_THREE_SENTENCES : SAY_IT_SHORTER;
         const shorter = await this.anthropic
-          .respond(`${fullSystem}\n\n${askFor}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${askFor}`), history)
           .catch(() => '');
         const second = shorter.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(shorter), theirWords), known, readerName, conversationSoFar)
@@ -2244,7 +2246,7 @@ export class ConversationService {
         this.logger.warn(`Check-in ${checkIn.id}: the reply left the date out; asking again.`);
         const theInstruction = SAY_THE_DATE(period, dateItHadToSay);
         const withTheDate = await this.anthropic
-          .respond(`${fullSystem}\n\n${theInstruction}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${theInstruction}`), history)
           .catch(() => '');
         const second = withTheDate.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(withTheDate), theirWords), known, readerName, conversationSoFar)
@@ -2276,7 +2278,7 @@ export class ConversationService {
       if (numbersGap && !saidBothNumbers(screened.text, numbersGap)) {
         this.logger.warn(`Check-in ${checkIn.id}: the reply left the numbers out; asking again.`);
         const withBoth = await this.anthropic
-          .respond(`${fullSystem}\n\n${askWhichItIs(numbersGap)}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${askWhichItIs(numbersGap)}`), history)
           .catch(() => '');
         const second = withBoth.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(withBoth), theirWords), known, readerName, conversationSoFar)
@@ -2307,7 +2309,7 @@ export class ConversationService {
       if (asksForAShapeWithoutShowingOne(screened.text)) {
         this.logger.warn(`Check-in ${checkIn.id}: asked for a shape without showing one; asking again.`);
         const withOne = await this.anthropic
-          .respond(`${fullSystem}\n\n${SHOW_WHAT_ONE_LOOKS_LIKE}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${SHOW_WHAT_ONE_LOOKS_LIKE}`), history)
           .catch(() => '');
         const second = withOne.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(withOne), theirWords), known, readerName, conversationSoFar)
@@ -2349,7 +2351,7 @@ export class ConversationService {
       if (wouldLeaveAQuestionOut(screened.text)) {
         this.logger.warn(`Check-in ${checkIn.id}: the reply asked more than one question; asking again.`);
         const once = await this.anthropic
-          .respond(`${fullSystem}\n\n${ASK_ONE_THING}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${ASK_ONE_THING}`), history)
           .catch(() => '');
         const second = once.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(once), theirWords), known, readerName, conversationSoFar)
@@ -2377,7 +2379,7 @@ export class ConversationService {
       if (jargonHere.length) {
         this.logger.warn(`Check-in ${checkIn.id}: ${jargonHere.length} management word(s) they did not use; asking again.`);
         const plain = await this.anthropic
-          .respond(`${fullSystem}\n\n${sayItInPlainWords(jargonHere, screened.text)}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${sayItInPlainWords(jargonHere, screened.text)}`), history)
           .catch(() => '');
         const second = plain.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(plain), theirWords), known, readerName, conversationSoFar)
@@ -2401,7 +2403,7 @@ export class ConversationService {
       if (notOurWords.length) {
         this.logger.warn(`Check-in ${checkIn.id}: ${notOurWords.length} word(s) we do not use; asking again.`);
         const ours = await this.anthropic
-          .respond(`${fullSystem}\n\n${sayItWithoutThose(notOurWords, screened.text)}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${sayItWithoutThose(notOurWords, screened.text)}`), history)
           .catch(() => '');
         const second = ours.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(ours), theirWords), known, readerName, conversationSoFar)
@@ -2452,7 +2454,7 @@ export class ConversationService {
       if (movedIt && standsAt != null && target != null) {
         this.logger.warn(`Check-in ${checkIn.id}: the reply moved a target to where they stand; asking again.`);
         const again = await this.anthropic
-          .respond(`${fullSystem}\n\n${A_STANDING_IS_NOT_A_TARGET(standsAt, target)}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${A_STANDING_IS_NOT_A_TARGET(standsAt, target)}`), history)
           .catch(() => '');
         const second = again.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(again), theirWords), known, readerName, conversationSoFar)
@@ -2835,7 +2837,7 @@ export class ConversationService {
     checkInId: string,
   ): Promise<{ screened: ReturnType<typeof screen>; hadMarker: boolean } | null> {
     const second = await this.anthropic
-      .respond(`${fullSystem}\n\n${askInsteadOfInventing(hits)}`, history)
+      .respond(this.keptForTheLeakCheck(checkInId, `${fullSystem}\n\n${askInsteadOfInventing(hits)}`), history)
       .catch(() => '');
     if (!second.trim()) {
       for (const h of hits) this.logger.warn(hitLogLine(checkInId, h, 'regenerated, still hit'));
@@ -3231,6 +3233,28 @@ export class ConversationService {
   private get promptForThisTurn(): Map<string, string> {
     if (!this._promptForThisTurn) this._promptForThisTurn = new Map();
     return this._promptForThisTurn;
+  }
+  /*
+   * AND WHAT A RETRY ADDED TO IT. A reply asked for again goes out with one more instruction on the end
+   * (ASK_ONE_THING, HERS_TO_DRAW, the invention note and the rest), and a reply that copies THAT is as much a
+   * leak as one that copies the first prompt. Every retry's system text passes through here on its way to
+   * the model, so the leak check reads the instruction the reply was actually written under.
+   */
+  private keptForTheLeakCheck(checkInId: string, system: string): string {
+    const base = this.promptForThisTurn.get(checkInId) ?? '';
+    const added = (base && system.startsWith(base) ? system.slice(base.length) : system).trim();
+    if (added) this.retryInstructionsForThisTurn.set(checkInId, [...(this.retryInstructionsForThisTurn.get(checkInId) ?? []), added]);
+    return system;
+  }
+  private _retryInstructionsForThisTurn?: Map<string, string[]>;
+  private get retryInstructionsForThisTurn(): Map<string, string[]> {
+    if (!this._retryInstructionsForThisTurn) this._retryInstructionsForThisTurn = new Map();
+    return this._retryInstructionsForThisTurn;
+  }
+  /** The prompt this turn was given, every retry's added instruction with it. A new turn's prompt starts the list again. */
+  private setThePromptForThisTurn(checkInId: string, prompt: string): void {
+    this.promptForThisTurn.set(checkInId, prompt);
+    this.retryInstructionsForThisTurn.delete(checkInId);
   }
   private _knownForThisTurn?: Map<string, string[]>;
   private get knownForThisTurn(): Map<string, string[]> {

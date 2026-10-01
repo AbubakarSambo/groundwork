@@ -4,6 +4,7 @@ import { withoutOurInstructions, theInstructionSentences } from './our-instructi
 import { landThisOneInstead } from './four-questions-in-a-row';
 import { THE_THREE_THINGS, THEY_JUST_PUSHED_BACK } from './the-last-thing-it-reads-is-the-thing-it-must-not-miss';
 import { whereTheCheckInIs } from './what-they-will-do-is-asked-before-the-end';
+import { ASK_ONE_THING } from './a-turn-asks-one-thing';
 
 /**
  * OUR INSTRUCTIONS TO THE MODEL NEVER REACH THE PERSON. Tobi's turn is exact, as he read it (re-e,
@@ -91,5 +92,48 @@ describe('through the step every reply is saved by', () => {
     expect(saved).not.toMatch(/last three turns|single thing you noticed|They will keep going|This one should not/);
     expect(saved).toContain('You will do that in our next scheduled meeting.');
     expect(warn.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('copied our instructions'))).toHaveLength(4);
+  });
+});
+
+describe('a reply asked for again is read against the instruction it was asked again with', () => {
+  const saving = () => {
+    const prisma: any = {
+      ground: { findUnique: jest.fn(async () => null) },
+      conversationTurn: { findMany: jest.fn(async () => []) },
+      groundObjective: { findMany: jest.fn(async () => []) },
+    };
+    const s: any = new ConversationService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { get: () => '' } as any);
+    jest.spyOn(s.logger, 'warn').mockImplementation(() => undefined);
+    return s;
+  };
+  /* ASK_ONE_THING, the retry for a reply with two questions, copied into the second reply. */
+  const ECHO = 'A person answers the last thing they are asked, so the first question gets lost. Which of the two clients matters more to you this month?';
+  const who = { id: 'ci-1', groundId: 'g1', participantId: 'p1', participant: { partyType: PartyType.PARTICIPANT } };
+
+  it('before the retry is kept, the turn\'s own prompt does not hold that sentence, so it would go out', async () => {
+    const s = saving();
+    s.setThePromptForThisTurn('ci-1', PROMPT);
+    expect(await s.theTurnAsItIsSaved(who, ECHO)).toContain('A person answers the last thing they are asked');
+  });
+
+  it('once the retry goes out through the product, the copied sentence is cut and the question stays', async () => {
+    const s = saving();
+    s.setThePromptForThisTurn('ci-1', PROMPT);
+    s.keptForTheLeakCheck('ci-1', `${PROMPT}\n\n${ASK_ONE_THING}`);
+    expect(await s.theTurnAsItIsSaved(who, ECHO)).toBe('Which of the two clients matters more to you this month?');
+  });
+
+  it('a new turn starts the list again', () => {
+    const s = saving();
+    s.setThePromptForThisTurn('ci-1', PROMPT);
+    s.keptForTheLeakCheck('ci-1', `${PROMPT}\n\n${ASK_ONE_THING}`);
+    s.setThePromptForThisTurn('ci-1', PROMPT);
+    expect(s.retryInstructionsForThisTurn.get('ci-1')).toBeUndefined();
+  });
+
+  it('every retry in the service goes to the model through it', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8');
+    expect(src).not.toMatch(/\.respond\(`\$\{fullSystem\}/);
+    expect((src.match(/\.respond\(this\.keptForTheLeakCheck\(/g) ?? []).length).toBe(17);
   });
 });
