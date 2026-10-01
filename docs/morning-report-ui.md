@@ -7120,4 +7120,14 @@ But the builders moved the old page's values into 153 new page-only classes, and
 
 Next are the roster of participants, with the bounced-invitation pill, and the per-session grid. After those come the page's header and states, and the Report, chat and settings tabs.
 
+**The lead's check-in page is clean in all eight parts.**
+- The roster's bounced invitation reads "This invitation bounced. Fix the address and send it again." with a quiet "Fix and resend". Remind and resend are quiet buttons on every row, and dates read "27 September".
+- The header's states use the shared parts, and "Your turn - 1 day late" reads "Your turn. It is 1 day late."
+- The Report tab's "closing a round early" is a fold, and "Publish it now" is the white button with red words.
+- The settings tab's access-code window is the shared dialog, so it now closes with Escape and has a named "Close" button.
+- A second navy button on the bounced-invitation form was found and fixed.
+- The whole screen suite passes (3,760 tests), and the button test passes on all 29 screens. The privacy test that failed twice under load passed every time on its own.
+
+The builder did not add the page to the rebuilt list, because it draws the Context and resources tab (`ContextPage.tsx`), which still uses the old parts. That tab's drawing is being rebuilt now as group 3's last piece. The old context chat stays on, exactly as it works today, until the engine's five live checks pass.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
