@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { PageCrash } from '@/components/gw/PageCrash'
 import EveryReportSideBySide from '@/pages/preview/EveryReportSideBySide'
 import PartsSamplePage from '@/pages/dev/PartsSamplePage'
+import ConversationPreviewPage from '@/pages/dev/ConversationPreviewPage'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Link } from 'react-router-dom'
 import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
@@ -527,6 +528,13 @@ export default function App() {
               exist there at all - not hidden, absent. Nothing it shows needs a signed-in person.
             */}
             {import.meta.env.DEV && <Route path="/dev/parts" element={<PartsSamplePage />} />}
+            {/*
+              THE LIVE CONVERSATION, PICTURED WITHOUT A REAL SESSION, development only - same guard
+              as /dev/parts above. Every unfinished check-in on this machine has not started, and
+              opening ChatPage.tsx for real starts one, so this draws the same frame from the same
+              shared parts with fixed words instead. See ConversationPreviewPage.tsx.
+            */}
+            {import.meta.env.DEV && <Route path="/dev/conversation" element={<ConversationPreviewPage />} />}
             <Route path="/boards" element={<RequireOrgSetup><TeamBoardsPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
             {/* U.11: "How does this end?", where the lead decides, with a reason. */}
