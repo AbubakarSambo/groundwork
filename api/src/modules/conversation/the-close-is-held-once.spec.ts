@@ -164,7 +164,7 @@ describe('the close is held once for the thing the session was for', () => {
       .toBe('I have one more question before we finish. How are you making your number?');
     expect(theOneThingNeverAsked('what they need from other people')).toBe('I have one more question before we finish. What do you need from other people?');
     expect(theOneThingNeverAsked('what they are answerable for')).toBe('I have one more question before we finish. What are you answerable for?');
-    expect(theOneThingNeverAsked('the part of the plan that is theirs to do')).toBe('I have one more question before we finish. Tell me about the part of the plan that is yours to do.');
+    expect(theOneThingNeverAsked('the part of the plan that is theirs to do')).toBe('I have one more question before we finish. Which part of the plan is yours to do?');
   });
 });
 

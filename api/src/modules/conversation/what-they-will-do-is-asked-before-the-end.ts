@@ -42,24 +42,50 @@ export const A_CHECK_IN_USUALLY_CLOSES_AFTER = 8;
 
 /** The question the product asks at the close, when the model closed without it. The prompt's own sentence. */
 export const WHAT_WILL_YOU_DO = 'What will you do about this, and by when?';
-/** Where they have already said what they will do, only the when is left. It follows their own words, kept above it. */
-export const BY_WHEN_WILL_YOU_DO_THAT = 'By when will you do that?';
-export const theCloseQuestionFor = (isLead: boolean, personTurns: string[] = []): string =>
-  `${ONE_MORE_QUESTION} ${isLead ? THE_LEADS_DECISION : theyHaveSaidWhatButNotWhen(personTurns) ? BY_WHEN_WILL_YOU_DO_THAT : WHAT_WILL_YOU_DO}`;
+/** The same, where nothing kept above it names what "this" is. */
+export const WHAT_WILL_YOU_DO_NEXT = 'What will you do next, and by when?';
+
+/*
+ * A HELD QUESTION ALWAYS HAS A SUBJECT (re-e, 1 October 2026). Tobi read "I have one more question before
+ * we finish. By when will you do that?" with nothing above it, and once under a bare "Understood.": "that"
+ * pointed at nothing. Where they said what they will do, the question says it back in their own words
+ * ("By when will you ask Amina to clarify your role regarding commercial conversations?"). "About this"
+ * is used only under a sentence that says what this is, and otherwise the question is about what is next.
+ */
+export function theCloseQuestionFor(isLead: boolean, personTurns: string[] = [], keptAbove = ''): string {
+  if (isLead) return `${ONE_MORE_QUESTION} ${THE_LEADS_DECISION}`;
+  const step = theirOwnNextStep(personTurns);
+  if (step) return `${ONE_MORE_QUESTION} By when will you ${step}?`;
+  return `${ONE_MORE_QUESTION} ${namesSomething(keptAbove) ? WHAT_WILL_YOU_DO : WHAT_WILL_YOU_DO_NEXT}`;
+}
+
+/* An acknowledgement on its own names nothing: "Understood.", "Okay.", "Thank you." */
+const ONLY_AN_ACKNOWLEDGEMENT = /^(?:(?:understood|okay|ok|right|thank you|thanks|noted|got it|good|i see|that is clear|that is helpful)[\s.,!]*)+$/i;
+function namesSomething(kept: string): boolean {
+  const t = (kept ?? '').trim();
+  if (!t || ONLY_AN_ACKNOWLEDGEMENT.test(t)) return false;
+  return t.replace(/^(?:understood|okay|ok|right|thank you|thanks|noted)[.,!]?\s*/i, '').split(/\s+/).filter(Boolean).length >= 4;
+}
 
 /*
  * THE WAYS IT GETS ASKED. The prompt's own sentence and its "that is the outcome" follow-up, the lead's
- * decision, and the next-step forms the model reaches for ("what is your own next step now", read in
- * re-d). Any of them counts: the point is that the person was asked for their own next step.
+ * decision, the next-step forms the model reaches for ("what is your own next step now", read in re-d),
+ * and any question that asks them by when they will do something ("What will you do to get a clear
+ * timeline, and by when?", "what specific question will you get an answer to, and by when?", re-e). Any
+ * of them counts: the point is that the person was asked for their own next step.
  */
 const ASKED_ANOTHER_WAY =
-  /\b(by when will you|what have you decided|what is the (?:first|next|one) thing you (?:will )?do|what (?:is|will be) your (?:own )?(?:first |next )(?:step|move)|what will you do (?:next|first|about (?:this|that|it))|what are you going to do (?:next|about (?:this|that|it)))\b/i;
+  /\b(by when will you|when will you|what have you decided|what will you do|what are you going to do|what is the (?:first|next|one) thing you (?:will )?do|what (?:is|will be) your (?:own )?(?:first |next )(?:step|move))\b/i;
+/* Asking for the when on its own counts too: "What is the date you will have an answer by?", "What would you
+   consider a reasonable timeframe?" (Tobi, re-e). */
+const ASKED_FOR_THE_WHEN = /\b(?:what|which) (?:is the )?(?:date|day) (?:will )?you\b|\btimeframe\b[^?]*\?|\bwhen (?:will|can) you\b[^?]*\?/i;
+const WILL_YOU_BY_WHEN = /\b(?:will you|you will|are you going to)\b[^?]*\bby when\b|\bby when\b[^?]*\b(?:will you|you will)\b/i;
 
 /** Has this check-in already asked them what they will do? */
 export function theyHaveBeenAsked(aiTurns: string[]): boolean {
   return (aiTurns ?? []).some((t) => {
     const text = t ?? '';
-    return asksForHomework(text) || ASKED_ANOTHER_WAY.test(text) || text.includes(THE_LEADS_DECISION);
+    return asksForHomework(text) || ASKED_ANOTHER_WAY.test(text) || WILL_YOU_BY_WHEN.test(text) || ASKED_FOR_THE_WHEN.test(text) || text.includes(THE_LEADS_DECISION);
   });
 }
 
@@ -67,14 +93,52 @@ export function theyHaveBeenAsked(aiTurns: string[]): boolean {
 const THEIR_OWN_NEXT_STEP =
   /\b(i will|i'll|i am going to|i'm going to|i plan to|i intend to|i'm planning to|my next step is|the first thing i(?:'ll| will) do)\b/i;
 
+/*
+ * A WHEN, AS PEOPLE SAY IT. The close bar's dates, and the ones re-e showed it did not know: Ngozi said
+ * "I will do this today" and was asked "By when will you do that?"; Tobi said "within the next two weeks"
+ * and "at our next scheduled meeting".
+ */
+const A_WHEN =
+  /\b(today|tonight|tomorrow|this (?:week|month|quarter|morning|afternoon|evening|weekend)|next (?:week|month|quarter|meeting|scheduled meeting|one-to-one|check-in|time we meet)|(?:at|in|by) (?:our|my|the) next (?:\w+ )?(?:meeting|call|check-in|review)|within (?:the next )?(?:a|one|two|three|four|five|six|few|\d+) (?:days?|weeks?|months?)|in (?:the next )?(?:a|one|two|three|four|five|six|few|\d+) (?:days?|weeks?|months?)|end of (?:the )?(?:day|week|month|quarter)|right away|straight away|immediately)\b/i;
+/* "may" is a month to the close bar's reader; "any new issues that may arise" is not a date (Tobi, re-e). */
+const saysWhen = (t: string) => A_WHEN.test(t ?? '') || whatIsConcreteIn((t ?? '').replace(/\bmay\b(?!\s+\d)/gi, ''), false).includes('a date');
+
 /** Have they already said what they will do, with a when? Then there is nothing left to ask. */
 export function theyHaveSaidWhatAndWhen(personTurns: string[]): boolean {
-  return (personTurns ?? []).some((t) => THEIR_OWN_NEXT_STEP.test(t ?? '') && whatIsConcreteIn(t ?? '', false).includes('a date'));
+  return (personTurns ?? []).some((t) => THEIR_OWN_NEXT_STEP.test(t ?? '') && saysWhen(t ?? ''));
 }
 
 /** Have they said what they will do, without a when? Then only the when is left. */
 export function theyHaveSaidWhatButNotWhen(personTurns: string[]): boolean {
   return (personTurns ?? []).some((t) => THEIR_OWN_NEXT_STEP.test(t ?? ''));
+}
+
+/** Their own words for what they will do, said to them: "I will ask Amina to clarify my role" -> "ask Amina to clarify your role". */
+export function theirOwnNextStep(personTurns: string[]): string | null {
+  for (let i = (personTurns ?? []).length - 1; i >= 0; i--) {
+    const t = (personTurns[i] ?? '').trim();
+    const m = THEIR_OWN_NEXT_STEP.exec(t);
+    if (!m) continue;
+    let rest = t.slice((m.index ?? 0) + m[0].length).split(/[.!?;\n]/)[0] ?? '';
+    rest = rest.replace(/^\s*(?:also|still|then|just|definitely|probably|now)\s+/i, '').replace(/^\s*to\s+/i, '').trim();
+    rest = rest
+      .replace(/\bmyself\b/gi, 'yourself').replace(/\bmine\b/gi, 'yours').replace(/\bmy\b/gi, 'your')
+      .replace(/\bme\b/gi, 'you').replace(/\bour\b/gi, 'your').replace(/\bI'm\b/g, "you're").replace(/\bI\b/g, 'you');
+    const words = rest.split(/\s+/).filter(Boolean);
+    if (words.length < 2 || words.length > 16) continue;
+    if (/^(?:do|be)\s+(?:it|that|this)\b/i.test(rest)) continue;
+    /* "continue to monitor" is how they work, not a step with a day: "By when will you continue to monitor" reads oddly (Tobi, re-e). */
+    if (/^(?:continue|keep|carry on)\b/i.test(rest)) continue;
+    return rest.replace(/[,\s]+$/, '');
+  }
+  return null;
+}
+
+/** The question the last turn before the close asked, so the close does not stack another on a fresh answer. */
+export function theyHaveJustAnsweredIt(aiTurns: string[], personTurns: string[]): boolean {
+  const before = (aiTurns ?? []).length >= 2 ? aiTurns[aiTurns.length - 2] : '';
+  const last = (personTurns ?? [])[(personTurns ?? []).length - 1] ?? '';
+  return theyHaveBeenAsked([before]) || (THEIR_OWN_NEXT_STEP.test(last) && saysWhen(last));
 }
 
 export interface WhereTheCheckInIs {

@@ -1,4 +1,5 @@
 import { insteadOfAFiller } from './the-same-sentence-five-times';
+import { theOwedThingAskedPlainly } from './each-owed-thing-asked-plainly';
 /**
  * THE CLOSE BAR.
  *
@@ -72,6 +73,9 @@ export const saidToThem = (what: string): string => {
  * label. The common shapes turn into plain questions; anything else is asked as "Tell me about ...".
  */
 export function asAQuestion(what: string): string {
+  /* Written out once for every owed line: one plain question each. See each-owed-thing-asked-plainly. */
+  const plainly = theOwedThingAskedPlainly(what);
+  if (plainly) return plainly;
   const t = saidToThem(what).trim().replace(/[.?!]+$/, '');
   const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
   /* Two clauses joined with ", and" are two questions in one: each is turned, then rejoined. */

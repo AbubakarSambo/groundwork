@@ -251,18 +251,19 @@ describe('a close the model reached without asking what they will do', () => {
   it('Amina, the lead, closed after seven answers: held once, and asked what she has decided', async () => {
     const { s, prisma } = aService(AMINA, { lead: true, neverAsked: ['what is clear and what is not'] });
     const close = await s.mayClose('c1', false);
-    expect(close).toEqual({ ready: false, ask: 'I have one more question before we finish. From everything you have said, what have you decided?' });
+    expect(close).toMatchObject({ ready: false, ask: 'I have one more question before we finish. From everything you have said, what have you decided?' });
     expect(prisma.checkIn.update).toHaveBeenCalledWith({ where: { id: 'c1' }, data: { closeHeldAt: expect.any(Date) } });
   });
 
   it('Kwame said he would phone each customer, with no day: held once, and asked only by when', async () => {
     const { s } = aService(KWAME_LAST);
     const close = await s.mayClose('c1', false);
-    expect(close).toEqual({ ready: false, ask: 'I have one more question before we finish. By when will you do that?' });
+    /* In his own words since re-e: "By when will you do that?" read with nothing for "that" to point at. */
+    expect(close).toMatchObject({ ready: false, ask: 'I have one more question before we finish. By when will you follow up with a phone call to each of them?' });
   });
 
   it('what Kwame reads is his own words, then the one question', () => {
-    expect(theCloseQuestionFor(false, said(KWAME_LAST, 'PERSON'))).toBe('I have one more question before we finish. By when will you do that?');
+    expect(theCloseQuestionFor(false, said(KWAME_LAST, 'PERSON'))).toBe('I have one more question before we finish. By when will you follow up with a phone call to each of them?');
   });
 
   it('a one-time session closes without it', async () => {
@@ -295,8 +296,11 @@ describe('a close the model reached without asking what they will do', () => {
 /* ---- What the person reads on the held turn, built the way sendMessage builds it. ---- */
 
 
-const whatTheyRead = (modelsClose: string, earlierAi: string[], lead: boolean, personTurns: string[]) =>
-  withTheOneMoreLine(withoutWhatWasAlreadySaid(withoutTheGoodbye(modelsClose), earlierAi), theCloseQuestionFor(lead, personTurns));
+/* The question is worded against what is kept above it (re-e: never a bare "that"), as sendMessage does. */
+const whatTheyRead = (modelsClose: string, earlierAi: string[], lead: boolean, personTurns: string[]) => {
+  const kept = withoutWhatWasAlreadySaid(withoutTheGoodbye(modelsClose), earlierAi);
+  return withTheOneMoreLine(kept, theCloseQuestionFor(lead, personTurns, kept));
+};
 
 describe('what each reader is shown when the close is held for it', () => {
   it('Amina, the lead, reads one question about her own decision', () => {
@@ -306,7 +310,7 @@ describe('what each reader is shown when the close is held for it', () => {
 
   it('Kwame reads his own words, then when', () => {
     expect(whatTheyRead('You said you will follow up with a phone call to each customer. Speak soon.', said(KWAME_LAST, 'AI').slice(0, -1), false, said(KWAME_LAST, 'PERSON')))
-      .toBe('You said you will follow up with a phone call to each customer.\n\nI have one more question before we finish. By when will you do that?');
+      .toBe('You said you will follow up with a phone call to each customer.\n\nI have one more question before we finish. By when will you follow up with a phone call to each of them?');
   });
 
   it('Femi reads what is in his way, then what he will do about it and by when', () => {

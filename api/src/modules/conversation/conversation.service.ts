@@ -123,7 +123,7 @@ import { theSetTheySpokeToPartOf, whatTheyToldWithoutWhen, askForWhatTheyLeftOut
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
-import { theNextStepIsStillOwed, theCloseQuestionFor, whereTheCheckInIs, whyTheCloseWasHeld } from './what-they-will-do-is-asked-before-the-end';
+import { theNextStepIsStillOwed, theCloseQuestionFor, whereTheCheckInIs, whyTheCloseWasHeld, theyHaveJustAnsweredIt } from './what-they-will-do-is-asked-before-the-end';
 import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, hasAGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
 import { withoutARecordClaimNobodyHolds } from './a-record-claim-nobody-holds';
@@ -2613,7 +2613,7 @@ export class ConversationService {
     // record". No phrase list is ever complete, so the model says it outright
     // instead. Costs nothing: it rides on the reply it was already generating.
     const signalled = hadCloseMarker || this.closesInOtherWords(reply, message);
-    const close: { ready: boolean; ask?: string; sayFirst?: string } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
+    const close: { ready: boolean; ask?: string; sayFirst?: string; nextStep?: { isLead: boolean; personSaid: string[] } } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
     /* A close on an apology says, first, that none was owed. See an-apology-is-not-owed. */
     if (close.ready && !close.ask && isAnApology(message)) close.sayFirst = NOTHING_TO_APOLOGISE_FOR;
     if (close.ask) {
@@ -2624,7 +2624,8 @@ export class ConversationService {
       /* And the close line is the one question: what the model left above it asking goes. See withTheOneMoreLine. */
       aiTurn = await this.prisma.conversationTurn.update({
         where: { id: aiTurn.id },
-        data: { content: withTheOneMoreLine(stillOpen, close.ask) },
+        /* The next-step question is worded against what is kept above it, so it never asks about a "that" with nothing before it. */
+        data: { content: withTheOneMoreLine(stillOpen, close.nextStep ? theCloseQuestionFor(close.nextStep.isLead, close.nextStep.personSaid, stillOpen) : close.ask) },
       });
     } else if (!close.ready && hasAGoodbye(aiTurn.content ?? '')) {
       /*
@@ -2846,7 +2847,7 @@ export class ConversationService {
       .catch(() => [] as string[]);
   }
 
-  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string; sayFirst?: string }> {
+  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string; sayFirst?: string; nextStep?: { isLead: boolean; personSaid: string[] } }> {
     const [row, turns] = await Promise.all([
       this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true, isClarification: true, ground: { select: { cadence: true, scenario: true } } } }),
       this.prisma.conversationTurn.findMany({
@@ -2940,9 +2941,17 @@ export class ConversationService {
     })) {
       await this.prisma.checkIn.update({ where: { id: checkInId }, data: { closeHeldAt: new Date() } });
       this.logger.log(`Holding the close once on ${checkInId}: they were never asked what they will do, and by when.`);
-      return { ready: false, ask: theCloseQuestionFor(isLead, personSaid) };
+      return { ready: false, ask: theCloseQuestionFor(isLead, personSaid), nextStep: { isLead, personSaid } };
     }
-    if (!oneTime && !justDeclined) {
+    /*
+     * NOT THE LEAD, AND NOT ON TOP OF AN ANSWER THEY HAVE JUST GIVEN (re-e, 1 October 2026). Amina, who runs
+     * the check-in, was held with "What did you understand you were meant to do?": the first-session spine
+     * owes that of every role, and it is a participant's question; the lead's own close is the decision,
+     * held for above. And Kwame said he would start tomorrow and was asked "How is it actually going?" on
+     * top of it: a person who has just said what they will do, and when, has given the close its answer.
+     */
+    const aiSaid = turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '');
+    if (!oneTime && !justDeclined && !isLead && !theyHaveJustAnsweredIt(aiSaid, personSaid)) {
       const neverAsked = await this.whatThisSessionNeverAsked(checkInId).catch(() => [] as string[]);
       if (neverAsked.length) {
         await this.prisma.checkIn.update({ where: { id: checkInId }, data: { closeHeldAt: new Date() } });
