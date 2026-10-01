@@ -7300,4 +7300,17 @@ The API tests after it pass 13,288 of 13,289. The one failure is the engine's co
 
 Phase 2 pictures all eleven kinds as the lead and a participant at both widths against their prototype examples. Phase 3 is the review and its fixes.
 
+**Phase 1 is done (1 October, night).** The engine's new board fields are drawn:
+- both parts of "What keeps coming up";
+- the lead's "coach towards" and "one step", shown to the lead only;
+- four pattern fields the engine already sent but no screen drew: the second read, "talked through with", the lead's mark, and the session list, which is said in words instead;
+- "In Baraka's words" beside each record;
+- someone not let in, with no label;
+- "in 1 session";
+- 13 of the switchboard's 22 sections, the ones that were served but not drawn. The other nine are drawn under fields the board already has, or are not served.
+
+All 503 board and privacy tests pass. On the running product, a participant never sees "What the lead needs to do". Two things are not yet seen on live data, because no local check-in has them: someone not let in, and three of the new sections. Their tests use the engine's own examples.
+
+**Phase 2 has started:** all eleven kinds pictured as the lead and a participant at both widths, compared section by section with their prototype examples, and the screen's own differences fixed. The new sections' one-off classes become shared parts. For the MarketView Q4 board, a duplicate test check-in is borrowed, as explained under "Decided for Hafsah to confirm".
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
