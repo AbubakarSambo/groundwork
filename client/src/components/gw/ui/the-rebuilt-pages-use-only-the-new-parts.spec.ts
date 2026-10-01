@@ -67,11 +67,11 @@ export function namesImportedFromKit(stripped: string): string[] {
  * already-rebuilt components reference (`HowSpecificThisSessionWas.tsx`, `WhatToWorkOnNext.tsx`
  * and others `SessionReportPage.tsx` draws) - as the old class `gw-card`, because `--gw-card`
  * contains that exact substring. A token is never a class, so a match preceded by `-` (the custom
- * property's own leading dashes) is not one; `(?![\w-])` keeps it from matching a longer class
- * name's prefix either (not needed by any name in this list today, kept for the next one).
+ * property's own leading dashes) is not one. Nothing is checked after the name: an old class with
+ * a longer name built on it (`gw-card-head`) is still the old kit, and is still caught.
  */
 export function oldClassesUsed(stripped: string): string[] {
-  const found = OLD_CSS_CLASSES.filter(c => new RegExp(`(?<!-)${c}(?![\\w-])`).test(stripped))
+  const found = OLD_CSS_CLASSES.filter(c => new RegExp(`(?<!-)${c}`).test(stripped))
   if (/\bcg-[\w-]+/.test(stripped)) found.push('cg-*')
   return found
 }
