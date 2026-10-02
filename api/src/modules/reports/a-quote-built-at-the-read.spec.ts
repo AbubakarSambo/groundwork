@@ -40,25 +40,37 @@ describe('renewal: the lead reads "what to ask" Yemi, and the quote in it is the
     sessionNumber: 1, totalSessions: 6, scenario: 'CONTRACT_RENEWAL',
   });
 
-  it('is built as it was served in run 12', () => {
-    expect(built.encourage).toEqual([
-      "Worth getting on record, where anyone could check it later: 'On track', for me, meant that there weren't any major disruptions or escalations.",
-    ]);
-  });
-
-  it('with Yemi\'s own "on track" on the record, the quote is his words, as he said them', () => {
+  /*
+   * REQUEST 111 (e), 2 October 2026: this line was served as "Worth getting on record, where anyone could
+   * check it later: 'On track', for me, ...": two pieces joined with a colon, with the record's own tidied
+   * line copied in after it. A line the record wrote in its own words is not quoted as the person's now;
+   * it is counted. Only a line stamped as their own words is quoted, and the quote rule below still holds.
+   */
+  it('a line the record tidied is counted, not quoted, so nothing in it can be taken for his words', () => {
+    expect(built.encourage).toEqual(['Yemi Ojo put one thing on record that anyone could check later, which is worth recognising.']);
     const served = linesBuiltAtTheRead(quotesBuiltAtTheRead(built, [YEMI_SAID]));
-    expect(served.encourage).toEqual([
-      "Worth getting on record, where anyone could check it later: 'on track', for me, meant that there weren't any major disruptions or escalations.",
-    ]);
+    expect(served.encourage).toEqual(built.encourage);
     expect(notInTheRecord(served, [YEMI_SAID])).toEqual([]);
   });
 
-  it('and where nobody said the words, the line is not shown, because they cannot stand after "later:" without their marks', () => {
+  const HIS_WORDS = 'On track, for me, meant that there were no major disruptions or escalations.';
+  const quoted = whatToProbe({
+    who: 'Yemi Ojo', participantId: 'p-yemi', role: null, answeredThisSession: true, patterns: [],
+    waitingOn: [], holdingUp: [], concrete: [HIS_WORDS], concreteWordForWord: [HIS_WORDS], documentsAttached: 0,
+    sessionNumber: 1, totalSessions: 6, scenario: 'CONTRACT_RENEWAL',
+  });
+
+  it('a line stamped as his own words is quoted as his, in a sentence of its own', () => {
+    expect(quoted.encourage).toEqual(['Yemi Ojo said, "On track, for me, meant that there were no major disruptions or escalations." That is worth getting on record, so anyone can check it later.']);
+    const served = linesBuiltAtTheRead(quotesBuiltAtTheRead(quoted, [HIS_WORDS]));
+    expect(notInTheRecord(served, [HIS_WORDS])).toEqual([]);
+  });
+
+  it('and where nobody said the words, the quote is not shown as his', () => {
     const changed: string[] = [];
-    const served = quotesBuiltAtTheRead(built, [], changed);
-    expect(served.encourage).toEqual([]);
-    expect(served.triedToUnblock).toBe(built.triedToUnblock);
+    const served = quotesBuiltAtTheRead(quoted, [], changed);
+    expect(notInTheRecord(served, [])).toEqual([]);
+    expect(served.triedToUnblock).toBe(quoted.triedToUnblock);
     expect(changed).toHaveLength(1);
   });
 });

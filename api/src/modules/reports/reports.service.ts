@@ -5579,7 +5579,7 @@ happened, and what is in the way.`;
       }),
       this.prisma.recordEntry.findMany({
         where: { disputedAt: null, participant: { groundId } },
-        select: { participantId: true, type: true, text: true, recallBased: true },
+        select: { participantId: true, type: true, text: true, recallBased: true, saidWordForWord: true },
       }),
       this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true } }),
       this.prisma.checkIn.findMany({
@@ -5894,6 +5894,9 @@ happened, and what is in the way.`;
 
     const reads = (ground.participants ?? [])
       .filter((p: any) => !p.managingOnly)
+      /* "What to ask each person" is about the others: it listed Rukia, who runs the sales board, to Rukia
+         herself (request 111 e). The reader's own row is the one the resolver says as "you". */
+      .filter((p: any) => (nameOf(p.id, null) ?? '').trim().toLowerCase() !== 'you')
       .map((p: any) => {
         const mine = held.entries.filter((e) => e.participantId === p.id);
         const answered = held.sessions.some((c) => c.participantId === p.id && c.sessionNumber === thisRound);
@@ -5957,6 +5960,10 @@ happened, and what is in the way.`;
             .filter((e) => e.type === RecordEntryType.SUCCESS_DEFINITION || !e.recallBased)
             .map((e) => cleanText(e.text))
             .slice(0, 2),
+          /* Only a line stamped as their own words is quoted as theirs (request 111 e). */
+          concreteWordForWord: mine
+            .filter((e) => (e.type === RecordEntryType.SUCCESS_DEFINITION || !e.recallBased) && (e as any).saidWordForWord === true)
+            .map((e) => cleanText(e.text)),
           documentsAttached: held.docs.filter((d) => d.participantId === p.id).length,
           sessionNumber: thisRound,
           totalSessions: planned > 0 ? planned : null,

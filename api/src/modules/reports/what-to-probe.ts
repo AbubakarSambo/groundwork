@@ -42,6 +42,8 @@ export interface ProbeInput {
   holdingUp: { what: string; who: string | null; daysOld: number; kind?: Kind | null }[];
   /** Anything concrete they put on record: a target, a number, an attached document. */
   concrete: string[];
+  /** Of `concrete`, the ones stamped as the person's own words, word for word. Only those are quoted. */
+  concreteWordForWord?: string[];
   documentsAttached: number;
   sessionNumber: number;
   totalSessions: number | null;
@@ -184,7 +186,23 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
   if (i.concrete.length) {
     /* "Checkable" is the product's own word for this and it does not belong in front of a person -
        it is on the list of words we do not use, and it was printed three times on one report. */
-    encourage.push(`Worth getting on record, where anyone could check it later: ${andList(i.concrete.slice(0, 2).map(theThing))}.`);
+    /*
+     * THEIR OWN LINES, IN QUOTATION MARKS, AND THE POINT IN A SENTENCE OF ITS OWN (request 111 e). It read
+     * "Worth getting on record, where anyone could check it later: Twelve signed supply contracts ... and I
+     * want us to sign 12 shops.": two pieces joined with a colon, and "I" in the middle of a sentence about
+     * somebody else. The lines are what the person said, so they are quoted as theirs.
+     */
+    const chosen = i.concrete.slice(0, 2);
+    const theirWords = new Set(i.concreteWordForWord ?? []);
+    if (chosen.every((t) => theirWords.has(t))) {
+      const lines = chosen.map((t) => `"${theThing(t).replace(/^["“]|["”]$/g, '')}."`);
+      encourage.push(lines.length === 1
+        ? `${He} said, ${lines[0]} That is worth getting on record, so anyone can check it later.`
+        : `${He} said, ${lines[0]} ${He} also said, ${lines[1]} Both are worth getting on record, so anyone can check them later.`);
+    } else {
+      /* A line the record wrote in its own words is not a quote, and it is not ours to reword, so it is counted. */
+      encourage.push(`${He} put ${chosen.length === 1 ? 'one thing' : 'two things'} on record that anyone could check later, which is worth recognising.`);
+    }
   }
   if (i.documentsAttached > 0) {
     encourage.push(

@@ -158,7 +158,8 @@ describe('opening asks no model, with nothing worded yet', () => {
     /* And the report was served, in the engine's own words, not refused. */
     expect(report.sharedPicture).toContain('Three sales moved forward');
     if (userId === 'u-wairimu') {
-      expect(report.probes?.[0]?.encourage?.[0]).toBe('Worth getting on record, where anyone could check it later: Green Mart has a quote and Lakeside will buy on the 29th.');
+      /* Request 111 (e): no colon joining two pieces; a line the record wrote is counted, not quoted. */
+      expect(report.probes?.[0]?.encourage?.[0]).toBe('Aisha Otieno put two things on record that anyone could check later, which is worth recognising.');
     }
     /* Nothing is written by opening, either. */
     expect(KEPT.size).toBe(0);
@@ -175,7 +176,7 @@ describe('the wording is done when something new comes in, and served from then 
     const aisha: any = await reportsFor('MEMBER').get('g-sales', 'u-aisha', 'org-1');
     const admin: any = await reportsFor('ADMIN').get('g-sales', 'u-grace', 'org-1');
     expect(modelCalls()).toBe(0);
-    expect(lead.probes[0].encourage[0]).toBe('Worth getting on record, where anyone could check it later: Green Mart has a quote and Lakeside will buy on the 29th, as worded.');
+    expect(lead.probes[0].encourage[0]).toBe('Aisha Otieno put two things on record that anyone could check later, which is worth recognising, as worded.');
     expect(lead.probes[1].triedToUnblock).toBe('Nothing recorded as blocked, so there is nothing here about unblocking, as worded.');
     /*
      * Decision 58 (screens request 84, 30 September 2026): the probe list is a pattern surface (it
