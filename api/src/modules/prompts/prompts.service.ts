@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleIni
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import { SEED_PROMPTS } from '../conversation/prompt-library';
-import { SEAT_RELATION_COUNT } from '../../common/seats';
+import { seatsByOrganisation } from '../../common/seats';
 import { Prisma } from '@prisma/client';
 import { A_CUSTOMER, A_REAL_CHECK_IN, A_REAL_SESSION, CLOSED_BY_THE_CLOCK, usageEventsByCustomers, aMean, inRange, session2RateOfThoseDue, sinceFor } from './what-the-platform-has-actually-done';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
@@ -502,9 +502,11 @@ export class PromptsService implements OnModuleInit {
         careFeeStatus: true,
         createdAt: true,
         isInternal: true,
-        _count: { select: { grounds: true, ...SEAT_RELATION_COUNT } },
+        _count: { select: { grounds: true } },
       },
     });
+    /* People by the seat rule the organisation's own People page and its plan read (item 19). */
+    const seats = await seatsByOrganisation(this.prisma);
 
     const lastSession = await this.prisma.checkIn.groupBy({
       by: ['groundId'],
@@ -533,7 +535,7 @@ export class PromptsService implements OnModuleInit {
       careFeeStatus: org.careFeeStatus,
       isInternal: org.isInternal,
       groundCount: org._count.grounds,
-      userCount: org._count.users,
+      userCount: seats.get(org.id) ?? 0,
       lastActivity: lastActivityMap[org.id] ?? null,
       createdAt: org.createdAt,
     }));

@@ -131,3 +131,37 @@ describe('the Usage tab\'s usage events', () => {
     expect(served.eventTotals).toEqual({ GROUND_CREATED: 1, CHECK_IN_COMPLETED: 2 });
   });
 });
+
+describe('the organisation list\'s people', () => {
+  it('counts each organisation\'s people by the seat rule its own People page reads', async () => {
+    /* Ouma Agencies on the test database: an admin who belongs there but last looked at another organisation. */
+    const people = [
+      { organizationId: 'ouma', memberships: [{ organizationId: 'ouma', heldForASeat: false }] },
+      { organizationId: 'baridi', memberships: [{ organizationId: 'baridi', heldForASeat: false }, { organizationId: 'ouma', heldForASeat: false }] },
+      /* An older account with no membership row at all still counts where it is. */
+      { organizationId: 'baridi', memberships: [] },
+      /* A guest held for a seat holds none. */
+      { organizationId: 'baridi', memberships: [{ organizationId: 'baridi', heldForASeat: false }, { organizationId: 'ouma', heldForASeat: true }] },
+    ];
+    const prisma: any = {
+      organization: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'ouma', name: 'Ouma Agencies', slug: 'ouma', email: null, careFeeStatus: null, createdAt: new Date(), isInternal: false, _count: { grounds: 0 } },
+          { id: 'baridi', name: 'Baridi Foods', slug: 'baridi', email: null, careFeeStatus: null, createdAt: new Date(), isInternal: false, _count: { grounds: 2 } },
+        ]),
+      },
+      user: {
+        findMany: jest.fn(async ({ where }: any) => {
+          /* Somebody not let in, deactivated or deleted is not a seat; the fake trusts the predicate it is given. */
+          expect(where).toEqual({ isActive: true, deletedAt: null, awaitingOrgApproval: false });
+          return people;
+        }),
+      },
+      checkIn: { groupBy: jest.fn().mockResolvedValue([]) },
+      ground: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const served = await new PromptsService(prisma, {} as any).orgList();
+    /* It served 1 for Ouma Agencies and 3 for Baridi Foods, by the organisation each person last looked at. */
+    expect(served.map((o) => [o.name, o.userCount])).toEqual([['Ouma Agencies', 2], ['Baridi Foods', 3]]);
+  });
+});
