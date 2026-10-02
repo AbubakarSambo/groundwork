@@ -267,18 +267,25 @@ describe('a person reads only what is about them, and the team\'s own counts', (
 });
 
 describe('an admin of the organisation who does not run the check-in', () => {
-  it('reads the whole week as a reader, with no pattern, no aim, and nothing of the lead\'s to do', async () => {
+  /*
+   * Decision 86 reverses decision 73 for admins, the chief executive included: an admin who only reads
+   * now reads the aims and limits and every person's number, as the lead does. Still no pattern, none
+   * of the lead's own list, and never the lead's decision about a person (decision 46). This test used
+   * to pin "no aim" for the admin.
+   */
+  it('reads the whole week as a reader, with the aims and limits, and no pattern and nothing of the lead\'s to do', async () => {
     const { r } = await served(ADMIN);
     expect(r.eachPerson.map((e) => e.who)).toEqual(['Aisha', 'Baraka', 'Chidi']);
     expect(r.threeInARow).toEqual([]);
     expect(r.forNextWeek).toBeUndefined();
-    expect(r.inNumbers!.map((f) => f.of)).toEqual([
-      'of check-ins made this week',
-      'things people said this week with a photo or document behind them',
-      'freezers sold',
-      'spending this quarter',
+    expect(r.inNumbers).toEqual([
+      { figure: '67%', of: 'of check-ins made this week', says: '2 of the 3 check-ins due this week were made.' },
+      { figure: '1', of: 'things people said this week with a photo or document behind them', says: '1 of the 5 things people said this week has a photo or document behind it.' },
+      { figure: '17', of: 'freezers sold', says: "The team's freezers sold went from 12 to 17 this week, against the aim of 40." },
+      { figure: '254,000', of: 'spending this quarter', says: 'The team\'s spending this quarter went from 200,000 to 254,000 this week, against the limit of 180,000. That is 74,000 over the limit.' },
+      { figure: '9', of: "visits made, Aisha's number", says: 'It stayed at 9 this week.' },
     ]);
-    expect(JSON.stringify(r)).not.toMatch(/second driver|against the aim|over the limit|Probation|The work stops|A lot of communicating/);
+    expect(JSON.stringify(r)).not.toMatch(/second driver|Probation|The work stops|A lot of communicating/);
   });
 
   it('reads nothing at all of an evaluation check-in they were not given', async () => {
@@ -333,13 +340,15 @@ describe('aims and limits follow the check-in\'s setting, for a person in it (de
     expect(says).toContain('against the aim of 40');
     expect(says).toContain('against the limit of 180,000. That is 74,000 over the limit.');
   });
-  it('an admin who only reads keeps the counts alone, whatever the setting', async () => {
+  /* Decision 86 reverses decision 73 for admins: this used to pin "the counts alone, whatever the setting". */
+  it.each(['THEIR_OWN', 'EVERYBODY'])('an admin who only reads reads the aim and the limit too, with %s', async (whoSeesTargets) => {
     const c = aCheckIn();
     const ground = await c.prisma.ground.findUnique();
-    c.prisma.ground.findUnique = jest.fn(async () => ({ ...ground, whoSeesTargets: 'EVERYBODY' }));
+    c.prisma.ground.findUnique = jest.fn(async () => ({ ...ground, whoSeesTargets }));
     await c.svc.build('g1', AT);
     const says = (await c.svc.read('g1', ADMIN, AT)).inNumbers!.map((f: any) => f.says).join(' ');
-    expect(says).not.toMatch(/against the (aim|limit)/);
+    expect(says).toContain('against the aim of 40');
+    expect(says).toContain('against the limit of 180,000. That is 74,000 over the limit.');
   });
 });
 

@@ -1077,14 +1077,17 @@ export class BoardService {
        * this read `runsThisGround`, which lets in any admin of the organisation, while the Context
        * page of the same check-in (grounds.service, `isLead: viewerIsInitiator`) did not. Otieno, an
        * admin not in Wanjiru's check-in, was shown only the team's targets on Context and every
-       * person's share, Baraka's included, on the board. One rule now, the stricter one: the
-       * check-in's lead sees every share; anybody else sees the team's targets and their own share.
+       * person's share, Baraka's included, on the board. That rule, "the check-in's lead sees every
+       * share", is reversed by decision 86: an admin, the chief executive included, sees the figures, so
+       * whoever runs this check-in (the admin who set it up, an admin of the organisation) sees every
+       * share as the lead does, except the lead's own decision about a person (decision 46). Anybody
+       * else sees the team's targets and their own share.
        */
       const mayRead = targetsFor(
         ground.objectives as any[],
         me?.id ?? null,
         (ground as any).whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
-        { isLead: isInitiator },
+        { isLead: isInitiator, seesEveryShare: runsThisGround },
       ).shown as typeof ground.objectives;
 
       /*
@@ -1366,7 +1369,9 @@ export class BoardService {
     }
 
     if (has('checkInGrid') && runsThisGround) {
-      const sharesStayWithTheirOwner = !isInitiator && (ground as any).whoSeesTargets !== 'EVERYBODY';
+      /* Whoever runs the check-in reads each person's share, an admin included (decision 86, which
+         reverses that part of decision 73), so no share is held back in this section. */
+      const sharesStayWithTheirOwner = !runsThisGround && (ground as any).whoSeesTargets !== 'EVERYBODY';
       /*
        * THE ROUND THAT IS OPEN IS THE ONE SOMEBODY HAS STARTED, not the newest row that exists.
        *
@@ -1440,7 +1445,7 @@ export class BoardService {
          */
         ground.participants.filter((p) => !p.managingOnly && p.id !== me?.id).map((p) => {
           /* Their share, to whoever may read it: the same rule as the targets above (U.7 review). An
-             admin standing in reads where each person is without each person's number. */
+             admin standing in reads each person's number too (decision 86). */
           const theirs = sharesStayWithTheirOwner
             ? undefined
             : (ground.objectives ?? []).find((o: any) => o.ownerParticipantId === p.id);
@@ -2383,9 +2388,10 @@ export class BoardService {
       /*
        * Built from the targets this reader is already served, so every wall on a target holds here too. Never on an
        * evaluation check-in. It says the aim or the limit, so it goes only to those who read aims and limits (decision
-       * 73, as the weekly report): whoever runs the check-in, and a person in it only where everybody sees the targets.
+       * 73, as the weekly report): whoever runs the check-in, an admin of the organisation (decision 86 reverses
+       * decision 73 for admins, the chief executive included), and a person in it only where everybody sees the targets.
        */
-      const readsTheAims = runsIt || (!!me && (ground as any).whoSeesTargets === 'EVERYBODY');
+      const readsTheAims = runsIt || runsThisGround || (!!me && (ground as any).whoSeesTargets === 'EVERYBODY');
       if (!evaluation && readsTheAims && Array.isArray(out.objectives) && (out.objectives as any[]).length) {
         const stored = new Map(((ground.objectives ?? []) as any[]).map((o) => [o.id, o]));
         const served = (out.objectives as any[]).filter((o) => stored.has(o.id)).map((o) => {
@@ -2461,8 +2467,9 @@ export class BoardService {
         const full = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim();
         return [full, first, (p?.nameGiven ?? '').trim(), nameOf(pid) ?? ''].filter((n: string) => n && n.length > 1);
       };
+      /* An admin reads every share, so no share is hidden from an admin's words either (decision 86). */
       const hiddenTargets = targetsHiddenFrom(
-        { participantId: me?.id ?? null, isTheLead: isInitiator },
+        { participantId: me?.id ?? null, isTheLead: runsThisGround },
         (ground as any).whoSeesTargets,
         (ground.objectives ?? []) as any[],
         namesOfPerson,

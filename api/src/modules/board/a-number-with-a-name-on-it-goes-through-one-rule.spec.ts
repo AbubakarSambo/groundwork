@@ -179,7 +179,8 @@ describe('one count per thing, as each reader reads it', () => {
   it('Femi, who holds no 14, reads neither', async () => {
     expect(owners(await boardFor('u-femi'))).toEqual([]);
   });
-  it('an admin not in the check-in reads neither', async () => {
-    expect(owners(await boardFor('u-admin', 'ADMIN'))).toEqual([]);
+  /* Decision 86 reverses decision 73 for admins: this used to pin that an admin read neither. */
+  it('an admin not in the check-in reads both, as the lead does', async () => {
+    expect(owners(await boardFor('u-admin', 'ADMIN'))).toEqual(['p-kwame', 'p-ngozi']);
   });
 });

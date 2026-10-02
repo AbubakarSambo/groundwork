@@ -337,13 +337,15 @@ export class TheWeeklyReportService {
       facts.targets.map((t) => ({ ...t })) as any[],
       me?.id ?? null,
       ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
-      { isLead: runsIt },
+      /* Every share, to whoever reads the whole check-in, admins included (decision 86). */
+      { isLead: runsIt, seesEveryShare: viewerIsLead },
     ).shown as any[];
     const whoseIs = (t: any) => (!t.ownerParticipantId ? 'team' as const : t.ownerParticipantId === me?.id ? 'you' as const : { label: labels.get(t.ownerParticipantId) ?? 'A colleague' });
     /* Aims and limits (Hafsah, 1 October, decision 73): whoever runs the check-in reads them; a person
        in it reads them only where the check-in's "who sees targets" is EVERYBODY, as on the board.
-       With THEIR_OWN they read the counts alone. An admin who only reads keeps the counts alone. */
-    const readsTheAims = runsIt || (!!me && ground.whoSeesTargets === 'EVERYBODY');
+       With THEIR_OWN they read the counts alone. An admin who only reads, the chief executive included,
+       reads them too (decision 86, which reverses that part of decision 73). */
+    const readsTheAims = viewerIsLead || (!!me && ground.whoSeesTargets === 'EVERYBODY');
     const targetFigures = shownTargets.map((t) => ({ t, f: aTargetThisWeek(t, whoseIs(t), readsTheAims) })).filter((x) => !!x.f) as { t: any; f: AFigure }[];
     out.inNumbers = [
       theCheckInsMade(facts.checkIns.due, facts.checkIns.made),

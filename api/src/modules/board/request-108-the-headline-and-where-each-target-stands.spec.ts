@@ -94,10 +94,12 @@ describe('(a) who reads the headline', () => {
     expect(b.headline.question).toBe(THE_QUESTION);
   });
 
-  it('Juma, an admin who only reads, is not sent the aims (decision 73), so no question and no words', async () => {
+  /* Decision 86 reverses decision 73 for admins: this used to pin that Juma got no question and no words. */
+  it('Juma, an admin who only reads, is sent the aims, so the same question and words as Bisi', async () => {
     const b = await boardAs(RUN, ...JUMA);
-    expect(b.headline).toBeUndefined();
-    expect(stand(b, 'o-approved')).toBeUndefined();
+    expect(b.headline.question).toBe(THE_QUESTION);
+    expect(stand(b, 'o-approved')).toEqual(stand(await boardAs(RUN, ...BISI), 'o-approved'));
+    expect(stand(b, 'o-approved').word).toBe('Behind');
   });
 
   it('Femi, where each person sees only their own numbers, is not sent it, even once the picture is shared', async () => {

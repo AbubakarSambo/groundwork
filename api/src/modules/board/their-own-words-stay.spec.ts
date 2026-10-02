@@ -126,19 +126,19 @@ describe("a sentence Groundwork writes about Rukia's hidden target still goes", 
     expect(rukiasRow(await boardAs('u-amina', 'MEMBER')).says).toMatch(/is at 1 of 4\b/);
   });
 
-  it('Juma is served her row without the number', async () => {
+  /* Decision 86: Juma, an admin, sees the figures now, so she reads the row Amina reads. This used to pin
+     "Rukia Mwangi has checked in." with no number (decision 53, item 11, which still holds for anybody who
+     cannot see a target). */
+  it('Juma is served her row with the number, as Amina is', async () => {
     const row = rukiasRow(await boardAs('u-juma', 'ADMIN'));
-    /* Decision 53, item 11 (29 September 2026): Juma cannot see Rukia's target, so she is never told
-       "nothing here needs you this week" - that claim is about the very number she cannot see. Was
-       'Rukia Mwangi has checked in, and nothing here needs you this week.' before the decision. */
-    expect(row.says).toBe('Rukia Mwangi has checked in.');
+    expect(row.says).toMatch(/is at 1 of 4\b/);
   });
 
-  it('outside what Rukia said, nothing Juma or Baraka is served gives her 4; Amina is served it', async () => {
+  it('outside what Rukia said, nothing Baraka is served gives her 4; Amina and Juma are served it', async () => {
     const beyondWhatSheSaid = (b: any) => JSON.stringify({ ...b, whoOwnsWhat: undefined });
     const HER_NUMBER = /\b(?:of|said) 4\b|\bfour\b/i;
     expect(beyondWhatSheSaid(await boardAs('u-amina', 'MEMBER'))).toMatch(HER_NUMBER);
-    expect(beyondWhatSheSaid(await boardAs('u-juma', 'ADMIN'))).not.toMatch(HER_NUMBER);
+    expect(beyondWhatSheSaid(await boardAs('u-juma', 'ADMIN'))).toMatch(HER_NUMBER);
     expect(beyondWhatSheSaid(await boardAs('u-baraka', 'MEMBER'))).not.toMatch(HER_NUMBER);
   });
 });

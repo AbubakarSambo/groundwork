@@ -42,9 +42,13 @@ describe('on the board, as each reader reads it', () => {
     ]);
   });
 
-  it('the admin who set it up, and Baraka, read only the team\'s aim and their own: a colleague\'s aim is not on their board', async () => {
-    /* A person's board is their own (request 105, part 3), and only the lead reads every share. */
-    expect(await names({ objectives: ALL, createdByUserId: 'u-setup' }, SETUP_ADMIN)).toEqual(['The team is aiming for 20 shops onboarded.']);
+  it('the admin who set it up reads every aim, as Amina does (decision 86); Baraka reads only the team\'s aim and his own', async () => {
+    /* A person's board is their own (request 105, part 3). An admin sees the figures (decision 86). */
+    expect(await names({ objectives: ALL, createdByUserId: 'u-setup' }, SETUP_ADMIN)).toEqual([
+      'The team is aiming for 20 shops onboarded.',
+      'Rukia Mwangi\'s own aim is 3 shops in Kilimani.',
+      'Baraka Otieno is aiming for 5 visits a week.',
+    ]);
     expect(await names({ objectives: ALL, whoSeesTargets: 'EVERYBODY' }, BARAKA)).toEqual(['The team is aiming for 20 shops onboarded.', 'You are aiming for 5 visits a week.']);
     expect(await names({ objectives: ALL, whoSeesTargets: 'EVERYBODY', peersVisibleToEachOther: false }, BARAKA)).toEqual(['The team is aiming for 20 shops onboarded.', 'You are aiming for 5 visits a week.']);
   });
@@ -53,8 +57,13 @@ describe('on the board, as each reader reads it', () => {
     expect((await names({ objectives: ALL }, BARAKA)).join(' ')).not.toMatch(/Rukia|Kilimani/);
   });
 
-  it('Juma, an admin who only reads, reads only the team\'s aim', async () => {
-    expect(await names({ objectives: ALL }, JUMA)).toEqual(['The team is aiming for 20 shops onboarded.']);
+  /* Decision 86 reverses decision 73 for admins: this used to pin that Juma read only the team's aim. */
+  it('Juma, an admin who only reads, reads every aim, as Amina does', async () => {
+    expect(await names({ objectives: ALL }, JUMA)).toEqual([
+      'The team is aiming for 20 shops onboarded.',
+      'Rukia Mwangi\'s own aim is 3 shops in Kilimani.',
+      'Baraka Otieno is aiming for 5 visits a week.',
+    ]);
   });
 
   it('the person reviewed on a performance plan reads their own aim as theirs', async () => {

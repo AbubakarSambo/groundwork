@@ -38,10 +38,10 @@ describe('the sales board: one count per thing, and nobody with something open i
       const forty = (b.objectives as any[]).filter((o) => o.target === 40);
       /* Read on the run: "0 at the start, 0 now, said 40." beside "0 at the start, 11 now, said 40." */
       expect(forty).toHaveLength(1);
-      /* An admin standing outside the check-in reads no number on it at all (decision 53), so one row and no count. */
-      if (role === 'ADMIN') expect(forty[0].journey.say).toBe('');
-      /* The same count, as one full sentence since 1 October (the review rules out "0 at the start, 11 now, said 40."). */
-      else expect(forty[0].journey.say).toBe('It was 0 at the start and is 11 now, and the aim is 40.');
+      /* The same count, as one full sentence since 1 October (the review rules out "0 at the start, 11 now, said 40.").
+         An admin standing outside the check-in used to read no number on it at all; since decision 86 an admin
+         sees the figures, so every reader here reads the same sentence. */
+      expect(forty[0].journey.say).toBe('It was 0 at the start and is 11 now, and the aim is 40.');
       expect(JSON.stringify(b.objectives)).not.toContain('It was 0 at the start and is 0 now, and the aim is 40.');
     });
 

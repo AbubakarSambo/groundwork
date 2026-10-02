@@ -88,8 +88,15 @@ describe('whose share of a target each reader is given', () => {
         expect(names(got.objectives)).toEqual(['Water pumps sold this quarter', 'Aisha’s share']);
         expect(JSON.stringify(got)).not.toContain('Nakuru route');
       });
-      it('Otieno, an admin who is not in it, is given the team target only', async () => {
+      /* Decision 86 reverses decision 73 for admins on the board: an admin sees every share there. The
+         Context page is not changed by it yet, so there an admin who is not in it still reads the team
+         target only (a question for Hafsah in docs/answers-from-engine.md). */
+      it(route.startsWith('the board') ? 'Otieno, an admin who is not in it, is given every share on the board (decision 86)' : 'Otieno, an admin who is not in it, is given the team target only', async () => {
         const got = await read(OTIENO);
+        if (route.startsWith('the board')) {
+          expect(names(got.objectives)).toEqual(['Water pumps sold this quarter', 'Aisha’s share', 'Baraka’s share']);
+          return;
+        }
         expect(names(got.objectives)).toEqual(['Water pumps sold this quarter']);
         expect(JSON.stringify(got)).not.toContain('Nakuru route');
         expect(JSON.stringify(got)).not.toContain('farm buyers');
@@ -102,10 +109,10 @@ describe('whose share of a target each reader is given', () => {
     expect(((await boardFor(AISHA)).objectives as any[]).map((o) => o.name)).toEqual(['The team is aiming for 25 water pumps sold this quarter.', 'Your share is 12.']);
   });
 
-  it('and the board’s person-by-person read gives Otieno where each person is, without their number', async () => {
+  /* Decision 86: this used to pin that Otieno read where each person is without their number. */
+  it('and the board’s person-by-person read gives Otieno each person’s number, as Wanjiru reads it', async () => {
     const rows = (await boardFor(OTIENO)).eachPerson ?? [];
-    expect(rows.length).toBeGreaterThan(0);
-    for (const r of rows) expect(r.target ?? null).toBeNull();
+    expect(rows.map((r: any) => r.target).sort()).toEqual([12, 13]);
     const leads = (await boardFor(WANJIRU)).eachPerson ?? [];
     expect(leads.map((r: any) => r.target).sort()).toEqual([12, 13]);
   });

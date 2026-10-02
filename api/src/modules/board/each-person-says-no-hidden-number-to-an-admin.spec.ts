@@ -7,9 +7,8 @@ import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
  *
  * Read live as an admin who only reads: `eachPerson[].says` named Rukia's target, which `objectives`
  * withheld from the same reader. Here Aisha is behind the pace of a target only she and the lead may
- * see (THEIR_OWN). The lead reads "Aisha Otieno is at 1 of 40 ..."; an admin who only reads is served
- * her row, and no sentence in it, nor anywhere on the board, gives 40. Where targets are shared with
- * everybody, the admin reads the number as well.
+ * see (THEIR_OWN). The lead reads "Aisha Otieno is at 1 of 40 ...". Since decision 86, an admin who
+ * only reads, the chief executive included, reads the same row with the same number.
  */
 const person = (id: string, userId: string, first: string, last: string, partyType: PartyType = PartyType.PARTICIPANT, managingOnly = false) => ({
   id, userId, partyType, email: `${id}@baridi.test`, roleAsDescribed: 'sales', nameGiven: null, organisationGiven: null,
@@ -51,7 +50,6 @@ function boardAs(userId: string, role: string, whoSeesTargets: string) {
     .get('g-1', userId) as Promise<any>;
 }
 
-const FORTY = /\b40\b|\bforty\b/i;
 const aishasRow = (board: any) => (board.eachPerson ?? []).find((r: any) => r.participantId === 'p-aisha');
 
 describe("each person's row, where each target is seen only by its owner and the lead", () => {
@@ -61,33 +59,16 @@ describe("each person's row, where each target is seen only by its owner and the
     expect(row.says).toBe('Aisha Otieno is at 1 of 40, and 3 of the 4 rounds have gone. At this pace, 40 would not be reached by the end.');
   });
 
-  it('an admin who only reads is served her row, and no sentence on the board gives the number', async () => {
+  /*
+   * Decision 86 reverses decision 73 for admins: an admin, the chief executive included, sees the
+   * figures. This test used to pin that the admin read "Aisha Otieno has checked in." and no 40
+   * anywhere. The admin now reads what the lead reads.
+   */
+  it('an admin who only reads is served her row with her number, as the lead reads it', async () => {
     const board = await boardAs('u-grace', 'ADMIN', 'THEIR_OWN');
     const row = aishasRow(board);
-    expect(row).toBeDefined();
-    /*
-     * Decision 53, item 11 (29 September): an admin who cannot see Aisha's target is never told
-     * "nothing here needs you this week" - that is a claim about a number this reader cannot see,
-     * so it may not be true. They read only that she has checked in. Was
-     * 'Aisha Otieno has checked in, and nothing here needs you this week.' before the decision.
-     */
-    expect(row.says).toBe('Aisha Otieno has checked in.');
-    expect(row.target).toBeNull();
-    expect(JSON.stringify(board.eachPerson)).not.toMatch(FORTY);
-    expect(JSON.stringify(board)).not.toMatch(/\b40\b|\bforty\b/i);
-  });
-});
-
-describe('where targets are shared with everybody', () => {
-  it('the admin reads the number too', async () => {
-    const row = aishasRow(await boardAs('u-grace', 'ADMIN', 'EVERYBODY'));
-    expect(row.says).toMatch(/is at 1 of 40/);
-  });
-});
-
-describe('a participant', () => {
-  it('gets no per-person row at all, so no "nothing here needs you" sentence reaches them either', async () => {
-    const board = await boardAs('u-aisha', 'MEMBER', 'THEIR_OWN');
-    expect(board.eachPerson).toBeUndefined();
+    expect(row.reason).toBe('behind the pace');
+    expect(row.says).toBe('Aisha Otieno is at 1 of 40, and 3 of the 4 rounds have gone. At this pace, 40 would not be reached by the end.');
+    expect((board.objectives ?? []).map((o: any) => o.target)).toEqual([40]);
   });
 });

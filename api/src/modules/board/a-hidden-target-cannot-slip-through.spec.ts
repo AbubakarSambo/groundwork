@@ -245,7 +245,9 @@ for (const [target, inWords, leak] of [
 
       it('the board as served', async () => {
         const text = JSON.stringify(await boardAs(userId, role));
-        if (mayRead) expect(text).toMatch(leak); else expect(text).not.toMatch(leak);
+        /* Decision 86: on the board, an admin sees the figures, Kwame's included. The report and the
+           check-in's own page are not changed by it (a question for Hafsah). A colleague still never does. */
+        if (mayRead || role === 'ADMIN') expect(text).toMatch(leak); else expect(text).not.toMatch(leak);
         expect(text).toMatch(/He is behind|Kwame Mensah met four customers/);
       });
 

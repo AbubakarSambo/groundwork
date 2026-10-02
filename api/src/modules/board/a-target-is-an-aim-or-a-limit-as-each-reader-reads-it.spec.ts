@@ -92,12 +92,13 @@ describe('the over-limit sentence from the workplan run is still served as befor
       expect((await served([{ ...BUDGET, direction: 'LIMIT' }], userId, role, [{ objectiveId: 'o-1', count: 0 }])).map((o) => o.journey.say)).toEqual([OVER]);
     });
   }
-  it('an admin outside who may not read the number still loses the whole line, with LIMIT set too', async () => {
+  /* Decision 86: an admin sees the figures now, so the admin reads the whole line too. This used to pin that the admin lost it. */
+  it('an admin outside reads the whole line too, with LIMIT set too', async () => {
     const hers = aim('o-2', 'Helen is keeping spending within 180,000 this quarter.', 180000, 0, { ownerParticipantId: 'p-helen', setByParticipantId: 'p-helen' });
     for (const dir of [null, 'LIMIT']) {
       const rows = [{ ...BUDGET, direction: dir }, { ...hers, direction: dir }];
       const say = async (userId: string, role: string) => (await served(rows, userId, role, [{ objectiveId: 'o-1', count: 0 }])).filter((o) => o.id === 'o-1').map((o) => o.journey.say);
-      expect(await say('u-admin', 'ADMIN')).toEqual(['']);
+      expect(await say('u-admin', 'ADMIN')).toEqual([OVER]);
       expect(await say('u-chidi', 'MEMBER')).toEqual([OVER]);
       expect(await say('u-helen', 'MEMBER')).toEqual([OVER]);
     }

@@ -77,10 +77,17 @@ describe('request 115 (c): to close the gap', () => {
     expect(b.toCloseTheGap.says).toBe('20 more are needed by 30 September. Nothing on record says what each deal is worth against this aim, so no deals are listed as closing the gap.');
   });
 
-  it('Juma, an admin who only reads the targets of nobody, and Femi and Ngozi, are not sent it', async () => {
-    for (const reader of [JUMA, FEMI, NGOZI] as (readonly [string, string])[]) {
+  /* Decision 86 reverses decision 73 for admins: Juma, an admin who only reads, now reads the aims, so he is sent it too. */
+  it('Femi and Ngozi are not sent it', async () => {
+    for (const reader of [FEMI, NGOZI] as (readonly [string, string])[]) {
       expect((await boardAs(WITH_AN_AIM, ...reader)).toCloseTheGap).toBeUndefined();
     }
+  });
+
+  it('Juma, an admin who only reads, is sent what Bisi is sent', async () => {
+    const asJuma = (await boardAs(WITH_AN_AIM, ...JUMA)).toCloseTheGap;
+    expect(asJuma.says).toBe('To close the gap by 30 September, 2 of these 3 open deals would need to close. Each open deal is counted as one toward the aim of 40.');
+    expect(asJuma).toEqual((await boardAs(WITH_AN_AIM, ...BISI)).toCloseTheGap);
   });
 
   it('is not served on a performance plan', async () => {
