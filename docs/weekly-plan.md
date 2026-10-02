@@ -50,7 +50,7 @@ From now on, every change to what the board, reports or Today page send is writt
 - The API did not start from `4baeb646` (two files importing each other). *Done* (`4090223b`), with a test that builds the whole app.
 - Ask Groundwork named people by email and answered in clipped lines. *Done* (`856d0cbd`, `bc7aa385`).
 - Waits taken further could never show in "where am I needed". *Done* (`72e9b0a6`), shown only to whoever runs that check-in.
-- The lead's "<who> has been told" sentence is untrue. *In progress.*
+- The lead's "<who> has been told" sentence is untrue. *Done* (`1973482c`). The rest of that read (late and undated commitments, findings) made plain: *in progress*.
 - A scenario run (run-25) to measure requests 117 and 118's model-written changes against the baseline. *In progress.*
 
 **h. Then everything else**
