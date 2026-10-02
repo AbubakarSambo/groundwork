@@ -184,7 +184,7 @@ describe('the plan routes', () => {
   it('a goal confirmed with the lead\'s answer to "Is 25 something to reach, or a limit not to go over?" is written with it (decision 69)', async () => {
     const { svc, board } = aService();
     const got = await svc.read('g1', 'u-lead', { text: PLAN });
-    expect(got.proposals[0].whichWay).toBe('Is 25 something to reach, or a limit not to go over?');
+    expect(got.proposals[0].whichWay).toBe('What kind of number is 25? It can be something to reach, a limit not to go over, a share to keep at or above, a date to meet, or a count to keep at zero.');
     expect(got.proposals[0].directionSuggested).toBe('AIM');
     await svc.confirm('g1', 'u-lead', 'pp-1', { direction: 'LIMIT' });
     expect(board.createObjective).toHaveBeenCalledWith('g1', 'u-lead', { name: 'freezer sales', target: 25, ownerParticipantId: null, direction: 'LIMIT' });

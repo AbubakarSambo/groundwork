@@ -2411,6 +2411,8 @@ export class AssistantService {
             groundId, said, history: [...history, { role: 'assistant' as const, content: result.proposal.say }], openQuestion: (result as any).openQuestion ?? null,
             /* What the yes is for when it is not a change to this check-in: a sentence to keep for the organisation, or leave (week 20). */
             ...((result.proposal as any).offerId ? { offerId: (result.proposal as any).offerId } : {}),
+            /* A company rule said while a setup question was waiting: offered straight after this yes or no (decision 75, item 29). */
+            ...((result.proposal as any).thenOffer ? { thenOffer: (result.proposal as any).thenOffer } : {}),
             ...(result.proposal.gap === 'leave_request' ? { leave: true } : {}),
           } as never,
         },
@@ -2502,13 +2504,19 @@ export class AssistantService {
        * message is read as its answer. The say-back that was just declined is not kept in what the
        * conversation carries forward, because nobody agreed to it.
        */
-      const declined = parked.payload as { groundId?: string; history?: { role: 'user' | 'assistant'; content: string }[]; openQuestion?: string | null; offerId?: string; leave?: boolean };
+      const declined = parked.payload as { groundId?: string; history?: { role: 'user' | 'assistant'; content: string }[]; openQuestion?: string | null; offerId?: string; leave?: boolean; thenOffer?: { say: string; offerId: string } };
       /* A no to keeping something for the organisation deletes the offer: it is kept nowhere. */
       if (declined?.offerId && declined.groundId) {
         const asker = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
         if (asker?.linkedUserId) await this.grounds.declineContextOffer(declined.groundId, asker.linkedUserId, declined.offerId).catch(() => undefined);
       }
       const left = declined?.offerId ? NOT_KEPT : declined?.leave ? LEAVE_NOT_SENT : 'I have left it as it was. Nothing was changed.';
+      /* The company rule said with the answer is still offered, once, after the no (decision 75, item 29). */
+      if (declined?.thenOffer?.offerId && declined.groundId) {
+        const before = [...(declined.history ?? [])];
+        if (before.length && before[before.length - 1].role === 'assistant') before.pop();
+        return this.offerTheRuleNext(organizationId, who, declined.groundId, left, declined.thenOffer, before, declined.openQuestion ?? null);
+      }
       const still = (declined?.openQuestion ?? '').trim();
       const spoken = still ? `${left}\n\n${still}` : left;
       if (declined?.groundId) {
@@ -2533,6 +2541,8 @@ export class AssistantService {
       history: { role: 'user' | 'assistant'; content: string }[];
       offerId?: string;
       leave?: boolean;
+      thenOffer?: { say: string; offerId: string };
+      openQuestion?: string | null;
     };
 
     /* RE-VERIFY at execution, same as every other write here: still linked to a user at all. */
@@ -2550,6 +2560,10 @@ export class AssistantService {
         ...(payload.leave ? { leave: true } : {}),
       });
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+      /* The company rule said with the answer is offered now, once (decision 75, item 29). */
+      if (payload.thenOffer?.offerId) {
+        return this.offerTheRuleNext(organizationId, who, payload.groundId, applied.say, payload.thenOffer, [...payload.history, { role: 'assistant' as const, content: applied.say }], null);
+      }
       /*
        * FOUND LIVE, 30 September 2026, on the four live checks: after a lead confirmed what doing
        * well looks like, the very next reply opened with "This check-in runs for 12 weeks and people
@@ -2584,6 +2598,33 @@ export class AssistantService {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('add_context', text(err?.message ?? 'That could not be saved.'));
     }
+  }
+
+  /**
+   * A COMPANY RULE THE LEAD SAID WHILE A SETUP QUESTION WAS WAITING, OFFERED STRAIGHT AFTER THE ANSWER
+   * (decision 75, item 29). Parked as its own proposal, the same as any offer to keep something for
+   * the organisation: only a yes keeps it, and a no keeps nothing. What was still open is asked after it.
+   */
+  private async offerTheRuleNext(
+    organizationId: string,
+    who: string,
+    groundId: string,
+    first: string,
+    offer: { say: string; offerId: string },
+    history: { role: 'user' | 'assistant'; content: string }[],
+    openQuestion: string | null,
+  ): Promise<Reply> {
+    const row = await this.prisma.assistantProposal.create({
+      data: {
+        organizationId,
+        personExternalId: who,
+        kind: 'context',
+        summary: offer.say,
+        payload: { groundId, said: '', history: [...history, { role: 'assistant' as const, content: offer.say }], openQuestion, offerId: offer.offerId } as never,
+      },
+      select: { id: true },
+    });
+    return { lane: 'add_context', composedBy: 'rules', blocks: [text(first), { type: 'proposal', proposalId: row.id, summary: offer.say }] };
   }
 
   /**

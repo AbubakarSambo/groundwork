@@ -1,4 +1,10 @@
 /**
+ * TRIED AND NOT KEPT, 2 October 2026: kept here only so the measurement can be run again
+ * (JUDGE=1 and JUDGED_WALK=1 in the-detector-read-twice.ts). The product does not run this. Measured on
+ * six-a and six-b, it was no steadier (72% of shown pairs the same, before and after), fewer people were
+ * shown exactly the same (62% to 56%), and it showed far more beyond the real patterns (47 to 169). See
+ * the morning report.
+ *
  * FOUR PATTERNS THAT CAN ONLY SHOW OVER TIME ARE JUDGED ONCE, ACROSS THEIR PERIODS
  * (decision 75, item 42, 2 October 2026).
  *
@@ -23,7 +29,10 @@
  * pattern never rests on a record nobody holds, and K3 and B11 are never written about somebody who
  * is waiting on another person here.
  */
-import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, PATTERN_DETECTION_PROMPT } from './pattern-library';
+import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, PATTERN_DETECTION_PROMPT } from '../src/modules/patterns/pattern-library';
+import { restsOnARecordNobodyHolds } from '../src/modules/patterns/a-pattern-does-not-rest-on-a-record-nobody-holds';
+import { periodOf } from '../src/modules/patterns/period-of';
+import { MOST_EARLIER_LINES } from '../src/modules/patterns/the-detector-reads-their-own-earlier-record';
 
 /** The four codes decided once across their periods. */
 export const JUDGED_ONCE_CODES = ['E2', 'B2', 'K3', 'B11'] as const;
@@ -201,4 +210,27 @@ export function aLineForTheJudgement(
     else if (why === 'no reads') parts.push(`${code} could not be judged, because too few reads came back.`);
   }
   return `Check-in ${checkInId}, period ${period}: judged once across period${window.length === 1 ? '' : 's'} ${listOf([...window].sort((a, b) => a - b))}. ${parts.join(' ')}`;
+}
+
+/** The earlier periods theirOwnEarlierRecord shows, newest first: the two newest, within its cap on lines. */
+export function theEarlierPeriodsItShows(lines: any[], thisPeriod: number): number[] {
+  const kinds = new Set(['COMMITMENT', 'PROGRESS', 'ASK', 'INTENT', 'WORRY', 'TENSION']);
+  const periods = (lines ?? [])
+    .filter((l) => l?.checkIn && l.text?.trim() && kinds.has(l.type))
+    .map((l) => periodOf({ sessionNumber: l.checkIn.sessionNumber, when: l.checkIn.completedAt ?? l.checkIn.startedAt ?? l.checkIn.createdAt }, l.checkIn.ground))
+    .filter((p) => p < thisPeriod);
+  const newest = [...new Set(periods)].sort((a, b) => b - a).slice(0, 2);
+  const shown: number[] = [];
+  let room = MOST_EARLIER_LINES;
+  for (const p of newest) { if (room > 0) shown.push(p); room -= periods.filter((x) => x === p).length; }
+  return shown;
+}
+
+/** One read of the judgement, as the tried product code made it: the steady setting, the record filter. */
+export async function whatOneJudgementKeeps(model: any, steady: any, content: string, window: number[], codes: string[], whatThePersonSaid: string[] = []): Promise<AJudgementRead> {
+  const labels = PERIOD_LABELS.slice(0, window.length) as unknown as string[];
+  const result = await model.extract(JUDGED_ONCE_PROMPT, [{ role: 'user', content: theJudgementReads(content, window) }], judgedOnceSchema(labels), steady);
+  const said = whatOneJudgementSays(result, window, codes);
+  for (const [code, { observation }] of [...said]) if (!observation || restsOnARecordNobodyHolds(observation, whatThePersonSaid)) said.delete(code);
+  return said;
 }

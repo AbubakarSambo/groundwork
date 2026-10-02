@@ -1618,3 +1618,105 @@ A participant (and anybody else who does not run the check-in) is no longer serv
 ## Decision 75, item 14: where people do not see each other, one person's circumstances stay their own (2 October)
 
 On a check-in where people do not see each other (a cohort, or the lead's switch off), a participant's report and board (everything that comes through the report: `sharedPicture`, `theOpening`, `sharedPictureLines`, `agreements`, `divergences`, `whatTheAnswersSay` and the rest) no longer carry any sentence about one colleague. They keep the counts ("All nine people have answered."), the patterns across people ("A common experience was a delay between receiving the asset and generating income."), the lead's sentences, and the reader's own ("Your goal was ..."). A list item about one colleague is dropped whole, not half-emptied, so a list can be shorter or empty. The lead and an admin read it whole. Evaluation check-ins keep their own rule (decision 17). Nothing new to send.
+
+## Decision 75, item 33: the Movement tile says "changed" (2 October)
+
+The Movement tile's line now says "changed", not "moved", because a target that went down is counted too. The value is unchanged ("1 target", "2 targets", "None"). What each reader reads:
+- The lead, and a person whose own target changed: "1 target changed this session." (before: "1 target moved this session.").
+- Two targets, one up and one down: "2 targets changed this session."
+- A colleague who may not read that number, and an admin outside the check-in: "No target changed this session." (before: "No target moved this session.").
+
+The report's tile is built by the same function and reads the same. `TheSessionsReport.tsx` matches the old words in a case-sensitive pattern that never matched; please match "No target changed this session." if you keep that branch.
+
+## Decision 75, item 48: the endings are plain sentences, on both panels (2 October)
+
+Every ending in `END_STATES` (`api/src/modules/resolution/end-states.ts`) is now one plain, full sentence that says what happened. That file is the one place they live. The resolution panel's `options` (`GET /grounds/:id/resolution`) and the board's `whereThisIsHeading.outcomes` both read from it, so both panels read the same sentence. The values are unchanged, so nothing stored changes.
+
+Some of the new sentences, with what they replace:
+- "OKRs aligned to company direction" is now "The team's goals match where the company is going."
+- "Gaps identified - revision needed" is now "Gaps were found, and the goals need to be changed."
+- "Not yet - more sessions needed" is now "It is not settled yet, and more sessions are needed."
+- "Keep the hire", "Restructure the role", "Let them go" and "Extend evaluation period" are now "The new person stays in the role.", "The role is set up differently.", "The new person leaves the role." and "The time to decide is made longer."
+- "Descope" is now "The project carries on with less in it."
+- "Separation agreed" is now "Both sides agreed that the person will leave."
+
+Once decided, the board says "You recorded the decision on 30 September. The outcome is that it is not settled yet, and more sessions are needed." (before: `The outcome is "Not yet, more sessions needed".`).
+
+Fixed on the way, in the same places:
+- A door that refuses someone after the end (the join link, the preview, a new person, a plan) said "This check-in ended: keep.", the stored value after a colon. It now says "This check-in has ended. The new person stays in the role."
+- The review's line now reads "Wairimu made the decision at the end of “Kwame, first 90 days” on 20 September 2026, and said why, “He needs another month on the supermarket accounts”. The outcome is that the time to decide is made longer."
+- The closing emails kept their own drifted copy of the labels ("Part ways"). They now read the same list: "Kwame, first 90 days has been closed. The outcome is that the new person stays in the role." and "Wairimu Kamau suggested how this ends." followed by the ending.
+
+For the screens: `client/src/lib/end-states.ts` mirrors the server file and is imported by nothing but its tripwire spec. I updated its labels, and the tripwire's sanity line, so `end-state-mirror.spec.ts` still passes. Please keep the server's wording if this touches your own changes there. If the panel adds its own full stop to a label, please stop, because each one now ends with one.
+
+## Decision 75, item 37: a person's own aim is said as their own (2 October)
+
+A target a person set themselves in their own check-in (they hold it, they said it, and they do not run the check-in) was read exactly like a number the lead set for them. It is now said as theirs, everywhere it is shown. Nothing new to send; the sentences in the fields you already draw have changed.
+
+- The board, `objectives[].name`: Rukia reads "You set yourself an aim of 3 shops in Kilimani." (before: "You are aiming for 3 shops in Kilimani."). Amina, who runs the check-in, reads "Rukia Mwangi set an aim of 3 shops in Kilimani for their own work." (before: "Rukia Mwangi is aiming for 3 shops in Kilimani."). A number Amina set for Baraka still reads "Baraka Otieno is aiming for 5 visits a week.", so the two are told apart. No pronoun is guessed.
+- `yourShare[].says`: "You set yourself an aim of 3 shops in Kilimani. You have 1 of the 3 so far."
+- The weekly report's figure: `of` is "3 shops in Kilimani, an aim you set yourself" to Rukia and "3 shops in Kilimani, an aim Rukia Mwangi set for their own work" to Amina; `says` starts "You set yourself an aim of 3 shops in Kilimani." (before: "I am aiming for 3 shops in Kilimani, your own number" and "I am aiming for ..."). An earlier week kept before this reads as it did.
+- Today and "since the last round": "Your shops in Kilimani went from 0 to 1, against your own aim of 3." and to Amina "Rukia Mwangi's shops in Kilimani went from 0 to 1, against Rukia Mwangi's own aim of 3."
+- In a check-in, "About this check-in" tells Rukia "You set yourself an aim of 3 shops in Kilimani." A colleague who may read it is told "Rukia set an aim of 3 shops in Kilimani for their own work." (before: "Your lead is aiming for 3 shops in Kilimani.", which was untrue), or "A colleague set ..." where names are not shared.
+
+Who reads it is unchanged: the person themselves and whoever runs the check-in; a colleague only where everybody sees every number, and never on a colleague's own board (request 105, part 3); not an admin who only reads.
+
+## Decision 75, item 5: a blocker that crosses teams says which team it waits on, and since when (2 October)
+
+`GET /grounds/:id/blocker-trace` now has one more field on each trace: `waitingOn`, one sentence or null. Please show it under the steps, where `whereItStarted` would be.
+
+- Wairimu runs Sales and cannot open Finance's or Leadership's check-ins. She reads the Sales steps only, as before, and now "This is waiting on Finance since 14 September." No Finance step, no Finance person and no Finance check-in name is served. The team is the word Miriam used for it in Sales, and the day is when she asked, so nothing is read from Finance's check-in.
+- Where the person in Sales named no team, it reads "This is waiting on another team since 14 September."
+- Where the chain started in Finance (its first step is not hers to read), she used to get nothing. She now gets her own steps and the sentence, but only where the person in Sales named the team. Otherwise nothing, as before.
+- Miriam and Brian, in Sales where people see each other, read the same as Wairimu.
+- In a check-in where people do not see each other, a person reads this only about their own wait, never a colleague's.
+- An admin who may open every check-in reads every step and `whereItStarted`, so `waitingOn` is null for them. The person reviewed on a performance plan reads nothing of a chain that ends on the lead's step, as before.
+
+## Decision 75, item 29: a company rule said during setup is offered once, after the answer (2 October)
+
+When the lead says a company rule while a setup question is waiting, the question still gets its answer, said back as before, and the rule is offered for the whole organisation straight after the lead's yes or no to that answer. Only a yes keeps it. Each rule is offered once, and never again once the lead said no.
+
+What the lead reads, through Ask Groundwork (nothing to change on the screens there):
+- Ada answers the question about doing well with "Every quote over 1 million needs Grace's sign-off, and doing well means every quote goes out within two days." She reads the say-back of the answer, with its yes and no.
+- After her yes, she reads "I have recorded ..." and then, as its own question with its own yes and no: "Shall I keep "Every quote over 1 million needs Grace's sign-off" as a rule for the whole organisation, so later check-ins and Ask Groundwork can use it?"
+- After a no to the answer, she reads "I have left it as it was. Nothing was changed." and the same question about the rule.
+- A yes to the rule: "I have kept "Every quote over 1 million needs Grace's sign-off" as a rule for the whole organisation. Later check-ins and Ask Groundwork can now use it. You can see it on the Company page." A no: "I have not kept that for the organisation. It stays only on this check-in." followed by the setup question still open.
+
+On the old context chat route, `POST /grounds/:id/context-chat` now sends `proposal.thenOffer`: `{ gap: "organisation_memory", say, offerId }`, beside the answer's own `say`. Please show `thenOffer.say` with a yes and a no after the lead has answered the first proposal. The yes is the existing confirm with `{ offerId }`, and the no is the existing decline with `{ offerId }`, as for any offer to keep something for the organisation.
+
+Never offered again: while the offer is waiting, once it is kept, once the question is earlier in the same conversation, or once the lead said no to it through Ask Groundwork. A no still keeps nothing of the rule anywhere new.
+
+A person on the check-in, an admin who only reads, and anybody else cannot have the setup conversation or answer the offer, as before (decision 63).
+
+## Decision 75, item 17: the five kinds of target (2 October)
+
+Each target's `direction` now takes the prototype's five kinds. The two values that existed keep their names, because they already meant the prototype's first two kinds, so every stored row reads as before:
+
+| `direction` | The prototype's name (`kind`) | In plain words |
+| --- | --- | --- |
+| `"AIM"` | "Up" | something to reach |
+| `"LIMIT"` | "Lower is better" | a limit not to go over |
+| `"RATE"` | "Rate" | a share to keep at or above (a percentage over a period, `target` is the percentage) |
+| `"DEADLINE"` | "Deadline" | a date to meet (the day is the new field `dueOn`) |
+| `"ZERO"` | "Zero" | a count to keep at zero, where any at all is a breach |
+
+Migration `20261002120000_five_kinds_of_target` adds the three values and the column `due_on`. A date to meet is done once its count reaches its number, or 1 where it has none.
+
+**On the board** (`GET /grounds/:id/board`), each row of `objectives` also carries `kind` (the prototype's name, or null where nobody set one) and `dueOn` ("2026-10-30", only on a date to meet), to whoever may read the target. `directionQuestion` now offers the five: "What kind of number is 40? It can be something to reach, a limit not to go over, a share to keep at or above, a date to meet, or a count to keep at zero." Please offer five answers, worded "Something to reach", "A limit not to go over", "A share to keep at or above", "A date to meet" and "A count to keep at zero", and for a date, a day. `directionSuggested` can be any of the five. `POST /grounds/:id/board/objectives` and `PATCH .../objectives/:objectiveId` take `direction` as any of the five and `dueOn` as "YYYY-MM-DD" (null takes it off). The plan card's confirm takes the five as well.
+
+What Bisi, who runs the sales check-in, reads on 2 October:
+- A share: "The team is aiming to keep follow-up within 48 hours at 90% or more." then "It was 80% at the start and is 86% now, below the aim of 90% or more.", with "Close" and "It is 86%, close to the aim of 90% or more." (90% of its number or more is "Close", less is "Behind", at or above it is "Met").
+- Zero: "The team is keeping unexplained transactions at zero." then "There have been 2 so far. This should stay at zero, so any at all is a breach.", with "Over limit". None reads "There have been none so far, which is where it should stay." with "Met".
+- A date: "The team has a date to meet for month-end close." then "It was due by 30 September, and it is not done yet." with "Behind". Before its day: "It is due by 30 October, and it is not done yet." and no word. Done: "It is done. It was due by 30 September." with "Met".
+- Up and Lower is better read as before.
+- The headline asks each kind in its own words: "Will we keep follow-up within 48 hours at 90% or more and keep unexplained transactions at zero by 30 November?" and answers "So far it is 86%, below the aim of 90% or more. So far there have been 2, and any at all is a breach." A share has a bar (`kind: "aim"`, filled towards its number); a date and zero have none.
+- The forecast: "If it keeps changing at the pace it has since session 1, it would be about 100% by session 6, against an aim of 90% or more." for a share (never past 100%), and "It is at 2, and this should stay at zero, so any at all is already a breach whatever the pace." for zero. A date has no pace, so it is not forecast.
+
+**Elsewhere:** the weekly report ("... went from 80% to 86% this week, against the aim of 90% or more. That is below it."; a date's figure is "Done" or "Not done yet"), Today and "since the last round" ("The team's month-end close is done."), a person's own share ("You are at 86% so far."), the targets a check-in is given, and "About this check-in" ("... and the share to keep at or above is 90%.") each say the kind in their own words. The say-backs at setup state each kind ("\"Follow-up within 48 hours\" is a share to keep at 90% or more.") and then offer the five: "A number can be something to reach, a limit not to go over, a share to keep at or above, a date to meet, or a count to keep at zero."
+
+Who reads what is unchanged (decisions 58 and 73, request 105): the word, the headline and the forecast go to whoever runs the check-in, and to a participant only where everybody sees the targets and the picture is shared; an admin who only reads and the person reviewed on an evaluation check-in get none of them.
+
+
+## 2 October: an edit to one of your files, for you to check
+
+To keep the ending labels in one place (decision 75, item 48: all endings are now plain sentences), the engine work updated `client/src/lib/end-states.ts` and its mirror spec `end-state-mirror.spec.ts`, which are yours, so the mirror test still passes. Nothing else in the client imports that file. Please check the change and keep or redo it your way; the engine's own copy is `api/src/modules/resolution/end-states.ts`. On the old setup-chat route, please also show `proposal.thenOffer` after the lead's yes or no to an answer (item 29).

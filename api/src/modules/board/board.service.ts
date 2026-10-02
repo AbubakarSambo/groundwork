@@ -56,7 +56,7 @@ import {
 } from './board-families';
 import { totalSessionsFor } from '../grounds/session-count';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody, plainWordsByPerson, atTheStart, withNames } from '../reports/party-labels';
-import { anAimAsASentence, yourOwnWhereYouAreTheSubject } from './an-aim-is-a-sentence-about-somebody';
+import { anAimAsASentence, yourOwnWhereYouAreTheSubject, anAimTheHolderSet } from './an-aim-is-a-sentence-about-somebody';
 import {
   CoverageKind,
   CoverageRead,
@@ -75,7 +75,16 @@ import { GroundsService } from '../grounds/grounds.service';
 import { theSessionReport } from '../reports/the-session-report';
 import { isThisACascade } from './is-this-a-cascade';
 import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
-import { asADirection, whatTheWordsSuggest, theQuestionAboutWhichWay, type TargetDirection } from './an-aim-or-a-limit';
+import { asADirection, whatTheWordsSuggest, theQuestionAboutWhichWay, theDayItIsDue, THE_KINDS_NAME, type TargetDirection } from './an-aim-or-a-limit';
+import { aDateOnly } from './the-day-in-words';
+
+/** Whether a date-only day has passed on this clock, read in Lagos as every board date is. */
+function aDeadlineHasPassed(dueOn: Date | string | null | undefined, now: Date): boolean {
+  const d = aDateOnly(dueOn);
+  if (!d) return false;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+  return d.toISOString().slice(0, 10) < today;
+}
 import { onlyWhoIsActuallyOutside, WHY_THIS_IS_HERE } from './somebody-carrying-work-with-no-account';
 import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
 import { whyNothingIsCrossReferenced } from './why-nothing-is-cross-referenced';
@@ -1001,7 +1010,11 @@ export class BoardService {
 
       out.objectives = (mayReadUntold as typeof ground.objectives).map((o) => ({
         /* The lead's own direction where they set one (decision 69); otherwise the words of the name, as before. */
-        journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target, name: o.name, direction: asADirection((o as any).direction) }),
+        journey: theJourneySoFar({
+          start: startOf.get(o.id) ?? null, now: o.count, target: o.target, name: o.name, direction: asADirection((o as any).direction),
+          /* A date to meet says its day, and whether it has passed, on the board's own clock (decision 75, item 17). */
+          dueDay: theDayItIsDue((o as any).dueOn, now), isPast: aDeadlineHasPassed((o as any).dueOn, now),
+        }),
         /*
          * AN AIM TO REACH, OR A LIMIT NOT TO GO OVER, AS THE LEAD SET IT (decision 69). Null: not set.
          * To whoever may read the target, because it is part of the target. The suggestion and the
@@ -1009,7 +1022,11 @@ export class BoardService {
          * on the update route), and only while nobody has answered it.
          */
         direction: asADirection((o as any).direction),
-        directionSuggested: isInitiator && o.target != null && asADirection((o as any).direction) == null ? whatTheWordsSuggest(o.name) : null,
+        directionSuggested: isInitiator && o.target != null && asADirection((o as any).direction) == null ? whatTheWordsSuggest(o.name, o.target) : null,
+        /* The prototype's own name for the kind ("Up", "Lower is better", "Rate", "Deadline", "Zero"), where the lead set one. */
+        kind: (() => { const d = asADirection((o as any).direction); return d ? THE_KINDS_NAME[d] : null; })(),
+        /* The day a date to meet is due, "2026-10-30", to whoever may read the target. Null on every other kind. */
+        dueOn: asADirection((o as any).direction) === 'DEADLINE' && (o as any).dueOn ? new Date((o as any).dueOn).toISOString().slice(0, 10) : null,
         directionQuestion: isInitiator && asADirection((o as any).direction) == null ? theQuestionAboutWhichWay(o.target) : null,
         /** The lead's own sentence about what is unsettled here, where there is one. Never a block. */
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledLines),
@@ -1056,7 +1073,7 @@ export class BoardService {
           (out.objectives as any[]).push({
             journey: { direction: 'unknown', start: null, now: 0, target: null, say: '', covered: null },
             notSettled: null, id: `lead-set-goal-${(out.objectives as any[]).length}`, name: say, count: 0, prevCount: 0, target: null,
-            direction: null, directionSuggested: null, directionQuestion: null,
+            direction: null, directionSuggested: null, directionQuestion: null, kind: null, dueOn: null,
             assumes: [], ownerParticipantId: me?.id ?? null, owner: null, delta: 0, isNew: false, suggestedCount: null, suggestedSaid: null, askedOf: null,
           });
         }
@@ -1088,6 +1105,8 @@ export class BoardService {
           holder: o.ownerParticipantId ? labels.get(o.ownerParticipantId) ?? null : null,
           target: o.target ?? null,
           direction: asADirection(row.direction),
+          /* A person's own aim is theirs, never read as a number the lead set (decision 75, item 37). */
+          setByTheHolder: anAimTheHolderSet(row, theLeadsRow),
         });
         const named = withNames(inLabels, visibleNames, labels.values(), { viewerLabel: readerLabel });
         return { ...o, name: yourOwnWhereYouAreTheSubject(named, othersNames) };
@@ -2148,7 +2167,7 @@ export class BoardService {
         const stored = new Map(((ground.objectives ?? []) as any[]).map((o) => [o.id, o]));
         const served = (out.objectives as any[]).filter((o) => stored.has(o.id)).map((o) => {
           const row = stored.get(o.id);
-          return { id: o.id, about: String(o.name ?? ''), target: typeof o.target === 'number' ? o.target : null, ownerParticipantId: o.ownerParticipantId ?? null, direction: asADirection(row.direction) ?? whatTheWordsSuggest(row.name) };
+          return { id: o.id, about: String(o.name ?? ''), target: typeof o.target === 'number' ? o.target : null, ownerParticipantId: o.ownerParticipantId ?? null, direction: asADirection(row.direction) ?? whatTheWordsSuggest(row.name, row.target) };
         });
         const counts = await (this.prisma.groundObjectiveSnapshot.findMany({ where: { groundId }, select: { objectiveId: true, sessionNumber: true, count: true } }) as Promise<any[]>).catch(() => [] as any[]);
         const forecast = theForecast(served, (counts ?? []) as any[], totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null);
@@ -2168,11 +2187,12 @@ export class BoardService {
           const direction = theDirectionToReadIn(asADirection(row.direction), row.name);
           const journeyDirection = (o.journey?.direction ?? 'unknown') as 'up' | 'down' | 'unknown';
           const start = typeof o.journey?.start === 'number' ? o.journey.start : null;
+          const dueDay = theDayItIsDue(row.dueOn, now);
           const stands = whereThisTargetStands(
-            { id: o.id, target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, notSettled: o.notSettled ?? null },
+            { id: o.id, target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, notSettled: o.notSettled ?? null, dueDay, isPast: aDeadlineHasPassed(row.dueOn, now) },
             countsOf(o.id), totalSessions,
           );
-          aims.push({ id: o.id, name: String(row.name ?? ''), target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, word: stands?.word ?? null });
+          aims.push({ id: o.id, name: String(row.name ?? ''), target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, word: stands?.word ?? null, dueDay });
           return { ...o, stands };
         });
         const headline = theHeadlineQuestion(aims, deadlineOf(ground as any), now);
@@ -2860,7 +2880,7 @@ export class BoardService {
   async createObjective(
     groundId: string,
     requestingUserId: string,
-    dto: { name: string; target?: number | null; ownerParticipantId?: string | null; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null },
+    dto: { name: string; target?: number | null; ownerParticipantId?: string | null; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null; dueOn?: string | null },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const owner = await this.whoOnThisGround(groundId, dto.ownerParticipantId);
@@ -2894,8 +2914,10 @@ export class BoardService {
            above. */
         isADecisionAboutAPerson: dto.isADecisionAboutAPerson === true,
         /* Decision 69: an aim to reach or a limit not to go over, as the lead chose it. Absent is null,
-           not set, and the board keeps reading the words of the name until the lead says. */
+           not set, and the board keeps reading the words of the name until the lead says. Decision 75,
+           item 17: or a share, a date to meet (with its day) or a count to keep at zero. */
         direction: asADirection(dto.direction),
+        dueOn: asADirection(dto.direction) === 'DEADLINE' ? aDateOnly(dto.dueOn ?? null) : null,
       } as any,
     });
   }
@@ -2960,7 +2982,7 @@ export class BoardService {
     groundId: string,
     objectiveId: string,
     requestingUserId: string,
-    dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null },
+    dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null; dueOn?: string | null },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
@@ -2993,6 +3015,8 @@ export class BoardService {
         ...(dto.isADecisionAboutAPerson !== undefined ? { isADecisionAboutAPerson: dto.isADecisionAboutAPerson === true } : {}),
         /* Decision 69: the lead sets or changes which way is good here; null puts it back to not set. */
         ...(dto.direction !== undefined ? { direction: asADirection(dto.direction) } : {}),
+        /* The day a date to meet is due (decision 75, item 17); null takes it off. */
+        ...(dto.dueOn !== undefined ? { dueOn: aDateOnly(dto.dueOn) } : {}),
       } as any,
     });
   }

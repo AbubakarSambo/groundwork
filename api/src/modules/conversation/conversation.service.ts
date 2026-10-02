@@ -566,11 +566,23 @@ export class ConversationService {
    * person in this check-in, a first name for anybody this check-in names to them, "a colleague"
    * otherwise. Only the wording: who may read which target is decided before this is called.
    */
+  /** Who runs the check-in, and a colleague's first name where this reader may be told it, for the goals they are told about. */
+  private whoSetWhatForThisReader(ground: { participants?: any[]; scenario?: any; peersVisibleToEachOther?: boolean | null } | null, readerParticipantId: string | null) {
+    const people = (ground?.participants ?? []) as any[];
+    const lead = people.find((p) => p.partyType === PartyType.INITIATOR);
+    const peersMayBeNamed = peersAreNamedOn(ground as any, { participantId: readerParticipantId });
+    const first = (p: any) => (p?.user?.firstName ?? p?.nameGiven ?? '').trim() || null;
+    return {
+      leadParticipantId: lead?.id ?? null,
+      nameOf: (id: string) => (id === lead?.id || peersMayBeNamed ? first(people.find((p) => p.id === id)) : null),
+    };
+  }
+
   private theTargetsAsSentences(
     rows: { name: string; target: number | null; ownerParticipantId?: string | null; setByParticipantId?: string | null; direction?: string | null }[],
     ground: { participants?: any[]; scenario?: any; peersVisibleToEachOther?: boolean | null } | null,
     readerParticipantId: string | null,
-  ): { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | null }[] {
+  ): { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null }[] {
     const people = (ground?.participants ?? []) as any[];
     const first = (p: any) => (p?.user?.firstName ?? p?.nameGiven ?? '').trim() || null;
     const reader = people.find((p) => p.id === readerParticipantId);
@@ -908,7 +920,7 @@ export class ConversationService {
      */
     reader?: { participantId: string | null; isLead: boolean },
     untold: AnUntoldGoalRow[] = [],
-  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | null }[]; alsoSay?: string | null } | null {
+  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null }[]; alsoSay?: string | null } | null {
     if (!ground) return null;
     const allowed = targetsFor(
       ground.objectives ?? [],
@@ -940,7 +952,11 @@ export class ConversationService {
          never the lead's instructions to the product. See what-a-participant-is-told-about-this. */
       says: reader?.isLead
         ? ground.brief?.trim() || null
-        : whatAParticipantIsToldAboutThis(ground.brief, maySee.shown as any, { told: (ground as any).toldToParticipants ?? null, readerParticipantId: reader?.participantId ?? null, scenario: (ground as any).scenario ?? null }),
+        : whatAParticipantIsToldAboutThis(ground.brief, maySee.shown as any, {
+          told: (ground as any).toldToParticipants ?? null, readerParticipantId: reader?.participantId ?? null, scenario: (ground as any).scenario ?? null,
+          /* So a person's own aim is told as theirs, and a colleague's as the colleague's (decision 75, item 37). */
+          ...this.whoSetWhatForThisReader(ground as any, reader?.participantId ?? null),
+        }),
       /* Each as a sentence about whoever set it, and only the fields a reader is shown: never the row as stored. */
       objectives: this.theTargetsAsSentences(maySee.shown as any[], ground as any, reader?.participantId ?? null),
       alsoSay: maySee.alsoSay,

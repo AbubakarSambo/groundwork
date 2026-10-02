@@ -376,7 +376,8 @@ export function atAGlanceTiles(a: {
           : a.numberWasSaid
             ? 'Somebody named a number, and nothing is tracking it.'
             : 'Nobody has set anything to measure this against.'
-        : moved > 0 ? `${moved === 1 ? '1 target' : `${moved} targets`} moved this session.` : 'No target moved this session.',
+        /* "changed", not "moved" (decision 75, item 33): a target that went down changed too. */
+        : moved > 0 ? `${moved === 1 ? '1 target' : `${moved} targets`} changed this session.` : 'No target changed this session.',
       tone: a.movedOnTargets == null
         ? a.numberWasSaid && !(a.targetsSet ?? 0) ? 'warn' : 'flat'
         : a.movedOnTargets > 0 ? 'good' : 'flat',

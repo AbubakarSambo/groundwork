@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common';
-import { IsString, IsInt, IsOptional, IsArray, IsBoolean, IsIn, MaxLength, Min, ArrayMaxSize, ValidateNested } from 'class-validator';
+import { IsString, IsInt, IsOptional, IsArray, IsBoolean, IsIn, MaxLength, Min, ArrayMaxSize, ValidateNested, Matches } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BoardService, type WorkItemInput } from './board.service';
@@ -46,8 +46,13 @@ class ObjectiveDto {
    * of the name as it always has. The board serves `directionSuggested` and `directionQuestion` to the
    * lead for a screen to ask with. This route is already the lead's alone.
    */
-  @IsOptional() @IsIn(['AIM', 'LIMIT'])
-  direction?: 'AIM' | 'LIMIT' | null;
+  /* Decision 75, item 17: the prototype's five kinds. "AIM" is Up, "LIMIT" is Lower is better, then "RATE"
+     (a share to keep at or above), "DEADLINE" (a date to meet, with `dueOn`) and "ZERO" (a count to keep at zero). */
+  @IsOptional() @IsIn(['AIM', 'LIMIT', 'RATE', 'DEADLINE', 'ZERO'])
+  direction?: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null;
+  /** For a date to meet: the day it is due, "2026-10-30"; null takes it off (decision 75, item 17). */
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  dueOn?: string | null;
 }
 
 class ProposePersonDto {

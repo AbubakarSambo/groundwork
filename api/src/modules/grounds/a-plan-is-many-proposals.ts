@@ -245,7 +245,7 @@ export function proposalsFromAPlan(
       line: says,
       saidAs: quote,
       ...(kind === 'goal' && fields.number !== undefined
-        ? { whichWay: theQuestionAboutWhichWay(fields.number) as string, directionSuggested: whatTheWordsSuggest(`${what} ${quote}`) }
+        ? { whichWay: theQuestionAboutWhichWay(fields.number) as string, directionSuggested: whatTheWordsSuggest(`${what} ${quote}`, fields.number) }
         : {}),
     });
   }

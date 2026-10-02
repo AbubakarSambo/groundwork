@@ -67,7 +67,7 @@ function svc(opts: {
   };
   const knowledge: any = { retrieve: jest.fn(async () => ({ cards: [], truncated: false })) };
   const engine: any = { respond: jest.fn(async () => { throw new Error('model off for these tests'); }) };
-  const groundsService: any = { contextChat, applyContextProposal };
+  const groundsService: any = { contextChat, applyContextProposal, declineContextOffer: jest.fn(async () => ({ changed: 'nothing' })) };
 
   const service = new AssistantService(
     prisma,
@@ -82,7 +82,7 @@ function svc(opts: {
     { sendRoundDigest: async () => { throw new Error('no mail in these tests'); } } as any,
     groundsService,
   );
-  return { service, prisma, proposals, contextChat, applyContextProposal };
+  return { service, prisma, proposals, contextChat, applyContextProposal, groundsService };
 }
 
 describe('who reaches the setup conversation at all (inventory item 14)', () => {
@@ -491,5 +491,58 @@ describe('a say-back never comes with an empty bubble', () => {
     expect(texts.every((t: string) => t.trim().length > 0)).toBe(true);
     expect(texts).toEqual([say]);
     expect(r.blocks.find((b: any) => b.type === 'proposal')).toMatchObject({ summary: say });
+  });
+});
+
+/*
+ * DECISION 75, ITEM 29, THROUGH ASK GROUNDWORK. A company rule said while a setup question was waiting:
+ * the answer is said back first, and the rule is offered straight after the yes or the no to it, as its
+ * own question. Only a yes keeps it, and a no to it says so and carries on with what was still open.
+ */
+describe('a company rule said while a setup question was waiting (decision 75, item 29)', () => {
+  const RULE_OFFER = 'Shall I keep "Every quote over 1 million needs Grace\'s sign-off" as a rule for the whole organisation, so later check-ins and Ask Groundwork can use it?';
+  const ANSWER = 'I will record that doing well looks like this: "every quote goes out within two days". Is that right?';
+  const SAID = "Every quote over 1 million needs Grace's sign-off, and doing well means every quote goes out within two days.";
+  const answerParked = {
+    id: 'pr-answer', kind: 'context',
+    payload: { groundId: 'g1', said: SAID, history: [{ role: 'user', content: SAID }, { role: 'assistant', content: ANSWER }], openQuestion: 'Who takes part in this check-in?', thenOffer: { say: RULE_OFFER, offerId: 'o1' } },
+  };
+
+  it('the say-back to the answer carries the offer with it, and nothing is offered in the same question', async () => {
+    const contextChat = jest.fn(async () => ({ reply: '', gaps: ['success'], done: false, proposal: { gap: 'success', say: ANSWER, thenOffer: { gap: 'organisation_memory', say: RULE_OFFER, offerId: 'o1' } } }));
+    const { service, proposals } = svc({ contextChat });
+    const r = await service.respond('org-a', 'p1', `add this as context: ${SAID}`, 'g1');
+    expect(r.blocks.find((b: any) => b.type === 'proposal')).toMatchObject({ summary: ANSWER });
+    expect(proposals.find((p) => p.kind === 'context').payload.thenOffer).toEqual({ gap: 'organisation_memory', say: RULE_OFFER, offerId: 'o1' });
+  });
+
+  it('after the lead\'s yes to the answer, the lead reads what was recorded and then the rule\'s own question', async () => {
+    const applyContextProposal = jest.fn(async () => ({ changed: 'success', say: 'I have recorded what doing well looks like.' }));
+    const { service, proposals } = svc({ parked: answerParked, applyContextProposal });
+    const r = await service.respond('org-a', 'p1', 'yes');
+    expect(r.blocks[0]).toMatchObject({ type: 'text', body: 'I have recorded what doing well looks like.' });
+    expect(r.blocks[1]).toMatchObject({ type: 'proposal', summary: RULE_OFFER });
+    expect(proposals.find((p) => p.kind === 'context' && p.payload?.offerId === 'o1')).toBeTruthy();
+  });
+
+  it('after the lead\'s no to the answer, the rule is still offered, once', async () => {
+    const applyContextProposal = jest.fn();
+    const { service } = svc({ parked: answerParked, applyContextProposal });
+    const r = await service.respond('org-a', 'p1', 'no');
+    expect(applyContextProposal).not.toHaveBeenCalled();
+    expect(r.blocks[0]).toMatchObject({ type: 'text', body: 'I have left it as it was. Nothing was changed.' });
+    expect(r.blocks[1]).toMatchObject({ type: 'proposal', summary: RULE_OFFER });
+  });
+
+  it('a yes to the rule keeps it; a no keeps nothing and carries on with the question still open', async () => {
+    const ruleParked = { id: 'pr-rule', kind: 'context', payload: { groundId: 'g1', said: '', history: [], openQuestion: 'Who takes part in this check-in?', offerId: 'o1' } };
+    const applyContextProposal = jest.fn(async () => ({ changed: 'organisation memory', say: 'I have kept "Every quote over 1 million needs Grace\'s sign-off" as a rule for the whole organisation. Later check-ins and Ask Groundwork can now use it. You can see it on the Company page.' }));
+    const yes = svc({ parked: ruleParked, applyContextProposal });
+    await yes.service.respond('org-a', 'p1', 'yes');
+    expect(applyContextProposal).toHaveBeenCalledWith('g1', 'lead-1', expect.objectContaining({ offerId: 'o1' }));
+    const no = svc({ parked: ruleParked });
+    const r = await no.service.respond('org-a', 'p1', 'no');
+    expect(no.groundsService.declineContextOffer).toHaveBeenCalledWith('g1', 'lead-1', 'o1');
+    expect(r.blocks[0]).toMatchObject({ type: 'text', body: 'I have not kept that for the organisation. It stays only on this check-in.\n\nWho takes part in this check-in?' });
   });
 });

@@ -14,7 +14,9 @@ import { TheBlockerTraceService } from './the-blocker-trace.service';
  * The chain: need (Sales), request (Sales), approval (Finance), priority (Leadership), effect (Sales).
  *
  * The rule under test: a reader is served only the steps from check-ins they may open, and nothing at
- * all if the start or the end is in one they cannot. Names are swapped in when it is served.
+ * all if the end is in one they cannot, or the start is and the person here named no team for it.
+ * Where steps are hidden, the reader still reads which team it waits on and since when (decision 75,
+ * item 5). Names are swapped in when it is served.
  */
 const ORG = 'org-baridi';
 const person = (id: string, userId: string, first: string, last: string, partyType: string) => ({
@@ -74,6 +76,11 @@ function setup(traces: any[] = [westgate]) {
   const prisma: any = {
     blockerTrace: { findMany: jest.fn(async ({ where }: any) => traces.filter((t) => t.organizationId === where.organizationId && t.endGroundId === where.endGroundId)) },
     ground: { findMany: jest.fn(async ({ where }: any) => all.filter((g) => where.id.in.includes(g.id) && g.organizationId === where.organizationId)) },
+    /* The handoff in Sales each chain was followed from: Miriam asked Finance on 14 September; Wairimu's freezer wait names no team. */
+    groundDependency: { findUnique: jest.fn(async ({ where }: any) => ({
+      'h-terms': { id: 'h-terms', groundId: 'sales', fromParticipantId: 'p-s-miriam', onParticipantId: null, onLabel: 'Finance', waitingOnGroundId: 'finance', createdAt: new Date('2026-09-14T09:00:00Z') },
+      'h-k': { id: 'h-k', groundId: 'sales', fromParticipantId: 'p-s-wairimu', onParticipantId: null, onLabel: null, waitingOnGroundId: 'kwame', createdAt: new Date('2026-09-21T09:00:00Z') },
+    } as any)[where.id] ?? null) },
   };
   const grounds: any = {
     list: jest.fn(async (org: string, userId: string, _e: string, role: string) => {
@@ -84,7 +91,7 @@ function setup(traces: any[] = [westgate]) {
   const reports = Object.create(ReportsService.prototype) as any;
   reports.logger = { log: () => {}, warn: () => {} };
   const svc = new TheBlockerTraceService(prisma, grounds, reports);
-  return { svc, prisma, read: (who: keyof typeof readers, id = 'sales') => svc.forReader(id, readers[who]) };
+  return { svc, prisma, read: (who: keyof typeof readers, id = 'sales') => svc.forReader(id, readers[who], new Date('2026-10-02T12:00:00Z')) };
 }
 
 /** Everything a person reads, as one string. */
@@ -105,6 +112,8 @@ describe('the admin who only reads', () => {
     expect(t.whereItStarted).toBe('Where it started: the request went to Finance without Westgate’s references, and August’s new sign-off rule then queued it behind the supplier decision.');
     expect(t.decisionNeeded).toBe('Decision needed: sign off Westgate’s credit terms this week?');
     expect(t.decidedBy).toBe('Amani Njoroge decides.');
+    /* Every step is hers to read, so nothing needs saying about a team she cannot see. */
+    expect(t.waitingOn).toBeNull();
   });
 });
 
@@ -118,6 +127,8 @@ describe('a lead who runs only the check-in it ends in', () => {
     expect(traces[0].decidedBy).toBeNull();
     const out = everything(traces);
     expect(out).not.toMatch(/Finance, Q3|Leadership|Grace|Amani|sign-off|supplier decision/);
+    /* Decision 75, item 5: but always which team it waits on, and since when, from Miriam's own words in Sales. */
+    expect(traces[0].waitingOn).toBe('This is waiting on Finance since 14 September.');
   });
 });
 
@@ -125,6 +136,7 @@ describe('a person in the check-in', () => {
   it('Miriam reads her own steps as "You", and her colleague by name, and nothing from Finance or Leadership', async () => {
     const { traces } = await setup().read('miriam');
     expect(traces[0].steps.map((s) => [s.kind, s.owner])).toEqual([['need', 'You'], ['request', 'You'], ['effect', 'Wairimu Kamau']]);
+    expect(traces[0].waitingOn).toBe('This is waiting on Finance since 14 September.');
     expect(everything(traces)).not.toMatch(/Finance, Q3|Leadership|Grace|Amani|sign-off/);
   });
 });

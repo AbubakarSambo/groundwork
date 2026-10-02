@@ -2626,11 +2626,11 @@ from finishing at all.`;
 
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: dto.joinToken },
-      select: { id: true, status: true, endState: true },
+      select: { id: true, status: true, endState: true, scenario: true },
     });
     if (!ground) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
     /* Nobody is mailed a way into a check-in that is over or on hold. See grounds.service#getJoinPreview. */
-    const refused = whyItRefuses(ground.status, ground.endState);
+    const refused = whyItRefuses(ground.status, ground.endState, 'anybody else', ground.scenario);
     if (refused) throw new BadRequestException(refused);
 
     const email = dto.email.trim().toLowerCase();
@@ -2691,11 +2691,11 @@ from finishing at all.`;
 
     const ground = await this.prisma.ground.findUnique({
       where: { joinToken: pending.joinToken },
-      select: { id: true, organizationId: true, status: true, endState: true, initiatorId: true, isFreeGround: true, freeParticipantCap: true },
+      select: { id: true, organizationId: true, status: true, endState: true, scenario: true, initiatorId: true, isFreeGround: true, freeParticipantCap: true },
     });
     if (!ground) throw new NotFoundException(whyThisDidNotWork('that link is not one we know'));
     /* Asked before anything is made: no account, no participant row and no session on a ground that has ended or is held. */
-    const refusedNow = whyItRefuses(ground.status, ground.endState);
+    const refusedNow = whyItRefuses(ground.status, ground.endState, 'anybody else', ground.scenario);
     if (refusedNow) throw new BadRequestException(refusedNow);
 
     const email = pending.email;

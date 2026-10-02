@@ -2,6 +2,8 @@ import type { PrismaService } from '../prisma/prisma.service';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { iHaveKept, shallIKeep, sourceLineOn, NOTHING_WAITING, type Keepable } from './what-the-organisation-keeps';
 
+const sameWords = (a: string, b: string) => a.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim() === b.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
 /**
  * ORGANISATION MEMORY THAT A LEAD CONFIRMED (week 20). The rules are in what-the-organisation-keeps.ts;
  * this is the part that touches the database.
@@ -39,6 +41,31 @@ export async function offerToKeep(
     select: { id: true },
   });
   return { offerId: row.id, say: shallIKeep(input.item) };
+}
+
+/**
+ * WHETHER THIS RULE HAS BEEN OFFERED BEFORE (decision 75, item 29): offered once per rule, and never
+ * again once the lead said no. Read from what already exists, so a no still keeps nothing new:
+ *   - an offer still waiting, or the words already kept for the organisation;
+ *   - the question itself earlier in this conversation (the old route's history holds every turn);
+ *   - a no to it through Ask Groundwork, which keeps its own record of every proposal and its answer.
+ */
+export async function offeredBefore(
+  prisma: PrismaService,
+  input: { organizationId: string; item: Keepable; history?: { role: string; content: string }[] },
+): Promise<boolean> {
+  const asked = shallIKeep(input.item);
+  if ((input.history ?? []).some((h) => h.role === 'assistant' && (h.content ?? '').includes(asked))) return true;
+  const rows = ((await (prisma.organizationMemory.findMany({
+    where: { organizationId: input.organizationId, kind: input.item.kind, status: { in: ['OFFERED', 'KEPT'] } } as any,
+    select: { text: true },
+  }) as Promise<{ text: string }[]>).catch(() => [])) ?? []) as { text: string }[];
+  if (rows.some((r) => sameWords(r.text ?? '', input.item.text))) return true;
+  const saidNo = await ((prisma as any).assistantProposal?.findFirst?.({
+    where: { organizationId: input.organizationId, kind: 'context', state: 'DECLINED', summary: asked },
+    select: { id: true },
+  }) ?? Promise.resolve(null)).catch(() => null);
+  return !!saidNo;
 }
 
 /** The lead's yes. The caller has already checked the lead may confirm setup on the check-in. */

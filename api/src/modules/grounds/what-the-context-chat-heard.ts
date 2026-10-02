@@ -1,7 +1,7 @@
 import { worthRecording, verbatimQuote, verbatimExpectation, readablePhrase } from './what-setup-agreed';
 import { whoTheyMeant } from './who-they-meant';
 import { saidUntilIEndIt } from './nothing-proposed-that-nobody-said';
-import { whatTheWordsSuggest, whichWayItIsSaid, type TargetDirection } from '../board/an-aim-or-a-limit';
+import { whatTheWordsSuggest, whichWayItIsSaid, THE_FIVE_KINDS_SAID, type TargetDirection } from '../board/an-aim-or-a-limit';
 /**
  * THE HALF THE CONTEXT CHAT WAS MISSING: what it heard, and what may be done with it. Stage 3.
  *
@@ -166,11 +166,12 @@ export function theMeasuresSaidBack(
   const one = targets.length === 1;
   const howMany = one ? 'one measure' : `${targets.length} measures`;
   const each = targets.map((t) => (t.target != null
-    ? whichWayItIsSaid(t.name, t.target, (t.direction ?? whatTheWordsSuggest(t.name)) as TargetDirection)
+    ? whichWayItIsSaid(t.name, t.target, (t.direction ?? whatTheWordsSuggest(t.name, t.target)) as TargetDirection)
     : `"${t.name.replace(/[.!?]+$/, '')}" has no number, so it will be followed but not counted.`));
   const anyNumber = targets.some((t) => t.target != null);
+  /* The five kinds, offered in plain words, so a yes is a yes to the kind (decision 75, item 17). */
   const change = anyNumber
-    ? (one ? 'You can change it on the board, including whether the number is an aim or a limit.' : 'You can change any of them on the board, including whether a number is an aim or a limit.')
+    ? `${THE_FIVE_KINDS_SAID} ${one ? 'You can change it on the board, including what kind of number it is.' : 'You can change any of them on the board, including what kind of number each one is.'}`
     : (one ? 'You can change it on the board.' : 'You can change any of them on the board.');
   return `${when === 'before' ? 'I will set' : 'I have set'} ${howMany} for this check-in. ${each.join(' ')} ${change}`;
 }
@@ -200,7 +201,7 @@ export function proposalFrom(
      * Suggested from the words of each name and stated in the say-back, one sentence per number, so
      * the lead's yes confirms it. The same words give the same suggestion when the yes lands.
      */
-    const withWays = targets.map((t) => ({ ...t, direction: t.target != null ? whatTheWordsSuggest(t.name) : null }));
+    const withWays = targets.map((t) => ({ ...t, direction: t.target != null ? whatTheWordsSuggest(t.name, t.target) : null }));
     return {
       kind: 'targets',
       targets: withWays,

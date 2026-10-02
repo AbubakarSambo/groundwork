@@ -1,5 +1,5 @@
 import { GroundScenario } from '@prisma/client';
-import { endStatesForGround, endStatesFor } from '../resolution/end-states';
+import { endStatesForGround, theEndingSaid, theOutcomeIsThat } from '../resolution/end-states';
 import { THE_SCENARIO_TABLE } from '../conversation/the-scenario-table';
 import { theDayInWords } from './the-headline-and-where-each-target-stands';
 
@@ -60,9 +60,9 @@ export interface WhereThisIsHeading {
   decided: string | null;
 }
 
-/** An ending's label as a reader reads it: never two pieces joined by a dash. */
+/** An ending as a reader reads it. Each is already one plain sentence (end-states.ts, decision 75 item 48), the same as on the resolution panel. */
 function inPlainWords(label: string): string {
-  const t = label.trim().replace(/\s+-\s+/g, ', ');
+  const t = label.trim();
   return t.endsWith('.') ? t : `${t}.`;
 }
 
@@ -99,9 +99,9 @@ export function whereThisIsHeading(a: {
     .map((d: any) => d.question.trim());
 
   const lead = a.readerIsTheLead ? 'You' : a.leadName || 'The person running this check-in';
-  const ending = a.decided?.endState ? endStatesFor(a.scenario).find((e) => e.value === a.decided!.endState) : null;
+  const ending = theEndingSaid(a.scenario, a.decided?.endState);
   const decided = a.decided
-    ? `${lead === 'You' ? 'You' : lead} recorded the decision${a.decided.on ? ` on ${theDayInWords(new Date(a.decided.on), a.now)}` : ''}.${ending ? ` The outcome is "${inPlainWords(ending.label).replace(/\.$/, '')}".` : ''}`
+    ? `${lead === 'You' ? 'You' : lead} recorded the decision${a.decided.on ? ` on ${theDayInWords(new Date(a.decided.on), a.now)}` : ''}.${ending ? ` ${theOutcomeIsThat(ending)}` : ''}`
     : null;
 
   return {

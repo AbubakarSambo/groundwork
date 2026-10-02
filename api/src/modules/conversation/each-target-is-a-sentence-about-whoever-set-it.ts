@@ -16,7 +16,7 @@
  * It decides nothing about who may read a target. The caller passes only the targets this reader may
  * read (targetsFor and the untold-goal wall); this only words them.
  */
-import { anAimAsASentence, yourOwnWhereYouAreTheSubject, aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
+import { anAimAsASentence, yourOwnWhereYouAreTheSubject, aNumberPeopleCanRead, anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { asADirection, theListsWordsFor } from '../board/an-aim-or-a-limit';
 import { withNames } from '../reports/party-labels';
 
@@ -55,6 +55,8 @@ export function theTargetAsASentence(o: ATargetToWord, who: WhoIsInIt): string {
     holder: o.ownerParticipantId ? nameFor(o.ownerParticipantId) : null,
     target: o.target ?? null,
     direction,
+    /* A person's own aim is theirs, never a number the lead set for them (decision 75, item 37). */
+    setByTheHolder: anAimTheHolderSet(o, who.leadId),
   });
   const reader = who.readerFirstName?.trim();
   const toThem = reader ? withNames(inNames, new Map(), [reader], { viewerLabel: reader }) : inNames;
@@ -63,5 +65,9 @@ export function theTargetAsASentence(o: ATargetToWord, who: WhoIsInIt): string {
   if (!direction || o.target == null) return sentence;
   if (direction === 'LIMIT' && /\bno more than\b/i.test(sentence)) return sentence;
   if (direction === 'AIM' && /\baim(?:ing)?\b/i.test(sentence)) return sentence;
+  /* Each of the other kinds in its own words (decision 75, item 17). */
+  if (direction === 'RATE') return sentence.includes(`${aNumberPeopleCanRead(o.target)}%`) ? sentence : `${sentence} The share to keep at or above is ${aNumberPeopleCanRead(o.target)}%.`;
+  if (direction === 'ZERO') return /\bat zero\b/.test(sentence) ? sentence : `${sentence} This should stay at zero, so any at all is a breach.`;
+  if (direction === 'DEADLINE') return /\bdate to meet\b/.test(sentence) ? sentence : `${sentence} It is a date to meet.`;
   return `${sentence} The number ${aNumberPeopleCanRead(o.target)} is ${theListsWordsFor(direction)}.`;
 }

@@ -44,13 +44,13 @@ export class APlanIsManyProposalsService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        id: true, initiatorId: true, status: true, endState: true,
+        id: true, initiatorId: true, status: true, endState: true, scenario: true,
         participants: { select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, leftAt: true, user: { select: { firstName: true, lastName: true } } } },
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     if (ground.initiatorId !== userId) throw new ForbiddenException(refusal);
-    const refused = opts.evenIfItCannotTakeThings ? null : whyItRefuses(ground.status, ground.endState, 'the lead');
+    const refused = opts.evenIfItCannotTakeThings ? null : whyItRefuses(ground.status, ground.endState, 'the lead', ground.scenario);
     if (refused) throw new BadRequestException(refused);
     return ground;
   }

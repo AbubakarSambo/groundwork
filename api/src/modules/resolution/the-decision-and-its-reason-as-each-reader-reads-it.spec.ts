@@ -3,6 +3,9 @@ import { GroundScenario, GroundStatus, PartyType } from '@prisma/client';
 import { ResolutionService } from './resolution.service';
 import { RESOLUTION_ON_THE_GROUND } from '../grounds/grounds.service';
 import { whenTheBoardLastChanged } from '../board/when-the-board-last-changed';
+import { END_STATES } from './end-states';
+import { whereThisIsHeading } from '../board/where-this-is-heading';
+import { whyItRefuses } from '../grounds/a-ground-that-has-ended';
 
 /**
  * HOW A CHECK-IN ENDS, AND WHY, AS EACH READER READS IT (U.11, B6 ending-and-probation-review.txt).
@@ -22,7 +25,7 @@ const HANA = 'u-hana';
 const REASON =
   'He brought in 5 new accounts against a goal of 4, and he has raised problems the same day since week 8.';
 
-function world(opts: { closed: boolean; storedReason?: string | null }) {
+function world(opts: { closed: boolean; storedReason?: string | null; scenario?: GroundScenario }) {
   const participants = [
     {
       id: 'p-wairimu', userId: WAIRIMU, email: 'wairimu@baridi.test', partyType: PartyType.INITIATOR,
@@ -44,7 +47,7 @@ function world(opts: { closed: boolean; storedReason?: string | null }) {
   const prisma: any = {
     ground: {
       findUnique: jest.fn(async () => ({
-        id: 'g1', organizationId: 'org1', initiatorId: WAIRIMU, scenario: GroundScenario.NEW_HIRE,
+        id: 'g1', organizationId: 'org1', initiatorId: WAIRIMU, scenario: opts.scenario ?? GroundScenario.NEW_HIRE,
         /* Changed with decision 75, item 25: a first 90 days is an evaluation check-in now, so Grace reads it
            because she set it up (given access, decision 5). Hana, an admin who was not, reads nothing. */
         createdByUserId: GRACE,
@@ -170,5 +173,67 @@ describe('the board counts a decision as something new coming in', () => {
       decidedAt: '2026-09-30T10:00:00Z',
     });
     expect(at).toBe('2026-09-30T10:00:00.000Z');
+  });
+});
+
+/*
+ * THE ENDINGS ARE PLAIN SENTENCES, AND BOTH PANELS READ THE SAME ONES (decision 75, item 48).
+ *
+ * Before: the resolution panel offered "Keep the hire", "Let them go", "Not yet - revisit with a named
+ * gap", and on a team check-in "OKRs aligned to company direction" and "Gaps identified - revision
+ * needed". The board's "Where this is heading" turned the dash into a comma. A person reading a door
+ * that refused them after the end read "This check-in ended: keep." from the stored value.
+ */
+describe('decision 75, item 48: every ending is one plain sentence, read the same on both panels', () => {
+  const PLAIN = /^[A-Z][^:;\u2013\u2014]*\.$/;
+  it.each(Object.entries(END_STATES))('%s: each ending is one full sentence, with no dash, colon or piece', (_scenario, endings) => {
+    for (const e of endings) {
+      expect(e.label).toMatch(PLAIN);
+      expect(e.label).not.toMatch(/ - /);
+      /* One sentence, so "The outcome is that ..." can carry it. */
+      expect(e.label.replace(/\.$/, '')).not.toMatch(/[.!?]/);
+      expect(e.description ?? '').not.toMatch(/ - /);
+    }
+  });
+
+  it.each([
+    ['Wairimu, who runs it', WAIRIMU],
+    ['Kwame, the person it is about', KWAME],
+    ['Grace, the admin who set it up', GRACE],
+  ])('%s reads the same sentences on the resolution panel of a first 90 days', async (_who, userId) => {
+    const { svc } = world({ closed: false });
+    const state: any = await svc.get('g1', userId);
+    expect(state.options.map((o: any) => o.label)).toEqual([
+      'The new person stays in the role.',
+      'The role is set up differently.',
+      'The new person leaves the role.',
+      'The time to decide is made longer.',
+      'It is not decided yet, and what is missing is named so it can be looked at again.',
+    ]);
+  });
+
+  it('on a team check-in, the resolution panel and "Where this is heading" read the same sentences', async () => {
+    const { svc } = world({ closed: false, scenario: GroundScenario.OKR_ALIGNMENT });
+    const panel: any = await svc.get('g1', WAIRIMU);
+    const board = whereThisIsHeading({ scenario: GroundScenario.OKR_ALIGNMENT, hadAnObjective: true, readerIsTheLead: true, leadName: 'Wairimu Kamau', board: {}, decided: null });
+    expect(panel.options.map((o: any) => o.label)).toEqual([
+      'The team\'s goals match where the company is going.',
+      'Gaps were found, and the goals need to be changed.',
+      'It is not settled yet, and more sessions are needed.',
+    ]);
+    expect(board.outcomes.map((o) => o.says)).toEqual(panel.options.map((o: any) => o.label));
+  });
+
+  it.each(Object.entries(END_STATES))('%s: once decided, the board and every refusing door say the ending as a sentence', (scenario, endings) => {
+    for (const e of endings) {
+      const board = whereThisIsHeading({ scenario: scenario as GroundScenario, hadAnObjective: true, readerIsTheLead: false, leadName: 'Wairimu Kamau', board: {}, decided: { endState: e.value, on: new Date('2026-09-30T10:00:00Z') }, now: new Date('2026-10-02T12:00:00Z') });
+      expect(board.decided).toMatch(/^Wairimu Kamau recorded the decision on 30 September\. The outcome is that [a-z].*[^.]\.$/);
+      expect(whyItRefuses(GroundStatus.CLOSED, e.value, 'anybody else', scenario)).toBe(`This check-in has ended. ${e.label}`);
+    }
+  });
+
+  it('the person a first 90 days is about reads how it ended as a sentence, never the stored word', () => {
+    expect(whyItRefuses(GroundStatus.CLOSED, 'EXIT', 'anybody else', GroundScenario.NEW_HIRE)).toBe('This check-in has ended. The new person leaves the role.');
+    expect(whyItRefuses(GroundStatus.CLOSED, 'EXIT', 'anybody else', GroundScenario.NEW_HIRE)).not.toMatch(/exit|:/i);
   });
 });

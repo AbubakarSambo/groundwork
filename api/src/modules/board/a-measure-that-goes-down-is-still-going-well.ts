@@ -107,11 +107,51 @@ export function theWordsSayItIsALimit(name: string | null | undefined): boolean 
  * where `direction` is set it is the answer, whatever the name says. Where it is null nobody has said,
  * and the words of the name are read exactly as they were before the field existed.
  */
-export type TargetDirection = 'AIM' | 'LIMIT';
+export type TargetDirection = 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO';
 
-export function theJourneySoFar(a: { start: number | null; now: number; target: number | null; name?: string | null; direction?: TargetDirection | null }): Journey {
+/** A deadline is done once its count reaches its number, or 1 where it has none. */
+export const aDeadlineIsDone = (count: number, target: number | null | undefined): boolean => count >= (typeof target === 'number' && target > 0 ? target : 1);
+
+/**
+ * THE THREE KINDS THAT ARE NOT UP OR DOWN (decision 75, item 17), each in its own plain sentence.
+ *   A share:  "It is 86% now, below the aim of 90% or more."  /  "It is 91% now, which meets the aim of 90% or more."
+ *   A date:   "It is due by 30 October, and it is not done yet."  /  "It was due by 30 October, and it is not done yet."  /  "It is done. It was due by 30 October."
+ *   Zero:     "There have been none so far, which is where it should stay."  /  "There have been 2 so far. This should stay at zero, so any at all is a breach."
+ */
+export function theOtherKindsSay(
+  direction: 'RATE' | 'DEADLINE' | 'ZERO',
+  a: { start: number | null; now: number; target: number | null; dueDay?: string | null; isPast?: boolean },
+): string {
+  const { start, now, target } = a;
+  if (direction === 'RATE') {
+    const pc = (n: number) => `${read(n)}%`;
+    const was = start != null && start !== now ? `It was ${pc(start)} at the start and is ${pc(now)} now` : `It is ${pc(now)} now`;
+    if (target == null) return `${was}.`;
+    return now >= target ? `${was}, which meets the aim of ${pc(target)} or more.` : `${was}, below the aim of ${pc(target)} or more.`;
+  }
+  if (direction === 'DEADLINE') {
+    if (aDeadlineIsDone(now, target)) return a.dueDay ? `It is done. It was due by ${a.dueDay}.` : 'It is done.';
+    if (!a.dueDay) return 'It is a date to meet, and nobody has set the date yet. It is not done yet.';
+    return a.isPast ? `It was due by ${a.dueDay}, and it is not done yet.` : `It is due by ${a.dueDay}, and it is not done yet.`;
+  }
+  if (now === 0) return 'There have been none so far, which is where it should stay.';
+  return `There ${now === 1 ? 'has been 1' : `have been ${read(now)}`} so far. This should stay at zero, so any at all is a breach.`;
+}
+
+export function theJourneySoFar(a: {
+  start: number | null; now: number; target: number | null; name?: string | null; direction?: TargetDirection | null;
+  /** For a date to meet: the day it is due, in words, and whether that day has passed. */
+  dueDay?: string | null; isPast?: boolean;
+}): Journey {
   const { start, now, target } = a;
   const name = a.name ?? '';
+  if (a.direction === 'RATE' || a.direction === 'DEADLINE' || a.direction === 'ZERO') {
+    return {
+      direction: a.direction === 'ZERO' ? 'down' : a.direction === 'RATE' ? 'up' : 'unknown',
+      start, now, target, covered: null,
+      say: theOtherKindsSay(a.direction, a),
+    };
+  }
   const said = a.direction === 'AIM' || a.direction === 'LIMIT' ? a.direction : null;
   /* An aim the lead set is reached by going up to it, wherever it started. */
   const direction = said === 'AIM' ? (start == null || start === target ? whichWayIsGood(start, target) : 'up') : whichWayIsGood(start, target);

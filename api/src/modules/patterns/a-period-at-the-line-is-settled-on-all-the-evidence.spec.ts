@@ -92,7 +92,6 @@ describe('whatCountsThisPeriod', () => {
   });
 });
 
-/* B6, not K3: since decision 75, item 42, K3 is judged once across its periods, so the split-period rule is shown on a code still decided period by period. */
 describe('analyzeCheckIn settles a split period on five more reads', () => {
   function buildPrisma(countedBefore: number[] = []) {
     return {
@@ -111,13 +110,13 @@ describe('analyzeCheckIn settles a split period on five more reads', () => {
       recordEntry: { findMany: jest.fn(async () => [] as any[]) },
       patternDetection: {
         findMany: jest.fn(async (args: any) =>
-          args?.select?.seenInSessions && countedBefore.length ? [{ code: 'B6', seenInSessions: countedBefore }] : []),
+          args?.select?.seenInSessions && countedBefore.length ? [{ code: 'K3', seenInSessions: countedBefore }] : []),
       },
       groundDependency: { findMany: jest.fn(async () => [] as any[]) },
     };
   }
 
-  /** The first five reads keep B6 `keptOn` times; of any more reads, `moreKeptOn` keep it ('fail' throws). */
+  /** The first five reads keep K3 `keptOn` times; of any more reads, `moreKeptOn` keep it ('fail' throws). */
   function buildModel(keptOn: number, moreKeptOn: number | 'fail') {
     let read = 0;
     return {
@@ -125,7 +124,7 @@ describe('analyzeCheckIn settles a split period on five more reads', () => {
         read += 1;
         if (read > 5 && moreKeptOn === 'fail') throw new Error('model unreachable');
         const keep = read <= 5 ? read <= keptOn : read - 5 <= (moreKeptOn as number);
-        return { detections: keep ? [{ code: 'B6', observation: `read ${read}: the freezer supplier options are still being compared and nothing is decided.` }] : [] };
+        return { detections: keep ? [{ code: 'K3', observation: `read ${read}: the freezer supplier was chased again and has still not called back.` }] : [] };
       }),
       respond: jest.fn(async () => 'YES'),
     };
@@ -148,7 +147,7 @@ describe('analyzeCheckIn settles a split period on five more reads', () => {
   it('two of five, then four of the next five (six of ten): the period counts', async () => {
     const r = await run(2, 4);
     expect(r.reads).toBe(5 + MORE_READS_WHEN_SPLIT);
-    expect(r.written).toEqual(['B6']);
+    expect(r.written).toEqual(['K3']);
   });
 
   it('three of five, then one of the next five (four of ten): the period does not count', async () => {
@@ -160,7 +159,7 @@ describe('analyzeCheckIn settles a split period on five more reads', () => {
   it('when the settling lets a code go, the log says so in one line: the code and the reason, no observation', async () => {
     const r = await run(3, 1);
     const said = r.lines.filter((l) => l.includes('does not count'));
-    expect(said).toEqual(['Check-in check-1: B6 does not count for period 4. 3 of the first 5 reads kept it, but only 4 of all 10 reads did once the split was read again.']);
+    expect(said).toEqual(['Check-in check-1: K3 does not count for period 4. 3 of the first 5 reads kept it, but only 4 of all 10 reads did once the split was read again.']);
     expect(said[0]).not.toContain('freezer');
   });
 
@@ -171,7 +170,7 @@ describe('analyzeCheckIn settles a split period on five more reads', () => {
   it('four of five agreed: no more reads, and the period counts', async () => {
     const r = await run(4, 0);
     expect(r.reads).toBe(5);
-    expect(r.written).toEqual(['B6']);
+    expect(r.written).toEqual(['K3']);
   });
 
   it('one of five: no more reads, and nothing is written', async () => {
@@ -183,11 +182,11 @@ describe('analyzeCheckIn settles a split period on five more reads', () => {
   it('a pattern already counted in three periods brings no more reads; three of five decides as before', async () => {
     const r = await run(3, 0, [1, 2, 3]);
     expect(r.reads).toBe(5);
-    expect(r.written).toEqual(['B6']);
+    expect(r.written).toEqual(['K3']);
   });
 
   it('when the extra reads do not come back, three of five decides as before', async () => {
-    expect((await run(3, 'fail')).written).toEqual(['B6']);
+    expect((await run(3, 'fail')).written).toEqual(['K3']);
     expect((await run(2, 'fail')).written).toEqual([]);
   });
 });

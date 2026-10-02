@@ -1,8 +1,9 @@
 import { aNumberPeopleCanRead } from './an-aim-is-a-sentence-about-somebody';
-import { theWordsSayItIsALimit } from './a-measure-that-goes-down-is-still-going-well';
+import { theWordsSayItIsALimit, aDeadlineIsDone, type TargetDirection } from './a-measure-that-goes-down-is-still-going-well';
+import { theDayInWords } from './the-day-in-words';
 
 /** The direction a target is read in: the lead's, or a limit where its words say so, or not said. */
-export function theDirectionToReadIn(said: 'AIM' | 'LIMIT' | null, name: string | null | undefined): 'AIM' | 'LIMIT' | null {
+export function theDirectionToReadIn(said: TargetDirection | null, name: string | null | undefined): TargetDirection | null {
   return said ?? (theWordsSayItIsALimit(name) ? 'LIMIT' : null);
 }
 
@@ -57,11 +58,14 @@ export interface ATargetToStand {
   count: number;
   /** Where it started: the count at its first stored session, or null. */
   start: number | null;
-  /** The lead's direction, or what the words of the name suggest where nobody has set one. */
-  direction: 'AIM' | 'LIMIT' | null;
+  /** The lead's kind for it (decision 69 and decision 75 item 17), or a limit where its words say so. */
+  direction: TargetDirection | null;
   /** The journey's own reading: "down" for a measure that should fall, "unknown" where nothing says. */
   journeyDirection: 'up' | 'down' | 'unknown';
   notSettled: string | null;
+  /** For a date to meet: the day it is due, in words, and whether it has passed. */
+  dueDay?: string | null;
+  isPast?: boolean;
 }
 
 const read = aNumberPeopleCanRead;
@@ -84,8 +88,32 @@ export function whereThisTargetStands(
   counts: { sessionNumber: number; count: number }[],
   totalSessions: number | null,
 ): AStanding | null {
-  if (typeof t.target !== 'number') return null;
+  if (t.direction === 'DEADLINE') {
+    /* A date to meet: met, late, or not yet due. No pace: a date is met or it is not. */
+    if (t.notSettled) return { word: 'Not settled', says: 'What this counts is not settled yet, so how it stands cannot be said.' };
+    if (aDeadlineIsDone(t.count, t.target)) return { word: 'Met', says: t.dueDay ? `It is done. It was due by ${t.dueDay}.` : 'It is done.' };
+    if (!t.dueDay) return { word: null, says: 'Nobody has set the date this is due, so how it stands cannot be said.' };
+    return t.isPast
+      ? { word: 'Behind', says: `It was due by ${t.dueDay}, and it is not done yet.` }
+      : { word: null, says: `It is due by ${t.dueDay}, and it is not done yet.` };
+  }
+  if (typeof t.target !== 'number' && t.direction !== 'ZERO') return null;
   if (t.notSettled) return { word: 'Not settled', says: 'What this number counts is not settled yet, so how it stands cannot be said.' };
+  if (t.direction === 'ZERO') {
+    /* A count to keep at zero: none is met, any at all is a breach. */
+    return t.count === 0
+      ? { word: 'Met', says: 'There have been none, which is where it should stay.' }
+      : { word: 'Over limit', says: `There ${t.count === 1 ? 'has been 1' : `have been ${read(t.count)}`}, and this should stay at zero, so any at all is a breach.` };
+  }
+  if (typeof t.target !== 'number') return null;
+  if (t.direction === 'RATE') {
+    /* A share over a period is read where it is now, against its number. It is not carried forward like a count. */
+    const pc = (n: number) => `${read(n)}%`;
+    if (t.count >= t.target) return { word: 'Met', says: `It is ${pc(t.count)}, which meets the aim of ${pc(t.target)} or more.` };
+    return t.count >= t.target * CLOSE_MEANS_AT_LEAST
+      ? { word: 'Close', says: `It is ${pc(t.count)}, close to the aim of ${pc(t.target)} or more.` }
+      : { word: 'Behind', says: `It is ${pc(t.count)}, below the aim of ${pc(t.target)} or more.` };
+  }
   const limit = t.direction === 'LIMIT';
   if (limit) {
     return t.count > t.target
@@ -128,7 +156,7 @@ export function whereThisTargetStands(
 
 export interface AHeadlineBar {
   objectiveId: string;
-  /** "aim" fills towards the number; "limit" fills towards the ceiling. */
+  /** "aim" fills towards the number (a share too, towards its number); "limit" fills towards the ceiling. */
   kind: 'aim' | 'limit';
   now: number;
   target: number;
@@ -152,20 +180,14 @@ export interface ATeamAim {
   target: number | null;
   count: number;
   start: number | null;
-  direction: 'AIM' | 'LIMIT' | null;
+  direction: TargetDirection | null;
   journeyDirection: 'up' | 'down' | 'unknown';
   word: AStandingWord | null;
+  /** For a date to meet: the day it is due, in words. */
+  dueDay?: string | null;
 }
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-/** "30 September", in Lagos time, with the year only where it is not this one. */
-export function theDayInWords(d: Date, now: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d).split('-').map(Number);
-  const [y, m, day] = parts;
-  const thisYear = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos', year: 'numeric' }).format(now));
-  return `${day} ${MONTHS[m - 1]}${y === thisYear ? '' : ` ${y}`}`;
-}
+export { theDayInWords } from './the-day-in-words';
 
 /** A time already said in the aim's own words, at its end: "this quarter", "in Q3", "by the end of the year". */
 const A_TIME_AT_THE_END = /\s+((?:this|next) (?:quarter|month|year|week|financial year|half)|(?:in|for|during) (?:Q[1-4]|the (?:quarter|year|month))(?: \d{4})?|by (?:the end of )?[\w ,]+)$/i;
@@ -194,6 +216,16 @@ function aPhraseFor(aim: ATeamAim): APhrase | null {
   const tail = tailMatch ? tailMatch[1] : null;
   const body = tailMatch ? raw.slice(0, tailMatch.index).trim() : raw;
   if (!body) return null;
+  if (aim.direction === 'DEADLINE') {
+    /* A date to meet is asked by its own date: "Will we launch the new market by 1 December?" */
+    if (!aim.dueDay) return null;
+    const what = STARTS_WITH_A_DOING_WORD.test(body) ? lowerFirst(body) : `finish ${lowerFirst(body)}`;
+    return { verbPhrase: what, thing: null, tail: `by ${aim.dueDay}`, aim };
+  }
+  if (aim.direction === 'ZERO') {
+    if (STARTS_WITH_A_DOING_WORD.test(body)) return null;
+    return { verbPhrase: `keep ${lowerFirst(body)} at zero`, thing: lowerFirst(body), tail, aim };
+  }
   if (aim.target == null) {
     /* An aim with no number is asked only where it is said as something to do. */
     if (!STARTS_WITH_A_DOING_WORD.test(body)) return null;
@@ -205,11 +237,14 @@ function aPhraseFor(aim: ATeamAim): APhrase | null {
   if (STARTS_WITH_A_DOING_WORD.test(body)) return null;
   const thing = lowerFirst(body);
   if (aim.direction === 'LIMIT') return { verbPhrase: `keep ${thing} within ${read(aim.target)}`, thing, tail, aim };
+  if (aim.direction === 'RATE') return { verbPhrase: `keep ${thing} at ${read(aim.target)}% or more`, thing, tail, aim };
   if (aim.journeyDirection === 'down') return { verbPhrase: `bring ${thing} down to ${read(aim.target)}`, thing, tail, aim };
   return { verbPhrase: `reach ${read(aim.target)} ${thing}`, thing, tail, aim };
 }
 
 function aBar(aim: ATeamAim): AHeadlineBar | null {
+  /* A date is met or not, and zero has nothing to fill: neither has a bar. */
+  if (aim.direction === 'DEADLINE' || aim.direction === 'ZERO') return null;
   if (typeof aim.target !== 'number' || aim.target <= 0 && aim.direction !== 'LIMIT') return null;
   const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
   if (aim.direction === 'LIMIT') {
@@ -217,13 +252,26 @@ function aBar(aim: ATeamAim): AHeadlineBar | null {
   }
   const start = aim.journeyDirection === 'down' ? (aim.start ?? aim.count) : (aim.start ?? 0);
   const way = aim.target - start;
-  const filled = way === 0 ? 100 : clamp(((aim.count - start) / way) * 100);
+  const filled = aim.direction === 'RATE' ? clamp((aim.count / aim.target) * 100) : way === 0 ? 100 : clamp(((aim.count - start) / way) * 100);
   return { objectiveId: aim.id, kind: 'aim', now: aim.count, target: aim.target, filled, word: aim.word };
 }
 
 function anAnswerFor(p: APhrase, when: string | null): string {
   const a = p.aim;
+  if (a.direction === 'DEADLINE') {
+    return aDeadlineIsDone(a.count, a.target) ? 'Yes. It is done.' : `It is not done yet, and it is due by ${a.dueDay}.`;
+  }
+  if (a.direction === 'ZERO') {
+    return a.count === 0
+      ? 'So far there have been none.'
+      : `So far there ${a.count === 1 ? 'has been 1' : `have been ${read(a.count)}`}, and any at all is a breach.`;
+  }
   const target = a.target as number;
+  if (a.direction === 'RATE') {
+    return a.count >= target
+      ? `Yes. It is ${read(a.count)}%, which meets the aim of ${read(target)}% or more.`
+      : `So far it is ${read(a.count)}%, below the aim of ${read(target)}% or more.`;
+  }
   if (a.direction === 'LIMIT') {
     return a.count > target
       ? `So far it is ${read(a.count)}, which is ${read(a.count - target)} over the limit of ${read(target)}.`
@@ -246,7 +294,7 @@ function anAnswerFor(p: APhrase, when: string | null): string {
  */
 export function theHeadlineQuestion(aims: ATeamAim[], deadline: Date | null, now: Date = new Date()): AHeadline | null {
   const phrases = aims.map(aPhraseFor).filter((p): p is APhrase => !!p);
-  const counted = phrases.filter((p) => typeof p.aim.target === 'number').slice(0, 2);
+  const counted = phrases.filter((p) => typeof p.aim.target === 'number' || p.aim.direction === 'DEADLINE' || p.aim.direction === 'ZERO').slice(0, 2);
   const byDate = deadline ? `by ${theDayInWords(deadline, now)}` : null;
   if (counted.length) {
     const tails = [...new Set(counted.map((p) => p.tail?.toLowerCase() ?? ''))];

@@ -26,7 +26,7 @@
  */
 
 import { ContextItemKind } from '@prisma/client';
-import { whatTheWordsSuggest, theListsWordsFor, A_LIMIT_NOT_TO_GO_OVER, type TargetDirection } from '../board/an-aim-or-a-limit';
+import { whatTheWordsSuggest, theListsWordsFor, A_LIMIT_NOT_TO_GO_OVER, THE_FIVE_KINDS_SAID, type TargetDirection } from '../board/an-aim-or-a-limit';
 import { ABOUT_SOMEBODY } from './what-this-check-in-knows';
 import { NONE_IS_ASKED_UNTIL_YOU_CONFIRM_IT,THIS_ONE_IS_NOT_ASKED_UNTIL_YOU_CONFIRM_IT, plainQuestionFrom, whatGroundworkWillAsk } from './a-question-asked-word-for-word';
 
@@ -277,6 +277,8 @@ export function whatWeTookFromThat(
       const way = theWayThisNumberGoes(t, !!opts.asking);
       lines.push(`- ${t.name}${t.target != null ? `: ${fmt(t.target)}${way ? `, ${theListsWordsFor(way)}` : ''}` : ', tracked rather than counted'}`);
     }
+    /* Asking, the five kinds are offered in plain words, so a yes is a yes to each kind (decision 75, item 17). */
+    if (opts.asking && got.teamTargets.some((t) => t.target != null)) lines.push(`${THE_FIVE_KINDS_SAID} You can change the kind of any number on the board.`);
   }
   if (got.forPeople.length) {
     lines.push('', 'This is what you expect of each person, in your words. It is marked as yours, and they have not seen it yet.');
@@ -395,7 +397,7 @@ export function theWayThisNumberGoes(t: { name: string; target: number | null; n
   if (t.target == null) return null;
   if (t.direction) return t.direction;
   if (!asking) return null;
-  return t.notToExceed ? 'LIMIT' : whatTheWordsSuggest(t.name);
+  return t.notToExceed ? 'LIMIT' : whatTheWordsSuggest(t.name, t.target);
 }
 
 /**

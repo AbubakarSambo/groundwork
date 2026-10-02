@@ -60,8 +60,7 @@ import { theReadsWereSplit, couldChangeWhatIsShown, whatCountsThisPeriod, votesO
 import { PERIODS_BEFORE_A_PATTERN_IS_SHOWN } from '../src/modules/patterns/who-reads-a-pattern';
 import { READS_THAT_MUST_AGREE } from '../src/modules/patterns/patterns.service';
 import { jaccard } from './pattern-steadiness';
-import { JUDGED_ONCE_CODES, whereEachCodeShows, theirPeriodsAfterTheJudgement, thePeriodsItCanSee } from '../src/modules/patterns/a-pattern-over-time-is-judged-once-on-all-its-periods';
-import { theEarlierPeriodsItShows } from '../src/modules/patterns/the-detector-reads-their-own-earlier-record';
+import { JUDGED_ONCE_CODES, whereEachCodeShows, theirPeriodsAfterTheJudgement, thePeriodsItCanSee, theEarlierPeriodsItShows, whatOneJudgementKeeps } from './the-judgement-across-periods-that-was-tried';
 
 if (!/localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL ?? '') || !/gw_/.test(process.env.DATABASE_URL ?? '')) {
   console.error('Refusing: a local gw_ test database only.');
@@ -434,9 +433,9 @@ async function main() {
 
   if (process.env.JUDGE === '1') {
     /*
-     * THE JUDGEMENT ACROSS THEIR PERIODS, READ THROUGH THE PRODUCT'S OWN CODE (decision 75, item 42, 2 October 2026).
+     * THE JUDGEMENT ACROSS THEIR PERIODS, READ AS THE TRIED PRODUCT CODE MADE IT (decision 75, item 42, 2 October 2026).
      * For every check-in in the stored detector reads (READS, as for MORE=1), the same text analyzeCheckIn builds,
-     * the periods it can see, and COPIES copies of five reads of patterns.whatOneJudgementKeeps, asked about all
+     * the periods it can see, and COPIES copies of five reads of whatOneJudgementKeeps as the tried product code made it, asked about all
      * four codes as the product asks. Also kept: which of K3 and B11 the chaser guard keeps from this person. A read
      * the model did not answer is asked again (up to four times). Nothing is written. ONLY_MISSING=1 keeps what an
      * earlier run read. JUDGED_WALK=1 then walks them.
@@ -454,7 +453,7 @@ async function main() {
       for (let attempt = 1; attempt <= 4; attempt++) {
         try {
           const r = await limited(() => Promise.race([
-            patterns.whatOneJudgementKeeps(checkIn.id, ctx.content, window, [...JUDGED_ONCE_CODES], ctx.whatThePersonSaid),
+            whatOneJudgementKeeps(model, PATTERN_DETECTION_STEADY_OPTIONS, ctx.content, window, [...JUDGED_ONCE_CODES], ctx.whatThePersonSaid),
             new Promise((_, no) => setTimeout(() => no(new Error('the read took more than five minutes')), 300000)),
           ])) as Map<string, { periods: number[] }>;
           return Object.fromEntries([...r].map(([code, v]) => [code, v.periods]));
