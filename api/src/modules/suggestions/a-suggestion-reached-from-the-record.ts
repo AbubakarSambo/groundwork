@@ -15,11 +15,12 @@ import { theCountSaidToThePerson } from '../grounds/your-board';
  * returns null when nothing is set for a verdict, and that is read here as "this verdict is not
  * reached today" - not as "use some default", which would reach a suggestion nobody asked for.
  *
- * DECISION 53: THE MANAGER GETS NO COUNT. `factsForThem` and `whatWouldChangeItForThem` are for the
- * person alone (decision 24: "the count stays the person's alone") and may say how many were kept.
- * `headline`, `why`, `whatWouldChangeIt`, `ifYouAgree` and `otherChoices` are what the lead reads
- * (a-suggestion-told-like-a-signal.ts, forTheLead), and never carry a number: no "11 of 20", no
- * percentage, nothing a manager could read as a count behind the suggestion.
+ * THE MANAGER READS THE COUNT BEHIND IT (decision 86, which reverses decision 53's "a plain line with
+ * no count"). The person still reads it first (`factsForThem`, and the lead's timing in
+ * a-suggestion-told-like-a-signal.ts). `why` and `whatWouldChangeIt`, which the lead reads, now say
+ * how many of the commitments made in this check-in were kept, and the line Groundwork looks for, as
+ * the prototype's suggestion does ("In the last 4 weeks, Daniel kept 11 of his 20 commitments.").
+ * Only this check-in is counted, so it never says anything of the person's load across check-ins.
  *
  * Only "support" is reached today, from commitments kept, which is the one number the record
  * already holds cleanly (keptLately). Reward, plan and exit read the same record differently and
@@ -69,17 +70,33 @@ export function aShareInWords(fraction: number): string {
 }
 
 /**
- * WHAT THE LEAD READS, WITH NO COUNT BEHIND IT (decision 53, decision 60.2). It says what happened,
- * by name, over the same four weeks the person's own count covers, and that it is in this check-in,
- * so it is never read as the person's load across check-ins. No number at all, not even the four of
- * "four weeks", so nothing the lead reads can be taken for a count.
+ * HOW MANY SOMEBODY KEPT, SAID ABOUT THEM BY NAME, FOR THE PERSON WHO RUNS THE CHECK-IN OR WRITES THE
+ * REVIEW (decision 86). Numbers up to ten are words, as the person's own count is (your-board.ts,
+ * `keptLatelySays`), and larger ones are figures. `where` says which commitments were counted, so
+ * the sentence never reads as the person's load across check-ins.
  */
-function whyForTheLead(name: string): string {
-  return `In the last four weeks, ${name} has kept fewer of the commitments made in this check-in than Groundwork looks for.`;
+export function keptOfSaidAbout(name: string, kept: number, of: number, where: string): string {
+  const n = (x: number) => (of <= 10 ? TENS[x] : String(x));
+  if (of === 1) return kept === 1 ? `${name} kept the one commitment ${where}` : `${name} did not keep the one commitment ${where}`;
+  if (of === 2 && kept === 2) return `${name} kept both of the commitments ${where}`;
+  if (of === 2 && kept === 0) return `${name} did not keep either of the two commitments ${where}`;
+  if (kept === 0) return `${name} kept none of the ${n(of)} commitments ${where}`;
+  if (kept === of) return `${name} kept all ${n(of)} of the commitments ${where}`;
+  return `${name} kept ${n(kept)} of the ${n(of)} commitments ${where}`;
 }
 
-function whatWouldChangeItForTheLead(name: string): string {
-  return `If ${name} keeps more of the commitments made in this check-in over the next four weeks.`;
+/**
+ * WHAT THE LEAD READS (decision 86): what happened, by name, with the count behind it, over the same
+ * four weeks the person's own count covers, and only in this check-in.
+ */
+function whyForTheLead(name: string, kept: number, of: number, theLine: string): string {
+  const weeks = of <= 10 ? 'four' : '4';
+  const share = of ? Math.round((kept / of) * 100) : 0;
+  return `In the last ${weeks} weeks, ${keptOfSaidAbout(name, kept, of, 'made in this check-in')}. That is ${share}%. When fewer than ${theLine} are kept, Groundwork suggests extra support.`;
+}
+
+function whatWouldChangeItForTheLead(name: string, theLine: string): string {
+  return `If ${name} keeps at least ${theLine} of the commitments made in this check-in over the next four weeks.`;
 }
 
 /**
@@ -111,8 +128,8 @@ export function aSuggestionFromTheRecord(
     aboutParticipantId: record.aboutParticipantId,
     verdict: 'support',
     headline: `Groundwork suggests extra support for ${name}`,
-    why: whyForTheLead(name),
-    whatWouldChangeIt: whatWouldChangeItForTheLead(name),
+    why: whyForTheLead(name, kl.kept, kl.of, theLine),
+    whatWouldChangeIt: whatWouldChangeItForTheLead(name, theLine),
     theirOwnAnswer: record.ownWords,
     ifYouAgree: `Extra support for ${name} over the next four weeks, agreed with ${name}.`,
     otherChoices: ['Keep things as they are', `Talk it through with ${name} before deciding`],

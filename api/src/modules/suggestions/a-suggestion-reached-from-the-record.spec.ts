@@ -41,7 +41,7 @@ describe('aSuggestionFromTheRecord', () => {
     expect(aSuggestionFromTheRecord('g-1', record({ commitmentsSettledRecently: null }), thresholds)).toBeNull();
   });
 
-  it('reaches "support" once the threshold is crossed, with a count only for the person', () => {
+  it('reaches "support" once the threshold is crossed, with the count for the person and for the lead (decision 86)', () => {
     const thresholds = { support: { keptBelow: 0.6, overPeriods: 4 } };
     const s = aSuggestionFromTheRecord('g-1', record(), thresholds)!;
     expect(s).not.toBeNull();
@@ -54,10 +54,9 @@ describe('aSuggestionFromTheRecord', () => {
     /* The count stays the person's alone (decision 24 / week 9), in the You board's own words. */
     expect(s.factsForThem).toContain('you kept two of your eight commitments in this check-in.');
 
-    /* No count reaches what the lead would be given: no fraction, no "of", no digits at all. */
-    for (const field of [s.headline, s.why, s.whatWouldChangeIt, s.ifYouAgree, ...(s.otherChoices ?? [])]) {
-      expect(field).not.toMatch(/\d/);
-    }
+    /* Decision 86 reverses decision 53's "no count": the lead reads the count behind it, of this check-in only. */
+    expect(s.why).toBe('In the last four weeks, Tobi X kept two of the eight commitments made in this check-in. That is 25%. When fewer than six in ten are kept, Groundwork suggests extra support.');
+    expect(s.whatWouldChangeIt).toBe('If Tobi X keeps at least six in ten of the commitments made in this check-in over the next four weeks.');
   });
 
   it('never puts a label on the person, in any field', () => {
@@ -73,7 +72,7 @@ describe('aSuggestionFromTheRecord', () => {
  * DECISION 61 (30 September 2026): THE FIRST THRESHOLD FOR WEEK 10, checked against the actual
  * default (thresholds.ts, DEFAULT_SUGGESTION_THRESHOLDS) rather than a value made up for the test -
  * fewer than half kept, with at least 6 settled. Keep, reward, plan and exit reach nothing: the
- * default sets support alone. The lead's text still carries no count (decision 53 over decision 43).
+ * default sets support alone. The lead's text carries the count behind it (decision 86 reverses decision 53).
  */
 describe('decision 61: the first threshold, applied as the default actually reads', () => {
   it('reaches support at 5 kept of 12 (5/12 is 0.42, below 0.5, with 12 settled at or above 6)', () => {
@@ -97,9 +96,10 @@ describe('decision 61: the first threshold, applied as the default actually read
     }
   });
 
-  it("the lead's text still carries no count, at the default threshold", () => {
+  it("the lead's text carries the count, in figures above ten, at the default threshold (decision 86)", () => {
     const s = aSuggestionFromTheRecord('g-1', record({ commitmentsSettledRecently: { kept: 5, of: 12 } }), DEFAULT_SUGGESTION_THRESHOLDS)!;
-    for (const field of [s.headline, s.why, s.whatWouldChangeIt, s.ifYouAgree, ...(s.otherChoices ?? [])]) {
+    expect(s.why).toBe('In the last 4 weeks, Tobi X kept 5 of the 12 commitments made in this check-in. That is 42%. When fewer than half are kept, Groundwork suggests extra support.');
+    for (const field of [s.headline, s.ifYouAgree, ...(s.otherChoices ?? [])]) {
       expect(field).not.toMatch(/\d/);
     }
   });
@@ -121,10 +121,10 @@ describe('the sentences each reader is given, in the prototype\'s words', () => 
     expect(s.whatWouldChangeItForThem).toBe('Keeping at least half of your commitments in this check-in over the next four weeks.');
   });
 
-  it('the lead reads what happened, by name, with no count and no number', () => {
+  it('the lead reads what happened, by name, with the count behind it (decision 86)', () => {
     expect(s.headline).toBe('Groundwork suggests extra support for Tobi X');
-    expect(s.why).toBe('In the last four weeks, Tobi X has kept fewer of the commitments made in this check-in than Groundwork looks for.');
-    expect(s.whatWouldChangeIt).toBe('If Tobi X keeps more of the commitments made in this check-in over the next four weeks.');
+    expect(s.why).toBe('In the last four weeks, Tobi X kept two of the eight commitments made in this check-in. That is 25%. When fewer than half are kept, Groundwork suggests extra support.');
+    expect(s.whatWouldChangeIt).toBe('If Tobi X keeps at least half of the commitments made in this check-in over the next four weeks.');
     expect(s.ifYouAgree).toBe('Extra support for Tobi X over the next four weeks, agreed with Tobi X.');
     expect(s.otherChoices).toEqual(['Keep things as they are', 'Talk it through with Tobi X before deciding']);
   });

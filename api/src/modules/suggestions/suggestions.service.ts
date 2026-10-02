@@ -265,7 +265,7 @@ export class SuggestionsService {
   /**
    * FOR A REVIEW (week 11): the newest suggestion about one person, on a check-in the reader runs, as
    * that lead reads it. Exactly what `forGround` hands the lead, so the same rules hold - the person
-   * has had their turn (decision 53), no count in it, no verdict - and nothing at all for anybody who
+   * has had their turn (decision 53), the count behind it (decision 86), no verdict - and nothing for anybody who
    * does not run a check-in the person is in. Null when there is none.
    */
   async latestForTheLeadAbout(personUserId: string, reader: Reader, now: Date = new Date()): Promise<ForTheLead | null> {

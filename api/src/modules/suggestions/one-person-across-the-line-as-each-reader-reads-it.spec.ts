@@ -194,7 +194,10 @@ function aWorld(opts: { leave?: { startsOn: Date; endsOn: Date }[]; thresholdRow
 const served = (x: unknown) => JSON.stringify(x);
 const A_LABEL = /\b(PIP|at[- ]risk|exit|low[- ]performer|under-?perform\w*|poor performer|performance plan)\b/i;
 const A_RATING = /specificity|confidence|severity|rating|score|"verdict"|\bsupport"/i;
-const A_COUNT = /\b\d+ of \d+\b|\b(one|two|three|four|five|six|seven|eight|nine|ten) of your\b|\d+ in 100|\d+%/i;
+/* Decision 86 reverses decision 53's "no count for the manager": the lead and an admin read the count in the
+   suggestion's why, of this check-in only. What they must never read is the count as it is said to the person
+   ("two of your six"), or a share in a form nobody asked for. */
+const THE_PERSONS_OWN_COUNT = /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten) of your\b|\d+ in 100/i;
 
 beforeEach(() => {
   jest.useFakeTimers({ doNotFake: ['setTimeout', 'setInterval', 'setImmediate', 'clearTimeout', 'clearInterval', 'nextTick', 'queueMicrotask'] });
@@ -259,21 +262,21 @@ describe('what each reader reads, once Tobi is across the line', () => {
     expect((await theEndingPageFor({ prisma: w.prisma, suggestions: w.service }, G, 'u-wairimu')).suggestions).toEqual([]);
   });
 
-  it('then Wairimu reads the suggestion by name, why, what would change it and Tobi\'s side, with no count and no rating', async () => {
+  it('then Wairimu reads the suggestion by name, why, what would change it and Tobi\'s side, with the count behind it and no rating (decision 86)', async () => {
     const w = await acrossTheLine();
     const id = w.suggestions[0].id;
     await w.service.addSide(id, w.as('tobi'), { side: 'Two of the shops were closed for the holiday week.' });
     const [s]: any[] = (await w.service.forGround(G, w.as('wairimu'))).suggestions;
     expect(s.headline).toBe('Groundwork suggests extra support for Tobi Okafor');
-    expect(s.why).toBe('In the last four weeks, Tobi Okafor has kept fewer of the commitments made in this check-in than Groundwork looks for.');
-    expect(s.whatWouldChangeIt).toBe('If Tobi Okafor keeps more of the commitments made in this check-in over the next four weeks.');
+    expect(s.why).toBe('In the last four weeks, Tobi Okafor kept two of the six commitments made in this check-in. That is 33%. When fewer than half are kept, Groundwork suggests extra support.');
+    expect(s.whatWouldChangeIt).toBe('If Tobi Okafor keeps at least half of the commitments made in this check-in over the next four weeks.');
     expect(s.ifYouAgree).toBe('Extra support for Tobi Okafor over the next four weeks, agreed with Tobi.');
     expect(s.otherChoices).toEqual(['Keep things as they are', 'Talk it through with Tobi Okafor before deciding']);
     expect(s.theirSide).toBe('Two of the shops were closed for the holiday week.');
     /* Never the last thing Tobi typed passed off as his answer. */
     expect(s.theirOwnAnswer).toBeNull();
     const all = served(s);
-    expect(all).not.toMatch(A_COUNT);
+    expect(all).not.toMatch(THE_PERSONS_OWN_COUNT);
     expect(all).not.toMatch(A_RATING);
     expect(all).not.toMatch(A_LABEL);
     /* After three days without a word from Tobi, she reads it anyway. */
@@ -347,18 +350,18 @@ describe('the decision and the appeal (decision 6)', () => {
     const { w, id } = await decidedAndAppealed();
     await w.service.appeal(id, w.as('tobi'), { why: 'The freezer booking was Operations\' to make, not mine.' });
 
-    /* Both admins read the appeal, with what they need to decide it, and no count or rating. */
+    /* Both admins read the appeal, with what they need to decide it, the count behind it (decision 86), and no rating. */
     for (const who of ['grace', 'omar'] as const) {
       const [a]: any[] = (await w.service.appealsToDecide(w.as(who))).appeals;
       expect(a).toMatchObject({
         aboutName: 'Tobi', leadName: 'Wairimu',
         headline: 'Groundwork suggests extra support for Tobi Okafor',
-        why: 'In the last four weeks, Tobi Okafor has kept fewer of the commitments made in this check-in than Groundwork looks for.',
+        why: 'In the last four weeks, Tobi Okafor kept two of the six commitments made in this check-in. That is 33%. When fewer than half are kept, Groundwork suggests extra support.',
         theirSide: 'Two of the shops were closed for the holiday week.',
         appeal: { says: 'The freezer booking was Operations\' to make, not mine.' },
         mayDecide: true,
       });
-      expect(served(a)).not.toMatch(A_COUNT);
+      expect(served(a)).not.toMatch(THE_PERSONS_OWN_COUNT);
       expect(served(a)).not.toMatch(A_RATING);
     }
 
@@ -382,7 +385,7 @@ describe('the decision and the appeal (decision 6)', () => {
       const all = served([await w.service.forGround(G, w.as(who)), await theEndingPageFor({ prisma: w.prisma, suggestions: w.service }, G, people[who].userId)]);
       expect(all).not.toMatch(A_LABEL);
       expect(all).not.toMatch(A_RATING);
-      if (who !== 'tobi') expect(all).not.toMatch(A_COUNT);
+      if (who !== 'tobi') expect(all).not.toMatch(THE_PERSONS_OWN_COUNT);
     }
   });
 });

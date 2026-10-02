@@ -14,7 +14,7 @@ import { labelsForParties } from '../reports/party-labels';
  * has come up in three check-ins and that Kwame has answered.
  *
  * The rules under test, each read from what the server actually hands each reader:
- *   - Wairimu reads the suggestion, the signals and the questions, with no count in any of it;
+ *   - Wairimu reads the suggestion, with the count behind it (decision 86), the signals and the questions;
  *   - Kwame reads his own facts and the decision with its reasons, never the suggestion as a label,
  *     never the questions written for the lead;
  *   - Aisha, a colleague, reads nothing about Kwame;
@@ -119,7 +119,7 @@ const LABELS = /\b(PIP|at[- ]risk|exit|low[- ]performer|underperform\w*)\b/i;
 const RATINGS = /specificity|confidence|severity|rating|score|"verdict"/i;
 
 describe('Wairimu, who runs the check-in, reads the suggestion, the signals and the questions', () => {
-  it('reads the suggestion for Kwame, with no count in anything she reads', async () => {
+  it('reads the suggestion for Kwame, with the count behind it (decision 86)', async () => {
     const w = world();
     await withASuggestion(w);
     const page = (await w.resolution.get('g1', WAIRIMU) as any).theEndingPage;
@@ -127,12 +127,12 @@ describe('Wairimu, who runs the check-in, reads the suggestion, the signals and 
     expect(page.suggestions).toHaveLength(1);
     const s = page.suggestions[0];
     expect(s.headline).toBe('Groundwork suggests extra support for Kwame');
-    expect(s.why).toBe('In the last four weeks, Kwame has kept fewer of the commitments made in this check-in than Groundwork looks for.');
-    expect(s.whatWouldChangeIt).toBe('If Kwame keeps more of the commitments made in this check-in over the next four weeks.');
+    expect(s.why).toBe('In the last four weeks, Kwame kept two of the eight commitments made in this check-in. That is 25%. When fewer than half are kept, Groundwork suggests extra support.');
+    expect(s.whatWouldChangeIt).toBe('If Kwame keeps at least half of the commitments made in this check-in over the next four weeks.');
     expect(s.theirOwnAnswer).toBe('Onboarding stock took three weeks.');
     expect(s.otherChoices).toEqual(['Keep things as they are', 'Talk it through with Kwame before deciding']);
-    /* decision 53: no count for the lead, anywhere in what the page hands her. */
-    expect(served(page)).not.toMatch(/\d+ of \d+|\d+ in 100|\d+%/);
+    /* Decision 86 reverses decision 53: the lead reads the count, said once, in the suggestion's why. */
+    expect(served(page).match(/That is \d+%/g)).toEqual(['That is 25%']);
     expect(served(page)).not.toMatch(LABELS);
     expect(served(page)).not.toMatch(RATINGS);
   });
@@ -254,20 +254,20 @@ describe('Grace, an admin who is not in the check-in', () => {
  * KWAME'S FIRST 90 DAYS IS AN EVALUATION CHECK-IN (decision 75, item 25). This block used to prove that nothing
  * was reached on a new hire's first 90 days. Hafsah decided on 2 October that a probation or a first 90 days is
  * an evaluation check-in, as the prototype shows ("Groundwork suggests keeping Kwame on"), so it now proves the
- * opposite, for every reader: the engine reaches a suggestion there, Wairimu reads it with no count, Kwame reads
+ * opposite, for every reader: the engine reaches a suggestion there, Wairimu reads it with the count behind it (decision 86), Kwame reads
  * his own facts, Aisha reads nothing about Kwame, and Grace, an admin who was not given access, reads nothing.
  */
 describe("on Kwame's first 90 days, which is an evaluation check-in", () => {
   const probation = () => world({ scenario: GroundScenario.NEW_HIRE });
 
-  it('Wairimu reads the suggestion for Kwame, with no count in anything she reads', async () => {
+  it('Wairimu reads the suggestion for Kwame, with the count behind it (decision 86)', async () => {
     const w = probation();
     await withASuggestion(w);
     const page = (await w.resolution.get('g1', WAIRIMU) as any).theEndingPage;
     expect(page.suggestions).toHaveLength(1);
     expect(page.suggestions[0].headline).toBe('Groundwork suggests extra support for Kwame');
-    expect(page.suggestions[0].why).toBe('In the last four weeks, Kwame has kept fewer of the commitments made in this check-in than Groundwork looks for.');
-    expect(served(page)).not.toMatch(/\d+ of \d+|\d+ in 100|\d+%/);
+    expect(page.suggestions[0].why).toBe('In the last four weeks, Kwame kept two of the eight commitments made in this check-in. That is 25%. When fewer than half are kept, Groundwork suggests extra support.');
+    expect(served(page).match(/That is \d+%/g)).toEqual(['That is 25%']);
     expect(served(page)).not.toMatch(LABELS);
   });
 

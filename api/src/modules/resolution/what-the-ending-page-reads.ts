@@ -26,7 +26,7 @@ import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words'
  *
  *   the lead      the week-10 suggestion for each person it was reached for (headline, why, what
  *                 would change it, the person's own answer, what to do if they agree, other choices),
- *                 only once that person has had their turn (decision 53), with no count in any of it;
+ *                 only once that person has had their turn (decision 53), with the count behind it (decision 86);
  *                 the signals behind it, as plain sentences of what happened in the work; and the
  *                 questions to ask.
  *   the person    their own facts and what would change them, the decision with its reasons when one
