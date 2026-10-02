@@ -66,7 +66,8 @@ export function theWorkByArea(sections: AServedSection[] | null | undefined): Th
 export interface ReportedAtEachStage {
   state: 'not-known';
   why: string;
-  stages: { stage: string; reported: number; withProof: number; says: string }[];
+  /** `addedOnTheBoard`: deals at this stage added on the board, not reported in a check-in (request 117, part 4). */
+  stages: { stage: string; reported: number; withProof: number; addedOnTheBoard?: number; says: string }[];
   /** One sentence where nobody has reported a deal at any stage, in place of a row for each empty stage. */
   says?: string;
 }
@@ -89,15 +90,27 @@ export function reportedAgainstTheRules(kind: KindOfWork | null, sections: AServ
   const stages = [...new Set([...order, ...deals.map((d) => d.stage).filter((s): s is string => !!s)])]
     .filter((stage) => deals.some((d) => d.stage === stage))
     .map((stage) => {
-      const at = deals.filter((d) => d.stage === stage);
+      /*
+       * A DEAL ADDED ON THE BOARD WAS NOT REPORTED (request 117, part 4). Tuskys Westgate was added on the board at
+       * Won, and the board said "1 deal was reported at Won". It is counted apart, as added on the board.
+       */
+      const here = deals.filter((d) => d.stage === stage);
+      const added = here.filter((d) => (d as any).from === 'lead');
+      const at = here.filter((d) => (d as any).from !== 'lead');
       const withProof = at.filter((d) => d.known === 'proof').length;
       const proof = at.length === 1
         ? (withProof ? 'it has a document behind it' : 'it has no document behind it')
         : withProof === 0 ? 'none of them has a document behind it'
           : withProof === at.length ? 'all of them have a document behind them'
             : `${withProof} of them ${withProof === 1 ? 'has' : 'have'} a document behind ${withProof === 1 ? 'it' : 'them'}`;
-      const says = `${plural(at.length, 'deal')} ${at.length === 1 ? 'was' : 'were'} reported at ${stage}, and ${proof}.`;
-      return { stage, reported: at.length, withProof, says };
+      const reportedSays = at.length ? `${plural(at.length, 'deal')} ${at.length === 1 ? 'was' : 'were'} reported at ${stage}, and ${proof}.` : '';
+      const addedSays = added.length
+        ? at.length
+          ? `${plural(added.length, 'more deal')} ${added.length === 1 ? 'was' : 'were'} added on the board at ${stage}, not reported in a check-in.`
+          : `${plural(added.length, 'deal')} ${added.length === 1 ? 'was' : 'were'} added on the board at ${stage}, not reported in a check-in.`
+        : '';
+      const says = [reportedSays, addedSays].filter(Boolean).join(' ');
+      return { stage, reported: at.length, withProof, ...(added.length ? { addedOnTheBoard: added.length } : {}), says };
     });
   return { state: 'not-known', why: NO_STAGE_RULES, stages, ...(stages.length ? {} : { says: NO_DEAL_REPORTED_YET }) };
 }

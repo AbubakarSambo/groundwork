@@ -112,8 +112,8 @@ const deal = (id: string, name: string, more: Record<string, any> = {}) => ({
 
 /** Both deals were added on the board by Rukia, with nobody's name on them. */
 export const REVIEW_5_DEALS = [
-  deal('w-tuskys', 'Tuskys Westgate', { stage: 'Won', sourceEntryId: 'e-rukia-tuskys', updatedAt: on('27') }),
-  deal('w-naivas', 'Naivas Karen', { stage: 'Contacted', sourceEntryId: 'e-rukia-naivas', updatedAt: on('30') }),
+  deal('w-tuskys', 'Tuskys Westgate', { stage: 'Won', updatedAt: on('27') }),
+  deal('w-naivas', 'Naivas Karen', { stage: 'Contacted', updatedAt: on('30') }),
 ];
 
 /** The record's lines, with the check-in each came from. */

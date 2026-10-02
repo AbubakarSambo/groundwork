@@ -2162,6 +2162,13 @@ export class BoardService {
           r.valueSays = value ? null : NO_VALUE_SAID;
           r.contactHistory = theContactHistory(r.name, readable, now);
           r.contactHistorySays = WHAT_CONTACT_HISTORY_IS;
+          /*
+           * ONE ANSWER TO "WHEN WAS IT LAST SPOKEN ABOUT" (request 117, part 4). A deal added on the board has no line
+           * it came from, so its group said "Nobody has spoken about it in a check-in yet." beside "On 27 September,
+           * somebody spoke about it". The newest day in its contact history is the day it was last spoken about.
+           */
+          const newest = r.contactHistory[0]?.on ?? null;
+          if (newest && (!r.lastSaidOn || newest > r.lastSaidOn)) r.lastSaidOn = newest;
           const theirs = mayReadTheWordsOf(r.ownerParticipantId)
             ? turns.filter((t) => ownerOfCheckIn.get(t.checkInId) === r.ownerParticipantId).map((t) => String(t.content ?? ''))
             : [];
