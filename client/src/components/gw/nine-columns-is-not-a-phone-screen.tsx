@@ -105,13 +105,41 @@ const VERB_FOR: Record<Cell, string> = {
   'na': 'was not on',
 }
 
-export function theSentenceFor(name: string, shape: ReturnType<typeof theShapeOfIt>): string | null {
-  if (shape.of === 0) return `${name} is not on any of these sessions.`
-  if (!shape.usual) return shape.notOn > 0 ? `${name} is on ${shape.of} of these sessions.` : null
-  const verb = VERB_FOR[shape.usual]
+/** The same verbs, said to the reader about themselves rather than about them. */
+const SELF_VERB_FOR: Record<Cell, string> = {
+  'done': 'have checked in for',
+  'in-progress': 'are partway through',
+  'declined': 'have declined',
+  'not-started': 'have not started',
+  'na': 'were not on',
+}
+
+/**
+ * THE READER'S OWN ROW, SAID TO THEM RATHER THAN ABOUT THEM.
+ *
+ * Read live by Rukia Otieno, on her own board: "Rukia Otieno has checked in for 2 of 2 sessions
+ * this phase." - her own name and "has", read back at her, where every other screen on this board
+ * already says "you". `isReader` switches the verb to its second-person form and the subject to
+ * "You"; everyone else's sentence is untouched. "This phase" is also jargon nobody outside the
+ * product says, so it is now "so far" for every row, reader or not.
+ *
+ * Full attendance reads as "both" when there are exactly two sessions ("You have checked in for
+ * both sessions so far."), rather than echoing the same number twice ("2 of 2") - a phrasing kept
+ * only for the reader's own sentence; everyone else's count is left exactly as it was.
+ */
+export function theSentenceFor(name: string, shape: ReturnType<typeof theShapeOfIt>, isReader = false): string | null {
+  const subject = isReader ? 'You' : name
+  if (shape.of === 0) return isReader ? 'You are not on any of these sessions.' : `${name} is not on any of these sessions.`
+  if (!shape.usual) {
+    if (shape.notOn === 0) return null
+    return isReader ? `You are on ${shape.of} of these sessions.` : `${name} is on ${shape.of} of these sessions.`
+  }
+  const verb = (isReader ? SELF_VERB_FOR : VERB_FOR)[shape.usual]
   const who = shape.onlySession != null
-    ? `${verb} session ${shape.onlySession}`
-    : `${verb} ${shape.howMany} of ${shape.of} sessions this phase`
+    ? `${subject} ${verb} session ${shape.onlySession}`
+    : isReader && shape.howMany === shape.of && shape.of === 2
+      ? `You ${verb} both sessions so far`
+      : `${subject} ${verb} ${shape.howMany} of ${shape.of} sessions so far`
   /*
    * U.10 RE-REVIEW: NAME THE SESSION, NOT ONLY ITS COUNT. "...and was not part of the other 1."
    * said how many sessions this person was not on, never which ones - read live, it took a second
@@ -119,11 +147,12 @@ export function theSentenceFor(name: string, shape: ReturnType<typeof theShapeOf
    * names them the same way `onlySession` already names a lone one: "and was not part of session
    * 2." for one, "...sessions 2 and 3." for several.
    */
-  const rest = shape.notOn > 0 ? `, and was not part of ${namedSessions(shape.notOnSessions)}` : ''
-  return `${name} ${who}${rest}.`
+  const restVerb = isReader ? 'were not part of' : 'was not part of'
+  const rest = shape.notOn > 0 ? `, and ${restVerb} ${namedSessions(shape.notOnSessions)}` : ''
+  return `${who}${rest}.`
 }
 
-export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions }: {
+export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions, myParticipantId }: {
   rows: PersonRow[]
   sessions: (number | string)[]
   /**
@@ -134,6 +163,9 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions }: {
    * counted as one more he was not on. Defaults to `sessions` (every one counts) when omitted.
    */
   openSessions?: (number | string)[]
+  /** The reader's own participant id, the same way "Who owns what" knows it (`b.myParticipantId`),
+      so the reader's own sentence can be said to them rather than about them. */
+  myParticipantId?: string | null
 }) {
   const counted = openSessions ?? sessions
   return (
@@ -141,7 +173,8 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions }: {
       {rows.map((r) => {
         const shape = theShapeOfIt(r.cells, counted)
         const name = r.name ?? 'A colleague'
-        const sentence = theSentenceFor(name, shape)
+        const isReader = !!myParticipantId && r.participantId === myParticipantId
+        const sentence = theSentenceFor(name, shape, isReader)
         return (
           <div key={r.participantId} style={{ display: 'grid', gap: 7 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>

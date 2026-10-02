@@ -27,9 +27,14 @@ describe('the sessions-this-phase row, as a sentence', () => {
     expect(screen.queryByText(/1 of 1/)).toBeNull()
   })
 
+  /*
+   * Re-review, 2 October: "this phase" is product jargon nobody outside the team says - changed
+   * to "so far" for every row, reader or not (the pinned wording below is updated for that reason,
+   * not because the old behaviour it checked was wrong).
+   */
   it('counts several sessions in one phrase, not doubled', () => {
     const shape = theShapeOfIt({ '1': 'done', '2': 'done', '3': 'done' }, [1, 2, 3])
-    expect(theSentenceFor('Aisha Otieno', shape)).toBe('Aisha Otieno has checked in for 3 of 3 sessions this phase.')
+    expect(theSentenceFor('Aisha Otieno', shape)).toBe('Aisha Otieno has checked in for 3 of 3 sessions so far.')
   })
 
   it('says who was not part of the run at all, plainly', () => {
@@ -90,5 +95,61 @@ describe('the sessions-this-phase row, as a sentence', () => {
     )
     expect(screen.getByText('Faraji Odhiambo has not started session 1, and was not part of session 2.')).toBeTruthy()
     expect(screen.queryByText(/the other 1/)).toBeNull()
+  })
+})
+
+/**
+ * RE-REVIEW, 2 OCTOBER: THE READER'S OWN ROW, SAID TO THEM.
+ *
+ * Read live by Rukia Otieno, on the phone-width "Who checked in": "Rukia Otieno has checked in for
+ * 2 of 2 sessions this phase." - her own name and "has", read back at her. `isReader` (known the
+ * same way "Who owns what" knows it, by `participantId === myParticipantId`) switches her own
+ * sentence to the second person; everyone else's sentence is untouched.
+ */
+describe('the reader\'s own sentence, said to them rather than about them', () => {
+  it('says "You have checked in for both sessions so far." for the reader, on full attendance', () => {
+    const shape = theShapeOfIt({ '1': 'done', '2': 'done' }, [1, 2])
+    expect(theSentenceFor('Rukia Otieno', shape, true)).toBe('You have checked in for both sessions so far.')
+  })
+
+  it('says "You have checked in for 2 of 3 sessions so far." for the reader, on partial attendance', () => {
+    const shape = theShapeOfIt({ '1': 'done', '2': 'done', '3': 'not-started' }, [1, 2, 3])
+    expect(theSentenceFor('Rukia Otieno', shape, true)).toBe('You have checked in for 2 of 3 sessions so far.')
+  })
+
+  it('says "You have not started session 2." for the reader, named by session', () => {
+    const shape = theShapeOfIt({ '2': 'not-started' }, [2])
+    expect(theSentenceFor('Rukia Otieno', shape, true)).toBe('You have not started session 2.')
+  })
+
+  it('leaves every other person\'s sentence in the third person, unchanged apart from "so far"', () => {
+    const shape = theShapeOfIt({ '1': 'done', '2': 'done' }, [1, 2])
+    expect(theSentenceFor('Amani Wekesa', shape, false)).toBe('Amani Wekesa has checked in for 2 of 2 sessions so far.')
+  })
+
+  it('renders the reader\'s own sentence in the second person on the phone-width grid, by participant id', () => {
+    render(
+      <NineColumnsIsNotAPhoneScreen
+        rows={[
+          { participantId: 'p-rukia', name: 'Rukia Otieno', cells: { '1': 'done', '2': 'done' } },
+          { participantId: 'p-amani', name: 'Amani Wekesa', cells: { '1': 'done', '2': 'done' } },
+        ]}
+        sessions={[1, 2]}
+        myParticipantId="p-rukia"
+      />,
+    )
+    expect(screen.getByText('You have checked in for both sessions so far.')).toBeTruthy()
+    expect(screen.getByText('Amani Wekesa has checked in for 2 of 2 sessions so far.')).toBeTruthy()
+    expect(screen.queryByText(/Rukia Otieno has checked in/)).toBeNull()
+  })
+
+  it('reads everybody in the third person when no reader is given', () => {
+    render(
+      <NineColumnsIsNotAPhoneScreen
+        rows={[{ participantId: 'p-rukia', name: 'Rukia Otieno', cells: { '1': 'done', '2': 'done' } }]}
+        sessions={[1, 2]}
+      />,
+    )
+    expect(screen.getByText('Rukia Otieno has checked in for 2 of 2 sessions so far.')).toBeTruthy()
   })
 })
