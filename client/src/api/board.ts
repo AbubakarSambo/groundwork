@@ -278,6 +278,17 @@ export type BoardPresent = {
   evidenceIndex?: { id: string; participantId: string | null; who: string | null; said: string; backedBy: string; sessionNumber: number | null }[]
   /** Counts from the record, for whoever runs the check-in only, never a label. */
   busyOrMoving?: { eachPerson: { participantId: string; who: string; says: string }[]; cannotTellYou: string }
+  /**
+   * COACHING (modules.md: "One thing to do better, for each person"). `yours` is this reader's own
+   * private note, the same shape `WhatToWorkOnNext` already draws on the report page - sent to
+   * every reader who has one, lead and participant alike. `eachPerson` is the lead's own read on
+   * everybody else, the same shape `WhatToProbeThemOn` already draws - the server sends it only to
+   * whoever runs the check-in, and null for anybody else, so there is nothing here to gate further.
+   */
+  coaching?: {
+    yours: import('@/components/gw/WhatToWorkOnNext').CoachingNote | null
+    eachPerson: import('@/components/gw/WhatToProbeThemOn').ProbeRead[] | null
+  }
   /** What the person who runs the check-in needs to do. At most 10, for that reader only. */
   leadActions?: { id: string; says: string; because: string | null }[]
   /** What each side promised, and what somebody here still waits on that side for. One per person, then each outside party named. */

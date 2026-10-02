@@ -35,6 +35,8 @@ import { whatTheSwitchboardAllows } from './what-the-switchboard-allows'
 import { tileSentence } from '@/components/gw/TheSessionsReport'
 import { PatternPanel } from '@/components/gw/ui'
 import type { ServedPattern } from '@/api/patterns'
+import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
+import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -747,6 +749,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     whoWaitedOnWhom: allowed('whoWaitedOnWhom') && !!b.whoWaitedOnWhom?.length,
     contradictions: allowed('contradictions') && !!b.contradictions?.length,
     questionsForTheLead: allowed('questionsForTheLead') && !!b.questionsForTheLead?.length,
+    /*
+     * COACHING WAS SENT BUT DRAWN NOWHERE ON THE BOARD (second board review). `yours` reaches every
+     * reader who has one; `eachPerson` is the lead's own and the server already nulls it for anybody
+     * else, so there is nothing further to gate on here beyond what the server sent.
+     */
+    coaching: !!b.coaching && (!!b.coaching.yours || !!b.coaching.eachPerson?.length),
   }
   // Only the caller's own availability is theirs to toggle.
   const myIds = new Set(b.myParticipantId ? [b.myParticipantId] : [])
@@ -1479,6 +1487,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.contradictions && <ContradictionsSection rows={b.contradictions} />}
         {shown.busyOrMoving && <BusyOrMovingSection data={b.busyOrMoving} />}
         {shown.questionsForTheLead && viewerRunsThisCheckIn && <QuestionsForTheLeadSection rows={b.questionsForTheLead} />}
+        {/*
+          COACHING (modules.md: "One thing to do better, for each person"). Sent on every board
+          response but never drawn here - this restores it, in the same shape the report page
+          already uses for the same fields: `WhatToWorkOnNext` for this reader's own note, and,
+          lead-only, `WhatToProbeThemOn` for the read on everybody else. Neither component invents
+          anything; both already render nothing when the server has nothing to say.
+        */}
+        {shown.coaching && b.coaching?.yours && <WhatToWorkOnNext note={b.coaching.yours} />}
+        {shown.coaching && viewerRunsThisCheckIn && b.coaching?.eachPerson && (
+          <WhatToProbeThemOn reads={b.coaching.eachPerson} />
+        )}
 
         {/* What was agreed at the start, so the rest of the board has something
             to be read against. This section has been in the DELIVERY family's
