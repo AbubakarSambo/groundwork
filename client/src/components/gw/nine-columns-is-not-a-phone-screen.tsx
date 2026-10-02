@@ -175,10 +175,15 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions, myP
         const name = r.name ?? 'A colleague'
         const isReader = !!myParticipantId && r.participantId === myParticipantId
         const sentence = theSentenceFor(name, shape, isReader)
+        /* Re-review, 2 October: the heading above the reader's own sentence still said their own
+           name - "Rukia Otieno" over "You have checked in for both sessions so far." - on the
+           board she herself was reading, the same row BoardPage's 1440 view already heads "You"
+           for. The sentence already reads second person; the name above it now matches. */
+        const displayName = isReader ? 'You' : name
         return (
           <div key={r.participantId} style={{ display: 'grid', gap: 7 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 15 }}>{name}</span>
+              <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 15 }}>{displayName}</span>
               {r.role && r.role !== r.name && (
                 <span data-leads-note style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{theLeadsNote(r.role)}</span>
               )}

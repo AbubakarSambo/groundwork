@@ -152,4 +152,25 @@ describe('the reader\'s own sentence, said to them rather than about them', () =
     )
     expect(screen.getByText('Rukia Otieno has checked in for 2 of 2 sessions so far.')).toBeTruthy()
   })
+
+  /*
+   * Re-review, 2 October: read live, the heading above the reader's own sentence still said
+   * "Rukia Otieno" - "Rukia Otieno" over "You have checked in for both sessions so far." - the
+   * same row BoardPage's 1440 view already heads "You" for. The heading now matches the sentence.
+   */
+  it('heads the reader\'s own row "You", keeping everyone else\'s name', () => {
+    render(
+      <NineColumnsIsNotAPhoneScreen
+        rows={[
+          { participantId: 'p-rukia', name: 'Rukia Otieno', cells: { '1': 'done', '2': 'done' } },
+          { participantId: 'p-amani', name: 'Amani Wekesa', cells: { '1': 'done', '2': 'done' } },
+        ]}
+        sessions={[1, 2]}
+        myParticipantId="p-rukia"
+      />,
+    )
+    expect(screen.getByText('You')).toBeTruthy()
+    expect(screen.getByText('Amani Wekesa')).toBeTruthy()
+    expect(screen.queryByText('Rukia Otieno')).toBeNull()
+  })
 })
