@@ -481,6 +481,8 @@ export type ContributionRead = {
   /** Nothing they have said so far could be checked by somebody else. The one form of the rating a
       lead may read, as "Nothing checkable" beside the name (decisions 40 and 43). */
   nothingCheckable?: boolean;
+  /** They have not finished a check-in yet, so there are no answers to read at all (request 116 c). */
+  notCheckedInYet?: boolean;
 } & Partial<Confidence>;
 
 /**
@@ -541,6 +543,32 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
       const fnConfident = (p.detectedFunctionConfidence ?? 0) >= MIN_COACHING_CONFIDENCE;
       const mine = input.checkIns.filter((c) => c.participantId === p.id);
       const completed = mine.filter((c) => c.status === CheckInStatus.COMPLETED).length;
+
+      /*
+       * NOBODY GETS A READ ON ANSWERS THEY NEVER GAVE (request 116 c). Faraji Odhiambo had never
+       * checked in on "Sales team, Q3", and the lead read "Nothing Faraji Odhiambo has said so far is
+       * checkable": a read on what he said, when he had said nothing. With no finished check-in there
+       * are no answers to read, so the row says that and nothing else, and is never "nothing checkable".
+       */
+      if (completed === 0) {
+        return {
+          participantId: p.id,
+          name: nameOf(p.id),
+          remit: p.roleAsDescribed,
+          remitDefined: true,
+          position: null,
+          positionLabel: null,
+          reason: `${nameOf(p.id) ?? 'This person'} has not checked in yet.`,
+          isBlocked: blocked.has(p.id),
+          ownVoice: null,
+          nothingCheckable: false,
+          notCheckedInYet: true,
+          confidence: 0,
+          evidenceCount: 0,
+          shown: true,
+          basis: 'Nothing is on record yet, because there has been no check-in.',
+        };
+      }
 
       const myEntries = entries.filter((e) => e.participantId === p.id);
       const worthChecking = myEntries.filter((e) => tierOf(e.text, e.verifiability) !== 'LOW' && saysSomethingCheckable(e.text));

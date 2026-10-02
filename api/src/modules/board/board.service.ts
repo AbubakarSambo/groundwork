@@ -1718,8 +1718,11 @@ export class BoardService {
         /* Only the person reads their own rating; everybody else, the lead and an admin included,
            reads "Nothing checkable" or nothing (decisions 38, 40, 43). Done before the wording, so
            no rating is ever handed to the model to word either. */
+        /* Somebody still waiting for the organisation to let them in is not "has not checked in yet": they
+           cannot, and the lead is not to be asked to chase them (request 85). Their row says nothing. */
+        const waitingAtTheDoor = new Set(ground.participants.filter((p: any) => p.user?.awaitingOrgApproval).map((p: any) => p.id));
         out.contribution = contributionAsThisReaderMayRead(buildContribution(readInput, nameOf), me?.id ?? null)!
-          .map((r) => ({ ...r, remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, isInitiator) }));
+          .map((r) => ({ ...r, ...(r.notCheckedInYet && waitingAtTheDoor.has(r.participantId) ? { reason: null } : {}), remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, isInitiator) }));
       }
       /* Built from what may be served, never the read passed through whole: no confidence, no percentage,
          no count of evidence, and nothing of a read too thin to show (request 111 a, no-rating-is-served). */

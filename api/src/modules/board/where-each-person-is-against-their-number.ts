@@ -298,12 +298,19 @@ export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null
     .sort((a, b) => b.days - a.days)[0];
   /* Nothing checkable, and nothing in the way: what to ask next is the thing that would make it
      checkable. The prototype's rows carry one, such as "Name each customer" or "Ask for a buying date". */
-  if (!worst && !row.saidAnythingCheckable) {
-    return row.noProof
-      ? `Ask ${them} for a photo, a message or a document that shows what moved.`
-      : `Ask ${them} for a number or a date for what moved this round.`;
-  }
+  const askForSomethingCheckable = row.noProof
+    ? `Ask ${them} for a photo, a message or a document that shows what moved.`
+    : `Ask ${them} for a number or a date for what moved this round.`;
+  if (!worst && !row.saidAnythingCheckable) return askForSomethingCheckable;
   if (!worst) return null;
+  /*
+   * AND "NOTHING CHECKABLE" ALWAYS COMES WITH WHAT TO ASK NEXT (request 116 b, decision 76). A row
+   * that was nothing checkable and also had something in the way, under a fortnight old and already
+   * chased, came out with no ask at all: the prototype's "Nothing checkable" with nothing beside it.
+   * Where the thing in the way gives no ask of its own, the ask is the one that would make it checkable.
+   */
+  const noAskFromWhatIsInTheWay = !worst.onTheReader && worst.days < A_FORTNIGHT && worst.tried !== 'nothing';
+  if (noAskFromWhatIsInTheWay && !row.saidAnythingCheckable) return askForSomethingCheckable;
   /*
    * AND WHAT THEY WAIT ON IS WITH YOU (screens request 65). Rukia read "Ask Amani Wekesa to speak to
    * Rukia Otieno rather than write to them." on her own board: an ask about her own reply, about her

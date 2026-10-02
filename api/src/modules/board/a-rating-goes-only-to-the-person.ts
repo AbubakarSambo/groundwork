@@ -24,9 +24,29 @@ export function contributionAsThisReaderMayRead(
        confidence and the count of evidence are the engine's, and are not served (request 111 a). */
     if (meParticipantId && r.participantId === meParticipantId) {
       const { confidence: _c, evidenceCount: _e, ...own } = r as ContributionRead & { confidence?: number; evidenceCount?: number };
+      /* Nobody is read on answers they never gave (request 116 c); to themselves, "you". */
+      if (r.notCheckedInYet) return { ...own, reason: 'You have not checked in yet.' } as ContributionRead;
       return own as ContributionRead;
     }
     const who = r.name || 'this person';
+    /* With no check-in there is nothing to read, so the lead reads that, never "nothing checkable" (request 116 c). */
+    if (r.notCheckedInYet) {
+      return {
+        participantId: r.participantId,
+        name: r.name,
+        remit: r.remit,
+        remitDefined: r.remitDefined,
+        position: null,
+        positionLabel: null,
+        reason: `${r.name || 'This person'} has not checked in yet.`,
+        nothingCheckable: false,
+        notCheckedInYet: true,
+        isBlocked: r.isBlocked,
+        ownVoice: null,
+        shown: true,
+        guard: r.guard,
+      };
+    }
     return {
       participantId: r.participantId,
       name: r.name,
