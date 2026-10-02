@@ -517,8 +517,14 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
               ].filter(Boolean).join(' ')}
         </div>
         {shared && (
+          /*
+            BOARD REVIEW, SALES PIECE D, ITEM 6: A FULL SENTENCE, NOT A CLIPPED PHRASE. "Open it,
+            below" names neither what "it" is nor where "below" is - CLAUDE.md asks for plain, full
+            sentences, and a person reading this button should not have to infer either from
+            context. Says what opens, and where.
+          */
           <button type="button" onClick={openTheWholeCheckIn} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
-            Open it, below
+            Open today’s team picture below.
           </button>
         )}
         {(shared || (teamPicture && 'yourOwnReport' in teamPicture && teamPicture.yourOwnReport)) && (

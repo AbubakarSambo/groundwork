@@ -186,7 +186,12 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     expect(screen.queryByText('Today’s team picture isn’t shared yet.')).toBeNull()
     expect(screen.queryByText('It is below, with everything else from this check-in.')).toBeNull()
     expect(screen.getByText('Your own report is ready now.')).toBeTruthy()
-    const open = screen.getByRole('button', { name: 'Open it, below' })
+    /*
+     * BOARD REVIEW, SALES PIECE D, ITEM 6: A FULL SENTENCE, NOT A CLIPPED PHRASE. "Open it,
+     * below" named neither what "it" was nor where "below" was - updated to say both, in a full
+     * sentence a person actually reads.
+     */
+    const open = screen.getByRole('button', { name: 'Open today’s team picture below.' })
     expect(open).toBeTruthy()
     const fold = screen.getByText('The whole check-in').closest('details') as HTMLDetailsElement
     expect(fold.open).toBe(false)
