@@ -100,6 +100,8 @@ describe('every surface that hands out whose number it is', () => {
     /* Request 70: the forecast reads the owner only to leave out a target that is one person's. It is handed
        `out.objectives` after the board has asked targetsFor, so it only ever sees what this reader may read. */
     'modules/board/the-switchboards-own-sections.ts': 'the forecast reads the owner only to leave one person\'s number out; it is handed rows the board passed through targetsFor',
+    /* Request 110: a person's own aim kept only as their promise is put among the rows the board then passes through targetsFor, before any reader is served. */
+    'modules/board/an-aim-kept-only-as-their-promise.ts': 'builds rows the board adds to ground.objectives before it asks targetsFor; serves nobody itself',
     'modules/board/__fixtures__/a-page-that-contradicts-itself.ts': 'test rows for a-board-that-does-not-contradict-itself; the board asks targetsFor',
   };
 

@@ -13,7 +13,8 @@ import { whereThisTargetStands, theHeadlineQuestion, theDirectionToReadIn, type 
 import { whereThisIsHeading } from './where-this-is-heading';
 import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
-import { theShareSays } from './your-share';
+import { theShareSays, YOU_HAVE_NO_SHARE_YET } from './your-share';
+import { theirOwnAimsKeptOnlyAsPromises, AN_AIM_FROM_THEIR_PROMISE } from './an-aim-kept-only-as-their-promise';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
@@ -454,6 +455,22 @@ export class BoardService {
       .filter((s) => PATTERNS_ARE_SERVED || s !== 'patterns');
     const has = (s: BoardSection) => sections.includes(s);
     const family = familyFor(ground.scenario);
+
+    /*
+     * A PERSON'S OWN AIM THAT WAS KEPT ONLY AS THEIR PROMISE (screens request 110). Read from the record as
+     * a target of theirs, set by them, before any wall below, so it goes through every rule a stored target
+     * of theirs goes through (who sees targets, the untold goals, naming). Nothing is written. See
+     * an-aim-kept-only-as-their-promise.
+     */
+    {
+      const promises = await ((this.prisma as any).personObjective?.findMany?.({
+        where: { groundId, authoredBy: 'self', kind: 'TARGET' },
+        select: { id: true, participantId: true, text: true, kind: true, target: true, measure: true, status: true, authoredBy: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }) ?? Promise.resolve([])).catch(() => []);
+      const fromPromises = theirOwnAimsKeptOnlyAsPromises(promises as any[], (ground.objectives ?? []) as any[], ground.participants as any[], groundId);
+      if (fromPromises.length) (ground as any).objectives = [...((ground.objectives ?? []) as any[]), ...fromPromises];
+    }
 
     /**
      * THE WALL THE CHECK-IN KEEPS, KEPT HERE TOO.
@@ -1127,16 +1144,20 @@ export class BoardService {
      */
     if (!isInitiator && me?.id && Array.isArray(out.objectives)) {
       const mine = (out.objectives as any[]).filter((o) => o.ownerParticipantId === me.id && o.target != null);
-      if (mine.length) {
-        const leadName = theLeadsRow ? nameOf(theLeadsRow) : null;
-        out.yourShare = mine.map((o) => ({
-          objectiveId: o.id,
-          says: theShareSays(o.name, o.count, o.target, o.direction),
-          whoSees: (ground as any).whoSeesTargets === 'EVERYBODY'
-            ? 'Everybody in this check-in sees your share.'
-            : `Only you and ${leadName ?? 'the person running this check-in'} see your share.`,
-        }));
-      }
+      const leadName = theLeadsRow ? nameOf(theLeadsRow) : null;
+      /*
+       * ALWAYS SENT TO A PERSON WHO CHECKS IN (screens request 110 a). It was left out where they had no number of
+       * their own, so the screen could not tell "nothing of yours" from "not sent". Now it is a list, empty where
+       * there is nothing, with `yourShareSays` saying so in a sentence.
+       */
+      out.yourShare = mine.map((o) => ({
+        objectiveId: o.id,
+        says: theShareSays(o.name, o.count, o.target, o.direction),
+        whoSees: (ground as any).whoSeesTargets === 'EVERYBODY'
+          ? 'Everybody in this check-in sees your share.'
+          : `Only you and ${leadName ?? 'the person running this check-in'} see your share.`,
+      }));
+      if (!mine.length) out.yourShareSays = YOU_HAVE_NO_SHARE_YET;
     }
 
     if (has('divergence') && reportSafe) {
@@ -3045,6 +3066,8 @@ export class BoardService {
     dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null; dueOn?: string | null },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
+    /* A person's own aim read from their promise (request 110): the lead's change puts it on the record first, as theirs. */
+    if (objectiveId.startsWith(AN_AIM_FROM_THEIR_PROMISE)) objectiveId = await this.putTheirOwnAimOnTheRecord(groundId, objectiveId);
     const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
     if (!existing || existing.groundId !== groundId) throw new NotFoundException('Objective not found');
     /*
@@ -3081,8 +3104,36 @@ export class BoardService {
     });
   }
 
+  /**
+   * A PERSON'S OWN AIM, READ FROM THEIR PROMISE, PUT ON THE RECORD WHEN THE LEAD CHANGES IT (request 110). Written
+   * once, as theirs and set by them, in their own words, exactly as the extraction writes one today. Returns the
+   * stored target's id. Refused, in a sentence, where the promise is not an aim of theirs on this check-in.
+   */
+  private async putTheirOwnAimOnTheRecord(groundId: string, syntheticId: string): Promise<string> {
+    const promiseId = syntheticId.slice(AN_AIM_FROM_THEIR_PROMISE.length);
+    const [promise, ground] = await Promise.all([
+      (this.prisma as any).personObjective.findUnique({ where: { id: promiseId } }),
+      this.prisma.ground.findUnique({ where: { id: groundId }, include: { objectives: true, participants: { select: { id: true, partyType: true } } } }),
+    ]);
+    const rows = promise && promise.groundId === groundId && ground
+      ? theirOwnAimsKeptOnlyAsPromises([promise], (ground as any).objectives ?? [], (ground as any).participants ?? [], groundId)
+      : [];
+    if (!rows.length) throw new NotFoundException('This aim is not on this check-in any more.');
+    const made = await this.prisma.groundObjective.create({
+      data: { groundId, name: rows[0].name, target: rows[0].target, ownerParticipantId: rows[0].ownerParticipantId, setByParticipantId: rows[0].setByParticipantId, sortOrder: 100 + ((ground as any).objectives?.length ?? 0) } as any,
+    });
+    return made.id;
+  }
+
   async deleteObjective(groundId: string, objectiveId: string, requestingUserId: string) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
+    /*
+     * A person's own aim, read from what they said (request 110), is theirs: it is not taken off their board from here.
+     * Decided for Hafsah to confirm: the lead can change its number or count, but only the person can drop their own aim.
+     */
+    if (objectiveId.startsWith(AN_AIM_FROM_THEIR_PROMISE)) {
+      throw new ForbiddenException('This aim is one the person set for themselves in their own check-in, so only they can drop it. You can change its number or what is counted against it.');
+    }
     const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
     if (!existing || existing.groundId !== groundId) throw new NotFoundException('Objective not found');
     await this.prisma.groundObjective.delete({ where: { id: objectiveId } });

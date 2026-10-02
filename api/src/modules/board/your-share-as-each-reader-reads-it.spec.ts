@@ -51,7 +51,9 @@ describe('your share, as each reader reads it', () => {
 
   it('a target the lead holds as a decision about the person is not their share', async () => {
     const b = await boardAs({ objectives: [objective('o-d', 'Decide whether to keep Rukia on.', 1, 0, 'p-rukia', { isADecisionAboutAPerson: true })] }, ...RUKIA);
-    expect(b.yourShare).toBeUndefined();
+    /* Request 110 (a): a person who checks in is always sent the list, empty here, with the sentence that says so. */
+    expect(b.yourShare).toEqual([]);
+    expect(b.yourShareSays).toBe('There is no number of yours on this board yet, so there is no share to show.');
   });
 
   it('the person reviewed on a performance plan reads their own share and nobody else\'s', async () => {

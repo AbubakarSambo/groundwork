@@ -82,6 +82,7 @@ export function aParticipantsOwnBoard(board: Record<string, any>, reader: { meId
   /* Where each team target stands is the team's picture too (request 108 b): held back until it is shared. */
   if (Array.isArray(out.objectives) && !reader.released) out.objectives = out.objectives.map((o: any) => ('stands' in (o ?? {}) ? { ...o, stands: null } : o));
   if (board.yourShare) out.yourShare = board.yourShare;
+  if (board.yourShareSays) out.yourShareSays = board.yourShareSays;
 
   /* What they are waiting on, and what is waiting on them. */
   const theirs = (d: any) => d && (d.fromParticipantId === me || d.onParticipantId === me);

@@ -1,5 +1,8 @@
 import { aNumberPeopleCanRead } from './an-aim-is-a-sentence-about-somebody';
 
+/** Said to a person who checks in and has no number of their own on the board (request 110 a). */
+export const YOU_HAVE_NO_SHARE_YET = 'There is no number of yours on this board yet, so there is no share to show.';
+
 /**
  * YOUR SHARE, IN SENTENCES (request 107 c). The aim is already named for the reader ("You are aiming
  * for 3 shops in Kilimani."); this adds where it stands, in the reader's own words:
