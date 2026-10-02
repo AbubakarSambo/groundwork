@@ -346,7 +346,8 @@ export function draftTheQuestion(i: QuestionInput): Drafted | null {
     const k = kinded.kind as Kind;
     return {
       key: 'question',
-      text: `${WHO_CAN_MOVE_IT[k]} For ${theThing(kinded.what)}: who is that, and have they been asked?`,
+      /* No colon joining two pieces (request 109 f). */
+      text: `${WHO_CAN_MOVE_IT[k]} Who is that for ${theThing(kinded.what)}, and have they been asked?`,
       mustKeep: [WHO_CAN_MOVE_IT[k], theThing(kinded.what)],
     };
   }
@@ -357,7 +358,12 @@ export function draftTheQuestion(i: QuestionInput): Drafted | null {
   }
   const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
   const map = top ? roleMapFor(top[0]) : null;
-  const probe = map?.neutralProbes?.[0];
+  /*
+   * A QUESTION FOR THE ROOM, NOT FOR ONE PERSON (request 109 f). The MarketView board showed "What did you do
+   * this period that only you could have done?" under "What to settle together": a question asked of one
+   * person, put to everybody. Only a probe that is not addressed to "you" is something to settle together.
+   */
+  const probe = map?.neutralProbes?.find((q) => !/\b(you|your|yours|yourself)\b/i.test(q));
   if (!probe) return null;
   return { key: 'question', text: probe, mustKeep: [probe] };
 }

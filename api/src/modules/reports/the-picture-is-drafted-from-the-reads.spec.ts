@@ -167,3 +167,19 @@ describe('a difference is said in sentences, with each person once (request 109 
     expect(line).not.toMatch(/:/);
   });
 });
+
+/*
+ * REQUEST 109 (f): "What to settle together" on the MarketView board showed "What did you do this period that
+ * only you could have done?", a question for one person, put to the room.
+ */
+describe('the question to settle together is for the room (request 109 f)', () => {
+  it('a chief executive\'s room is never asked a question addressed to one person', () => {
+    const q = draftTheQuestion({ functions: [{ fn: RoleFunction.CEO, confidence: 0.9 }], blockers: [] });
+    expect(q?.text ?? '').not.toMatch(/\byou\b|\byour\b/i);
+    expect(q?.text ?? '').not.toBe('What did you do this period that only you could have done?');
+  });
+  it('a blocker\'s question has no colon', () => {
+    const q = draftTheQuestion({ functions: [], blockers: [{ what: 'the budget sign-off', kind: 'DECISION' as any }] })!;
+    expect(q.text).toBe(`${WHO_CAN_MOVE_IT.DECISION} Who is that for the budget sign-off, and have they been asked?`);
+  });
+});
