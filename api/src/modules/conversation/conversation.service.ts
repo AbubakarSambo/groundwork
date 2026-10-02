@@ -225,6 +225,9 @@ import { asADirection } from '../board/an-aim-or-a-limit';
 import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-set-it';
 import { withoutOurInstructions } from './our-instructions-never-reach-them';
 import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief } from './the-leads-brief-is-never-quoted-to-them';
+import { withoutSentencesAboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
+import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { aQuestionNotYetAsked, WHAT_ELSE } from './nobody-is-left-looking-at-a-paragraph';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargets } from '../board/a-hidden-target-stays-hidden';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
@@ -1324,7 +1327,7 @@ export class ConversationService {
      * wrong asset: the brief lists four, and the model took the first. See a-thing-the-lead-listed-is-not-theirs.
      */
     if ((checkIn as any)?.id && (checkIn as any)?.participant?.partyType !== PartyType.INITIATOR && checkIn?.groundId) {
-      const setUp = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true, toldToParticipants: true, scenario: true, initiator: { select: { firstName: true } } } as any }) ?? Promise.resolve(null)).catch(() => null);
+      const setUp = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true, toldToParticipants: true, scenario: true, peersVisibleToEachOther: true, initiatorId: true, initiator: { select: { firstName: true } }, participants: { select: { id: true, userId: true, partyType: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } as any }) ?? Promise.resolve(null)).catch(() => null);
       const brief: string | null = (setUp as any)?.brief ?? null;
       if (brief) {
         const theirs = await (this.prisma.conversationTurn?.findMany?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: (checkIn as any).participantId } }, select: { content: true } }) ?? Promise.resolve([]))
@@ -1344,6 +1347,24 @@ export class ConversationService {
           : withoutTheLeadsBrief(raw, brief, [...theirs, (setUp as any)?.toldToParticipants ?? ''], saidHereBefore, (setUp as any)?.initiator?.firstName ?? null);
         for (const c of notTheBrief.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence that quoted the lead's brief: "${c.slice(0, 160)}"`);
         raw = notTheBrief.text;
+      }
+      /*
+       * AND, WHERE PEOPLE DO NOT SEE EACH OTHER, NOBODY ELSE'S CIRCUMSTANCES (decision 75, item 14). A sentence that
+       * names another person in the check-in, other than the lead and anybody this person named themselves, is cut.
+       * Not on an evaluation check-in, which has its own rule (decision 17).
+       */
+      if (setUp && !peersAreNamedOn(setUp as any, { participantId: (checkIn as any).participantId ?? null }) && !isEvaluationCheckIn((setUp as any).scenario)) {
+        const theirOwn = await (this.prisma.conversationTurn?.findMany?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: (checkIn as any).participantId } }, select: { content: true } }) ?? Promise.resolve([]))
+          .then((rows: any[]) => rows.map((r) => r.content ?? '').join(' ')).catch(() => '');
+        const others = (((setUp as any).participants ?? []) as any[])
+          .filter((p) => p.id !== (checkIn as any).participantId && p.partyType !== PartyType.INITIATOR && p.userId !== (setUp as any).initiatorId)
+          .flatMap((p) => [[p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim(), (p.user?.firstName ?? '').trim(), (p.nameGiven ?? '').trim()])
+          .filter((n) => n.length > 2 && !new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(theirOwn));
+        if (others.length) {
+          const kept = withoutSentencesAboutOneOfThem(raw, { names: [...new Set(others)] }, { namesOnly: true });
+          if (kept !== raw.trim()) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence naming somebody else in a check-in where people do not see each other.`);
+          raw = kept || (aQuestionNotYetAsked(WHAT_ELSE, saidHereBefore) ?? WHAT_ELSE);
+        }
       }
     }
     /*

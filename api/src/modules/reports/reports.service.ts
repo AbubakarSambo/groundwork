@@ -103,6 +103,20 @@ import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-labe
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from './is-this-an-evaluation-check-in';
+import { onlyCountsAndPatternsAboutTheOthers } from './one-persons-circumstances-stay-their-own';
+
+/** The names of everybody in it but the reader and the lead, full and first, for the item 14 wall. */
+function theOtherPeoplesNames(participants: any[], readerParticipantId: string | null, leadUserId: string | null): string[] {
+  const out = new Set<string>();
+  for (const p of participants ?? []) {
+    if (!p || p.id === readerParticipantId || p.partyType === 'INITIATOR' || (leadUserId && p.userId === leadUserId)) continue;
+    const first = (p.user?.firstName ?? '').trim();
+    const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim();
+    if (full) out.add(full);
+    if (first.length > 2) out.add(first);
+  }
+  return [...out];
+}
 import { whatEachPersonSaidForTheSubject, deeplyWithoutColleaguesQuotesForTheSubject } from './colleagues-exact-words-stay-with-the-manager';
 import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
 import { tallyInReport } from './counts-accounts';
@@ -5287,7 +5301,16 @@ happened, and what is in the way.`;
       asStored.engagement && typeof asStored.engagement === 'object' ? { ...asStored, engagement: theRestOfEngagement } : asStored,
       marksOnItsLines,
     );
-    const withNames = this.applyNames(gapsAsTheirSentences(findingsWithoutTheirLabels(theTableStaysWithTheEngine(withMarks))), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
+    const withNamesPutIn = this.applyNames(gapsAsTheirSentences(findingsWithoutTheirLabels(theTableStaysWithTheEngine(withMarks))), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
+    /*
+     * DECISION 75, ITEM 14: WHERE PEOPLE DO NOT SEE EACH OTHER, ONE PERSON'S CIRCUMSTANCES NEVER REACH ANOTHER. The
+     * shared picture a participant reads carries counts and patterns across people, never a sentence about one
+     * colleague. Not on an evaluation check-in, where what the person reviewed and a colleague read has its own
+     * rule (decision 17). Whoever runs it, and an admin, read it whole. See one-persons-circumstances-stay-their-own.
+     */
+    const withNames = !viewerIsLead && !this.peersAreNamed(ground as any, viewerParticipantId) && !isEvaluationCheckIn((ground as any).scenario)
+      ? onlyCountsAndPatternsAboutTheOthers(withNamesPutIn, { names: theOtherPeoplesNames(ground.participants ?? [], viewerParticipantId, (ground as any).initiatorId ?? null) })
+      : withNamesPutIn;
     if (viewerIsLead || sharedAs !== 'ANONYMOUS') return withNames;
     return nothingIdentifyingIn(withNames, (ground.participants ?? []).map((p: any) => ({
       name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || null,

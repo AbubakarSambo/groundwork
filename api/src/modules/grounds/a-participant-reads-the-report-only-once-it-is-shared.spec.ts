@@ -73,7 +73,10 @@ describe('the report on the check-in read, as a participant', () => {
   it('where people are not named to each other, a colleague is never named, and never a label', async () => {
     const res: any = await serviceFor({ released: true, peersVisible: false }).get('g1', 'org1', 'userA');
     expect(res.report.sharedPicture).not.toMatch(/Blair|Participant [A-Z]\b/);
-    expect(res.report.sharedPicture).toMatch(/a colleague/i);
+    /* Changed with decision 75, item 14: where people do not see each other, a sentence about one colleague is not
+       served at all, where it used to be served about "a colleague". The lead's own sentence stays. */
+    expect(res.report.sharedPicture).not.toMatch(/a colleague/i);
+    expect(res.report.sharedPicture).toBe('Wairimu Kamau reports 18 sales.');
   });
 
   it('shared without names, nobody is named and no label shows', async () => {
