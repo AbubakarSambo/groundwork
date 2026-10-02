@@ -84,6 +84,25 @@ describe('a work record carries its own mark', () => {
 })
 
 /**
+ * BOARD REVIEW, SALES PIECE D, ITEM 2: "Grouped by what the proof says about closing this
+ * quarter." is the deal grid's own subtitle, directly under its heading - but it used to show
+ * even when every deal was added by hand, with nothing proven and nothing said, so there was
+ * nothing the grid was actually grouping by. It now reads only when some row's mark is something
+ * other than "none".
+ */
+describe('the deal grid only claims a grouping it actually shows', () => {
+  it('shows the subtitle when some row carries a mark', () => {
+    renderSections([dealGrid({ mark: 'proven' })])
+    expect(screen.getByText('Grouped by what the proof says about closing this quarter.')).toBeTruthy()
+  })
+
+  it('leaves the subtitle out when every row is mark "none"', () => {
+    renderSections([dealGrid({ from: 'lead', said: undefined, saidBy: null, mark: 'none' })])
+    expect(screen.queryByText('Grouped by what the proof says about closing this quarter.')).toBeNull()
+  })
+})
+
+/**
  * REQUEST 107 (c), part 1: THE RECORD'S OWN "NEXT" - only an open commitment whose words name
  * this exact record, drawn as the server's own sentence, never invented from nothing.
  */

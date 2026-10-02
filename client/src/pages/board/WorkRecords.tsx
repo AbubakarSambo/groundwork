@@ -794,7 +794,17 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 
   const heading = sectionHeading(kindOfWork, section)
   const isDealGrid = section.section === 'Deal grid'
-  const note = (isDealGrid && kindOfWork ? DEAL_GRID_NOTE[kindOfWork] : undefined) ?? undefined
+  /*
+   * BOARD REVIEW, SALES PIECE D, ITEM 2: "Grouped by what the proof says about closing this
+   * quarter." used to show above a flat list every time this was the sales org's deal grid, even
+   * when nothing on the grid actually carries a mark beyond "none" - every row added on the board
+   * by hand, with no proof and nothing said. A subtitle promising a grouping the grid is not
+   * actually showing is the same kind of over-claim the key below was fixed for (item 3), so this
+   * now reads only when some row's `mark` is something other than "none" or absent.
+   */
+  const dealGridRows = section.state === 'filled' || section.state === 'none-yet' ? section.rows : []
+  const hasAGroup = dealGridRows.some((r) => r.mark && r.mark !== 'none')
+  const note = (isDealGrid && kindOfWork && hasAGroup ? DEAL_GRID_NOTE[kindOfWork] : undefined) ?? undefined
 
   if (section.state === 'not-known') {
     return (
