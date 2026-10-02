@@ -2,15 +2,16 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { TheFreeTrialService } from './the-free-trial.service';
 import { BillingService } from './billing.service';
+import { DEFAULT_FREE_TRIAL } from './pricing.service';
 import { GroundworkEvents } from '../../common/events';
 
 /**
  * THE FREE TRIAL IS GIVEN FOR REAL, AND ONLY WHILE ITS SETTING IS ON (U.19).
  *
- * Hafsah's decision of 26 September: teams of fewer than 20 people get Groundwork free for 3 months.
+ * Hafsah's decision of 26 September: teams of fewer than 20 people get Groundwork free, for one month since decision 78.
  * She said to keep the sentence off until billing really gives the trial. So the grant sits behind
  * the same setting as the sentence: while it is off, nothing about today's billing changes; turned
- * on, an organisation that says it is fewer than 20 is given 3 months, with no card and no charge.
+ * on, an organisation that says it is fewer than 20 is given its month, with no card and no charge.
  *
  * Baridi Appliances has just been created by Grace. The plans are the seeded ones.
  */
@@ -38,7 +39,8 @@ function baridi(opts: { on?: boolean; teamsUnder?: number; months?: number; seat
     user: { count: jest.fn(async () => opts.seats ?? 1) },
   };
   const pricing: any = {
-    getFreeTrial: jest.fn(async () => ({ on: opts.on ?? false, teamsUnder: opts.teamsUnder ?? 20, months: opts.months ?? 3 })),
+    /* The length is the shipped default unless a test says otherwise: one month since decision 78. */
+    getFreeTrial: jest.fn(async () => ({ on: opts.on ?? false, teamsUnder: opts.teamsUnder ?? 20, months: opts.months ?? DEFAULT_FREE_TRIAL.months })),
     listPlans: jest.fn(async () => PLANS),
   };
   return { svc: new TheFreeTrialService(prisma, pricing), prisma, writes, org };
@@ -55,13 +57,13 @@ describe('while the free trial is off, which is how it ships', () => {
 });
 
 describe('once the free trial is switched on', () => {
-  it('a team under 20 is given 3 months on Small Team, from today, with nothing charged', async () => {
+  it('a team under 20 is given one month on Small Team, from today, with nothing charged (decision 78)', async () => {
     const { svc, writes } = baridi({ on: true, seats: 1 });
     const got = await svc.grantIfItApplies('org-baridi', 'fewer', NOW);
-    expect(got).toEqual({ granted: true, plan: 'SMALL_TEAM', until: new Date('2026-12-27T10:00:00Z') });
+    expect(got).toEqual({ granted: true, plan: 'SMALL_TEAM', until: new Date('2026-10-27T10:00:00Z') });
     expect(writes).toHaveLength(1);
     expect(writes[0].where).toEqual({ id: 'org-baridi', freeTrialStartedAt: null, freeUntil: null });
-    expect(writes[0].data).toEqual({ freeTrialStartedAt: NOW, freeUntil: new Date('2026-12-27T10:00:00Z'), freePlan: 'SMALL_TEAM' });
+    expect(writes[0].data).toEqual({ freeTrialStartedAt: NOW, freeUntil: new Date('2026-10-27T10:00:00Z'), freePlan: 'SMALL_TEAM' });
     /* Only the free run's own fields: no subscription, no status, no Stripe customer. */
     expect(Object.keys(writes[0].data).sort()).toEqual(['freePlan', 'freeTrialStartedAt', 'freeUntil']);
   });

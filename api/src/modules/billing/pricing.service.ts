@@ -55,7 +55,8 @@ export const DEFAULT_FREE_MEMBER_LIMIT = 5;
 export const MAX_FREE_MEMBER_LIMIT = 1000;
 
 /**
- * THE FREE TRIAL: TEAMS UNDER 20 PEOPLE, FREE FOR 3 MONTHS. Hafsah's decision of 26 September.
+ * THE FREE TRIAL: TEAMS UNDER 20 PEOPLE, FREE FOR ONE MONTH. Hafsah's decision of 26 September,
+ * shortened from three months to one by decision 78 (2 October).
  *
  * The numbers live here, in the database, and every screen builds its sentence from them, so no
  * screen can say a different number. The same setting decides whether billing GRANTS the trial
@@ -69,7 +70,7 @@ export const FREE_TRIAL_KEY = 'pricing.freeTrial';
  * read): it is what tells an organisation that was already on the free plan from a new one.
  */
 export interface FreeTrial { on: boolean; teamsUnder: number; months: number; onSince?: string }
-export const DEFAULT_FREE_TRIAL: FreeTrial = { on: false, teamsUnder: 20, months: 3 };
+export const DEFAULT_FREE_TRIAL: FreeTrial = { on: false, teamsUnder: 20, months: 1 };
 
 /**
  * ONE SWITCH (Hafsah, 27 September). While the free trial is OFF, which is how it ships, the free plan
