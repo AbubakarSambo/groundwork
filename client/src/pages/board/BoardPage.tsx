@@ -1018,6 +1018,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     : undefined
   const newHireFullName = theNewHireParticipant?.name ?? null
   const newHireFirstName = newHireFullName ? newHireFullName.trim().split(/\s+/)[0] : null
+  /* FIX 2 (SECOND REVIEW): THE LEAD'S TWO ROWS, SPLIT BY WHOSE THEY ARE - see where they are drawn,
+     below, under their own true headings ("{name}'s history" and "Your own record"). */
+  const newHireHistoryRows = (b.personHistory ?? []).filter((r) => r.participantId === theNewHireParticipant?.id)
+  const myOwnHistoryRows = (b.personHistory ?? []).filter((r) => r.participantId === b.myParticipantId)
   const onboardingNamesLine = isOnboarding
     ? (viewerRunsThisCheckIn
         ? (newHireFullName ? `${newHireFullName} and you.` : null)
@@ -1659,6 +1663,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           beside each one, further down. Nothing here is a new section: the same three, only moved
           and, for the person's history, headed with their first name rather than the generic
           "What each person has done so far".
+
+          FIX 2 (SECOND REVIEW): EVERY HEADING TRUE OF WHAT IS UNDER IT. The new hire's own board
+          sends him only his own row, so one heading calling it "Tobi's history" while he reads it
+          himself was never right - he reads "Your history" instead. His lead reads two rows under
+          one heading today; split here into the new hire's own row, under his name, and her own
+          row below it, under its own heading ("Your own record") - a heading is never true of a
+          row it does not describe.
         */}
         {isOnboarding && (
           <>
@@ -1669,7 +1680,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               <StartingStateBody startingState={b.startingState} />
             )}
             {shown.personHistory && b.personHistory && (
-              <PersonHistorySection rows={b.personHistory} heading={newHireFirstName ? `${newHireFirstName}’s history` : undefined} />
+              viewerRunsThisCheckIn ? (
+                <>
+                  {newHireHistoryRows.length > 0 && (
+                    <PersonHistorySection rows={newHireHistoryRows} heading={newHireFirstName ? `${newHireFirstName}’s history` : undefined} />
+                  )}
+                  {myOwnHistoryRows.length > 0 && (
+                    <PersonHistorySection rows={myOwnHistoryRows} heading="Your own record" />
+                  )}
+                </>
+              ) : (
+                <PersonHistorySection rows={b.personHistory} heading="Your history" />
+              )
             )}
             {divergenceBlock('Where you both see it differently')}
           </>
