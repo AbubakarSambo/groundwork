@@ -49,8 +49,25 @@ const BOARD = {
   },
 }
 
-function renderBoard() {
-  ;(boardApi.get as any).mockResolvedValue(BOARD)
+/*
+ * SECOND BOARD REVIEW, ITEM 9, PRIVACY: `contribution[].basis` and `coverage.reads[].basis` carry
+ * how much and how checkable the record behind a read is - "Based on 1 check-in, 0 checkable
+ * things named, none of it confirmed by anyone else.", "Nothing Faraji Odhiambo has said so far is
+ * checkable..." - exactly what CLAUDE.md's "Leads never see how a person's answers were rated."
+ * forbids. This section is lead-only already; this fixture adds `basis` to both rows and checks
+ * the lead's own render never shows either sentence, while the rest of each card still does.
+ */
+const BOARD_WITH_BASIS = {
+  ...BOARD,
+  contribution: [{ ...BOARD.contribution[0], basis: 'Based on 1 check-in, 0 checkable things named, none of it confirmed by anyone else.' }],
+  coverage: {
+    ...BOARD.coverage,
+    reads: [{ ...BOARD.coverage.reads[0], basis: 'Based on 2 check-ins, 0 checkable things named, none of it confirmed by anyone else.' }],
+  },
+}
+
+function renderBoard(board: any = BOARD) {
+  ;(boardApi.get as any).mockResolvedValue(board)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
@@ -77,5 +94,14 @@ describe('contribution and coverage are lead only, pending 0f', () => {
     expect(screen.queryByText('Rukia said she closed the Nyali Fresh account this week.')).toBeNull()
     expect(screen.queryByText('Contribution against role')).toBeNull()
     expect(screen.queryByText('Where work is landing')).toBeNull()
+  })
+
+  it('never draws how checkable a person’s answers are, for the lead', async () => {
+    me = { id: 'u-lead', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard(BOARD_WITH_BASIS)
+    expect(await screen.findByText('She has closed three of her four accounts this quarter.')).toBeTruthy()
+    expect(screen.getByText('Rukia said she closed the Nyali Fresh account this week.')).toBeTruthy()
+    expect(screen.queryByText(/Based on 1 check-in, 0 checkable things named/)).toBeNull()
+    expect(screen.queryByText(/Based on 2 check-ins, 0 checkable things named/)).toBeNull()
   })
 })

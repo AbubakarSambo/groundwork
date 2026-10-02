@@ -2496,7 +2496,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     /* Too little on record to say anything about a person yet. A
                        hedge still reads as a verdict, so nothing is shown at all. */
                     <div className="gwui-fs-15 gwui-ink-muted gwui-mt-8" style={{lineHeight: 1.45, fontStyle: 'italic'}}>
-                      Not enough on record yet to say anything about this person's contribution. {c.basis}
+                      Not enough on record yet to say anything about this person's contribution.
                     </div>
                   ) : !c.remitDefined ? (
                     <div className="gwui-fs-15 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: 1.45}}>
@@ -2508,11 +2508,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       <div className="gwui-mt-7 gwui-fs-15" style={{lineHeight: 1.45}}>
                         {c.reason}
                       </div>
-                      {c.basis && (
-                        <div className="gwui-mt-6 gwui-fs-13 gwui-ink-muted" style={{lineHeight: 1.45}}>
-                          {c.basis}
-                        </div>
-                      )}
+                      {/*
+                        PRIVACY (board review, second pass, item 9): `c.basis` is how much and how
+                        checkable the record behind this read is - "Based on 1 check-in, 0
+                        checkable things named..." - and this section is lead-only. CLAUDE.md:
+                        "Leads never see how a person's answers were rated." No longer drawn here.
+                      */}
                       {c.fnLabel && (
                         <div className="gwui-mt-6 gwui-gap-6" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
                           <Tag tone="action">read as {c.fnLabel.toLowerCase()}</Tag>
@@ -2601,9 +2602,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     {r.reasonText}
                   </div>
 
-                  {r.basis && (
-                    <div className="gwui-mt-6 gwui-fs-13 gwui-ink-muted" style={{lineHeight: 1.45}}>{r.basis}</div>
-                  )}
+                  {/*
+                    PRIVACY (board review, second pass, item 9): `r.basis` is how much and how
+                    checkable the record behind this read is - "Based on 2 check-ins, 0 checkable
+                    things named..." - and this section is lead-only. CLAUDE.md: "Leads never see
+                    how a person's answers were rated." No longer drawn here.
+                  */}
 
                   <div className="gwui-mt-7 gwui-fs-15 gwui-rule-dashed gwui-pt-6 gwui-pr-10 gwui-pb-6 gwui-pl-10 gwui-ink-muted" style={{lineHeight: 1.4, borderRadius: 9, fontStyle: 'italic'}}>
                     {r.ownVoice ?? 'No note. This person can add context through their next check-in.'}
