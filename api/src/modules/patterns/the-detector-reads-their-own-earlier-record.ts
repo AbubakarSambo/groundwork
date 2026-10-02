@@ -53,26 +53,6 @@ const tidy = (s: string) =>
   s.replace(/\[VERIFIABILITY:\w+\]\s*/g, '').replace(/\s+/g, ' ').trim().slice(0, MOST_CHARACTERS_PER_LINE);
 
 export function theirOwnEarlierRecord(lines: AnEarlierLine[], thisPeriod: number): string {
-  const kept = theLinesItShows(lines, thisPeriod).map((x) => x.text);
-  if (!kept.length) return '';
-  return (
-    '\n\nWHAT THIS PERSON THEMSELVES RECORDED IN THE LAST TWO PERIODS, from their own earlier check-ins (never anybody else\'s). ' +
-    'Use it only to tell whether something in THIS period is a repeat: the same problem raised before and still open, a promise made before and not kept, research or options still open with no decision. ' +
-    'It is not evidence on its own. A code that needs history counts only when this period\'s check-in shows it again.\n' +
-    kept.join('\n')
-  );
-}
-
-/**
- * Which earlier periods the text above actually shows, newest first (2 October 2026, decision 75,
- * item 42). The judgement made once over a person's periods may decide only periods it can see.
- */
-export function theEarlierPeriodsItShows(lines: AnEarlierLine[], thisPeriod: number): number[] {
-  return [...new Set(theLinesItShows(lines, thisPeriod).map((x) => x.period))].sort((a, b) => b - a);
-}
-
-/** The lines theirOwnEarlierRecord shows, in order, each with its period. */
-function theLinesItShows(lines: AnEarlierLine[], thisPeriod: number): { period: number; text: string }[] {
   const withPeriod = (lines ?? [])
     .filter((l) => l?.checkIn && l.text?.trim() && WHAT_IT_IS[l.type])
     .map((l) => ({
@@ -83,18 +63,24 @@ function theLinesItShows(lines: AnEarlierLine[], thisPeriod: number): { period: 
       ),
     }))
     .filter((x) => x.period < thisPeriod);
-  if (!withPeriod.length) return [];
+  if (!withPeriod.length) return '';
 
   const periods = [...new Set(withPeriod.map((x) => x.period))].sort((a, b) => b - a).slice(0, HOW_MANY_PERIODS);
-  const out: { period: number; text: string }[] = [];
+  const out: string[] = [];
   for (const [i, p] of periods.entries()) {
     const label = p < 10000 ? `Period ${p}` : i === 0 ? 'The most recent earlier period' : 'The period before that';
     for (const x of withPeriod.filter((y) => y.period === p).sort((a, b) => +new Date(a.line.createdAt ?? 0) - +new Date(b.line.createdAt ?? 0))) {
-      out.push({ period: p, text: `- ${label}. ${WHAT_IT_IS[x.line.type]}: ${tidy(x.line.text)}` });
+      out.push(`- ${label}. ${WHAT_IT_IS[x.line.type]}: ${tidy(x.line.text)}`);
     }
   }
   /* Keep the newest lines if there are too many: the most recent period matters most. */
-  return out.slice(0, MOST_EARLIER_LINES);
+  const kept = out.slice(0, MOST_EARLIER_LINES);
+  return (
+    '\n\nWHAT THIS PERSON THEMSELVES RECORDED IN THE LAST TWO PERIODS, from their own earlier check-ins (never anybody else\'s). ' +
+    'Use it only to tell whether something in THIS period is a repeat: the same problem raised before and still open, a promise made before and not kept, research or options still open with no decision. ' +
+    'It is not evidence on its own. A code that needs history counts only when this period\'s check-in shows it again.\n' +
+    kept.join('\n')
+  );
 }
 
 export const earlierRecordQuery = (participantId: string, sessionNumber: number) => ({
