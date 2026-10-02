@@ -130,6 +130,75 @@ async function main() {
     process.exit(0);
   }
 
+  if (process.env.RULES_WALK === '1') {
+    /*
+     * THE TEN READS RULES=1 KEPT, WALKED FOUR WAYS, with no model call. Each person's periods are walked in
+     * order exactly as analyzeCheckIn does (whatCountsThisPeriod, couldChangeWhatIsShown), reads 1 to 5 as the
+     * first five and 6 to 10 as the five more:
+     *   committed      both rules on, as the code stands
+     *   noRecordRule   detections the record rule marks are kept
+     *   noSettling     three of the first five, as before db3f8f06
+     *   neither        both off
+     * A pattern is a person and a code, counted from the period it is first counted in. "Like the scorer" sums,
+     * over each scenario's sessions, the patterns that exist by that session, which is how tools/score_run.py
+     * counts "patterns found" from a run's files.
+     */
+    const reads: any[] = JSON.parse(fs.readFileSync(path.join(folder, `rules-reads${process.env.TAG ?? ''}.json`), 'utf8'));
+    const sessionsOf = new Map<string, number>();
+    for (const f of fs.readdirSync(folder).filter((f) => f.endsWith('.json'))) {
+      const d = JSON.parse(fs.readFileSync(path.join(folder, f), 'utf8'));
+      if (d.groundId) sessionsOf.set(f.replace(/\.json$/, ''), (d.sessions ?? []).length);
+    }
+    const people = new Map<string, any[]>();
+    for (const d of reads) { const k = `${d.scenario}::${d.participantId}`; (people.get(k) ?? people.set(k, []).get(k)!).push(d); }
+    type Way = { record: boolean; settle: boolean };
+    const WAYS: Record<string, Way> = {
+      committed: { record: true, settle: true }, noRecordRule: { record: false, settle: true },
+      noSettling: { record: true, settle: false }, neither: { record: false, settle: false },
+    };
+    const walk = (list: any[], way: Way) => {
+      const counted = new Map<string, { periods: number[]; firstSession: number; observation: string }>();
+      for (const d of [...list].sort((a, b) => a.period - b.period || a.session - b.session)) {
+        const reads10 = d.reads.map((r: any[]) => r.filter((k) => !(way.record && k.record)).map((k) => ({ code: k.code, observation: k.observation })));
+        const first = reads10.slice(0, 5), moreReads = reads10.slice(5, 10);
+        const toSettle = (code: string, n: number) => way.settle && theReadsWereSplit(n, READS_THAT_MUST_AGREE) && couldChangeWhatIsShown(counted.get(code)?.periods ?? [], d.period, PERIODS_BEFORE_A_PATTERN_IS_SHOWN);
+        const anySplit = [...votesOf(first)].some(([code, { count }]) => toSettle(code, count));
+        for (const [code, { observation }] of whatCountsThisPeriod(first, anySplit ? moreReads : [], toSettle, READS_THAT_MUST_AGREE)) {
+          const had = counted.get(code);
+          if (had) { if (!had.periods.includes(d.period)) had.periods.push(d.period); }
+          else counted.set(code, { periods: [d.period], firstSession: d.session, observation });
+        }
+      }
+      return counted;
+    };
+    const result: any = { ways: {}, perScenario: {}, differences: {} };
+    const byWay: Record<string, Map<string, any>> = {};
+    for (const [name, way] of Object.entries(WAYS)) {
+      const all = new Map<string, any>();
+      for (const [key, list] of people) for (const [code, v] of walk(list, way)) all.set(`${key}::${code}`, { ...v, scenario: list[0].scenario, person: list[0].person, code });
+      byWay[name] = all;
+      const scen: Record<string, { patterns: number; likeTheScorer: number }> = {};
+      for (const s of sessionsOf.keys()) scen[s] = { patterns: 0, likeTheScorer: 0 };
+      for (const v of all.values()) {
+        scen[v.scenario].patterns++;
+        scen[v.scenario].likeTheScorer += Math.max(0, (sessionsOf.get(v.scenario) ?? 0) - v.firstSession + 1);
+      }
+      result.perScenario[name] = scen;
+      result.ways[name] = { patterns: all.size, likeTheScorer: Object.values(scen).reduce((p, q) => p + q.likeTheScorer, 0) };
+    }
+    for (const other of ['noRecordRule', 'noSettling', 'neither']) {
+      result.differences[other] = {
+        lostByTheRule: [...byWay[other]].filter(([k]) => !byWay.committed.has(k)).map(([, v]) => v),
+        gainedByTheRule: [...byWay.committed].filter(([k]) => !byWay[other].has(k)).map(([, v]) => v),
+      };
+    }
+    /* Every detection the record rule marked, in any read, so each can be checked against the person's own words. */
+    result.markedByTheRecordRule = reads.flatMap((d) => d.reads.flatMap((r: any[], i: number) => r.filter((k) => k.record).map((k) => ({ scenario: d.scenario, checkInId: d.checkInId, person: d.person, period: d.period, read: i + 1, code: k.code, observation: k.observation }))));
+    fs.writeFileSync(path.join(folder, `rules-walk${process.env.TAG ?? ''}.json`), JSON.stringify(result, null, 1));
+    console.log(JSON.stringify(result.ways));
+    process.exit(0);
+  }
+
   const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error'] });
   const prisma = app.get(PrismaService);
   const model = app.get(AnthropicService);
@@ -218,6 +287,72 @@ async function main() {
       ground: { select: { cadence: true } }, participant: { select: { user: { select: { email: true } } } } },
     orderBy: { sessionNumber: 'asc' },
   });
+
+  if (process.env.RULES === '1') {
+    /*
+     * HOW MUCH OF A FALL EACH OF TWO RULES CAUSES, ON THE SAME READS (2 October 2026).
+     *
+     * run-23 stored fewer patterns than run-21. Two rules came in between (the record nobody holds,
+     * fe85e9d2, and the ten-read settling, db3f8f06), and the conversations changed too. To separate the
+     * rules from the conversations, every check-in of one stored run is read ten times through the
+     * product's own whatOneReadKeeps, with one change: restsOnARecordNobodyHolds marks a detection
+     * instead of dropping it, so the read carries on through the rest of the filters (the confirming
+     * call included) exactly as it would have without the rule. Each kept detection is written with that
+     * mark. RULES_WALK=1 then walks the same reads three ways, with no model call.
+     *   RULES=1 LIMIT=10 GEMINI_LOCATION=global EMAIL_SENDS_FOR_REAL=false DATABASE_URL=... npx ts-node -T journey/the-detector-read-twice.ts <run folder>
+     */
+    const recordModule = require('../src/modules/patterns/a-pattern-does-not-rest-on-a-record-nobody-holds');
+    const theRule = recordModule.restsOnARecordNobodyHolds;
+    const { AsyncLocalStorage } = require('async_hooks');
+    const thisRead = new AsyncLocalStorage();
+    recordModule.restsOnARecordNobodyHolds = (observation: string, said: string[]) => {
+      const store = thisRead.getStore();
+      if (theRule(observation, said) && store) store.marked.add((observation ?? '').trim());
+      return false;
+    };
+    const confirmOnce = patterns.confirmDetection.bind(patterns);
+    patterns.confirmDetection = async (...args: any[]) => {
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        try { return await confirmOnce(...args); } catch { await new Promise((r) => setTimeout(r, 8000 * attempt)); }
+      }
+      const store = thisRead.getStore(); if (store) store.failed = true;
+      throw new Error('the confirming call did not come back');
+    };
+    const out = path.join(folder, `rules-reads${process.env.TAG ?? ''}.json`);
+    const dump: any[] = fs.existsSync(out) ? JSON.parse(fs.readFileSync(out, 'utf8')) : [];
+    const already = new Set(dump.map((d) => d.checkInId));
+    const oneRead = async (checkIn: any, ctx: any, getInput: () => any) => {
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        const store = { failed: false, marked: new Set<string>() };
+        try {
+          const kept = await limited(() => Promise.race([
+            thisRead.run(store, () => patterns.whatOneReadKeeps(checkIn.id, ctx.content, ctx.block, ctx.lastPeriod, ctx.statedGoals, ctx.deps, getInput, ctx.whatThePersonSaid)),
+            new Promise((_, no) => setTimeout(() => no(new Error('the read took more than five minutes')), 300000)),
+          ])) as { code: string; observation: string }[];
+          if (!store.failed) return kept.map((k) => ({ ...k, record: store.marked.has(k.observation.trim()) }));
+        } catch (e: any) { process.stderr.write(`read failed (attempt ${attempt}): ${String(e?.message ?? e).slice(0, 160)}\n`); }
+        await new Promise((r) => setTimeout(r, 10000 * attempt));
+      }
+      return null;
+    };
+    /* Every scenario at once; LIMIT still caps the reads in flight, so the model never sees more than LIMIT at a time. */
+    await Promise.all(scenarios.map(async (s) => {
+      const checkIns = (await checkInsOf(s.groundId)).filter((c: any) => !already.has(c.id));
+      for (const checkIn of checkIns) {
+        const ctx = await contextFor(checkIn);
+        if (!ctx) continue;
+        const getInput = () => patterns.buildDetectionInputForParticipant(checkIn.participantId);
+        const reads = await Promise.all(Array.from({ length: 10 }, () => oneRead(checkIn, ctx, getInput)));
+        if (reads.some((r) => !r)) { process.stderr.write(`check-in ${checkIn.id}: not all ten reads came back\n`); continue; }
+        dump.push({ scenario: s.name, checkInId: checkIn.id, participantId: checkIn.participantId, session: checkIn.sessionNumber, period: ctx.period, person: personOf(checkIn), reads });
+        fs.writeFileSync(out, JSON.stringify(dump));
+      }
+      process.stderr.write(`rules-read ${s.name}\n`);
+    }));
+    console.log(`Ten reads of ${dump.length} check-ins, kept in ${out}.`);
+    await app.close();
+    process.exit(0);
+  }
 
   if (process.env.PRODUCT === '1') {
     /* Through the product's own code: whatOneReadKeeps is exactly what analyzeCheckIn runs five times.
