@@ -559,3 +559,35 @@ already has nothing left for this task to do. (`where-each-person-is.tsx` itself
 handful of one-off classes of its own - out of scope here, since that file is not `BoardPage.tsx`
 and this task's count only tracks `BoardPage.tsx`.)
 
+
+## Board task, batch 3, part 10 (Hafsah: "What keeps coming up" onto RowList/Row and SubHeading)
+
+`BoardPage.tsx`'s "What keeps coming up" section (board-as-lead.txt: "Named after three check-ins
+in a row, never after one. Each describes the work") drew its empty state, each group's bold label,
+and each pattern as plain `<div className="gwui-panel-row">` siblings - the same drift parts 5-7
+already found and fixed in "Where people differ" and "What we are aiming for". The empty state and
+each `PatternPanel` now sit inside a `RowList` as a `Row` with `inset="panel"`, the same named value
+used throughout this batch for a row sitting directly under a `Panel` with no header strip of its
+own. Every piece stays, for exactly the readers it already reaches - both parts ("About each
+person's work" and "How what people say can run ahead of what happened"), the lead's own "coach
+towards" and "one step" (inside `PatternPanel`, unchanged), and the second read and "talked through"
+notes (also inside `PatternPanel`, unchanged) - this task only touches the list structure around
+each pattern in `BoardPage.tsx`, never `PatternPanel.tsx` itself.
+
+Each group's bold label ("About each person's work", "How what people say can run ahead of what
+happened") was a one-off `gwui-fs-13-5 gwui-ink-dark` pair with an inline `fontWeight: 700` - a
+label over one fact inside a panel, exactly what `SubHeading` (`components/gw/ui/SubHeading.tsx`)
+already names ("the prototype's other kind of heading... used for a short label over one fact
+inside a panel rather than over a whole page section"). No new tone was needed: the label is now a
+plain `<SubHeading>`, which also matches the prototype's own source for this panel more closely
+than the one-off pair did (`docs/prototype/source/s7.js`'s `patternsSec`: `<b class="t-small mut"
+style="padding-bottom:6px">`, a bold label with space below and no space above it - `SubHeading`'s
+own default margin is `0 0 6px`, nothing above, the same shape). The trailing italic footer note
+("Patterns about the work only...") is unchanged, including its own remaining one-off classes,
+which are a dashed rule and padding this batch's shared parts do not name and which this task does
+not touch.
+
+The footer note sits outside the `RowList`, as a sibling inside the same `Panel`, same as the
+"Where people differ" section's own structure (part 5) keeps its extra content (the central
+question) outside that section's `RowList` too. No wording, no behaviour and nothing any reader
+sees changed - only the markup each row and label is built from.

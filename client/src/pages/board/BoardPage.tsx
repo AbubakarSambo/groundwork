@@ -58,7 +58,7 @@ import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
-import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded, Callout, Stack } from '@/components/gw/ui'
+import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded, Callout, Stack, SubHeading } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
@@ -2367,8 +2367,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             */}
             <Section heading="What keeps coming up" note="Named after three check-ins in a row, never after one. Each describes the work.">
               <Panel pad={false}>
+                <RowList label="What keeps coming up">
                 {visiblePatterns.length === 0 ? (
-                  <div className="gwui-panel-row"><div className="gwui-fs-15 gwui-ink-muted">Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</div></div>
+                  <Row columns="1fr" inset="panel"><div className="gwui-fs-15 gwui-ink-muted">Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</div></Row>
                 ) : (
                   <>
                     {/*
@@ -2384,18 +2385,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       const aboutWhatIsSaid = visiblePatterns.filter((p) => p.about === 'what is said against what happened')
                       const group = (heading: string, rows: ServedPattern[]) => rows.length === 0 ? null : (
                         <>
-                          <div className="gwui-panel-row">
-                            <div className="gwui-fs-13-5 gwui-ink-dark" style={{fontWeight: 700}}>{heading}</div>
-                          </div>
+                          <Row columns="1fr" inset="panel"><SubHeading>{heading}</SubHeading></Row>
                           {rows.map((p) => (
-                            <div key={p.id} className="gwui-panel-row">
+                            <Row key={p.id} columns="1fr" inset="panel">
                               <PatternPanel
                                 pattern={p}
                                 invalidateKey={['board', id]}
                                 name={patternPersonName(p.participantId, p.yours)}
                                 leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
                               />
-                            </div>
+                            </Row>
                           ))}
                         </>
                       )
@@ -2408,6 +2407,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     })()}
                   </>
                 )}
+                </RowList>
                 <div className="gwui-fs-13-5 gwui-ink-muted gwui-pt-10 gwui-pr-22 gwui-pb-10 gwui-pl-22 gwui-rule-top-dashed gwui-mt-4" style={{fontStyle: 'italic', lineHeight: 1.5}}>
                   {/* Board review, 1 October, item 4: "the lead's private report" said "the lead"
                       even to the lead themselves reading their own board. */}
