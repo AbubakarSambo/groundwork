@@ -355,7 +355,7 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
 function MaybeFolded({ fold, children }: { fold: boolean; children: ReactNode }) {
   if (!fold) return <>{children}</>
   return (
-    <Folded summary="The whole check-in" note="Everything from this check-in, as before.">
+    <Folded summary="The whole check-in" note="Everything else from this check-in, for everyone in it.">
       {children}
     </Folded>
   )

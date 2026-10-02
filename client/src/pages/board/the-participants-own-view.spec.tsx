@@ -110,6 +110,12 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     // Everything else is still there, just folded under one name - including Aisha's deal, which
     // is never part of Miriam's own personal section above.
     expect(screen.getByText('The whole check-in')).toBeTruthy()
+    /*
+     * SECOND BOARD REVIEW, WORDING: "Everything from this check-in, as before." did not say who it
+     * was from or for - it now names both ("Everything else from this check-in, for everyone in
+     * it."), since this fold holds everybody's work, not only what came before.
+     */
+    expect(screen.getByText('Everything else from this check-in, for everyone in it.')).toBeTruthy()
     const whole = screen.getByText('The whole check-in').closest('details') as HTMLElement
     expect(whole).toBeTruthy()
     expect(within(whole).getByText('Greenhill Mart')).toBeTruthy()
