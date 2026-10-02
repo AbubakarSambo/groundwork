@@ -7,6 +7,7 @@ import {
   WhatIsTrue,
   whatIsTrueFor,
 } from './what-is-true-for-this-person';
+import { keptInTheApp, notFromAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 
 /**
  * THE ONE READ.
@@ -30,6 +31,8 @@ export class WhatIsTrueService {
       select: { externalId: true, displayName: true, email: true, linkedUserId: true },
     });
     if (!person) return null;
+    /* On WhatsApp, nothing said in a check-in kept in the app (decision 82, item 7). Empty in the app. */
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
 
     const [subjects, commitments, sessions, decisions] = await Promise.all([
       this.prisma.subject.findMany({
@@ -42,7 +45,7 @@ export class WhatIsTrueService {
         orderBy: { dueDate: 'asc' },
       }),
       this.prisma.commitment.findMany({
-        where: { organizationId, personExternalId: person.externalId },
+        where: { organizationId, personExternalId: person.externalId, ...notFromAKeptCheckIn(kept, 'sourceGroundId') },
         select: { text: true, dueSaid: true, state: true },
         orderBy: { statedAt: 'desc' },
       }),

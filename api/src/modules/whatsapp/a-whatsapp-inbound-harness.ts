@@ -69,6 +69,8 @@ export function anInboundHarness(opts: {
     respond: jest.fn(async () => ({ blocks: [{ type: 'text', body: 'Ask Groundwork answered.' }] })),
     somethingWaitsForYouToDecide: jest.fn(async () => !!opts.decisionWaiting),
   };
+  /* On WhatsApp the router asks through this door (decision 82, item 7); it is the same answer, so it is counted as `respond`. */
+  assistant.respondOnWhatsApp = jest.fn((...args: any[]) => assistant.respond(...args));
   const reports: any = { sessionReport: jest.fn(async () => ({ whereThingsStand: { saying: 'Amina met two of the three goals.' } })) };
   const anthropic: any = { extract: jest.fn(async () => ({ language: 'en' })), respond: jest.fn(async (_s: string, m: any[]) => m[0].content) };
   const service = new WhatsAppForAnOrganisationService(prisma, whatsapp, conversation, assistant, {} as any, {} as any, reports, anthropic);

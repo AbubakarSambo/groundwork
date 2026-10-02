@@ -237,7 +237,7 @@ export class WhatsAppForAnOrganisationService {
         return;
       }
       if (arrived.kind !== 'text') { await say(ASK_READS_WORDS); return; }
-      await say(asATextMessage(await this.assistant.respond(organizationId, who.personId, said)) || 'Noted.');
+      await say(asATextMessage(await this.assistant.respondOnWhatsApp(organizationId, who.personId, said)) || 'Noted.');
       return;
     }
 
@@ -263,7 +263,7 @@ export class WhatsAppForAnOrganisationService {
       const waiting = await this.invitationWaitingFor(organizationId, who.personId);
       if (waiting) { await say(`You are invited to "${waiting}" and the invitation has not been accepted yet. Open the email, accept it, then reply here and your answers go straight in.`); return; }
       if (arrived.kind === 'media') { await say('There is no check-in open to put that on. I will message you here when the next one opens; send it again then.'); return; }
-      if (who.personId && arrived.kind === 'text') { await say(asATextMessage(await this.assistant.respond(organizationId, who.personId, arrived.text)) || 'Noted.'); return; }
+      if (who.personId && arrived.kind === 'text') { await say(asATextMessage(await this.assistant.respondOnWhatsApp(organizationId, who.personId, arrived.text)) || 'Noted.'); return; }
       await say('You have no check-in open right now. I will message you here when the next one is ready.');
       return;
     }
@@ -324,7 +324,7 @@ export class WhatsAppForAnOrganisationService {
       if (A_YES.test(text) && who.personId) {
         this.forgetTheRequest(organizationId, from);
         await this.rememberAsking(organizationId, from, current.id);
-        const answered = asATextMessage(await this.assistant.respond(organizationId, who.personId, pending.text)) || 'Noted.';
+        const answered = asATextMessage(await this.assistant.respondOnWhatsApp(organizationId, who.personId, pending.text)) || 'Noted.';
         await say(`${answered}\n\nWrite "back" to return to your check-in.`);
         return;
       }
@@ -342,7 +342,7 @@ export class WhatsAppForAnOrganisationService {
        * yes; the conversation stays there for that yes, until "back".
        */
       await this.rememberAsking(organizationId, from, current.id);
-      const answered = asATextMessage(await this.assistant.respond(organizationId, who.personId, text)) || 'Noted.';
+      const answered = asATextMessage(await this.assistant.respondOnWhatsApp(organizationId, who.personId, text)) || 'Noted.';
       await say(`${answered}\n\nWrite "back" to return to your check-in.`);
       return;
     } else if (who.personId) {
