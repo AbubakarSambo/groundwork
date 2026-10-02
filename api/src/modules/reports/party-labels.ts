@@ -6,6 +6,7 @@ import { theQuotesKept } from './a-quote-is-what-they-said';
 import { aPlainerWord } from './a-plainer-word';
 import { aNameSaidTwiceInARow } from './a-name-said-twice-in-a-row';
 import { nobodyWaitsOnThemselvesInAStory } from './nobody-waits-on-themselves-in-a-story';
+import { peopleDisagreeInASentence } from './people-disagree-in-a-sentence';
 
 export type LabelParty = {
   id: string;
@@ -963,7 +964,8 @@ function withNamesOutsideTheQuotes(
      disagreement they are half of. Self-gating: it only acts where a "you" is present, which only
      happens where the reader's own label was just substituted. */
   /* AND NOBODY WAITS ON THEMSELVES in a story stored before request 111 (e) (request 118). */
-  return nobodyWaitsOnThemselvesInAStory(fromTheReadersSide(named, visible.values()));
+  /* And "People disagree on 1: ..." from the model's brief is said as a sentence (item 18). */
+  return peopleDisagreeInASentence(nobodyWaitsOnThemselvesInAStory(fromTheReadersSide(named, visible.values())));
 }
 
 /**
