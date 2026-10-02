@@ -931,9 +931,12 @@ export class BoardService {
              The earliest availableFrom across that session's check-ins is the day it opens. */
           const opens = forSession.map((c: any) => c.availableFrom).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
           const line = whatEachSessionSays(n, mine as any[], theRound);
+          /* A session somebody has already checked in to, or started, is open, never "upcoming" (request 115 g):
+             session 2 read as upcoming while two people had answered it, because session 1 was still open. */
+          const somebodyIsIn = forSession.some((c) => c.status !== CheckInStatus.NOT_STARTED);
           return {
             n,
-            state: n < theRound || allDone ? 'done' : n === theRound ? 'current' : 'upcoming',
+            state: n < theRound || allDone ? 'done' : n === theRound || somebodyIsIn ? 'current' : 'upcoming',
             date: forSession.find((c) => c.completedAt)?.completedAt ?? null,
             opensOn: opens,
             /* The day it opened, never the day somebody finished it, and its line in a full sentence. */
