@@ -37,5 +37,6 @@ describe('item 18: your own read says "you"', () => {
   it('the sentences', () => {
     expect(yourOwnReadSaysYou('Others credit them 9 times for moving something forward.')).toBe('Others credit you 9 times for moving something forward.');
     expect(yourOwnReadSaysYou('Their work is read against what being on track means for management.')).toBe('Your work is read against what being on track means for management.');
+    expect(yourOwnReadSaysYou('This read of their function is still provisional.')).toBe('This read of your function is still provisional.');
   });
 });

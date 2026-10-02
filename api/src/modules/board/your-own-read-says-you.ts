@@ -20,6 +20,7 @@ const SWAPS: [RegExp, string][] = [
   [/\bthis person\b/g, 'you'],
   [/\bTheir stated role\b/g, 'Your stated role'],
   [/\bSo they are being read\b/g, 'So you are being read'],
+  [/\bThis read of their function\b/g, 'This read of your function'],
 ];
 
 export function yourOwnReadSaysYou(text: string | null | undefined): string | null | undefined {
