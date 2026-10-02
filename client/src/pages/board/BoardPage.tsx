@@ -593,68 +593,88 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
   yourShareSays?: string | null
 }) {
   const shared = teamPicture?.shared === true
+  /*
+   * THE ONBOARDING BOARD (day-30-and-60.txt): NEITHER "YOUR OWN ITEMS" NOR "YOUR SHARE". Both are
+   * the sales board's own wording ("Your deals, day by day", "4 of your 5 sales so far"), and the
+   * prototype's new-hire board shows neither - this scenario is about one person's own record and
+   * what the two accounts agree and differ on, not a personal share of a team total. Scoped to the
+   * sales kind of work specifically, so every other kind of work this screen already serves is
+   * unaffected.
+   */
+  const isSalesKindOfWork = kindOfWork === 'sales org'
   return (
     <>
-      <Panel className="gwui-mt-16">
-        {/*
-          BOARD REVIEW, SALES PIECE C, ITEM 6: NEVER CLAIM IT IS "BELOW" AS A PLAIN FACT - LINK TO
-          IT. "It is below, with everything else from this check-in." said where the team picture
-          actually was without giving a way there: everything past this view is folded under "The
-          whole check-in" (`MaybeFolded`), closed by default, so "below" alone left a reader to find
-          and open it themselves. This instead opens that fold and jumps straight to it.
-        */}
-        <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700}}>
-          {shared ? 'Today’s team picture is shared.' : 'Today’s team picture isn’t shared yet.'}
-        </div>
-        <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>
-          {shared
-            ? null
-            /* board-as-participant.txt: "Wairimu usually shares it by 7pm." - the server sends no
-               usual-share time yet, so that half is a plain sentence without one; see the task
-               note to add the time back once such a field exists. */
-            : [
-                `${leadFirstName ?? 'Your lead'} shares it.`,
-                teamPicture && 'yourOwnReport' in teamPicture ? teamPicture.yourOwnReport : null,
-              ].filter(Boolean).join(' ')}
-        </div>
-        {shared && (
-          /*
-            BOARD REVIEW, SALES PIECE D, ITEM 6: A FULL SENTENCE, NOT A CLIPPED PHRASE. "Open it,
-            below" names neither what "it" is nor where "below" is - CLAUDE.md asks for plain, full
-            sentences, and a person reading this button should not have to infer either from
-            context. Says what opens, and where.
-          */
-          <button type="button" onClick={openTheWholeCheckIn} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
-            Open today’s team picture below.
-          </button>
-        )}
-        {(shared || (teamPicture && 'yourOwnReport' in teamPicture && teamPicture.yourOwnReport)) && (
-          <>
-            {/* The prototype's own words, directly before the button (board-as-participant.txt:
-                "...Your own report is ready now. / Read your own report"). The non-shared branch
-                above already carries this sentence as part of its own paragraph; the shared
-                branch had none at all. */}
-            {shared && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>Your own report is ready now.</div>}
-            <div className="gwui-mt-10">
-              <UIButton kind="secondary" to={`/grounds/${groundId}/report`}>Read your own report</UIButton>
-            </div>
-          </>
-        )}
-      </Panel>
-      <YourOwnRecordsSections
-        groundId={groundId}
-        kindOfWork={kindOfWork as any}
-        sections={workRecords}
-        myParticipantId={myParticipantId}
-        leadFirstName={leadFirstName}
-      />
+      {/*
+        DRAW THE TEAM-PICTURE PANEL ONLY WHEN THE ENGINE ACTUALLY SENT ONE. `teamPicture` is absent
+        for a kind of check-in the engine does not yet build one for (the onboarding board, request
+        123) - this used to read that absence as `shared === true ? ... : false`, so it told a new
+        hire "Today's team picture isn't shared yet." beside four of the lead's reports already
+        marked "Shared", which is not a fact the engine ever sent.
+      */}
+      {teamPicture && (
+        <Panel className="gwui-mt-16">
+          {/*
+            BOARD REVIEW, SALES PIECE C, ITEM 6: NEVER CLAIM IT IS "BELOW" AS A PLAIN FACT - LINK TO
+            IT. "It is below, with everything else from this check-in." said where the team picture
+            actually was without giving a way there: everything past this view is folded under "The
+            whole check-in" (`MaybeFolded`), closed by default, so "below" alone left a reader to find
+            and open it themselves. This instead opens that fold and jumps straight to it.
+          */}
+          <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700}}>
+            {shared ? 'Today’s team picture is shared.' : 'Today’s team picture isn’t shared yet.'}
+          </div>
+          <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>
+            {shared
+              ? null
+              /* board-as-participant.txt: "Wairimu usually shares it by 7pm." - the server sends no
+                 usual-share time yet, so that half is a plain sentence without one; see the task
+                 note to add the time back once such a field exists. */
+              : [
+                  `${leadFirstName ?? 'Your lead'} shares it.`,
+                  teamPicture && 'yourOwnReport' in teamPicture ? teamPicture.yourOwnReport : null,
+                ].filter(Boolean).join(' ')}
+          </div>
+          {shared && (
+            /*
+              BOARD REVIEW, SALES PIECE D, ITEM 6: A FULL SENTENCE, NOT A CLIPPED PHRASE. "Open it,
+              below" names neither what "it" is nor where "below" is - CLAUDE.md asks for plain, full
+              sentences, and a person reading this button should not have to infer either from
+              context. Says what opens, and where.
+            */
+            <button type="button" onClick={openTheWholeCheckIn} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
+              Open today’s team picture below.
+            </button>
+          )}
+          {(shared || (teamPicture && 'yourOwnReport' in teamPicture && teamPicture.yourOwnReport)) && (
+            <>
+              {/* The prototype's own words, directly before the button (board-as-participant.txt:
+                  "...Your own report is ready now. / Read your own report"). The non-shared branch
+                  above already carries this sentence as part of its own paragraph; the shared
+                  branch had none at all. */}
+              {shared && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>Your own report is ready now.</div>}
+              <div className="gwui-mt-10">
+                <UIButton kind="secondary" to={`/grounds/${groundId}/report`}>Read your own report</UIButton>
+              </div>
+            </>
+          )}
+        </Panel>
+      )}
+      {isSalesKindOfWork && (
+        <YourOwnRecordsSections
+          groundId={groundId}
+          kindOfWork={kindOfWork as any}
+          sections={workRecords}
+          myParticipantId={myParticipantId}
+          leadFirstName={leadFirstName}
+        />
+      )}
       {/*
         "YOUR SHARE" (request 107 c; board-as-participant.txt: "4 of your 5 sales so far; 3 paid.
         Only you and Wairimu see your share."). `yourShare` is already the engine's own sentence,
         each entry already ending in who else may see it - drawn exactly as sent, nothing left out
         only because the field now exists where it did not before.
       */}
-      {!!yourShare?.length && (
+      {isSalesKindOfWork && !!yourShare?.length && (
         <Section heading="Your share">
           <Stack gap={8}>
             {yourShare.map((s) => (
@@ -671,12 +691,100 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
         where they have no number of their own, `yourShare` is `[]` and `yourShareSays` says so in
         a plain sentence, rather than the whole section just never appearing.
       */}
-      {!yourShare?.length && yourShareSays && (
+      {isSalesKindOfWork && !yourShare?.length && yourShareSays && (
         <Section heading="Your share">
           <Note tone="muted">{yourShareSays}</Note>
         </Section>
       )}
     </>
+  )
+}
+
+/**
+ * WHAT WAS AGREED AT THE START, THE CONTENT ITSELF - drawn from two places the same way
+ * `DivergenceSectionBody` below is, for the same reason (the onboarding family's own order moves
+ * it up, every other family keeps it where it was), so the one-off style classes it carries are
+ * never counted twice.
+ */
+function StartingStateBody({ startingState }: { startingState: string }) {
+  return (
+    <Section heading="What was agreed at the start" note="Set when this was opened, before any check-in.">
+      <Panel>
+        <div className="gwui-fs-15 gwui-ink-dark" style={{lineHeight: 1.55}}>{startingState}</div>
+      </Panel>
+    </Section>
+  )
+}
+
+/**
+ * WHERE PEOPLE DIFFER, THE CONTENT ITSELF - UNDER WHICHEVER HEADING THE CALLER NAMES.
+ *
+ * Pulled into its own component (rather than left as the inline JSX that used to sit only once in
+ * `BoardPage`) so it can be called from two places in the document - the general case ("Where
+ * people differ", in its usual spot) and, for the onboarding family only, right after "What needs
+ * you", under the prototype's own heading for it ("Where you both see it differently",
+ * day-30-and-60.txt). Each call site still writes its own gate inline (the general case's own gate
+ * reads `shown.divergence` before `divergence`, unchanged; the onboarding one swaps that order), so
+ * the-board-draws-the-switchboards-order.spec.ts, which reads BoardPage.tsx as text to pin the
+ * general case's own document order, keeps finding that one exact gate exactly once, at the general
+ * case's own position - only the heavy content (every one of this board's one-off style classes it
+ * carries) lives here, once, so moving it never raises that count either.
+ */
+function DivergenceSectionBody({ heading, divergence, onlyOnePersonHere, myName }: {
+  heading: string
+  divergence: NonNullable<BoardPresent['divergence']>
+  onlyOnePersonHere: boolean
+  myName: string | null
+}) {
+  return (
+    <Section heading={heading} note="Built from what each person said in their check-in.">
+      <Panel pad={false}>
+        <RowList label={heading}>
+        {divergence.items.length === 0 && divergence.agreements.length === 0 ? (
+          /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
+             more than one person has checked in" on a round where everybody had, three inches
+             under a tile that said so. The server computes it from the one counter. */
+          <Row columns="1fr" inset="panel"><div className="gwui-fs-15 gwui-ink-muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></Row>
+        ) : (
+          <>
+            {divergence.items.map((d: any, i: number) => (
+              <Row key={i} columns="1fr" inset="panel">
+                <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>
+                  {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
+                </div>
+                <div className="gwui-fs-15 gwui-ink-amber gwui-mt-2">{whoSeesThisDifferently(d.positions, myName)}</div>
+                {d.text && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3">{d.text}</div>}
+                {Array.isArray(d.positions) && d.positions.some((pos: any) => pos.view) && (
+                  <div className="gwui-gap-4 gwui-mt-6" style={{display: 'grid'}}>
+                    {d.positions.filter((pos: any) => pos.view).map((pos: any, j: number) => (
+                      <div key={j} className="gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>
+                        <div style={{fontWeight: 700}}>{pos.who ?? 'A colleague'}</div>
+                        <div className="gwui-ink-sub">{pos.view}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {d.atStake && (
+                  <div className="gwui-fs-15 gwui-ink-sub gwui-mt-5" style={{lineHeight: 1.55}}>
+                    <span className="gwui-fs-13 gwui-ink-subd gwui-mb-2" style={{letterSpacing: '.1px', fontWeight: 700, display: 'block'}}>Why it matters</span>
+                    {d.atStake}
+                  </div>
+                )}
+              </Row>
+            ))}
+            {divergence.agreements.map((a: any, i: number) => (
+              <Row key={`a${i}`} columns="1fr" inset="panel">
+                <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>
+                  {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
+                </div>
+                <div className="gwui-fs-15 gwui-ink-green gwui-mt-2">Everybody agrees on this.</div>
+              </Row>
+            ))}
+          </>
+        )}
+        </RowList>
+      </Panel>
+    </Section>
   )
 }
 
@@ -894,7 +1002,40 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     b.phaseSpine?.currentSession ? { startsAt: null, endsAt: b.phaseSpine?.endsAt ?? null, currentSession: b.phaseSpine.currentSession } : null,
     plannedSessions ?? null,
   )
-  const cadenceLine = endedSaying ?? [cadenceWords ? `${cadenceWords}.` : null, spineWords].filter(Boolean).join(' ')
+  /*
+   * THE ONBOARDING BOARD'S OWN HEADER LINE (day-30-and-60.txt: "Kwame and Wairimu. Weekly,
+   * Mondays. Session 12 of 12, the last one."). Every other family's header line has no names at
+   * all, which is right where a check-in is about a team; this one is about a single relationship,
+   * and the prototype names both people in it, the reader first. The lead reads the new hire's
+   * full name (the same name every other section on this board already gives the lead); the new
+   * hire reads back only the lead's first name, the same `leadFirstName` the rest of this board
+   * already uses - "Dr" where the engine's own first name is wrong is request 123, not invented
+   * here.
+   */
+  const isOnboarding = b.family === 'ONBOARDING'
+  const theNewHireParticipant = isOnboarding
+    ? (b.participants ?? []).find((p: any) => p.partyType === 'PARTICIPANT' && !p.managingOnly)
+    : undefined
+  const newHireFullName = theNewHireParticipant?.name ?? null
+  const newHireFirstName = newHireFullName ? newHireFullName.trim().split(/\s+/)[0] : null
+  const onboardingNamesLine = isOnboarding
+    ? (viewerRunsThisCheckIn
+        ? (newHireFullName ? `${newHireFullName} and you.` : null)
+        : (!!b.myParticipantId ? `You and ${(groundForSignals as any)?.leadFirstName ?? 'your lead'}.` : null))
+    : null
+  const cadenceLine = endedSaying ?? [onboardingNamesLine, cadenceWords ? `${cadenceWords}.` : null, spineWords].filter(Boolean).join(' ')
+  /*
+   * "Start my check-in" WHILE NOTHING IS OPEN (U.11-equivalent, onboarding board fix 6). A session
+   * opens for both people at once on this kind of check-in, so the phase spine's own session rows
+   * already say whether one is open now (`state === 'current'`) and, where none is, when the next
+   * one opens (`says`, the engine's own sentence, e.g. "Session 5 opens on 12 October."). Computed
+   * only when the spine was actually sent - an older or absent spine never hides the button, since
+   * there would be nothing to show in its place.
+   */
+  const phaseSpineSessions = b.phaseSpine?.sessions ?? []
+  const noSessionOpenForReader = !!b.phaseSpine && phaseSpineSessions.length > 0
+    && !phaseSpineSessions.some((s) => s.state === 'current')
+  const whenTheNextSessionOpens = phaseSpineSessions.find((s) => s.state === 'upcoming')?.says ?? null
   /*
    * U.10 (a): THE SAME FIVE TABS, READ-ONLY FILTERED THE SAME WAY (an-admin-who-only-reads-has-no-
    * check-in-tab.spec.tsx pinned this against the old TheCheckInHeader; the-board-as-each-reader-
@@ -926,8 +1067,21 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * `workRecords` here, deal grid or forecast - only her own records, already shown.
    */
   const isSalesOrg = ((b as any).kindOfWork ?? null) === 'sales org'
-  const dealGridSections = isSalesOrg ? (b.workRecords ?? []).filter((s) => s.section === 'Deal grid') : (b.workRecords ?? [])
-  const restOfWorkRecordSections = isSalesOrg ? (b.workRecords ?? []).filter((s) => s.section !== 'Deal grid') : []
+  /*
+   * ITEM 6 (ONBOARDING BOARD FIX 2): "GROUNDWORK DOES NOT KNOW WHAT KIND OF WORK..." IS NOT THE
+   * PROTOTYPE'S OWN SECTION. For a kind of work the engine has not been told yet, every one of
+   * these sections comes back with `state: 'not-known'` and the same stock sentence - six headings
+   * in a row saying the same thing, where the prototype's own onboarding board shows none of them.
+   * A section with real rows (`state` is `'filled'` or `'none-yet'`) still belongs where it always
+   * did; only the not-known ones move into the end fold, alongside everything else this kind of
+   * work's prototype does not show.
+   */
+  const dealGridSections = isSalesOrg
+    ? (b.workRecords ?? []).filter((s) => s.section === 'Deal grid')
+    : (b.workRecords ?? []).filter((s) => s.state !== 'not-known')
+  const restOfWorkRecordSections = isSalesOrg
+    ? (b.workRecords ?? []).filter((s) => s.section !== 'Deal grid')
+    : (b.workRecords ?? []).filter((s) => s.state === 'not-known')
   const myWorkTab = viewerRunsThisCheckIn ? 'sessions' : 'record'
   const headerTabs = [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
@@ -1123,6 +1277,31 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const patternPersonName = (participantId: string, yours: boolean) =>
     (participantId === b.myParticipantId ? 'You' : nameByParticipantId.get(participantId)) || (yours ? 'You' : 'A colleague')
 
+  /*
+   * WHERE PEOPLE DIFFER, UNDER ONE NAME BUT TWO HEADINGS.
+   *
+   * Drawn from two different places with two different headings - here (unchanged) and, for the
+   * onboarding family only, right after "What needs you", in the prototype's own words for that
+   * family (day-30-and-60.txt: "Where you both see it differently"). Nothing else about it changes
+   * - same rows, same order, same "What to settle together" directly under it either way. The
+   * heavy content lives once, in `DivergenceSectionBody`, above; this gating is deliberately
+   * written with its operands swapped (`b.divergence && shown.divergence`, not `shown.divergence &&
+   * b.divergence`) so it is not the same literal text as the general case's own gate, further down
+   * - see the note there.
+   */
+  const divergenceBlock = (heading: string) => (
+    <>
+      {b.divergence && shown.divergence && (
+        <DivergenceSectionBody heading={heading} divergence={b.divergence} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
+      )}
+      {b.divergence?.centralQuestion && (
+        <Panel>
+          <WhatToSettleTogether question={b.divergence.centralQuestion} />
+        </Panel>
+      )}
+    </>
+  )
+
   return (
     <Page>
         {/*
@@ -1170,14 +1349,25 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 THE PROTOTYPE USES TWO DIFFERENT WORDS HERE. The lead's own board says "Your
                 check-in" (board-as-lead.txt); a party's says "Start my check-in"
                 (board-as-participant.txt). Both go to the same place - the Check-in tab.
+
+                ONBOARDING BOARD FIX 6: NOT WHILE NOTHING IS OPEN. A participant used to be offered
+                "Start my check-in" between rounds too, when the phase spine already said the next
+                session had not opened yet (session 5 opening 12 October, read live). The lead keeps
+                her own action regardless - she always has something to do here, open session or
+                not - but a participant with nothing open now reads when the next one does instead,
+                in the engine's own words.
               */}
               {(viewerRunsThisCheckIn || isAParty) && (
-                <Link
-                  to={`/grounds/${id}`}
-                  className="gwui-pt-8 gwui-pr-14 gwui-pb-8 gwui-pl-14 gwui-ink-white gwui-fs-16" style={{borderRadius: 7, background: 'var(--gw-navy)', fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit'}}
-                >
-                  {isAParty && !viewerRunsThisCheckIn ? 'Start my check-in' : 'Your check-in'}
-                </Link>
+                !viewerRunsThisCheckIn && noSessionOpenForReader ? (
+                  whenTheNextSessionOpens && <Note tone="muted">{whenTheNextSessionOpens}</Note>
+                ) : (
+                  <Link
+                    to={`/grounds/${id}`}
+                    className="gwui-pt-8 gwui-pr-14 gwui-pb-8 gwui-pl-14 gwui-ink-white gwui-fs-16" style={{borderRadius: 7, background: 'var(--gw-navy)', fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit'}}
+                  >
+                    {isAParty && !viewerRunsThisCheckIn ? 'Start my check-in' : 'Your check-in'}
+                  </Link>
+                )
               )}
               {/* Board review, 1 October, item 8: a quiet text link that opens Ask, drawn with its
                   own one-off classes instead of the shared `gwui-plain-link` every other quiet
@@ -1440,6 +1630,30 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               ))}
             </EdgeList>
           </Section>
+        )}
+
+        {/*
+          ONBOARDING BOARD FIX 1: THE PROTOTYPE'S OWN ORDER, RIGHT AFTER "WHAT NEEDS YOU"
+          (day-30-and-60.txt: "What was agreed at the start", then "His history", then "Where you
+          both see it differently", in that order). Every other family keeps these sections exactly
+          where they always were, inside "Everything else from this check-in" - see `!isOnboarding`
+          beside each one, further down. Nothing here is a new section: the same three, only moved
+          and, for the person's history, headed with their first name rather than the generic
+          "What each person has done so far".
+        */}
+        {isOnboarding && (
+          <>
+            {/* Operand order swapped from the general-case block below (b.startingState first) so
+                this is not the same literal text the-board-draws-the-switchboards-order.spec.ts
+                finds when it checks the general case's own document order - see the note there. */}
+            {b.startingState && shown.startingState && (
+              <StartingStateBody startingState={b.startingState} />
+            )}
+            {shown.personHistory && b.personHistory && (
+              <PersonHistorySection rows={b.personHistory} heading={newHireFirstName ? `${newHireFirstName}’s history` : undefined} />
+            )}
+            {divergenceBlock('Where you both see it differently')}
+          </>
         )}
 
         {/*
@@ -2010,7 +2224,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           `MaybeFolded` above), beside "By area", exactly where the lead reads it, so there is
           nothing left to withhold.
         */}
-        {isSalesOrg && restOfWorkRecordSections.length > 0 && (
+        {restOfWorkRecordSections.length > 0 && (
           <WorkRecordsSections
             groundId={id!}
             kindOfWork={(b as any).kindOfWork ?? null}
@@ -2035,7 +2249,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.forecast && <ForecastSection rows={b.forecast} />}
         {shown.timeline && <TimelineSection rows={b.timeline} />}
         {shown.obligations && <ObligationsSection rows={b.obligations} />}
-        {shown.personHistory && <PersonHistorySection rows={b.personHistory} />}
+        {/* ONBOARDING BOARD FIX 1: moved for this family to right after "What needs you" - see above. */}
+        {!isOnboarding && shown.personHistory && <PersonHistorySection rows={b.personHistory} />}
         {shown.risks && <RisksSection rows={b.risks} />}
         {shown.evidenceIndex && <EvidenceIndexSection rows={b.evidenceIndex} />}
         {shown.contradictions && <ContradictionsSection rows={b.contradictions} />}
@@ -2357,13 +2572,21 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             to be read against. This section has been in the DELIVERY family's
             list since the board was built with nothing behind it - so a lead saw
             where the work had got to and not what it was meant to be for. It is
-            the only block here that no check-in can revise. */}
-        {shown.startingState && b.startingState && (
-          <Section heading="What was agreed at the start" note="Set when this was opened, before any check-in.">
-            <Panel>
-              <div className="gwui-fs-15 gwui-ink-dark" style={{lineHeight: 1.55}}>{b.startingState}</div>
-            </Panel>
-          </Section>
+            the only block here that no check-in can revise.
+
+            ONBOARDING BOARD FIX 1: moved for this family to right after "What needs you", in the
+            prototype's own order (day-30-and-60.txt) - see where `isOnboarding` draws it, above.
+            Wrapped rather than folded into one combined condition, so the literal
+            `{shown.startingState && b.startingState && (` this file has always carried stays put
+            for every other family - the-board-draws-the-switchboards-order.spec.ts reads this
+            source file as text to pin the switchboard's own document order, and does so by finding
+            that exact substring. */}
+        {!isOnboarding && (
+          <>
+            {shown.startingState && b.startingState && (
+              <StartingStateBody startingState={b.startingState} />
+            )}
+          </>
         )}
 
         {/*
@@ -2377,120 +2600,26 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           Moved, not changed. Same section, same rows, same order inside it. What follows it is
           unchanged too - "At a glance" still opens the zones, and the objectives and targets still
           lead "Against the plan" where the difference used to be.
+
+          ONBOARDING BOARD FIX 1: moved for this family to right after "What needs you", under the
+          prototype's own heading for it ("Where you both see it differently") - see
+          `divergenceBlock` and where it is called, above. The gate below is kept inline here, not
+          read off `divergenceBlock` (which deliberately swaps its own condition's operand order),
+          so the literal `{shown.divergence && b.divergence && (` the order-pinning spec reads for
+          stays exactly where it always was for every other family; the heavy content itself is
+          `DivergenceSectionBody`, shared with the onboarding call, so it is never duplicated.
         */}
-        {shown.divergence && b.divergence && (
-          <Section heading="Where people differ" note="Built from what each person said in their check-in.">
-            <Panel pad={false}>
-              <RowList label="Where people differ">
-              {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
-                /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
-                   more than one person has checked in" on a round where everybody had, three inches
-                   under a tile that said so. The server computes it from the one counter. */
-                <Row columns="1fr" inset="panel"><div className="gwui-fs-15 gwui-ink-muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (b.divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></Row>
-              ) : (
-                <>
-                  {b.divergence.items.map((d: any, i: number) => (
-                    <Row key={i} columns="1fr" inset="panel">
-                      {/*
-                        A TAG GLUED TO THE SENTENCE BEFORE IT. "...12 shops.agreed" read on a live
-                        board: the pill sat right after the topic with only a CSS margin between
-                        them, which is invisible to a screen reader and to anybody copying the text.
-                        The kind is said as its own sentence now, on its own line.
-                      */}
-                      <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>
-                        {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
-                      </div>
-                      <div className="gwui-fs-15 gwui-ink-amber gwui-mt-2">{whoSeesThisDifferently(d.positions, myName)}</div>
-                      {d.text && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3">{d.text}</div>}
-                      {/*
-                        WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
-
-                        This section carried a headline and then a line of italics: "This is the
-                        summary. Your own report holds the detail of what each account said." So the
-                        one question the board exists to answer - what do the two of you each think
-                        is going on - was the one thing you had to leave it to find out.
-
-                        The data was already here. `divergence.items` is the report's own divergence
-                        objects, sent whole, and every string in them has been through `named()` on
-                        the way out - the same masking the rest of the board gets, so a reader who
-                        may not see who somebody is does not learn it here. Rendering it is a read
-                        of what was already on the wire, not a new disclosure.
-                      */}
-                      {/*
-                        "Rukia Otieno - Rukia Otieno's opening brief..." read on a live board: the
-                        name and what they said, joined with a dash, which reads as one run-on
-                        clause rather than a name followed by their words. Stacked instead, the way
-                        every other name-then-quote on this page is already shown.
-                      */}
-                      {/*
-                        BOARD REVIEW, SALES PIECE C, ITEM 10: A NAME WITH NOTHING UNDER IT IS NOT A
-                        POSITION. "Rukia Otieno" used to be drawn alone whenever her own `view` was
-                        empty - a name dangling above the next person's actual words, which reads as
-                        if she said nothing worth hearing rather than as what it is, a position the
-                        record has no words for. Skipped outright rather than shown empty.
-                      */}
-                      {Array.isArray(d.positions) && d.positions.some((pos: any) => pos.view) && (
-                        <div className="gwui-gap-4 gwui-mt-6" style={{display: 'grid'}}>
-                          {d.positions.filter((pos: any) => pos.view).map((pos: any, j: number) => (
-                            <div key={j} className="gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>
-                              <div style={{fontWeight: 700}}>{pos.who ?? 'A colleague'}</div>
-                              <div className="gwui-ink-sub">{pos.view}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {/*
-                        "WHY IT MATTERS If the delays..." read live as one run-on line: the caption
-                        and the sentence shared a line with only a trailing space between them. The
-                        caption is now its own line, like every other caption on this page.
-                      */}
-                      {d.atStake && (
-                        <div className="gwui-fs-15 gwui-ink-sub gwui-mt-5" style={{lineHeight: 1.55}}>
-                          <span className="gwui-fs-13 gwui-ink-subd gwui-mb-2" style={{letterSpacing: '.1px', fontWeight: 700, display: 'block'}}>Why it matters</span>
-                          {d.atStake}
-                        </div>
-                      )}
-                    </Row>
-                  ))}
-                  {b.divergence.agreements.map((a: any, i: number) => (
-                    <Row key={`a${i}`} columns="1fr" inset="panel">
-                      <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>
-                        {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
-                      </div>
-                      <div className="gwui-fs-15 gwui-ink-green gwui-mt-2">Everybody agrees on this.</div>
-                    </Row>
-                  ))}
-                </>
-              )}
-              </RowList>
-              {/*
-                THE POINTER IS GONE BECAUSE THE DETAIL ARRIVED.
-
-                It read "This is the summary. Your own report holds the detail of what each account
-                said." That sentence was the only reason a fourth report surface had to exist: the
-                board named the disagreement and then sent you to another page to find out what it
-                was. Each account is now printed above, so the sentence would be sending people away
-                from the thing they are already looking at.
-              */}
-            </Panel>
-          </Section>
-        )}
-
-        {/*
-          THE QUESTION STANDS ON ITS OWN, BECAUSE IT IS NOT ALWAYS ABOUT A DIFFERENCE.
-
-          It was drawn as the last row INSIDE "Where people differ", which reads as a question about
-          the difference above it - and on a round where nothing differed, that card says "nothing
-          cross-referenced yet" and then asked a question about nothing.
-
-          It is the same field the report and a party's shared picture draw, under one name now:
-          three places had two names between them, so somebody who read the board and then their
-          report saw what looked like two different things.
-        */}
-        {b.divergence?.centralQuestion && (
-          <Panel>
-            <WhatToSettleTogether question={b.divergence.centralQuestion} />
-          </Panel>
+        {!isOnboarding && (
+          <>
+            {shown.divergence && b.divergence && (
+              <DivergenceSectionBody heading="Where people differ" divergence={b.divergence} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
+            )}
+            {b.divergence?.centralQuestion && (
+              <Panel>
+                <WhatToSettleTogether question={b.divergence.centralQuestion} />
+              </Panel>
+            )}
+          </>
         )}
 
         {shown.whatTheRoomIsAbout && (
