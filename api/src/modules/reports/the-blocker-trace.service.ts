@@ -2,7 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { ReportsService } from './reports.service';
-import { theTraceForThisReader, type ACheckInTheReaderMayOpen, type AStoredTrace } from './the-blocker-trace';
+import { theTraceForThisReader, whichTeamItIsWaitingOn, type ACheckInTheReaderMayOpen, type AStoredTrace } from './the-blocker-trace';
+import { theDayInWords } from '../board/the-headline-and-where-each-target-stands';
 import { labelsForParties } from './party-labels';
 import { peersAreNamedOn } from './peers-are-named';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn, youTakesItsVerb } from './no-internal-label-reaches-anyone';
@@ -27,6 +28,12 @@ export interface TheBlockerTraceAsRead {
   decisionNeeded: string | null;
   /** "Amani decides." Null when the record does not say, or when any step is not yours to read. */
   decidedBy: string | null;
+  /**
+   * "This is waiting on Finance since 14 September." Where steps of another team's check-in are not
+   * yours to read, which team it waits on and since when, from your own check-in (decision 75, item 5).
+   * Null where you read every step, or where it waits on no check-in you cannot open.
+   */
+  waitingOn: string | null;
 }
 
 /**
@@ -42,6 +49,7 @@ export class TheBlockerTraceService {
   async forReader(
     groundId: string,
     reader: { userId: string; email: string; organizationId: string; role: string },
+    now: Date = new Date(),
   ): Promise<{ traces: TheBlockerTraceAsRead[] }> {
     const list = ((await this.grounds.list(reader.organizationId, reader.userId, reader.email, reader.role)) ?? []) as any[];
     const openable = new Set(list.filter((g) => g.organizationId === reader.organizationId).map((g) => g.id));
@@ -85,6 +93,24 @@ export class TheBlockerTraceService {
     for (const trace of stored) {
       const mine = theTraceForThisReader(trace, mayOpen, { userId: reader.userId, role: reader.role });
       if (!mine) continue;
+      /* Which team it waits on, and since when, from the handoff in this reader's own check-in (decision 75, item 5). */
+      let waitingOn: string | null = null;
+      let theTeamWasNamed = false;
+      if (!mine.whole && trace.anchorDependencyId) {
+        const anchor = await (this.prisma.groundDependency.findUnique({
+          where: { id: trace.anchorDependencyId },
+          select: { groundId: true, fromParticipantId: true, onParticipantId: true, onLabel: true, waitingOnGroundId: true, createdAt: true },
+        }) as Promise<any>).catch(() => null);
+        if (anchor && anchor.groundId === trace.endGroundId && mine.mayReadAStepBy(anchor.groundId, anchor.fromParticipantId)) {
+          waitingOn = whichTeamItIsWaitingOn(anchor, mine.hiddenGroundIds, (d) => theDayInWords(d, now));
+          theTeamWasNamed = !!waitingOn && !anchor.onParticipantId && !!(anchor.onLabel ?? '').trim();
+        }
+      }
+      /*
+       * With its first step hidden, a chain is served only where the person here named the team it waits
+       * on. "Another team" with no start says nothing true, and could point at a check-in about one person.
+       */
+      if (mine.firstIsHidden && !theTeamWasNamed) continue;
       const steps: AStepAsRead[] = mine.steps.map((s) => {
         const g = byId.get(s.groundId)!;
         return {
@@ -106,6 +132,7 @@ export class TheBlockerTraceService {
         steps,
         whereItStarted: mine.whole ? say(endGround, { text: trace.whereItStarted }).text : null,
         decisionNeeded: mine.whole && trace.decisionNeeded ? say(endGround, { text: trace.decisionNeeded }).text : null,
+        waitingOn,
         decidedBy: decider ? youTakesItsVerb(`${decider} ${decider.toLowerCase() === 'you' ? 'decide' : 'decides'}.`).replace(/^./, (c) => c.toUpperCase()) : null,
       });
     }

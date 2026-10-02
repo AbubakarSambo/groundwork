@@ -1660,3 +1660,14 @@ A target a person set themselves in their own check-in (they hold it, they said 
 - In a check-in, "About this check-in" tells Rukia "You set yourself an aim of 3 shops in Kilimani." A colleague who may read it is told "Rukia set an aim of 3 shops in Kilimani for their own work." (before: "Your lead is aiming for 3 shops in Kilimani.", which was untrue), or "A colleague set ..." where names are not shared.
 
 Who reads it is unchanged: the person themselves and whoever runs the check-in; a colleague only where everybody sees every number, and never on a colleague's own board (request 105, part 3); not an admin who only reads.
+
+## Decision 75, item 5: a blocker that crosses teams says which team it waits on, and since when (2 October)
+
+`GET /grounds/:id/blocker-trace` now has one more field on each trace: `waitingOn`, one sentence or null. Please show it under the steps, where `whereItStarted` would be.
+
+- Wairimu runs Sales and cannot open Finance's or Leadership's check-ins. She reads the Sales steps only, as before, and now "This is waiting on Finance since 14 September." No Finance step, no Finance person and no Finance check-in name is served. The team is the word Miriam used for it in Sales, and the day is when she asked, so nothing is read from Finance's check-in.
+- Where the person in Sales named no team, it reads "This is waiting on another team since 14 September."
+- Where the chain started in Finance (its first step is not hers to read), she used to get nothing. She now gets her own steps and the sentence, but only where the person in Sales named the team. Otherwise nothing, as before.
+- Miriam and Brian, in Sales where people see each other, read the same as Wairimu.
+- In a check-in where people do not see each other, a person reads this only about their own wait, never a colleague's.
+- An admin who may open every check-in reads every step and `whereItStarted`, so `waitingOn` is null for them. The person reviewed on a performance plan reads nothing of a chain that ends on the lead's step, as before.
