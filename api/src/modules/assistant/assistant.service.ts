@@ -30,7 +30,8 @@ import { SpendingService } from '../suites/the-spending.service';
 import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 import { whoIsBeingWaitedOn } from '../board/what-the-whole-place-is-waiting-on';
-import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, aLeaveRequest, aSpendRequest, anHoursRequest, type AWaitingRequest } from '../suites/a-request-in-words';
+import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
+import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
 import { HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
 import { SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
 import { NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
@@ -2869,20 +2870,7 @@ export class AssistantService {
    * board this reader may not open, or a suite that is off, gives nothing.
    */
   private async waitingForYouToDecide(organizationId: string, userId: string): Promise<AWaitingRequest[]> {
-    const reader = { userId, organizationId };
-    const out: AWaitingRequest[] = [];
-    const first = (full: string) => full.trim().split(/\s+/)[0] ?? '';
-    const leave = this.leave ? await this.leave.board(reader).catch(() => null) : null;
-    for (const w of leave?.waiting ?? []) if (w.mayDecide) out.push(aLeaveRequest(w.id, null, first(w.name), w.startsOn, w.endsOn));
-    const hours = this.timeSheets ? await this.timeSheets.board(reader).catch(() => null) : null;
-    for (const week of (hours as any)?.weeks ?? []) {
-      for (const p of week.people ?? []) {
-        if (p.mayApprove && !p.approved && p.total > 0) out.push(anHoursRequest(p.personId, week.weekOf, first(p.name), p.minutes, p.total, p.days ?? []));
-      }
-    }
-    const spend = this.spending ? await this.spending.board(reader).catch(() => null) : null;
-    for (const w of spend?.waiting ?? []) if (w.mayDecide) out.push(aSpendRequest(w.id, null, w.firstName, w.amount, spend?.currency ?? null, w.what));
-    return out;
+    return whatWaitsForYouToDecide({ userId, organizationId }, { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending as any });
   }
 
   /** Whether anything waits for this person to approve or decline. The WhatsApp router asks, so a decision is never taken into a check-in. */
