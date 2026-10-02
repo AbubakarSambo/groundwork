@@ -112,50 +112,34 @@ export function PersonHistorySection({ rows }: { rows: BoardPresent['personHisto
  * "Affects" and "Would clear it" are in the prototype's own example but no field sends either one
  * today - drawing them would be inventing text nobody wrote. See request 105/107.
  */
-export function BlockersSection({ blockerCheck, whoWaitedOnWhom, allowed }: {
-  blockerCheck: BoardPresent['blockerCheck']
-  whoWaitedOnWhom: BoardPresent['whoWaitedOnWhom']
-  allowed: boolean
-}) {
-  if (!allowed) return null
-  const waits = new Map((whoWaitedOnWhom ?? []).map((w) => [w.id, w]))
-  const checks = blockerCheck ?? []
-  if (!checks.length) return null
+/**
+ * BLOCKERS (board-as-lead.txt, "Blockers"; request 105 part 2 and request 107 b/c). Drawn
+ * straight from the server's own `blockers` field - one entry per open blocker, already walled
+ * the same as every other wait, already ordered (raised most often first, then oldest). Every
+ * line is a full sentence the server built (`says`, `raised.says`, `proof.says`, `timeGiven`,
+ * `wouldClearItSays`, `holdingUp`); none of them is joined to a label with a colon, as request
+ * 107 (b) asked: no "Waiting on:", no "Raised:", no "Would clear it:".
+ */
+export function BlockersSection({ blockers }: { blockers: BoardPresent['blockers'] }) {
+  if (!blockers?.length) return null
   return (
-    <Section heading="Blockers" note="Each with its history and the one thing that would clear it, where the record has it.">
+    <Section heading="Blockers" note="Each with its history and the one thing that would clear it.">
       <Stack gap={10}>
-        {checks.map((r) => {
-          const wait = waits.get(r.id)
-          const cleared = !!wait?.clearedAt
-          const [waitingOn, ...rest] = r.checks ?? []
-          return (
-            <Panel key={r.id}>
-              <div className="gwui-gap-10" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{r.says}</div>
-                <Tag tone={cleared ? 'proven' : 'concern'}>{cleared ? 'Cleared' : 'Blocking'}</Tag>
-              </div>
-              {waitingOn && (
-                <div className="gwui-mt-8">
-                  <Note><b className="gwui-ink-dark" style={{ fontWeight: 600 }}>Waiting on: </b>{waitingOn}</Note>
-                </div>
-              )}
-              {wait?.startedAt && (
-                <div className="gwui-mt-4">
-                  <Note>
-                    <b className="gwui-ink-dark" style={{ fontWeight: 600 }}>Raised: </b>
-                    {`since ${whenItWas(wait.startedAt, 'dayAndMonthLong')}`}
-                    {cleared && wait.clearedAt ? `, cleared on ${whenItWas(wait.clearedAt, 'dayAndMonthLong')}` : ''}
-                  </Note>
-                </div>
-              )}
-              {rest.length > 0 && (
-                <div className="gwui-mt-4">
-                  <Note><b className="gwui-ink-dark" style={{ fontWeight: 600 }}>What the proof shows: </b>{rest.join(' ')}</Note>
-                </div>
-              )}
-            </Panel>
-          )
-        })}
+        {blockers.map((r) => (
+          <Panel key={r.id}>
+            <div className="gwui-gap-10" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{r.says}</div>
+              <Tag tone={r.state === 'blocking' ? 'concern' : 'plain'}>{r.state === 'blocking' ? 'Blocking' : 'Waiting'}</Tag>
+            </div>
+            <Stack gap={4}>
+              <div className="gwui-mt-8"><Note>{r.raised.says}</Note></div>
+              <Note>{r.proof.says}</Note>
+              <Note>{r.timeGiven}</Note>
+              <Note>{r.wouldClearItSays}</Note>
+              {r.holdingUp && <Note>{r.holdingUp}</Note>}
+            </Stack>
+          </Panel>
+        ))}
       </Stack>
     </Section>
   )

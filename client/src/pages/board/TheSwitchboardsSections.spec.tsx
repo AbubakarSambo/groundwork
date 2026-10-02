@@ -55,13 +55,26 @@ const leadActions = [{ id: 'l1', says: 'You need to get back to Kwame Mensah, wh
 const obligations = [{ participantId: 'p-kwame', who: 'Kwame Mensah', promised: ['Kwame Mensah committed to send the Westgate quote.'], othersWaitFor: [] }]
 const forecast = [{ objectiveId: 'o1', about: 'The team is aiming for 40 approved facilities this quarter.', says: 'If it keeps moving at the pace it has since session 1, it would be about 21 by session 4, against an aim of 40.', restsOn: 'It was 6 in session 1 and 11 in session 2.', cannotTellYou: 'This carries the pace so far forward in a straight line.' }]
 const whoWaitedOnWhom = [{ id: 'blocker-1', says: 'Kwame Mensah has been waiting on you for the approval of five applications since 16 September, and it has not been cleared.', startedAt: '2026-09-16', clearedAt: null, days: null }]
+/*
+ * REQUEST 105 PART 2 / 108: `blockers` IS NOW THE SERVER'S OWN BUILT SECTION, REPLACING THE JOIN
+ * OF `blockerCheck` AND `whoWaitedOnWhom` THIS FILE USED TO DO. Its `says` matches `blockerCheck`'s
+ * own sentence above so the existing assertions keep checking the same fact under the new field.
+ */
+const blockers = [{
+  id: 'blocker-1', who: 'Kwame Mensah', name: 'the approval of five applications', state: 'blocking' as const,
+  says: blockerCheck[0].says,
+  raised: { times: 1, firstRaisedAt: '2026-09-16', lastRaisedAt: '2026-09-16', says: 'This was raised once, on 16 September.', sessions: [1], inSessions: 'It was raised in session 1.' },
+  proof: { state: 'none', says: 'Nothing on record proves it yet. It rests on what Kwame Mensah said.' },
+  timeGiven: 'No time has been given for it.',
+  wouldClearIt: null, wouldClearItSays: 'Nobody has said what would clear it yet.', holdingUp: null,
+}]
 const contradictions = [{ id: 'c1', commitmentId: 'cm1', participantId: 'p-kwame', who: 'Kwame Mensah', says: 'Kwame Mensah’s commitment was marked done in session 1, and in session 2 Kwame Mensah said it again as something still to do.' }]
 const questionsForTheLead = [{ id: 'q1', question: 'Has Femi Okonkwo’s commitment, "I will call them again", happened, or is it still wanted?', because: 'Femi Okonkwo said it in sessions 1, 2 and 3.' }]
 
 const AS_THE_LEAD = {
   ...base, myParticipantId: 'p-bisi', canEditFrame: true, readOnlyNote: null,
   risks, workPlan, timeline, personHistory, blockerCheck, evidenceIndex, busyOrMoving,
-  leadActions, obligations, forecast, whoWaitedOnWhom, contradictions, questionsForTheLead,
+  leadActions, obligations, forecast, whoWaitedOnWhom, contradictions, questionsForTheLead, blockers,
 }
 
 /* Kwame reads his own rows, where the server would have cut everything else down to - but never
@@ -72,7 +85,7 @@ const AS_KWAME = {
   personHistory: [personHistory[0]],
   blockerCheck, evidenceIndex,
   obligations: [obligations[0]],
-  whoWaitedOnWhom, contradictions,
+  whoWaitedOnWhom, contradictions, blockers,
 }
 
 function renderBoard(payload: any) {
@@ -206,33 +219,41 @@ describe('"What needs you in this check-in" is drawn once, not twice as "Work pl
   })
 })
 
-describe('Blockers: one card per blocker, joined from blockerCheck and whoWaitedOnWhom', () => {
+/*
+ * REQUEST 105 PART 2 / 107 (b) / 108: `blockers` IS NOW ONE SENTENCE PER FACT, SERVER-BUILT, NO
+ * "Waiting on:"/"Raised:"/"What the proof shows:" LABELS. The two tests below used to check the
+ * old join of `blockerCheck` and `whoWaitedOnWhom`, including a label-joined "Waiting on:" line
+ * and a "Cleared" state read off `whoWaitedOnWhom.clearedAt` - both the defective shape request
+ * 107 (b) asked to fix. They are rewritten here, not deleted: the facts (who, what was raised,
+ * what the proof shows, since when) are still checked, as the plain sentences the server sends.
+ * A cleared blocker is no longer in `blockers` at all (the server leaves it out), so there is no
+ * "Cleared" card to test for any more.
+ */
+describe('Blockers: one card per blocker, built from the server\'s own blockers field', () => {
   beforeEach(() => { vi.clearAllMocks(); me = { id: 'u-bisi', firstName: 'Bisi', role: 'MEMBER' } })
 
-  it('shows Waiting on, Raised and What the proof shows, from the two arrays joined on their shared id', async () => {
+  it('shows full sentences, with no colon-joined labels', async () => {
     renderBoard(AS_THE_LEAD)
     await screen.findByRole('heading', { name: 'Sales org, Q3' })
-    const card = screen.getByText(blockerCheck[0].says).closest('div[class*="gwui-panel"]') as HTMLElement
-    expect(within(card).getByText(/Waiting on:/)).toBeTruthy()
-    expect(within(card).getByText(/Finance holds it\./)).toBeTruthy()
-    expect(within(card).getByText(/Raised:/)).toBeTruthy()
-    expect(within(card).getByText(/16 September/)).toBeTruthy()
-    expect(within(card).getByText(/What the proof shows:/)).toBeTruthy()
-    expect(within(card).getByText(/Nobody has said what has been tried\./)).toBeTruthy()
+    const card = screen.getByText(blockers[0].says).closest('div[class*="gwui-panel"]') as HTMLElement
+    expect(within(card).getByText(blockers[0].raised.says)).toBeTruthy()
+    expect(within(card).getByText(blockers[0].proof.says)).toBeTruthy()
+    expect(within(card).getByText(blockers[0].timeGiven)).toBeTruthy()
+    expect(within(card).getByText(blockers[0].wouldClearItSays)).toBeTruthy()
     expect(within(card).getByText('Blocking')).toBeTruthy()
-    // "Affects" and "Would clear it" are in the prototype's own example, but no field sends
-    // either one today - nothing invented here for them (request 105/107).
-    expect(screen.queryByText(/Affects:/)).toBeNull()
+    expect(screen.queryByText(/Waiting on:/)).toBeNull()
+    expect(screen.queryByText(/Raised:/)).toBeNull()
+    expect(screen.queryByText(/What the proof shows:/)).toBeNull()
     expect(screen.queryByText(/Would clear it:/)).toBeNull()
   })
 
-  it('reads "Cleared" once whoWaitedOnWhom says so', async () => {
+  it('reads "Waiting", never "Blocking", for a blocker whose state is "waiting"', async () => {
     renderBoard({
       ...AS_THE_LEAD,
-      whoWaitedOnWhom: [{ ...whoWaitedOnWhom[0], clearedAt: '2026-09-20' }],
+      blockers: [{ ...blockers[0], state: 'waiting' as const }],
     })
     await screen.findByRole('heading', { name: 'Sales org, Q3' })
-    expect(screen.getByText('Cleared')).toBeTruthy()
+    expect(screen.getByText('Waiting')).toBeTruthy()
     expect(screen.queryByText('Blocking')).toBeNull()
   })
 })

@@ -1522,13 +1522,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.personHistory && <PersonHistorySection rows={b.personHistory} />}
         {shown.risks && <RisksSection rows={b.risks} />}
         {/*
-          BLOCKERS (board-as-lead.txt, "Blockers"): one card per blocker, each with its history and
-          the one thing that would clear it - built by joining `blockerCheck` (who holds it, what
-          has been tried) and `whoWaitedOnWhom` (since when, and whether it has cleared) on their
-          shared id, the way the server itself keeps one blocker's id the same across both arrays.
-          Replaces the two separate sections this used to be split across (see BlockersSection).
+          BLOCKERS (board-as-lead.txt, "Blockers"; request 105 part 2 and 107 b/c): one section,
+          drawn from the server's own `blockers` field - every sentence built and ordered server
+          side, so this file no longer joins `blockerCheck` and `whoWaitedOnWhom` by hand.
         */}
-        <BlockersSection blockerCheck={b.blockerCheck} whoWaitedOnWhom={b.whoWaitedOnWhom} allowed={allowed('blockerCheck') || allowed('whoWaitedOnWhom')} />
+        <BlockersSection blockers={(b as any).blockers} />
         {shown.evidenceIndex && <EvidenceIndexSection rows={b.evidenceIndex} />}
         {shown.contradictions && <ContradictionsSection rows={b.contradictions} />}
         {shown.busyOrMoving && <BusyOrMovingSection data={b.busyOrMoving} />}
