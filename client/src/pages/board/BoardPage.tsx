@@ -388,6 +388,28 @@ function MaybeFolded({ fold, children }: { fold: boolean; children: ReactNode })
 }
 
 /**
+ * ONE FOLD, NOT A FOLD INSIDE A FOLD (board review, sales piece C, item 1).
+ *
+ * "Everything else from this check-in" (the sections the prototype's own sales board does not
+ * show) used to render inside its own `Folded` always - for a lead that is the only fold on the
+ * page, but for a participant it sat inside `MaybeFolded`'s own "The whole check-in" fold too, so
+ * opening one fold revealed a second one, not the content itself. A participant already has an
+ * outer fold around everything past their own personal view; this reads straight into it instead
+ * of wrapping it again. Nothing inside is removed either way.
+ */
+function FoldEverythingElseUnless({ alreadyFolded, children }: { alreadyFolded: boolean; children: ReactNode }) {
+  if (alreadyFolded) return <>{children}</>
+  return (
+    <Folded
+      summary="Everything else from this check-in"
+      note="More from this check-in, kept in full."
+    >
+      {children}
+    </Folded>
+  )
+}
+
+/**
  * THE PARTICIPANT'S OWN VIEW, FIRST (B5's board-as-participant.txt). A participant's board used to
  * open on the same generic switchboard a lead sees - every target, every sale, work plan for
  * everyone, naming colleagues - before the lead's own editing controls and judgement were taken
@@ -1587,10 +1609,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           and not in this check-in, the availability poll, the alignment feed, and the methodology
           legend.
         */}
-        <Folded
-          summary="Everything else from this check-in"
-          note="Every section the prototype's own sales board does not show, kept in full."
-        >
+        <FoldEverythingElseUnless alreadyFolded={isParticipantView}>
         {/*
           REQUEST 70: THE SWITCHBOARD'S OWN SECTIONS, THE 13 THAT NOW HAVE A SERVED FIELD. Each
           component draws nothing when its own rows are empty, so there is no heading-with-nothing-
@@ -2987,7 +3006,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             ))}
           </div>
         </details>
-        </Folded>
+        </FoldEverythingElseUnless>
 
 
         {/*
