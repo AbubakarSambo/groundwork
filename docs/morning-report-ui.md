@@ -6,6 +6,8 @@ same file.
 
 ## This morning, 2 October: in short
 
+**A question for you (3 October): what the new hire reads of the lead.** On "Engagement Director, first 90 days", Tobi, the new hire, is shown only himself in "Who checked in", and Amina's words are left out of "Where you both see it differently", because the engine treats it as a check-in where people answer without seeing each other. Yet he is sent all eight of her "what success looks like" quotes word for word. The prototype says the lead and the new hire "see the same pictures" for the 30, 60 and 90-day steps, but it does not picture the new hire's own board. Should the new hire read his lead's words and her row on his board? Nothing is restricted or opened until you say (request 124).
+
 **A new standing rule (3 October), and what it changes.** You withdrew "when unsure, choose the more private option". Three things I restricted under it are now on the list to put right or to ask you about:
 - **The admin's To-dos board** leaves out to-dos from check-ins the admin may not read. The prototype shows an admin the list. It goes into the check below.
 - **The "role, as described" column** on a check-in's people is shown only to the lead, on the grounds that it reads like the lead's private note. The prototype does not say. Should admins and the people in the check-in see it?
