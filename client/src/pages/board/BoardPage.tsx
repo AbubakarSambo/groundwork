@@ -1616,6 +1616,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   rows={b.checkInGrid.rows.map((r) => ({ ...r, name: nameOnTheBoard(b, r.participantId, r.name) })) as any}
                   sessions={b.checkInGrid.sessions}
                   openSessions={b.checkInGrid.sessions.filter((s) => sessionState.get(s) !== 'upcoming')}
+                  myParticipantId={b.myParticipantId}
                 />
               ) : (
                 /*
@@ -1626,13 +1627,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   fixed-width column so they line up across every row.
                 */
                 <PeopleTable>
-                  {b.checkInGrid.rows.map((r) => (
+                  {b.checkInGrid.rows.map((r) => {
+                    /* Re-review, 2 October: the reader's own row headed with their own name -
+                       "Rukia Otieno" over her own row, on the board she herself was reading, the
+                       same mistake "Who owns what" was fixed for above. */
+                    const displayName = r.participantId === b.myParticipantId ? 'You' : nameOnTheBoard(b, r.participantId, r.name)
+                    return (
                     <PersonRow
                       key={r.participantId}
                       extraColumns="190px"
                       person={{
-                        initials: initialsOf(nameOnTheBoard(b, r.participantId, r.name)),
-                        name: nameOnTheBoard(b, r.participantId, r.name),
+                        initials: initialsOf(displayName),
+                        name: displayName,
                         level: anyRoleToShow && (r.role && r.role !== r.name || r.managingOnly)
                           ? (r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : 'Managing only')
                           : undefined,
@@ -1650,7 +1656,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         ))}
                       </div>
                     </PersonRow>
-                  ))}
+                    )
+                  })}
                 </PeopleTable>
               )}
             </Section>
@@ -2875,13 +2882,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </div>
                 </div>
               ) : b.contribution.filter((c) => c.name || c.remitDefined).map((c) => {
-                const displayName = nameOnTheBoard(b, c.participantId, c.name)
-                /* Re-review, 30 September: `displayName` is always the person's real name (this
-                   card's own heading, same as everyone else's), never "You" - so checking it
-                   against 'You' never matched, and Rukia read "Nobody has said what Rukia's role
-                   covers yet." about her own card. The heading stays the name; only the sentence
-                   below it, about her own role, reads "your". */
                 const isReader = !!b.myParticipantId && c.participantId === b.myParticipantId
+                /* Re-review, 2 October: read live by Rukia Otieno, this card's own heading still
+                   said "Rukia Otieno" over her own card, on the board she herself was reading -
+                   the same mistake "Who owns what" was fixed for. The heading now says "You" for
+                   the reader's own row, the same way "Who owns what" does; `nameFirstWord` below
+                   keeps the real first name for the "Nobody has said..." sentence about somebody
+                   else, which never runs for the reader's own row (it reads "your" instead). */
+                const displayName = isReader ? 'You' : nameOnTheBoard(b, c.participantId, c.name)
+                const nameFirstWord = nameOnTheBoard(b, c.participantId, c.name).split(' ')[0]
                 return (
                 <div key={c.participantId} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
                   <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
@@ -2891,7 +2900,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       ? (b.canEditFrame && c.remit ? <span data-leads-note className="gwui-fs-13-5 gwui-ink-sub">{theLeadsNote(c.remit)}</span> : null)
                       /* Board review, 30 September, item 7: "role not clearly defined" beside a
                          name is a tag, not a sentence about that person. */
-                      : <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>{isReader ? 'Nobody has said what your role covers yet.' : `Nobody has said what ${(displayName ?? 'their').split(' ')[0]}'s role covers yet.`}</span>}
+                      : <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>{isReader ? 'Nobody has said what your role covers yet.' : `Nobody has said what ${nameFirstWord || 'their'}'s role covers yet.`}</span>}
 
                   </div>
 
@@ -2980,7 +2989,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {b.coverage.reads.filter((r) => r.shown !== false).map((r) => (
                 <div key={r.participantId} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
                   <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
-                    <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>{nameOnTheBoard(b, r.participantId, r.name)}</span>
+                    {/* Re-review, 2 October: the reader's own row here still headed with their own
+                        name - "Rukia Otieno" over her own card, on the board she herself was
+                        reading - the same mistake "Who owns what" was fixed for. */}
+                    <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>{r.participantId === b.myParticipantId ? 'You' : nameOnTheBoard(b, r.participantId, r.name)}</span>
                     {/* "ROLE LEVEL" read as a heading over a single word; it is a small note beside
                         the name, not a section of its own, so it no longer renders in capitals. */}
                     {/* Board review, 30 September, item 7: "at role level" is a fragment, not
