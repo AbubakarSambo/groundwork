@@ -2,7 +2,9 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException,
 import { PrismaService } from '../prisma/prisma.service';
 import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
-import { couldBeNamed, decidesIt, everyStepFor, theStepsFor, whoDecidesNow, type DecidesNow } from './who-may-decide';
+import { couldBeNamed, decidesIt, everyStepFor, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
+import { whyPassOn } from './a-request-waits-too-long';
+import type { PassedOn } from './the-leave-board.service';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { aSpendRequest, spendInWords, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
@@ -246,6 +248,35 @@ export class SpendingService {
     const byUser = new Map([...dir.values()].filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p]));
     const now = await this.now(organizationId, r, answers, byUser);
     return whoInWords(this.prisma, now.who, now.team);
+  }
+
+  /**
+   * Once a day (a-request-waits-too-long.cron.ts): each request that has waited the set number of
+   * working days for one person, or whose approver is on approved leave today, moves to the next rule
+   * on its step's list, and whoever that names is told. Nothing moves while the admin has set no days.
+   */
+  async passOnWhatWaitsTooLong(organizationId: string, today = new Date()): Promise<PassedOn[]> {
+    const answers = await this.suiteAnswers(organizationId).catch(() => null);
+    if (!answers?.workflow?.escalateAfter) return [];
+    const rows = (await this.prisma.spendRequest.findMany({ where: { organizationId, status: 'waiting' } })) as Row[];
+    if (!rows.length) return [];
+    const dir = await this.directory(organizationId);
+    const byUser = new Map([...dir.values()].filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p]));
+    const out: PassedOn[] = [];
+    for (const r of rows) {
+      const comes = await whoComesNext(this.prisma, theStepsFor('spend', answers, n(r.amount)), {
+        organizationId, requesterUserId: r.userId,
+        managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null,
+        team: r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null,
+      }, r);
+      if (!comes) continue;
+      const why = await whyPassOn(this.prisma, organizationId, comes.now, r.stepSince ?? r.createdAt, today, answers.workflow.escalateAfter);
+      if (!why) continue;
+      await this.prisma.spendRequest.update({ where: { id: r.id }, data: { escalatedTo: comes.next.at, stepSince: today } });
+      await this.tellWhoDecides({ ...r, escalatedTo: comes.next.at, stepSince: today }, answers);
+      out.push({ ref: r.id, step: comes.now.step, from: comes.now.who, to: comes.next.who, why });
+    }
+    return out;
   }
 
   /** Whoever decides the step a request is on is told on WhatsApp (decision 82, item 1). */

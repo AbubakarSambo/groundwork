@@ -2,7 +2,8 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException,
 import { PrismaService } from '../prisma/prisma.service';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
-import { couldBeNamed, decidesIt, everyRuleIn, theStepsFor, whoDecidesNow, type DecidesNow } from './who-may-decide';
+import { couldBeNamed, decidesIt, everyRuleIn, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow, type WhoDecides } from './who-may-decide';
+import { whyPassOn, type WhyPassedOn } from './a-request-waits-too-long';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { aLeaveRequest, leaveInWords, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
@@ -20,6 +21,9 @@ export const LEAVE_REFUSED = {
 };
 
 export interface Reader { userId: string; organizationId: string }
+
+/** One request passed on because it waited too long, or its approver was away. */
+export interface PassedOn { ref: string; step: number; from: WhoDecides; to: WhoDecides; why: WhyPassedOn }
 
 /** A day as a person reads it, with no time of day: "2026-10-01". */
 export type Day = string;
@@ -253,6 +257,34 @@ export class LeaveBoardService {
     const answers = await this.suiteAnswers(organizationId);
     const now = await this.now(row, await this.directory(organizationId, [row]), answers);
     return whoInWords(this.prisma, now.who, now.team);
+  }
+
+  /**
+   * Once a day (a-request-waits-too-long.cron.ts): each request that has waited the set number of
+   * working days for one person, or whose approver is on approved leave today, moves to the next rule
+   * on its step's list, and whoever that names is told. Nothing moves while the admin has set no days.
+   */
+  async passOnWhatWaitsTooLong(organizationId: string, today = new Date()): Promise<PassedOn[]> {
+    const answers = await this.suiteAnswers(organizationId).catch(() => null);
+    if (!answers?.workflow?.escalateAfter) return [];
+    const rows = (await this.prisma.leaveRequest.findMany({ where: { organizationId, status: 'waiting' } })) as (Row & { askedAt?: Date })[];
+    if (!rows.length) return [];
+    const people = await this.directory(organizationId, rows);
+    const out: PassedOn[] = [];
+    for (const r of rows) {
+      const n = await whoComesNext(this.prisma, theStepsFor('leave', answers), {
+        organizationId, requesterUserId: r.userId,
+        managerExternalId: people.get(r.userId)?.managerExternalId ?? null, team: people.get(r.userId)?.department ?? null,
+      }, r);
+      if (!n) continue;
+      const why = await whyPassOn(this.prisma, organizationId, n.now, r.stepSince ?? r.askedAt ?? today, today, answers.workflow.escalateAfter);
+      if (!why) continue;
+      const moved = { ...r, escalatedTo: n.next.at, stepSince: today };
+      await this.prisma.leaveRequest.update({ where: { id: r.id }, data: { escalatedTo: n.next.at, stepSince: today } });
+      await this.tellWhoDecides(moved, people, answers);
+      out.push({ ref: r.id, step: n.now.step, from: n.now.who, to: n.next.who, why });
+    }
+    return out;
   }
 
   /** Whoever decides the step a request is on is told on WhatsApp (decision 82, item 1). */

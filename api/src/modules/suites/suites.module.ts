@@ -18,11 +18,12 @@ import { SuggestionsModule } from '../suggestions/suggestions.module';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { AReviewToldOnWhatsApp } from './a-review-told-on-whatsapp.service';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
+import { ARequestWaitsTooLongCron } from './a-request-waits-too-long.cron';
 
 @Module({
   imports: [SuggestionsModule],
   controllers: [SuitesController],
-  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, AnthropicService, ReviewsProposedService, ReviewsProposedCron, ARequestToldOnWhatsApp, AReviewToldOnWhatsApp],
+  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, AnthropicService, ReviewsProposedService, ReviewsProposedCron, ARequestToldOnWhatsApp, AReviewToldOnWhatsApp, ARequestWaitsTooLongCron],
   exports: [SuitesService, LeaveBoardService, TimeSheetsService, ReviewsService, ReviewsProposedService, SpendingService, EquipmentService, ARequestToldOnWhatsApp],
 })
 export class SuitesModule {}

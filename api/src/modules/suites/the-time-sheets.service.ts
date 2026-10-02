@@ -3,7 +3,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { whoApprovesFor } from './who-approves';
-import { couldBeNamed, decidesIt, everyRuleIn, theStepsFor, whoDecidesNow, type DecidesNow } from './who-may-decide';
+import { couldBeNamed, decidesIt, everyRuleIn, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
+import { whyPassOn } from './a-request-waits-too-long';
+import type { PassedOn } from './the-leave-board.service';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { anHoursRequest, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
@@ -240,6 +242,57 @@ export class TimeSheetsService {
     if (!total || state.approved) return null;
     const now = await this.now(organizationId, personId, await this.directory(organizationId, [personId]), answers, state);
     return whoInWords(this.prisma, now.who, now.team);
+  }
+
+  /**
+   * Once a day (a-request-waits-too-long.cron.ts): each week of hours that has waited the set number
+   * of working days for one person, or whose approver is on approved leave today, moves to the next
+   * rule on its step's list, and whoever that names is told. Nothing moves while the admin has set no
+   * days. A week waits from when its last hours were sent, or from when it last moved.
+   */
+  async passOnWhatWaitsTooLong(organizationId: string, today = new Date()): Promise<PassedOn[]> {
+    const answers = await this.suiteAnswers(organizationId).catch(() => null);
+    if (!answers?.workflow?.escalateAfter) return [];
+    const from = new Date(mondayOf(today).getTime() - WEEKS_BACK * 7 * DAY);
+    const entries = (await this.prisma.timeEntry.findMany({
+      where: { organizationId, onDay: { gte: from } },
+      select: { userId: true, client: true, onDay: true, minutes: true, createdAt: true },
+    })) as (Entry & { createdAt?: Date })[];
+    if (!entries.length) return [];
+    const rows = (await this.prisma.timeWeek.findMany({ where: { organizationId, weekOf: { gte: from } } })) as (WeekRow & { stepSince?: Date | null })[];
+    const people = await this.directory(organizationId, entries.map((e) => e.userId));
+    const byWeek = new Map<string, (Entry & { createdAt?: Date })[]>();
+    for (const e of entries) {
+      const k = `${dayOf(mondayOf(e.onDay))}|${e.userId}`;
+      byWeek.set(k, [...(byWeek.get(k) ?? []), e]);
+    }
+    const out: PassedOn[] = [];
+    for (const [k, es] of byWeek) {
+      const [w, userId] = k.split('|');
+      const total = es.reduce((t, e) => t + e.minutes, 0);
+      const row = [...rows].reverse().find((r) => r.userId === userId && dayOf(new Date(r.weekOf)) === w);
+      const state = weekStateOf(row, total);
+      if (state.approved || !total) continue;
+      const n = await whoComesNext(this.prisma, theStepsFor('time', answers), {
+        organizationId, requesterUserId: userId,
+        managerExternalId: people.get(userId)?.managerExternalId ?? null, team: people.get(userId)?.department ?? null,
+      }, state);
+      if (!n) continue;
+      const sent = es.map((e) => e.createdAt ?? e.onDay).reduce((a, b) => (a > b ? a : b));
+      const since = (row && row.seenMinutes === total && row.stepSince) || sent;
+      const why = await whyPassOn(this.prisma, organizationId, n.now, since, today, answers.workflow.escalateAfter);
+      if (!why) continue;
+      const monday = atMidnight(w);
+      const moved = { step: state.step, escalatedTo: n.next.at, stepSince: today, seenMinutes: total, approvedByIds: state.approvedByIds };
+      await this.prisma.timeWeek.upsert({
+        where: { organizationId_userId_weekOf: { organizationId, userId, weekOf: monday } },
+        create: { organizationId, userId, weekOf: monday, approvedMinutes: null, approvedById: null, approvedAt: null, ...moved },
+        update: moved,
+      });
+      await this.tellWhoApproves(organizationId, userId, monday, es, { ...state, escalatedTo: n.next.at }, answers);
+      out.push({ ref: k, step: n.now.step, from: n.now.who, to: n.next.who, why });
+    }
+    return out;
   }
 
   /** Whoever approves the step a week is on is told on WhatsApp (decision 82, item 1). */

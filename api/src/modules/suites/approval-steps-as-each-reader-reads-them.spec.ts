@@ -88,7 +88,7 @@ function setup(opts: { workflows?: Record<string, unknown>; duties?: Record<stri
   const prisma: any = {
     organizationSuite: {
       findUnique: jest.fn(async ({ where }: any) => suites[where.organizationId_suite.suite] ?? null),
-      findMany: jest.fn(async () => Object.entries(suites).map(([suite, r]) => ({ suite, ...r }))),
+      findMany: jest.fn(async ({ where }: any = {}) => Object.entries(suites).filter(([suite]) => !where?.suite || where.suite === suite).map(([suite, r]) => ({ organizationId: ORG, suite, ...r }))),
       upsert: jest.fn(async ({ where, create, update }: any) => {
         const k = where.organizationId_suite.suite;
         suites[k] = suites[k] ? { ...suites[k], ...update } : create;
