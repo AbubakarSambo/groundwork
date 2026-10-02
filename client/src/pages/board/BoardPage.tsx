@@ -1265,7 +1265,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {shown.eachPerson && (
-          <Section heading="The team today" note="Each person’s line, their last 10 check-ins, and what keeps coming up.">
+          <Section
+            heading="The team today"
+            note="Each person’s line, their last 10 check-ins, and what keeps coming up."
+            /*
+              BOARD REVIEW, SALES PIECE C, ITEM 10: THE PROTOTYPE'S OWN FOOTNOTE, ONLY WHEN IT IS
+              TRUE. board-as-lead.txt ends this section: "These are about the work. Open anyone to
+              see what they said and what the proof shows." `PersonRow` (below) takes an optional
+              `to` and can be a real link to a person's own page - it is not given one here, so a
+              row opens nowhere yet, and the shorter, honest half of the sentence is all this says.
+              The longer form belongs to whichever change actually wires that link up.
+            */
+            foot="These are about the work."
+          >
             {/*
               U.10: "THE TEAM TODAY", THE PROTOTYPE'S WORDING (board-as-lead.txt).
               The rows are still ordered by what needs the lead first, not listed by name - that
@@ -2087,12 +2099,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         clause rather than a name followed by their words. Stacked instead, the way
                         every other name-then-quote on this page is already shown.
                       */}
-                      {Array.isArray(d.positions) && d.positions.length > 0 && (
+                      {/*
+                        BOARD REVIEW, SALES PIECE C, ITEM 10: A NAME WITH NOTHING UNDER IT IS NOT A
+                        POSITION. "Rukia Otieno" used to be drawn alone whenever her own `view` was
+                        empty - a name dangling above the next person's actual words, which reads as
+                        if she said nothing worth hearing rather than as what it is, a position the
+                        record has no words for. Skipped outright rather than shown empty.
+                      */}
+                      {Array.isArray(d.positions) && d.positions.some((pos: any) => pos.view) && (
                         <div className="gwui-gap-4 gwui-mt-6" style={{display: 'grid'}}>
-                          {d.positions.map((pos: any, j: number) => (
+                          {d.positions.filter((pos: any) => pos.view).map((pos: any, j: number) => (
                             <div key={j} className="gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>
                               <div style={{fontWeight: 700}}>{pos.who ?? 'A colleague'}</div>
-                              {pos.view && <div className="gwui-ink-sub">{pos.view}</div>}
+                              <div className="gwui-ink-sub">{pos.view}</div>
                             </div>
                           ))}
                         </div>

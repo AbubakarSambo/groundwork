@@ -71,6 +71,11 @@ const bubble = (mine: boolean): React.CSSProperties => ({
   background: mine ? 'var(--gw-navy)' : 'var(--gw-slate)',
   color: mine ? '#fff' : 'var(--gw-text)',
   whiteSpace: 'pre-wrap',
+  /* Board review, sales piece C, item 10: the opening line ("Ask me about Sales team, Q3: a deal,
+     a target, or what to do next.") read cut off at 375px. `pre-wrap` alone wraps at a space, so
+     one long unbroken run - a long check-in label, a pasted id - could still push past the
+     bubble's own 82% width. This lets a word break rather than overflow it. */
+  overflowWrap: 'anywhere',
   fontSize: 15,
   lineHeight: 1.45,
   margin: 0,

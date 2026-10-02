@@ -33,7 +33,7 @@ function Block({ title, lines, markInferred, note }: { title: string; lines: str
   if (!lines.length) return null
   return (
     <div>
-      <SubHeading>{title}</SubHeading>
+      <SubHeading as="h3">{title}</SubHeading>
       <Stack gap={10}>
         {lines.map((l, i) => {
           if (!markInferred) return <p key={i} className="gwui-panel-text">{l}</p>
@@ -148,7 +148,7 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
 
         {weigh && (
           <Stack gap={10}>
-            <SubHeading>{readerRunsIt ? 'What you said you were looking for, and what people have said about it' : 'What your lead said they were looking for, and what people have said about it'}</SubHeading>
+            <SubHeading as="h3">{readerRunsIt ? 'What you said you were looking for, and what people have said about it' : 'What your lead said they were looking for, and what people have said about it'}</SubHeading>
             {weigh.whatYouSaidGoodMeans.length > 0 && (
               <Block title={readerRunsIt ? 'What you said good would mean' : 'What your lead said good would mean'} lines={weigh.whatYouSaidGoodMeans.map(x => x.text)} markInferred />
             )}
@@ -180,11 +180,11 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
         )}
         {spotPeople.length > 0 && (
           <Stack gap={10}>
-            <SubHeading>Where this picture is thin</SubHeading>
+            <SubHeading as="h3">Where this picture is thin</SubHeading>
             <Note>Not a mark on anybody. It is what the record cannot yet support, and what would settle it.</Note>
             {spotPeople.map(([participantId, list]) => (
               <div key={participantId}>
-                <SubHeading>{`In what ${nameFor ? nameFor(participantId) : 'a colleague'} said`}</SubHeading>
+                <SubHeading as="h3">{`In what ${nameFor ? nameFor(participantId) : 'a colleague'} said`}</SubHeading>
                 <Stack gap={10}>
                   {list.map((s, i) => (
                     <div key={i} className="gwui-rule-left">
@@ -200,11 +200,11 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
         )}
         {arcAdvisories && arcAdvisories.length > 0 && (
           <Stack gap={10}>
-            <SubHeading>For your review, about the record itself</SubHeading>
+            <SubHeading as="h3">For your review, about the record itself</SubHeading>
             <Note>A flag about how an account was given, never a judgement on the person who gave it.</Note>
             {arcAdvisories.map((a) => (
               <div key={a.participantId}>
-                <SubHeading>{nameFor ? nameFor(a.participantId) : 'A colleague'}</SubHeading>
+                <SubHeading as="h3">{nameFor ? nameFor(a.participantId) : 'A colleague'}</SubHeading>
                 <p className="gwui-panel-text">{a.note}</p>
                 {a.features.map((f, i) => <Note key={i}>{f}</Note>)}
               </div>
@@ -216,7 +216,7 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote, restedOn, startedAt
             {/* U.9 THIRD REVIEW, ITEM 5: A HEADING STARTS WITH A CAPITAL, LIKE ANY OTHER SENTENCE.
                 The fallback name is "a colleague" everywhere else it is used mid-sentence; here it
                 opens a heading of its own, so it reads "A colleague". */}
-            <SubHeading>{neverAnAddressAsAName(r.who, 'A colleague')}</SubHeading>
+            <SubHeading as="h3">{neverAnAddressAsAName(r.who, 'A colleague')}</SubHeading>
             <Stack gap={10}>
               <Block title="Worth asking" lines={r.probe} />
               <Block title="Worth saying" lines={r.encourage} />
