@@ -121,16 +121,28 @@ const FIRST_PERSON = /(?<![\p{L}'’])(?:I|I'm|I’m|I'll|I’ll|I've|I’ve|I'd
  *    will ask ..."), and only where nothing else in it is first person; otherwise it says only that they
  *    said what happens next, because rewriting more would put words in their mouth.
  */
+/*
+ * A LINE THAT STARTS WITH A VERB HAS LOST ITS SUBJECT (item 18). Tobi read "Once it is cleared, lead the client
+ * meetings." and Samuel "Once it is cleared, submit the request to Finance for approval.", an order with nobody in
+ * it. A line whose first word is lower case and could not begin a subject is said with the person as its subject:
+ * "Once it is cleared, you will lead the client meetings." A line that starts with its own subject is left.
+ */
+const STARTS_A_SUBJECT = /^(?:the|a|an|this|that|these|those|it|its|they|their|he|his|she|her|we|our|you|your|there|everyone|everybody|someone|somebody|nobody|no|each|every|all|both|one|some|any|another|other|more|most|work|everything|nothing)\b/i;
+const startsWithAVerb = (t: string): boolean => /^[a-z]/.test(t) && !STARTS_A_SUBJECT.test(t) && !/^\d/.test(t);
+
 export function whatItIsHoldingUp(then: string, theirWords: string | null, who: string): string {
   const t = then.trim().replace(/[.!?]+$/, '');
-  if (!FIRST_PERSON.test(t)) return `Once it is cleared, ${inASentence(t)}.`;
+  const subject = who === 'You' ? 'you' : mid(who);
+  if (!FIRST_PERSON.test(t)) {
+    return startsWithAVerb(t) ? `Once it is cleared, ${subject} will ${t}.` : `Once it is cleared, ${inASentence(t)}.`;
+  }
   if (theirWords) {
     const q = theirWords.trim();
     return `${who} said that once it is cleared, "${/[.!?]$/.test(q) ? q : `${q}.`}"`;
   }
-  const subject = who === 'You' ? 'you' : mid(who);
-  const swapped = t.replace(/^I(?:\s+will|['’]ll)\s+/i, `${subject} will `);
-  if (swapped !== t && !FIRST_PERSON.test(swapped.slice(subject.length + 6))) return `Once it is cleared, ${swapped}.`;
+  /* "I can lead a client meeting" is theirs to say as "you can lead ..." too (item 18). */
+  const swapped = t.replace(/^I(?:\s+will|['’]ll)\s+/i, `${subject} will `).replace(/^I\s+can\s+/i, `${subject} can `);
+  if (swapped !== t && !FIRST_PERSON.test(swapped.slice(subject.length + 1))) return `Once it is cleared, ${swapped}.`;
   return `${who} said what ${who === 'You' ? 'you will' : 'they will'} do once it is cleared.`;
 }
 
