@@ -332,7 +332,7 @@ export class AdminService implements OnApplicationBootstrap {
         this.prisma.contributorCode.count(),
         this.prisma.contributorCodeRedemption.count(),
         this.prisma.ground.groupBy({
-          by: ['freeReason'],
+          by: ['freeReason', 'isFreeGround'],
           where: A_REAL_CHECK_IN,
           _count: { id: true },
         }),
@@ -345,6 +345,7 @@ export class AdminService implements OnApplicationBootstrap {
       redemptionsCount,
       freeReasonBreakdown: freeReasonBreakdown.map((r) => ({
         freeReason: r.freeReason,
+        isFreeGround: r.isFreeGround,
         count: r._count.id,
       })),
     };
@@ -377,12 +378,16 @@ export class AdminService implements OnApplicationBootstrap {
       this.prisma.ground.aggregate({ where: A_REAL_CHECK_IN, _sum: { sessionsBalance: true } }),
     ]);
 
-    /* The four buckets the page draws as a bar. `freeReason` is null on a ground
-       somebody paid for, which is the "paid" column - a name rather than a gap. */
-    const breakdown = { FIRST_GROUND: 0, FREE_TIER: 0, ACCESS_CODE: 0, paid: 0 };
+    /* The four buckets the page draws as a bar, and a fifth it does not draw yet.
+       PAID IS A CHECK-IN THAT TOOK A PAID SLOT (item 19): `isFreeGround: false`, the billing record
+       stamped at creation. "Paid" was read as "no free reason", and a check-in made free by a path
+       that names no reason (the API, an enterprise organisation's own setup) has none, so on the
+       test database 27 free check-ins were counted as paid. They are `freeNoReasonGiven` now. */
+    const breakdown = { FIRST_GROUND: 0, FREE_TIER: 0, ACCESS_CODE: 0, paid: 0, freeNoReasonGiven: 0 };
     for (const row of stats.freeReasonBreakdown) {
-      if (row.freeReason === null) breakdown.paid += row.count;
-      else if (row.freeReason in breakdown) breakdown[row.freeReason as 'FIRST_GROUND'] += row.count;
+      if (!row.isFreeGround) breakdown.paid += row.count;
+      else if (row.freeReason === 'FIRST_GROUND' || row.freeReason === 'FREE_TIER' || row.freeReason === 'ACCESS_CODE') breakdown[row.freeReason] += row.count;
+      else breakdown.freeNoReasonGiven += row.count;
     }
 
     return {

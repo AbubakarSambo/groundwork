@@ -57,3 +57,16 @@ describe('Subscribed orgs', () => {
     expect(served.overview.totalSubscribedOrgs).toBe(1);
   });
 });
+
+describe('How check-ins were covered', () => {
+  it('counts a check-in as paid only when it took a paid slot, and a free one with no reason given as free', async () => {
+    const free = (freeReason: string | null) => ({ freeReason, isFreeGround: true });
+    const paid = { freeReason: null, isFreeGround: false };
+    const served = await theDashboard({
+      grounds: [free('FREE_TIER'), free('FREE_TIER'), free('ACCESS_CODE'), free('FIRST_GROUND'), free(null), free(null), paid, paid, paid],
+    }).getDashboard();
+    /* It served paid: 5, with the two free check-ins that name no reason counted as paid. */
+    expect(served.freeReasonBreakdown).toEqual({ FIRST_GROUND: 1, FREE_TIER: 2, ACCESS_CODE: 1, paid: 3, freeNoReasonGiven: 2 });
+    expect(served.overview.totalGrounds).toBe(9);
+  });
+});
