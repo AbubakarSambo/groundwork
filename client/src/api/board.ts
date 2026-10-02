@@ -82,6 +82,13 @@ export type BoardPresent = {
   /** The newest thing in the record the board is built from. Opening the board does not move it. */
   lastChangedAt?: string | null
   /**
+   * DECISION 77: "Faraji Odhiambo is waiting to be let in." (or "...was not let in.", or null).
+   * Sent only to whoever runs the check-in, the admin who set it up, or an admin with access to
+   * it - null for everybody else, whether or not anybody is held at the door. Draw it beside the
+   * count in `HowItIsGoing`, never inside it.
+   */
+  waitingToBeLetIn?: string | null
+  /**
    * BOARD FIX (sales B, item 3a): WHETHER THE TEAM'S PICTURE IS SHARED, FOR A PARTICIPANT
    * (a-participants-board-is-their-own.ts). `shared: true` once the report has gone out to the
    * people in it; `shared: false` with `says` (the server's own sentence) and `yourOwnReport` (the
@@ -197,7 +204,13 @@ export type BoardPresent = {
     /** REQUEST 107 (c), part 2: how often this blocker was raised, in check-ins, never a single session counted twice. */
     raised?: { times: number; firstRaisedAt: string; lastRaisedAt: string; says: string }
   }[]
-  checkInGrid?: { sessions: number[]; rows: { participantId: string; name: string | null; role: string | null; managingOnly: boolean; cells: Record<string, string> }[] }
+  checkInGrid?: { sessions: number[]; rows: {
+    participantId: string; name: string | null; role: string | null; managingOnly: boolean; cells: Record<string, string>
+    /** Decision 77: not sent on this row today - the ground's own `participants` (`GET
+        /grounds/:id`) carry it instead. Kept here, optional, so a future board payload that does
+        send it on the row itself needs no further change. */
+    notLetInYet?: boolean
+  }[] }
 
   /**
    * WHERE EACH PERSON IS AGAINST THEIR OWN NUMBER, ordered by what needs attention.

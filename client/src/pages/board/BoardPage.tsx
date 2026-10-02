@@ -1265,13 +1265,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {(b as any).headline && (
           <Stack gap={12}>
-            <HeadlineSection headline={(b as any).headline} objectives={b.objectives} glance={(b as any).howItIsGoing?.glance ?? null} />
+            <HeadlineSection headline={(b as any).headline} objectives={b.objectives} glance={(b as any).howItIsGoing?.glance ?? null} waitingToBeLetIn={b.waitingToBeLetIn ?? null} />
           </Stack>
         )}
 
         {(b as any).howItIsGoing?.glance && !((b as any).headline && !(b as any).headline.answer) && (
           <div className="gwui-mt-16">
-            <HowItIsGoing glance={(b as any).howItIsGoing.glance} />
+            <HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} />
           </div>
         )}
 
@@ -1594,6 +1594,21 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
            */
           const sessionState = new Map((b.phaseSpine?.sessions ?? []).map((ps) => [ps.n, ps.state]))
           /*
+           * DECISION 77: SOMEBODY NOT LET IN YET IS NOT "HAS NOT STARTED SESSION 1". Read live,
+           * Faraji Odhiambo - held at the organisation's door, `notLetInYet` - was drawn here as
+           * an ordinary absence: "Faraji Odhiambo has not started session 1, and was not part of
+           * session 2." He cannot have started a session nobody let him into. The board's own
+           * `checkInGrid` row does not carry `notLetInYet` (it is a fact about the organisation,
+           * not this check-in's record), so it is read from the ground's own `participants`
+           * (`GET /grounds/:id`, already fetched as `groundForSignals` for `viewerRunsThisCheckIn`
+           * above) and matched back onto each row by participant id.
+           */
+          const notLetInYetIds = new Set(
+            (((groundForSignals as any)?.participants ?? []) as { id: string; notLetInYet?: boolean }[])
+              .filter((p) => p.notLetInYet)
+              .map((p) => p.id),
+          )
+          /*
            * U.10: "WHO CHECKED IN", THE PROTOTYPE'S WORDING AND SHAPE (board-as-lead.txt: "Who
            * checked in / The last 10 sessions, one row each"). The prototype draws this as a
            * name and a row of ten navy squares - not a table with a "Session N" header per column.
@@ -1613,7 +1628,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               */}
               {onAPhone ? (
                 <NineColumnsIsNotAPhoneScreen
-                  rows={b.checkInGrid.rows.map((r) => ({ ...r, name: nameOnTheBoard(b, r.participantId, r.name) })) as any}
+                  rows={b.checkInGrid.rows.map((r) => ({
+                    ...r,
+                    name: nameOnTheBoard(b, r.participantId, r.name),
+                    notLetInYet: r.notLetInYet ?? notLetInYetIds.has(r.participantId),
+                  })) as any}
                   sessions={b.checkInGrid.sessions}
                   openSessions={b.checkInGrid.sessions.filter((s) => sessionState.get(s) !== 'upcoming')}
                   myParticipantId={b.myParticipantId}
@@ -1632,6 +1651,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                        "Rukia Otieno" over her own row, on the board she herself was reading, the
                        same mistake "Who owns what" was fixed for above. */
                     const displayName = r.participantId === b.myParticipantId ? 'You' : nameOnTheBoard(b, r.participantId, r.name)
+                    const notYet = r.notLetInYet ?? notLetInYetIds.has(r.participantId)
                     return (
                     <PersonRow
                       key={r.participantId}
@@ -1644,17 +1664,23 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           : undefined,
                       }}
                     >
-                      <div className="gwui-gap-5" style={{display: 'flex', justifyContent: 'flex-end'}}>
-                        {squaresFor(r.participantId).map((sq) => (
-                          <span
-                            key={sq.key}
-                            aria-label={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
-                            title={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
-                            className={sq.state === 'empty' ? 'gwui-rule-square' : undefined}
-                            style={{display: 'inline-block', width: 14, height: 14, borderRadius: 3, flexShrink: 0, background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent'}}
-                          />
-                        ))}
-                      </div>
+                      {/* Decision 77: squares would have drawn every session as missed for
+                          somebody never let in to answer any of them - the sentence instead. */}
+                      {notYet ? (
+                        <Note tone="muted">{displayName} is waiting to be let in.</Note>
+                      ) : (
+                        <div className="gwui-gap-5" style={{display: 'flex', justifyContent: 'flex-end'}}>
+                          {squaresFor(r.participantId).map((sq) => (
+                            <span
+                              key={sq.key}
+                              aria-label={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
+                              title={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
+                              className={sq.state === 'empty' ? 'gwui-rule-square' : undefined}
+                              style={{display: 'inline-block', width: 14, height: 14, borderRadius: 3, flexShrink: 0, background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent'}}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </PersonRow>
                     )
                   })}

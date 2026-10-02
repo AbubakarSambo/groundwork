@@ -25,6 +25,10 @@ export interface PersonRow {
   role?: string | null
   managingOnly?: boolean
   cells: Record<string, string>
+  /** Decision 77: held at the organisation's door - never answered any of this check-in's
+      sessions because nobody has let them in yet, not because they missed them. Read "{name} is
+      waiting to be let in." instead of the usual attendance sentence. */
+  notLetInYet?: boolean
 }
 
 /** The words, in one place, so the phone and the grid can never call the same state two things. */
@@ -174,7 +178,15 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions, myP
         const shape = theShapeOfIt(r.cells, counted)
         const name = r.name ?? 'A colleague'
         const isReader = !!myParticipantId && r.participantId === myParticipantId
-        const sentence = theSentenceFor(name, shape, isReader)
+        /*
+         * DECISION 77: SOMEBODY NOT LET IN YET IS NOT "HAS NOT STARTED SESSION 1". Read live,
+         * Faraji Odhiambo - held at the organisation's door - was drawn here as an ordinary
+         * absence: "Faraji Odhiambo has not started session 1, and was not part of session 2."
+         * He cannot have started a session nobody let him into. `notLetInYet` replaces the usual
+         * attendance sentence (and the per-session list below it - every session would read the
+         * same way, for the same reason) with the one true fact.
+         */
+        const sentence = r.notLetInYet ? `${name} is waiting to be let in.` : theSentenceFor(name, shape, isReader)
         /* Re-review, 2 October: the heading above the reader's own sentence still said their own
            name - "Rukia Otieno" over "You have checked in for both sessions so far." - on the
            board she herself was reading, the same row BoardPage's 1440 view already heads "You"
@@ -197,7 +209,7 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions, myP
             )}
 
             {/* Every session the usual state does not cover, named rather than counted. */}
-            {shape.rest.length > 0 && (
+            {!r.notLetInYet && shape.rest.length > 0 && (
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {shape.rest.map((e) => (
                   <span key={String(e.s)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>

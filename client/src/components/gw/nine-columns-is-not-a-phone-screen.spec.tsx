@@ -174,3 +174,39 @@ describe('the reader\'s own sentence, said to them rather than about them', () =
     expect(screen.queryByText('Rukia Otieno')).toBeNull()
   })
 })
+
+/**
+ * DECISION 77: SOMEBODY NOT LET IN YET IS NOT "HAS NOT STARTED SESSION 1".
+ *
+ * Read live on the sales board: "Faraji Odhiambo has not started session 1, and was not part of
+ * session 2." about somebody held at the organisation's door - he cannot have started a session
+ * nobody let him into. `notLetInYet` on his row now reads the one true fact instead, and drops
+ * the per-session list below it (every session would read the same way, for the same reason).
+ */
+describe('a row not let in yet reads that, not the usual attendance sentence', () => {
+  it('reads "Faraji Odhiambo is waiting to be let in." instead of the usual sentence', () => {
+    render(
+      <NineColumnsIsNotAPhoneScreen
+        rows={[{ participantId: 'p-faraji', name: 'Faraji Odhiambo', cells: { '1': 'not-started' }, notLetInYet: true }]}
+        sessions={[1, 2]}
+      />,
+    )
+    expect(screen.getByText('Faraji Odhiambo is waiting to be let in.')).toBeTruthy()
+    expect(screen.queryByText(/has not started/)).toBeNull()
+    expect(screen.queryByText('Session 2')).toBeNull()
+  })
+
+  it('leaves everybody else\'s row drawn the usual way', () => {
+    render(
+      <NineColumnsIsNotAPhoneScreen
+        rows={[
+          { participantId: 'p-faraji', name: 'Faraji Odhiambo', cells: { '1': 'not-started' }, notLetInYet: true },
+          { participantId: 'p-amani', name: 'Amani Wekesa', cells: { '1': 'done', '2': 'done' } },
+        ]}
+        sessions={[1, 2]}
+      />,
+    )
+    expect(screen.getByText('Faraji Odhiambo is waiting to be let in.')).toBeTruthy()
+    expect(screen.getByText('Amani Wekesa has checked in for 2 of 2 sessions so far.')).toBeTruthy()
+  })
+})

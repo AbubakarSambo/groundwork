@@ -77,12 +77,19 @@ function answeredSentence(progress: Glance['progress']): string {
  * it is actually going. Falls back to the brief only where no round has finished - a check-in
  * nobody has answered has no picture yet and still has to say what it is for.
  */
-export function HowItIsGoing({ summary, brief, glance, tone = 'light' }: {
+export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingToBeLetIn }: {
   summary?: string | null
   brief?: string | null
   glance?: Glance | null
   /* On the board's dark header the same inks would be invisible. Nothing else changes. */
   tone?: 'light' | 'dark'
+  /**
+   * Decision 77: "Faraji Odhiambo is waiting to be let in." (or "...was not let in.", or null),
+   * sent only to whoever runs the check-in, the admin who set it up, or an admin with access -
+   * everybody else is sent null. Drawn as a muted note under the headline's own count, never
+   * folded into it.
+   */
+  waitingToBeLetIn?: string | null
 }) {
   const late = (glance?.inTheWay.count ?? 0) > 0
   const vars = tone === 'dark'
@@ -122,6 +129,9 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light' }: {
               <span className="gwui-how-people"> {answeredSentence(glance.progress)}</span>
             )}
           </div>
+          {/* Decision 77: beside the count, never inside it - a fact about the organisation's own
+              door, not about how far through this round is. */}
+          {waitingToBeLetIn && <div className="gwui-how-people">{waitingToBeLetIn}</div>}
           <div>
             {late
               ? (

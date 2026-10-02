@@ -327,7 +327,7 @@ export function standsTone(word: string): import('@/components/gw/ui').TagTone {
  * box, not a heading - while "Where each target stands" beside it, which answers a different
  * question, still draws exactly as before.
  */
-export function HeadlineSection({ headline, objectives, glance }: { headline: BoardPresent['headline']; objectives: BoardPresent['objectives']; glance?: Glance | null }) {
+export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn }: { headline: BoardPresent['headline']; objectives: BoardPresent['objectives']; glance?: Glance | null; waitingToBeLetIn?: string | null }) {
   if (!headline) return null
   const names = new Map((objectives ?? []).map((o) => [o.id, o.name]))
   const noAnswer = !headline.answer
@@ -353,7 +353,7 @@ export function HeadlineSection({ headline, objectives, glance }: { headline: Bo
             */}
             <SubHeading>{headline.question}</SubHeading>
             {headline.answer && <Callout tone="emphasis">{headline.answer}</Callout>}
-            {glanceGoesInTheBox && <HowItIsGoing glance={glance} />}
+            {glanceGoesInTheBox && <HowItIsGoing glance={glance} waitingToBeLetIn={waitingToBeLetIn} />}
           </Stack>
         </Panel>
       )}
