@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
 import { waitsOnAManagingOnlyLead } from '../grounds/the-lead-who-only-asks';
 import { whoOnACheckInIsAway } from '../suites/who-is-away';
+import { isNotLetInYet, whoIsNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 
 /**
  * "N OF M ANSWERED", COMPUTED ONCE.
@@ -38,6 +39,12 @@ export interface SomebodyWhoMightAnswer {
    * away is not waited on, and is not counted as still to answer; if they answer anyway, they count.
    */
   awayUntil?: string | null;
+  /**
+   * Not let in by an admin yet (decision 77): `notLetIn`, or the user's own hold. They cannot answer,
+   * so no count waits on them and they are not in "N of M". See who-an-admin-did-not-let-in.ts.
+   */
+  notLetIn?: boolean;
+  user?: { awaitingOrgApproval?: boolean | null } | null;
   /** This session's rows for them, whatever the state. */
   checkIns?: { status: string; sessionNumber?: number }[];
 }
@@ -62,6 +69,8 @@ export function whoIsExpected<T extends SomebodyWhoMightAnswer>(
   return (people ?? []).filter((p) => {
     if (p.managingOnly && !waitsOnTheLead) return false;
     if (p.awayUntil && !theyAnswered(p, sessionNumber)) return false;
+    /* Not let in yet (decision 77): not waited on. Anything they did answer still counts. */
+    if (isNotLetInYet(p) && !theyAnswered(p, sessionNumber)) return false;
     if (p.userId) return true;
     if (theyAnswered(p, sessionNumber)) return true;
     /*
@@ -89,8 +98,10 @@ export function whoIsExpected<T extends SomebodyWhoMightAnswer>(
 export function whoIsInTheRound<T extends { managingOnly?: boolean | null; awayUntil?: string | null; checkIns?: { status: string; sessionNumber?: number }[] }>(people: T[], sessionNumber: number, scenario?: string | null): T[] {
   const waitsOnTheLead = waitsOnAManagingOnlyLead(scenario, sessionNumber);
   /* Somebody away, who has not answered, is not in the count this round waits on (week 23). */
+  /* And somebody an admin has not let in yet, who has not answered, is not in it either (decision 77). */
   return (people ?? []).filter((p) => (!p.managingOnly || waitsOnTheLead)
-    && !((p as unknown as SomebodyWhoMightAnswer).awayUntil && !theyAnswered(p as unknown as SomebodyWhoMightAnswer, sessionNumber)));
+    && !((p as unknown as SomebodyWhoMightAnswer).awayUntil && !theyAnswered(p as unknown as SomebodyWhoMightAnswer, sessionNumber))
+    && !(isNotLetInYet(p) && !theyAnswered(p as unknown as SomebodyWhoMightAnswer, sessionNumber)));
 }
 
 /** Of the people in the round, by the header's rule, how many have answered this round. */
@@ -127,6 +138,8 @@ export interface HowManyHaveAnswered {
   completed: number;
   /** Who said no. A decline is an answer and is never counted as an account given. */
   declinedIds: string[];
+  /** Participant ids of people an admin has not let in yet, who are not counted (decision 77). */
+  notLetInIds: string[];
 }
 
 export async function howManyHaveAnswered(prisma: PrismaService, groundId: string, sessionNumber: number): Promise<HowManyHaveAnswered> {
@@ -145,20 +158,24 @@ export async function howManyHaveAnswered(prisma: PrismaService, groundId: strin
         { userId: null, invitedAt: { not: null }, inviteTokenExpiresAt: { gt: new Date() } },
       ],
     },
-    select: { id: true, checkIns: { where: { sessionNumber, status: { in: AN_ANSWER } }, select: { status: true } } },
+    select: { id: true, userId: true, checkIns: { where: { sessionNumber, status: { in: AN_ANSWER } }, select: { status: true } } },
   });
+  /* Not let in yet and not answered: not waited on, and not in the count (decision 77). */
+  const notLetIn = await whoIsNotLetInYet(prisma, everyone as any[]);
+  const heldOut = (p: { id: string; checkIns: unknown[] }) => notLetIn.has(p.id) && p.checkIns.length === 0;
   /* Away and not answered: not waited on. Away and answered anyway: counted like anybody. */
-  const expected = everyone.filter((p) => !(away.has(p.id) && p.checkIns.length === 0));
+  const expected = everyone.filter((p) => !(away.has(p.id) && p.checkIns.length === 0) && !heldOut(p));
   const answeredRows = expected.filter((p) => p.checkIns.length > 0);
   return {
     answered: answeredRows.length,
     expected: expected.length,
     expectedIds: expected.map((p) => p.id),
-    awayUntil: Object.fromEntries(everyone.filter((p) => away.has(p.id) && p.checkIns.length === 0).map((p) => [p.id, away.get(p.id) as string])),
+    awayUntil: Object.fromEntries(everyone.filter((p) => away.has(p.id) && p.checkIns.length === 0 && !heldOut(p)).map((p) => [p.id, away.get(p.id) as string])),
     waitingOn: expected.filter((p) => p.checkIns.length === 0).map((p) => p.id),
     completed: answeredRows.filter((p) => p.checkIns.some((c) => c.status === CheckInStatus.COMPLETED)).length,
     declinedIds: expected
       .filter((p) => p.checkIns.length > 0 && !p.checkIns.some((c) => c.status === CheckInStatus.COMPLETED))
       .map((p) => p.id),
+    notLetInIds: everyone.filter(heldOut).map((p) => p.id),
   };
 }

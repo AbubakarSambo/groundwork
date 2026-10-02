@@ -1,5 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { whoAnAdminDidNotLetIn } from './who-an-admin-did-not-let-in';
+import { isNotLetInYet, whoIsNotLetInYet } from './who-an-admin-did-not-let-in';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
 import { whatNeedsYou, type WhatNeedsYou } from './what-needs-you';
@@ -70,10 +70,11 @@ export class WhatNeedsYouService {
      * rule the board reads (request 85): of the people still waiting for approval, those whose latest
      * request to this organisation was declined.
      */
-    const waitingIds = [...new Set(here.flatMap((g) => (g.participants ?? []).filter((p: any) => !!p.userId && p.user?.awaitingOrgApproval).map((p: any) => p.userId as string)))];
-    const declined = await whoAnAdminDidNotLetIn(this.prisma, organizationId, waitingIds);
-    if (declined.size) {
-      for (const g of here) g.participants = (g.participants ?? []).map((p: any) => (p.userId && declined.has(p.userId) ? { ...p, notLetIn: true } : p));
+    /* And, by decision 77, nobody an admin has not let in yet, waiting or declined, is counted either. */
+    for (const g of here) {
+      if (!(g.participants ?? []).some(isNotLetInYet)) continue;
+      const held = await whoIsNotLetInYet(this.prisma, g.participants ?? [], organizationId);
+      if (held.size) g.participants = (g.participants ?? []).map((p: any) => (held.has(p.id) ? { ...p, notLetIn: true } : p));
     }
     /* On approved leave today (week 23): their own check-in says the round does not wait for them. Dates only. */
     const awayUntil = (await whoIsAwayOn(this.prisma, [userId], organizationId).catch(() => new Map<string, string>())).get(userId) ?? null;

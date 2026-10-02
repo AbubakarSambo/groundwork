@@ -497,3 +497,28 @@ describe('with the person-only reach, the weekly report carries a pattern only t
     expect(JSON.stringify(r)).not.toContain('The work stops until there is another call');
   });
 });
+
+/*
+ * DECISION 77 (2 October 2026): somebody an admin has not let in yet is not one of the check-ins due,
+ * and is not written up as not having checked in. Here an admin has not let Chidi in yet.
+ */
+describe('somebody an admin has not let in yet, as the lead reads the week', () => {
+  async function servedWithChidiHeld(held: boolean) {
+    const c = aCheckIn();
+    c.prisma.user = { findMany: jest.fn(async () => (held ? [{ id: 'u-chidi', awaitingOrgApproval: true }] : [])) };
+    await c.svc.build('g1', AT);
+    return c.svc.read('g1', LEAD, AT);
+  }
+
+  it('reads "Both check-ins due this week were made." and nothing about Chidi not checking in', async () => {
+    const r = await servedWithChidiHeld(true);
+    expect(r.inNumbers?.[0]).toEqual({ figure: '100%', of: 'of check-ins made this week', says: 'Both check-ins due this week were made.' });
+    expect(JSON.stringify(r)).not.toMatch(/Chidi has not checked in/);
+  });
+
+  it('once he is let in, his check-in is due again: "2 of the 3 check-ins due this week were made."', async () => {
+    const r = await servedWithChidiHeld(false);
+    expect(r.inNumbers?.[0]?.says).toBe('2 of the 3 check-ins due this week were made.');
+    expect(r.eachPerson.find((e) => e.who === 'Chidi')?.says).toBe('Chidi has not checked in this week, so there is nothing here yet about what Chidi is working on.');
+  });
+});

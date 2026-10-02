@@ -1,4 +1,5 @@
 import { theAwayLine } from '../suites/who-is-away';
+import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { theCheckIn, yourCheckIn } from './which-check-in-it-is';
 import { isShut } from './a-ground-that-has-ended';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
@@ -287,8 +288,8 @@ export function whatNeedsYou(
     /* Who has checked in, for whoever runs it or an admin. The check-in with the most people wins. */
     if (!over && mayName) {
       const n = teamRound;
-      /* Somebody an admin did not let in cannot be asked, so is neither counted nor named (request 95). */
-      const notLetInIds = new Set((g.participants ?? []).filter((p) => p.notLetIn).map((p) => p.id));
+      /* Somebody an admin has not let in cannot be asked, so is neither counted nor named (request 95, decision 77). */
+      const notLetInIds = new Set((g.participants ?? []).filter(isNotLetInYet).map((p) => p.id));
       const rows = sessions.filter((c) => c.sessionNumber === n && !notLetInIds.has(c.participantId));
       /*
        * ONE COUNT (U.5 review). The list row says "1 of 2 answered" from the check-in's own rule for
