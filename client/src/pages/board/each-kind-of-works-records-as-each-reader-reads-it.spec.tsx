@@ -92,8 +92,11 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
     expect(await screen.findByText('This check-in is about a sales team and its deals.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Change the kind of work' })).toBeTruthy()
 
-    /* The prototype's own heading, not the switchboard's internal "Deal grid". */
-    const dealGrid = screen.getByRole('region', { name: 'Every sale, and what shows it' })
+    /* Board fix (sales B, item 1): the prototype's own heading for this screen is "Every
+       deal, day by day" (docs/prototype/screens/B5-the-board/board-as-lead.txt) - this component
+       is only ever drawn from the Board page, so that heading, not the G1 example-check-ins
+       page's different wording, is the one a reader of this board actually sees. */
+    const dealGrid = screen.getByRole('region', { name: 'Every deal, day by day' })
     expect(within(dealGrid).getByText('Nyama Choma Palace')).toBeTruthy()
     /* Board review, 30 September, item 3: a detail read as a label stuck to a bare value
        ("Value KES 90K") - now a plain sentence. */
@@ -142,7 +145,7 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(SALES_ORG)
     await screen.findByText('This check-in is about a sales team and its deals.')
-    const dealGrid = screen.getByRole('region', { name: 'Every sale, and what shows it' })
+    const dealGrid = screen.getByRole('region', { name: 'Every deal, day by day' })
     within(dealGrid).getAllByRole('button', { name: 'Change' })[0].click()
     expect(await screen.findByRole('button', { name: 'Remove this record' })).toBeTruthy()
     expect(screen.queryByText(/cannot be undone/)).toBeNull()

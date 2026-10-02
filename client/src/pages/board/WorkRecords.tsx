@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { boardApi, KIND_OF_WORK_OPTIONS, type AServedWorkSection, type AServedWorkRow, type KindOfWork, type WorkItemInput } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
-import { Section, Panel, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack } from '@/components/gw/ui'
+import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack, Note } from '@/components/gw/ui'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -94,7 +94,11 @@ const ITEM_KINDS_FOR_HOLDS: Record<string, { value: string; label: string }[]> =
  * `holds` (that produced "All of the the parties" when `holds` was already "the parties").
  */
 const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
-  'sales org': 'Every sale, and what shows it',
+  /* Board fix (sales B, item 1): the prototype's own board screen for this kind of work
+     (docs/prototype/screens/B5-the-board/board-as-lead.txt, "Every deal, day by day") is the one
+     this component actually draws for - WorkRecordsSections is only ever called from the Board
+     page (BoardPage.tsx), never from the G1 example-check-ins screen the old heading quoted. */
+  'sales org': 'Every deal, day by day',
   /* Phase 2 of the board task, 1 October: the prototype's own eng example
      (docs/prototype/screens/G1-example-check-ins/eng.txt) heads this table "Every task, and
      what shows it" - the same words every other kind uses, not "Every release and task". */
@@ -108,6 +112,33 @@ const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
 }
 const WORK_PLAN_HEADING: Partial<Record<KindOfWork, string>> = {
   "founder's own check-in": 'Every commitment and decision, and what shows it',
+}
+
+/**
+ * THE DEAL GRID'S OWN SUBTITLE (board-as-lead.txt, directly under "Every deal, day by day":
+ * "Grouped by what the proof says about closing this quarter"). Said once here so the heading's
+ * `note` (Section's own slot for it) and the-prototype-count tests can't drift apart.
+ */
+const DEAL_GRID_NOTE: Partial<Record<KindOfWork, string>> = {
+  'sales org': 'Grouped by what the proof says about closing this quarter.',
+}
+
+/**
+ * THE DEAL GRID'S KEY (board-as-lead.txt, directly under its subtitle): what each mark means, and
+ * what the "Next step" column's two states mean. The first two lines are the shared `ProofMark`
+ * itself - filled for proof, ringed for someone's word (request 108 c) - so this key can never say
+ * something different from what the dot beside a deal's name actually draws. The last two describe
+ * the "Next step" column below, which carries no mark of its own.
+ */
+function DealGridKey() {
+  return (
+    <Stack gap={4}>
+      <Note tone="muted"><ProofMark mark="proven" /> Contact with proof: a photo, a quote, a payment</Note>
+      <Note tone="muted"><ProofMark mark="said" /> Contact in their words</Note>
+      <Note tone="muted">Next step booked</Note>
+      <Note tone="muted">Follow-up, no reply</Note>
+    </Stack>
+  )
 }
 const THEMES_HEADING: Partial<Record<KindOfWork, string>> = {
   'MarketView where next': 'Where next, ranked',
@@ -203,8 +234,8 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
       : 'Nobody has said what kind of work this check-in is about yet.')
 
   return (
-    <div className="gwui-gap-10 gwui-mt-8 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
-      <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>{sentence}</p>
+    <div className="gwui-gap-10 gwui-mt-8" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+      <p className="gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>{sentence}</p>
       {canEdit && (
         <Button kind="quiet" size="small" onClick={() => setOpen(true)} aria-label={kindOfWork ? 'Change the kind of work' : 'Choose the kind of work'}>
           {kindOfWork ? 'Change' : 'Choose'}
@@ -262,15 +293,39 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
 function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
   if (row.from === 'lead') {
     const addedBy = readerIsLead ? 'You' : (leadFirstName ?? 'The person running this check-in')
-    return <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>{`${addedBy} added it.`}</p>
+    return <p className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>{`${addedBy} added it.`}</p>
   }
   const saidBy = row.saidBy?.trim()
   return (
     <div className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>
       <div>{saidBy ? `In ${saidBy}'s words,` : 'In the words of someone in this check-in,'}</div>
-      {row.said && <p className="gwui-mt-2 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{fontStyle: 'italic'}}>{`“${row.said}”`}</p>}
+      {row.said && <p className="gwui-mt-2" style={{fontStyle: 'italic'}}>{`“${row.said}”`}</p>}
     </div>
   )
+}
+
+/**
+ * REQUEST 107 (c), part 1: THE RECORD'S OWN "NEXT" (board-as-lead.txt: "Next: Send the quote,
+ * with a photo"). Only an open commitment whose words name this exact record - drawn as the
+ * server's own sentence (`nextSays`), never a bare "Next:" label with nothing behind it.
+ */
+function WhatsNext({ row }: { row: AServedWorkRow }) {
+  const says = (row as any).nextSays as string | undefined
+  if (!says) return null
+  return <p className="gwui-panel-text-muted">{says}</p>
+}
+
+/**
+ * THE DEAL GRID'S OWN "NEXT STEP" COLUMN (board-as-lead.txt: "Next step" heading, then each row's
+ * own "Send the quote, with a photo" / "Nothing booked"). `nextSays` is never empty (the server's
+ * own fallback, what-happens-next-to-a-record.ts: "Nobody has said what happens next."), but the
+ * prototype's own word for that exact case is "Nothing booked" - said here only then.
+ */
+const NOTHING_HAS_BEEN_SAID = 'Nobody has said what happens next.'
+function NextStepCell({ row }: { row: AServedWorkRow }) {
+  const says = row.nextSays
+  const booked = !!says && says !== NOTHING_HAS_BEEN_SAID
+  return <p className="gwui-panel-text">{booked ? says : 'Nothing booked'}</p>
 }
 
 /** One row's add-or-change form: a record's name, kind, stage, owner and due date. Remove sits inside it, behind a confirmation. */
@@ -399,7 +454,7 @@ const NOBODY_SENTENCE_FOR_KIND: Record<KindOfWork, string> = {
   'a government programme': 'No owner is named yet.',
 }
 
-function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn, canEdit, onEdit }: {
+function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn, canEdit, onEdit, hasNextColumn }: {
   row: AServedWorkRow
   leadFirstName: string | null
   readerIsLead: boolean
@@ -408,6 +463,9 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
   hasStageColumn: boolean
   canEdit: boolean
   onEdit: () => void
+  /** The sales deal grid's own "Next step" column (board-as-lead.txt), drawn instead of folding
+      the same sentence inside "What shows it" (`WhatsNext`, still used by every other kind). */
+  hasNextColumn?: boolean
 }) {
   const fieldEntries = Object.entries(row.fields ?? {})
   const isFounder = kindOfWork === "founder's own check-in"
@@ -417,11 +475,19 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
   return (
     <div
       className={`gwui-work-row gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top${hasStageColumn ? '' : ' gwui-work-row-nostage'}`}
+      style={hasNextColumn ? NEXT_COLUMN_TEMPLATE : undefined}
       role="row"
       aria-label={row.name}
     >
       <div>
-        <div className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{row.name}</div>
+        <div className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>
+          {/* REQUEST 108 (c): the line's own mark - filled for proven, ringed for the rest,
+              nothing for a record added on the board with nothing behind it ("none"). */}
+          {(row as any).mark && (row as any).mark !== 'none' && (
+            <><ProofMark mark={(row as any).mark} />{' '}</>
+          )}
+          {row.name}
+        </div>
         {fieldEntries.map(([label, value]) => (
           /* Board review, 30 September, item 3: a detail read as a label and a bare value stuck
              together ("Amount KES 45,000") - now a sentence ("The amount is KES 45,000."). */
@@ -455,8 +521,16 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
           )
       )}
       <div>
-        <WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
+        <Stack gap={4}>
+          <WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
+          {!hasNextColumn && <WhatsNext row={row} />}
+        </Stack>
       </div>
+      {hasNextColumn && (
+        <div aria-label="Next step">
+          <NextStepCell row={row} />
+        </div>
+      )}
       {canEdit && (
         <div>
           <Button kind="quiet" size="small" onClick={onEdit}>Change</Button>
@@ -469,19 +543,32 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
 /** The column headings above the rows - the item's own noun, the kind's own word for whose it is.
     A kind with no stages carries no "Stage now" column at all (item 3); the founder's own
     check-in has no stages either, but keeps that slot for "Kind" (Commitment or Decision). */
-function WorkTableHead({ itemNoun, ownerLabel, hasStageColumn, isFounder, canEdit }: {
+/* BOARD FIX (sales B, item 1): the deal grid's extra "Next step" column (board-as-lead.txt) needs a
+   sixth grid track that none of the other ten kinds of work carry. Rather than a new one-off class
+   for one column count, the extra track is added by inline style, on top of the shared class's own
+   `grid-template-columns` - the same approach this file already uses throughout for one-off
+   layout, never a second CSS class. */
+const NEXT_COLUMN_TEMPLATE = { gridTemplateColumns: '1.3fr 0.8fr 0.8fr 1.4fr 1.3fr auto' }
+
+function WorkTableHead({ itemNoun, ownerLabel, hasStageColumn, isFounder, canEdit, hasNextColumn }: {
   itemNoun: string
   ownerLabel: string
   hasStageColumn: boolean
   isFounder: boolean
   canEdit: boolean
+  hasNextColumn?: boolean
 }) {
   return (
-    <div className={`gwui-work-head gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-13 gwui-ink-sub${hasStageColumn ? '' : ' gwui-work-head-nostage'}`} role="row">
+    <div
+      className={`gwui-work-head gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-13 gwui-ink-sub${hasStageColumn ? '' : ' gwui-work-head-nostage'}`}
+      style={hasNextColumn ? NEXT_COLUMN_TEMPLATE : undefined}
+      role="row"
+    >
       <span>{itemNoun}</span>
       <span>{ownerLabel}</span>
       {hasStageColumn && <span>{isFounder ? 'Kind' : 'Stage now'}</span>}
       <span>What shows it</span>
+      {hasNextColumn && <span>Next step</span>}
       {canEdit && <span />}
     </div>
   )
@@ -502,17 +589,21 @@ function TimelineList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
   })
   return (
     <Panel pad={false}>
-      {ordered.map((row) => (
-        <div key={row.id} className="gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
-          <div>
-            <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-15">
-              {row.due ? `${row.name} is due on ${whenItWas(row.due, 'weekdayAndDay')}.` : `${row.name}. No date said yet.`}
-            </p>
-            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
-          </div>
-          {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
-        </div>
-      ))}
+      <RowList label="Every deadline">
+        {ordered.map((row) => (
+          <Row key={row.id} columns="1fr" inset="record">
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
+              <div>
+                <p className="gwui-ink-text gwui-fs-15">
+                  {row.due ? `${row.name} is due on ${whenItWas(row.due, 'weekdayAndDay')}.` : `${row.name}. No date said yet.`}
+                </p>
+                <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
+              </div>
+              {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
+            </div>
+          </Row>
+        ))}
+      </RowList>
     </Panel>
   )
 }
@@ -530,19 +621,23 @@ function PartiesList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
 }) {
   return (
     <Panel pad={false}>
-      {rows.map((row) => (
-        <div key={row.id} className="gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
-          <div>
-            <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{row.name}</p>
-            {/* What the record says about this party, as the prototype does ("Pwani Mills, the other side"): each field's value, in words. */}
-            {Object.values(row.fields ?? {}).filter(Boolean).length > 0 && (
-              <p className="gwui-mt-2 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-15 gwui-ink-sub">{atTheStartOf(Object.values(row.fields ?? {}).filter(Boolean).join('. '))}.</p>
-            )}
-            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
-          </div>
-          {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
-        </div>
-      ))}
+      <RowList label="The parties">
+        {rows.map((row) => (
+          <Row key={row.id} columns="1fr" inset="record">
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
+              <div>
+                <p className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{row.name}</p>
+                {/* What the record says about this party, as the prototype does ("Pwani Mills, the other side"): each field's value, in words. */}
+                {Object.values(row.fields ?? {}).filter(Boolean).length > 0 && (
+                  <p className="gwui-mt-2 gwui-fs-15 gwui-ink-sub">{atTheStartOf(Object.values(row.fields ?? {}).filter(Boolean).join('. '))}.</p>
+                )}
+                <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
+              </div>
+              {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
+            </div>
+          </Row>
+        ))}
+      </RowList>
     </Panel>
   )
 }
@@ -563,24 +658,28 @@ function ThemesList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
 }) {
   return (
     <Panel pad={false}>
-      {rows.map((row, i) => {
-        const details = Object.values(row.fields ?? {}).filter(Boolean)
-        return (
-          <div key={row.id} className="gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
-            <div>
-              <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{`${i + 1}. ${row.name}`}</p>
-              {details.length > 0 && (
-                <div className="gwui-mt-4">
-                  <div className="gwui-fs-13 gwui-ink-muted">From how many said it, and who</div>
-                  {details.map((v, di) => <div key={di} className="gwui-fs-15 gwui-ink-sub gwui-mt-2">{v}</div>)}
+      <RowList label="Where next, ranked">
+        {rows.map((row, i) => {
+          const details = Object.values(row.fields ?? {}).filter(Boolean)
+          return (
+            <Row key={row.id} columns="1fr" inset="record">
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
+                <div>
+                  <p className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{`${i + 1}. ${row.name}`}</p>
+                  {details.length > 0 && (
+                    <div className="gwui-mt-4">
+                      <div className="gwui-fs-13 gwui-ink-muted">From how many said it, and who</div>
+                      {details.map((v, di) => <div key={di} className="gwui-fs-15 gwui-ink-sub gwui-mt-2">{v}</div>)}
+                    </div>
+                  )}
+                  <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
                 </div>
-              )}
-              <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
-            </div>
-            {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
-          </div>
-        )
-      })}
+                {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
+              </div>
+            </Row>
+          )
+        })}
+      </RowList>
     </Panel>
   )
 }
@@ -622,11 +721,13 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   })
 
   const heading = sectionHeading(kindOfWork, section)
+  const isDealGrid = section.section === 'Deal grid'
+  const note = (isDealGrid && kindOfWork ? DEAL_GRID_NOTE[kindOfWork] : undefined) ?? undefined
 
   if (section.state === 'not-known') {
     return (
-      <Section heading={heading}>
-        <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-13-5 gwui-ink-muted" style={{fontStyle: 'italic', lineHeight: 1.5}}>{section.why}</p>
+      <Section heading={heading} note={note}>
+        <p className="gwui-fs-13-5 gwui-ink-muted" style={{fontStyle: 'italic', lineHeight: 1.5}}>{section.why}</p>
       </Section>
     )
   }
@@ -635,8 +736,8 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 
   if (section.state === 'none-yet') {
     return (
-      <Section heading={heading}>
-        <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-sub gwui-fs-15" style={{lineHeight: 1.55}}>
+      <Section heading={heading} note={note}>
+        <p className="gwui-ink-sub gwui-fs-15" style={{lineHeight: 1.55}}>
           {`No ${section.holds} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`}
         </p>
         {canAdd && (
@@ -671,9 +772,8 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
     for (const row of section.rows) if (row.stage) stageCounts[row.stage] = (stageCounts[row.stage] ?? 0) + 1
   }
 
-  return (
-    <Section heading={heading}>
-      {isTimeline ? (
+  const showDealGridKey = isDealGrid && kindOfWork === 'sales org'
+  const dealGridContent = isTimeline ? (
         <TimelineList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} readerIsLead={readerIsLead} onEdit={setEditingRow} />
       ) : isObligations ? (
         <PartiesList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} readerIsLead={readerIsLead} onEdit={setEditingRow} />
@@ -682,7 +782,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       ) : (
         <Panel pad={false}>
           <div role="table" aria-label={heading}>
-            <WorkTableHead itemNoun={itemNoun} ownerLabel={ownerLabel} hasStageColumn={hasStageColumn} isFounder={isFounder} canEdit={canEdit} />
+            <WorkTableHead itemNoun={itemNoun} ownerLabel={ownerLabel} hasStageColumn={hasStageColumn} isFounder={isFounder} canEdit={canEdit} hasNextColumn={showDealGridKey} />
             {section.rows.map((row) => (
               <WorkRow
                 key={row.id}
@@ -693,15 +793,20 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
                 hasStageColumn={hasStageColumn}
                 canEdit={canEdit}
                 onEdit={() => setEditingRow(row)}
+                hasNextColumn={showDealGridKey}
               />
             ))}
           </div>
         </Panel>
-      )}
+      )
+
+  return (
+    <Section heading={heading} note={note}>
+      {showDealGridKey ? <Stack gap={12}><DealGridKey />{dealGridContent}</Stack> : dealGridContent}
 
       {!!section.stages?.length && (
         <div className="gwui-mt-14">
-          <p className="gwui-mt-0 gwui-mr-0 gwui-mb-8 gwui-ml-0 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
+          <p className="gwui-mb-8 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
           <StageTrack stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
         </div>
       )}
@@ -746,6 +851,12 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
  * pulled out and named as theirs. Draws nothing the server did not already send in `workRecords`;
  * only filters it down to `row.ownerParticipantId === myParticipantId`.
  */
+/** The prototype's own heading for this reader's own records (board-as-participant.txt: "Your
+    deals, day by day"), where it has one - otherwise the same shape every other kind uses. */
+const YOUR_OWN_HEADING: Partial<Record<KindOfWork, string>> = {
+  'sales org': 'Your deals, day by day',
+}
+
 export function YourOwnRecordsSections({ kindOfWork, sections, myParticipantId, leadFirstName }: {
   kindOfWork?: KindOfWork | null
   sections?: AServedWorkSection[]
@@ -754,22 +865,48 @@ export function YourOwnRecordsSections({ kindOfWork, sections, myParticipantId, 
 }) {
   if (!sections?.length || !myParticipantId) return null
   const itemNoun = (kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item').toLowerCase()
+  const heading = (kindOfWork ? YOUR_OWN_HEADING[kindOfWork] : undefined) ?? `Your own ${itemNoun}s, day by day`
+  const isSalesDeals = kindOfWork === 'sales org'
   const mine = sections
     .filter((s): s is Extract<AServedWorkSection, { state: 'filled' | 'none-yet' }> => s.state !== 'not-known')
     .flatMap((s) => (s.rows ?? []).filter((r) => r.ownerParticipantId === myParticipantId))
-  if (!mine.length) return null
   return (
-    <Section heading={`Your own ${itemNoun}s, day by day`} note="Only yours.">
-      <Panel pad={false}>
-        {mine.map((row) => (
-          <div key={row.id} className="gwui-panel-row">
-            <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{row.name}</div>
-            {row.stage && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2"><Tag tone="plain">{row.stage}</Tag></div>}
-            {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
-            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={false} /></div>
-          </div>
-        ))}
-      </Panel>
+    <Section heading={heading} note="Only yours.">
+      {/*
+        BOARD FIX (sales B, item 3b): A READER WITH NO ROWS STILL READS A SENTENCE, NOT A MISSING
+        SECTION. The engine itself sends every row ever said about this reader's own work (request
+        111 is about rows going missing server-side, not about this screen hiding what it is sent),
+        so an empty `mine` here is read plainly rather than by vanishing the whole heading.
+      */}
+      {mine.length === 0 ? (
+        <Note tone="muted">{`You have no ${itemNoun}s on record yet.`}</Note>
+      ) : (
+        <Stack gap={12}>
+          {isSalesDeals && <DealGridKey />}
+          <Panel pad={false}>
+            <RowList label={heading}>
+              {mine.map((row) => (
+                <Row key={row.id} columns="1fr" inset="record">
+                  <div>
+                    <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>
+                      {row.mark && row.mark !== 'none' && <><ProofMark mark={row.mark} />{' '}</>}
+                      {row.name}
+                    </div>
+                    {row.stage && <div className="gwui-mt-2"><Tag tone="plain">{row.stage}</Tag></div>}
+                    {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
+                    <div className="gwui-mt-4">
+                      <Stack gap={4}>
+                        <WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={false} />
+                        {isSalesDeals && <NextStepCell row={row} />}
+                      </Stack>
+                    </div>
+                  </div>
+                </Row>
+              ))}
+            </RowList>
+          </Panel>
+        </Stack>
+      )}
     </Section>
   )
 }

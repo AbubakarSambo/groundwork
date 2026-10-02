@@ -1,5 +1,5 @@
 import { ShowAFew } from './a-long-list-is-not-a-page'
-import { PeopleTable, PersonRow, Tag, type TagTone } from './ui'
+import { PeopleTable, PersonRow, Tag, type TagTone, Note, Stack } from './ui'
 import { initialsOf } from '@/pages/org/people-here'
 
 /**
@@ -77,6 +77,28 @@ const TONE: Record<Reason, TagTone> = {
   'not let in': 'plain',
 }
 
+/**
+ * THE BROKEN SENTENCE (board review, sales piece A, item 3): "Baraka Mwangi has none of their 4
+ * Onboard 4 shops in Westlands. yet." happened because `targetName` can arrive as the objective's
+ * own full name - a verb, the count, and a trailing full stop ("Onboard 4 shops in Westlands.") -
+ * not only the plain noun phrase the row above assumed ("shops in Westlands"). Appending that whole
+ * name after the row's own bare `{target}` number said the count twice, and appending words after
+ * its trailing stop read as two sentences stapled together.
+ *
+ * This always returns one phrase, with the number said once: the trailing stop is stripped first,
+ * and if the cleaned name already contains the target's own number as a whole word, everything up
+ * to and including that number is dropped - "Onboard 4 shops in Westlands" becomes "shops in
+ * Westlands", read exactly the way a plain noun phrase already was. A name with no number in it
+ * (the plain case) is untouched, and no name at all falls back to "target"/"targets".
+ */
+export function targetPhrase(target: number, targetName: string | null | undefined): string {
+  const cleaned = (targetName ?? '').replace(/\.+\s*$/, '').trim()
+  if (!cleaned) return `${target} ${target === 1 ? 'target' : 'targets'}`
+  const upToTheNumber = new RegExp(`^.*?\\b${target}\\b\\s*`)
+  const noun = upToTheNumber.test(cleaned) ? cleaned.replace(upToTheNumber, '').trim() : cleaned
+  return `${target} ${noun || cleaned}`
+}
+
 export type Square = { key: number; state: 'done' | 'empty' | 'upcoming' }
 
 /**
@@ -113,27 +135,29 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
           person={{ initials: initialsOf(r.who), name: r.who, level: r.nameIsTheirRole ? 'Has not given a name' : undefined }}
         >
           <div style={{ minWidth: 0 }}>
-            {/* The number, where they have one. A person with no target of their own still has a
-                row: what to do about them does not depend on somebody having set them a figure.
-                RE-REVIEW, 30 SEPTEMBER: a bare "0 of 4" read as a stray fragment - it is what the
-                number counts, said as a sentence, using the matching objective's own name where
-                the server sent one. */}
-            {r.target != null && (
-              <div className="gwui-fs-13-5 gwui-ink-sub" style={{ lineHeight: 1.5 }}>
-                {r.who} has {r.count === 0 ? 'none' : r.count} of {r.count === 0 ? 'their' : 'the'} {r.target} {r.targetName ?? (r.target === 1 ? 'target' : 'targets')}{r.count === 0 ? ' yet' : ' so far'}.
-              </div>
-            )}
-            <div className="gwui-fs-15 gwui-ink-sub gwui-mt-2" style={{ lineHeight: 1.5 }}>{r.says}</div>
-            {/* `ask` and `finding`, kept as one quiet line rather than dropped - not in the
-                prototype's table, but the whole point of a row for a lead who can act on it. */}
-            {(r.ask || r.finding) && (
-              <div className={`gwui-fs-13-5 gwui-mt-4 ${r.hasGap ? 'gwui-ink-amber' : 'gwui-ink-muted'}`} style={{ lineHeight: 1.5 }}>
-                {[r.ask, r.finding].filter(Boolean).join(' ')}
-              </div>
-            )}
-            {r.keepsComingUp && (
-              <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-4" style={{ lineHeight: 1.5 }}>{r.keepsComingUp}</div>
-            )}
+            <Stack gap={2}>
+              {/* The number, where they have one. A person with no target of their own still has a
+                  row: what to do about them does not depend on somebody having set them a figure.
+                  RE-REVIEW, 30 SEPTEMBER: a bare "0 of 4" read as a stray fragment - it is what the
+                  number counts, said as a sentence, using the matching objective's own name where
+                  the server sent one. */}
+              {r.target != null && (
+                <Note>
+                  {r.who} has {r.count === 0 ? 'none' : r.count} of {r.count === 0 ? 'their' : 'the'} {targetPhrase(r.target, r.targetName)}{r.count === 0 ? ' yet' : ' so far'}.
+                </Note>
+              )}
+              <Stack gap={4}>
+                <div className="gwui-fs-15 gwui-ink-sub">{r.says}</div>
+                {/* `ask` and `finding`, kept as one quiet line rather than dropped - not in the
+                    prototype's table, but the whole point of a row for a lead who can act on it. */}
+                {(r.ask || r.finding) && (
+                  <Note tone={r.hasGap ? 'amber' : 'muted'}>
+                    {[r.ask, r.finding].filter(Boolean).join(' ')}
+                  </Note>
+                )}
+                {r.keepsComingUp && <Note tone="muted">{r.keepsComingUp}</Note>}
+              </Stack>
+            </Stack>
           </div>
           {r.reason === 'not let in'
             ? <span />

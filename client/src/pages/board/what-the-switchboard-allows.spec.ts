@@ -41,6 +41,26 @@ describe('switchboardAllows', () => {
     expect(switchboardAllows('NOT_A_REAL_SCENARIO', 'objectives')).toBe(true)
     expect(switchboardAllows(null, 'objectives')).toBe(true)
   })
+
+  /*
+   * SECOND BOARD REVIEW: BLOCKERS NEVER DRAWS ON SIX KINDS OF WORK WHOSE PROTOTYPE HAS THEM.
+   *
+   * `BlockersSection` (the prototype's full blocker card: "Waiting on", "Raised", "Affects", "What
+   * the proof shows", "Would clear it") draws from `blockerCheck` and `whoWaitedOnWhom`, gated on
+   * `allowed('blockerCheck') || allowed('whoWaitedOnWhom')`. The engine sends real `blockerCheck`
+   * rows for every one of these situations whenever a blocker exists - there is no scenario gate on
+   * the server at all - and the prototype's own example boards for them
+   * (docs/prototype/screens/G1-example-check-ins: eng.txt, ops.txt, programme.txt, salesorg.txt)
+   * draw exactly that card. The G2 table had "Blocker check" missing from these four scenario rows
+   * (sales and ops both run on OKR_ALIGNMENT; gov and matter both run on PULSE_CHECK), so the data
+   * arrived and nothing drew it. docs/modules.md's own table is corrected alongside this.
+   */
+  it('allows "Blocker check" for the six kinds of work whose prototype draws a full blocker card', () => {
+    expect(switchboardAllows('NEW_PROJECT', 'blockerCheck')).toBe(true) // eng
+    expect(switchboardAllows('OKR_ALIGNMENT', 'blockerCheck')).toBe(true) // ops, sales
+    expect(switchboardAllows('COHORT_CHECK', 'blockerCheck')).toBe(true) // programme
+    expect(switchboardAllows('PULSE_CHECK', 'blockerCheck')).toBe(true) // gov, matter
+  })
 })
 
 describe('orderedSwitchboardSections', () => {
@@ -52,12 +72,20 @@ describe('orderedSwitchboardSections', () => {
    * them: Targets(1), Starting agreement(5), Accounts side by side(6), Change since last(12),
    * Blockers(13), Patterns(15). The order is the table's position, whichever list a section is on.
    */
-  it('only includes sections that have data, in G2’s own table order', () => {
+  /*
+   * BOARD REVIEW, SALES PIECE A, ITEM 1: "PATTERNS" NOW LEADS, NOT TRAILS. No prototype screen
+   * shows the other six of these seven sections as their own heading on a board - BoardPage.tsx
+   * now folds them under "Everything else from this check-in", and CLAUDE.md protects patterns
+   * (and coaching, right after it) from ever being folded away - so patterns alone moves to the
+   * front of this list, for every situation. The other six keep G2's own table order among
+   * themselves, unchanged (updating this pinned expectation, not deleting it - see the commit).
+   */
+  it('only includes sections that have data, with patterns first and the rest in G2’s own table order', () => {
     const out = orderedSwitchboardSections('OKR_ALIGNMENT', {
       objectives: true, dependencies: true, patterns: true,
       startingState: false, divergence: true, quickRead: true,
     }, true)
-    expect(out).toEqual(['objectives', 'divergence', 'quickRead', 'dependencies', 'patterns'])
+    expect(out).toEqual(['patterns', 'objectives', 'divergence', 'quickRead', 'dependencies'])
   })
 
   it('never includes patterns while patterns are off, even if G2 turns it on', () => {

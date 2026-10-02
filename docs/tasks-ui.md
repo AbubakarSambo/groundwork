@@ -80,6 +80,7 @@ Patterns and coaching are protected: every piece stays. A kind is marked done on
 - [ ] Draw the engine's new board fields: request 82 (the two parts of "What keeps coming up", with the lead's "coach towards" and "one step"), 85, 87, 89, and the switchboard's 22 sections.
 - [ ] Picture all eleven kinds of work, as the lead and as a participant, at 1440 and 375, against their prototype examples, using the local test check-ins and the kind-of-work records from request 76.
 - [ ] Review and fix, with the board's drift replaced by shared parts. Then say for each kind: done and matching the prototype.
+- [ ] Finish the board page's one-off clean-up: BoardPage.tsx still has 596 one-off uses (frozen, may only go down), section by section: the reports list, each person, the end, and the long tail in every section.
 
 ## The engine's answers of 30 September, to draw on the screens
 

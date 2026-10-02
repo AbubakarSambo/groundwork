@@ -4,6 +4,115 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## This morning, 2 October: in short
+
+### What I finished overnight
+- **Group 1, settings and account,** passed its review after four rounds.
+- **Group 2, your own pages** (Today, the check-ins list, You, Company, and Suites with its ten boards), passed its review.
+- **Group 3, check-ins and signing in,** is rebuilt and reviewed. That covers signing in and joining, the session report, the check-in conversation, the entry chat, and both check-in pages with every tab. Its review's faults are fixed in two batches: what was untrue, then the look. Its drift clean-up is done for the reports and the check-in pages. The conversation, the entry chat and the My work tab are still to clean.
+- **The old team report** was compared with the Report tab. Six things it had were moved, and then it was removed, as you decided.
+- **Your decisions on the explaining sentences, the resolution panel, the old-version notice, and the person a check-in is about** are all built.
+- **"Rewrite" follows your rule.** The server's side is request 104.
+- **The board for every kind of work:**
+  - batch 1, the screen's own faults, is done;
+  - batch 2, the prototype's own sections and the participant's short view, is done;
+  - batch 3, the shared parts, is done for ten of the board's eleven files and four of the board page's own sections;
+  - a second review was just run, and it sent every board back (below).
+- **Four guards now stop the screens drifting from the prototype.** No new one-off class, no new page-only class, no new `<style>`, and no file may use one-off classes more often than it does today. Those counts can only go down.
+- **I merged the engine's work six times.** The API tests pass, apart from the engine's own known items.
+
+### The board, kind by kind, after the second review (02:00 to 05:30)
+
+None of the eleven is done yet. A kind is marked done only when its pictures match its prototype example after a review, and none does.
+
+| Kind of work | Lead | Participant |
+| --- | --- | --- |
+| Founder's own check-in | Not done. Both causes. The screen has no "Where each target stands" or blockers, and about 12 extra sections. The engine sends no headline question, pace words or record marks. | None in this check-in. |
+| Engineering release | Not done. Mainly the screen: the blockers section is turned off though its data is sent, and the record key and "Next" are missing. | Not done. The screen says the team picture is "ready" when it is not shared, and there is no "Your records" section. |
+| Support desk | Not done, the same as engineering. | Not done, the same. |
+| Distribution operations | Not done, the same. | Not done, the same. |
+| Trader training programme | Not done, the same. | Not done, the same. |
+| Sales team | Not done. A review of this board alone (2 October) found the prototype's sections out of order, with about 25 extra sections mixed in among them, and one fact told nine times. "Where each target stands" is not beside the headline, the deal grid has no "Next" column and no marks, and one sentence under "The team today" is broken. Being fixed now. The engine's part is request 111: ratings it sends to readers, the wrong "Met" target, three repeated targets, two deadlines and counts that disagree. | Not done. "Every session" is folded away, the example question is not the prototype's, and the board reads the session row instead of whether the team picture is shared. The engine does not send Amani's own deals, her share or her aim (request 111). |
+| A government programme | Not done. Mainly the engine: its own sections are not sent (request 105). | Not done, the same. |
+| Asset loans | Not done. Mainly the engine (request 105). | Not done, the same. |
+| A law firm matter | Not done. Mainly the engine (request 105). | Not done, the same. |
+| Choosing where to focus next | Not done. Mainly the engine (request 105). | Not done, the same. |
+| Subscriptions and payments | Not done. Mainly the engine (request 105). The borrowed check-in is not a fair test. | Not checked: Amani has not answered it. |
+
+What holds on every board:
+- **Privacy, in what the API sends each participant.** No judgement, no coaching about others, no lead's actions, and nothing that rates a person.
+- **The page colour.**
+- **No sideways scroll on a phone.**
+
+What the screen gets wrong, and is being fixed now:
+- The participant is told the team picture is "ready" when it is not shared.
+- The blockers section is switched off on six kinds, though its data is sent.
+- **Coaching is sent to the lead and the participant but drawn nowhere on the board.** It is protected, so it comes first.
+- Some of the screen's own wording.
+
+What waits on the engine: requests 105, 107, 108 and 109.
+
+**Update, 2 October, late morning.**
+- Board fix batch 4 is done:
+  - coaching is drawn for exactly its readers;
+  - the participant is told the truth about sharing, "Today's team picture isn't shared yet.";
+  - blockers draw on the six kinds, which was the screen's own table;
+  - five wording fixes.
+- Then the engine's overnight work was merged: requests 105 to 108, 47 commits, with no conflicts. The local database has its change, and the API is restarted on it.
+- On the sales board, the engine's fields for the headline question, where each target stands, the record marks, "Where this is heading", blockers and the participant's own board are now sent, but the screen does not draw them yet.
+- Following your new approach, the sales board alone is being made exactly right, section by section, as the lead and as a participant. The other ten follow one at a time.
+
+**The sales board, second pass (2 October, afternoon).** The review of the first pass said the board did not match, so two builders fixed the screen's part:
+- On Rukia's board, the sections now run in the prototype's order. Every section the prototype does not have is kept, in one closed fold at the end called "Everything else from this check-in". Coaching ("What to work on next" and "What to ask each person") stays open, straight after "What keeps coming up".
+- "Where each target stands" now sits beside the headline question, and a summary no longer fills the big answer.
+- The broken sentence under "The team today" now reads, for example, "Baraka Mwangi has none of their 4 shops in Westlands yet."
+- The deal grid is headed "Every deal, day by day", with the prototype's key, filled and ringed marks, and a "Next step" column that says "Nothing booked" where there is none.
+- Each item under "What needs you in this check-in" says where it comes from and has one quiet "Open".
+- Amani's board shows "Your deals, day by day", marked "Only yours", then "Every session" outside the fold.
+- What still differs because of the engine: the deal grid's groups ("Likely by 30 September", "Possible" and so on), each item's own choices under "What needs you", Amani's deals and share, and a team picture that is said to be shared when it is not. These are requests 111 and 112.
+- I merged the engine's latest work (decision 75's items), applied its database change to the local database only, and restarted the local API. A second review of the sales board comes after the tests.
+
+**The sales board, first pass.** It now draws the engine's new fields:
+- the headline question, "Will we sign 12 shops for kitchen appliances in Nairobi by 13 December?";
+- a word for where each target stands;
+- "Where this is heading", with "Record the decision";
+- blockers as sentences, such as "Baraka Mwangi is waiting on you for the discount decision." and "This was raised once, on 27 September.";
+- each deal's mark and what happens next;
+- "By area", and "Reported, stage by stage".
+
+The participant's board still shows its short view, because the team picture is not shared yet. Two gaps are the engine's, as request 110: Amani's own share is not sent, and her own aim of 3 shops is not on the board. The board still says the 12-shop target is "Met", which comes from the wrong figure in request 109. The review of this board alone says it does not match yet, as the lead or as a participant. Its findings are in the board table above, and the screen's part is being fixed now. The engine's part is request 111, whose first item is privacy: the board sends readers each person's "confidence" figure, which the screen never draws, but which is a rating of a person's answers.
+
+### Where the pictures are
+- **Side-by-side pictures of the earlier screens, with what changed on each:** `/Users/hafsahjumare/Documents/GitHub/groundwork-pictures/`, next to the project folder. Start with its `README.md`.
+- **The boards:** the scratchpad's `pictures/`.
+  - `boards-before3` and `boards-after3a` to `boards-after3f`: before and after each clean-up.
+  - `review-boards2`: the second board review, with what the API sent each reader.
+- **Each group's review:** `review-g1`, `review-g2`, `review-g3`, and the rest, in the same place.
+
+### Decided for Hafsah to confirm (since 30 September)
+
+- **The developer page leaves out two prototype sections (30 September).** "Add your own" (describe a field, a board or a suite) and "Build your own screens" (a key that reads and chats) are on the prototype's page, but nothing in the product stores them or makes that kind of key. Drawing them would be a pretend feature, so they are not drawn. "Terms accepted by Grace Achieng" is not shown either, because the product does not record who accepted the terms, only when. Is that right, or should either section be built, backend and all?
+- **The example console on Connections and Tools (30 September, night).** The pictures there were screenshots with your own name and Coamana's CRM in them, shown to every organisation under "An example: <their name>'s own operations console". They are replaced by the prototype's own drawing, with its made-up Baridi people. The image files are kept, but these pages no longer use them.
+- **"Share Groundwork with another organisation" on Plan and billing** is shown only to someone who can make or see a code. Only Groundwork's own staff can make codes, so an ordinary admin would have read about codes with no code and no way to make one.
+- **"Leave" on Settings** is the white button with red words, the same as "End this check-in", not solid red, as the prototype draws it.
+- **When the prototype's own words are not a full sentence (1 October, night).** The rules say both "copy the prototype's wording" and "plain, full sentences". Where the prototype's line is already a plain full sentence, it stays word for word. Where it is a fragment or uses jargon, for example "Invoices paid, deals won." or "Ask for API access", it gets the smallest change that makes it one plain sentence, for example "Groundwork reads which invoices are paid and which deals are won." About 25 such lines on the settings pages changed this way. Should the prototype's fragments stay as they are instead?
+- **"Erase it" on Settings is now "Remove your name and email".** Its confirmation always said that your answers stay, without your name. The old label read as "erase everything you've written", which is not what it does.
+- **The three screenshots in `client/public/connect/` are deleted.** They held your name, Coamana's CRM, and what looked like a real check-in's numbers, and anyone could open them by address on the live site. They are still in the git history.
+- **An admin's To-dos board (1 October).** With the To-dos suite on, an admin reads every person's to-dos from every check-in, including ones the admin is not in. The prototype shows this list to an admin. Your rule says each person's load across check-ins is private. I kept the board, because admins already read every check-in they may read, and took the more private option: it never shows to-dos from a check-in the reader may not read, such as a performance plan, promotion or renewal. Should an admin see this list at all?
+- **"Open its board" on the Suites page is a link, not a button.** The prototype draws it as a white button, but your rule is that something that only goes elsewhere is a link.
+- **The old team report page is not used (1 October).** `ReportPage.tsx` only sends people on to the check-in's own Report tab. Its 900-line report, and about 15 tests that lock it, are drawn by no page. The team's report a person reads comes from the rebuilt parts on the check-in page. The old page's styling was moved onto the shared parts anyway, and nothing was deleted. Should it be removed?
+- **Small one-off style classes.** Rebuilt pages use about 173 small classes, such as one for a 20-pixel heading or one margin, carried over from the old pages' own values. They follow the prototype's values, but they are not named parts. I have listed folding them into named parts as a later clean-up, rather than redoing pages that have already passed review.
+- **Two more pages that nobody can reach (1 October, night).** CreateGroundPage, the old eight-step way to start a check-in, is not shown: its address, `/grounds/new`, sends people on to the entry chat at `/start`. The old save card (`pages/home/SaveCard.tsx`) is drawn by no page either; the live entry chat draws its own. Its first steps and the save card were rebuilt before this was found. I stopped there, and did not rebuild the rest. I suggest treating both as you decided for the old team report: compare each with the live entry chat, move anything it lacks, then remove it. Shall I?
+- **Page-only classes that copy an old page's values (1 October, night).** After your decision on the one-off value classes, the builders kept moving old pages' own values into new classes named after the page instead: 153 for the entry chat (`gwui-ec-…`), 88 for the check-in conversation (`gwui-ci-…`), and smaller families for the "fills in as you talk" panel, the situation cards and the example consoles. It is the same drift under another name. I took it as part of your decision. A second guard now freezes every class that exists today, and any new class must be a named shared part, written up in the parts table with the prototype value it follows. Each group's review replaces the page-only copies on its pages with shared parts, as with the one-off classes, starting with group 3. Is that what you meant?
+- **From group 3's review (1 October, evening).**
+  - The lead's check-in tabs sit in a 600-pixel column under a full-width header. The prototype uses the full width, so they will follow the prototype. A test that pinned the 600-pixel reading width is updated.
+  - Signed out, `/start` will show no sidebar, as in the prototype.
+  - The chosen option in a two-way choice (such as "With a link we email you" on sign-up) is filled navy. The prototype's own choices draw the chosen one that way, so I did not count it as a second navy button.
+  - "Email" stays as the label on sign-in and sign-up, until you decide on "Your work email" (U.2).
+- **ANSWERED by Hafsah (1 October): only the lead, or an admin once the lead has left.** Was: **An admin may rewrite a check-in's brief (1 October, evening).** The review asked that Juma, an admin who only reads a check-in, not be offered "Rewrite" on its brief. But the server lets any admin of the organisation change the brief, by a recorded decision ("covering for an absent lead"), and a test checks it. I kept "Rewrite" for admins rather than override that. Should an admin who does not run a check-in be able to change its brief?
+- **A test check-in borrowed for the MarketView Q4 board (1 October, night).** No local check-in of that kind exists, because the test organisation's free plan was full when the boards' test data was made. Rather than buy a plan or write to the database, one of the duplicate test check-ins called "Help a new hire get started" has its kind of work switched to MarketView Q4, by its lead, through the board's own kind-of-work control. It is "Help a new hire get started, from 27 September" (d1880c07), about Wanjiku, which had no kind of work. It cannot be switched back through the product yet, because the control only offers the eleven kinds, so clearing it is request 106. Until then it reads as a MarketView Q4 check-in on this Mac only.
+- **The participant's board (2 October, early).** The prototype's participant board (B5) is a short personal view: whether today's team picture is shared, your own report, your own deals day by day, and your share. Today a participant gets the whole board. The participant's board will now lead with the prototype's short view. Everything else they may already read stays below it, in one fold, "The whole check-in", so nothing they can read today is taken away. Their own share shows once the engine sends it (request 107).
+
 ## At the end of the seven-hour run, 29 September (13:36 to 20:36)
 
 **What I finished.** The check-in page is rebuilt from the prototype's shared parts, and it has passed its review and re-review. It has the prototype's five tabs: Board, Check-in, Context, My work, and People and setup. The Check-in tab opens your conversation straight away, and the lead's own check-in is on the same page, so one check-in has one page. Your past sessions are under My work, which now follows the prototype's "Your work" page. "Who is in this" moved to People and setup. The conversation, the Done page and the page between check-ins are rebuilt from the same parts. An admin who doesn't run a check-in sees the prototype's read-only view with three tabs. The re-review found eight things, and all eight are fixed. One of them was a privacy fix: "What success looks like" no longer names someone on a check-in where people can't see each other. I merged the engine workspace's work twice, and the second merge brought 64 of its commits.
@@ -244,6 +353,52 @@ Batch 2 is next: the prototype's own sections where their data is already sent, 
 - The before pictures of all eleven boards, as the lead and a participant at both widths (40 pictures), are in the scratchpad's `pictures/boards-before3/`.
 - The API tests after the sixth merge pass 13,385 of 13,386. The one failure, and a second suite that failed to load, both pass when run on their own, all 23 tests, so they were load during the full run.
 
+**Board batch 3, second part: five more files are built from shared parts.**
+- Each person's part on the board, the switchboard's sections, the pattern panel, what the record shows over time, and "Did this feel fair" are done. The pattern panel is protected, and every piece and reader of it is kept.
+- `Stack`, `Note` and `SubHeading` gained a few named options, at the prototype's values, written up in the parts table.
+- Three things look different, on purpose:
+  - "A question you could ask…" in a pattern is now the shared callout box.
+  - One switchboard sentence moved to its section's foot.
+  - "Did this feel fair" is a callout.
+- A few spots keep an inline background, or a one-off margin, where no shared part fits yet, such as the two tinted boxes in "What the record shows" and the green and amber pair on "Did this feel fair". The board's review will judge them.
+- All 1,306 board and component tests pass, and so does the whole screen suite, except the wording guard (request 95). The button test passes on every board.
+
+A mistake of mine with the pictures: my "before" pictures of the six u7 boards as their lead show the sign-in page, because that sign-in did not get through. The comparison for those six is therefore with the "after" set only, which is real. The after pictures, at both widths, are in the scratchpad's `pictures/boards-after3a/`, and they are now the baseline for the remaining files.
+
+**Board batch 3, third part: four more files are built from shared parts.**
+- The lead's judgement: "The gap" is now a callout, and "What to do" is a list of rows. Every word is kept, and it is still the lead's alone.
+- The targets band: whose each target is is a tag.
+- The resolution panel: "Decide how it ends" is the shared navy button.
+- The record tables.
+
+Two things were not forced, for good reasons:
+- The record table's grid keeps its own classes, because its tablet and phone behaviour would break as a plain row.
+- The "ringed is someone's word, filled is proven" mark on each record waits on the engine (request 108).
+
+All the tests pass, the button test passes on every board, and no picture showed the sign-in page. The pictures are in the scratchpad's `pictures/boards-after3b/`. The board page itself, about 640 one-off uses, is now being done section by section.
+
+**The board page, first two sections done:** the header, then the story and the quick read. "Where people differ", "What people are after" and the quick read's tiles are now panels and rows, and their pictures match. Two lists got a little tighter, because the shared row's spacing replaced their own.
+
+One step was taken against the rule: to give the rows their side padding, the builder reused old one-off padding classes. The next part gives the shared row a named side-padding option at the prototype's values, and replaces every one of those, before the remaining nine sections.
+
+That is done. The shared row has a named side padding: panel (22 pixels, the prototype's own panel padding), list, record and kicker. Every reused one-off padding class in the board page, the judgement and the record tables is gone, and nothing moved. Builders kept stopping after one or two of the board page's sections, so the remaining sections now go two or three at a time: the targets and the participant's view first, with the same fix for the targets band.
+
+Those are done.
+- Each target is a row with the prototype's panel padding (22 pixels, read from its "Where each target stands").
+- The two warnings about targets are the shared warning callout.
+- The participant's view lost its extra wrapper.
+- The picture check caught a "Change" button stretched across its row after the change, and it was fixed.
+
+But the builder again reused two old one-off classes. So a fourth guard now freezes how many one-off uses each file has (33 files, 1,300 uses), and any file that uses one more fails. Those counts can only go down from here.
+
+**Board batch 3, the board page's sections, so far.**
+- The team today was already clean.
+- "What keeps coming up" is now rows, with its two parts' labels as the shared sub-heading. Every piece of patterns and coaching is kept.
+- "Waiting on" is a shared stack.
+- The board page's one-off uses went from 638 to 596.
+
+The rest is a long tail: no combination of classes repeats more than eight times. At 4:44 I paused the board's class clean-up. The new guard keeps that count from growing. I moved on to the board review that Hafsah's rule needs before any kind can be marked done. Finishing the board page's clean-up is listed as a task for after the review.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
@@ -371,6 +526,8 @@ nothing about today's billing has changed. Nobody already on the free plan is cu
 U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
+
+**2 October, morning: the boards, one at a time.** Two rounds of fixing all 22 boards at once have not converged, so the approach changes. First merge the engine's work: it finished requests 105, 106, 107 and 108 overnight, covering the five kinds' own board shapes, the blockers sections, the missing fields and its sentences. Then check which faults are already gone. Then get one board exactly right, the sales team as the lead and as a participant, section by section against its prototype example, until a review says it matches. Use it as the pattern for the other ten kinds, one at a time, each matched and reviewed before the next. Coaching stays first within each board, because it is protected. The board table in this report is kept up to date as each kind is matched.
 
 **1 October, night: the order, and the boards.** After batch C's check-in pages, the board for all eleven kinds of work comes next, before the Context and resources tab. That tab waits until the engine says Ask Groundwork's context work is ready and the old context chat can be switched off. For the boards, the order is:
 1. Draw the new fields: both parts of "What keeps coming up" with the lead's coaching, who said each record, someone an admin did not let in, and all 22 switchboard sections.

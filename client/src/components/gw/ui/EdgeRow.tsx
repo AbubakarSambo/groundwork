@@ -11,10 +11,15 @@ import './gw-ui.css'
  */
 export type EdgeKind = 'ready' | 'decide' | 'look' | 'concern'
 
-const EDGE_REASON: Record<EdgeKind, string> = {
+/*
+ * SECOND BOARD REVIEW, WORDING: "A decision for you." and "Something to look at." read, for a
+ * screen reader, as a floating label stapled in front of whatever the row actually says - not a
+ * sentence, since neither says what decision or what to look at; the title that follows is already
+ * a full sentence of its own. See kit.tsx's own `NEED_REASON`, the same fix there. "Ready to read."
+ * and "A problem." are kept: both name a real state the title does not otherwise carry.
+ */
+const EDGE_REASON: Partial<Record<EdgeKind, string>> = {
   ready: 'Ready to read.',
-  decide: 'A decision for you.',
-  look: 'Something to look at.',
   concern: 'A problem.',
 }
 
@@ -30,7 +35,7 @@ export function EdgeRow({ kind, title, detail, actions }: {
     <li className="gwui-edge-row">
       <span className={`gwui-edge-sp gwui-edge-sp-${kind}`} aria-hidden />
       <div style={{ minWidth: 0 }}>
-        <span className="gwui-sr-only">{EDGE_REASON[kind]} </span>
+        {EDGE_REASON[kind] && <span className="gwui-sr-only">{EDGE_REASON[kind]} </span>}
         <div className="gwui-edge-h">{title}</div>
         {detail && <div className="gwui-edge-s">{detail}</div>}
       </div>

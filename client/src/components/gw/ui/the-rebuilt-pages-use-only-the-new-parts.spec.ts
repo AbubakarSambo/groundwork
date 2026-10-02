@@ -387,6 +387,12 @@ describe('a rebuilt page never falls back to the old parts', () => {
       /* Board task, batch 3 (Hafsah, 1 October): "the board's one-off classes become shared
          parts". See the comment on REBUILT_PAGES in rebuilt-pages.ts. */
       'pages/board/CheckInLinks.tsx',
+      /* Board task, batch 3, part 2. See the comment on REBUILT_PAGES in rebuilt-pages.ts. */
+      'components/gw/where-each-person-is.tsx',
+      'pages/board/TheSwitchboardsSections.tsx',
+      'components/gw/ui/PatternPanel.tsx',
+      'components/gw/WhatTheRecordShows.tsx',
+      'components/gw/OutcomeFeedback.tsx',
     ])
   })
 

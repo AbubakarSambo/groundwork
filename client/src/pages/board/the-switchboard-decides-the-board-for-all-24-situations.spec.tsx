@@ -26,16 +26,17 @@ import { SWITCHBOARD_MATRIX, G2_SECTION_TO_BOARD_SECTION, G2_SECTION_NAMES } fro
  * the names that map to one of those 7, rather than every name `G2_SECTION_TO_BOARD_SECTION` now
  * resolves. Their own order-and-visibility coverage is in TheSwitchboardsSections.spec.tsx instead.
  *
- * G2's OWN TABLE ORDER IS FIXED, REGARDLESS OF SITUATION. `G2_SECTION_NAMES` lists all 30 in one
- * order; a situation only ever narrows WHICH of them it names (on, optional, or not named at all -
- * off on purpose is the same as "not named" for this test, since neither draws), never reorders
- * them. Restricted to the 7 mapped sections, that fixed order is always: objectives, startingState,
- * divergence, whatTheRoomIsAbout, quickRead, dependencies, patterns - the same order BoardPage.tsx
- * renders them in, unconditionally, gating each one on `switchboardAllows` rather than computing an
- * order per render. This test renders the real page for each of the 24 situations, with a served
- * shape carrying data for every one of the 7 sections, and checks that only the sections this
- * situation names (on or optional) actually appear, in that fixed order, and every other one of the
- * 7 is absent.
+ * G2's OWN TABLE ORDER IS FIXED, REGARDLESS OF SITUATION, WITH ONE EXCEPTION NOW (board review,
+ * sales piece A, item 1): `patterns` ("What keeps coming up") moved to the front of the 7. The other
+ * six - objectives, startingState, divergence, whatTheRoomIsAbout, quickRead, dependencies - keep
+ * their own relative order among themselves (G2's table order is otherwise untouched), but now draw
+ * inside the one shared "Everything else from this check-in" fold near the foot of the board, for
+ * every situation - no prototype screen shows "Where people differ", "The quick read" and the rest
+ * as its own heading, and CLAUDE.md protects patterns (and coaching, right after it) from ever being
+ * folded, hidden or simplified away. `patterns` is drawn in the open, ahead of that fold, which is
+ * why it is pinned first here instead of last. This is a page-wide template change, not a
+ * per-situation special case: every situation's own data still renders, in the fold, in the same
+ * order it always has - only `patterns` moved, for all 24 situations alike.
  */
 
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: { id: 'u-lead', firstName: 'Wairimu', role: 'MEMBER' } }) }))
@@ -120,7 +121,12 @@ describe('the switchboard decides the board, for all 24 situations', () => {
   for (const row of SWITCHBOARD_MATRIX) {
     it(`${row.situation} (${row.scenario}): shows exactly the switchboard's sections, in order`, async () => {
       const named = new Set([...row.sectionsOn, ...row.optional])
-      const expectedG2Names = MAPPED_ORDER.filter((n) => named.has(n) && !row.offOnPurpose.includes(n))
+      const inG2Order = MAPPED_ORDER.filter((n) => named.has(n) && !row.offOnPurpose.includes(n))
+      // "Patterns" moves to the front of whichever of the 7 this situation shows - see the file
+      // comment above. The rest keep G2's own order among themselves.
+      const expectedG2Names = inG2Order.includes('Patterns')
+        ? ['Patterns', ...inG2Order.filter((n) => n !== 'Patterns')]
+        : inG2Order
       const expectedTitles = expectedG2Names.map((n) => TITLE_FOR_BOARD_SECTION[G2_SECTION_TO_BOARD_SECTION[n]!])
 
       renderBoardFor(row.scenario)

@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { resolutionApi } from '@/api/resolution'
 import { toast } from 'sonner'
 import { Confirm } from './a-second-press-before-it-is-gone'
+import { Panel, Callout, Button } from './ui'
 
 /**
  * HOW A GROUND ENDS.
@@ -113,8 +113,6 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
 
   const label = (v: string | null) => options.find(o => o.value === v)?.label ?? v ?? ''
 
-  const cardClass = 'gwui-rule gwui-pt-16 gwui-pr-18 gwui-pb-16 gwui-pl-18 gwui-mb-12'
-  const cardStyle = { background: 'white', borderRadius: 10 } as const
   const headingClass = 'gwui-fs-16 gwui-ink-text gwui-mb-8'
   const paraClass = 'gwui-fs-13 gwui-ink-sub gwui-mb-12'
   const paraStyle = { lineHeight: 1.6 } as const
@@ -128,7 +126,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
 
   /* ------------------------------------------------------------------ how it ended, for everyone */
   const howItEnded = closed && resolution && (
-    <div className={cardClass} style={cardStyle}>
+    <Panel className="gwui-mb-12">
       <div className={headingClass}>How this ended</div>
       <div className="gwui-fs-15 gwui-ink-green" style={{ fontWeight: 700 }}>{label(resolution.endState)}</div>
       <div className="gwui-fs-13 gwui-ink-sub gwui-mt-4">
@@ -149,7 +147,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
           Your account is kept, and you can still correct it.
         </div>
       )}
-    </div>
+    </Panel>
   )
 
   if (place === 'board-top') {
@@ -157,17 +155,11 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
     /* "The last session is done. It’s yours to decide how this ends." The lead only, near the end. */
     if (!viewerIsLead || nearTheEnd === false) return null
     return (
-      <div className={cardClass} style={cardStyle}>
+      <Panel className="gwui-mb-12">
         {lastSessionDone && <div className={headingClass}>The last session is done</div>}
         <div className={paraClass} style={paraStyle}>It’s yours to decide how this ends.</div>
-        <Link
-          to={`/grounds/${groundId}/end`}
-          className="gwui-fs-13 gwui-ink-white gwui-pt-9 gwui-pr-16 gwui-pb-9 gwui-pl-16"
-          style={{ display: 'inline-block', borderRadius: 7, background: 'var(--gw-dark)', fontWeight: 700, textDecoration: 'none' }}
-        >
-          Decide how it ends
-        </Link>
-      </div>
+        <Button to={`/grounds/${groundId}/end`}>Decide how it ends</Button>
+      </Panel>
     )
   }
   if (place === 'board-bottom' && (closed || viewerIsLead)) return null
@@ -176,7 +168,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
   /* ------------------------------------------------------------------ still open */
   const whoElse = oneOther ?? 'Everyone in the check-in'
   return (
-    <div className={cardClass} style={cardStyle}>
+    <Panel className="gwui-mb-12">
       <div className={headingClass}>How does this end?</div>
       {/*
         WHO DECIDES, SAID PLAINLY, AND ONLY THE RIGHT PERSON IS ASKED.
@@ -195,9 +187,11 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
       </div>
 
       {confirmations.filter(c => c.confirmed).length > 1 && new Set(confirmations.filter(c => c.confirmed).map(c => c.endState)).size > 1 && (
-        <div className="gwui-fs-13 gwui-ink-amber gwui-pt-9 gwui-pr-12 gwui-pb-9 gwui-pl-12 gwui-mb-12" style={{ background: 'var(--gw-amber-bg)', borderRadius: 7, lineHeight: 1.55 }}>
-          People have chosen differently so far. That disagreement is the useful part - it is
-          worth talking about before anyone changes their answer.
+        <div className="gwui-mb-12">
+          <Callout tone="warning">
+            People have chosen differently so far. That disagreement is the useful part - it is
+            worth talking about before anyone changes their answer.
+          </Callout>
         </div>
       )}
 
@@ -312,6 +306,6 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
           ))}
         </div>
       )}
-    </div>
+    </Panel>
   )
 }

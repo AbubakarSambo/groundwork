@@ -5,6 +5,8 @@ import { patternsApi, type ServedPattern } from '@/api/patterns'
 import { Panel } from './Panel'
 import { Button } from './Button'
 import { TextArea } from './FormFields'
+import { Note, Callout } from './NoteEmpty'
+import { Stack } from './Stack'
 
 /**
  * ONE PATTERN, WHEREVER IT IS SHOWN. Built once from the shared parts so "Your work", the You
@@ -51,15 +53,17 @@ export function PatternPanel({
   })
 
   return (
-    <Panel style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)' }}>
-      {name && <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>{name}</div>}
-      <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{pattern.heading}</p>
-      {(pattern.whatHappened || pattern.howOften) && (
-        <p className="gwui-panel-text" style={{ marginTop: 6 }}>
-          {[pattern.howOften, pattern.whatHappened].filter(Boolean).join(' ')}
-        </p>
-      )}
-      <p className="gwui-panel-text-muted" style={{ marginTop: 6 }}>{pattern.whoSeesIt}</p>
+    <Panel className="gwui-panel-caution">
+      {name && <div className="gwui-fs-13 gwui-ink-dark gwui-mb-4" style={{ fontWeight: 700 }}>{name}</div>}
+      <Stack gap={6}>
+        <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{pattern.heading}</p>
+        {(pattern.whatHappened || pattern.howOften) && (
+          <p className="gwui-panel-text">
+            {[pattern.howOften, pattern.whatHappened].filter(Boolean).join(' ')}
+          </p>
+        )}
+        <p className="gwui-panel-text-muted">{pattern.whoSeesIt}</p>
+      </Stack>
 
       {/*
         REQUEST 82: COACHING BESIDE A PATTERN, FOR WHOEVER RUNS THE CHECK-IN ONLY. The server sends
@@ -67,61 +71,62 @@ export function PatternPanel({
         is nothing to gate here beyond their presence.
       */}
       {(pattern.coachTowards || pattern.oneStep) && (
-        <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, marginTop: 8 }}>
+        <div className="gwui-fs-13 gwui-ink-text gwui-mt-8" style={{ lineHeight: 1.55 }}>
           {pattern.coachTowards && <div>{pattern.coachTowards}</div>}
           {pattern.oneStep && <div className="gwui-mt-4">{pattern.oneStep}</div>}
         </div>
       )}
 
-      {/* "Two separate reads of the record found this." For whoever runs the check-in only. */}
-      {pattern.secondReadNote && (
-        <p className="gwui-panel-text-muted" style={{ marginTop: 6, fontStyle: 'italic' }}>{pattern.secondReadNote}</p>
-      )}
+      <Stack gap={6}>
+        {/* "Two separate reads of the record found this." For whoever runs the check-in only. */}
+        {pattern.secondReadNote && (
+          <p className="gwui-panel-text-muted" style={{ fontStyle: 'italic' }}>{pattern.secondReadNote}</p>
+        )}
 
-      {/*
-        Whether whoever runs the check-in has said they talked it through, a plain fact both
-        readers may see. Board review, 1 October, item 4: "Your lead has said..." named nobody,
-        even where the lead's own first name is known - said by name when it is.
-      */}
-      {pattern.talkedAbout && (
-        <p className="gwui-panel-text-muted" style={{ marginTop: 6 }}>
-          {pattern.yours
-            ? (leadFirstName ? `${leadFirstName} has said they talked this through with you.` : 'Your lead has said they talked this through with you.')
-            : `This has been talked through with ${name ?? 'them'}.`}
-        </p>
-      )}
+        {/*
+          Whether whoever runs the check-in has said they talked it through, a plain fact both
+          readers may see. Board review, 1 October, item 4: "Your lead has said..." named nobody,
+          even where the lead's own first name is known - said by name when it is.
+        */}
+        {pattern.talkedAbout && (
+          <p className="gwui-panel-text-muted">
+            {pattern.yours
+              ? (leadFirstName ? `${leadFirstName} has said they talked this through with you.` : 'Your lead has said they talked this through with you.')
+              : `This has been talked through with ${name ?? 'them'}.`}
+          </p>
+        )}
 
-      {/* After talking it through: the lead's own mark, for that reader alone, never shown to the person it is about. */}
-      {pattern.leadMark && (
-        <p className="gwui-panel-text-muted" style={{ marginTop: 6 }}>
-          {pattern.leadMark === 'RIGHT' ? "You said this was right, once you talked it through."
-            : pattern.leadMark === 'WRONG' ? "You said this was not right, once you talked it through."
-            : "You said you were not sure, once you talked it through."}
-        </p>
-      )}
+        {/* After talking it through: the lead's own mark, for that reader alone, never shown to the person it is about. */}
+        {pattern.leadMark && (
+          <p className="gwui-panel-text-muted">
+            {pattern.leadMark === 'RIGHT' ? "You said this was right, once you talked it through."
+              : pattern.leadMark === 'WRONG' ? "You said this was not right, once you talked it through."
+              : "You said you were not sure, once you talked it through."}
+          </p>
+        )}
+      </Stack>
 
       {pattern.askThem && (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 8, paddingLeft: 11, borderLeft: '2px solid var(--gw-border)' }}>
-          <div style={{ color: 'var(--gw-muted)' }}>{`A question you could ask ${name ?? 'them'}, to hear their side.`}</div>
-          <div>{pattern.askThem}</div>
+        <div className="gwui-mt-8">
+          <Callout title={`A question you could ask ${name ?? 'them'}, to hear their side.`}>{pattern.askThem}</Callout>
         </div>
       )}
 
       {pattern.theirWords && !open && (
-        <div style={{ fontSize: 13, color: 'var(--gw-text)', marginTop: 8 }}>
-          <div style={{ color: 'var(--gw-muted)' }}>{theWordsLine(pattern.yours, name)}</div>
+        <div className="gwui-fs-13 gwui-ink-text gwui-mt-8">
+          <Note tone="muted">{theWordsLine(pattern.yours, name)}</Note>
           <div>“{pattern.theirWords}”</div>
         </div>
       )}
 
       {pattern.canAnswer && (
-        <div style={{ marginTop: 10 }}>
+        <div className="gwui-mt-10">
           {!open ? (
             <Button kind="secondary" size="small" onClick={() => setOpen(true)}>
               {pattern.theirWords ? 'Change what you said' : 'Say what’s behind it'}
             </Button>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Stack gap={8}>
               <TextArea
                 rows={3}
                 value={text}
@@ -129,7 +134,7 @@ export function PatternPanel({
                 placeholder="What is behind it"
                 aria-label="What is behind it"
               />
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="gwui-gap-8" style={{ display: 'flex' }}>
                 <Button
                   size="small"
                   disabled={!text.trim() || answer.isPending}
@@ -141,7 +146,7 @@ export function PatternPanel({
                   Cancel
                 </Button>
               </div>
-            </div>
+            </Stack>
           )}
         </div>
       )}

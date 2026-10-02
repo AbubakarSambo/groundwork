@@ -71,6 +71,10 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    the gap. Found live, U.20 seventh round: "Almost in" read with Steps touching the line above
    it.). A Stack's own gap must always win over whatever a child resets itself to. */
 .gwui-stack-0.gwui-stack-0 > * + * { margin-top: 0; }
+.gwui-stack-2.gwui-stack-2 > * + * { margin-top: 2px; }
+.gwui-stack-4.gwui-stack-4 > * + * { margin-top: 4px; }
+.gwui-stack-6.gwui-stack-6 > * + * { margin-top: 6px; }
+.gwui-stack-8.gwui-stack-8 > * + * { margin-top: 8px; }
 .gwui-stack-10.gwui-stack-10 > * + * { margin-top: 10px; }
 .gwui-stack-12.gwui-stack-12 > * + * { margin-top: 12px; }
 .gwui-stack-18.gwui-stack-18 > * + * { margin-top: 18px; }
@@ -124,6 +128,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 /* SUB-HEADING'S DARK TONE (group 3, piece 5): a faint label on a dark panel, replacing kit.tsx's
    `Sec title=... on="dark"` (same rgba(255,255,255,.45) the old part used). */
 .gwui-subheading-dark { color: rgba(255, 255, 255, .45); }
+.gwui-subheading-kicker { font-size: 13.5px; color: var(--gw-sub); letter-spacing: .1px; margin: 18px 0 7px; }
 
 /* ── PANEL TEXT (prototype: a fact's body, inside a panel - 14.5px, 21px line) ─────────── */
 .gwui-panel-text { font-size: 14.5px; line-height: 21px; color: var(--gw-text); margin: 0; }
@@ -547,6 +552,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-note-amber { color: var(--gw-amber-t); }
 .gwui-note-green { color: var(--gw-green-t); }
 .gwui-note-navy { color: var(--gw-navy); }
+.gwui-note-muted { color: var(--gw-muted); }
 /* A narrow column centred in a wider frame - the check-in's own conversation, inside the lead's
    and the participant's full-width header (group 3's drift-list review, part 2; replaces the
    gwui-ml-auto/gwui-mr-auto pair on GroundAdminPage.tsx and GroundParticipantPage.tsx). */
@@ -1150,6 +1156,21 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-row { display: grid; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
 .gwui-row a { color: var(--gw-navy); font-weight: 700; text-decoration: none; }
 .gwui-row a:hover, .gwui-row a:focus-visible { text-decoration: underline; }
+/* A BUTTON STANDING ALONE AS A ROW'S OWN CHILD KEEPS ITS OWN WIDTH, NOT THE GRID'S (board task,
+   batch 3, part 7): the same symptom `.gwui-person-row`'s own `justify-items: start` already
+   names below ("a Tag or a short line keeps its own natural width - the grid must not stretch it
+   across the whole column"). `Row`'s own grid defaults every item to `stretch` (needed for a plain
+   `div` of stacked content to reach the row's own width), so a bare `Button` sitting beside that
+   content - "Change", on one of "What we are aiming for"'s own targets, with nothing else on its
+   line - stretched edge to edge and its own `justify-content: center` then centred the word
+   "Change" in the middle of the row, not under the name above it. Scoped to `.gwui-btn` only, so
+   every row still stretches its ordinary block content exactly as it did. */
+.gwui-row > .gwui-btn { justify-self: start; }
+/* Row's own named side insets (board task, batch 3, part 5) - see the doc comment in Rows.tsx. */
+.gwui-row-inset-panel { padding-left: 22px; padding-right: 22px; }
+.gwui-row-inset-list { padding-left: 15px; padding-right: 15px; }
+.gwui-row-inset-record { padding-left: 16px; padding-right: 16px; }
+.gwui-row-inset-kicker { padding-left: 14px; padding-right: 14px; }
 @media (max-width: 900px) {
   .gwui-row { grid-template-columns: minmax(0, 1fr) !important; }
 }
@@ -1236,6 +1257,12 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    not only knowing - a bounced invite with nobody able to get in until the lead acts. Red, the same
    tone "concern" already carries on Tag and PersonRow's help strip (both app.css's `.tag.con`). */
 .gwui-callout-concern { background: var(--gw-red-bg); color: var(--gw-red-t); }
+/* CALLOUT'S EMPHASIS TONE (board task, batch 3, part 3, TheJudgement.tsx): "The gap", the one thing
+   on the whole board a reader is meant to remember - blue like "info", but at panel-level padding
+   and a larger, bolder body, the exact values the one-off box this replaces already carried. */
+.gwui-callout-emphasis { background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); padding: 20px 22px; }
+.gwui-callout-emphasis .gwui-callout-title { font-size: 13.5px; color: var(--gw-navy); letter-spacing: .4px; margin-bottom: 5px; }
+.gwui-callout-emphasis .gwui-callout-body { font-size: 16px; color: var(--gw-text); font-weight: 600; line-height: 1.55; }
 /* AuthNotice's own two-line shape, inside the same tinted box: a title above the sentence under
    it (signin.jpg's passwordless notice, "Check your email" over the sentence that follows). */
 .gwui-callout-title { font-weight: 700; margin: 0 0 2px; }

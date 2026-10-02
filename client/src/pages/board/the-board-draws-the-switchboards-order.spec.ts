@@ -60,9 +60,18 @@ describe('the board draws the switchboard’s own order', () => {
     expect(documentOrderOf(computed)).toEqual(computed)
   })
 
-  it('the fixed table every situation shares (G2_SECTIONS) never varies which of the 7 comes first among those present', () => {
-    // Spot-check: wherever objectives and patterns are both on, objectives always precedes patterns,
-    // because G2's own table lists Targets long before Patterns, for every situation.
+  /*
+   * BOARD REVIEW, SALES PIECE A, ITEM 1: PATTERNS NOW LEADS THE OTHER SIX, FOR EVERY SITUATION.
+   *
+   * This used to check that objectives always precedes patterns, because G2's own table lists
+   * Targets long before Patterns. It no longer does: the other six of these seven sections (not
+   * patterns) now draw inside "Everything else from this check-in", a fold near the foot of the
+   * board, because no prototype screen shows them as their own heading - and CLAUDE.md protects
+   * patterns (and coaching, right after it) from ever being folded away, so patterns alone stays in
+   * the open, ahead of that fold. Updating this pinned expectation, not deleting it: the spot-check
+   * still holds, just the other way round, for every situation that turns both on.
+   */
+  it('wherever objectives and patterns are both on, patterns now precedes objectives, for every situation', () => {
     for (const row of SWITCHBOARD_MATRIX) {
       const objOn = row.sectionsOn.includes('Targets') || row.optional.includes('Targets')
       const patOn = row.sectionsOn.includes('Patterns') || row.optional.includes('Patterns')
@@ -71,7 +80,7 @@ describe('the board draws the switchboard’s own order', () => {
           objectives: true, patterns: true, startingState: true, divergence: true,
           whatTheRoomIsAbout: true, quickRead: true, dependencies: true,
         }, true)
-        expect(order.indexOf('objectives')).toBeLessThan(order.indexOf('patterns'))
+        expect(order.indexOf('patterns')).toBeLessThan(order.indexOf('objectives'))
       }
     }
   })

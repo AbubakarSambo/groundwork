@@ -188,4 +188,50 @@ export const REBUILT_PAGES: string[] = [
    * `kit.tsx`'s `Card`/`Row`/`Sec` and six inline styles for size, colour and spacing.
    */
   'pages/board/CheckInLinks.tsx',
+  /*
+   * BOARD TASK, BATCH 3, PART 2: `where-each-person-is.tsx` rebuilt from `Note`/`Stack` in place of
+   * eleven one-off `gwui-fs-*`/`gwui-ink-*`/`gwui-mt-*` combinations on "the team today"'s per-person
+   * caption lines (the target sentence, the "ask"/"finding" line, "what keeps coming up").
+   */
+  'components/gw/where-each-person-is.tsx',
+  /*
+   * BOARD TASK, BATCH 3, PART 2: `TheSwitchboardsSections.tsx` rebuilt from `Note`/`Stack` in place
+   * of fifty-nine one-off `gwui-fs-*`/`gwui-ink-*`/`gwui-mt-*` combinations across its sentence,
+   * blocker, record-history, obligation, forecast and question rows; the single section-level
+   * "cannot tell you" sentence (`BusyOrMovingSection`) now uses `Section`'s own `foot` rather than
+   * a one-off dashed-rule box, since it is the only trailing note here that sits under a whole
+   * section rather than beside one row.
+   */
+  'pages/board/TheSwitchboardsSections.tsx',
+  /*
+   * BOARD TASK, BATCH 3, PART 2: `PatternPanel.tsx` rebuilt from `Note`/`Stack`/`Callout` in place
+   * of fifteen inline styles for size, colour, border and spacing - PROTECTED (every field this
+   * one pattern card draws, for exactly the readers it reaches now, stays exactly as it was): the
+   * amber card is `gwui-panel-caution` (already used elsewhere for the same colours); three runs
+   * of paragraphs that already shared one gap (6px) group under `Stack`; the "question you could
+   * ask" box, previously a left-rule aside, is now `Callout`, at that part's own size and tint.
+   */
+  'components/gw/ui/PatternPanel.tsx',
+  /*
+   * BOARD TASK, BATCH 3, PART 2: `WhatTheRecordShows.tsx` rebuilt from `SubHeading`/`RowList`/
+   * `Row`/`Note` in place of thirty-one one-off `gwui-fs-*`/`gwui-ink-*`/`gwui-mt-*`/`gwui-pt-*`/
+   * `gwui-pb-*` combinations and its own local `Head`/`Line` helpers. `Callout` is not used here:
+   * its own two tinted boxes ("Settle these before deciding anything", "What this cannot tell
+   * you") each hold several sentences, and `Callout` draws one sentence (or a title and one body),
+   * so neither box is that part's shape; both stay the inline `background`/`borderRadius` pair
+   * they already used (neither prop is banned - size, colour, margin, padding and border are).
+   */
+  'components/gw/WhatTheRecordShows.tsx',
+  /*
+   * BOARD TASK, BATCH 3, PART 2: `OutcomeFeedback.tsx`'s question and its privacy sentence are now
+   * one `Callout` (title and body) in place of two separately-styled one-off divs. `Choices` is not
+   * used for the "It felt fair"/"It did not" pair: the file's own doc comment is explicit that
+   * "neither [button is] the page's one navy button - this pair's whole point is a green and an
+   * amber of equal visual weight" (the three deliberate choices carried over from the old report
+   * body, unchanged) - `Choices`' own selected state is navy, which is exactly the look this pair
+   * was built to avoid, and its 40px/15px sizing does not match either. Both buttons keep their
+   * existing classes/inline styles (fontWeight, background, borderRadius, cursor, fontFamily -
+   * none of which the guard bans).
+   */
+  'components/gw/OutcomeFeedback.tsx',
 ]

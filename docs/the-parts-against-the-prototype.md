@@ -425,3 +425,186 @@ where the rule lives:
 | --- | --- | --- | --- |
 | `.gwui-status-row` | font-size, colour, padding | the participant's own check-in header row carried a page-only `gwui-fs-13 gwui-ink-muted gwui-pt-10 gwui-pb-12` combination for its one muted sentence plus the badges beside it (a guest check-in's own organisation, how it ended) | added, one named class in place of four one-off ones |
 | `.gwui-note-navy`/`.gwui-note-green` reused as plain spans | colour | the same row's two badges (`gwui-ink-navy`, `gwui-ink-green`) used the same colours `Note`'s new tones already carry (see above); rather than keep the `gwui-ink-*` utility pair for these two spans, they use the already-documented `Note` tone classes directly | changed to reuse the existing part |
+
+## Board task, batch 3 (Hafsah, 1 October: "the board's one-off classes become shared parts")
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| `Stack` `gap={2}`/`gap={4}`/`gap={6}`/`gap={8}` (`.gwui-stack-2`, `.gwui-stack-4`, `.gwui-stack-6`, `.gwui-stack-8`) | spacing | the board's own tight runs inside one row or one panel each carried a one-off `gwui-mt-2`/`gwui-mt-4`/`gwui-mt-6`/`gwui-mt-8` on the element that followed (`where-each-person-is.tsx`'s target/says/ask lines, `TheSwitchboardsSections.tsx`'s sentence-and-caption rows, `PatternPanel.tsx`'s own paragraph run) | added, at the exact pixel values those classes already held |
+| `Note` `tone="muted"` (`.gwui-note-muted`) | colour | several board rows carried a one-off `gwui-fs-13-5 gwui-ink-muted` pair for a caption fainter than `Note`'s own default `--gw-sub` (a person's "ask"/"finding" line, a blocker's history, a record row's caption, a switchboard section's because/also-waiting line) | added, the same 13.5px line in `--gw-muted` in place of the utility pair |
+| `SubHeading` `tone="kicker"` (`.gwui-subheading-kicker`) | size, colour, spacing | `WhatTheRecordShows.tsx`'s own local `Head` component drew a 13.5px `--gw-sub` kicker, 18px above and 7px below, over each block of the lead's across-every-session read ("Settle these before deciding anything", "What people said they would do") | added, the same values as a named option on the existing heading part |
+
+## Board task, batch 3, part 3 (Hafsah: "one-off value classes and page-only copies become the proper shared parts")
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| `Callout` `tone="emphasis"` (`.gwui-callout-emphasis`) | size, colour, padding | `TheJudgement.tsx`'s own "the gap" box - the one sentence on the whole board a reader is meant to remember - carried a one-off blue tint, panel-level padding (20/22px) and a larger, bolder body (16px/600) than `Callout`'s own plain-sentence shape (10/14px padding, 14.5px body); the values are the box's own, not invented, since no prototype screen pictures this box (it answers a customer complaint about the report, not a pictured screen) | added, a named option in place of the one-off box |
+
+## Board task, batch 3, part 5 (Hafsah: `Row` gets a named side-inset, in place of a wrapper div reusing one-off classes)
+
+`Row` (`RowList`'s own row, no dedicated prototype class - see "batch 3" above) carries no side
+padding of its own: `.gwui-row` is `padding: 12px 0`. Part 4 (`WorkRecords.tsx`, commit `d4cbeb2b`)
+and part 4's own `BoardPage.tsx` work had each caller add that padding back by wrapping the row's
+own content in a `<div className="gwui-pl-NN gwui-pr-NN">` - reusing the one-off utility classes
+`gwui-pl-14`/`gwui-pr-14`/`gwui-pl-15`/`gwui-pr-15`/`gwui-pl-22`/`gwui-pr-22` the 1 October review
+exists to clear, not a shared part. `Row` now takes an `inset` prop instead
+(`client/src/components/gw/ui/Rows.tsx`), named for where each value comes from rather than its
+pixel size, each its own class so none of them matches the one-off utility shape:
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| `Row` `inset="panel"` (`.gwui-row-inset-panel`) | padding-left/right: 22px | the plain Panel's own inside, `.pad` in app.css (`padding: 20px 22px`) - for a row sitting directly under a `Panel` with no header strip of its own ("Where people differ"'s divergence items and agreements, `BoardPage.tsx`) | added, replacing the wrapper `div`'s one-off `gwui-pl-22 gwui-pr-22` pair |
+| `Row` `inset="list"` (`.gwui-row-inset-list`) | padding-left/right: 15px | a sub-panel's own list, under its own 15px header strip ("What people are trying to do", "Places named", "What it is about", `BoardPage.tsx`) - the rows take the same 15px inset the header above them already uses, so the two line up | added, replacing the wrapper `div`'s one-off `gwui-pl-15 gwui-pr-15` pair |
+| `Row` `inset="record"` (`.gwui-row-inset-record`) | padding-left/right: 16px | the board's own work-record lists (`WorkRecords.tsx`'s "Every deadline", "The parties", "Where next, ranked", "Your own ... day by day") | added, replacing the wrapper `div`'s one-off `gwui-pl-16 gwui-pr-16` pair |
+| `Row` `inset="kicker"` (`.gwui-row-inset-kicker`) | padding-left/right: 14px | a `Panel` introduced by a kicker-toned `SubHeading` rather than its own header strip (`TheJudgement.tsx`'s "What the numbers say", "What to do", "What this cannot tell you") | added, replacing the wrapper `div`'s one-off `gwui-pl-14 gwui-pr-14` pair |
+
+Where the wrapper `div` carried no other class or style, it is gone entirely (the content is `Row`'s
+own direct children); where it also carried a style or an ARIA role (`WorkRecords.tsx`'s three
+`role="row"`/`aria-label` rows), the `div` stays for that, with only the padding classes removed.
+No wording or behaviour changed anywhere this touched - the four values are exactly what each
+wrapper already held.
+
+## Board task, batch 3, part 6 (Hafsah: `TargetsBand.tsx`'s own list gets `Row`'s `panel` inset, in place of a wrong one-off pair)
+
+`TargetsBand.tsx`'s "Targets" list (`docs/prototype/screens/B2-context/context.txt`'s own targets
+table, and G1's "Where each target stands") wrapped each row's content in a one-off
+`gwui-pl-13 gwui-pr-13` pair - 13px, not read from the prototype. The prototype's own source
+(`docs/prototype/source/s20.js`, the "Where each target stands" panel) wraps its target rows in
+`.panel.pad` - app.css's `.pad { padding: 20px 22px }`, 22px side inset - with the row itself given
+an inline `padding:10px 0` that removes its own side padding, so the panel's 22px is what actually
+shows. That is exactly `Row`'s own `inset="panel"` (`client/src/components/gw/ui/Rows.tsx`, part 5
+above), so no new named value was needed - `TargetsBand.tsx`'s row now takes `inset="panel"`,
+replacing its one-off `gwui-pl-13 gwui-pr-13` pair. The row's own vertical padding (`gwui-pt-9
+gwui-pb-9`, a value distinct from `Row`'s 12px rhythm) stays on the inner `div`, as the other insets
+already do. No wording or behaviour changed.
+
+## Board task, batch 3, part 7 (Hafsah: "What we are aiming for" onto RowList/Row and Callout, in BoardPage.tsx)
+
+The targets section's own list (`BoardPage.tsx`, "What we are aiming for") drew each objective as a
+plain `<div className="gwui-panel-row">` sibling (`.gwui-panel-row`, `padding: 20px 22px`, a border
+between consecutive rows) rather than the shared `RowList`/`Row`. Each objective, and the lead's own
+"Add target" form row, now sits inside a `RowList` as a `Row` with `inset="panel"` - the same named
+value part 5 and part 6 already use for a row sitting directly under a `Panel` with no header strip
+of its own. As with the "Where people differ" rows part 4/5 already converted this way, the vertical
+rhythm becomes `Row`'s own 12px (from `.gwui-row`), not `gwui-panel-row`'s 20px: the same accepted
+trade read off that earlier conversion, not a new decision. No row's wording or its controls (Lower,
+Raise, Remove, Change, Confirm, "Use N") changed.
+
+The two amber notices above the list (`b.targetsNobodyOwns`, `b.objectivesPrompt` - sentences the
+server computes, not a pictured prototype screen) were a one-off box: `gwui-rule-amber` plus
+`gwui-pt-10 gwui-pr-14 gwui-pb-10 gwui-pl-14` padding, an inline amber background and 10px radius,
+15px text at 1.5 line-height. `Callout`'s own plain `tone="warning"` shape (`gw-ui.css`:
+`background: var(--gw-amber-bg)`, `color: var(--gw-amber-t)`, `border-radius: 10px`, `padding: 10px
+14px`, `font-size: 14.5px`, `line-height: 1.45`) already matches this box on every property but the
+text's own size and line-height, each half a pixel and a hundredth off (15px/1.5 against 14.5px/1.45)
+- not a value read from any pictured screen (this box answers a server computation, not a screen
+`docs/prototype/screens` pictures), and `Callout` `tone="warning"` is already the part dozens of
+other pages use for exactly this kind of amber instruction. It moves a pixel, as the task allows,
+rather than adding a new named option for a difference nothing pictures. Both notices are now plain
+`<Callout tone="warning">` calls, with no wrapper div.
+
+Their own 8px gap (`gwui-mb-8` on each, when either or both are present, and before the `Panel`
+below) is `Stack` `gap={8}` (`client/src/components/gw/ui/Stack.tsx`) - the named part for exactly
+this run, not a one-off margin class or a wrapper div: `Stack` wraps the two conditional notices and
+the targets `Panel` together, so the 8px lands between whichever of the three are actually rendered,
+same as the per-element margins did, with nothing added before the first of them (`SplitOneTotalAcrossPeople`,
+outside the `Stack`, keeps its own unchanged, margin-free spot in front).
+
+## Board task, batch 3, part 8 (Hafsah: `TheParticipantsOwnView` and `MaybeFolded`, checked against the shared parts)
+
+`MaybeFolded` (`client/src/pages/board/BoardPage.tsx`) draws nothing of its own - only `Folded`,
+already a shared part - so it is unchanged.
+
+`TheParticipantsOwnView` wrapped its `Panel` and `YourOwnRecordsSections` in a `<div
+className="gwui-mt-16">` purely to carry one top margin before the whole block - a margin wrapper
+with no other purpose, the pattern "never add... a margin wrapper" exists to stop. `Panel` already
+takes a `className` (merged onto its own `gwui-panel`/`gwui-panel-pad` classes, `Panel.tsx`), so the
+`gwui-mt-16` one-off class now sits directly on the `Panel` itself and the wrapper `div` is gone, in
+favour of a plain fragment. Nothing else in either function reuses a one-off class in place of a
+named part, or carries a style this batch's shared parts (`Row`'s insets, `Callout`, `Stack`) already
+cover - the remaining one-off classes (`gwui-fs-16`/`gwui-ink-dark` with an inline `fontWeight: 700`,
+`gwui-fs-15`/`gwui-ink-sub` with an inline `lineHeight`, `gwui-mt-4`/`gwui-mt-10`) are the same plain
+text-and-spacing convention used the same way everywhere else on this board, not a wrapper standing
+in for a part that already exists, so they are left as they were. No wording or behaviour changed.
+
+## Board task, batch 3, part 7 (follow-up): a bare `Button` inside `Row` kept its own width
+
+The picture check after part 7 caught a real regression `the-rebuilt-pages-use-only-the-new-parts`
+and the vitest run could not: on a target with no edit controls open, "Change" (the quiet button
+that opens them) stretched edge to edge of the row and sat centred in the middle of the line,
+instead of left-aligned under the target's own name. `Row`'s grid defaults every direct child to
+`justify-items: stretch` - needed so a plain `div` of stacked content (every other row on this
+board) fills the row's own width - but a bare `Button` has no content needing the full width, and
+its own `justify-content: center` (`gw-ui.css`'s `.gwui-btn`) then centred its label inside the
+stretched box. This is the same symptom `.gwui-person-row`'s own `justify-items: start` already
+names a few hundred lines up ("a Tag or a short line keeps its own natural width - the grid must
+not stretch it across the whole column"), on a part this batch is the first to put a bare button
+inside. Fixed with `.gwui-row > .gwui-btn { justify-self: start; }` - scoped to `.gwui-btn` only,
+so it touches nothing else that already relies on `Row`'s own stretch. Checked against the 1440px
+picture of the sales board (`boards-after3e`, rukia and amani) and both u7lead founder's-own-targets
+boards: "Change" now sits under the target's name exactly as the prototype and the pre-change
+product both draw it.
+
+## Board task, batch 3, part 9 (Hafsah: "The team today" checked against the shared parts)
+
+`BoardPage.tsx`'s "The team today" section (`Section heading="The team today"`, around
+`WhereEachPersonIs`) was already rebuilt from the shared parts in an earlier pass (commit
+`1e7a8108`, "Board (c1): the insides, top down to `The team today`, from the shared parts") - it is
+only a `Section` wrapping `WhereEachPersonIs` (`components/gw/where-each-person-is.tsx`), with no
+one-off class of its own anywhere in `BoardPage.tsx`. Checked again for this batch, against
+`board-as-lead.txt`'s own "The team today / Each person's line, their last 10 check-ins, and what
+keeps coming up": the heading, the note and the row-by-row content (name, summary, reason tag, last
+ten squares, "what keeps coming up") all match. Nothing in `BoardPage.tsx` changed - the section
+already has nothing left for this task to do. (`where-each-person-is.tsx` itself still carries a
+handful of one-off classes of its own - out of scope here, since that file is not `BoardPage.tsx`
+and this task's count only tracks `BoardPage.tsx`.)
+
+
+## Board task, batch 3, part 10 (Hafsah: "What keeps coming up" onto RowList/Row and SubHeading)
+
+`BoardPage.tsx`'s "What keeps coming up" section (board-as-lead.txt: "Named after three check-ins
+in a row, never after one. Each describes the work") drew its empty state, each group's bold label,
+and each pattern as plain `<div className="gwui-panel-row">` siblings - the same drift parts 5-7
+already found and fixed in "Where people differ" and "What we are aiming for". The empty state and
+each `PatternPanel` now sit inside a `RowList` as a `Row` with `inset="panel"`, the same named value
+used throughout this batch for a row sitting directly under a `Panel` with no header strip of its
+own. Every piece stays, for exactly the readers it already reaches - both parts ("About each
+person's work" and "How what people say can run ahead of what happened"), the lead's own "coach
+towards" and "one step" (inside `PatternPanel`, unchanged), and the second read and "talked through"
+notes (also inside `PatternPanel`, unchanged) - this task only touches the list structure around
+each pattern in `BoardPage.tsx`, never `PatternPanel.tsx` itself.
+
+Each group's bold label ("About each person's work", "How what people say can run ahead of what
+happened") was a one-off `gwui-fs-13-5 gwui-ink-dark` pair with an inline `fontWeight: 700` - a
+label over one fact inside a panel, exactly what `SubHeading` (`components/gw/ui/SubHeading.tsx`)
+already names ("the prototype's other kind of heading... used for a short label over one fact
+inside a panel rather than over a whole page section"). No new tone was needed: the label is now a
+plain `<SubHeading>`, which also matches the prototype's own source for this panel more closely
+than the one-off pair did (`docs/prototype/source/s7.js`'s `patternsSec`: `<b class="t-small mut"
+style="padding-bottom:6px">`, a bold label with space below and no space above it - `SubHeading`'s
+own default margin is `0 0 6px`, nothing above, the same shape). The trailing italic footer note
+("Patterns about the work only...") is unchanged, including its own remaining one-off classes,
+which are a dashed rule and padding this batch's shared parts do not name and which this task does
+not touch.
+
+The footer note sits outside the `RowList`, as a sibling inside the same `Panel`, same as the
+"Where people differ" section's own structure (part 5) keeps its extra content (the central
+question) outside that section's `RowList` too. No wording, no behaviour and nothing any reader
+sees changed - only the markup each row and label is built from.
+
+## Board task, batch 3, part 11 (Hafsah: Blockers and the switchboard sections drawn inline in BoardPage.tsx)
+
+`BlockersSection` (`client/src/pages/board/TheSwitchboardsSections.tsx`) is already built from the
+shared parts: one `Stack gap={10}` of `Panel` cards, unchanged by this task. What was still in
+BoardPage.tsx was its own close cousin, "Waiting on" (board-as-lead.txt's own `dependencies`, drawn
+inline here rather than extracted to that file): the same one card per handoff, wrapped in a plain
+`<div className="gwui-gap-10" style={{display: 'flex', flexDirection: 'column'}}>` - the one-off
+version of exactly the `Stack` `BlockersSection` already uses for the same shape of list, one card
+after another with a 10px gap. That wrapper is now `Stack gap={10}`, nothing else - each card's own
+contents (the status pill, "Waiting on:", the sentence, the blue "then" quote) stay exactly as they
+were, matching `BlockersSection`'s own remaining one-off classes for its equivalent fields (`Note`
+with a bold label, a flex header row for the title and tag), which this task leaves alone since the
+"done" reference file keeps them the same way.
+
+BoardPage.tsx's one-off count drops from 597 to 596 (one-off-uses-per-file.ts updated to match). No
+wording or behaviour changed.

@@ -41,6 +41,20 @@ const workRecords = [
   },
 ]
 
+/*
+ * BOARD FIX (sales B, item 3a): `teamPicture` IS THE ENGINE'S OWN ANSWER, NOT A ROUND COUNT. The
+ * client used to derive "is it shared" from `roundCompletions` by way of `sessionRows`, a second
+ * reading of the same fact the server's own `aParticipantsOwnBoard` already decides
+ * (`reader.released`) and sends as `teamPicture`. The board now draws that field directly, so the
+ * fixture sends it directly too, rather than the round-completions machinery this used to need to
+ * get the client to compute the same answer a different way.
+ */
+const NOT_SHARED_YET = {
+  shared: false as const,
+  says: "Today's team picture is not shared yet.",
+  yourOwnReport: 'Your own report is ready now.',
+}
+
 function board(overrides: any = {}) {
   return {
     groundId: 'g1', renders: true, mode: 'SHARED', family: 'DELIVERY', sections: [],
@@ -50,12 +64,32 @@ function board(overrides: any = {}) {
     myParticipantId: 'p-miriam', canEditFrame: false, readOnlyNote: null,
     kindOfWork: 'sales org',
     workRecords,
+    teamPicture: NOT_SHARED_YET,
     howItIsGoing: { latestSummary: null, glance: { progress: { roundsDone: 0, roundsPlanned: 12, answeredThisRound: 2, ofPeople: 3 }, inTheWay: { count: 0, oldest: null, daysWaiting: null } } },
     ...overrides,
   }
 }
 
-function renderBoard(payload: any, ground: any = { initiatorId: 'u-wairimu', leadFirstName: 'Wairimu' }) {
+/*
+ * THE SAME CHECK-IN ROWS `buildSessionRows` READS (lib/session-rows.ts): a round only counts as
+ * shared once `roundCompletions` actually has an entry for it, never from a round count alone.
+ */
+const GROUND_PARTICIPANTS = [
+  { id: 'p-wairimu', userId: 'u-wairimu', managingOnly: true },
+  { id: 'p-miriam', userId: 'u-miriam', managingOnly: false },
+  { id: 'p-aisha', userId: 'u-aisha', managingOnly: false },
+]
+
+function renderBoard(payload: any, ground: any = {
+  initiatorId: 'u-wairimu', leadFirstName: 'Wairimu', scenario: 'NOT_A_REAL_SCENARIO',
+  participants: GROUND_PARTICIPANTS,
+  checkIns: [
+    { sessionNumber: 1, participantId: 'p-wairimu', status: 'COMPLETED', completedAt: '2026-09-23T10:00:00.000Z' },
+    { sessionNumber: 1, participantId: 'p-miriam', status: 'COMPLETED', completedAt: '2026-09-23T10:05:00.000Z' },
+    // Aisha has not checked in yet, so session 1 has not closed.
+  ],
+  roundCompletions: [],
+}) {
   ;(boardApi.get as any).mockResolvedValue(payload)
   ;(groundsApi.get as any).mockResolvedValue(ground)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -74,43 +108,71 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     renderBoard(board())
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
 
-    // Nothing has been shared yet (no round is done): says so, and names the lead.
-    expect(screen.getByText('Today’s team picture isn’t ready yet.')).toBeTruthy()
-    expect(screen.getByText(/Wairimu hasn’t shared it yet\. Your own report is ready now\./)).toBeTruthy()
+    // Nothing has been shared yet (the round has not closed): says so, and names the lead.
+    expect(screen.getByText('Today’s team picture isn’t shared yet.')).toBeTruthy()
+    expect(screen.getByText('Wairimu shares it. Your own report is ready now.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Read your own report' })).toHaveAttribute('href', '/grounds/g1/report')
 
-    // Her own deal, marked "Only yours" - in her own personal section, above the fold.
-    const ownSection = screen.getByText('Your own deals, day by day').closest('section') as HTMLElement
+    // Her own deal, marked "Only yours" - in her own personal section, above the fold, under the
+    // prototype's own heading (board-as-participant.txt: "Your deals, day by day" - board fix,
+    // sales B, item 3b, not "Your own deals, day by day").
+    const ownSection = screen.getByText('Your deals, day by day').closest('section') as HTMLElement
     expect(within(ownSection).getByText('Only yours.')).toBeTruthy()
     expect(within(ownSection).getByText('Westgate Deli')).toBeTruthy()
     expect(within(ownSection).queryByText('Greenhill Mart')).toBeNull()
 
-    // No "Your share" box: the engine sends no field for it yet (request 107), so nothing is drawn.
+    // No "Your share" box: this fixture sends no `yourShare` field, so nothing is drawn.
     expect(screen.queryByText(/Your share/)).toBeNull()
 
     // Everything else is still there, just folded under one name - including Aisha's deal, which
     // is never part of Miriam's own personal section above.
     expect(screen.getByText('The whole check-in')).toBeTruthy()
+    /*
+     * SECOND BOARD REVIEW, WORDING: "Everything from this check-in, as before." did not say who it
+     * was from or for - it now names both ("Everything else from this check-in, for everyone in
+     * it."), since this fold holds everybody's work, not only what came before.
+     */
+    expect(screen.getByText('Everything else from this check-in, for everyone in it.')).toBeTruthy()
     const whole = screen.getByText('The whole check-in').closest('details') as HTMLElement
     expect(whole).toBeTruthy()
     expect(within(whole).getByText('Greenhill Mart')).toBeTruthy()
     expect(within(whole).getByText('Westgate Deli')).toBeTruthy()
   })
 
-  it('says the picture is ready once a round has closed', async () => {
+  it('says the picture is ready once the server itself says `teamPicture.shared`, not from a round count', async () => {
     me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
-    renderBoard(board({ howItIsGoing: { latestSummary: null, glance: { progress: { roundsDone: 1, roundsPlanned: 12, answeredThisRound: 3, ofPeople: 3 }, inTheWay: { count: 0, oldest: null, daysWaiting: null } } } }))
+    renderBoard(board({ teamPicture: { shared: true } }))
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.getByText('Today’s team picture is ready.')).toBeTruthy()
-    expect(screen.queryByText('Today’s team picture isn’t ready yet.')).toBeNull()
+    expect(screen.queryByText('Today’s team picture isn’t shared yet.')).toBeNull()
+  })
+
+  it('reads "Your share" when the engine sends one, ending with who else sees it', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    renderBoard(board({
+      yourShare: [{ objectiveId: 'o1', says: '4 of your 5 sales so far; 3 paid.', whoSees: 'Only you and Wairimu see your share.' }],
+    }))
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
+    expect(screen.getByText('4 of your 5 sales so far; 3 paid.')).toBeTruthy()
+    expect(screen.getByText('Only you and Wairimu see your share.')).toBeTruthy()
+  })
+
+  it('reads one plain sentence, not a missing section, when she has no deals of her own', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    renderBoard(board({
+      workRecords: [{ section: 'Deal grid', holds: 'deals', state: 'filled' as const, stages: ['Need'], rows: [] }],
+    }))
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
+    expect(screen.getByText('Your deals, day by day')).toBeTruthy()
+    expect(screen.getByText('You have no deals on record yet.')).toBeTruthy()
   })
 
   it('Wairimu, who runs the check-in, reads her board exactly as before - no personal view, no fold', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(board({ myParticipantId: 'p-wairimu', canEditFrame: true }))
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
-    expect(screen.queryByText('Today’s team picture isn’t ready yet.')).toBeNull()
-    expect(screen.queryByText('Your own deals, day by day')).toBeNull()
+    expect(screen.queryByText('Today’s team picture isn’t shared yet.')).toBeNull()
+    expect(screen.queryByText('Your deals, day by day')).toBeNull()
     expect(screen.queryByText('The whole check-in')).toBeNull()
     // Her own and Aisha's deals are both plainly on the page, not behind a fold.
     expect(screen.getByText('Westgate Deli')).toBeTruthy()

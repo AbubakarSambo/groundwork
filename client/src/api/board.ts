@@ -65,6 +65,21 @@ export type BoardPresent = {
   /** The newest thing in the record the board is built from. Opening the board does not move it. */
   lastChangedAt?: string | null
   /**
+   * BOARD FIX (sales B, item 3a): WHETHER THE TEAM'S PICTURE IS SHARED, FOR A PARTICIPANT
+   * (a-participants-board-is-their-own.ts). `shared: true` once the report has gone out to the
+   * people in it; `shared: false` with `says` (the server's own sentence) and `yourOwnReport` (the
+   * server's own "Your own report is ready now.", or null when this reader has no report yet) while
+   * it has not. Present only on a participant's own narrowed board - absent for the lead.
+   */
+  teamPicture?: { shared: true } | { shared: false; says: string; yourOwnReport: string | null }
+  /**
+   * "YOUR SHARE" (request 107 c; board-as-participant.txt: "4 of your 5 sales so far; 3 paid. Only
+   * you and Wairimu see your share."). Only this reader's own targets with a number set, each
+   * already said as a full sentence (`says`) and already ending in who else may see it (`whoSees`).
+   * Present only for a participant who owns at least one such target.
+   */
+  yourShare?: { objectiveId: string; says: string; whoSees: string }[]
+  /**
    * Somebody named in an account as doing work here who has no account of their own. Guarded on
    * the server: nothing that quotes anybody, names a party, or was inferred reaches this.
    */
@@ -106,6 +121,13 @@ export type BoardPresent = {
     id: string; name: string; count: number; prevCount: number; target: number | null; delta: number; isNew: boolean
     /** The lead's own line about what is not settled here - a number nobody has defined is not agreed. */
     notSettled?: string | null
+    /**
+     * REQUEST 108 (b): a word for where this target stands ("Met", "On time", "Close", "Behind",
+     * "Within", "Over limit", "Not settled"), with `says` for why, or null where none can be said
+     * yet (fewer than two sessions counted, no planned last session, or no direction set). Null
+     * for any target with somebody's name on it - see board/the-headline-and-where-each-target-stands.ts.
+     */
+    stands?: { word: string; says: string } | null
     /** Whose number it is. Null is the whole check-in's. `owner` is the name this reader may see. */
     ownerParticipantId?: string | null
     owner?: string | null
@@ -142,7 +164,11 @@ export type BoardPresent = {
   } | null
   whatTheRoomIsAboutNote?: string
   whoOwnsWhat?: { participantId: string; name: string | null; role: string | null; items: { id: string; type: string; text: string; sessionNumber: number | null }[] }[]
-  dependencies?: { id: string; from: string | null; fromParticipantId?: string | null; what: string; on: string | null; onParticipantId?: string | null; status: 'BLOCKING' | 'WAITING' | 'CLEARED'; then: string | null }[]
+  dependencies?: {
+    id: string; from: string | null; fromParticipantId?: string | null; what: string; on: string | null; onParticipantId?: string | null; status: 'BLOCKING' | 'WAITING' | 'CLEARED'; then: string | null
+    /** REQUEST 107 (c), part 2: how often this blocker was raised, in check-ins, never a single session counted twice. */
+    raised?: { times: number; firstRaisedAt: string; lastRaisedAt: string; says: string }
+  }[]
   checkInGrid?: { sessions: number[]; rows: { participantId: string; name: string | null; role: string | null; managingOnly: boolean; cells: Record<string, string> }[] }
 
   /**
@@ -278,6 +304,17 @@ export type BoardPresent = {
   evidenceIndex?: { id: string; participantId: string | null; who: string | null; said: string; backedBy: string; sessionNumber: number | null }[]
   /** Counts from the record, for whoever runs the check-in only, never a label. */
   busyOrMoving?: { eachPerson: { participantId: string; who: string; says: string }[]; cannotTellYou: string }
+  /**
+   * COACHING (modules.md: "One thing to do better, for each person"). `yours` is this reader's own
+   * private note, the same shape `WhatToWorkOnNext` already draws on the report page - sent to
+   * every reader who has one, lead and participant alike. `eachPerson` is the lead's own read on
+   * everybody else, the same shape `WhatToProbeThemOn` already draws - the server sends it only to
+   * whoever runs the check-in, and null for anybody else, so there is nothing here to gate further.
+   */
+  coaching?: {
+    yours: import('@/components/gw/WhatToWorkOnNext').CoachingNote | null
+    eachPerson: import('@/components/gw/WhatToProbeThemOn').ProbeRead[] | null
+  }
   /** What the person who runs the check-in needs to do. At most 10, for that reader only. */
   leadActions?: { id: string; says: string; because: string | null }[]
   /** What each side promised, and what somebody here still waits on that side for. One per person, then each outside party named. */
@@ -290,6 +327,70 @@ export type BoardPresent = {
   contradictions?: { id: string; commitmentId: string; participantId: string | null; who: string; says: string }[]
   /** Questions only whoever runs the check-in can answer. At most 10, for that reader only. */
   questionsForTheLead?: { id: string; question: string; because: string }[]
+
+  /**
+   * REQUEST 108 (a): THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (board-as-lead.txt: "Will
+   * we reach 25 sales by 30 September?"). Built only from the check-in's own team aims. Absent
+   * where nothing qualifies - nothing is made up. Draw `question` above everything else, `answer`
+   * under it, then one bar per entry in `bars`, then `howItIsGoing.latestSummary` as before.
+   */
+  headline?: {
+    question: string
+    answer: string | null
+    bars: { objectiveId: string; kind: 'aim' | 'limit'; now: number; target: number; filled: number; word: string | null }[]
+  } | null
+
+  /**
+   * REQUEST 108 (d): "WHERE THIS IS HEADING" AND "RECORD THE DECISION" (board-as-lead.txt). Built
+   * only from what the product already records: the situation's own possible endings, signals
+   * already served elsewhere on this board, and what the lead wrote down as still to decide.
+   * Sent only to whoever runs the check-in; null for everybody else, including on an evaluation
+   * check-in. See board/where-this-is-heading.ts.
+   */
+  whereThisIsHeading?: {
+    heading: string
+    about: string
+    outcomes: { value: string; says: string; more: string | null }[]
+    outcomesSays: string | null
+    signals: { says: string; from: string }[]
+    signalsSays: string | null
+    whatWouldSettleIt: string[]
+    whatWouldSettleItSays: string | null
+    whoDecides: string
+    groundworkDoesNotChoose: string
+    recordTheDecision: string | null
+    decided: string | null
+  } | null
+
+  /** REQUEST 107 (c), part 3: grouped by site, county, team or queue, where a line names one. */
+  byArea?:
+    | { state: 'filled'; heading: string; areas: { area: string; records: number; says: string }[] }
+    | { state: 'not-known'; why: string }
+
+  /** REQUEST 107 (c), part 4: a sales board only - what was reported at each stage, never "criteria met". */
+  reportedAgainstCriteria?: {
+    state: 'not-known'
+    why: string
+    stages: { stage: string; reported: number; withProof: number; says: string }[]
+  }
+
+  /**
+   * REQUEST 105, PART 2: BLOCKERS GET ONE SECTION (board-as-lead.txt: "Blockers"). One entry per
+   * open blocker, already walled the same as every other wait. A cleared blocker is not in it.
+   */
+  blockers?: {
+    id: string
+    who: string
+    name: string
+    state: 'blocking' | 'waiting'
+    says: string
+    raised: { times: number; firstRaisedAt: string; lastRaisedAt: string; says: string; sessions: number[]; inSessions: string }
+    proof: { state: string; says: string }
+    timeGiven: string
+    wouldClearIt: string | null
+    wouldClearItSays: string
+    holdingUp: string | null
+  }[]
 }
 
 export type BoardResponse = BoardAbsent | BoardWithheld | BoardPresent
@@ -332,6 +433,19 @@ export interface AServedWorkRow {
   saidBy?: string | null
   /** The id behind `saidBy`, or null for "a colleague" and for a record the lead added. */
   saidByParticipantId?: string | null
+  /**
+   * REQUEST 108 (c): the mark of the line this row came from - `proven`, `confirmed`, `memory`,
+   * `said` or `none` (a record added on the board, nothing behind it). Draw with the shared
+   * `ProofMark`: filled for `proven`, ringed for the rest, nothing for `none`.
+   */
+  mark?: 'proven' | 'confirmed' | 'memory' | 'said' | 'none'
+  /** How `from`/`said` is known: "proof" (a document is behind it), "said" or "lead" (added on the board). */
+  known?: 'proof' | 'said' | 'lead'
+  knownSays?: string
+  /** REQUEST 107 (c), part 1: the open commitment about this exact record, in the words of whoever made it, or null. */
+  next?: string | null
+  nextKnown?: 'proof' | 'said' | 'lead' | null
+  nextSays?: string
 }
 
 export type AServedWorkSection =

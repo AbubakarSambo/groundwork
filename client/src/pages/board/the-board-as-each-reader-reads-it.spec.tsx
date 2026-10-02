@@ -214,15 +214,24 @@ describe('the board, as each reader reads it', () => {
  * escape hatch cannot come back quietly.
  */
 describe('the switchboard sections sit directly in the page rhythm', () => {
+  /*
+   * BOARD REVIEW, SALES PIECE A, ITEM 1: "WHAT WE ARE AIMING FOR" AND "WHAT SUCCESS LOOKS LIKE"
+   * NOW DRAW INSIDE "EVERYTHING ELSE FROM THIS CHECK-IN", ON PURPOSE. No prototype screen shows
+   * either as its own heading on a board, so both now fold under that one disclosure near the foot
+   * of the page, the same way the participant's own board already folds "The whole check-in" -
+   * this is the Folded part doing its job, not the escape-hatch wrapper this test was written
+   * against. "The team today", drawn in the open per board-as-lead.txt, is the section checked here
+   * instead - still a direct child of the page wrap, still getting the shared page rhythm's spacing.
+   */
   it('each rebuilt section is its own direct child of the page wrap, not buried in an extra wrapper', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     const { container } = renderBoard(AS_THE_LEAD)
-    await screen.findByRole('heading', { name: 'What we are aiming for' })
+    await screen.findByRole('heading', { name: 'The team today' })
     const wrap = container.querySelector('.gwui-page-wrap')
     expect(wrap).toBeTruthy()
     const sections = wrap!.querySelectorAll(':scope > section')
     const headings = Array.from(sections).map((s) => s.querySelector('h2')?.textContent)
-    expect(headings).toEqual(expect.arrayContaining(['What success looks like', 'What we are aiming for']))
+    expect(headings).toEqual(expect.arrayContaining(['The team today']))
   })
 })
 
