@@ -6,6 +6,8 @@ same file.
 
 ## This morning, 2 October: in short
 
+- **Decided for you to confirm (2 October, late evening).** The prototype has no example board for onboarding or for either project situation; its eleven examples are other kinds of work. So each of those boards is matched against what the prototype does show for that situation: the switchboard's list of sections for it, the board's own look (B5), and, for a new hire, the day 30 and day 60 screens and the probation review (B6).
+
 **Stopping for the week, 2 October, evening.** The weekly allowance is nearly used up, so I finished the piece in hand and stopped there. Everything is in `docs/screens-handover.md`: where every screen stands, what is in progress, what comes next, and what needs you. It is committed and pushed.
 - **The sales board.** It is now drawn from the engine's latest work: deal groups, each deal's card, each item's own action, "Open issues", and Amani's share and aim. The fifth review says Amani's board matches. It found four small faults on Rukia's board, and they are fixed and tested, but not yet reviewed. That review is the first thing to do next.
 - **What the engine still sends wrong** on that board is request 117. That includes the false "Met", sessions counted two ways, deal owners missing, and the days changing just by opening the board.
@@ -543,6 +545,8 @@ nothing about today's billing has changed. Nobody already on the free plan is cu
 U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
+
+**2 October, late evening: the client's order.** Hafsah's client needs three boards first, in this order, each matched against its prototype example and reviewed: the sales team, onboarding, and project. Project means both "Get a new project off to a good start" and "Get a project back on track". Then the three suites the client uses, each matched against the prototype: leave, finance requests and performance reviews. "Performance management" means the reviews suite. Then the Company page with the company-wide picture, then the Ask Groundwork chat, then the other eight boards. The existing back office stays as it is for Groundwork's staff, and its rebuild comes last. `docs/screens-handover.md` is kept up to date after every finished piece.
 
 **2 October, evening: the new order of work.** The boards for all eleven kinds of work come first: finish the sales board, then the other ten, one at a time, each matched and reviewed before the next. When the engine sends the company-wide picture, the Company page comes next. Then Plan and billing, with these decisions: a one-month free trial for teams under 20, and WhatsApp as a paid add-on, charged monthly after the trial at about 80% of the plan price, with a monthly limit. Prices and limits are never written into the screens; the engine sends them. The back office (group 4) comes last of everything. If a board names the reader instead of saying "you", that exact case (the check-in, the reader and the sentence) goes to the engine as a request. `docs/screens-handover.md` is kept up to date after every finished board.
 

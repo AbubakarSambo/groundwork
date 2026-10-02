@@ -56,7 +56,21 @@ The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`
 
 None of these counts against the screen.
 
-## What comes next, in order (Hafsah, 2 October)
+## What comes next (Hafsah, 2 October, late evening; this replaces every order below)
+
+Hafsah's client needs these first:
+1. **Three boards, in this order, each matched against its prototype example and reviewed:** the sales team; onboarding ("Help a new hire get started", `NEW_HIRE`); project, which is both "Get a new project off to a good start" (`NEW_PROJECT`) and "Get a project back on track" (`DRIFT`).
+2. **The three suites the client uses, each matched against the prototype:** leave (`E-suites/suite-leave`), finance requests (`E-suites/suite-spend`), and performance reviews (`E-suites/suite-reviews`). Hafsah said "performance management" means the reviews suite.
+3. **The Company page,** with the company-wide picture.
+4. **The Ask Groundwork chat.**
+5. **The other eight boards.**
+6. **The back office.** It stays as it is for Groundwork's staff; its rebuild comes last.
+
+Plan and billing keeps Hafsah's decisions of 2 October (a one-month free trial for teams under 20; WhatsApp as a paid add-on at about 80% of the plan price, with a monthly limit; no prices or limits written into the screens). It has no place in the client's list, so it comes after item 5.
+
+`docs/screens-handover.md` is updated after every finished piece.
+
+## The earlier order (2 October, evening), replaced by the one above
 
 1. **Finish the sales board:** run the sixth review, as Rukia and as Amani, at 1440 and 375, against `docs/prototype/screens/B5-the-board/`. Fix what it finds.
 2. **The other ten boards, one at a time**, each matched and reviewed before the next. Use the sales board as the pattern:
@@ -117,6 +131,11 @@ Once a check-in's tests are done, also:
     - programme `46cfcb15`;
     - gov `ee96f03c`.
   - The full ids are in `e2e/the-prototype-count-of-buttons.spec.ts`, under `BOARD_KINDS`.
+  - For the client's boards, found in the local database:
+    - onboarding (`NEW_HIRE`), in Kilima Traders U8, running: `b0ab6395-070c-42a2-9f95-1e435f6e5f9e`, `f3c2057f-224c-4ec7-a954-fe01c62b5552` and `3bc90bfd-92aa-4b58-b04d-33fca0d71cb1`;
+    - a new project (`NEW_PROJECT`): the engineering one, `555ac67d-44ad-4520-8717-54979e9d4f00`, running;
+    - a project back on track (`DRIFT`): `dac969d3-c571-40b1-ada5-3eb7032bf90b`, running, and `1cf7728d-be07-45ff-9858-c501444fa6fe` in Kilima Traders U8, waiting for people.
+    - Check who leads and who checks in on each before using it.
 - **Tests:**
   - in `client/`: `npx vitest run` and `npx tsc --noEmit`;
   - in `api/`: `npx jest --maxWorkers=3`;
