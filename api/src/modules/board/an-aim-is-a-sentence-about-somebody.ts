@@ -150,6 +150,8 @@ export interface WhoAnAimIsAbout {
    * "Amani Wekesa set an aim of 3 shops in Kilimani for their own work." to anybody else.
    */
   setByTheHolder?: boolean;
+  /** The day the aim is due by, in words ("20 December"), kept apart from its name (request 117, part 11). */
+  dueOnSays?: string | null;
 }
 
 /**
@@ -191,12 +193,36 @@ export function theAimItself(name: string, target: number | null): string | null
   return what;
 }
 
-/** A person's own aim, in labels: "Participant A set an aim of 3 shops in Kilimani for their own work." */
+/**
+ * A person's own aim, in labels: "Participant A's own aim is 3 shops in Kilimani by 20 December." (request 117,
+ * part 11). It read "Amani Wekesa set an aim of 3 shops in Kilimani by 20 December for their own work.", which
+ * reads badly and guesses nothing better: "set herself" would guess a pronoun. The reader's own reads "Your own aim
+ * is 3 shops in Kilimani by 20 December." The day comes from the target's own date where it has one, so the name
+ * holds only the thing counted.
+ */
 function anAimTheySetThemselves(sentence: string, name: string, who: WhoAnAimIsAbout): string {
   const holder = who.holder as string;
-  if (who.direction === 'LIMIT') return `${sentence} ${holder} set this limit for their own work.`;
+  const whose = /^you$/i.test(holder) ? 'Your' : `${holder}'s`;
+  /* Where there is no thing to name, the sentence stays and says who set it, with no possessive to repeat. */
+  if (who.direction === 'LIMIT') return `${sentence} ${holder} set this limit.`;
   const what = theAimItself(name, who.target);
-  return what ? `${holder} set an aim of ${what} for their own work.` : `${sentence} ${holder} set this aim for their own work.`;
+  if (!what) return `${sentence} ${holder} set this aim.`;
+  const by = who.dueOnSays && !/\bby\b/i.test(what) ? ` by ${who.dueOnSays}` : '';
+  return `${whose} own aim is ${what}${by}.`;
+}
+
+/**
+ * THE DAY KEPT APART FROM THE NAME (request 117, part 11). "3 shops in Kilimani by 20 December" is the thing
+ * counted and the day it is due by: the name keeps "3 shops in Kilimani", and the day goes to the target's date.
+ * Only a day somebody can read back ("by 20 December", "by Friday", "by the end of the quarter"); `day` turns it
+ * into a date, and where it cannot, the name is left whole.
+ */
+export function theDayKeptApart(name: string, day: (said: string) => Date | null): { name: string; dueOn: Date | null } {
+  const t = (name ?? '').trim();
+  const m = /^(.*\S)\s+by\s+((?:the\s+)?[^,;]+?)[.!]?$/i.exec(t);
+  if (!m) return { name: t, dueOn: null };
+  const when = day(m[2]);
+  return when ? { name: m[1].replace(/[,;]+$/, '').trim(), dueOn: when } : { name: t, dueOn: null };
 }
 
 /**
@@ -278,6 +304,8 @@ export function theirOwnIsThe(text: string): string {
  */
 export function yourOwnAimIsYours(text: string): string {
   return (text ?? '')
+    /* "Participant A's own aim is ...", named for Participant A, is "your own aim is ..." (request 117, part 11). */
+    .replace(/(^|[.!?]\s+)your own (aim|limit)\b/g, '$1Your own $2')
     .replace(/(^|[.!?]\s+)You set an aim of (.+?) for their own work\./g, '$1You set yourself an aim of $2.')
     .replace(/(^|[.!?]\s+)You set this (aim|limit) for their own work\./g, '$1You set yourself this $2.');
 }

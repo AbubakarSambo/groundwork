@@ -93,7 +93,7 @@ import { theSessionReport } from '../reports/the-session-report';
 import { isThisACascade } from './is-this-a-cascade';
 import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
 import { asADirection, whatTheWordsSuggest, theQuestionAboutWhichWay, theDayItIsDue, THE_KINDS_NAME, type TargetDirection } from './an-aim-or-a-limit';
-import { aDateOnly } from './the-day-in-words';
+import { aDateOnly, theDayInWords } from './the-day-in-words';
 
 /** Whether a date-only day has passed on this clock, read in Lagos as every board date is. */
 function aDeadlineHasPassed(dueOn: Date | string | null | undefined, now: Date): boolean {
@@ -1183,6 +1183,8 @@ export class BoardService {
           direction: asADirection(row.direction),
           /* A person's own aim is theirs, never read as a number the lead set (decision 75, item 37). */
           setByTheHolder: anAimTheHolderSet(row, theLeadsRow),
+          /* Its day, kept apart from its name (request 117, part 11). */
+          dueOnSays: (row as any).dueOn && aDateOnly((row as any).dueOn) ? theDayInWords(aDateOnly((row as any).dueOn)!, now) : null,
         });
         const named = withNames(inLabels, visibleNames, labels.values(), { viewerLabel: readerLabel });
         return { ...o, name: yourOwnWhereYouAreTheSubject(named, othersNames) };

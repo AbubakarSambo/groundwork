@@ -1,3 +1,4 @@
+import { theDayKeptApart } from '../board/an-aim-is-a-sentence-about-somebody';
 import { suggestAnswers } from './suggested-answers';
 import { whatTheYesSays, startsWithAYes } from './yes-but-a-new-number';
 import { READS_DIFFERENTLY, alreadyAsked as theLinesInTheStamps, theStampForWhatItRaised } from './a-document-that-disagrees-is-asked-once';
@@ -9377,7 +9378,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const fresh = theAimsThatAreNew(aims, existing as any, (n) => numbersInTheirWords.has(n));
       if (fresh.length) {
         await this.prisma.groundObjective.createMany({
-          data: fresh.map((a, i) => ({ groundId, name: a.name, target: a.target, sortOrder: existing.length + i, ownerParticipantId: aimsAreShared ? null : participantId, setByParticipantId: participantId })),
+          /* A person's own aim keeps the thing counted as its name, and its day as its date (request 117, part 11). */
+          data: fresh.map((a, i) => {
+            const kept = aimsAreShared ? { name: a.name, dueOn: null } : theDayKeptApart(a.name, (said) => theDayTheyMeant(said, new Date()));
+            return { groundId, name: kept.name, target: a.target, sortOrder: existing.length + i, ownerParticipantId: aimsAreShared ? null : participantId, setByParticipantId: participantId, ...(kept.dueOn ? { dueOn: kept.dueOn } : {}) };
+          }),
         });
         const withNumbers = fresh.filter((a) => a.target != null).length;
         this.logger.log(`Ground ${groundId}: kept ${fresh.length} aim(s), ${withNumbers} with a number.`);
@@ -9467,7 +9472,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const wrote = await this.prisma.groundObjective.createMany({
       data: fresh.map((t, i) => ({
         groundId,
-        name: t.name,
+        /* The thing counted as the name, and the day it is due by as its date (request 117, part 11). */
+        ...(() => {
+          const kept = theDayKeptApart(t.name, (said) => theDayTheyMeant(said, new Date()));
+          return { name: kept.name, ...(kept.dueOn ? { dueOn: kept.dueOn } : {}) };
+        })(),
         target: t.target,
         ownerParticipantId: t.participantId,
         /* The speaker: the lead setting "150 each" for three people, or a person naming their own. */
