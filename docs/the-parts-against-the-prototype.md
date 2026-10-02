@@ -591,3 +591,20 @@ The footer note sits outside the `RowList`, as a sibling inside the same `Panel`
 "Where people differ" section's own structure (part 5) keeps its extra content (the central
 question) outside that section's `RowList` too. No wording, no behaviour and nothing any reader
 sees changed - only the markup each row and label is built from.
+
+## Board task, batch 3, part 11 (Hafsah: Blockers and the switchboard sections drawn inline in BoardPage.tsx)
+
+`BlockersSection` (`client/src/pages/board/TheSwitchboardsSections.tsx`) is already built from the
+shared parts: one `Stack gap={10}` of `Panel` cards, unchanged by this task. What was still in
+BoardPage.tsx was its own close cousin, "Waiting on" (board-as-lead.txt's own `dependencies`, drawn
+inline here rather than extracted to that file): the same one card per handoff, wrapped in a plain
+`<div className="gwui-gap-10" style={{display: 'flex', flexDirection: 'column'}}>` - the one-off
+version of exactly the `Stack` `BlockersSection` already uses for the same shape of list, one card
+after another with a 10px gap. That wrapper is now `Stack gap={10}`, nothing else - each card's own
+contents (the status pill, "Waiting on:", the sentence, the blue "then" quote) stay exactly as they
+were, matching `BlockersSection`'s own remaining one-off classes for its equivalent fields (`Note`
+with a bold label, a flex header row for the title and tag), which this task leaves alone since the
+"done" reference file keeps them the same way.
+
+BoardPage.tsx's one-off count drops from 597 to 596 (one-off-uses-per-file.ts updated to match). No
+wording or behaviour changed.

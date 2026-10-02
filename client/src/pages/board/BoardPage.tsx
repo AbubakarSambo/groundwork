@@ -1947,7 +1947,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             {b.dependencies.length === 0 ? (
               <Panel><div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.6}}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Panel>
             ) : (
-              <div className="gwui-gap-10" style={{display: 'flex', flexDirection: 'column'}}>
+              <Stack gap={10}>
                 {b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d) => {
                   const onWhom = d.on ?? 'someone outside this check-in'
                   const statusSaid = d.status === 'BLOCKING' ? 'This is blocking work.' : d.status === 'CLEARED' ? 'This is cleared.' : 'This is waiting.'
@@ -1985,7 +1985,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     </Panel>
                   )
                 })}
-              </div>
+              </Stack>
             )}
           </Section>
         )}

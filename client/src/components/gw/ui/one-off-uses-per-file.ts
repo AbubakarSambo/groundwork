@@ -29,7 +29,7 @@ export const ONE_OFF_USES_PER_FILE: Record<string, number> = {
   'components/gw/ui/SubHeading.tsx': 4,
   'components/gw/where-each-person-is.tsx': 4,
   'components/gw/where-to-focus.tsx': 26,
-  'pages/board/BoardPage.tsx': 597,
+  'pages/board/BoardPage.tsx': 596,
   'pages/board/TheSwitchboardsSections.tsx': 33,
   'pages/board/WorkRecords.tsx': 77,
   'pages/company/CompanyContextPage.tsx': 3,
