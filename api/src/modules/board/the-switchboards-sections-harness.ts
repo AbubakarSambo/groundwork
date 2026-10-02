@@ -73,6 +73,8 @@ export interface Setup {
   recordLines?: any[];
   /** What the lead wrote down on the Context page (GroundContextItem rows: kind, audience, text). */
   contextItems?: { id?: string; kind: string; audience?: string; text: string; closedAt?: Date | null }[];
+  /** A colleague naming somebody's work (WorkMention rows: sourceParticipantId, aboutParticipantId, kind, text). */
+  mentions?: any[];
 }
 
 /**
@@ -137,6 +139,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     personObjective: model({ findMany: jest.fn(async (args: any) => clone((setup.personObjectives ?? []).filter((o: any) => !args?.where?.awareness || o.awareness === args.where.awareness))) }),
     groundCommitment: model({ findMany: jest.fn(async () => clone(setup.commitments ?? [])) }),
     checkInGap: model({ findMany: jest.fn(async () => clone(setup.gaps ?? [])) }),
+    workMention: model({ findMany: jest.fn(async () => clone(setup.mentions ?? [])) }),
     workItem: model({ findMany: jest.fn(async () => clone(setup.items ?? [])) }),
     groundDocument: model({ findMany: jest.fn(async (args: any) => clone((setup.documents ?? []).filter((d: any) => !args?.where?.id?.in || args.where.id.in.includes(d.id)))) }),
     productMetric: model({ findMany: jest.fn(async (args: any) => clone((setup.metrics ?? []).filter((m: any) => !args?.where?.subjectExternalId || m.subjectExternalId === args.where.subjectExternalId))) }),

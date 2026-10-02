@@ -13,6 +13,11 @@ import { whereThisTargetStands, theHeadlineQuestion, theDirectionToReadIn, type 
 import { whereThisIsHeading } from './where-this-is-heading';
 import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
+import { toCloseTheGap } from './to-close-the-gap';
+import { helpNobodyMentioned } from './help-nobody-mentioned';
+
+/** Said where the prototype has "Open issues" (request 115 c): what the record would need to hold. */
+export const NO_OPEN_ISSUES_ON_RECORD = 'Nothing on record follows an issue from unclear, to decided, to done and checked, so open issues cannot be shown yet. Where people see something differently, and the questions written down to decide on the Context page, are under what needs you.';
 import { theShareSays, YOU_HAVE_NO_SHARE_YET } from './your-share';
 import { theirOwnAimsKeptOnlyAsPromises, AN_AIM_FROM_THEIR_PROMISE } from './an-aim-kept-only-as-their-promise';
 import { eachDealInItsGroup } from './each-deal-in-its-group';
@@ -1064,6 +1069,12 @@ export class BoardService {
         id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
         /* What the target assumes (U.7), to whoever may read the target, and to nobody else. */
         assumes: Array.isArray((o as any).assumes) ? ((o as any).assumes as string[]).filter((a) => typeof a === 'string' && a.trim()) : [],
+        /* Where nothing is written down, said plainly rather than left empty (request 115 c). Nothing is made up. */
+        assumesSays: (Array.isArray((o as any).assumes) ? ((o as any).assumes as string[]).filter((a) => typeof a === 'string' && a.trim()) : []).length
+          ? null
+          : isInitiator
+            ? 'Nothing on record says what this target assumes yet. You can write down what it assumes here.'
+            : 'Nobody has written down what this target assumes yet.',
         /*
          * WHOSE NUMBER THIS IS. The board listed a target set for one person exactly as it listed the
          * team's, so a sheet of nine rows read as nine things everybody was held to (Hafsah, 22 Sep
@@ -1726,6 +1737,20 @@ export class BoardService {
         const waitingAtTheDoor = new Set(ground.participants.filter((p: any) => p.user?.awaitingOrgApproval).map((p: any) => p.id));
         out.contribution = contributionAsThisReaderMayRead(buildContribution(readInput, nameOf), me?.id ?? null)!
           .map((r) => ({ ...r, ...(r.notCheckedInYet && waitingAtTheDoor.has(r.participantId) ? { reason: null } : {}), remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, isInitiator) }));
+      }
+      /*
+       * HELP NOBODY MENTIONED (request 115 c): a colleague named somebody as the reason something moved,
+       * and that person's own lines say nothing about it. Whoever runs the check-in only; who said it is
+       * never served. See help-nobody-mentioned.
+       */
+      if (runsItForAPattern(ground as any, requestingUserId)) {
+        const help = helpNobodyMentioned(
+          (readInput as any).mentions ?? [],
+          ((readInput as any).entries ?? []).map((e: any) => ({ participantId: e.participantId, text: cleanText(e.text ?? '') })),
+          ground.participants as any[],
+          (pid) => nameOf(pid),
+        );
+        if (help) out.helpNobodyMentioned = help;
       }
       /* Built from what may be served, never the read passed through whole: no confidence, no percentage,
          no count of evidence, and nothing of a read too thin to show (request 111 a, no-rating-is-served). */
@@ -2491,6 +2516,18 @@ export class BoardService {
         walled.byArea = theWorkByArea(walled.workRecords);
         const atEachStage = reportedAgainstTheRules(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords);
         if (atEachStage) walled.reportedAgainstCriteria = atEachStage;
+        /* To close the gap (request 115 c): to whoever is served the headline, from the deals they are served. See to-close-the-gap. */
+        if (walled.headline && !aParticipantOnly) {
+          const gap = toCloseTheGap(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, (walled.objectives ?? []) as any[], deadlineOf(ground as any), now);
+          if (gap) walled.toCloseTheGap = gap;
+        }
+      }
+      /*
+       * OPEN ISSUES (request 115 c; the prototype's "Each one moving towards a decision"). Nothing on record follows
+       * an issue through its stages, so nothing is made up: whoever runs the check-in is told what would be needed.
+       */
+      if (runsItForAPattern(ground as any, requestingUserId) && !isEvaluationCheckIn(ground.scenario)) {
+        walled.openIssues = { state: 'not-known', why: NO_OPEN_ISSUES_ON_RECORD };
       }
       /* And no number that rates a person leaves on any section, whoever reads it (request 111 a). */
       return withNoRatingNumber(walled);
