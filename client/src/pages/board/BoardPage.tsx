@@ -1087,9 +1087,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {/*
           THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (request 108 a; board-as-lead.txt:
-          "Will we reach 25 sales by 30 September?"). Above everything else, in the largest type,
-          as the engine's own answer asks - `howItIsGoing.latestSummary` keeps its place right
-          after it, unchanged.
+          "Will we reach 25 sales by 30 September?"). Above everything else, as the engine's own
+          answer asks.
+
+          BOARD REVIEW, SALES PIECE C, ITEM 2: `howItIsGoing.latestSummary` NO LONGER SITS HERE IN
+          THE LARGE "STORY" TYPE. That type (`.gwui-how-story`, the board's own largest, serif
+          text) was meant for this headline's own answer, above - with both drawn large, one
+          right under the other said the same kind of thing twice at the same size. The glance
+          line (how far through, what is in the way) is still real, valuable progress/blockers
+          information with no prototype equivalent, so it keeps its place, in plain text; the
+          summary sentence itself moves into "Everything else from this check-in", as plain text
+          too - see where `FoldEverythingElseUnless` opens, below.
         */}
         {(b as any).headline && (
           <Stack gap={12}>
@@ -1097,67 +1105,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </Stack>
         )}
 
-        {/*
-          THE KIND OF WORK, SAID ONCE, NEAR THE TOP OF THE BOARD (item 4). The lead, or an admin of
-          this organisation, can change it and its own stage names; a participant reads the same
-          sentence and gets no "Change" button. See WorkRecords.tsx.
-        */}
-        <KindOfWorkBanner
-          groundId={id!}
-          kindOfWork={(b as any).kindOfWork ?? null}
-          workStages={(groundForSignals as any)?.workStages}
-          canEdit={canEditKindOfWork}
-        />
-
-        {/*
-          HOW IT IS GOING, AND THE SESSION SPINE - KEPT, RESTYLED AS PLAIN TEXT (U.10 item 2).
-
-          "When I come in as a manager, I want progress/status and blockers/risks." The summary
-          paragraph and the glance line are the same component the list and the boards page draw
-          (how-a-check-in-is-going.ts computes it once); only the dark card they used to sit in is
-          gone, in favour of the prototype's plain first block under the header. The clickable
-          session spine - which the prototype's own header does not draw, but is real, valuable
-          navigation this board already had - is kept underneath it rather than dropped.
-        */}
-        {(b as any).howItIsGoing && (
+        {(b as any).howItIsGoing?.glance && (
           <div className="gwui-mt-16">
-            <HowItIsGoing
-              summary={(b as any).howItIsGoing.latestSummary}
-              glance={(b as any).howItIsGoing.glance}
-            />
-          </div>
-        )}
-
-        {has('phaseSpine') && b.phaseSpine && (
-          <div className="gwui-mt-10">
-            <div className="gwui-gap-10" style={{display: 'flex', flexWrap: 'wrap'}}>
-              {/*
-                A FINISHED SESSION OPENS ITS REPORT, which is a rule this codebase already made
-                and this was the one list not keeping it: "a finished session opens the REPORT and
-                not the transcript - that holds for every list there is". My record keeps it, the
-                party's report keeps it, the Report tab keeps it. These were plain divs.
-                A session that has not happened is not a link, because there is nothing behind it
-                yet - so the ones that have are buttons and the rest stay as they were.
-              */}
-              {b.phaseSpine.sessions.map((s) => {
-                const been = s.state === 'done' || (s.state === 'current' && !groundEnded)
-                const face = sessionPillSentence(s, groundEnded)
-                const skinClass = `gwui-fs-13 gwui-rule gwui-pt-4 gwui-pr-10 gwui-pb-4 gwui-pl-10 ${s.state === 'current' ? 'gwui-ink-green' : 'gwui-ink-sub'}`
-                const skinStyle = { borderRadius: 20, background: s.state === 'current' ? 'var(--gw-green-bg)' : 'white', fontWeight: s.state === 'current' ? 700 : 500 } as const
-                if (!been) return <div key={s.n} className={skinClass} style={skinStyle}>{face}</div>
-                return (
-                  <button
-                    key={s.n}
-                    type="button"
-                    onClick={() => navigate(`/grounds/${id}/session/${s.n}`)}
-                    className={skinClass}
-                    style={{...skinStyle, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3}}
-                  >
-                    {face}
-                  </button>
-                )
-              })}
-            </div>
+            <HowItIsGoing glance={(b as any).howItIsGoing.glance} />
           </div>
         )}
 
@@ -1171,59 +1121,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <SuggestionsForTheLead groundId={id!} where="board" />
           </div>
         )}
-
-        {/*
-          THE INSTRUCTIONS WERE BIGGER THAN THE THING THEY EXPLAINED. W-UX-7.
-          
-          Her audit note: "The 'how to read this board' box is bigger than the board." Seen on the
-          running page and it was true - four lines of dark panel above a board whose first section
-          had not been reached yet.
-          
-          NOT DELETED, and the wording is not touched. This framing is what keeps the board a mirror
-          rather than a weapon, and somebody meeting it for the first time should read it. What was
-          wrong is that it was read AT them again on every single visit.
-          
-          So: the load-bearing sentence stays on the page always; the rest opens on ask, and the
-          choice is remembered. A returning person gets the board they came for and the reminder
-          within one click.
-        */}
-        {/*
-          U.10: A PLAIN LINK, THE WEIGHT THE PROTOTYPE GIVES IT.
-          The prototype has no dark card here at all - just a small grey "How to read this board"
-          line among the rest of the page. The words below are unchanged; only the dark indigo panel
-          (rgb(32,35,62)) is gone, in favour of the same small-grey-text treatment as the rest of the
-          board (see "Last updated…" just above).
-        */}
-        <div className="gwui-mt-12">
-          <p className="gwui-fs-15 gwui-ink-sub gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: 1.55}}>
-            Built from what each person shared in their private check-in. Use it to see what&rsquo;s going on and guide the conversation. It&rsquo;s not a verdict.
-          </p>
-          {howToRead && (
-            <>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
-                If something doesn&rsquo;t feel right, raise it in your next check-in. The board updates as people share more.
-              </p>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
-                Each person is shown in the context of their own role, not scored against everyone else.
-              </p>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
-                This is the shared picture from this round of check-ins. It can change as the picture changes.
-              </p>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
-                Where people see things differently or progress has stalled, you can see what each person shared and support them.
-              </p>
-            </>
-          )}
-          {/* Board review, 1 October, item 8: this only opens or closes a section (a fold), drawn
-              with its own one-off classes instead of the shared `gwui-plain-link` quiet-text-link
-              class, so the button-count test counted it as a real button. */}
-          <button
-            onClick={() => setHowToRead(v => { localStorage.setItem(HOW_TO_READ_KEY, v ? 'closed' : 'open'); return !v })}
-            className="gwui-plain-link gwui-mt-6"
-          >
-            {howToRead ? 'Show less' : 'How to read this board'}
-          </button>
-        </div>
 
         {/*
           A SHARED PICTURE NEEDS TWO ACCOUNTS, AND THE BOARD SAYS SO.
@@ -1676,6 +1573,110 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           legend.
         */}
         <FoldEverythingElseUnless alreadyFolded={isParticipantView}>
+        {/*
+          BOARD REVIEW, SALES PIECE C, ITEM 2 (c): THE KIND-OF-WORK LINE, THE SESSION PILLS, AND
+          "BUILT FROM WHAT EACH PERSON SHARED…" - NONE OF THEM IN THE PROTOTYPE'S OWN HEADER. The
+          prototype's header (board-as-lead.txt) carries exactly "Last updated on … The board only
+          changes when something new comes in…" above the headline, which stays at the very top of
+          the page (see where it is drawn, well above `MaybeFolded`); this framing, which the
+          prototype does not show at all, moves down here instead. Nothing is removed - only the
+          large "story" type the summary sentence used to sit in, now plain text like the rest of
+          this fold (item 2 (b)).
+        */}
+        <KindOfWorkBanner
+          groundId={id!}
+          kindOfWork={(b as any).kindOfWork ?? null}
+          workStages={(groundForSignals as any)?.workStages}
+          canEdit={canEditKindOfWork}
+        />
+
+        {has('phaseSpine') && b.phaseSpine && (
+          <div className="gwui-mt-10">
+            <div className="gwui-gap-10" style={{display: 'flex', flexWrap: 'wrap'}}>
+              {/*
+                A FINISHED SESSION OPENS ITS REPORT, which is a rule this codebase already made
+                and this was the one list not keeping it: "a finished session opens the REPORT and
+                not the transcript - that holds for every list there is". My record keeps it, the
+                party's report keeps it, the Report tab keeps it. These were plain divs.
+                A session that has not happened is not a link, because there is nothing behind it
+                yet - so the ones that have are buttons and the rest stay as they were.
+              */}
+              {b.phaseSpine.sessions.map((s) => {
+                const been = s.state === 'done' || (s.state === 'current' && !groundEnded)
+                const face = sessionPillSentence(s, groundEnded)
+                const skinClass = `gwui-fs-13 gwui-rule gwui-pt-4 gwui-pr-10 gwui-pb-4 gwui-pl-10 ${s.state === 'current' ? 'gwui-ink-green' : 'gwui-ink-sub'}`
+                const skinStyle = { borderRadius: 20, background: s.state === 'current' ? 'var(--gw-green-bg)' : 'white', fontWeight: s.state === 'current' ? 700 : 500 } as const
+                if (!been) return <div key={s.n} className={skinClass} style={skinStyle}>{face}</div>
+                return (
+                  <button
+                    key={s.n}
+                    type="button"
+                    onClick={() => navigate(`/grounds/${id}/session/${s.n}`)}
+                    className={skinClass}
+                    style={{...skinStyle, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3}}
+                  >
+                    {face}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/*
+          THE SUMMARY SENTENCE ITSELF (item 2 (b)): the last round's shared picture, in plain text
+          now, not the board's own largest type - that belongs to the headline's own answer, above.
+        */}
+        {(b as any).howItIsGoing?.latestSummary && (
+          <p className="gwui-panel-text gwui-mt-10">{(b as any).howItIsGoing.latestSummary}</p>
+        )}
+
+        {/*
+          THE INSTRUCTIONS WERE BIGGER THAN THE THING THEY EXPLAINED. W-UX-7.
+
+          Her audit note: "The 'how to read this board' box is bigger than the board." Seen on the
+          running page and it was true - four lines of dark panel above a board whose first section
+          had not been reached yet.
+
+          NOT DELETED, and the wording is not touched. This framing is what keeps the board a mirror
+          rather than a weapon, and somebody meeting it for the first time should read it. What was
+          wrong is that it was read AT them again on every single visit.
+
+          So: the load-bearing sentence stays on the page always; the rest opens on ask, and the
+          choice is remembered. A returning person gets the board they came for and the reminder
+          within one click.
+        */}
+        <div className="gwui-mt-12">
+          <p className="gwui-fs-15 gwui-ink-sub gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: 1.55}}>
+            Built from what each person shared in their private check-in. Use it to see what&rsquo;s going on and guide the conversation. It&rsquo;s not a verdict.
+          </p>
+          {howToRead && (
+            <>
+              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
+                If something doesn&rsquo;t feel right, raise it in your next check-in. The board updates as people share more.
+              </p>
+              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
+                Each person is shown in the context of their own role, not scored against everyone else.
+              </p>
+              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
+                This is the shared picture from this round of check-ins. It can change as the picture changes.
+              </p>
+              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
+                Where people see things differently or progress has stalled, you can see what each person shared and support them.
+              </p>
+            </>
+          )}
+          {/* Board review, 1 October, item 8: this only opens or closes a section (a fold), drawn
+              with its own one-off classes instead of the shared `gwui-plain-link` quiet-text-link
+              class, so the button-count test counted it as a real button. */}
+          <button
+            onClick={() => setHowToRead(v => { localStorage.setItem(HOW_TO_READ_KEY, v ? 'closed' : 'open'); return !v })}
+            className="gwui-plain-link gwui-mt-6"
+          >
+            {howToRead ? 'Show less' : 'How to read this board'}
+          </button>
+        </div>
+
         {/*
           BOARD REVIEW, SALES PIECE C, ITEMS 4 AND 5: A SALES GROUND'S OWN "FORECAST", AND "BY
           AREA" - NEITHER IN THE PROTOTYPE'S OWN SALES BOARD. Not drawn at all for a participant

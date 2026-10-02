@@ -1,4 +1,4 @@
-import { Section, Panel, Tag, Note, Stack, Callout } from '@/components/gw/ui'
+import { Section, Panel, Tag, Note, Stack, Callout, SubHeading } from '@/components/gw/ui'
 import type { BoardPresent } from '@/api/board'
 
 /**
@@ -321,11 +321,19 @@ export function HeadlineSection({ headline, objectives }: { headline: BoardPrese
     <div className="gwui-gap-16" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', alignItems: 'start' }}>
       <Panel>
         <Stack gap={10}>
-          {/* The question, in the largest type on the board - `Callout tone="emphasis"` is the one
-              shared part that already draws a bold, near-black sentence at panel level, carried over
-              from "The gap" on TheJudgement rather than a new one-off size invented for this. */}
-          <Callout tone="emphasis">{headline.question}</Callout>
-          {headline.answer && <p className="gwui-panel-text">{headline.answer}</p>}
+          {/*
+            BOARD REVIEW, SALES PIECE C, ITEM 2 (a): A HEADING LINE, THEN THE ANSWER IN LARGE TYPE
+            (board-as-lead.jpg: "Will we reach 25 sales by 30 September?" reads as a heading; "Not
+            yet. 21 freezers are sold..." under it is the large, bold sentence). The question used
+            to be the one drawn in `Callout tone="emphasis"` - a blue, boxed callout, which is not
+            what a heading looks like, and left the real answer in plain panel text underneath it.
+            `SubHeading` is the shared part for a plain heading line over one fact inside a panel;
+            `Callout tone="emphasis"` keeps doing what it always did - the one shared part that
+            draws a bold, near-black sentence at panel level - just for the answer now, not the
+            question.
+          */}
+          <SubHeading>{headline.question}</SubHeading>
+          {headline.answer && <Callout tone="emphasis">{headline.answer}</Callout>}
         </Stack>
       </Panel>
       {headline.bars.length > 0 && (
