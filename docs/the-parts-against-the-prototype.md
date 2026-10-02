@@ -526,3 +526,21 @@ cover - the remaining one-off classes (`gwui-fs-16`/`gwui-ink-dark` with an inli
 `gwui-fs-15`/`gwui-ink-sub` with an inline `lineHeight`, `gwui-mt-4`/`gwui-mt-10`) are the same plain
 text-and-spacing convention used the same way everywhere else on this board, not a wrapper standing
 in for a part that already exists, so they are left as they were. No wording or behaviour changed.
+
+## Board task, batch 3, part 7 (follow-up): a bare `Button` inside `Row` kept its own width
+
+The picture check after part 7 caught a real regression `the-rebuilt-pages-use-only-the-new-parts`
+and the vitest run could not: on a target with no edit controls open, "Change" (the quiet button
+that opens them) stretched edge to edge of the row and sat centred in the middle of the line,
+instead of left-aligned under the target's own name. `Row`'s grid defaults every direct child to
+`justify-items: stretch` - needed so a plain `div` of stacked content (every other row on this
+board) fills the row's own width - but a bare `Button` has no content needing the full width, and
+its own `justify-content: center` (`gw-ui.css`'s `.gwui-btn`) then centred its label inside the
+stretched box. This is the same symptom `.gwui-person-row`'s own `justify-items: start` already
+names a few hundred lines up ("a Tag or a short line keeps its own natural width - the grid must
+not stretch it across the whole column"), on a part this batch is the first to put a bare button
+inside. Fixed with `.gwui-row > .gwui-btn { justify-self: start; }` - scoped to `.gwui-btn` only,
+so it touches nothing else that already relies on `Row`'s own stretch. Checked against the 1440px
+picture of the sales board (`boards-after3e`, rukia and amani) and both u7lead founder's-own-targets
+boards: "Change" now sits under the target's name exactly as the prototype and the pre-change
+product both draw it.
