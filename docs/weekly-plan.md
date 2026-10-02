@@ -4,6 +4,11 @@
 
 One list, merged from every instruction since decision 81, without duplicates. Marked **done**, **in progress** or **not started**.
 
+**First, before anything else (decision 84)**
+0. Request 118: Rukia's Today page failing when nobody is left in "not checked in yet" (with an empty-list test on every page that has such a list), the two sentences that name Rukia on her own board instead of "you", and what is still open from request 117 (the false "Met", the headline with no number, deal owners, Neema's shop, "waiting on themselves"). *In progress.*
+
+From now on, every change to what the board, reports or Today page send is written in `docs/answers-from-engine.md` in the same commit.
+
 **a. What the helpers are already doing, finished first**
 1. Request 117, the sales board's engine faults. *Done* (`39f692e3` to `40946e19`), except part 5 (Neema's shop and an invented wait), which only the model can read again.
 2. The WhatsApp fixes from `docs/whatsapp-end-to-end.md` (the "keep it off the phone" privacy fault, number tidying, switch words). *Done* (`937c1c6b` to `3c318354`).
