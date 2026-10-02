@@ -69,8 +69,8 @@ export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }
           <Panel pad={false}>
             <RowList label="What the numbers say">
               {it.whatTheNumbersSay.map((l, i) => (
-                <Row key={i} columns="1fr">
-                  <div className="gwui-pt-11 gwui-pr-14 gwui-pb-11 gwui-pl-14">
+                <Row key={i} columns="1fr" inset="kicker">
+                  <div className="gwui-pt-11 gwui-pb-11">
                     <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{l.says}</div>
                     {l.soWhat && <div className="gwui-mt-3"><Note>{l.soWhat}</Note></div>}
                   </div>
@@ -88,8 +88,8 @@ export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }
           <Panel pad={false}>
             <RowList label="What to do">
               {it.whatToDo.map((m, i) => (
-                <Row key={i} columns="1fr">
-                  <div className="gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14">
+                <Row key={i} columns="1fr" inset="kicker">
+                  <div className="gwui-pt-12 gwui-pb-12">
                     <div className="gwui-gap-10" style={{ display: 'flex', alignItems: 'baseline' }}>
                       <span className="gwui-fs-13 gwui-ink-white" style={{
                         flexShrink: 0, width: 18, height: 18, borderRadius: 9, background: 'var(--gw-navy)',
@@ -120,8 +120,8 @@ export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }
           <Panel pad={false}>
             <RowList label="What this cannot tell you">
               {it.whatThisCannotTellYou.map((w, i) => (
-                <Row key={i} columns="1fr">
-                  <div className="gwui-pt-9 gwui-pr-14 gwui-pb-9 gwui-pl-14 gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>
+                <Row key={i} columns="1fr" inset="kicker">
+                  <div className="gwui-pt-9 gwui-pb-9 gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>
                     <div style={{ fontWeight: 600 }}>{w.about}</div>
                     {w.why && <div className="gwui-mt-2">{w.why}</div>}
                     {w.toKnow && <div className="gwui-ink-sub gwui-mt-2">{w.toKnow}</div>}

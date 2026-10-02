@@ -439,3 +439,27 @@ where the rule lives:
 | Part | Property | Where it came from | Ours |
 | --- | --- | --- | --- |
 | `Callout` `tone="emphasis"` (`.gwui-callout-emphasis`) | size, colour, padding | `TheJudgement.tsx`'s own "the gap" box - the one sentence on the whole board a reader is meant to remember - carried a one-off blue tint, panel-level padding (20/22px) and a larger, bolder body (16px/600) than `Callout`'s own plain-sentence shape (10/14px padding, 14.5px body); the values are the box's own, not invented, since no prototype screen pictures this box (it answers a customer complaint about the report, not a pictured screen) | added, a named option in place of the one-off box |
+
+## Board task, batch 3, part 5 (Hafsah: `Row` gets a named side-inset, in place of a wrapper div reusing one-off classes)
+
+`Row` (`RowList`'s own row, no dedicated prototype class - see "batch 3" above) carries no side
+padding of its own: `.gwui-row` is `padding: 12px 0`. Part 4 (`WorkRecords.tsx`, commit `d4cbeb2b`)
+and part 4's own `BoardPage.tsx` work had each caller add that padding back by wrapping the row's
+own content in a `<div className="gwui-pl-NN gwui-pr-NN">` - reusing the one-off utility classes
+`gwui-pl-14`/`gwui-pr-14`/`gwui-pl-15`/`gwui-pr-15`/`gwui-pl-22`/`gwui-pr-22` the 1 October review
+exists to clear, not a shared part. `Row` now takes an `inset` prop instead
+(`client/src/components/gw/ui/Rows.tsx`), named for where each value comes from rather than its
+pixel size, each its own class so none of them matches the one-off utility shape:
+
+| Part | Property | Where it came from | Ours |
+| --- | --- | --- | --- |
+| `Row` `inset="panel"` (`.gwui-row-inset-panel`) | padding-left/right: 22px | the plain Panel's own inside, `.pad` in app.css (`padding: 20px 22px`) - for a row sitting directly under a `Panel` with no header strip of its own ("Where people differ"'s divergence items and agreements, `BoardPage.tsx`) | added, replacing the wrapper `div`'s one-off `gwui-pl-22 gwui-pr-22` pair |
+| `Row` `inset="list"` (`.gwui-row-inset-list`) | padding-left/right: 15px | a sub-panel's own list, under its own 15px header strip ("What people are trying to do", "Places named", "What it is about", `BoardPage.tsx`) - the rows take the same 15px inset the header above them already uses, so the two line up | added, replacing the wrapper `div`'s one-off `gwui-pl-15 gwui-pr-15` pair |
+| `Row` `inset="record"` (`.gwui-row-inset-record`) | padding-left/right: 16px | the board's own work-record lists (`WorkRecords.tsx`'s "Every deadline", "The parties", "Where next, ranked", "Your own ... day by day") | added, replacing the wrapper `div`'s one-off `gwui-pl-16 gwui-pr-16` pair |
+| `Row` `inset="kicker"` (`.gwui-row-inset-kicker`) | padding-left/right: 14px | a `Panel` introduced by a kicker-toned `SubHeading` rather than its own header strip (`TheJudgement.tsx`'s "What the numbers say", "What to do", "What this cannot tell you") | added, replacing the wrapper `div`'s one-off `gwui-pl-14 gwui-pr-14` pair |
+
+Where the wrapper `div` carried no other class or style, it is gone entirely (the content is `Row`'s
+own direct children); where it also carried a style or an ARIA role (`WorkRecords.tsx`'s three
+`role="row"`/`aria-label` rows), the `div` stays for that, with only the padding classes removed.
+No wording or behaviour changed anywhere this touched - the four values are exactly what each
+wrapper already held.

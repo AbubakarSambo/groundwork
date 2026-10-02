@@ -1156,6 +1156,11 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-row { display: grid; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
 .gwui-row a { color: var(--gw-navy); font-weight: 700; text-decoration: none; }
 .gwui-row a:hover, .gwui-row a:focus-visible { text-decoration: underline; }
+/* Row's own named side insets (board task, batch 3, part 5) - see the doc comment in Rows.tsx. */
+.gwui-row-inset-panel { padding-left: 22px; padding-right: 22px; }
+.gwui-row-inset-list { padding-left: 15px; padding-right: 15px; }
+.gwui-row-inset-record { padding-left: 16px; padding-right: 16px; }
+.gwui-row-inset-kicker { padding-left: 14px; padding-right: 14px; }
 @media (max-width: 900px) {
   .gwui-row { grid-template-columns: minmax(0, 1fr) !important; }
 }

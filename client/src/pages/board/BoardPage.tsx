@@ -1511,11 +1511,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
                    more than one person has checked in" on a round where everybody had, three inches
                    under a tile that said so. The server computes it from the one counter. */
-                <Row columns="1fr"><div className="gwui-pl-22 gwui-pr-22"><div className="gwui-fs-15 gwui-ink-muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (b.divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></div></Row>
+                <Row columns="1fr" inset="panel"><div className="gwui-fs-15 gwui-ink-muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (b.divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></Row>
               ) : (
                 <>
                   {b.divergence.items.map((d: any, i: number) => (
-                    <Row key={i} columns="1fr"><div className="gwui-pl-22 gwui-pr-22">
+                    <Row key={i} columns="1fr" inset="panel">
                       {/*
                         A TAG GLUED TO THE SENTENCE BEFORE IT. "...12 shops.agreed" read on a live
                         board: the pill sat right after the topic with only a CSS margin between
@@ -1568,15 +1568,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           {d.atStake}
                         </div>
                       )}
-                    </div></Row>
+                    </Row>
                   ))}
                   {b.divergence.agreements.map((a: any, i: number) => (
-                    <Row key={`a${i}`} columns="1fr"><div className="gwui-pl-22 gwui-pr-22">
+                    <Row key={`a${i}`} columns="1fr" inset="panel">
                       <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>
                         {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
                       </div>
                       <div className="gwui-fs-15 gwui-ink-green gwui-mt-2">Everybody agrees on this.</div>
-                    </div></Row>
+                    </Row>
                   ))}
                 </>
               )}
@@ -1634,15 +1634,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   <div className="gwui-pt-2 gwui-pb-12">
                     <RowList label="What people are trying to do">
                     {b.whatTheRoomIsAbout.aims.length === 0 ? (
-                      <Row columns="1fr"><div className="gwui-pl-15 gwui-pr-15 gwui-fs-15 gwui-ink-muted">Nobody has said what they are after yet.</div></Row>
+                      <Row columns="1fr" inset="list"><div className="gwui-fs-15 gwui-ink-muted">Nobody has said what they are after yet.</div></Row>
                     ) : b.whatTheRoomIsAbout.aims.map((a) => (
-                      <Row key={a.aim} columns="1fr"><div className="gwui-pl-15 gwui-pr-15">
+                      <Row key={a.aim} columns="1fr" inset="list">
                         <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline'}}>
                           <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{a.aim}</div>
                           <Tag>{a.held.length === 1 ? '1 person' : `${a.held.length} people`}</Tag>
                         </div>
                         <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3" style={{lineHeight: 1.5}}>{a.held.join(', ')}</div>
-                      </div></Row>
+                      </Row>
                     ))}
                     </RowList>
                   </div>
@@ -1654,15 +1654,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <div className="gwui-pt-2 gwui-pb-12">
                       <RowList label={label}>
                       {rows.length === 0 ? (
-                        <Row columns="1fr"><div className="gwui-pl-15 gwui-pr-15 gwui-fs-15 gwui-ink-muted">Nobody named one.</div></Row>
+                        <Row columns="1fr" inset="list"><div className="gwui-fs-15 gwui-ink-muted">Nobody named one.</div></Row>
                       ) : rows.map((r) => (
-                        <Row key={r.name} columns="1fr"><div className="gwui-pl-15 gwui-pr-15">
+                        <Row key={r.name} columns="1fr" inset="list">
                           <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline'}}>
                             <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{r.name}</div>
                             <Tag>{r.named.length}</Tag>
                           </div>
                           <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3" style={{lineHeight: 1.5}}>{r.named.join(', ')}</div>
-                        </div></Row>
+                        </Row>
                       ))}
                       </RowList>
                     </div>

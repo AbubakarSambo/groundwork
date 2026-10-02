@@ -504,8 +504,8 @@ function TimelineList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
     <Panel pad={false}>
       <RowList label="Every deadline">
         {ordered.map((row) => (
-          <Row key={row.id} columns="1fr">
-            <div className="gwui-pl-16 gwui-pr-16" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
+          <Row key={row.id} columns="1fr" inset="record">
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
               <div>
                 <p className="gwui-ink-text gwui-fs-15">
                   {row.due ? `${row.name} is due on ${whenItWas(row.due, 'weekdayAndDay')}.` : `${row.name}. No date said yet.`}
@@ -536,8 +536,8 @@ function PartiesList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
     <Panel pad={false}>
       <RowList label="The parties">
         {rows.map((row) => (
-          <Row key={row.id} columns="1fr">
-            <div className="gwui-pl-16 gwui-pr-16" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
+          <Row key={row.id} columns="1fr" inset="record">
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
               <div>
                 <p className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{row.name}</p>
                 {/* What the record says about this party, as the prototype does ("Pwani Mills, the other side"): each field's value, in words. */}
@@ -575,8 +575,8 @@ function ThemesList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
         {rows.map((row, i) => {
           const details = Object.values(row.fields ?? {}).filter(Boolean)
           return (
-            <Row key={row.id} columns="1fr">
-              <div className="gwui-pl-16 gwui-pr-16" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
+            <Row key={row.id} columns="1fr" inset="record">
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
                 <div>
                   <p className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{`${i + 1}. ${row.name}`}</p>
                   {details.length > 0 && (
@@ -775,8 +775,8 @@ export function YourOwnRecordsSections({ kindOfWork, sections, myParticipantId, 
       <Panel pad={false}>
         <RowList label={`Your own ${itemNoun}s, day by day`}>
           {mine.map((row) => (
-            <Row key={row.id} columns="1fr">
-              <div className="gwui-pl-16 gwui-pr-16">
+            <Row key={row.id} columns="1fr" inset="record">
+              <div>
                 <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{row.name}</div>
                 {row.stage && <div className="gwui-mt-2"><Tag tone="plain">{row.stage}</Tag></div>}
                 {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
