@@ -50,7 +50,7 @@ import { asksForAShapeWithoutShowingOne, SHOW_WHAT_ONE_LOOKS_LIKE } from './a-qu
 import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
 import { theCheckInItWaitsOn } from './which-check-in-it-waits-on';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
-import { aWaitOnOneself, whoItIsOnIsInTheirWords } from '../board/a-thing-is-not-somebody';
+import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { BLOCKER_TRACE_PROMPT, BLOCKER_TRACE_PROMPT_KEY, BLOCKER_TRACE_SCHEMA, theChainFrom, theInputKey, theRecordForTheModel, theTraceTheRecordSupports, type TheModelsTrace } from './where-the-blocker-started';
 import { buildScenarioPackForParty, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent, CommitmentsSettledEvent } from '../../common';
@@ -9892,8 +9892,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const onLabel = onParticipantId ? null : (d.onLabel?.trim() || d.onName?.trim() || null);
       /* Nobody waits on themselves: what is their own to do is not a wait (request 111 e). */
       if (aWaitOnOneself({ fromParticipantId: participantId, onParticipantId, onLabel })) continue;
-      /* And who it is on is somebody they named: a label none of whose words they typed is the model's (request 117, part 5). */
-      if (!onParticipantId && onLabel && !whoItIsOnIsInTheirWords(onLabel, theirWords)) continue;
       const key = normalise(d.what);
 
       // Same person waiting on the same party for roughly the same thing.
