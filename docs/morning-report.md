@@ -165,7 +165,16 @@ Run-25 was stopped: decision 86's reversals change what the engine writes, so it
 
 **Today now shows a member what waits for them** (`2d6d9e51`): Omar, a member named for spending over the limit, reads "Lina asked to spend KES 95,000 on a new laptop. It is waiting for you to approve." on Today; a member who heads a team reads its leave, hours and reviews to start. A member nobody names still reads nothing. One existing test changed, because it pinned the old fault.
 
-Now running: run-25 on `a7e0f76f`, and approval steps, escalation and one record of who did what (decision 85, steps 4 and 5). Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Approval steps, escalation and one record of who did what** (`c9d61a5d` to `1a2411e3`; migrations 73 and 74, local only; 3,760 tests pass). An admin can now send a request through several steps ("first to the person's manager, then to whoever looks after HR"); each approval moves it on and only the last ends it. With no steps set, every one of 90 cases decides exactly as before. Aisha reads where her request is: "Your leave from Thursday 1 October to Friday 2 October is approved by Wairimu and is now waiting for Omar in finance." Escalation runs once a day, only where an admin set a number of working days, and also when the approver is on leave. Every request keeps its history in plain sentences ("Wairimu approved it on 2 October."), and admins read who changed the suites' rules and when.
+
+**For Hafsah:**
+- Should a request pass on when its approver is on leave, even where no number of days is set?
+- A member who approved an earlier step loses sight of the request's history once it moves on. Should anyone who ever decided a request keep reading its history?
+- Should Today tell an approver who approved the earlier steps?
+- Should a review have steps (for example the manager writes it and HR signs it off)?
+- Should the person be told on WhatsApp at each step, not only at the end? That needs a new template.
+
+Now running: run-25 on `a7e0f76f`, and the manager's view of a leave request with the leave rules (decision 85, steps 7 and 8). Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
