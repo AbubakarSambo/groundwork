@@ -60,3 +60,29 @@ describe('HowItIsGoing: "answered this round", read naturally', () => {
     expect(screen.getByText(/Everybody has answered this round\.$/)).toBeTruthy()
   })
 })
+
+/**
+ * ENGINE MERGE, 2 OCTOBER (REQUEST 117, PART 9): "WAITING SINCE 27 SEPTEMBER", NOT A COUNT THAT
+ * CREEPS FORWARD. Read live on "Sales team, Q3": "4 things are in the way, the oldest being the
+ * discount decision, waiting 2 days." - `daysWaiting`, which grows by one on every later visit
+ * even though nothing on the board has changed. `sinceSays` is drawn from the wait's own clock
+ * instead, so the same wait reads the same at any hour.
+ */
+describe('HowItIsGoing: "in the way", since a fixed day rather than a count that creeps forward', () => {
+  it('reads "waiting since 27 September" when the server sends sinceSays', () => {
+    render(<HowItIsGoing glance={{
+      progress: { roundsDone: 0, roundsPlanned: 12, answeredThisRound: 4, ofPeople: 5 },
+      inTheWay: { count: 4, oldest: 'the discount decision', daysWaiting: 2, sinceSays: 'since 27 September' },
+    }} />)
+    expect(screen.getByText('4 things are in the way, the oldest being the discount decision, waiting since 27 September.')).toBeTruthy()
+    expect(screen.queryByText(/waiting 2 days/)).toBeNull()
+  })
+
+  it('falls back to the day count when sinceSays is absent', () => {
+    render(<HowItIsGoing glance={{
+      progress: { roundsDone: 0, roundsPlanned: 12, answeredThisRound: 4, ofPeople: 5 },
+      inTheWay: { count: 1, oldest: 'the price list', daysWaiting: 2 },
+    }} />)
+    expect(screen.getByText('1 thing is in the way, the oldest being the price list, waiting 2 days.')).toBeTruthy()
+  })
+})
