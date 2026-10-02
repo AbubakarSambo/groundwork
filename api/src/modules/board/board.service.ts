@@ -125,6 +125,7 @@ import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFir
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { theFirstNameFrom, theShortNameOf } from '../reports/a-title-is-not-a-first-name';
+import { aHolderInTheirOwnWords } from './a-holder-in-their-own-words';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -397,6 +398,12 @@ export class BoardService {
     const isInitiator = ground.initiatorId === requestingUserId;
     const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId);
+    /* A wait on "my direct reports" is said from this reader's side, never as the reader's own (item 18). */
+    if (Array.isArray((ground as any).dependencies)) {
+      (ground as any).dependencies = (ground as any).dependencies.map((d: any) => (d && typeof d.onLabel === 'string'
+        ? { ...d, onLabel: aHolderInTheirOwnWords(d.onLabel, !!me && d.fromParticipantId === me.id) }
+        : d));
+    }
     /**
      * AND AN ADMIN OF THIS ORGANISATION, WHO WAS BEING TURNED AWAY FROM HER OWN COMPANY'S BOARD.
      *
