@@ -320,10 +320,18 @@ export function Tag({ tone = 'plain', children }: { tone?: TagTone; children: Re
  * inside a `NeedsYouList`, which draws the line above the first one.
  */
 export type NeedKind = 'ready' | 'decide' | 'look'
-const NEED_REASON: Record<NeedKind, string> = {
+/*
+ * SECOND BOARD REVIEW, WORDING: "A decision for you." and "Something to look at." read, for a
+ * screen reader, as a floating label stapled in front of whatever the row actually says - not a
+ * sentence, because neither says what decision or what to look at. The title that follows is
+ * already a full sentence of its own ("Decide whether a price range counts as a budget",
+ * "Samuel has chased the same 5 leads for 3 check-ins"), so these two now say nothing extra rather
+ * than announce a label the title already makes plain. "Ready to read." is kept: unlike the other
+ * two, it names a real state the title does not otherwise carry for a screen reader (that the
+ * report is simply ready, not what it is about).
+ */
+const NEED_REASON: Partial<Record<NeedKind, string>> = {
   ready: 'Ready to read.',
-  decide: 'A decision for you.',
-  look: 'Something to look at.',
 }
 export function NeedsYouRow({ kind, title, detail, actions }: {
   kind: NeedKind
@@ -336,7 +344,7 @@ export function NeedsYouRow({ kind, title, detail, actions }: {
     <li className={`gw-need gw-need-${kind}`}>
       <span className="gw-need-edge" aria-hidden />
       <div style={{ minWidth: 0 }}>
-        <span className="gw-sr-only">{NEED_REASON[kind]} </span>
+        {NEED_REASON[kind] && <span className="gw-sr-only">{NEED_REASON[kind]} </span>}
         <div className="gw-need-h">{title}</div>
         {detail && <div className="gw-need-s">{detail}</div>}
       </div>

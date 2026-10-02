@@ -111,15 +111,24 @@ describe('the "What needs you" row', () => {
     expect(screen.getByRole('button', { name: 'Open' })).toBeInTheDocument()
   })
 
-  it('the coloured edge says why it is here, and says it in words for a screen reader too', () => {
+  /*
+   * SECOND BOARD REVIEW, WORDING: "A decision for you." and "Something to look at." were a label
+   * stapled in front of the row's own title for a screen reader, saying nothing the title itself
+   * did not already say in full ("Decide whether a price range counts as a budget", "Samuel has
+   * chased the same 5 leads for 3 check-ins" are each already a complete sentence). "Ready to
+   * read." is kept - it names a state ("this report is simply ready") the title does not
+   * otherwise carry. Updated here, not deleted: the coloured edge, its CSS and "ready"'s own words
+   * for a screen reader are all still checked.
+   */
+  it('the coloured edge is a real colour for every kind, and "ready" also says so in words for a screen reader', () => {
     rows()
     const [ready, decide, look] = screen.getAllByRole('listitem')
     expect(ready).toHaveClass('gw-need-ready')
     expect(decide).toHaveClass('gw-need-decide')
     expect(look).toHaveClass('gw-need-look')
     expect(ready).toHaveTextContent('Ready to read.')
-    expect(decide).toHaveTextContent('A decision for you.')
-    expect(look).toHaveTextContent('Something to look at.')
+    expect(decide).not.toHaveTextContent('A decision for you.')
+    expect(look).not.toHaveTextContent('Something to look at.')
     for (const k of ['ready', 'decide', 'look']) expect(CSS).toMatch(new RegExp(`\\.gw-need-${k}\\s+\\.gw-need-edge \\{ background: var\\(--gw-`))
   })
 
