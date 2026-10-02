@@ -1,5 +1,6 @@
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
 import { aPartyOutside, aWaitOnOneself } from './a-thing-is-not-somebody';
+import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
 import { whoSeesThisDifferently } from './who-sees-this-differently';
 import { whatEachSessionSays } from './one-count-for-the-sessions';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
@@ -1978,6 +1979,18 @@ export class BoardService {
           stage: i.stage ?? null,
           owner: i.ownerParticipantId ? nameOf(i.ownerParticipantId) ?? aColleague(i.ownerParticipantId) : null,
           ownerParticipantId: i.ownerParticipantId ?? null,
+          /*
+           * SOMEBODY SAYS IT IS THEIRS, AND ONLY THE LEAD'S YES MAKES IT SO (decision 76, item 3). Said back to
+           * the lead alone, on a record that still has nobody's name: "Amani Wekesa says the Westgate Deli
+           * deal is theirs. Is it?" Nobody else is sent the claim. See a-claim-on-a-record-is-checked-first.
+           */
+          ...(() => {
+            const claim = isInitiator && !i.ownerParticipantId ? theClaimOn(i.fields) : null;
+            const claimant = claim ? ground.participants.find((x: any) => x.id === claim.participantId) : null;
+            if (!claim || !claimant) return {};
+            const who = claimant.userId && claimant.userId === requestingUserId ? null : (nameOf(claimant.id) ?? aColleague(claimant.id));
+            return { ownerClaim: { participantId: claimant.id, who: who ?? 'You', says: theClaimQuestion(who, { name: i.name, kind: i.kind }) } };
+          })(),
           due: i.dueAt ? new Date(i.dueAt).toISOString().slice(0, 10) : null,
           fields: plainFields(i.fields),
           from: i.sourceEntryId ? 'said' : 'lead',
@@ -2880,7 +2893,40 @@ export class BoardService {
     const item = await (this.prisma as any).workItem.findFirst({ where: { id: itemId, groundId } });
     if (!item) throw new NotFoundException('That record is not on this check-in.');
     const data = this.theWorkItemFields(ground, kind, { kind: item.kind, ...dto }, false);
+    /* A claim waiting for the lead's answer is not one of the record's details, so editing them keeps it. */
+    if (data.fields !== undefined) data.fields = { ...data.fields, ...whatIsNotADetail(item.fields) };
+    /* The lead naming the owner herself answers any claim: it is her decision either way. */
+    if (data.ownerParticipantId !== undefined && theClaimOn(item.fields)) {
+      data.fields = afterTheLeadsAnswer(data.fields ?? item.fields, data.ownerParticipantId === theClaimOn(item.fields)!.participantId);
+    }
     return (this.prisma as any).workItem.update({ where: { id: itemId }, data });
+  }
+
+  /**
+   * THE LEAD'S ANSWER TO "AMANI WEKESA SAYS THE WESTGATE DELI DEAL IS THEIRS. IS IT?" (decision 76, item 3).
+   * Only her yes sets the owner. A no leaves the record with nobody's name, and the same person's claim
+   * on it is not put to her again. Either way she reads back what happened, in one sentence.
+   */
+  async answerAClaimOnARecord(groundId: string, itemId: string, requestingUserId: string, yes: boolean) {
+    await this.theLeadsWorkItemGround(groundId, requestingUserId);
+    const item = await (this.prisma as any).workItem.findFirst({ where: { id: itemId, groundId } });
+    if (!item) throw new NotFoundException('That record is not on this check-in.');
+    const claim = theClaimOn(item.fields);
+    if (!claim || item.ownerParticipantId) throw new BadRequestException('Nobody is waiting for your answer about this record.');
+    const claimant = await this.prisma.groundParticipant.findFirst({
+      where: { id: claim.participantId, groundId },
+      select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
+    }) as any;
+    if (yes && !claimant) throw new BadRequestException('The person who said this record is theirs is no longer on this check-in.');
+    const name = claimant
+      ? ([claimant.user?.firstName, claimant.user?.lastName].filter(Boolean).join(' ').trim() || String(claimant.nameGiven ?? '').trim() || 'A colleague')
+      : 'A colleague';
+    const who = claimant?.userId && claimant.userId === requestingUserId ? null : name;
+    const updated = await (this.prisma as any).workItem.update({
+      where: { id: itemId },
+      data: { fields: afterTheLeadsAnswer(item.fields, yes), ...(yes ? { ownerParticipantId: claim.participantId } : {}) },
+    });
+    return { record: { id: updated?.id ?? itemId, ownerParticipantId: yes ? claim.participantId : null }, saidBack: theAnswerSaidBack(who, { name: item.name, kind: item.kind }, yes) };
   }
 
   async deleteWorkItem(groundId: string, itemId: string, requestingUserId: string) {

@@ -162,6 +162,12 @@ export interface AServedRecord {
    * from the line it came from, and `none` for a record added on the board. Never upgraded.
    */
   mark?: 'proven' | 'confirmed' | 'said' | 'memory' | 'none';
+  /**
+   * Somebody says this record, which has nobody's name on it, is theirs (decision 76, item 3). Served to the lead
+   * alone, with the question in a plain sentence ("Amani Wekesa says the Westgate Deli deal is theirs. Is it?").
+   * Only her yes, through POST work-items/:itemId/claim, sets the owner.
+   */
+  ownerClaim?: { participantId: string; who: string; says: string };
   /** What happens next, only as somebody said it: an open commitment that names it. Null where nobody has said. */
   next?: string | null;
   nextKnown?: 'said' | null;

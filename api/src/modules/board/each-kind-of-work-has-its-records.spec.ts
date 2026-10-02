@@ -327,11 +327,16 @@ describe('records are read from what somebody said, and never invented', () => {
     ] })) };
     await new BoardListener(prisma, anthropic).onCheckInCompleted({ checkInId: 'c1', groundId: 'g-1', participantId: 'p-rukia', sessionNumber: 1 });
     expect(created).toEqual([{ groundId: 'g-1', kind: 'deal', name: 'Eastside Foods', stage: 'Qualified', dueAt: null, fields: {}, sourceEntryId: 'e1', ownerParticipantId: 'p-rukia' }]);
-    /* Karen Butchery had nobody's name on it, so it becomes the deal of Rukia, who said it moved (request 111 c). */
-    expect(updated).toEqual([{ where: { id: 'w-karen' }, data: { stage: 'Pitched', fields: { Value: 'KES 40K' }, sourceEntryId: 'e2', ownerParticipantId: 'p-rukia' } }]);
+    /* Karen Butchery had nobody's name on it. Rukia saying it moved is a claim, put to the lead; it does not
+       make the deal Rukia's (decision 76, item 3). */
+    expect(updated).toHaveLength(1);
+    const { fields, ...rest } = updated[0].data;
+    expect(rest).toEqual({ stage: 'Pitched', sourceEntryId: 'e2' });
+    expect(fields.Value).toBe('KES 40K');
+    expect(fields._ownerClaim).toMatchObject({ participantId: 'p-rukia', sourceEntryId: 'e2' });
   });
 
-  it('a deal added on the board with nobody\'s name on it is the deal of whoever says it is theirs, and a named one keeps its owner (request 111 c)', async () => {
+  it('a deal added on the board with nobody\'s name on it is not made the deal of whoever says it is theirs, but put to the lead, and a named one keeps its owner (decision 76, item 3)', async () => {
     const updated: any[] = [];
     const lines = [
       { id: 'e1', participantId: 'p-rukia', text: 'I have signed Tuskys Westgate already.' },
@@ -354,8 +359,12 @@ describe('records are read from what somebody said, and never invented', () => {
       { lineId: 'e2', kind: 'deal', name: 'Naivas Karen' },
     ] })) };
     await new BoardListener(prisma, anthropic).onCheckInCompleted({ checkInId: 'c1', groundId: 'g-1', participantId: 'p-rukia', sessionNumber: 2 });
-    expect(updated.find((u) => u.where.id === 'w-tuskys').data.ownerParticipantId).toBe('p-rukia');
-    expect(updated.find((u) => u.where.id === 'w-naivas').data).not.toHaveProperty('ownerParticipantId');
+    const tuskys = updated.find((u) => u.where.id === 'w-tuskys').data;
+    expect(tuskys).not.toHaveProperty('ownerParticipantId');
+    expect(tuskys.fields._ownerClaim).toMatchObject({ participantId: 'p-rukia', sourceEntryId: 'e1' });
+    const naivas = updated.find((u) => u.where.id === 'w-naivas').data;
+    expect(naivas).not.toHaveProperty('ownerParticipantId');
+    expect(naivas.fields).not.toHaveProperty('_ownerClaim');
   });
 
   it('reads nothing when the kind of work is not known', async () => {

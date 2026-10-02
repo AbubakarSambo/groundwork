@@ -5,6 +5,7 @@ import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent } from '../../common/events';
 import { oneOfTheKinds, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, type AnOfferedRecord } from './the-kind-of-work';
+import { withAClaim } from './a-claim-on-a-record-is-checked-first';
 import {
   WHAT_THE_RECORD_SAYS_PROMPT,
   WHAT_THE_RECORD_SAYS_SCHEMA,
@@ -79,16 +80,21 @@ export class BoardListener {
             data: {
               ...(r.stage ? { stage: r.stage } : {}),
               ...(r.dueAt ? { dueAt: r.dueAt } : {}),
-              fields: { ...((same.fields as any) ?? {}), ...r.fields },
+              /*
+               * A record added on the board with nobody's name on it does not become the deal of whoever then
+               * says it is theirs ("I have signed Tuskys Westgate already"). That is a claim, and a claim is
+               * checked first: it is put to the lead, and only her yes sets the owner (decision 76, item 3,
+               * a-claim-on-a-record-is-checked-first). One with a name keeps it.
+               */
+              fields: !same.ownerParticipantId && r.ownerParticipantId
+                ? withAClaim({ ...((same.fields as any) ?? {}), ...r.fields }, r.ownerParticipantId, r.sourceEntryId ?? null, new Date())
+                : { ...((same.fields as any) ?? {}), ...r.fields },
               sourceEntryId: r.sourceEntryId,
-              /* A record added on the board with nobody's name on it is the deal of whoever then says it is
-                 theirs ("I have signed Tuskys Westgate already"); one with a name keeps it (request 111 c). */
-              ...(!same.ownerParticipantId && r.ownerParticipantId ? { ownerParticipantId: r.ownerParticipantId } : {}),
             },
           });
         } else {
           const made = await (this.prisma as any).workItem.create({ data: { groundId: e.groundId, ...r } });
-          (already as any[]).push({ id: made?.id, kind: r.kind, name: r.name, fields: r.fields });
+          (already as any[]).push({ id: made?.id, kind: r.kind, name: r.name, fields: r.fields, ownerParticipantId: r.ownerParticipantId ?? null });
         }
       }
       this.logger.log(`Kept ${kept.length} record(s) of ${kind} from check-in ${e.checkInId}.`);

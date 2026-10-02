@@ -1822,3 +1822,19 @@ Test: `board/the-checkability-rating-is-served-where-it-is-allowed.spec.ts` (25 
 **For the screens, and for Hafsah:**
 - The engine's five parts are delivery, evidence, enablement, coverage and commitment, worded on the Done page as Hafsah wrote them. The prototype's sales example names them who, what, when, proof and next. They are not the same five, and changing what the engine reads needs Hafsah's decision.
 - "4 of 5" is not drawn because `SHOW_THE_COUNT` in `TheDonePage.tsx` is off, waiting on request 103 (sessions read before 29 September keep their old read). The engine sends what the count is made from, to the person alone.
+
+## Decision 76, item 3: a record with nobody's name becomes somebody's only once the lead says yes (2 October)
+
+`a740e362` made a record added on the board with nobody's name on it the deal of whoever next said it was theirs. Now that is a claim, checked first (decision 12). The record keeps nobody's name, and the lead reads the claim said back on her board. Only her yes sets the owner.
+
+**What each reader is sent.**
+- The lead: the record, with `owner: null` and `ownerClaim: { participantId, who: "Amani Wekesa", says: "Amani Wekesa says the Westgate Deli deal is theirs. Is it?" }`. Where she said it herself: "You said the Westgate Deli deal is yours. Is it?"
+- The person who said it, and a colleague: the record is not on their board until it is theirs, and the claim is never sent to them.
+- An admin, including the admin who set it up: the record with nobody's name on it, and no claim.
+- After the lead's yes, everybody reads the owner as before ("Amani Wekesa" to the lead, the record on Amani's own board).
+
+**The lead's answer.** `POST /grounds/:id/board/work-items/:itemId/claim` with `{ "yes": true }` or `{ "yes": false }`, the lead only. It answers with `{ record: { id, ownerParticipantId }, saidBack }`. A yes reads "The Westgate Deli deal is now Amani Wekesa's." A no reads "The Westgate Deli deal still has nobody's name on it.", and the same person's claim on that record is not put to her again; somebody else's still is. Anybody else is refused with "Only the lead of this check-in can change its records." With nothing waiting: "Nobody is waiting for your answer about this record." The lead setting the owner herself with the existing PATCH also answers the claim. One claim waits at a time.
+
+**Please** draw `ownerClaim.says` on the deal grid row, with a yes and a no, and show `saidBack` after the answer. `client/src/api/board.ts` will need `ownerClaim` on a record.
+
+The claim is kept on the record's own `fields` under a key that is never served, so nothing new is stored in a new column. Test: `board/a-claim-on-a-record-is-checked-first.spec.ts` (16 cases), as the lead, the person who said it, a colleague, an admin who only reads and the admin who set it up. Tests changed: `each-kind-of-work-has-its-records` expected the deal to become Rukia's when she spoke about it, which decision 76 reverses.

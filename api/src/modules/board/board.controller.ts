@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Body, BadRequestException } from '@nestjs/common';
 import { IsString, IsInt, IsOptional, IsArray, IsBoolean, IsIn, MaxLength, Min, ArrayMaxSize, ValidateNested, Matches } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -165,6 +165,13 @@ export class BoardController {
   @ApiOperation({ summary: 'Lead only: change a record of the kind of work, or move its stage on.' })
   async updateWorkItem(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string, @Body() dto: WorkItemInput) {
     return this.board.updateWorkItem(id, itemId, userId, dto ?? {});
+  }
+
+  @Post('work-items/:itemId/claim')
+  @ApiOperation({ summary: 'Lead only: answer whether a record somebody says is theirs is theirs. Only a yes sets the owner.' })
+  async answerAClaimOnARecord(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    return this.board.answerAClaimOnARecord(id, itemId, userId, dto.yes);
   }
 
   @Delete('work-items/:itemId')
