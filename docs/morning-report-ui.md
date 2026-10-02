@@ -6,6 +6,19 @@ same file.
 
 ## This morning, 2 October: in short
 
+**The sales board is done (3 October).** After thirteen reviews, the last one, on the engine's newest code, says Rukia's and Amani's boards match the prototype at both widths, apart from what the engine still sends wrong. On the way:
+- I ran the engine's own script that brings a check-in's stored records up to its current rules, on the local test database only, for this check-in alone, after a dry run. It wrote six changes: the false "Met" and the three repeated targets are now one team aim, 0 of 12, due 20 December, and Rukia is asked whether two deals are hers.
+- For a while the engine's newest code did not start (request 120). The local API ran on the last code that did, until the engine fixed it.
+- The engine still sends some things wrong, in requests 121 and 122:
+  - a wrong date in "To close the gap";
+  - one stored duplicate target;
+  - Faraji chased though he is not let in;
+  - counts of six beside five;
+  - on Today, "Nothing needs you right now." and the wrong day for the next check-in.
+- I chained one push with `cd`. The guard refused it, and I ran it on its own.
+
+Next is the onboarding board.
+
 - **Decided for you to confirm (2 October, late evening).** The prototype has no example board for onboarding or for either project situation; its eleven examples are other kinds of work. So each of those boards is matched against what the prototype does show for that situation: the switchboard's list of sections for it, the board's own look (B5), and, for a new hire, the day 30 and day 60 screens and the probation review (B6).
 
 **Stopping for the week, 2 October, evening.** The weekly allowance is nearly used up, so I finished the piece in hand and stopped there. Everything is in `docs/screens-handover.md`: where every screen stands, what is in progress, what comes next, and what needs you. It is committed and pushed.
@@ -49,7 +62,7 @@ None of the eleven is done yet. A kind is marked done only when its pictures mat
 | Support desk | Not done, the same as engineering. | Not done, the same. |
 | Distribution operations | Not done, the same. | Not done, the same. |
 | Trader training programme | Not done, the same. | Not done, the same. |
-| Sales team | **Nearly done.** The engine has since sent new fields, which are now drawn. The fifth review found four small screen faults; they are fixed (`7ad69fc6` to `f828693b`) but not yet reviewed. The engine's faults are request 117. | **Done, 2 October,** after the fifth review, apart from the engine's faults (request 117). |
+| Sales team | **Done, 3 October.** The thirteenth review, on the engine's newest code (ea5e2a54), says it matches the prototype, apart from what the engine still sends wrong (requests 121 and 122). | **Done, 3 October,** on the same review. |
 | A government programme | Not done. Mainly the engine: its own sections are not sent (request 105). | Not done, the same. |
 | Asset loans | Not done. Mainly the engine (request 105). | Not done, the same. |
 | A law firm matter | Not done. Mainly the engine (request 105). | Not done, the same. |

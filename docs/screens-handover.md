@@ -12,11 +12,10 @@ The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`
 - **Group 2, your own pages:** Today, the check-ins list, You, Company and the company context, Suites and each suite's board. Passed review.
 - **Group 3, check-ins and signing in:** signing in and joining, the session report, the check-in conversation, the entry chat, and both check-in pages with every tab. Rebuilt and reviewed; its review's faults are fixed.
 - **U.1 to U.8** in `docs/tasks-ui.md` are ticked: the look, accounts and signing in, organisations and joining, people and access, Today and the list, starting a check-in, Context, and the check-in screens.
-- **The sales board, as the participant (Amani):** the fifth review says it matches, apart from the engine's faults.
+- **The sales board, as the lead (Rukia) and the participant (Amani):** done on 3 October. The thirteenth review, on the engine's newest code (ea5e2a54), says both match the prototype at 1440 and 375, apart from what the engine still sends wrong (requests 121 and 122). Its captures are in the scratchpad's `pictures/review-sales-13/`.
 
 ### Partly done
 
-- **The sales board, as the lead (Rukia).** The fifth review found four small screen faults. They are fixed in commits `7ad69fc6` to `f828693b`, and the tests pass, but **no review has seen the fixes yet**. That review is the very next step (below).
 - **The other ten kinds of work's boards:** founder, engineering, support desk, distribution operations, trader training programme, government programme, asset loans, law firm matter, "where next", and MarketView Q4 (subscriptions). Every fix to the shared board page reaches them too, but none has been reviewed against its own prototype example since the sales work. The board table at the top of the morning report says what was wrong with each before the sales work.
 - **U.9 to U.19:** reports and sharing, the board, ending a check-in, the You board, suggestions and appeals, Ask Groundwork, the Company page, links between check-ins, the suites, connections, billing. All built and tested. None is ticked, mostly because the engine's part or a decision of Hafsah's is still waiting; each line in `docs/tasks-ui.md` says which.
 - **The one-off style clean-up.** Five guard tests freeze what is left (see "How the guards work"). `BoardPage.tsx` still has 596 one-off uses, `WorkRecords.tsx` 76, and `TheSwitchboardsSections.tsx` 32.
@@ -32,29 +31,15 @@ The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`
 
 ## What is in progress, and where it stopped
 
-**The sales board ("Sales team, Q3", `9028f0ad-293b-4592-9a4e-25b680dd91cd`).**
-- The fifth review's report and pictures are in the scratchpad's `pictures/review-sales-5/`. The scratchpad is temporary, so the important points are copied here.
-- The fixes since then:
-  - `7ad69fc6`: an action button only ever calls this check-in, by POST or PATCH, under `/grounds/<this check-in>/`.
-  - `e02693b4`: "Over time" sits between "Who checked in" and "Reports".
-  - `4b0873a9` and `1d6fd1c9`: "Not yet" shows the engine's own sentence when pressed, and saves nothing.
-  - `1965d03f`: "Amani Wekesa has none of their 3 shops in Kilimani yet. The aim is 3 by 20 December."
-  - `812f4330`: on the phone, "…and was not part of session 2."
-  - `f828693b`: the coverage bar draws nothing from a number the server no longer sends.
-- **It stopped here:** the sixth review has not run. When it says both readers match, apart from the engine's faults, mark the sales team done in the board table and in this file.
-
-**The engine's open faults on the sales board** are request 117 in `docs/requests-to-engine.md`:
-- a false "Met" on the 12-shop target;
-- one aim stored three times;
-- the headline target with no number;
-- sessions counted two ways;
-- deal owners missing;
-- Neema's shop not counted;
-- "waiting on themselves";
-- one fact said three times in each row of "The team today";
-- the number of days changing just by opening the board.
-
-None of these counts against the screen.
+**The onboarding board** is next. The sales board is finished.
+- Use the sales board as the pattern:
+  - the prototype's sections first, in its order;
+  - every extra section kept in one fold at the end;
+  - coaching open straight after "What keeps coming up";
+  - the reader always "you";
+  - checkability drawn for exactly the readers the engine sends it to.
+- Its prototype is the switchboard's list for "Help a new hire get started", the board's look in B5, and B6's day 30 and day 60 screens and the probation review.
+- Before reviewing any check-in, run the engine's `api/journey/bring-a-check-in-up-to-date.ts` on it (local database only, `--check-in <id>`, with `--dry-run` first), so its stored rows follow the engine's current rules.
 
 ## What comes next (Hafsah, 2 October, late evening; this replaces every order below)
 
