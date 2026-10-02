@@ -112,7 +112,11 @@ The rest of request 117 on the sales board is stored rows on the screens workspa
 
 **For Hafsah:** a writer sees a review on Today only when it is due within two weeks or overdue, and a decided one stays two weeks. Without a limit, a six-monthly review would sit on everybody's Today all the time. Confirm or change the two weeks.
 
-Now running: run-25 on `4090223b`, and an older fault found on the way: Ask Groundwork names people by their email ("femi@baridi.test: waiting on you for …") and answers in clipped lines. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Ask Groundwork names people, in full sentences** (`856d0cbd`, `bc7aa385`; 4,903 tests pass). Wairimu asking "where am I needed" read "femi@baridi.test: waiting on you for the new price list for Kilimani, 22 days." She now reads "Femi Ade has been waiting on you for the new price list for Kilimani since 10 September." Where somebody may not be named to the reader (the person a performance plan is about, decision 17), or has no name anywhere, it says "Somebody in Sales team, Q3 …". An email is never said. Each wait says the day it began, not a count that changes.
+
+**For Hafsah:** an admin who is waited on in a check-in where people are not named to each other reads "somebody in …", which is stricter than "Everything asked of you", where admins see names. Keep it strict, or let admins see the name there?
+
+Now running: run-25 on `4090223b`, and the "raised that they are stuck" group of "where am I needed", which could never show because one field was never read. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
