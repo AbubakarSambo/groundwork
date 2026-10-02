@@ -139,6 +139,18 @@ A report for a team now runs three independent model calls together, and after i
 | Approved, and WhatsApp switched on. | Each organisation's messages are counted per calendar month (`whatsapp_monthly_use`), and at its plan's limit nothing more goes by WhatsApp until the next month; its admins are emailed once. The limits are a proposal until Hafsah answers. |
 | Some approved. | List them in `WHATSAPP_APPROVED_TEMPLATES` on the host, and switch WhatsApp on later, on Hafsah's word, not on release day. |
 
+### 10b. WhatsApp on the Connections page: the API's public address, and Groundwork's own number
+
+Two new settings, neither a secret, both optional (see `docs/deploy.md`, section 3).
+
+- **`PUBLIC_API_URL`.** What is the API's public address on each hosted environment, without `/api/v1`? An organisation's admin pastes `<that address>/api/v1/webhooks/whatsapp/<organisation id>` into Meta to connect its own number. Without it, the page says the address will be known once Groundwork is hosted.
+- **`WHATSAPP_DISPLAY_NUMBER`.** What is Groundwork's own WhatsApp number, as people should read it (for example `+44 7700 900123`)? It is shown to an organisation using Groundwork's number. Without it, the page says "Groundwork's WhatsApp number" with no number.
+
+| Answer | What we would do |
+| --- | --- |
+| Both known. | Set both on the host. Nothing else changes; neither changes what is sent. |
+| Not yet. | Leave them unset. The page says so in a sentence, and nothing breaks. |
+
 ### 11. Has anybody changed a prompt in production through `/prompts`?
 
 **Why it matters.** Since decision 74, a start never replaces a version somebody activated by hand: it adds the code's new words as an inactive version beside it. It still creates and activates new versions of the changed keys, and the 4 new ones, where the active version is one a start put there. Before this release nothing recorded who activated a version, so a version activated by hand before release, and labelled "Seeded on deploy", cannot be told apart and would be replaced.

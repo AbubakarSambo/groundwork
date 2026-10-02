@@ -143,7 +143,14 @@ Things worth knowing about how they run:
 
 ## 3. Settings and environment variables
 
-**No new environment variable is read by the code since the remote `main`.** The API reads the same names as before, and the client reads the same names as before. (The client now also reads `DEV`, which Vite sets itself.) So no environment variable has to be added for this release.
+**Two new environment variables are read by the API since the remote `main`, and neither is a secret.** Both are optional: the API starts and works without them. The client reads the same names as before. (The client now also reads `DEV`, which Vite sets itself.)
+
+| Name | What it is | Is it a secret? | Without it |
+| --- | --- | --- | --- |
+| `PUBLIC_API_URL` | The API's public address, without `/api/v1`, for example `https://api.myground.work`. The Connections page builds the WhatsApp callback address from it: `<PUBLIC_API_URL>/api/v1/webhooks/whatsapp/<organisation id>`, which an organisation's admin pastes into Meta. | No. It is an address anybody can see. | The page says the full callback address will be known once Groundwork is hosted, and gives the part after the address. |
+| `WHATSAPP_DISPLAY_NUMBER` | Groundwork's own WhatsApp number as people read it, for example `+44 7700 900123`. Shown on the Connections page to an organisation that uses Groundwork's number rather than its own. Display only: sending still uses `WHATSAPP_PHONE_NUMBER_ID`. | No. It is the number people reply to. | The page says "Groundwork's WhatsApp number" without a number. |
+
+Neither may hold a token, a key or anything from `.env` that is a secret. The WhatsApp access token, app secret and verify token are unchanged and are never served to anybody.
 
 Two things about existing variables did change and matter at release:
 

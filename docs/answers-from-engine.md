@@ -2358,3 +2358,53 @@ For everybody, including the admin: where a check-in would have gone to their ph
 ### For Groundwork's own staff (Admin, System, Pricing)
 
 `GET /admin/pricing` now carries `whatsappAddOnCents` and `whatsappMonthlyLimit` on each plan. `PATCH /admin/pricing/:plan` takes either or both, beside `amountCents` and `memberCap`: the price in cents (empty takes it off sale on that plan), and the limit as a whole number of messages a month (empty means no limit). A changed price creates a new Stripe price the next time it is needed.
+
+## WhatsApp on the Connections page: exactly what `GET /integrations/whatsapp` serves (2 October)
+
+For the WhatsApp card on Connections (`docs/prototype/screens/F1-connections/connections.txt`): "WhatsApp", "Connected", the sentence, and the three counts. Organisation admins only, as before; a lead, a member or a guest gets 403 from the server. Built in `api/src/modules/public-api/whatsapp-as-the-admin-reads-it.ts`, served by `whatsapp-for-an-organisation.controller.ts`, tested in `whatsapp-as-the-admin-reads-it.spec.ts`.
+
+**No secret is served, and no part of one.** Two fields were taken off `connection`: `verifyToken` and `tokenEndsWith` (the access token's last four characters). **This affects the setup page:** its step 3, "Verify token, Copy", read `connection.verifyToken` from this response, and will now show an empty field. Whether the verify token is set is now `callback.verifyTokenSet`, a yes or a no. How the admin gets the token to paste into Meta is a decision still to make (for example, shown once when the number is connected, or a separate reveal for the admin); the `PUT` and the switch routes still return it today, unchanged.
+
+### Every field
+
+Unchanged, still served: `connection` (now without `verifyToken` and `tokenEndsWith`), `webhookPath`, `languages`, `canStartAConversation`, `theNamesToSubmit`, `approvedHere`.
+
+`connection`, when the organisation has its own number, else `null`: `phoneNumberId` (string), `businessAccountId` (string or null), `displayNumber` (string or null), `approvedTemplates` (string[]), `enabled` (boolean), `connectedAt` (date), `lastInboundAt` (date or null), `lastOutboundAt` (date or null), `webhookProvenAt` (date or null).
+
+New:
+
+| Field | Type | Example, as served |
+| --- | --- | --- |
+| `state` | `'connected'` \| `'groundworks_number'` \| `'switched_off'` \| `'not_connected'` | `'connected'` |
+| `stateLabel` | string, the word beside "WhatsApp" | "Connected", "On Groundwork's number", "Switched off", "Not connected" |
+| `saying` | string, the card's sentence | Connected: "Your people check in by replying to +254 709 000 111, Baridi Appliances' WhatsApp Business number. A reply is their check-in, exactly as if typed here." |
+| `whatIsOff` | `('your_switch' \| 'groundworks_switch')[]`, empty unless switched off | `['your_switch']` |
+| `numberInUse.whose` | `'yours'` \| `'groundworks'` \| `null` | `'yours'` |
+| `numberInUse.number` | string or null | "+254 709 000 111" |
+| `numberInUse.saying` | string | "The number in use is +254 709 000 111, your WhatsApp Business number." |
+| `callback.address` | string or null (null until the API's public address is set) | "https://api.myground.work/api/v1/webhooks/whatsapp/org-baridi" |
+| `callback.path` | string | "/api/v1/webhooks/whatsapp/org-baridi" |
+| `callback.saying` | string | "The callback address to paste into Meta is https://api.myground.work/api/v1/webhooks/whatsapp/org-baridi." or, unset: "The full callback address will be known once Groundwork is hosted. It ends in /api/v1/webhooks/whatsapp/org-baridi." |
+| `callback.verifyTokenSet` | boolean | `true` |
+| `callback.verifyTokenSaying` | string | "The verify token is set." or "There is no verify token yet. One is made when you connect your number." |
+| `counts.peopleOnWhatsApp` | `{ label: string, count: number, saying: string }` | label "people checking in on WhatsApp", count 6, "6 people in your check-ins have a WhatsApp number and can check in by replying." With none: "Nobody in your check-ins has a WhatsApp number yet. You can add numbers under People." |
+| `counts.checkInsThisMonth` | `{ label: string, count: null, saying: string }` | label "check-ins this month", count `null`, "Groundwork does not yet record which check-ins came in by WhatsApp, so this number cannot be shown." |
+| `counts.failedThisWeek` | `{ label: string, count: number, saying: string }` | label "failed messages this week", count 0, "No messages failed to send in the last seven days." or "2 messages failed to send in the last seven days." |
+| `reminders.approved` | boolean (the same as `canStartAConversation`) | `false` |
+| `reminders.saying` | string | "Meta has not approved the reminder messages yet. Until it does, Groundwork can only answer people who write first. It cannot send the first message, so no reminders go by WhatsApp." or "Meta has approved the reminder messages, so Groundwork can send the first message, such as a reminder that a check-in is open." |
+
+The other sentences in `saying`:
+
+- On Groundwork's number: "Your people check in by replying to +44 7700 900123, Groundwork's WhatsApp number. A reply is their check-in, exactly as if typed here. You can connect your own WhatsApp Business number instead." With no number set, "replying to Groundwork's WhatsApp number."
+- Switched off by the organisation: "Your WhatsApp Business number, +254 709 000 111, is set up, but you have switched it off, so nobody can check in by replying to it. Turn it on to use it again. Until then, messages from Groundwork go from Groundwork's WhatsApp number." (The last sentence only when Groundwork's number is on.)
+- Switched off by Groundwork: "Your WhatsApp Business number, +254 709 000 111, is set up and switched on, but Groundwork has switched WhatsApp off for everyone for now. You do not need to do anything."
+- Both: "Your WhatsApp Business number, +254 709 000 111, is set up, but you have switched it off, so nobody can check in by replying to it. Turn it on to use it again. Groundwork has also switched WhatsApp off for everyone for now."
+- Not connected: "WhatsApp is not connected. Connect your organisation's WhatsApp Business number, and your people can check in by replying to it."
+
+### How each count is made, so the screen does not have to guess
+
+- **People checking in on WhatsApp:** people on the organisation's roster who are active, have a phone number, have not said STOP, and are part of a check-in here that is still running and not kept off the phone. A count only; no number or name is served.
+- **Check-ins this month:** the record does not say which check-ins came in by WhatsApp (a conversation turn does not record where it was typed), so the count is `null` and the sentence says so. Show the sentence in place of a number. It needs one new field on each turn to be counted; that is engine work, not yet planned.
+- **Failed messages this week:** messages to this organisation's people that did not send in the last seven days. A message held because WhatsApp is not turned on for the organisation, or the month's messages are used up, is not counted here; Plan and billing says that.
+
+**Note:** `GET /integrations/connections` (the counts at a glance, `connections-at-a-glance.service.ts`) still serves its own three WhatsApp counts, made differently: its "check-ins this month" counts check-ins Groundwork sent a message for, and its "people" counts open WhatsApp threads. For the card, use the counts here.
