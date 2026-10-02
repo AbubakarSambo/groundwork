@@ -463,3 +463,17 @@ own direct children); where it also carried a style or an ARIA role (`WorkRecord
 `role="row"`/`aria-label` rows), the `div` stays for that, with only the padding classes removed.
 No wording or behaviour changed anywhere this touched - the four values are exactly what each
 wrapper already held.
+
+## Board task, batch 3, part 6 (Hafsah: `TargetsBand.tsx`'s own list gets `Row`'s `panel` inset, in place of a wrong one-off pair)
+
+`TargetsBand.tsx`'s "Targets" list (`docs/prototype/screens/B2-context/context.txt`'s own targets
+table, and G1's "Where each target stands") wrapped each row's content in a one-off
+`gwui-pl-13 gwui-pr-13` pair - 13px, not read from the prototype. The prototype's own source
+(`docs/prototype/source/s20.js`, the "Where each target stands" panel) wraps its target rows in
+`.panel.pad` - app.css's `.pad { padding: 20px 22px }`, 22px side inset - with the row itself given
+an inline `padding:10px 0` that removes its own side padding, so the panel's 22px is what actually
+shows. That is exactly `Row`'s own `inset="panel"` (`client/src/components/gw/ui/Rows.tsx`, part 5
+above), so no new named value was needed - `TargetsBand.tsx`'s row now takes `inset="panel"`,
+replacing its one-off `gwui-pl-13 gwui-pr-13` pair. The row's own vertical padding (`gwui-pt-9
+gwui-pb-9`, a value distinct from `Row`'s 12px rhythm) stays on the inner `div`, as the other insets
+already do. No wording or behaviour changed.

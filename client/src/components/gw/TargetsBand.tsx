@@ -108,8 +108,8 @@ export function TargetsBand({
     const assumes = (t.assumes ?? []).filter((a) => a && a.trim())
     const figure = t.target == null ? null : t.target.toLocaleString('en-GB')
     return (
-      <Row key={t.id} columns="1fr">
-        <div data-gw-target={t.id} className="gwui-pt-9 gwui-pr-13 gwui-pb-9 gwui-pl-13">
+      <Row key={t.id} columns="1fr" inset="panel">
+        <div data-gw-target={t.id} className="gwui-pt-9 gwui-pb-9">
           <div className="gwui-gap-12" style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap' }}>
             <span className="gwui-fs-13 gwui-ink-dark" style={{ flex: '1 1 140px', fontWeight: 700 }}>{t.name}</span>
             <span className="gwui-fs-13 gwui-ink-text" style={{ flex: '0 0 110px', fontVariantNumeric: 'tabular-nums' }}>
