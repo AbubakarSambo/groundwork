@@ -91,7 +91,42 @@ export class WhatsAppService {
     const result: SendResult = { sent: false, error: may.saying };
     this.writeItDown(organizationId, to, result, { ...context, kind: context.kind ? `${context.kind}:held` : 'held' });
     await this.addOn.countHeld(organizationId, may.why);
+    await this.tellThemItIsHeld(organizationId, to, context, may.saying).catch((err: any) => this.logger.warn(`Could not tell ${to} that WhatsApp is held: ${err?.message}`));
     return result;
+  }
+
+  /**
+   * NEVER SILENCE WHEN WHATSAPP IS HELD (decision 82, item 4; morning report item 71). A person who
+   * wrote and heard nothing reads the product as dead. So when a message is held by the add-on or the
+   * month's limit and the person wrote in the last 24 hours (a reply always is), they get ONE free
+   * message, not counted towards the month, saying why and that the check-in carries on in the app.
+   * Once in any 24 hours, so a conversation does not become a stream of the same sentence. Outside
+   * the 24 hours nothing can go at all, and the app says it from the send record.
+   */
+  static heldSaying(saying: string): string {
+    return `${saying} You can carry on in the Groundwork app.`;
+  }
+
+  private async tellThemItIsHeld(organizationId: string, to: string, context: SendContext, saying: string): Promise<void> {
+    const forms = formsOfTheSameNumber(to);
+    if (isBusinessInitiated(context.kind)) {
+      const person = await this.prisma.person
+        ?.findFirst({ where: { organizationId, phone: { in: forms } }, select: { whatsappLastInboundAt: true } })
+        .catch(() => null);
+      if (!insideTheServiceWindow(person?.whatsappLastInboundAt)) return;
+    }
+    const told = await (this.prisma.whatsAppSend as any)
+      ?.findFirst?.({ where: { phone: { in: forms }, kind: 'held-told', sentAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }, select: { id: true } })
+      ?.catch?.(() => null);
+    if (told) return;
+    const text = WhatsAppService.heldSaying(saying);
+    const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
+    let result: SendResult;
+    if (own?.enabled) result = await this.deliver(own.phoneNumberId, own.accessToken, to, text);
+    else if (await this.isEnabled()) result = await this.post(this.config.get<string>('whatsapp.phoneNumberId') ?? '', this.config.get<string>('whatsapp.accessToken') ?? '', to, text);
+    else result = { sent: false, error: 'WhatsApp is not configured on this deployment' };
+    /* Written down, never counted: this one is free. */
+    this.writeItDown(organizationId, to, result, { checkInId: context.checkInId ?? null, kind: 'held-told' });
   }
 
   /** A message that went counts towards its organisation's month. */

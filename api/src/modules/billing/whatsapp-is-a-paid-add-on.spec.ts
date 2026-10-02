@@ -249,16 +249,18 @@ describe('Baridi after its trial, paying for Small Team, without the add-on', ()
     const sends: any[] = [];
     prisma.whatsAppSend = { create: jest.fn(async (q: any) => { sends.push(q.data); return {}; }) };
     prisma.notification = { create: jest.fn(async () => ({})) };
-    prisma.person = { findFirst: jest.fn(async () => ({ whatsappStoppedAt: null, whatsappLastInboundAt: new Date() })) };
+    /* Changed 2 October (decision 82, item 4): somebody who wrote in the last 24 hours is now told once
+       why. This person last wrote three days ago, so nothing at all can go to them. */
+    prisma.person = { findFirst: jest.fn(async () => ({ whatsappStoppedAt: null, whatsappLastInboundAt: new Date(Date.now() - 3 * 86_400_000) })) };
     prisma.whatsAppConnection = { findUnique: jest.fn(async () => ({ id: 'c1', enabled: true, phoneNumberId: '123456', accessToken: 'test-token' })) };
     const realFetch = (global as any).fetch;
     const fetchSpy = jest.fn(async () => ({ ok: true, status: 200 }));
     (global as any).fetch = fetchSpy;
     const wa = new WhatsAppService({ get: () => undefined } as any, prisma, addOn);
-    const got = await wa.sendFor('org-baridi', '+254700000001', 'Your check-in is open.', { checkInId: 'ci-1', kind: 'opening' });
+    const got = await wa.sendFor('org-baridi', '+254700000001', 'Your check-in is open.', { checkInId: 'ci-1', kind: 'checkin-open' });
     expect(got).toEqual({ sent: false, error: WHATSAPP_NOT_TURNED_ON });
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(sends[0]).toMatchObject({ organizationId: 'org-baridi', kind: 'opening:held', error: WHATSAPP_NOT_TURNED_ON });
+    expect(sends[0]).toMatchObject({ organizationId: 'org-baridi', kind: 'checkin-open:held', error: WHATSAPP_NOT_TURNED_ON });
     expect(uses.row.held).toBe(1);
     (global as any).fetch = realFetch;
   });

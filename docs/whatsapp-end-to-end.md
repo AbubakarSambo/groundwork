@@ -21,7 +21,7 @@ Read from the code on 2 October 2026, branch `wip/plain-reports`. Nothing was ru
 8. **Fixed (2 October).** A reply always goes from the number the person wrote to: a message to Groundwork's number is answered on Groundwork's number, even for an organisation with its own, and the report after a session closes goes on the number the person last wrote to. Every message that comes in is recorded with the number it came in on, and the 24-hour window is measured on the number a message goes from. An organisation with its own number gets its notices only from that number; Groundwork's number no longer sends it a second one.
 9. **The opening notice says "what you say is released with everybody else's"**, which is wrong for a one-to-one check-in such as a performance plan or probation.
 10. **Suggested answers are dropped** on WhatsApp; boards and reports beyond the text summary say "There is more on this in Groundwork."
-11. **Silence when WhatsApp is held** by the paid add-on or the monthly limit: the person writes and hears nothing on WhatsApp (item 71 of the morning report).
+11. **Fixed (2 October, decision 82 item 4).** When WhatsApp is held by the paid add-on or the monthly limit, a person who wrote in the last 24 hours gets one free message, not counted towards the month, once in any 24 hours, for example: "Your organisation has not turned on WhatsApp, so this check-in stays in the app. You can carry on in the Groundwork app." Outside the 24 hours nothing can go at all; the send record keeps the same sentence for the app to show.
 12. **A number in two organisations** on Groundwork's number keeps its first pick for good, with no way to switch.
 
 ## What can only be tested once hosted
