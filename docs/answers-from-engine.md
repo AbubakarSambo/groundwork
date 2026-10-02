@@ -1899,3 +1899,36 @@ Each row of the sales deal grid (`workRecords`, section "Deal grid", kind `deal`
 - Should the lead set what a deal must show at each stage, and should the check-in count follow-ups with no reply? Then "Likely" could check criteria, and "Cold" could apply the stall rule.
 
 Tests: `board/request-112-a-each-deal-in-its-group.spec.ts` (13 cases, as every reader; all fail without this change), including a walk of every sentence for colons, dashes and arrows. `each-kind-of-work-has-its-records.spec.ts` compares whole rows and sections, so it now expects `lastSaidOn`, `group`, `groupSays`, `groups` and `groupsNote` as well. Nothing in it was taken out.
+
+## Decision 76, item 4: each session's team picture is released on its own (2 October)
+
+Answers request 111 (d) and 112 (c): "`teamPicture.shared: true` while session 2's team report is not shared". A report was released once, for the whole check-in, so a participant kept reading it as it grew into session 2. Now each session's picture is released on its own (commits `5e6dd623`, `f5fa0a0e`).
+
+**What is stored.** One new column on the report, `releasedSessions` (a list of session numbers). `releasedAt` stays the moment the report was first shared. The migration `20261002140000_each_sessions_picture_is_released_on_its_own` marks every report already released as released for every session up to the highest one anybody had finished when it was released, so nobody loses what they could read then and nobody gains a later session.
+
+**The route.** `POST /grounds/:id/report/release`, as before, only for the lead (or an admin once the lead has left, decision 53). It releases the session the report holds now (the highest session anybody has finished). It now answers:
+
+```
+{ "groundId": "…", "releasedAt": "…", "releasedSessions": [1, 2], "sessionNumber": 2,
+  "saying": "This shares the team's picture of session 2 with everyone in the check-in." }
+```
+
+Please show `saying` back to the lead after they press it. Pressing it again for a session already released changes nothing. A session is still released by itself when everybody in it has answered, as session 1 always was. `POST …/send-to-everyone` releases the current session first too.
+
+**Before they press it.** The lead's `GET /grounds/:id/report` and `GET …/report/session/:n` (for the session the report holds now) carry `releaseThisSession: { sessionNumber: 2, saying: "This shares the team's picture of session 2 with everyone in the check-in." }` while that session is not released. Please put `saying` beside the Share button, so the lead reads what it does before pressing it. Nobody else is sent it.
+
+**What everybody is sent.**
+- `releasedSessions` on `GET /grounds/:id/report`, on each session report, on `GET /grounds/:id` (in `report`) and on the check-ins list (in `report`).
+- On each session report, `released` is now about that session, not the first release.
+
+**What a participant reads** (and the person reviewed on an evaluation check-in, who also reads only what is released). Whoever runs the check-in, an admin who only reads and the admin who set it up read exactly as before.
+- Session 1 released, session 2 answered and not released. `GET /grounds/:id/report` serves session 1's picture as it was kept when session 1 closed, with `readingSession: { sessionNumber: 1, saying: "You are reading the team's picture of session 1. The team's picture of session 2 is not shared yet." }` and `teamPicture: { shared: false, sessionNumber: 2, says: "The team's picture of session 2 is not shared yet." }`. Nothing written from later sessions is sent with it (the opening, the findings, what moved since the last round).
+- `GET …/report/session/2` sends their own words and the counts, `released: false`, and `teamPicture: { shared: false, sessionNumber: 2, says: "The team's picture of session 2 is not shared yet." }`. None of the team's agreements, differences, question or written picture for session 2.
+- `GET …/report/rounds` lists only released sessions.
+- `GET /grounds/:id` leaves out `report.sharedPicture` and `report.theOpening` until the session the report holds now is released. The list leaves out `latestSummary` and `latestFinding` until the latest kept round's session is released.
+- Nothing released yet: `GET …/report` sends `saying: "The team's picture of session 1 is not shared yet."` with the same `teamPicture`, and their own things (`myRows`, `soloArtifact`, `couldTry`). Before, a participant who had answered read the forming picture here. A participant who has not answered still reads why they cannot read it yet, as before.
+- After the lead releases session 2, they read both sessions' pictures, and none of the fields above say "not shared".
+
+**For the board (not changed here, the board is the screens' and the other builder's).** `teamPicture.shared` is worked out at `board/board.service.ts`, the line `released: !!(ground as any).report?.releasedAt,` inside `aParticipantsOwnBoard(...)`. It should become `released: await isTheTeamPictureNowShared(this.prisma, groundId, (ground as any).report),` from `reports/each-sessions-picture-is-released-on-its-own`, with `releasedSessions: true` added to the board's report select. The same goes for `whatTheAnswersSay: (isInitiator || (ground as any).report?.releasedAt)`. Then "Today's team picture is not shared yet." shows on Amani's board while session 2 is not released.
+
+Tests: `reports/each-sessions-picture-is-released-on-its-own.spec.ts` (12 cases, every reader, two sessions, before and after the lead releases session 2), and new cases in `grounds/a-participant-reads-the-report-only-once-it-is-shared.spec.ts`, `grounds/the-list-gives-each-reader-only-their-part.spec.ts` and `reports/what-today-reads-from-the-record.spec.ts`.
