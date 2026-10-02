@@ -20,7 +20,7 @@ import type { PrismaService } from '../prisma/prisma.service';
  */
 
 export type SuiteOfARecord = 'leave' | 'spend' | 'time' | 'reviews';
-export type WhatHappened = 'asked' | 'told' | 'approved' | 'declined' | 'escalated' | 'started' | 'decided';
+export type WhatHappened = 'asked' | 'told' | 'approved' | 'declined' | 'escalated' | 'started' | 'decided' | 'questioned' | 'answered';
 
 export interface ARecord {
   organizationId: string;
@@ -97,8 +97,16 @@ export function theRecordInWords(records: ARecord[], names: Map<string, string>,
         out.push(`${capital(by)} approved ${it} on ${on}.`);
         break;
       case 'declined':
-        out.push(`${capital(by)} declined ${it} on ${on}.`);
+        out.push(`${capital(by)} declined ${it} on ${on}${(r.basis as any)?.withAReason ? ' and gave a reason' : ''}.`);
         break;
+      case 'questioned':
+        out.push(`${capital(by)} asked ${who(r.toUserId)} a question about ${it} on ${on}.`);
+        break;
+      case 'answered': {
+        const asker = who(r.toUserId);
+        out.push(`${capital(by)} answered ${asker === 'you' ? 'your' : `${asker}'s`} question on ${on}.`);
+        break;
+      }
       case 'escalated': {
         const from = (r.basis as any)?.fromUserId as string | undefined;
         const because = (r.basis as any)?.because === 'away'

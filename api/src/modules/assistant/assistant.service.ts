@@ -33,6 +33,7 @@ import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
 import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
+import { LEAVE_ANSWER_KIND, LEAVE_QUESTION_KIND, LONGEST, NO_QUESTION_WAITING, QUESTION_REFUSED, aDeclineWithAReasonSaidBack, aReasonIn, anAnswerNotSent, anAnswerSaidBack, anAnswerSent } from '../suites/a-question-about-a-request';
 import { HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
 import { SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
 import { NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
@@ -1722,6 +1723,14 @@ export class AssistantService {
       return this.resolveParkedContextTurn(organizationId, who, parked, message);
     }
 
+    /*
+     * A QUESTION ABOUT THE PERSON'S OWN LEAVE (decision 85, build step 7): what they type next is their
+     * answer, said back before it goes, so it is read before the yes/no reading.
+     */
+    if (parked.kind === LEAVE_QUESTION_KIND) {
+      return this.resolveParkedLeaveQuestion(organizationId, personId, who, parked, message);
+    }
+
     /* THE ROLE INTERVIEW (request 25): what is typed is an answer to its question, not a yes or a no. */
     if (parked.kind === ROLE_INTERVIEW_KIND) {
       return this.resolveParkedInterview(organizationId, personId, who, parked, message);
@@ -1784,6 +1793,9 @@ export class AssistantService {
     }
     if (parked.kind === 'request_decision') {
       return this.resolveParkedDecision(organizationId, who, parked, decision);
+    }
+    if (parked.kind === LEAVE_ANSWER_KIND) {
+      return this.resolveParkedLeaveAnswer(organizationId, who, parked, decision);
     }
     if (parked.kind === 'document_numbers') {
       return this.resolveParkedDocumentNumbers(organizationId, who, parked, decision);
@@ -2787,6 +2799,65 @@ export class AssistantService {
   }
 
   /**
+   * A QUESTION ABOUT THE PERSON'S OWN LEAVE, WAITING FOR THEIR ANSWER (decision 85, build step 7). Whoever
+   * decides the request asked it. What the person types next is said back as their answer and sent only
+   * on a yes. A message that is plainly something else (a decision, or a new request for leave, hours or
+   * spending) is answered as it would be, and the question keeps waiting. When the question is no
+   * longer waiting (answered in the app, or the request decided), it is let go and the message is
+   * answered as usual.
+   */
+  private async resolveParkedLeaveQuestion(organizationId: string, personId: string, who: string, parked: any, message: string): Promise<Reply> {
+    const requestId = (parked.payload as { requestId?: string } | null)?.requestId;
+    const me = await this.theSignInOf(organizationId, who);
+    const waiting = me.linkedUserId && requestId && this.leave
+      ? await Promise.resolve(this.leave.questionWaitingFor?.({ userId: me.linkedUserId, organizationId }, requestId)).catch(() => null)
+      : null;
+    if (!waiting) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return this.answer(organizationId, personId, who, message, true);
+    }
+    const typed = (message ?? '').trim();
+    if (!typed || aDecisionIn(typed) || soundsLikeLeave(typed) || soundsLikeHours(typed) || soundsLikeSpending(typed)) {
+      return this.answer(organizationId, personId, who, message, true);
+    }
+    if (typed.length > LONGEST) return rules('ask_for_leave', text(QUESTION_REFUSED.tooLong));
+    const say = anAnswerSaidBack(waiting.askedBy, waiting.leave, waiting.question, typed);
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    const row = await this.prisma.assistantProposal.create({
+      data: { organizationId, personExternalId: who, kind: LEAVE_ANSWER_KIND, summary: say, payload: { requestId, answer: typed, askedBy: waiting.askedBy } as never },
+      select: { id: true },
+    });
+    return { lane: 'ask_for_leave', composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
+  }
+
+  /** The person's yes sends their answer through the leave suite; a no keeps the question waiting for them. */
+  private async resolveParkedLeaveAnswer(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    const p = (parked.payload ?? {}) as { requestId?: string; answer?: string; askedBy?: string };
+    const asker = p.askedBy || 'the person who decides it';
+    if (decision === 'decline') {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      if (p.requestId) {
+        await this.prisma.assistantProposal.create({
+          data: { organizationId, personExternalId: who, kind: LEAVE_QUESTION_KIND, summary: parked.summary, payload: { requestId: p.requestId } as never },
+        }).catch(() => undefined);
+      }
+      return rules('ask_for_leave', text(anAnswerNotSent(asker)));
+    }
+    const me = await this.theSignInOf(organizationId, who);
+    let reply: string;
+    try {
+      if (!this.leave || !me.linkedUserId || !p.requestId || !p.answer) throw new Error(NO_QUESTION_WAITING);
+      await this.leave.answerAQuestion({ userId: me.linkedUserId, organizationId }, p.requestId, p.answer);
+      reply = anAnswerSent(asker);
+    } catch (err: any) {
+      const why = typeof err?.message === 'string' && err.message ? err.message : NO_QUESTION_WAITING;
+      reply = why === NO_QUESTION_WAITING || why === QUESTION_REFUSED.nothingToAnswer ? NO_QUESTION_WAITING : `I could not send it. ${why}`;
+    }
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    return rules('ask_for_leave', text(reply));
+  }
+
+  /**
    * HOURS SAID TO ASK GROUNDWORK (week 21, request 22): for billing only (decision 10). Said back with
    * the real date and the project, parked, and written through the time sheets suite only on a yes,
    * then waiting for the person's approver. Nothing is read back from the time sheets here, and
@@ -2915,9 +2986,11 @@ export class AssistantService {
     if (left.length > 1) return rules('decide_a_request', text(whichDecision(left)));
     const r = left[0];
     if (r.kind === 'hours' && outcome === 'declined') return rules('decide_a_request', text(HOURS_ARE_NOT_DECLINED(r.firstName)));
-    const say = aDecisionSaidBack(r, outcome);
+    /* A reason given with a declined leave ("because ...") is said back, and told to the person (decision 85, build step 7). */
+    const reason = outcome === 'declined' && r.kind === 'leave' ? aReasonIn(message) : null;
+    const say = reason ? aDeclineWithAReasonSaidBack(r.thing, r.firstName, reason) : aDecisionSaidBack(r, outcome);
     const row = await this.prisma.assistantProposal.create({
-      data: { organizationId, personExternalId: who, kind: 'request_decision', summary: say, payload: { request: r, outcome } as never },
+      data: { organizationId, personExternalId: who, kind: 'request_decision', summary: say, payload: { request: r, outcome, ...(reason ? { reason } : {}) } as never },
       select: { id: true },
     });
     return { lane: 'decide_a_request', composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
@@ -2929,7 +3002,7 @@ export class AssistantService {
    * person what was decided. A no changes nothing.
    */
   private async resolveParkedDecision(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
-    const { request, outcome } = (parked.payload ?? {}) as { request: AWaitingRequest; outcome: 'approved' | 'declined' };
+    const { request, outcome, reason } = (parked.payload ?? {}) as { request: AWaitingRequest; outcome: 'approved' | 'declined'; reason?: string };
     if (decision === 'decline' || !request?.ref) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
       return rules('decide_a_request', text(request?.ref ? aDecisionNotMade(request) : NOTHING_TO_DECIDE));
@@ -2943,7 +3016,7 @@ export class AssistantService {
       let nowWaitsFor: string | null = null;
       if (request.kind === 'leave') {
         if (!this.leave) throw new Error(NOTHING_TO_DECIDE);
-        await this.leave.decide(reader, request.ref, outcome);
+        await (reason ? this.leave.decide(reader, request.ref, outcome, reason) : this.leave.decide(reader, request.ref, outcome));
         nowWaitsFor = await Promise.resolve(this.leave.nowWaitingFor?.(organizationId, request.ref)).catch(() => null) ?? null;
       } else if (request.kind === 'spend') {
         if (!this.spending) throw new Error(NOTHING_TO_DECIDE);
@@ -2956,6 +3029,7 @@ export class AssistantService {
         nowWaitsFor = await Promise.resolve(this.timeSheets.nowWaitingFor?.(organizationId, personId, weekOf)).catch(() => null) ?? null;
       }
       reply = aDecisionDone(request, outcome, nowWaitsFor);
+      if (reason && outcome === 'declined') reply = reply.replace(/ know\.$/, ' know, with your reason.');
     } catch (err: any) {
       const why = typeof err?.message === 'string' && err.message ? err.message : NOTHING_TO_DECIDE;
       reply = why === NOTHING_TO_DECIDE ? why : `I could not do that. ${why}`;

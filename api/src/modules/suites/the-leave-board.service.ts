@@ -10,6 +10,7 @@ import { aLeaveRequest, leaveInWords, whereItIsOnTheBoard, whereYourRequestIs, t
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
 import { ownedInWords, whatTheyOwnWhileAway } from './what-they-own-while-away';
 import { aLeaveRequestAsTheApproverReadsIt } from './a-leave-request-as-the-approver-reads-it';
+import { LEAVE_QUESTION_KIND, QUESTION_REFUSED, aQuestionSaid, aReasonSaid, wordsGiven, type AQuestion } from './a-question-about-a-request';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const LEAVE_REFUSED = {
@@ -56,8 +57,15 @@ export interface Waiting {
    */
   owns: string[];
   /**
+   * Each question the person who decides it asked, and the answer, in full sentences for this reader
+   * (decision 85, build step 7): "You asked Aisha on 5 October, “Who will cover the milestone?”" and
+   * "Aisha answered on 6 October, “Brian will.”"
+   */
+  questions: string[];
+  /**
    * The whole request as the person who decides it reads it, in full sentences: who asked for which
-   * days, the days left, who else in the team is off, the stand-in and what the person owns then.
+   * days, the days left, who else in the team is off, the stand-in, what the person owns then, and any
+   * question asked about it with its answer.
    */
   said: string[];
 }
@@ -78,6 +86,16 @@ export interface MyLeave {
     id: string; startsOn: Day; endsOn: Day; days: number; status: 'waiting' | 'approved' | 'declined'; standIn: string | null;
     /** Where it is, in a full sentence: "Your leave from ... is approved by Wairimu and is now waiting for Omar in finance." */
     where: string;
+    /** Each question asked about it, and the answer, in full sentences with "you" for the person (decision 85, build step 7). */
+    questions: string[];
+    /** The question still waiting for this person's answer, so the screen can offer a place to answer it; null when none waits. */
+    questionWaiting: { id: string; question: string; askedBy: string } | null;
+    /**
+     * What the person who declined it said when they declined, in a full sentence: "Wairimu said, “Sales
+     * is two short that day.”" Null when they said nothing. It is the approver's words about the
+     * decision, never a reason for the leave, which is still never asked for or kept (decision 31).
+     */
+    declinedBecause: string | null;
   }[];
 }
 
@@ -86,6 +104,8 @@ type Row = {
   standInUserId: string | null; status: string; decidedById: string | null; decidedAt: Date | null;
   /* Where it is among the approval steps (decision 85, build step 4). Rows read before steps existed have none: step one. */
   step?: number | null; escalatedTo?: number | null; stepSince?: Date | null; approvedByIds?: string[] | null;
+  /* The reason a decline was given with (build step 7). */
+  declineReason?: string | null;
 };
 
 /** Who approved the steps so far. A request decided before steps were kept names only who decided it. */
@@ -159,6 +179,8 @@ export class LeaveBoardService {
     })) as Row[];
     const people = await this.directory(reader.organizationId, rows);
     const names = await this.names(rows);
+    const questions = await this.questionsOn(reader.organizationId, rows.filter((r) => r.status === 'waiting').map((r) => r.id));
+    const askers = await this.firstNames(questions.flatMap((q) => [q.askedById, q.toUserId]));
 
     const inScope = role === 'ADMIN'
       ? (_userId: string) => true
@@ -182,6 +204,7 @@ export class LeaveBoardService {
       const standIn = r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null;
       /* What the person owns in those days, read for this reader (decision 85, build step 7). */
       const owns = ownedInWords(first, await whatTheyOwnWhileAway(this.prisma, { ...reader, role }, r.userId, r.startsOn, r.endsOn).catch(() => ({ owned: [], hidden: 1 })));
+      const asked = questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, askers, reader.userId));
       waiting.push({
         id: r.id,
         name: names.get(r.userId)?.full ?? '',
@@ -195,9 +218,10 @@ export class LeaveBoardService {
         mayDecide: decides,
         where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides ? reader.userId : undefined, reader.userId)),
         owns,
+        questions: asked,
         said: aLeaveRequestAsTheApproverReadsIt({
           firstName: first, startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), days, daysLeft, team,
-          alsoOff: [...new Set(alsoOff)], standIn, owns,
+          alsoOff: [...new Set(alsoOff)], standIn, owns, more: asked,
         }),
       });
     }
@@ -223,6 +247,8 @@ export class LeaveBoardService {
     })) as Row[];
     const names = await this.names(rows);
     const people = await this.directory(reader.organizationId, rows);
+    const questions = await this.questionsOn(reader.organizationId, rows.map((r) => r.id));
+    const firsts = await this.firstNames([...questions.flatMap((q) => [q.askedById, q.toUserId]), ...rows.map((r) => r.decidedById ?? '')]);
     const where = new Map<string, string>();
     for (const r of rows) {
       const now = r.status === 'waiting' ? await this.now(r, people, answers) : null;
@@ -239,6 +265,14 @@ export class LeaveBoardService {
         status: (r.status as 'waiting' | 'approved' | 'declined'),
         standIn: r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null,
         where: where.get(r.id) ?? '',
+        questions: questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, firsts, reader.userId)),
+        questionWaiting: (() => {
+          const q = r.status === 'waiting' ? questions.filter((x) => x.ref === r.id && x.answer == null && x.toUserId === reader.userId).pop() : undefined;
+          return q ? { id: q.id, question: q.question, askedBy: firsts.get(q.askedById) || 'The person who decides it' } : null;
+        })(),
+        declinedBecause: r.status === 'declined' && r.declineReason?.trim()
+          ? aReasonSaid(r.decidedById ? (firsts.get(r.decidedById) || 'The person who decided it') : 'The person who decided it', r.declineReason)
+          : null,
       })),
     };
   }
@@ -248,7 +282,10 @@ export class LeaveBoardService {
    * not the last moves it to the next step, and whoever decides that one is told; only the last step's
    * approval, or a decline at any step, ends it, and then the person who asked is told.
    */
-  async decide(reader: Reader, id: string, outcome: 'approved' | 'declined') {
+  async decide(reader: Reader, id: string, outcome: 'approved' | 'declined', reasonGiven?: unknown) {
+    /* A reason may go with a decline (decision 85, build step 7), and is told to the person. */
+    const reason = outcome === 'declined' ? wordsGiven(reasonGiven) : null;
+    if (reason === 'too long') throw new BadRequestException(QUESTION_REFUSED.tooLong);
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
     const row = (await this.prisma.leaveRequest.findUnique({ where: { id } })) as Row | null;
@@ -258,7 +295,7 @@ export class LeaveBoardService {
     if (row.userId === reader.userId || !decidesIt(now.who, { userId: reader.userId, role }, row.userId)) throw new ForbiddenException(LEAVE_REFUSED.notYours);
     if (row.status !== 'waiting') throw new BadRequestException(LEAVE_REFUSED.alreadyDecided);
     const approvedByIds = [...(row.approvedByIds ?? []), ...(outcome === 'approved' ? [reader.userId] : [])];
-    await recordIt(this.prisma, { organizationId: row.organizationId, suite: 'leave', ref: id, kind: outcome, byUserId: reader.userId, step: now.step, basis: { row: 'leave_requests', id } });
+    await recordIt(this.prisma, { organizationId: row.organizationId, suite: 'leave', ref: id, kind: outcome, byUserId: reader.userId, step: now.step, basis: { row: 'leave_requests', id, ...(reason ? { withAReason: true } : {}) } });
     if (outcome === 'approved' && !now.last) {
       const next = { ...row, step: now.step + 1, escalatedTo: 0, stepSince: new Date(), approvedByIds };
       await this.prisma.leaveRequest.update({ where: { id }, data: { step: next.step, escalatedTo: 0, stepSince: next.stepSince, approvedByIds } });
@@ -267,10 +304,90 @@ export class LeaveBoardService {
     }
     await this.prisma.leaveRequest.update({
       where: { id },
-      data: { status: outcome, decidedById: reader.userId, decidedAt: new Date(), approvedByIds },
+      data: { status: outcome, decidedById: reader.userId, decidedAt: new Date(), approvedByIds, ...(reason ? { declineReason: reason } : {}) },
     });
-    await this.tellThePerson(row, outcome, reader.userId);
+    await this.tellThePerson(row, outcome, reader.userId, reason);
+    /* A question still waiting for the person's answer in Ask Groundwork is no longer asked. */
+    await this.forgetTheQuestionsInAskGroundwork(row);
     return this.board(reader);
+  }
+
+  /**
+   * ASK A QUESTION (decision 85, item 1; build step 7). Whoever decides the request now asks the person
+   * who made it, and the request keeps waiting. The person is told under their own leave, on Today, in
+   * Ask Groundwork the next time they write there, and on WhatsApp.
+   */
+  async askAQuestion(reader: Reader, id: string, questionGiven: unknown) {
+    const question = wordsGiven(questionGiven);
+    if (!question) throw new BadRequestException(QUESTION_REFUSED.emptyQuestion);
+    if (question === 'too long') throw new BadRequestException(QUESTION_REFUSED.tooLong);
+    const answers = await this.suiteAnswers(reader.organizationId);
+    const role = await this.roleOf(reader);
+    const row = (await this.prisma.leaveRequest.findUnique({ where: { id } })) as Row | null;
+    if (!row || row.organizationId !== reader.organizationId) throw new NotFoundException(LEAVE_REFUSED.notFound);
+    const people = await this.directory(reader.organizationId, [row]);
+    const now = await this.now(row, people, answers);
+    if (row.userId === reader.userId || !decidesIt(now.who, { userId: reader.userId, role }, row.userId)) throw new ForbiddenException(QUESTION_REFUSED.notYours);
+    if (row.status !== 'waiting') throw new BadRequestException(QUESTION_REFUSED.notWaiting);
+    const table = (this.prisma as any).suiteQuestion;
+    const q = await table.create({
+      data: { organizationId: row.organizationId, suite: 'leave', ref: id, askedById: reader.userId, toUserId: row.userId, question },
+      select: { id: true },
+    });
+    await recordIt(this.prisma, { organizationId: row.organizationId, suite: 'leave', ref: id, kind: 'questioned', byUserId: reader.userId, toUserId: row.userId, step: now.step, basis: { row: 'suite_questions', id: q.id } });
+    /* Ask Groundwork holds it for the person's answer: the next thing they write there is said back as their answer. */
+    const entry = await theirRosterEntry(this.prisma, row.organizationId, row.userId, { externalId: true }).catch(() => null);
+    if (entry?.externalId && (this.prisma as any).assistantProposal?.create) {
+      const asker = (await this.firstNames([reader.userId])).get(reader.userId) || 'The person who decides it';
+      await (this.prisma as any).assistantProposal.create({
+        data: {
+          organizationId: row.organizationId, personExternalId: entry.externalId, kind: LEAVE_QUESTION_KIND,
+          summary: `${asker} asked you a question about your ${leaveInWords(dayOf(row.startsOn), dayOf(row.endsOn))}.`,
+          payload: { requestId: id, questionId: q.id } as never,
+        },
+      }).catch(() => undefined);
+    }
+    if (this.told) {
+      const first = await this.told.firstNameOf(row.userId);
+      await this.told.asked(row.organizationId, aLeaveRequest(row.id, row.userId, first, dayOf(row.startsOn), dayOf(row.endsOn)), reader.userId, question).catch(() => false);
+    }
+    return this.board(reader);
+  }
+
+  /**
+   * THE PERSON ANSWERS (decision 85, build step 7): the latest question still waiting for them on their
+   * own request. Only the person who asked for the leave answers; the request keeps waiting, and
+   * whoever asked is told on WhatsApp.
+   */
+  async answerAQuestion(reader: Reader, id: string, answerGiven: unknown): Promise<MyLeave> {
+    const answer = wordsGiven(answerGiven);
+    if (!answer) throw new BadRequestException(QUESTION_REFUSED.emptyAnswer);
+    if (answer === 'too long') throw new BadRequestException(QUESTION_REFUSED.tooLong);
+    await this.suiteAnswers(reader.organizationId);
+    const row = (await this.prisma.leaveRequest.findUnique({ where: { id } })) as Row | null;
+    if (!row || row.organizationId !== reader.organizationId) throw new NotFoundException(LEAVE_REFUSED.notFound);
+    if (row.userId !== reader.userId) throw new ForbiddenException(QUESTION_REFUSED.onlyThePerson);
+    if (row.status !== 'waiting') throw new BadRequestException(QUESTION_REFUSED.notWaiting);
+    const waiting = (await this.questionsOn(reader.organizationId, [id])).filter((q) => q.answer == null && q.toUserId === reader.userId).pop();
+    if (!waiting) throw new BadRequestException(QUESTION_REFUSED.nothingToAnswer);
+    await (this.prisma as any).suiteQuestion.update({ where: { id: waiting.id }, data: { answer, answeredAt: new Date() } });
+    await recordIt(this.prisma, { organizationId: row.organizationId, suite: 'leave', ref: id, kind: 'answered', byUserId: reader.userId, toUserId: waiting.askedById, basis: { row: 'suite_questions', id: waiting.id } });
+    await this.forgetTheQuestionsInAskGroundwork(row);
+    if (this.told) {
+      const first = await this.told.firstNameOf(row.userId);
+      await this.told.answered(row.organizationId, waiting.askedById, aLeaveRequest(row.id, row.userId, first, dayOf(row.startsOn), dayOf(row.endsOn)), answer).catch(() => false);
+    }
+    return this.mine(reader);
+  }
+
+  /** The question waiting for this person's answer on one request, for Ask Groundwork. Null when none waits. */
+  async questionWaitingFor(reader: Reader, id: string): Promise<{ askedBy: string; leave: string; question: string } | null> {
+    const row = (await this.prisma.leaveRequest.findUnique({ where: { id } }).catch(() => null)) as Row | null;
+    if (!row || row.organizationId !== reader.organizationId || row.userId !== reader.userId || row.status !== 'waiting') return null;
+    const q = (await this.questionsOn(reader.organizationId, [id])).filter((x) => x.answer == null && x.toUserId === reader.userId).pop();
+    if (!q) return null;
+    const askedBy = (await this.firstNames([q.askedById])).get(q.askedById) || 'The person who decides it';
+    return { askedBy, leave: leaveInWords(dayOf(row.startsOn), dayOf(row.endsOn)), question: q.question };
   }
 
   /**
@@ -347,10 +464,11 @@ export class LeaveBoardService {
   }
 
   /** The person who asked is told what was decided, on WhatsApp (decision 82, item 1). True when it went. */
-  async tellThePerson(row: { id: string; organizationId: string; userId: string; startsOn: Date; endsOn: Date }, outcome: 'approved' | 'declined', deciderUserId: string): Promise<boolean> {
+  async tellThePerson(row: { id: string; organizationId: string; userId: string; startsOn: Date; endsOn: Date }, outcome: 'approved' | 'declined', deciderUserId: string, reason?: string | null): Promise<boolean> {
     if (!this.told) return false;
     const first = await this.told.firstNameOf(row.userId);
-    return this.told.decided(row.organizationId, aLeaveRequest(row.id, row.userId, first, dayOf(row.startsOn), dayOf(row.endsOn)), outcome, deciderUserId).catch(() => false);
+    const request = aLeaveRequest(row.id, row.userId, first, dayOf(row.startsOn), dayOf(row.endsOn));
+    return (reason ? this.told.decided(row.organizationId, request, outcome, deciderUserId, reason) : this.told.decided(row.organizationId, request, outcome, deciderUserId)).catch(() => false);
   }
 
   /**
@@ -385,6 +503,33 @@ export class LeaveBoardService {
   }
 
   // ---------------------------------------------------------------------------------------------
+
+  /** The questions asked on these requests, oldest first. A test built by hand may have no table. */
+  private async questionsOn(organizationId: string, ids: string[]): Promise<(AQuestion & { ref: string })[]> {
+    const table = (this.prisma as any).suiteQuestion;
+    if (!ids.length || !table?.findMany) return [];
+    return ((await table.findMany({ where: { organizationId, suite: 'leave', ref: { in: ids } }, orderBy: { askedAt: 'asc' } }).catch(() => [])) ?? []) as (AQuestion & { ref: string })[];
+  }
+
+  /** First names of sign-ins, by id. Never an address. */
+  private async firstNames(ids: string[]): Promise<Map<string, string>> {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (!unique.length) return new Map();
+    const us = await this.prisma.user.findMany({ where: { id: { in: unique } }, select: { id: true, firstName: true } }).catch(() => []);
+    return new Map((us ?? []).map((u: any) => [u.id, u.firstName?.trim() || '']));
+  }
+
+  /** The person's question in Ask Groundwork is no longer waiting: answered, or the request decided. */
+  private async forgetTheQuestionsInAskGroundwork(row: { id: string; organizationId: string; userId: string }) {
+    const table = (this.prisma as any).assistantProposal;
+    if (!table?.updateMany) return;
+    const entry = await theirRosterEntry(this.prisma, row.organizationId, row.userId, { externalId: true }).catch(() => null);
+    if (!entry?.externalId) return;
+    await table.updateMany({
+      where: { organizationId: row.organizationId, personExternalId: entry.externalId, kind: LEAVE_QUESTION_KIND, state: 'PARKED', payload: { path: ['requestId'], equals: row.id } },
+      data: { state: 'DROPPED', resolvedAt: new Date() },
+    }).catch(() => undefined);
+  }
 
   private daysLeft(perYear: number | null, approved: Row[], year: number): number | null {
     if (perYear == null) return null;

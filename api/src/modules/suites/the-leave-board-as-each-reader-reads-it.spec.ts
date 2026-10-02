@@ -113,6 +113,7 @@ describe('Grace, an admin, reads the whole board', () => {
       where: 'It is waiting for Wairimu.',
       /* The manager's view in full sentences (decision 85, build step 7). */
       owns: ['Groundwork found nothing Aisha owns that is due on those days.'],
+      questions: [],
       said: [
         'Aisha asked for leave from Thursday 1 October to Friday 2 October, which is 2 working days.',
         'Aisha has 16 days left.',

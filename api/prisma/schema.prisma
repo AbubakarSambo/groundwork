@@ -490,6 +490,7 @@ model Organization {
   equipmentItems     EquipmentItem[]
   /// One record of who did what on a suite's request, and each change of a suite's rules (decision 85, build step 5).
   suiteEvents        SuiteEvent[]
+  suiteQuestions     SuiteQuestion[]
   suiteRuleChanges   SuiteRuleChange[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
@@ -2795,6 +2796,9 @@ model LeaveRequest {
   stepSince      DateTime? @map("step_since")
   /// Who approved each step so far, in order, by sign-in.
   approvedByIds  String[]  @default([]) @map("approved_by_ids")
+  /// The reason the person who declined it gave, in their words, told to the person who asked
+  /// (decision 85, build step 7). Empty when none was given, and on every request decided before.
+  declineReason  String?   @map("decline_reason") @db.Text
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -2832,7 +2836,7 @@ model SuiteEvent {
   suite          String   @db.VarChar(16)
   /// The request: a leave or spending request's id, a review's id, or for hours the person's sign-in and the week's Monday joined by "|".
   ref            String   @db.VarChar(200)
-  /// asked, told, approved, declined, escalated, started or decided.
+  /// asked, told, approved, declined, escalated, started, decided, questioned or answered.
   kind           String   @db.VarChar(16)
   /// Who did it, by sign-in. Empty when Groundwork did it (telling, passing on).
   byUserId       String?  @map("by_user_id")
@@ -2848,6 +2852,34 @@ model SuiteEvent {
 
   @@index([organizationId, suite, ref, at])
   @@map("suite_events")
+}
+
+/// A QUESTION ABOUT A REQUEST, AND THE ANSWER (decision 85, build step 7). The person who decides a
+/// request asks the person who made it, and the request keeps waiting. Both are in the words each of
+/// them wrote, read only by the people who may read the request (the-leave-board.service.ts); the
+/// record of who did what (`SuiteEvent`) keeps only that a question was asked and answered, with this
+/// row's id.
+model SuiteQuestion {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  /// leave, for now.
+  suite          String    @db.VarChar(16)
+  /// The request's id.
+  ref            String    @db.VarChar(200)
+  /// Who asked: the person who decides it.
+  askedById      String    @map("asked_by_id")
+  /// Who was asked: the person who made the request.
+  toUserId       String    @map("to_user_id")
+  question       String    @db.Text
+  answer         String?   @db.Text
+  askedAt        DateTime  @default(now()) @map("asked_at")
+  answeredAt     DateTime? @map("answered_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, suite, ref])
+  @@index([organizationId, toUserId, answeredAt])
+  @@map("suite_questions")
 }
 
 /// EACH CHANGE OF A SUITE'S RULES (decision 85, build step 5): a suite switched on or off with its

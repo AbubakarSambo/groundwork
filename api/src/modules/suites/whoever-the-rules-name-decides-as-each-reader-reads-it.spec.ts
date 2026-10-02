@@ -147,6 +147,7 @@ describe('Omar, a member who heads Sales, where the department head decides', ()
       where: 'It is waiting for you.',
       /* The manager's view in full sentences (decision 85, build step 7). */
       owns: ['Groundwork found nothing Aisha owns that is due on those days.'],
+      questions: [],
       said: [
         'Aisha asked for leave from Thursday 1 October to Friday 2 October, which is 2 working days.',
         'Aisha has 21 days left.',

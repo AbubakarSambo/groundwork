@@ -115,6 +115,16 @@ All three are now on the list the Connections page asks an admin to submit (`the
 - **Why:** to tell the person what was decided, whether it was decided in the app or by a reply on WhatsApp. It is not counted as Groundwork writing first, because it answers the person's own request, the same as the report; it still never goes after STOP. Hours cannot be declined in Groundwork, so for hours {{3}} is only ever "approved". Wired on 2 October.
 - **Checked against WhatsApp's rules:** passes.
 
+### `groundwork_request_question` (decision 85, build step 7: a question about the person's own request). Proposed, not wired
+
+- **Category:** Utility. **Language:** en.
+- **Body:** Hi {{1}}, {{2}} has a question about your request for {{3}}. Open Groundwork to read it and answer it. Your request is still waiting for {{2}} to decide.
+- **Examples:** {{1}} Aisha. {{2}} Wairimu. {{3}} leave from 12 to 16 October.
+- **Why:** when whoever decides a leave request asks the person a question, the person is told. Inside the 24 hours the question itself goes as a plain message ("Hi Aisha, Wairimu has a question about your request for leave from Monday 12 October to Friday 16 October. Wairimu asked, “Who will cover the Project X milestone?” Open Groundwork to answer it. Your request is still waiting for Wairimu to decide."). Outside them, until this template is approved, the approved `groundwork_request_decided` goes instead with {{3}} as "asked about", which reads "Hi Aisha, your request for leave from Monday 12 October to Friday 16 October was asked about by Wairimu. Open Groundwork to read it." That is true but clumsy, so this template is proposed to replace it. The question's words are never in the template, because it can be long and may hold a line break. It answers the person's own request, so it is not counted as Groundwork writing first. Wiring it once approved is one line in `a-request-told-on-whatsapp.service.ts` and one in `whatsapp/a-message-outside-the-window.ts`.
+- **Checked against WhatsApp's rules:** passes (no blank at the start or end, no line break, under 1,024 characters, utility).
+
+**Also changed on 3 October (decision 85, build step 7), with no new template:** a reason given with a decline is said inside the 24 hours after the `groundwork_request_decided` sentence ("... was declined by Wairimu. Wairimu said, “Sales is two short that week.” Open Groundwork to read it."); outside them the template goes as before and the reason is read in the app. When the person answers a question, whoever asked is told with `groundwork_request_waiting`; inside the 24 hours they read the answer itself ("Hi Wairimu, Aisha has answered your question about Aisha's leave from ... Aisha said, “Brian will cover it.” Reply here to approve or decline it, or open Groundwork to read it first."), and outside them the template's words stay true, because the request is still waiting for them.
+
 ### `groundwork_review_started` (item 16: a review waits for the person)
 
 - **Category:** Utility. **Language:** en.

@@ -23,6 +23,18 @@ class WordsDto {
   @IsString() @MaxLength(4000) text!: string;
 }
 
+class DeclineDto {
+  @IsOptional() @IsString() @MaxLength(1000) reason?: string;
+}
+
+class QuestionDto {
+  @IsString() @MaxLength(1000) question!: string;
+}
+
+class AnswerDto {
+  @IsString() @MaxLength(1000) answer!: string;
+}
+
 class ReviewDecisionDto {
   @IsOptional() @IsString() @MaxLength(1000) decision?: string;
   @IsOptional() @IsString() @MaxLength(2000) reasons?: string;
@@ -123,9 +135,21 @@ export class SuitesController {
   }
 
   @Post('leave/requests/:id/decline')
-  @ApiOperation({ summary: 'The approver declines a request for time off' })
-  declineLeave(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
-    return this.leave.decide({ userId: user.id, organizationId: user.organizationId }, id, 'declined');
+  @ApiOperation({ summary: 'The approver declines a request for time off, with a reason if they give one, which the person is told' })
+  declineLeave(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: DeclineDto) {
+    return this.leave.decide({ userId: user.id, organizationId: user.organizationId }, id, 'declined', dto?.reason);
+  }
+
+  @Post('leave/requests/:id/question')
+  @ApiOperation({ summary: 'Whoever decides a request for time off asks the person a question. The request keeps waiting.' })
+  askAboutLeave(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: QuestionDto) {
+    return this.leave.askAQuestion({ userId: user.id, organizationId: user.organizationId }, id, dto.question);
+  }
+
+  @Post('leave/requests/:id/answer')
+  @ApiOperation({ summary: 'The person who asked for time off answers the question waiting for them. The request keeps waiting.' })
+  answerAboutLeave(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AnswerDto) {
+    return this.leave.answerAQuestion({ userId: user.id, organizationId: user.organizationId }, id, dto.answer);
   }
 
   @Get('leave/requests/:id/history')

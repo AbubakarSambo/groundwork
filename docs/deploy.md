@@ -124,6 +124,7 @@ Every migration, in order, in one sentence each:
 | 72 | `20261003090000_a_request_asked_about_on_whatsapp_survives_a_restart` | Decision 82, item 2. Adds three empty columns to WhatsApp threads for a leave, hours or spending request waiting for the person's yes or no (its kind, its words and when it was asked), and an index on when it was asked. It was held in the API's memory, so a restart or a second copy lost it. | Untouched |
 | 73 | `20261003120000_a_request_passes_through_approval_steps` | Decision 85, build step 4. Adds to each leave request, request to spend and week of hours the approval step it is on, how far down that step's list it has been passed on, since when it has waited there, and who approved each step so far, all with defaults, so every request already kept reads as step one, never passed on. On a week of hours, the approved total, who approved it and when may now be empty while the week waits at a later step. | **Allows three existing columns of `time_weeks` to be empty; no value is changed** |
 | 74 | `20261003140000_one_record_of_who_did_what_on_a_suite` | Decision 85, build step 5. Adds two new, empty tables: `suite_events`, one record of who asked, was told, approved each step, declined, was passed a request, and started or decided a review, with when and references to rows only; and `suite_rule_changes`, each change of a suite's rules, of who holds each duty and of the approval steps, with who changed it, when, and from what to what. | Untouched |
+| 75 | `20261003160000_a_question_about_a_request_and_a_reason_for_a_decline` | Decision 85, build step 7. Adds a new, empty table `suite_questions` for a question whoever decides a leave request asks the person, and the answer; and an empty column `decline_reason` on leave requests, for the reason given with a decline, told to the person. | Untouched |
 
 The prices and limits migration 71 writes, all editable afterwards at Admin, System, Pricing (`PATCH /admin/pricing/:plan` with `whatsappAddOnCents` and `whatsappMonthlyLimit`):
 
@@ -142,7 +143,7 @@ Things worth knowing about how they run:
 - Columns added with a fixed default (`false`, an empty list) do not rewrite the table on Postgres 11 or later, so none of these should lock a table for long.
 - The new unique indexes on existing tables (`organizations.join_domain`, `organizations.invite_link_code`) are on new columns that start empty, so they cannot fail on existing data.
 - Two pairs of migrations share a timestamp (`20260927180000_*` and `20260927190000_*`). Prisma runs them in full name order, which is the order above.
-- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261003140000_one_record_of_who_did_what_on_a_suite`.
+- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261003160000_a_question_about_a_request_and_a_reason_for_a_decline`.
 
 ## 3. Settings and environment variables
 
