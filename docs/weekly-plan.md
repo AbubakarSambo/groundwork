@@ -53,6 +53,11 @@ From now on, every change to what the board, reports or Today page send is writt
 - The lead's "<who> has been told" sentence is untrue. *Done* (`1973482c`). The rest of that read (late and undated commitments, findings) made plain: *in progress*.
 - A scenario run (run-25) to measure requests 117 and 118's model-written changes against the baseline. *In progress.*
 
+**d2. The suites as one request and workflow layer (decision 85, 3 October)**
+- Compare leave, spending and payments, timesheets and performance reviews with the seven layers, suite by suite, and list what exists, what is partly there and what is missing. *Not started.*
+- Then build the missing parts in this order: approvers by rule and escalation; who sees what by record, field and action, with an audit record; leave's manager view (balance, who else is away, what the person owns in those days); spending thresholds, finance verifying, exporting and marking paid; timesheets drafted from the record; the review as the record interpreted, with the person correcting it; and the conversational setup. *Not started.*
+- The parts that meet decisions 53, 73 and 74 wait for Hafsah.
+
 **h. Then everything else**
 21. The other seven boards, and the rest of the earlier list. *Not started.*
 22. The back office rebuild, last. *Not started.*
