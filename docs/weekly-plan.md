@@ -5,7 +5,7 @@
 One list, merged from every instruction since decision 81, without duplicates. Marked **done**, **in progress** or **not started**.
 
 **a. What the helpers are already doing, finished first**
-1. Request 117, the sales board's engine faults. *In progress.*
+1. Request 117, the sales board's engine faults. *Done* (`39f692e3` to `40946e19`), except part 5 (Neema's shop and an invented wait), which only the model can read again.
 2. The WhatsApp fixes from `docs/whatsapp-end-to-end.md` (the "keep it off the phone" privacy fault, number tidying, switch words). *Done* (`937c1c6b` to `3c318354`).
 
 **b. WhatsApp for the first client** (decisions 82 and 83)
@@ -29,8 +29,8 @@ One list, merged from every instruction since decision 81, without duplicates. M
 16. Performance reviews, as the prototype's suite shows it, on evaluation check-ins and judging, with a proposed threshold for a "recognise" suggestion for Hafsah to confirm. *Not started.*
 
 **e. The boards the client needs, from the engine**
-17. Request 117 (item 1). *In progress.*
-18. What the sales, onboarding and project boards still need from the engine. *Not started.*
+17. Request 117 (item 1). *Done*, as item 1.
+18. What the sales, onboarding and project boards still need from the engine. *In progress* (onboarding and project; sales is item 1).
 
 **f. The back office**
 19. Its usage numbers checked after this work, and anything broken fixed. *Not started.* Its rebuild comes last (item 22).

@@ -30,7 +30,12 @@ Groundwork writes first at most once a day, or twice on the day a check-in opens
 - **Three template wording points**, each with a proposed fix in `docs/whatsapp-templates.md`: `lead_daily_summary` ends on a blank, which WhatsApp refuses; `checkin_team_almost_in` numbers its blanks out of order; and three templates may be classed by Meta as marketing, not utility.
 - **Before two copies of the API run:** the waiting "yes or no" on a request is held in memory for ten minutes, and should move to the database.
 
-Now running: request 117 (the sales board), and approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Request 117, the sales board, is done** (`39f692e3` to `40946e19`, pushed). Rukia's row for Amani now reads "Amani Wekesa has checked in, and has been waiting on you for the price list since 28 September." once, instead of the same wait three times. Her coaching note no longer says "waiting on themselves", and says "session 1 of 12" rather than "session 2". Amani's aim reads "Amani Wekesa's own aim is 3 shops in Kilimani by 20 December." Every reader gets the same board at any hour. A local script, `api/journey/bring-a-check-in-up-to-date.ts`, brings stored rows up to today's rules without the model. Its dry run here found 99 changes and wrote nothing. It is a release step that needs your explicit yes (`docs/deploy.md`, section 5). Tests: 9,251 pass, 2 fail that are not its own (one read another helper's half-written file, one passes when run alone).
+
+- **Part 5 is not fixed.** A rule for who a wait is on would have removed 310 stored waits, most of them real, so it was taken back out. Neema's shop and her invented wait "on the warehouse" stay until the model reads her check-in again.
+- **For Hafsah:** should a round's numbers be counted when one person's check-in closes, rather than when everybody has finished? Today Neema's shop waits on Faraji. And should a deal's "Cooling" be measured to the record's own clock, so it does not change with the day the board is read?
+
+Now running: the onboarding and project boards' engine faults (item 18), and approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
