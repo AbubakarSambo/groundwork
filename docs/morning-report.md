@@ -98,7 +98,11 @@ The rest of request 117 on the sales board is stored rows on the screens workspa
 - Should onboarding and project check-ins have a kind of work, so the project board can show releases and tasks as the prototype's engineering example does?
 - The coaching role maps have clipped phrases ("Busy in the weeds on comfortable work; …"), and the lead of a first 90 days is read as "Founder or CEO". Rewrite them?
 
-Now running: WhatsApp's waiting answers kept in the database, and the WhatsApp merge gap with reviews on Today. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**WhatsApp's waiting yes-or-no now survives a restart and a second copy of the server** (`12b132b7`, migration 72, applied to the local test database only; 1,026 tests pass). Nothing a person reads changed. Approvals waiting for a yes were already stored.
+
+**For Hafsah:** the person's request words ("Can I take Friday off?") are now written to the database while Groundwork waits for their yes or no, up to about 10 minutes, and cleared on the answer or by the next WhatsApp message anyone sends. The code needs the words to act on the yes. If you want them gone at 10 minutes even when nobody writes, a small clean-up can be added to the nightly jobs.
+
+Now running: the WhatsApp merge gap with reviews on Today, and scenario run-25. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
