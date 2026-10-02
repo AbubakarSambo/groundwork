@@ -1057,6 +1057,77 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
+          THE INSTRUCTIONS WERE BIGGER THAN THE THING THEY EXPLAINED. W-UX-7.
+          
+          Her audit note: "The 'how to read this board' box is bigger than the board." Seen on the
+          running page and it was true - four lines of dark panel above a board whose first section
+          had not been reached yet.
+          
+          NOT DELETED, and the wording is not touched. This framing is what keeps the board a mirror
+          rather than a weapon, and somebody meeting it for the first time should read it. What was
+          wrong is that it was read AT them again on every single visit.
+          
+          So: the load-bearing sentence stays on the page always; the rest opens on ask, and the
+          choice is remembered. A returning person gets the board they came for and the reminder
+          within one click.
+        */}
+        {/*
+          U.10: A PLAIN LINK, THE WEIGHT THE PROTOTYPE GIVES IT.
+          The prototype has no dark card here at all - just a small grey "How to read this board"
+          line among the rest of the page. The words below are unchanged; only the dark indigo panel
+          (rgb(32,35,62)) is gone, in favour of the same small-grey-text treatment as the rest of the
+          board (see "Last updated…" just above).
+        */}
+        <div className="gwui-mt-12">
+          <p className="gwui-fs-15 gwui-ink-sub gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: 1.55}}>
+            Built from what each person shared in their private check-in. Use it to see what&rsquo;s going on and guide the conversation. It&rsquo;s not a verdict.
+          </p>
+          {howToRead && (
+            <>
+              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
+                If something doesn&rsquo;t feel right, raise it in your next check-in. The board updates as people share more.
+              </p>
+              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
+                Each person is shown in the context of their own role, not scored against everyone else.
+              </p>
+              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
+                This is the shared picture from this round of check-ins. It can change as the picture changes.
+              </p>
+              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
+                Where people see things differently or progress has stalled, you can see what each person shared and support them.
+              </p>
+            </>
+          )}
+          {/* Board review, 1 October, item 8: this only opens or closes a section (a fold), drawn
+              with its own one-off classes instead of the shared `gwui-plain-link` quiet-text-link
+              class, so the button-count test counted it as a real button. */}
+          <button
+            onClick={() => setHowToRead(v => { localStorage.setItem(HOW_TO_READ_KEY, v ? 'closed' : 'open'); return !v })}
+            className="gwui-plain-link gwui-mt-6"
+          >
+            {howToRead ? 'Show less' : 'How to read this board'}
+          </button>
+        </div>
+
+        {/*
+          A SHARED PICTURE NEEDS TWO ACCOUNTS, AND THE BOARD SAYS SO.
+
+          The check-ins list carries this as a chip and a party's report tab carries it as a note.
+          The board, which is the shared picture itself, carried nothing: with one person on the
+          ground it drew "Nothing cross-referenced yet", an empty grid and a quick read of one, and
+          left the reader to work out that no amount of waiting would change it. The rule refuses a
+          shared report below two people, so the page says the same thing the rule does, and names
+          who can change it.
+        */}
+        {onlyOnePersonHere && (
+          <div role="status" className="gwui-rule-amber gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-12 gwui-fs-15 gwui-ink-amber" style={{background: 'var(--gw-amber-bg)', borderRadius: 12, lineHeight: 1.6}}>
+            This board compares accounts, and there is one person on this check-in.{' '}
+            {b.canEditFrame ? 'Add somebody and it will build from the next round.' : 'It will build once the person running this check-in adds somebody.'}
+          </div>
+        )}
+
+
+        {/*
           WHAT THE TARGET ASSUMES (board-as-lead.txt), right after the headline - the lead's own
           lines from Context (U.7), gathered across every target that has any, under one heading.
           This used to render once per target, nested inside "What we are aiming for" (now folded
@@ -1444,76 +1515,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             data={(b as any).whereThisIsHeading}
             onRecordTheDecision={() => scrollTo(document.getElementById('record-the-decision'), { block: 'start' })}
           />
-        )}
-
-        {/*
-          THE INSTRUCTIONS WERE BIGGER THAN THE THING THEY EXPLAINED. W-UX-7.
-          
-          Her audit note: "The 'how to read this board' box is bigger than the board." Seen on the
-          running page and it was true - four lines of dark panel above a board whose first section
-          had not been reached yet.
-          
-          NOT DELETED, and the wording is not touched. This framing is what keeps the board a mirror
-          rather than a weapon, and somebody meeting it for the first time should read it. What was
-          wrong is that it was read AT them again on every single visit.
-          
-          So: the load-bearing sentence stays on the page always; the rest opens on ask, and the
-          choice is remembered. A returning person gets the board they came for and the reminder
-          within one click.
-        */}
-        {/*
-          U.10: A PLAIN LINK, THE WEIGHT THE PROTOTYPE GIVES IT.
-          The prototype has no dark card here at all - just a small grey "How to read this board"
-          line among the rest of the page. The words below are unchanged; only the dark indigo panel
-          (rgb(32,35,62)) is gone, in favour of the same small-grey-text treatment as the rest of the
-          board (see "Last updated…" just above).
-        */}
-        <div className="gwui-mt-12">
-          <p className="gwui-fs-15 gwui-ink-sub gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: 1.55}}>
-            Built from what each person shared in their private check-in. Use it to see what&rsquo;s going on and guide the conversation. It&rsquo;s not a verdict.
-          </p>
-          {howToRead && (
-            <>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
-                If something doesn&rsquo;t feel right, raise it in your next check-in. The board updates as people share more.
-              </p>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
-                Each person is shown in the context of their own role, not scored against everyone else.
-              </p>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
-                This is the shared picture from this round of check-ins. It can change as the picture changes.
-              </p>
-              <p className="gwui-fs-15 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
-                Where people see things differently or progress has stalled, you can see what each person shared and support them.
-              </p>
-            </>
-          )}
-          {/* Board review, 1 October, item 8: this only opens or closes a section (a fold), drawn
-              with its own one-off classes instead of the shared `gwui-plain-link` quiet-text-link
-              class, so the button-count test counted it as a real button. */}
-          <button
-            onClick={() => setHowToRead(v => { localStorage.setItem(HOW_TO_READ_KEY, v ? 'closed' : 'open'); return !v })}
-            className="gwui-plain-link gwui-mt-6"
-          >
-            {howToRead ? 'Show less' : 'How to read this board'}
-          </button>
-        </div>
-
-        {/*
-          A SHARED PICTURE NEEDS TWO ACCOUNTS, AND THE BOARD SAYS SO.
-
-          The check-ins list carries this as a chip and a party's report tab carries it as a note.
-          The board, which is the shared picture itself, carried nothing: with one person on the
-          ground it drew "Nothing cross-referenced yet", an empty grid and a quick read of one, and
-          left the reader to work out that no amount of waiting would change it. The rule refuses a
-          shared report below two people, so the page says the same thing the rule does, and names
-          who can change it.
-        */}
-        {onlyOnePersonHere && (
-          <div role="status" className="gwui-rule-amber gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-12 gwui-fs-15 gwui-ink-amber" style={{background: 'var(--gw-amber-bg)', borderRadius: 12, lineHeight: 1.6}}>
-            This board compares accounts, and there is one person on this check-in.{' '}
-            {b.canEditFrame ? 'Add somebody and it will build from the next round.' : 'It will build once the person running this check-in adds somebody.'}
-          </div>
         )}
 
         {/*
