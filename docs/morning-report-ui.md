@@ -41,7 +41,7 @@ None of the eleven is done yet. A kind is marked done only when its pictures mat
 | Support desk | Not done, the same as engineering. | Not done, the same. |
 | Distribution operations | Not done, the same. | Not done, the same. |
 | Trader training programme | Not done, the same. | Not done, the same. |
-| Sales team | Not done. A review of this board alone (2 October) found the prototype's sections out of order, with about 25 extra sections mixed in among them, and one fact told nine times. "Where each target stands" is not beside the headline, the deal grid has no "Next" column and no marks, and one sentence under "The team today" is broken. Being fixed now. The engine's part is request 111, corrected by request 116 so the checkability rating stays: the wrong "Met" target, three repeated targets, two deadlines and counts that disagree. | Not done. "Every session" is folded away, the example question is not the prototype's, and the board reads the session row instead of whether the team picture is shared. The engine does not send Amani's own deals, her share or her aim (request 111). |
+| Sales team | **Done, 2 October.** The fourth review says it matches the prototype, apart from the engine's listed faults (requests 111, 112, 115 and 116). The prototype's sections come first, in its order, and every extra section is kept in one fold at the end. Coaching stays open after "What keeps coming up", and the checkability lines are back, as you decided. | **Done, 2 October.** It matches, apart from the engine's faults: Amani's own deals and share are not sent, and her board says the team picture is shared when it is not (requests 111 and 112). |
 | A government programme | Not done. Mainly the engine: its own sections are not sent (request 105). | Not done, the same. |
 | Asset loans | Not done. Mainly the engine (request 105). | Not done, the same. |
 | A law firm matter | Not done. Mainly the engine (request 105). | Not done, the same. |
@@ -80,6 +80,8 @@ What waits on the engine: requests 105, 107, 108 and 109.
 - Amani's board shows "Your deals, day by day", marked "Only yours", then "Every session" outside the fold.
 - What still differs because of the engine: the deal grid's groups ("Likely by 30 September", "Possible" and so on), each item's own choices under "What needs you", Amani's deals and share, and a team picture that is said to be shared when it is not. These are requests 111 and 112.
 - I merged the engine's latest work (decision 75's items), applied its database change to the local database only, and restarted the local API. A second review of the sales board comes after the tests.
+
+**The sales board is done (2 October, evening).** After four reviews, the last one says the sales board matches its prototype example, as Rukia and as Amani, at both widths, apart from what the engine sends. The pictures are in the scratchpad's `pictures/review-sales-4/`. One thing the review could not see: the sidebar list of check-ins did not load during it, most likely because the review loaded the board several times a minute and the local API allows 60 requests a minute. It is not counted against the board, and I will check it on the next kind's review. The sales board is now the pattern for the other ten kinds, one at a time.
 
 **The sales board, first pass.** It now draws the engine's new fields:
 - the headline question, "Will we sign 12 shops for kitchen appliances in Nairobi by 13 December?";
