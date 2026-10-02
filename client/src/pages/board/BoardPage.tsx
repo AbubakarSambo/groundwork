@@ -1638,6 +1638,49 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           )
         })()}
 
+        {/*
+          U.10 ITEM 7: "OVER TIME" MOVES OUT OF THE FOLD, TO THE PROTOTYPE'S OWN PLACE
+          (board-as-lead.txt: between "Who checked in" and "Reports"). It used to sit inside
+          "Everything else from this check-in", with the sections the prototype's sales board
+          does not show at all - but the prototype draws "Over time" itself, right here, so it
+          belongs with the sections above it rather than folded away under them.
+
+          THE WHOLE RUN, IN ONE PLACE. "I need the board to carry the entire history in one place."
+
+          The board read only the CURRENT working copy of the report plus the record entries, so a
+          six-session run showed its latest state and nothing about how it got there - while the
+          per-round snapshots sat in `report_rounds`, immutable, one row per closed round, read by
+          a component that lived on the report tab.
+
+          Both come here: what the report said at the end of each round, and where the run finished
+          if it has. This is now the only screen that carries the arc, which is why the report tab
+          could become a list of sessions.
+
+          UNDER "OVER TIME", OPENING ON ASK. The prototype has this as its own section heading, not
+          a small blue link-style label - picture-check round 6, item E: the same 21px bold heading
+          every other section uses. U.10 (e): now the shared Section itself, using its own `action`
+          slot for "Show"/"Hide" (a control, not the plain `note` sentence) instead of a hand-matched
+          heading beside a plain button.
+        */}
+        <Section
+          heading="Over time"
+          /* Board review, 1 October, item 8: this only opens or closes a section (a fold), drawn
+             with its own one-off classes instead of the shared `gwui-plain-link` quiet-text-link
+             class, so the button-count test counted it as a real button. */
+          action={(
+            <button
+              onClick={() => setShowOverTime((v) => !v)}
+              className="gwui-plain-link"
+              style={{ flexShrink: 0 }}
+            >
+              {showOverTime ? 'Hide' : 'Show'}
+            </button>
+          )}
+        >
+          {showOverTime ? <HowThisHasMoved groundId={id!} viewerRunsThisCheckIn={viewerRunsThisCheckIn} /> : undefined}
+        </Section>
+
+
         {shown.checkInGrid && sessionRows.length > 0 && (
           <Section
             heading="Reports"
@@ -3240,41 +3283,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           rule that could drift from the server's.
         */}
 
-        {/*
-          THE WHOLE RUN, IN ONE PLACE. "I need the board to carry the entire history in one place."
-
-          The board read only the CURRENT working copy of the report plus the record entries, so a
-          six-session run showed its latest state and nothing about how it got there - while the
-          per-round snapshots sat in `report_rounds`, immutable, one row per closed round, read by
-          a component that lived on the report tab.
-
-          Both come here: what the report said at the end of each round, and where the run finished
-          if it has. This is now the only screen that carries the arc, which is why the report tab
-          could become a list of sessions.
-
-          U.10 ITEM 7: UNDER "OVER TIME", OPENING ON ASK. The prototype has this as its own section
-          heading, not a small blue link-style label - picture-check round 6, item E: the same 21px
-          bold heading every other section uses. U.10 (e): now the shared Section itself, using its
-          own `action` slot for "Show"/"Hide" (a control, not the plain `note` sentence) instead of
-          a hand-matched heading beside a plain button.
-        */}
-        <Section
-          heading="Over time"
-          /* Board review, 1 October, item 8: this only opens or closes a section (a fold), drawn
-             with its own one-off classes instead of the shared `gwui-plain-link` quiet-text-link
-             class, so the button-count test counted it as a real button. */
-          action={(
-            <button
-              onClick={() => setShowOverTime((v) => !v)}
-              className="gwui-plain-link"
-              style={{ flexShrink: 0 }}
-            >
-              {showOverTime ? 'Hide' : 'Show'}
-            </button>
-          )}
-        >
-          {showOverTime ? <HowThisHasMoved groundId={id!} viewerRunsThisCheckIn={viewerRunsThisCheckIn} /> : undefined}
-        </Section>
         {/*
           AND HOW IT ENDS, BUT ONLY NEAR THE END.
 
