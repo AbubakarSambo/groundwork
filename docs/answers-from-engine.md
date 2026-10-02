@@ -1618,3 +1618,12 @@ A participant (and anybody else who does not run the check-in) is no longer serv
 ## Decision 75, item 14: where people do not see each other, one person's circumstances stay their own (2 October)
 
 On a check-in where people do not see each other (a cohort, or the lead's switch off), a participant's report and board (everything that comes through the report: `sharedPicture`, `theOpening`, `sharedPictureLines`, `agreements`, `divergences`, `whatTheAnswersSay` and the rest) no longer carry any sentence about one colleague. They keep the counts ("All nine people have answered."), the patterns across people ("A common experience was a delay between receiving the asset and generating income."), the lead's sentences, and the reader's own ("Your goal was ..."). A list item about one colleague is dropped whole, not half-emptied, so a list can be shorter or empty. The lead and an admin read it whole. Evaluation check-ins keep their own rule (decision 17). Nothing new to send.
+
+## Decision 75, item 33: the Movement tile says "changed" (2 October)
+
+The Movement tile's line now says "changed", not "moved", because a target that went down is counted too. The value is unchanged ("1 target", "2 targets", "None"). What each reader reads:
+- The lead, and a person whose own target changed: "1 target changed this session." (before: "1 target moved this session.").
+- Two targets, one up and one down: "2 targets changed this session."
+- A colleague who may not read that number, and an admin outside the check-in: "No target changed this session." (before: "No target moved this session.").
+
+The report's tile is built by the same function and reads the same. `TheSessionsReport.tsx` matches the old words in a case-sensitive pattern that never matched; please match "No target changed this session." if you keep that branch.

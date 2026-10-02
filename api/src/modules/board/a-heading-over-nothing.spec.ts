@@ -55,7 +55,7 @@ describe('the quick read', () => {
     /* The sub-line used to be a fragment - "differences between accounts", "across targets this
        session" - which is a caption on a number nobody could read. */
     expect(SERVICE).toContain('The written report reads this as still open.');
-    expect(SERVICE).toContain('No target moved this session.');
+    expect(SERVICE).toContain('No target changed this session.');
     expect(SERVICE).toContain('Nobody named anything holding work up.');
     /* Request 67: the last tile's sub is now a whole sentence of its own, "15 of every 100 things
        people said have a document behind them.", so the old fragment is gone. */

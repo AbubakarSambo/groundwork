@@ -114,7 +114,7 @@ describe('1. the Movement tile counts only the targets this reader may read', ()
   };
   it('Bisi, who runs it, reads that it moved by 5', async () => {
     const r = await readAs(w, 'u-bisi');
-    expect(r.movement).toEqual({ value: '1 target', sub: '1 target moved this session.' });
+    expect(r.movement).toEqual({ value: '1 target', sub: '1 target changed this session.' });
     expect(r.sinceLast).toBe("Kwame's approved facilities went from 0 to 5, against the aim of 14.");
   });
   it('Kwame, whose target it is, reads that it moved by 5 in his own report, and is served no tile before the team picture is shared', async () => {
@@ -129,7 +129,7 @@ describe('1. the Movement tile counts only the targets this reader may read', ()
   });
   it('an admin outside the check-in reads that nothing moved, and never Kwame’s target', async () => {
     const r = await readAs(w, 'u-grace', 'ADMIN');
-    expect(r.movement).toEqual({ value: 'None', sub: 'No target moved this session.' });
+    expect(r.movement).toEqual({ value: 'None', sub: 'No target changed this session.' });
     expect(r.sinceLast).toBe('');
   });
 });
@@ -142,14 +142,14 @@ describe('2. the tile and Since the last round tell one story (re-d, sales, sess
   };
   it.each([['Bisi, who runs it', 'u-bisi', 'MEMBER'], ['Ngozi, in it', 'u-ngozi', 'MEMBER'], ['an admin outside it', 'u-grace', 'ADMIN']])('%s reads the same movement on the tile and in the sentence', async (_who, userId, role) => {
     const r = await readAs(w, userId, role);
-    expect(r.movement).toEqual(takesPart(userId) ? NO_TILE : { value: '1 target', sub: '1 target moved this session.' });
+    expect(r.movement).toEqual(takesPart(userId) ? NO_TILE : { value: '1 target', sub: '1 target changed this session.' });
     expect(r.sinceLast).toBe("The team is aiming for 120 million naira disbursed. The team's total went from 0 to 31 million naira.");
   });
 
   it('where the round’s snapshot says nothing moved, the sentence does not say it did', async () => {
     const still: World = { objectives: [DISBURSED(31000000)], snapshots: { 1: [{ objectiveId: 'o-team', count: 31000000 }], 2: [{ objectiveId: 'o-team', count: 31000000 }] } };
     const r = await readAs(still, 'u-bisi');
-    expect(r.movement).toEqual({ value: 'None', sub: 'No target moved this session.' });
+    expect(r.movement).toEqual({ value: 'None', sub: 'No target changed this session.' });
     expect(r.sinceLast).not.toMatch(/went from/);
   });
 });
@@ -165,7 +165,7 @@ describe('3. a number the lead accepts later goes where its round closed, so the
     await bisiAccepts(w, 'o-team', 31000000);
     expect(w.snapshots[2]).toEqual([{ objectiveId: 'o-team', count: 31000000 }]);
     const r = await readAs(w, userId, role);
-    expect(r.movement).toEqual(takesPart(userId) ? NO_TILE : { value: '1 target', sub: '1 target moved this session.' });
+    expect(r.movement).toEqual(takesPart(userId) ? NO_TILE : { value: '1 target', sub: '1 target changed this session.' });
     expect(r.sinceLast).toBe("The team is aiming for 120 million naira disbursed. The team's total went from 0 to 31 million naira.");
   });
   it('a number the lead types that was not the one offered leaves the closed round as it was', async () => {
@@ -183,7 +183,7 @@ describe('4. the tile says how many targets moved, never one target’s own chan
   };
   it.each([['Bisi, who runs it', 'u-bisi', 'MEMBER'], ['Kwame, whose target it is', 'u-kwame', 'MEMBER']])('%s reads that 1 target moved', async (_who, userId, role) => {
     const r = await readAs(one, userId, role);
-    expect(r.movement).toEqual(takesPart(userId) ? NO_TILE : { value: '1 target', sub: '1 target moved this session.' });
+    expect(r.movement).toEqual(takesPart(userId) ? NO_TILE : { value: '1 target', sub: '1 target changed this session.' });
     expect(String(r.movement.value)).not.toMatch(/\+|96/);
   });
   it('Ngozi, who may not read Kwame’s number, reads that nothing moved', async () => {
@@ -194,6 +194,6 @@ describe('4. the tile says how many targets moved, never one target’s own chan
       objectives: [DISBURSED(25000000), KWAMES(100)],
       snapshots: { 1: [{ objectiveId: 'o-team', count: 31000000 }, { objectiveId: 'o-kwame', count: 4 }], 2: [{ objectiveId: 'o-team', count: 25000000 }, { objectiveId: 'o-kwame', count: 100 }] },
     };
-    expect((await readAs(two, 'u-bisi')).movement).toEqual({ value: '2 targets', sub: '2 targets moved this session.' });
+    expect((await readAs(two, 'u-bisi')).movement).toEqual({ value: '2 targets', sub: '2 targets changed this session.' });
   });
 });
