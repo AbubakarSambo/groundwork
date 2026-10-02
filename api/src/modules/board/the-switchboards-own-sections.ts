@@ -1,3 +1,4 @@
+import { holdsItSaid } from './a-holder-in-their-own-words';
 import { aCommitmentSaid, looksLikeATimeOrADate, inOurVoice } from '../reports/what-the-record-shows-over-time';
 import { aNumberPeopleCanRead } from './an-aim-is-a-sentence-about-somebody';
 import { aPartyOutside, theSameThing } from './a-thing-is-not-somebody';
@@ -488,7 +489,7 @@ export function theBlockerCheck(handoffs: AHandoff[], r: WhoIsReading): ABlocker
       saidWhatWasTried: wentBack,
       timeGiven,
       checks: [
-        named ? (on === 'you' ? 'You hold it.' : `${on!.charAt(0).toUpperCase()}${on!.slice(1)} holds it.`) : 'Nobody has been named as holding it.',
+        named ? holdsItSaid(on!) : 'Nobody has been named as holding it.',
         whatWasTriedSaid(d, who) ?? 'Nobody has said what has been tried.',
         theTimeGivenSaid(d, who) ?? 'No time has been given for it.',
       ],
