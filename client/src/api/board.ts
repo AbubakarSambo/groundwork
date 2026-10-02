@@ -125,9 +125,9 @@ export type BoardPresent = {
     teamsNamed: string[]
     why: string
   } | null
-  participants: { id: string; name: string | null; role: string | null; managingOnly: boolean; signedOffAt: string | null }[]
+  participants: { id: string; name: string | null; role: string | null; managingOnly: boolean; signedOffAt: string | null; partyType?: string }[]
 
-  phaseSpine?: { startsAt: string | null; endsAt: string | null; currentSession: number; sessions: { n: number; state: string; date: string | null; /** The day it opens, for a session not yet done. */ opensOn?: string | null }[] }
+  phaseSpine?: { startsAt: string | null; endsAt: string | null; currentSession: number; sessions: { n: number; state: string; date: string | null; /** The day it opens, for a session not yet done. */ opensOn?: string | null; /** The engine's own sentence for this session, e.g. "Session 5 opens on 12 October." */ says?: string }[] }
   /** The ground's pre-agreed intent, set at creation. Null when none was set. */
   startingState?: string | null
   quickRead?: { label: string; value: string; sub: string; tone: string }[]
