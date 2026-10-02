@@ -55,7 +55,26 @@ function board(overrides: any = {}) {
   }
 }
 
-function renderBoard(payload: any, ground: any = { initiatorId: 'u-wairimu', leadFirstName: 'Wairimu' }) {
+/*
+ * THE SAME CHECK-IN ROWS `buildSessionRows` READS (lib/session-rows.ts): a round only counts as
+ * shared once `roundCompletions` actually has an entry for it, never from a round count alone.
+ */
+const GROUND_PARTICIPANTS = [
+  { id: 'p-wairimu', userId: 'u-wairimu', managingOnly: true },
+  { id: 'p-miriam', userId: 'u-miriam', managingOnly: false },
+  { id: 'p-aisha', userId: 'u-aisha', managingOnly: false },
+]
+
+function renderBoard(payload: any, ground: any = {
+  initiatorId: 'u-wairimu', leadFirstName: 'Wairimu', scenario: 'NOT_A_REAL_SCENARIO',
+  participants: GROUND_PARTICIPANTS,
+  checkIns: [
+    { sessionNumber: 1, participantId: 'p-wairimu', status: 'COMPLETED', completedAt: '2026-09-23T10:00:00.000Z' },
+    { sessionNumber: 1, participantId: 'p-miriam', status: 'COMPLETED', completedAt: '2026-09-23T10:05:00.000Z' },
+    // Aisha has not checked in yet, so session 1 has not closed.
+  ],
+  roundCompletions: [],
+}) {
   ;(boardApi.get as any).mockResolvedValue(payload)
   ;(groundsApi.get as any).mockResolvedValue(ground)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -74,9 +93,9 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     renderBoard(board())
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
 
-    // Nothing has been shared yet (no round is done): says so, and names the lead.
-    expect(screen.getByText('Today’s team picture isn’t ready yet.')).toBeTruthy()
-    expect(screen.getByText(/Wairimu hasn’t shared it yet\. Your own report is ready now\./)).toBeTruthy()
+    // Nothing has been shared yet (the round has not closed): says so, and names the lead.
+    expect(screen.getByText('Today’s team picture isn’t shared yet.')).toBeTruthy()
+    expect(screen.getByText('Wairimu shares it. Your own report is ready now.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Read your own report' })).toHaveAttribute('href', '/grounds/g1/report')
 
     // Her own deal, marked "Only yours" - in her own personal section, above the fold.
@@ -97,19 +116,37 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     expect(within(whole).getByText('Westgate Deli')).toBeTruthy()
   })
 
-  it('says the picture is ready once a round has closed', async () => {
+  it('says the picture is ready once the round has actually closed, not merely once a round count ticks up', async () => {
     me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
-    renderBoard(board({ howItIsGoing: { latestSummary: null, glance: { progress: { roundsDone: 1, roundsPlanned: 12, answeredThisRound: 3, ofPeople: 3 }, inTheWay: { count: 0, oldest: null, daysWaiting: null } } } }))
+    /*
+     * SECOND BOARD REVIEW: a participant used to be told the team picture was shared the moment
+     * `howItIsGoing.glance.progress.roundsDone` ticked up, which counts rounds across the whole
+     * run - here it is left at 0 on purpose, to prove the message now comes from whether session 1
+     * itself closed (`roundCompletions`), not from that unrelated counter.
+     */
+    renderBoard(
+      board({ howItIsGoing: { latestSummary: null, glance: { progress: { roundsDone: 0, roundsPlanned: 12, answeredThisRound: 3, ofPeople: 3 }, inTheWay: { count: 0, oldest: null, daysWaiting: null } } } }),
+      {
+        initiatorId: 'u-wairimu', leadFirstName: 'Wairimu', scenario: 'NOT_A_REAL_SCENARIO',
+        participants: GROUND_PARTICIPANTS,
+        checkIns: [
+          { sessionNumber: 1, participantId: 'p-wairimu', status: 'COMPLETED', completedAt: '2026-09-23T10:00:00.000Z' },
+          { sessionNumber: 1, participantId: 'p-miriam', status: 'COMPLETED', completedAt: '2026-09-23T10:05:00.000Z' },
+          { sessionNumber: 1, participantId: 'p-aisha', status: 'COMPLETED', completedAt: '2026-09-23T10:10:00.000Z' },
+        ],
+        roundCompletions: [{ sessionNumber: 1 }],
+      },
+    )
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.getByText('Today’s team picture is ready.')).toBeTruthy()
-    expect(screen.queryByText('Today’s team picture isn’t ready yet.')).toBeNull()
+    expect(screen.queryByText('Today’s team picture isn’t shared yet.')).toBeNull()
   })
 
   it('Wairimu, who runs the check-in, reads her board exactly as before - no personal view, no fold', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(board({ myParticipantId: 'p-wairimu', canEditFrame: true }))
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
-    expect(screen.queryByText('Today’s team picture isn’t ready yet.')).toBeNull()
+    expect(screen.queryByText('Today’s team picture isn’t shared yet.')).toBeNull()
     expect(screen.queryByText('Your own deals, day by day')).toBeNull()
     expect(screen.queryByText('The whole check-in')).toBeNull()
     // Her own and Aisha's deals are both plainly on the page, not behind a fold.

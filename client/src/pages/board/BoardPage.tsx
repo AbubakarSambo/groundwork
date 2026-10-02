@@ -369,32 +369,39 @@ function MaybeFolded({ fold, children }: { fold: boolean; children: ReactNode })
  * whether today's team picture is ready, a way to their own report, their own records (never
  * anybody else's), and their own share of the team's total once the engine sends one.
  *
- * ONLY WHAT IS ALREADY SENT. "Whether today's team picture is shared" reads
- * `howItIsGoing.glance.progress.roundsDone` - the same count the board's own header sentence
- * already reads elsewhere on this page - rather than a field invented for this purpose; nobody has
- * built a separate "has the lead released it" flag. "Your share" (board-as-participant.txt: "4 of
- * your 5 sales so far... Only you and Wairimu see your share") has no served field at all yet
- * (request 107) and is left out entirely rather than drawn as an empty box.
+ * ONLY WHAT IS ALREADY SENT, AND THE SAME FACT THE REPORTS LIST USES. This used to read
+ * `howItIsGoing.glance.progress.roundsDone > 0`, which counts rounds the whole run has been
+ * through and so said "shared" the moment session 2 opened, whatever today's own round had done -
+ * a participant was told the team picture was shared when it was not (second board review). The
+ * Reports list ("Every session", TheReportIsAListOfSessions.tsx) says "Shared" or "Not shared" from
+ * one fact per round: `closed`, true once that round's report has actually gone out to everyone in
+ * it (`roundCompletions`, see lib/session-rows.ts). This reads the same `closed` off the latest row
+ * in `sessionRows` - the same rows that list already builds - so the two places on the board can
+ * never disagree. "Your share" (board-as-participant.txt: "4 of your 5 sales so far... Only you
+ * and Wairimu see your share") has no served field at all yet (request 107) and is left out
+ * entirely rather than drawn as an empty box.
  */
-function TheParticipantsOwnView({ groundId, roundsDone, kindOfWork, workRecords, myParticipantId, leadFirstName }: {
+function TheParticipantsOwnView({ groundId, pictureShared, kindOfWork, workRecords, myParticipantId, leadFirstName }: {
   groundId: string
-  roundsDone: number | null
+  pictureShared: boolean
   kindOfWork: string | null
   workRecords: BoardPresent['workRecords']
   myParticipantId: string | null
   leadFirstName: string | null
 }) {
-  const pictureShared = roundsDone != null && roundsDone > 0
   return (
     <>
       <Panel className="gwui-mt-16">
         <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700}}>
-          {pictureShared ? 'Today’s team picture is ready.' : 'Today’s team picture isn’t ready yet.'}
+          {pictureShared ? 'Today’s team picture is ready.' : 'Today’s team picture isn’t shared yet.'}
         </div>
         <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>
           {pictureShared
             ? 'It is below, with everything else from this check-in.'
-            : `${leadFirstName ? `${leadFirstName} hasn’t` : 'Nobody has'} shared it yet. Your own report is ready now.`}
+            /* board-as-participant.txt: "Wairimu usually shares it by 7pm." - the server sends no
+               usual-share time yet, so that half is left out rather than invented; see the task
+               note to add it back once such a field exists. */
+            : `${leadFirstName ?? 'Your lead'} shares it. Your own report is ready now.`}
         </div>
         <div className="gwui-mt-10">
           <UIButton kind="secondary" to={`/grounds/${groundId}/report`}>Read your own report</UIButton>
@@ -926,7 +933,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {isParticipantView && (
           <TheParticipantsOwnView
             groundId={id!}
-            roundsDone={(b as any).howItIsGoing?.glance?.progress?.roundsDone ?? null}
+            pictureShared={sessionRows[0]?.closed ?? false}
             kindOfWork={(b as any).kindOfWork ?? null}
             workRecords={b.workRecords}
             myParticipantId={b.myParticipantId}
