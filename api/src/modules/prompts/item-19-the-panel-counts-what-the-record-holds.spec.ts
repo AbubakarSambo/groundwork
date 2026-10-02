@@ -81,3 +81,53 @@ describe('how long a session takes', () => {
     expect(served.avgSessionMinutes).toEqual([{ session: 1, avgMinutes: 13, n: 2 }]);
   });
 });
+
+describe('the Usage tab\'s usage events', () => {
+  /** A fake Prisma over seeded events and check-ins, applying the conditions the reads ask for. */
+  function theUsageTab() {
+    const orgs = [{ id: 'baridi', isInternal: false }, { id: 'ours', isInternal: true }];
+    const grounds = [{ id: 'g-baridi', organizationId: 'baridi' }, { id: 'g-ours', organizationId: 'ours' }];
+    const events = [
+      { type: 'GROUND_CREATED', organizationId: 'baridi', groundId: 'g-baridi' },
+      { type: 'GROUND_CREATED', organizationId: 'ours', groundId: 'g-ours' },
+      /* A session finishing writes its check-in and no organisation. */
+      { type: 'CHECK_IN_COMPLETED', organizationId: null, groundId: 'g-baridi' },
+      { type: 'CHECK_IN_COMPLETED', organizationId: null, groundId: 'g-baridi' },
+      { type: 'CHECK_IN_COMPLETED', organizationId: null, groundId: 'g-ours' },
+      /* The /start page's model call: nobody's usage. */
+      { type: 'ANONYMOUS_MODEL_CALL', organizationId: null, groundId: null },
+    ];
+    const matches = (e: any, where: any) =>
+      (where.organizationId === null ? e.organizationId === null : true) &&
+      (where.organizationId?.not === null ? e.organizationId !== null && !where.organizationId.notIn.includes(e.organizationId) : true) &&
+      (where.groundId?.not === null ? e.groundId !== null : true);
+    const prisma: any = {
+      organization: { findMany: jest.fn(async () => orgs.filter((o) => o.isInternal)) },
+      usageEvent: {
+        groupBy: jest.fn(async ({ by, where }: any) => {
+          const groups = new Map<string, any>();
+          for (const e of events.filter((x) => matches(x, where))) {
+            const key = by.map((k: string) => (e as any)[k]).join('|');
+            const g = groups.get(key) ?? { ...Object.fromEntries(by.map((k: string) => [k, (e as any)[k]])), _count: { id: 0 } };
+            g._count.id++;
+            groups.set(key, g);
+          }
+          return [...groups.values()];
+        }),
+      },
+      ground: {
+        findMany: jest.fn(async ({ where }: any) =>
+          grounds.filter((g) => where.id.in.includes(g.id) && !orgs.find((o) => o.id === g.organizationId)!.isInternal).map((g) => ({ id: g.id }))),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      checkIn: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
+    };
+    return new PromptsService(prisma, {} as any);
+  }
+
+  it('counts a finished session\'s event by its check-in\'s organisation, and only a customer\'s', async () => {
+    const served = await theUsageTab().usageStats('all');
+    /* It served { GROUND_CREATED: 1 }: every CHECK_IN_COMPLETED was dropped for having no organisation. */
+    expect(served.eventTotals).toEqual({ GROUND_CREATED: 1, CHECK_IN_COMPLETED: 2 });
+  });
+});

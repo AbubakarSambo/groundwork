@@ -39,12 +39,37 @@ export const A_REAL_CHECK_IN = { organization: { isInternal: false } } as const;
 
 /**
  * Usage by a customer. UsageEvent carries an `organizationId` and no relation, so this is a
- * predicate over ids: our own organisations' ids are read once and excluded, and an event with no
- * organisation is not anybody's usage.
+ * predicate over ids: our own organisations' ids are read once and excluded.
  */
 export async function aRealUsageEvent(prisma: PrismaService): Promise<{ organizationId: { not: null; notIn: string[] } }> {
   const ours = await prisma.organization.findMany({ where: { isInternal: true }, select: { id: true } });
   return { organizationId: { not: null, notIn: ours.map((o) => o.id) } };
+}
+
+/**
+ * HOW MANY OF EACH USAGE EVENT CUSTOMERS MADE, AN EVENT WITH NO ORGANISATION FOUND BY ITS CHECK-IN
+ * (item 19). A session finishing writes CHECK_IN_COMPLETED with its check-in and no organisation, so
+ * the rule above, "an event with no organisation is nobody's usage", dropped every one of them: the
+ * Usage tab listed three kinds of event and never "Check in completed", which on the test database
+ * is 6,325 events. An event with no organisation now belongs to its check-in's organisation, and is
+ * counted when that is a customer. An event with neither (the /start page's model calls) is still
+ * nobody's usage.
+ */
+export async function usageEventsByCustomers(prisma: PrismaService, since: Date | null): Promise<Record<string, number>> {
+  const byACustomer = await aRealUsageEvent(prisma);
+  const [withAnOrganisation, byTheirCheckIn] = await Promise.all([
+    prisma.usageEvent.groupBy({ by: ['type'], where: { ...byACustomer, ...inRange('createdAt', since) }, _count: { id: true } }),
+    prisma.usageEvent.groupBy({ by: ['type', 'groundId'], where: { organizationId: null, groundId: { not: null }, ...inRange('createdAt', since) }, _count: { id: true } }),
+  ]);
+  const groundIds = [...new Set(byTheirCheckIn.map((r) => r.groundId as string))];
+  const customers = groundIds.length
+    ? await prisma.ground.findMany({ where: { id: { in: groundIds }, ...A_REAL_CHECK_IN }, select: { id: true } })
+    : [];
+  const aCustomers = new Set(customers.map((g) => g.id));
+  const totals: Record<string, number> = {};
+  for (const r of withAnOrganisation) totals[r.type] = (totals[r.type] ?? 0) + r._count.id;
+  for (const r of byTheirCheckIn) if (aCustomers.has(r.groundId as string)) totals[r.type] = (totals[r.type] ?? 0) + r._count.id;
+  return totals;
 }
 
 /** A customer. */

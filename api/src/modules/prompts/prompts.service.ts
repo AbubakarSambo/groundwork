@@ -4,7 +4,7 @@ import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import { SEED_PROMPTS } from '../conversation/prompt-library';
 import { SEAT_RELATION_COUNT } from '../../common/seats';
 import { Prisma } from '@prisma/client';
-import { A_CUSTOMER, A_REAL_CHECK_IN, A_REAL_SESSION, CLOSED_BY_THE_CLOCK, aRealUsageEvent, aMean, inRange, session2RateOfThoseDue, sinceFor } from './what-the-platform-has-actually-done';
+import { A_CUSTOMER, A_REAL_CHECK_IN, A_REAL_SESSION, CLOSED_BY_THE_CLOCK, usageEventsByCustomers, aMean, inRange, session2RateOfThoseDue, sinceFor } from './what-the-platform-has-actually-done';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
 /** What the start writes in `activated_by` when it activates a version itself (decision 74, item 6). */
@@ -556,13 +556,7 @@ export class PromptsService implements OnModuleInit {
         where: { ...aSession, completedAt: { gte: fourteenDaysAgo } },
         select: { completedAt: true, sessionNumber: true },
       }),
-      aRealUsageEvent(this.prisma).then((byACustomer) =>
-        this.prisma.usageEvent.groupBy({
-          by: ['type'],
-          where: { ...byACustomer, ...inRange('createdAt', since) },
-          _count: { id: true },
-        }),
-      ),
+      usageEventsByCustomers(this.prisma, since),
       this.prisma.checkIn.count({ where: { ...aSession, ...inRange('completedAt', since) } }),
       this.prisma.ground.count({ where: { ...A_REAL_CHECK_IN, report: { releasedAt: since ? { gte: since } : { not: null } } } }),
       this.prisma.ground.count({ where: { ...A_REAL_CHECK_IN, ...inRange('createdAt', since) } }),
@@ -581,7 +575,7 @@ export class PromptsService implements OnModuleInit {
       if (key in dayBuckets) dayBuckets[key]++;
     }
 
-    const usageMap = Object.fromEntries(usageEvents.map(e => [e.type, e._count.id]));
+    const usageMap = usageEvents;
 
     return {
       range: range ?? 'all',
