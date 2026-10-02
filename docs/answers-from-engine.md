@@ -2506,6 +2506,15 @@ New. Before this, the person a review is about had no way to find it: a review w
 
 An admin and a lead are sent only reviews about themselves here. While the suite is off, it is refused with "The performance reviews suite is not switched on." Today does not show these yet: the Today service is being changed by another builder, so this list is the place to read them for now.
 
+### A review on Today (this commit), `GET /today` `needs`
+
+New items in `needs`, the same shape as every other: `{ key, kind, title, detail, action: { label, to }, groundId: '', organizationId }`. `groundId` is empty, as for leave, hours and spending. Both link to `/suite/reviews`. They come before the leave, hours and spending items, in the decisions group, and they are counted in `count` and in "Choose an organisation".
+
+- **The person a review is about**, once somebody has started it: `key: 'your-review-<review id>'`, `kind: 'look'`, `action: { label: 'Read it', to: '/suite/reviews' }`. `title` and `detail` are the suite's own sentence from `GET /suites/reviews/mine`, split after its first sentence. Aisha reads "Wairimu has started your review." with "You can read it and add your own view before you meet."; once her view is in, "Wairimu has started your review, and your own view is in it." with "You can read it and change your view before you meet."; once decided, "Wairimu has decided your review." with "You can read the decision and the reasons." A decided review stays until two weeks after its date. A review Groundwork only proposed is never sent to the person.
+- **The person who writes it with them**, when a review is ready for them to start (the reviews board's own `mayStart`) and due within the next two weeks or already due: `key: 'start-review-<due id>'`, `kind: 'decide'`, `action: { label: 'Look at it', to: '/suite/reviews' }`. `title`: "Miriam’s review is ready for you to start." `detail`: the board's `proposal` sentence when Groundwork proposed it ("Groundwork suggests a review for Miriam, because a check-in about Miriam's work has ended. Nothing is sent to Miriam unless you say yes."), otherwise "It is due on Tuesday 6 October." ("It was due on ..." once the day has gone).
+
+Nobody else is sent either: not another lead (each lead is sent only their own team's, as on the board), not an admin who does not write the review, not a colleague. Nothing of a review's contents is in them. While the suite is off, there are none, and Today opens as before. Test: `api/src/modules/grounds/a-review-on-today-as-each-reader-reads-it.spec.ts`.
+
 ### A review told on WhatsApp (this commit)
 
 Only the person a review is about is told, and only that it waits for them in the app. Nothing of the review reaches a phone. Aisha reads:
