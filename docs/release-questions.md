@@ -82,6 +82,8 @@ The product uses Gemini through Google Cloud (`GEMINI_PROJECT_ID`, `GOOGLE_SERVI
 
 As far as we know, Stripe is not wired yet and there are no paying subscribers. Production refuses to start without `BILLING_ENABLED=true`, `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`. This release adds the free trial (off by default), an invoice list for admins, and a seat count that leaves guests out.
 
+Decision 78 adds two things here. The free trial is now one month (the setting's months, written by migration `20261002160000_whatsapp_is_a_paid_add_on`, with its switch left off). And WhatsApp becomes a paid add-on, about 80% of each plan's price, with a monthly message limit per plan, both stored in `pricing_plans` and editable at Admin, System, Pricing. While the trial's switch is off, the add-on is never charged and no message is held; only the monthly limit applies. Once the switch is on, an organisation past its trial that pays and has turned WhatsApp on has the add-on as a second line on its Stripe subscription. **The add-on's Stripe prices are created in test mode only until Hafsah says otherwise**; the migration creates nothing in Stripe.
+
 **Why it matters.** The free trial, once switched on, stops the free plan for organisations created after that moment. If it were switched on while Stripe cannot take a payment, new teams could not start.
 
 | Answer | What we would do |
@@ -89,6 +91,7 @@ As far as we know, Stripe is not wired yet and there are no paying subscribers. 
 | Stripe is not wired. | Leave the free trial off (`pricing.freeTrial` absent or `on: false`). Billing behaves exactly as today. |
 | Stripe is wired, with live keys. | Still leave the free trial off at release. Switch it on later, on Hafsah's word, after one test payment. |
 | Stripe is wired in test mode only. | Make sure no live key is on the preview environment, and leave the trial off. |
+| Somebody wants to switch the trial on. | Not on release day, and only on Hafsah's word. Switching it on also starts charging the WhatsApp add-on to organisations past their trial that turned it on, and holding WhatsApp for those that did not. Run one test-mode payment with the add-on first. |
 
 ### 8. Background jobs: can the host run them, and once only?
 
@@ -101,6 +104,7 @@ This branch adds or changes these scheduled jobs (all times UTC):
 | Role gap notes (`the-role-gap-notes.service.ts`) | 03:45 daily, and when a check-in completes | Writes why a job nobody owns matters, only when the record changed. | Yes, one per change |
 | Self-learning counts (`learning.cron.ts`) | 03:00 daily | Recounts the signals. | No |
 | Reviews that fall due (`the-reviews-proposed.cron.ts`) | 06:30 daily | Proposes a review when one falls due; never starts one. | No |
+| The WhatsApp add-on's Stripe lines (`whatsapp-add-on.service.ts`) | 01:00 daily | Adds the add-on to the Stripe subscription of an organisation whose trial has ended and which turned WhatsApp on, and removes it where it should no longer be charged. Does nothing while the trial's switch is off, or with no Stripe key. | No |
 | Reports left behind (`reports.service.ts`) | 35 minutes past every hour | Writes a report again when more people have answered than it read. Old reports are skipped. | Yes, one report per case |
 
 **Why it matters.** On the first night, nothing is stored yet for the company picture or the role gap notes, so each runs once for every organisation that has the records it reads. Since decision 74 they run one organisation at a time, with a pause after each one that called the model. The warning job emails only about check-ins that reach their last week after the release; anything already there at release gets no email. Each daily, weekly and hourly job runs once even if the API runs on more than one instance.
@@ -132,6 +136,7 @@ A report for a team now runs three independent model calls together, and after i
 | Answer | What we would do |
 | --- | --- |
 | None approved. | Leave WhatsApp off (`whatsapp_enabled` not `true`). Nothing changes. |
+| Approved, and WhatsApp switched on. | Each organisation's messages are counted per calendar month (`whatsapp_monthly_use`), and at its plan's limit nothing more goes by WhatsApp until the next month; its admins are emailed once. The limits are a proposal until Hafsah answers. |
 | Some approved. | List them in `WHATSAPP_APPROVED_TEMPLATES` on the host, and switch WhatsApp on later, on Hafsah's word, not on release day. |
 
 ### 11. Has anybody changed a prompt in production through `/prompts`?
