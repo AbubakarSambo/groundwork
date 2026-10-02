@@ -39,6 +39,16 @@ const workRecords = [
       { id: 'd-aisha-1', kind: 'deal', name: 'Greenhill Mart', stage: 'Signed', owner: 'Aisha Otieno', ownerParticipantId: 'p-aisha', due: null, fields: {}, from: 'said' as const, said: 'Signed last week.', saidBy: 'Aisha' },
     ],
   },
+  /*
+   * BOARD REVIEW, SALES PIECE D, ITEM 5: "Forecast" IS ABOUT THE WHOLE TEAM, NOT ONE PERSON'S OWN
+   * RECORDS, SO A PARTICIPANT READS IT TOO - see the fixed gate in BoardPage.tsx.
+   */
+  {
+    section: 'Forecast', holds: 'where the sales numbers are likely to end up', state: 'filled' as const,
+    rows: [
+      { id: 'f-1', kind: 'forecast', name: 'This quarter', stage: null, owner: null, ownerParticipantId: null, due: null, fields: { Likely: 'KES 9.4M' }, from: 'lead' as const },
+    ],
+  },
 ]
 
 /*
@@ -124,8 +134,7 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     // No "Your share" box: this fixture sends no `yourShare` field, so nothing is drawn.
     expect(screen.queryByText(/Your share/)).toBeNull()
 
-    // Everything else is still there, just folded under one name - including Aisha's deal, which
-    // is never part of Miriam's own personal section above.
+    // Everything else this reader may read is still there, just folded under one name.
     expect(screen.getByText('The whole check-in')).toBeTruthy()
     /*
      * SECOND BOARD REVIEW, WORDING: "Everything from this check-in, as before." did not say who it
@@ -135,16 +144,59 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     expect(screen.getByText('Everything else from this check-in, for everyone in it.')).toBeTruthy()
     const whole = screen.getByText('The whole check-in').closest('details') as HTMLElement
     expect(whole).toBeTruthy()
-    expect(within(whole).getByText('Greenhill Mart')).toBeTruthy()
-    expect(within(whole).getByText('Westgate Deli')).toBeTruthy()
+
+    /*
+     * BOARD REVIEW, SALES PIECE C, ITEM 4: NOT AISHA'S DEAL AGAIN, ANYWHERE ON THIS BOARD.
+     *
+     * This used to assert the opposite - that the whole deal grid, Aisha's row included, was still
+     * there inside the fold. It was wrong to assert, not just wrong to draw: the fold held the
+     * whole team's "Every deal, day by day" grid under its own heading, which for a sales ground
+     * reads "No deals have come up yet" when a reader's own section (just above) already showed
+     * deals - Miriam's own. `TheParticipantsOwnView`'s "Your deals, day by day" is her complete
+     * record of her own work; the team grid added nothing she may read that was not already there,
+     * and the sentence under it was untrue of her own work. A sales ground's participant now gets
+     * no second copy of `workRecords` at all, deal grid or forecast - this is the fix, not a
+     * regression, so the old assertion is replaced rather than kept.
+     */
+    expect(within(whole).queryByText('Greenhill Mart')).toBeNull()
+    expect(within(whole).queryByText('Westgate Deli')).toBeNull()
+    expect(within(whole).queryByText('Every deal, day by day')).toBeNull()
+
+    /*
+     * BOARD REVIEW, SALES PIECE D, ITEM 5: "FORECAST" IS ABOUT THE WHOLE TEAM, SO SHE READS IT
+     * TOO, INSIDE THE FOLD, BESIDE "BY AREA" - it used to be sent to her and drawn nowhere at all.
+     */
+    expect(within(whole).getByText('Where the sales numbers are likely to end up')).toBeTruthy()
+    expect(within(whole).getByText('This quarter')).toBeTruthy()
   })
 
-  it('says the picture is ready once the server itself says `teamPicture.shared`, not from a round count', async () => {
+  it('says the picture is shared once the server itself says `teamPicture.shared`, not from a round count, and links to it', async () => {
     me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
     renderBoard(board({ teamPicture: { shared: true } }))
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
-    expect(screen.getByText('Today’s team picture is ready.')).toBeTruthy()
+    /*
+     * BOARD REVIEW, SALES PIECE C, ITEM 6: "IT IS READY"/"IT IS BELOW" REPLACED. "Today's team
+     * picture is ready." (the heading) and "It is below, with everything else from this check-in."
+     * (the line under it) both claimed something about where the content was without giving a way
+     * there - everything past this view sits inside a closed fold. The heading now says "...is
+     * shared." and a real control opens that fold and jumps to it, which the old assertions never
+     * covered because there was nothing to click.
+     */
+    expect(screen.getByText('Today’s team picture is shared.')).toBeTruthy()
     expect(screen.queryByText('Today’s team picture isn’t shared yet.')).toBeNull()
+    expect(screen.queryByText('It is below, with everything else from this check-in.')).toBeNull()
+    expect(screen.getByText('Your own report is ready now.')).toBeTruthy()
+    /*
+     * BOARD REVIEW, SALES PIECE D, ITEM 6: A FULL SENTENCE, NOT A CLIPPED PHRASE. "Open it,
+     * below" named neither what "it" was nor where "below" was - updated to say both, in a full
+     * sentence a person actually reads.
+     */
+    const open = screen.getByRole('button', { name: 'Open today’s team picture below.' })
+    expect(open).toBeTruthy()
+    const fold = screen.getByText('The whole check-in').closest('details') as HTMLDetailsElement
+    expect(fold.open).toBe(false)
+    open.click()
+    expect(fold.open).toBe(true)
   })
 
   it('reads "Your share" when the engine sends one, ending with who else sees it', async () => {

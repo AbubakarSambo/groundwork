@@ -536,8 +536,6 @@ export const THE_CLASSES_THERE_WERE: readonly string[] = [
   'gwui-mt-9',
   'gwui-narrow-field',
   'gwui-nobody',
-  'gwui-nobody-narrow',
-  'gwui-nobody-wide',
   'gwui-note',
   'gwui-note-error',
   'gwui-numstep',

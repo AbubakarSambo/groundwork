@@ -124,20 +124,32 @@ const DEAL_GRID_NOTE: Partial<Record<KindOfWork, string>> = {
 }
 
 /**
- * THE DEAL GRID'S KEY (board-as-lead.txt, directly under its subtitle): what each mark means, and
- * what the "Next step" column's two states mean. The first two lines are the shared `ProofMark`
- * itself - filled for proof, ringed for someone's word (request 108 c) - so this key can never say
- * something different from what the dot beside a deal's name actually draws. The last two describe
- * the "Next step" column below, which carries no mark of its own.
+ * THE DEAL GRID'S KEY (board-as-lead.txt, directly under its subtitle), one line of marks - the
+ * prototype's own shape, a row of short phrases rather than a stacked list.
+ *
+ * BOARD REVIEW, SALES PIECE C, ITEM 3 (b): ONLY A MARK THE GRID CAN ACTUALLY DRAW. This used to
+ * list four things - the two `ProofMark`s below, which `WorkRow` really draws beside a deal's
+ * name, and "Next step booked" / "Follow-up, no reply", which named two states of the "Next step"
+ * column but gave neither any mark of its own; the column is plain text (`NextStepCell`), and
+ * nothing on this grid draws a mark for either state. A key that lists a mark nothing on the grid
+ * shows promises something the page does not keep. Left out until the grid actually draws one -
+ * see the task note, docs/morning-report.md.
+ *
+ * BOARD REVIEW, SALES PIECE D, ITEM 3: THE SAME RULE, ONE MARK AT A TIME. Each line is still only
+ * a promise about what the grid draws, so it reads only when some row on THIS grid actually
+ * carries that mark - a sales org whose every deal was added by hand, with nothing proven and
+ * nothing said, drew both lines of a key for marks nobody has. When neither mark is on any row,
+ * there is nothing to explain, so no key is drawn at all.
  */
-function DealGridKey() {
+function DealGridKey({ rows }: { rows: AServedWorkRow[] }) {
+  const hasProven = rows.some((r) => r.mark === 'proven')
+  const hasSaid = rows.some((r) => r.mark === 'said')
+  if (!hasProven && !hasSaid) return null
   return (
-    <Stack gap={4}>
-      <Note tone="muted"><ProofMark mark="proven" /> Contact with proof: a photo, a quote, a payment</Note>
-      <Note tone="muted"><ProofMark mark="said" /> Contact in their words</Note>
-      <Note tone="muted">Next step booked</Note>
-      <Note tone="muted">Follow-up, no reply</Note>
-    </Stack>
+    <div className="gwui-gap-16" style={{ display: 'flex', flexWrap: 'wrap' }}>
+      {hasProven && <Note tone="muted"><ProofMark mark="proven" /> Contact with proof: a photo, a quote, a payment</Note>}
+      {hasSaid && <Note tone="muted"><ProofMark mark="said" /> Contact in their words</Note>}
+    </div>
   )
 }
 const THEMES_HEADING: Partial<Record<KindOfWork, string>> = {
@@ -304,6 +316,13 @@ function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow
   )
 }
 
+/** `WhatShowsIt`, with its usual small top margin - written once, since every list that draws a
+    record (the generic table, the sales deal grid, the timeline, the parties, the themes list)
+    wrapped it in the exact same one-off class. */
+function WhatShowsItBlock(props: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
+  return <div className="gwui-mt-4"><WhatShowsIt {...props} /></div>
+}
+
 /**
  * REQUEST 107 (c), part 1: THE RECORD'S OWN "NEXT" (board-as-lead.txt: "Next: Send the quote,
  * with a photo"). Only an open commitment whose words name this exact record - drawn as the
@@ -438,23 +457,49 @@ function WorkItemForm({ section, participants, editing, onClose, onSaved, onRemo
  * `WorkRecordSectionBlock`); the owner in its own column, "Nobody named yet" when there is none; a
  * single quiet "Change" opens the form, where "Remove" lives, behind its own confirmation.
  */
-/** The word this kind uses for "nobody" in the owner column, at phone width, where the column
-    names are hidden and a bare "Nobody named yet." no longer says whose it is (item 3, item 6). */
-const NOBODY_SENTENCE_FOR_KIND: Record<KindOfWork, string> = {
-  'sales org': 'No rep is named yet.',
-  'engineering release': 'No owner is named yet.',
-  'support desk': 'No agent is named yet.',
-  'distribution operations': 'No owner is named yet.',
-  'trader training programme': 'No officer is named yet.',
-  "founder's own check-in": 'No owner is named yet.',
-  'asset loans': 'No owner is named yet.',
-  'MarketView where next': 'No owner is named yet.',
-  'MarketView Q4': 'No owner is named yet.',
-  'a law firm matter': 'No owner is named yet.',
-  'a government programme': 'No owner is named yet.',
+/** The table row and heading row's own classes, each written once - the generic table and the
+    sales deal grid's own table otherwise repeated the exact same string, which is what the guard
+    against a growing one-off-class count (one-off-uses-only-go-down.spec.ts) counts. */
+const WORK_ROW_CLASS = 'gwui-work-row gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top'
+const WORK_HEAD_CLASS = 'gwui-work-head gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-13 gwui-ink-sub'
+
+/** The row's own mark, filled for proven, ringed for the rest, nothing for a record added on the
+    board with nothing behind it ("none") - then its name. Shared by every table row (item 3 a):
+    written once, so the generic row and the sales deal grid's own row can never draw it two
+    different ways. */
+function DealMarkAndName({ row }: { row: AServedWorkRow }) {
+  return (
+    <div className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>
+      {(row as any).mark && (row as any).mark !== 'none' && (
+        <><ProofMark mark={(row as any).mark} />{' '}</>
+      )}
+      {row.name}
+    </div>
+  )
 }
 
-function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn, canEdit, onEdit, hasNextColumn }: {
+/** A small muted line under a row's name - a due date, or (the sales deal grid's own row) the
+    rep and the deal's value - shared, so the same small-print styling is only written once. */
+function SmallSubLine({ text }: { text: string | null }) {
+  return text ? <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{text}</div> : null
+}
+
+/** A due date, as a sentence, where the row has one - shared by every table row. */
+function DueLine({ due }: { due: string | null }) {
+  return <SmallSubLine text={dueSentence(due)} />
+}
+
+/** "Stage now", the row's own single tag, or the plain sentence for a row with none yet - shared
+    by every table row that carries a stage. */
+function StageCell({ stage }: { stage: string | null }) {
+  return (
+    <div aria-label="Stage now">
+      {stage ? <Tag tone="plain">{stage}</Tag> : <span className="gwui-fs-13-5 gwui-ink-muted">No stage said yet.</span>}
+    </div>
+  )
+}
+
+function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn, canEdit, onEdit }: {
   row: AServedWorkRow
   leadFirstName: string | null
   readerIsLead: boolean
@@ -463,74 +508,48 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
   hasStageColumn: boolean
   canEdit: boolean
   onEdit: () => void
-  /** The sales deal grid's own "Next step" column (board-as-lead.txt), drawn instead of folding
-      the same sentence inside "What shows it" (`WhatsNext`, still used by every other kind). */
-  hasNextColumn?: boolean
 }) {
   const fieldEntries = Object.entries(row.fields ?? {})
   const isFounder = kindOfWork === "founder's own check-in"
-  /* Board review, 30 September, item 3: the founder IS the owner of their own check-in, so an
-     unnamed row there reads "You", never "Nobody named yet." - there is nobody else it could be. */
-  const nobody = isFounder ? 'You' : (NOBODY_SENTENCE_FOR_KIND[kindOfWork ?? 'sales org'] ?? 'Nobody named yet.')
   return (
     <div
-      className={`gwui-work-row gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top${hasStageColumn ? '' : ' gwui-work-row-nostage'}`}
-      style={hasNextColumn ? NEXT_COLUMN_TEMPLATE : undefined}
+      className={`${WORK_ROW_CLASS}${hasStageColumn ? '' : ' gwui-work-row-nostage'}`}
       role="row"
       aria-label={row.name}
     >
       <div>
-        <div className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>
-          {/* REQUEST 108 (c): the line's own mark - filled for proven, ringed for the rest,
-              nothing for a record added on the board with nothing behind it ("none"). */}
-          {(row as any).mark && (row as any).mark !== 'none' && (
-            <><ProofMark mark={(row as any).mark} />{' '}</>
-          )}
-          {row.name}
-        </div>
+        <DealMarkAndName row={row} />
         {fieldEntries.map(([label, value]) => (
           /* Board review, 30 September, item 3: a detail read as a label and a bare value stuck
              together ("Amount KES 45,000") - now a sentence ("The amount is KES 45,000."). */
           <div key={label} className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{`The ${label.toLowerCase()} is ${value}.`}</div>
         ))}
-        {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
+        <DueLine due={row.due} />
       </div>
       <div className="gwui-fs-15 gwui-ink-text">
         {row.owner ?? (
           isFounder
-            /* The founder is always the owner of their own check-in, on every width - "You" is
-               never ambiguous, so it needs no narrow/wide pair. */
+            /* The founder is always the owner of their own check-in - "You" is never ambiguous. */
             ? <span className="gwui-ink-muted">You</span>
-            : (
-              <span className="gwui-ink-muted">
-                <span className="gwui-nobody-wide">Nobody named yet.</span>
-                <span className="gwui-nobody-narrow">{nobody}</span>
-              </span>
-            )
+            /* Board review, sales piece C, item 3 (d): one sentence, the same at every width.
+               This used to read "Nobody named yet." on a wide screen and a kind-specific second
+               sentence ("No rep is named yet.", "No agent is named yet."...) on a narrow one,
+               shown and hidden by a media query - two different claims about the same empty cell,
+               depending only on how wide the window happened to be. */
+            : <span className="gwui-ink-muted">Nobody is named for it yet.</span>
         )}
       </div>
       {hasStageColumn && (
         isFounder
           ? <div aria-label="Kind"><Tag tone="plain">{row.kind === 'decision' ? 'Decision' : 'Commitment'}</Tag></div>
-          : (
-            <div aria-label="Stage now">
-              {row.stage
-                ? <Tag tone="plain">{row.stage}</Tag>
-                : <span className="gwui-fs-13-5 gwui-ink-muted">No stage said yet.</span>}
-            </div>
-          )
+          : <StageCell stage={row.stage} />
       )}
       <div>
         <Stack gap={4}>
           <WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
-          {!hasNextColumn && <WhatsNext row={row} />}
+          <WhatsNext row={row} />
         </Stack>
       </div>
-      {hasNextColumn && (
-        <div aria-label="Next step">
-          <NextStepCell row={row} />
-        </div>
-      )}
       {canEdit && (
         <div>
           <Button kind="quiet" size="small" onClick={onEdit}>Change</Button>
@@ -540,35 +559,97 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
   )
 }
 
-/** The column headings above the rows - the item's own noun, the kind's own word for whose it is.
-    A kind with no stages carries no "Stage now" column at all (item 3); the founder's own
-    check-in has no stages either, but keeps that slot for "Kind" (Commitment or Decision). */
-/* BOARD FIX (sales B, item 1): the deal grid's extra "Next step" column (board-as-lead.txt) needs a
-   sixth grid track that none of the other ten kinds of work carry. Rather than a new one-off class
-   for one column count, the extra track is added by inline style, on top of the shared class's own
-   `grid-template-columns` - the same approach this file already uses throughout for one-off
-   layout, never a second CSS class. */
-const NEXT_COLUMN_TEMPLATE = { gridTemplateColumns: '1.3fr 0.8fr 0.8fr 1.4fr 1.3fr auto' }
+/**
+ * THE SALES DEAL GRID'S OWN ROW AND HEADING (board-as-lead.txt: "Deal / Stage now / Next step";
+ * each row "Eastside Foods / Aisha, KES 110,000 / Qualified / yesterday / Send the quote, with a
+ * photo"). Board review, sales piece C, item 3:
+ *
+ * (a) ONE SHARED COLUMN TEMPLATE, for both the heading and every row (`SALES_DEAL_GRID_COLUMNS`),
+ * with the same number of cells always rendered in both - the trailing column is reserved, not
+ * conditionally present, so there is nothing for the heading row and a row to disagree about.
+ *
+ * (c) NO SEPARATE "REP" COLUMN. The prototype puts the rep and the deal's value under the deal's
+ * name, as one line ("Aisha, KES 110,000") - this draws that same line from `row.owner` and the
+ * section's own `fields` (the deal's value, served under whatever label the engine gave it, e.g.
+ * "Value"), never a column of its own the rest of this grid does not otherwise carry.
+ *
+ * "WHAT SHOWS IT" HAS NO EQUIVALENT COLUMN IN THE PROTOTYPE'S OWN GRID - its content (the quote or
+ * proof behind the number) moves into the row's own detail, under that same line, rather than a
+ * column with a head label the prototype never gives it.
+ */
+const SALES_DEAL_GRID_COLUMNS = { gridTemplateColumns: '1.8fr 1fr 1.5fr auto' }
 
-function WorkTableHead({ itemNoun, ownerLabel, hasStageColumn, isFounder, canEdit, hasNextColumn }: {
+function SalesDealGridHead() {
+  return (
+    <div
+      className={WORK_HEAD_CLASS}
+      style={SALES_DEAL_GRID_COLUMNS}
+      role="row"
+    >
+      <span>Deal</span>
+      <span>Stage now</span>
+      <span>Next step</span>
+      <span />
+    </div>
+  )
+}
+
+function SalesDealGridRow({ row, leadFirstName, readerIsLead, canEdit, onEdit }: {
+  row: AServedWorkRow
+  leadFirstName: string | null
+  readerIsLead: boolean
+  canEdit: boolean
+  onEdit: () => void
+}) {
+  /* The deal's value, under whatever label the engine gave this field (e.g. "Value", "Amount") -
+     the first (and in practice the only) field a deal carries. */
+  const value = Object.values(row.fields ?? {}).find((v) => !!v)
+  const repLine = row.owner && value ? `${row.owner}, ${value}`
+    : row.owner ? row.owner
+      : value ? String(value)
+        /* Item 3 (d): the same sentence this grid's old, separate owner column used, so a reader
+           who has seen it keeps reading the same words. */
+        : 'Nobody is named for it yet.'
+  return (
+    <div
+      className={WORK_ROW_CLASS}
+      style={SALES_DEAL_GRID_COLUMNS}
+      role="row"
+      aria-label={row.name}
+    >
+      <div>
+        <DealMarkAndName row={row} />
+        <SmallSubLine text={repLine} />
+        <DueLine due={row.due} />
+        <WhatShowsItBlock row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
+      </div>
+      <StageCell stage={row.stage} />
+      <div aria-label="Next step">
+        <NextStepCell row={row} />
+      </div>
+      {canEdit ? (
+        <div><Button kind="quiet" size="small" onClick={onEdit}>Change</Button></div>
+      ) : <div />}
+    </div>
+  )
+}
+
+function WorkTableHead({ itemNoun, ownerLabel, hasStageColumn, isFounder, canEdit }: {
   itemNoun: string
   ownerLabel: string
   hasStageColumn: boolean
   isFounder: boolean
   canEdit: boolean
-  hasNextColumn?: boolean
 }) {
   return (
     <div
-      className={`gwui-work-head gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-13 gwui-ink-sub${hasStageColumn ? '' : ' gwui-work-head-nostage'}`}
-      style={hasNextColumn ? NEXT_COLUMN_TEMPLATE : undefined}
+      className={`${WORK_HEAD_CLASS}${hasStageColumn ? '' : ' gwui-work-head-nostage'}`}
       role="row"
     >
       <span>{itemNoun}</span>
       <span>{ownerLabel}</span>
       {hasStageColumn && <span>{isFounder ? 'Kind' : 'Stage now'}</span>}
       <span>What shows it</span>
-      {hasNextColumn && <span>Next step</span>}
       {canEdit && <span />}
     </div>
   )
@@ -597,7 +678,7 @@ function TimelineList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
                 <p className="gwui-ink-text gwui-fs-15">
                   {row.due ? `${row.name} is due on ${whenItWas(row.due, 'weekdayAndDay')}.` : `${row.name}. No date said yet.`}
                 </p>
-                <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
+                <WhatShowsItBlock row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
               </div>
               {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
             </div>
@@ -631,7 +712,7 @@ function PartiesList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
                 {Object.values(row.fields ?? {}).filter(Boolean).length > 0 && (
                   <p className="gwui-mt-2 gwui-fs-15 gwui-ink-sub">{atTheStartOf(Object.values(row.fields ?? {}).filter(Boolean).join('. '))}.</p>
                 )}
-                <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
+                <WhatShowsItBlock row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
               </div>
               {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
             </div>
@@ -672,7 +753,7 @@ function ThemesList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
                       {details.map((v, di) => <div key={di} className="gwui-fs-15 gwui-ink-sub gwui-mt-2">{v}</div>)}
                     </div>
                   )}
-                  <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
+                  <WhatShowsItBlock row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
                 </div>
                 {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
               </div>
@@ -722,7 +803,17 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 
   const heading = sectionHeading(kindOfWork, section)
   const isDealGrid = section.section === 'Deal grid'
-  const note = (isDealGrid && kindOfWork ? DEAL_GRID_NOTE[kindOfWork] : undefined) ?? undefined
+  /*
+   * BOARD REVIEW, SALES PIECE D, ITEM 2: "Grouped by what the proof says about closing this
+   * quarter." used to show above a flat list every time this was the sales org's deal grid, even
+   * when nothing on the grid actually carries a mark beyond "none" - every row added on the board
+   * by hand, with no proof and nothing said. A subtitle promising a grouping the grid is not
+   * actually showing is the same kind of over-claim the key below was fixed for (item 3), so this
+   * now reads only when some row's `mark` is something other than "none" or absent.
+   */
+  const dealGridRows = section.state === 'filled' || section.state === 'none-yet' ? section.rows : []
+  const hasAGroup = dealGridRows.some((r) => r.mark && r.mark !== 'none')
+  const note = (isDealGrid && kindOfWork && hasAGroup ? DEAL_GRID_NOTE[kindOfWork] : undefined) ?? undefined
 
   if (section.state === 'not-known') {
     return (
@@ -772,17 +863,36 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
     for (const row of section.rows) if (row.stage) stageCounts[row.stage] = (stageCounts[row.stage] ?? 0) + 1
   }
 
-  const showDealGridKey = isDealGrid && kindOfWork === 'sales org'
+  /* BOARD REVIEW, SALES PIECE C: the sales org's own Deal grid draws its own head and row shape
+     (item 3 a, c, d - see `SalesDealGridHead`/`SalesDealGridRow`), not the generic table every
+     other kind of work shares. */
+  const isSalesDealGrid = isDealGrid && kindOfWork === 'sales org'
   const dealGridContent = isTimeline ? (
         <TimelineList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} readerIsLead={readerIsLead} onEdit={setEditingRow} />
       ) : isObligations ? (
         <PartiesList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} readerIsLead={readerIsLead} onEdit={setEditingRow} />
       ) : isThemes ? (
         <ThemesList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} readerIsLead={readerIsLead} onEdit={setEditingRow} />
+      ) : isSalesDealGrid ? (
+        <Panel pad={false}>
+          <div role="table" aria-label={heading}>
+            <SalesDealGridHead />
+            {section.rows.map((row) => (
+              <SalesDealGridRow
+                key={row.id}
+                row={row}
+                leadFirstName={leadFirstName}
+                readerIsLead={readerIsLead}
+                canEdit={canEdit}
+                onEdit={() => setEditingRow(row)}
+              />
+            ))}
+          </div>
+        </Panel>
       ) : (
         <Panel pad={false}>
           <div role="table" aria-label={heading}>
-            <WorkTableHead itemNoun={itemNoun} ownerLabel={ownerLabel} hasStageColumn={hasStageColumn} isFounder={isFounder} canEdit={canEdit} hasNextColumn={showDealGridKey} />
+            <WorkTableHead itemNoun={itemNoun} ownerLabel={ownerLabel} hasStageColumn={hasStageColumn} isFounder={isFounder} canEdit={canEdit} />
             {section.rows.map((row) => (
               <WorkRow
                 key={row.id}
@@ -793,7 +903,6 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
                 hasStageColumn={hasStageColumn}
                 canEdit={canEdit}
                 onEdit={() => setEditingRow(row)}
-                hasNextColumn={showDealGridKey}
               />
             ))}
           </div>
@@ -802,9 +911,18 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 
   return (
     <Section heading={heading} note={note}>
-      {showDealGridKey ? <Stack gap={12}><DealGridKey />{dealGridContent}</Stack> : dealGridContent}
+      {isSalesDealGrid ? <Stack gap={12}><DealGridKey rows={dealGridRows} />{dealGridContent}</Stack> : dealGridContent}
 
-      {!!section.stages?.length && (
+      {/*
+        BOARD REVIEW, SALES PIECE C, ITEM 3 (f): NOT HERE FOR THE SALES DEAL GRID. "The shape of
+        the work" is the same stage-by-stage count "Reported vs criteria met, stage by stage"
+        (`ReportedAgainstCriteriaSection`, drawn once elsewhere on the board, in the prototype's
+        own place for it - board-as-lead.txt) already gives, for this one kind of work - two
+        readings of the same shape, under two different headings. Every other kind of work has no
+        such section anywhere else on the board, so it keeps "The shape of the work" here, the
+        only place it is told at all.
+      */}
+      {!!section.stages?.length && !isSalesDealGrid && (
         <div className="gwui-mt-14">
           <p className="gwui-mb-8 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
           <StageTrack stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
@@ -882,7 +1000,7 @@ export function YourOwnRecordsSections({ kindOfWork, sections, myParticipantId, 
         <Note tone="muted">{`You have no ${itemNoun}s on record yet.`}</Note>
       ) : (
         <Stack gap={12}>
-          {isSalesDeals && <DealGridKey />}
+          {isSalesDeals && <DealGridKey rows={mine} />}
           <Panel pad={false}>
             <RowList label={heading}>
               {mine.map((row) => (

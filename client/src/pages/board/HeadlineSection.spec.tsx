@@ -53,3 +53,54 @@ describe('HeadlineSection: "Where each target stands" beside the question', () =
     expect(screen.getByText('Not yet. 21 are sold.')).toBeTruthy()
   })
 })
+
+/**
+ * BOARD REVIEW, SALES PIECE D, ITEM 4: THE GLANCE LINE, INSIDE THE BOX, ONLY ONCE.
+ *
+ * While `headline.answer` is null, the box under the question used to sit empty, and the glance
+ * line ("None of the 12 rounds is done yet. 4 of 6 people have answered this round.") drew again,
+ * separately, below the whole headline section - so a reader with no answer yet saw an empty box
+ * sitting right above the one fact Groundwork does have. It now moves inside the box, and `BoardPage.tsx`
+ * no longer draws the separate copy in that case (not tested here, since that is a different
+ * file; see each-kind-of-works-records-as-each-reader-reads-it.spec.tsx and the sales-D pictures).
+ */
+describe('HeadlineSection: the glance line moves inside the box while there is no answer', () => {
+  const GLANCE = { progress: { roundsDone: 0, roundsPlanned: 12, answeredThisRound: 4, ofPeople: 6 }, inTheWay: { count: 0, oldest: null, daysWaiting: null } }
+
+  it('draws the glance line inside the box when there is no answer yet', () => {
+    render(
+      <HeadlineSection
+        headline={{ question: 'Will we reach 25 sales by 30 September?', answer: null, bars: [] } as any}
+        objectives={[]}
+        glance={GLANCE as any}
+      />,
+    )
+    expect(screen.getByText('Will we reach 25 sales by 30 September?')).toBeTruthy()
+    expect(screen.getByText('None of the 12 rounds is done yet.')).toBeTruthy()
+    expect(screen.getByText('4 of 6 people have answered this round.')).toBeTruthy()
+  })
+
+  it('draws no box at all when there is neither an answer nor a glance', () => {
+    const { container } = render(
+      <HeadlineSection
+        headline={{ question: 'Will we reach 25 sales by 30 September?', answer: null, bars: [] } as any}
+        objectives={[]}
+        glance={null}
+      />,
+    )
+    expect(screen.getByText('Will we reach 25 sales by 30 September?')).toBeTruthy()
+    expect(container.querySelector('.gwui-panel')).toBeNull()
+  })
+
+  it('does not draw the glance line inside the box once the engine has answered', () => {
+    render(
+      <HeadlineSection
+        headline={{ question: 'Will we reach 25 sales by 30 September?', answer: 'Not yet. 21 are sold.', bars: [] } as any}
+        objectives={[]}
+        glance={GLANCE as any}
+      />,
+    )
+    expect(screen.getByText('Not yet. 21 are sold.')).toBeTruthy()
+    expect(screen.queryByText('None of the 12 rounds is done yet.')).toBeNull()
+  })
+})

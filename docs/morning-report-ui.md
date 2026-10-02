@@ -6,6 +6,15 @@ same file.
 
 ## This morning, 2 October: in short
 
+**A correction, 2 October, afternoon.** For part of today I worked from a rule you had overturned: that nobody may see a rating of anyone's answers. You decided the checkability rating stays, because it rates the answers, not the person. The person sees their own read, and the lead sees "Nothing checkable" with what to ask next, as the prototype shows. What I did about it:
+- **What I had wrongly removed.** The sales board's lines about how checkable each person's answers are, shown to the lead (commits 973d8308 and 817324ed). They are being put back for exactly those readers.
+- **Requests.** Request 114 is withdrawn. Its other items are kept as request 115. Request 116 tells the engine that 111 must not remove the checkability rating; only scores of a person's contribution or performance stay removed.
+- **Where the old rule was written, now corrected:**
+  - my list "Decided for Hafsah to confirm", in the scratchpad's `decided-for-hafsah.md`, under the entry "Lines about how much a person's answers hold", which is now removed;
+  - this report's U.10 part, "Wairimu no longer reads a rating" and "a lead is never shown the checkability rating", from requests 8 and 11 of 27 September; each is now marked as overturned;
+  - the gap list's line about "nothing checkable".
+- **What still says it.** `CLAUDE.md` line 53 still says "Leads never see how a person's answers were rated." You chose to leave it, and it is read under your decision, which is under "Hafsah's decisions".
+
 ### What I finished overnight
 - **Group 1, settings and account,** passed its review after four rounds.
 - **Group 2, your own pages** (Today, the check-ins list, You, Company, and Suites with its ten boards), passed its review.
@@ -32,7 +41,7 @@ None of the eleven is done yet. A kind is marked done only when its pictures mat
 | Support desk | Not done, the same as engineering. | Not done, the same. |
 | Distribution operations | Not done, the same. | Not done, the same. |
 | Trader training programme | Not done, the same. | Not done, the same. |
-| Sales team | Not done. A review of this board alone (2 October) found the prototype's sections out of order, with about 25 extra sections mixed in among them, and one fact told nine times. "Where each target stands" is not beside the headline, the deal grid has no "Next" column and no marks, and one sentence under "The team today" is broken. Being fixed now. The engine's part is request 111: ratings it sends to readers, the wrong "Met" target, three repeated targets, two deadlines and counts that disagree. | Not done. "Every session" is folded away, the example question is not the prototype's, and the board reads the session row instead of whether the team picture is shared. The engine does not send Amani's own deals, her share or her aim (request 111). |
+| Sales team | **Done, 2 October.** The fourth review says it matches the prototype, apart from the engine's listed faults (requests 111, 112, 115 and 116). The prototype's sections come first, in its order, and every extra section is kept in one fold at the end. Coaching stays open after "What keeps coming up", and the checkability lines are back, as you decided. | **Done, 2 October.** It matches, apart from the engine's faults: Amani's own deals and share are not sent, and her board says the team picture is shared when it is not (requests 111 and 112). |
 | A government programme | Not done. Mainly the engine: its own sections are not sent (request 105). | Not done, the same. |
 | Asset loans | Not done. Mainly the engine (request 105). | Not done, the same. |
 | A law firm matter | Not done. Mainly the engine (request 105). | Not done, the same. |
@@ -72,6 +81,8 @@ What waits on the engine: requests 105, 107, 108 and 109.
 - What still differs because of the engine: the deal grid's groups ("Likely by 30 September", "Possible" and so on), each item's own choices under "What needs you", Amani's deals and share, and a team picture that is said to be shared when it is not. These are requests 111 and 112.
 - I merged the engine's latest work (decision 75's items), applied its database change to the local database only, and restarted the local API. A second review of the sales board comes after the tests.
 
+**The sales board is done (2 October, evening).** After four reviews, the last one says the sales board matches its prototype example, as Rukia and as Amani, at both widths, apart from what the engine sends. The pictures are in the scratchpad's `pictures/review-sales-4/`. One thing the review could not see: the sidebar list of check-ins did not load during it, most likely because the review loaded the board several times a minute and the local API allows 60 requests a minute. It is not counted against the board, and I will check it on the next kind's review. The sales board is now the pattern for the other ten kinds, one at a time.
+
 **The sales board, first pass.** It now draws the engine's new fields:
 - the headline question, "Will we sign 12 shops for kitchen appliances in Nairobi by 13 December?";
 - a word for where each target stands;
@@ -80,7 +91,7 @@ What waits on the engine: requests 105, 107, 108 and 109.
 - each deal's mark and what happens next;
 - "By area", and "Reported, stage by stage".
 
-The participant's board still shows its short view, because the team picture is not shared yet. Two gaps are the engine's, as request 110: Amani's own share is not sent, and her own aim of 3 shops is not on the board. The board still says the 12-shop target is "Met", which comes from the wrong figure in request 109. The review of this board alone says it does not match yet, as the lead or as a participant. Its findings are in the board table above, and the screen's part is being fixed now. The engine's part is request 111, whose first item is privacy: the board sends readers each person's "confidence" figure, which the screen never draws, but which is a rating of a person's answers.
+The participant's board still shows its short view, because the team picture is not shared yet. Two gaps are the engine's, as request 110: Amani's own share is not sent, and her own aim of 3 shops is not on the board. The board still says the 12-shop target is "Met", which comes from the wrong figure in request 109. The review of this board alone says it does not match yet, as the lead or as a participant. Its findings are in the board table above, and the screen's part is being fixed now. The engine's part is request 111. Its first item asked the engine to stop sending each person's "confidence" figure. Under your decision of 2 October, request 116 corrects it: only scores of a person's contribution or performance are removed, and the checkability rating stays.
 
 ### Where the pictures are
 - **Side-by-side pictures of the earlier screens, with what changed on each:** `/Users/hafsahjumare/Documents/GitHub/groundwork-pictures/`, next to the project folder. Start with its `README.md`.
@@ -526,6 +537,10 @@ nothing about today's billing has changed. Nobody already on the free plan is cu
 U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
+
+**2 October, afternoon: the checkability rating stays, and an old rule is withdrawn.** The rating of how specific and checkable a person's answers are is needed, because it rates the answers, not the person. The person sees their own read ("How checkable today's check-in was"), and the lead sees "Nothing checkable" with what to ask next, as the prototype shows. The old instruction that nobody sees a rating of anyone's answers was withdrawn, and must never be acted on again. Only scores of a person's contribution or performance stay hidden. `CLAUDE.md` still has the line "Leads never see how a person's answers were rated."; Hafsah has left it as it is, and it is read under this decision.
+
+**2 October, afternoon: the lead's board order.** On the lead's board, the prototype's sections come first, in its order. Every extra section is kept below, in one fold.
 
 **2 October, morning: the boards, one at a time.** Two rounds of fixing all 22 boards at once have not converged, so the approach changes. First merge the engine's work: it finished requests 105, 106, 107 and 108 overnight, covering the five kinds' own board shapes, the blockers sections, the missing fields and its sentences. Then check which faults are already gone. Then get one board exactly right, the sales team as the lead and as a participant, section by section against its prototype example, until a review says it matches. Use it as the pattern for the other ten kinds, one at a time, each matched and reviewed before the next. Coaching stays first within each board, because it is protected. The board table in this report is kept up to date as each kind is matched.
 
@@ -4166,7 +4181,7 @@ literal string on the page.
 last changed; the note telling an admin who only reads who runs the check-in; what each target
 assumes; "What needs you in this check-in"; and, found on the way, three things that were wrong
 rather than missing. Opening the board could ask the model to word lines; the lead still read, as
-"nothing checkable", the rating of how checkable a person's answers were; and "Where people differ"
+"nothing checkable", the rating of how checkable a person's answers were (**not a fault, under Hafsah's decision of 2 October**: the lead does read "Nothing checkable"); and "Where people differ"
 printed the engine's own label for a person where it could not resolve a name. The footer said
 "Everyone on this check-in sees the same board. It regenerates as people check in each session.",
 and neither is true. Everything else on the prototype's board is the engine's text, or waits for
@@ -4190,6 +4205,9 @@ another module, and is listed in item 21.
 - **Wairimu no longer reads a rating.** A row that said "nothing checkable" now reads as "nothing
   to do", in the place it would have had without that reason, so the order cannot give it away.
   This is done on the server. The rule itself is the engine's (requests 8 and 11).
+  **Overturned, 2 October:** Hafsah decided the lead does read "Nothing checkable", with what to
+  ask next, as the prototype shows. The engine is asked to undo this in request 116. Never act on
+  the old rule again.
 - **Each side of a difference** is printed by who it is, or "A colleague", never "Participant A".
 
 **Opening the board rebuilds nothing.** Only the warm-up that runs when a check-in comes in may ask
@@ -4214,7 +4232,7 @@ in the engine workspace's own files (requests 4 and 10). No screen could be chec
 **The full run passed:** every screen test (2,737) and the build, and every API test apart from the
 engine workspace's own two failures (requests 4 and 10). Two of U.10's fixes changed how the board
 module serves the board, though no engine text was touched: opening the board never words or writes
-anything now, and a lead is never shown the checkability rating. Because the board module is shared
+anything now, and a lead is never shown the checkability rating (**overturned, 2 October:** the lead reads "Nothing checkable" with what to ask next; see Hafsah's decisions and request 116). Because the board module is shared
 ground, I have told the engine workspace exactly what changed (request 12), so it can take them over.
 **Not ticked,** because no review can sign in (item 14).
 

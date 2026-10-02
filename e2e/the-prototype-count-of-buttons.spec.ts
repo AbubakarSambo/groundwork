@@ -433,16 +433,11 @@ const KNOWN_GAP: Record<string, string> = {
   'matter lead': 'request 105: the prototype board is its own shape', 'matter participant': 'board batch 2 and request 105',
   'mvnext lead': 'request 105: the prototype board is its own shape', 'mvnext participant': 'board batch 2 and request 105',
   'mvq4 lead': 'request 105: the prototype board is its own shape',
-  'eng participant': "board batch 2: the participant's short view",
   /*
-   * BOARD BATCH 2: "READ YOUR OWN REPORT" ON EVERY PARTICIPANT'S BOARD.
-   * The participant's new personal view (board-as-participant.txt) adds one button no prototype
-   * example anticipated per kind - "Read your own report" - above the fold. It fits under most
-   * kinds' own headroom (their own example has enough buttons of its own that one more still
-   * passes); programme's prototype example (programme.txt) does not have that headroom, the same
-   * way eng's does not, above.
+   * 2 October: the eng and programme participants' boards came within their prototype examples'
+   * counts once the sales pass (2304d06b) folded the participant's board, so both gaps are closed
+   * and their entries removed; the test now holds them to the count.
    */
-  'programme participant': "board batch 2: the participant's short view",
 }
 const BOARD_KINDS: { kind: string; groundId: string; lead: string; participant: string | null }[] = [
   { kind: 'founder', groundId: '3ca11603-8fd8-4027-ac6f-ef180585927c', lead: 'u7lead@example.test', participant: null },

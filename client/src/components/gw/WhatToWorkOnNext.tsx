@@ -80,7 +80,7 @@ export function WhatToWorkOnNext({ note, guide }: {
             */}
             {note.aboutYou && note.aboutYou.length > 0 && (
               <div>
-                <SubHeading>Where you stand</SubHeading>
+                <SubHeading as="h3">Where you stand</SubHeading>
                 <Stack gap={10}>
                   {note.aboutYou.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
                 </Stack>
@@ -88,7 +88,7 @@ export function WhatToWorkOnNext({ note, guide }: {
             )}
             {note.showingUp && (
               <div>
-                <SubHeading>What keeps showing up</SubHeading>
+                <SubHeading as="h3">What keeps showing up</SubHeading>
                 <p className="gwui-panel-text">{note.showingUp}</p>
               </div>
             )}
@@ -99,7 +99,7 @@ export function WhatToWorkOnNext({ note, guide }: {
             */}
             {note.role?.noticed && note.role.lookingLike && (
               <div>
-                <SubHeading>What was noticed, and what it looks like instead</SubHeading>
+                <SubHeading as="h3">What was noticed, and what it looks like instead</SubHeading>
                 <Stack gap={10}>
                   <p className="gwui-panel-text">{note.role.noticed}.</p>
                   <p className="gwui-panel-text">
@@ -109,7 +109,7 @@ export function WhatToWorkOnNext({ note, guide }: {
               </div>
             )}
             <div>
-              <SubHeading>{note.general ? 'Where you are' : 'Why it matters here'}</SubHeading>
+              <SubHeading as="h3">{note.general ? 'Where you are' : 'Why it matters here'}</SubHeading>
               <p className="gwui-panel-text">{note.whyItMatters}</p>
             </div>
             {/*
@@ -121,14 +121,14 @@ export function WhatToWorkOnNext({ note, guide }: {
             */}
             {note.role?.protectAgainst && (
               <div>
-                <SubHeading>Where this kind of work gets misread</SubHeading>
+                <SubHeading as="h3">Where this kind of work gets misread</SubHeading>
                 <p className="gwui-panel-text">{note.role.protectAgainst}</p>
               </div>
             )}
             {/* An absence with no reason reads as the product having nothing to say. */}
             {!note.role && note.whyNoRoleMap && <Note>{note.whyNoRoleMap}</Note>}
             <div>
-              <SubHeading>Before the next session</SubHeading>
+              <SubHeading as="h3">Before the next session</SubHeading>
               <Stack gap={10}>
                 {(note.beforeNextTime ?? []).map((a, i) => <p key={i} className="gwui-panel-text">{a}</p>)}
               </Stack>
@@ -140,7 +140,7 @@ export function WhatToWorkOnNext({ note, guide }: {
           <Stack gap={10}>
             {conversation.map((r, i) => (
               <div key={i}>
-                <SubHeading>{r.h}</SubHeading>
+                <SubHeading as="h3">{r.h}</SubHeading>
                 <p className="gwui-panel-text">{r.text}</p>
               </div>
             ))}

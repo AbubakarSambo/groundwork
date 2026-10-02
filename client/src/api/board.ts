@@ -230,6 +230,14 @@ export type BoardPresent = {
      * the one a manager remembers, so a thin read is withheld rather than hedged.
      */
     confidence?: number; evidenceCount?: number; shown?: boolean; basis?: string
+    /**
+     * Whether `reason` is itself the sentence about how checkable this person's answers are
+     * ("Nothing X has said so far is checkable, because nobody else can check it yet..."), set by
+     * the server (api/src/modules/board/a-rating-goes-only-to-the-person.ts). CLAUDE.md: "Leads
+     * never see how a person's answers were rated" - `reason` is withheld on screen when this is
+     * true (board review, third pass, item 1).
+     */
+    nothingCheckable?: boolean
   }[]
   coverage?: {
     scope: string

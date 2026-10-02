@@ -1,5 +1,6 @@
-import { Section, Panel, Tag, Note, Stack, Callout } from '@/components/gw/ui'
+import { Section, Panel, Tag, Note, Stack, Callout, SubHeading } from '@/components/gw/ui'
 import type { BoardPresent } from '@/api/board'
+import { HowItIsGoing, type Glance } from '@/components/gw/how-it-is-going'
 
 /**
  * THE SWITCHBOARD'S OWN SECTIONS (request 70): THE 22 PURPLE SECTIONS WITH NO SERVED FIELD BEFORE
@@ -313,21 +314,49 @@ export function standsTone(word: string): import('@/components/gw/ui').TagTone {
  * engine can answer the question (request 111); this shows nothing in its place rather than a
  * different sentence standing in for an answer nobody gave. `howItIsGoing.latestSummary` still
  * keeps its own place, in `HowItIsGoing`, just below this section - unchanged.
+ *
+ * BOARD REVIEW, SALES PIECE D, ITEM 4: THE GLANCE LINE FILLS THE GAP AN UNANSWERED QUESTION
+ * LEAVES. While `headline.answer` is null, the box under the question used to sit empty, and the
+ * glance line (how many rounds are done, who has answered this one - "None of the 12 rounds is
+ * done yet. 4 of 6 people have answered this round.") drew again, separately, just below the
+ * whole section. A box asking a question with nothing under it, right above the one fact
+ * Groundwork does have about this check-in, reads as broken. So while there is no answer, the
+ * glance line (when the server sent one) moves inside the box, under the question, and
+ * `BoardPage.tsx` no longer draws it again below. Where there is neither an answer nor a glance,
+ * the question's own box is left out - a boxed question with nothing at all under it is an empty
+ * box, not a heading - while "Where each target stands" beside it, which answers a different
+ * question, still draws exactly as before.
  */
-export function HeadlineSection({ headline, objectives }: { headline: BoardPresent['headline']; objectives: BoardPresent['objectives'] }) {
+export function HeadlineSection({ headline, objectives, glance }: { headline: BoardPresent['headline']; objectives: BoardPresent['objectives']; glance?: Glance | null }) {
   if (!headline) return null
   const names = new Map((objectives ?? []).map((o) => [o.id, o.name]))
+  const noAnswer = !headline.answer
+  const glanceGoesInTheBox = noAnswer && !!glance
+  const noBoxAtAll = noAnswer && !glance
   return (
     <div className="gwui-gap-16" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', alignItems: 'start' }}>
-      <Panel>
-        <Stack gap={10}>
-          {/* The question, in the largest type on the board - `Callout tone="emphasis"` is the one
-              shared part that already draws a bold, near-black sentence at panel level, carried over
-              from "The gap" on TheJudgement rather than a new one-off size invented for this. */}
-          <Callout tone="emphasis">{headline.question}</Callout>
-          {headline.answer && <p className="gwui-panel-text">{headline.answer}</p>}
-        </Stack>
-      </Panel>
+      {noBoxAtAll ? (
+        <SubHeading>{headline.question}</SubHeading>
+      ) : (
+        <Panel>
+          <Stack gap={10}>
+            {/*
+              BOARD REVIEW, SALES PIECE C, ITEM 2 (a): A HEADING LINE, THEN THE ANSWER IN LARGE
+              TYPE (board-as-lead.jpg: "Will we reach 25 sales by 30 September?" reads as a
+              heading; "Not yet. 21 freezers are sold..." under it is the large, bold sentence).
+              The question used to be the one drawn in `Callout tone="emphasis"` - a blue, boxed
+              callout, which is not what a heading looks like, and left the real answer in plain
+              panel text underneath it. `SubHeading` is the shared part for a plain heading line
+              over one fact inside a panel; `Callout tone="emphasis"` keeps doing what it always
+              did - the one shared part that draws a bold, near-black sentence at panel level -
+              just for the answer now, not the question.
+            */}
+            <SubHeading>{headline.question}</SubHeading>
+            {headline.answer && <Callout tone="emphasis">{headline.answer}</Callout>}
+            {glanceGoesInTheBox && <HowItIsGoing glance={glance} />}
+          </Stack>
+        </Panel>
+      )}
       {headline.bars.length > 0 && (
         <Panel>
           <Stack gap={10}>
@@ -415,8 +444,14 @@ export function WhereThisIsHeadingSection({ data, onRecordTheDecision }: {
   return (
     <Section heading={data.heading} note={data.about}>
       <Stack gap={12}>
+        {/* Board review, sales piece C, item 7: the prototype labels this list "The possible
+            outcomes" (board-as-lead.txt), the same way the two lists under it are each labelled -
+            this had neither, so three outcomes read as an unheaded list above two headed ones. */}
         {data.outcomes.length > 0 ? (
-          <SentenceRows rows={data.outcomes.map((o) => ({ id: o.value, says: o.says }))} />
+          <Stack gap={6}>
+            <Note tone="muted">The possible outcomes</Note>
+            <SentenceRows rows={data.outcomes.map((o) => ({ id: o.value, says: o.says }))} />
+          </Stack>
         ) : (
           data.outcomesSays && <Note tone="muted">{data.outcomesSays}</Note>
         )}
