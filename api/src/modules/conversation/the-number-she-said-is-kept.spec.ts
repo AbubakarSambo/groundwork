@@ -59,7 +59,8 @@ describe('the number she said is kept', () => {
      * objectives, read off a participant's own screen. The same-name case it always handled is
      * still handled; `theAimsThatAreNew` owns both and has its own spec.
      */
-    expect(write).toMatch(/const fresh = theAimsThatAreNew\(aims, existing as any, \(n\) => numbersInTheirWords\.has\(n\)\)/);
+    /* Request 117 (2): the aims now carry the figure in their own name first (theNumberInTheNameIsKept); the match is the same. */
+    expect(write).toMatch(/const fresh = theAimsThatAreNew\(aimsWithTheirNumbers, existing as any, \(n\) => numbersInTheirWords\.has\(n\)\)/);
     expect(write).toMatch(/data: fresh\.map/);
   });
 

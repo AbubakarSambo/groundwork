@@ -211,7 +211,10 @@ interface APhrase { verbPhrase: string; thing: string | null; tail: string | nul
 
 function aPhraseFor(aim: ATeamAim): APhrase | null {
   const raw = (aim.name ?? '').trim().replace(/[.!?;:]+$/, '').replace(/\s+/g, ' ');
-  if (!raw || raw.split(' ').length > 14 || SAID_AS_A_SENTENCE.test(aim.name.trim())) return null;
+  /* A full stop alone does not make an instruction a sentence about somebody: "Sign 12 shops for kitchen appliances
+     in Nairobi." was the team's aim, and its headline had no answer and no bar (request 117, part 2). */
+  const aSentence = SAID_AS_A_SENTENCE.test(aim.name.trim()) && !(STARTS_WITH_A_DOING_WORD.test(raw) && !SAID_AS_A_SENTENCE.test(raw));
+  if (!raw || raw.split(' ').length > 14 || aSentence) return null;
   const tailMatch = raw.match(A_TIME_AT_THE_END);
   /* The aim's own day, where the lead gave one, before the check-in's: the board asked "by 13 December" of an
      aim the lead had said was due by 20 December (request 111 b). */

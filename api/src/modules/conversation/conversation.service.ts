@@ -1,3 +1,4 @@
+import { theNumberInTheNameIsKept } from './an-aim-said-twice-is-one-aim';
 import { theDayKeptApart } from '../board/an-aim-is-a-sentence-about-somebody';
 import { suggestAnswers } from './suggested-answers';
 import { whatTheYesSays, startsWithAYes } from './yes-but-a-new-number';
@@ -9366,7 +9367,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
        * and the aim keeps its name and loses the number.
        */
       .map((a) => (a.target != null && !numbersInTheirWords.has(a.target) ? { ...a, target: null } : a));
-    if (aims.length) {
+    /*
+     * AND A NUMBER IN THE AIM'S OWN NAME IS ITS NUMBER, WHERE THEY SAID IT (request 117, part 2). "Sign 12 shops for
+     * kitchen appliances in Nairobi." was kept with no number, so the board's headline had no answer and no bar.
+     * See theNumberInTheNameIsKept.
+     */
+    const aimsWithTheirNumbers = theNumberInTheNameIsKept(aims, (n) => numbersInTheirWords.has(n));
+    if (aimsWithTheirNumbers.length) {
       /* Against their own aims AND the shared ones: a participant restating the check-in's $400,000 as
          "bring in $400k of new business" is not setting a second target (run 6, 20 Sep 2026). */
       const existing = await this.prisma.groundObjective.findMany({
@@ -9375,7 +9382,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       });
       /* Matching on the name alone put "units of tea sold in Abuja (10,000)" and "10,000 units
          (10,000)" on the same board, as two objectives. See an-aim-said-twice-is-one-aim. */
-      const fresh = theAimsThatAreNew(aims, existing as any, (n) => numbersInTheirWords.has(n));
+      const fresh = theAimsThatAreNew(aimsWithTheirNumbers, existing as any, (n) => numbersInTheirWords.has(n));
       if (fresh.length) {
         await this.prisma.groundObjective.createMany({
           /* A person's own aim keeps the thing counted as its name, and its day as its date (request 117, part 11). */

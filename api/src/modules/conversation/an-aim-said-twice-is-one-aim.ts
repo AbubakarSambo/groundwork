@@ -156,3 +156,17 @@ export function theAimsThatAreNew(fresh: AnAim[], existing: AnAim[], theySaid: (
   }
   return kept;
 }
+
+/**
+ * A NUMBER IN THE AIM'S OWN NAME IS ITS NUMBER, WHERE THEY SAID IT (screens request 117, part 2). "Sign 12 shops for
+ * kitchen appliances in Nairobi." was kept with `target: null`, so the board's headline had no answer and no bar. The
+ * setup chat reads the figure in the name (a740e362); an aim said in a check-in follows the same rule, and only with a
+ * figure that is in the person's own words. An aim that already has a number keeps it.
+ */
+export function theNumberInTheNameIsKept<T extends { name: string; target: number | null }>(aims: T[], saidByThem: (n: number) => boolean): T[] {
+  return aims.map((a) => {
+    if (a.target != null) return a;
+    const n = theFigureInTheName(a.name);
+    return n != null && saidByThem(n) ? { ...a, target: n } : a;
+  });
+}
