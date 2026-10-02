@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'fs';
+import { existsSync } from 'fs';
 import { join } from 'path';
 import { PartyType } from '@prisma/client';
 import { ReportsService } from './reports.service';
@@ -15,7 +15,9 @@ import { onlyCountsAndPatternsAboutTheOthers, withoutSentencesAboutOneOfThem } f
  * through the door every report and board read takes, and in a turn of Sunday's own check-in.
  */
 const RUN = join(__dirname, '../../../journey/all-24/run-23/loans.json');
-const run = existsSync(RUN) ? JSON.parse(readFileSync(RUN, 'utf8')) : null;
+/* A run's saved data, not source code, so it is loaded as data (request 113 a). */
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const run = existsSync(RUN) ? require(RUN) : null;
 const session = run?.sessions?.[0];
 
 const NAMES = ['Amaka Nwachukwu', 'Sunday Eze', 'Hauwa Ibrahim', 'Chinedu Obi', 'Blessing Ade', 'Musa Danjuma', 'Grace Oyelaran', 'Yakubu Sani', 'Esther Udo'];
