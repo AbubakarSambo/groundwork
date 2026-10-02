@@ -146,3 +146,24 @@ describe('a one-time session drafts from the differences and the direction', () 
     expect(other.find((d: any) => d.key.startsWith('con-')).key).not.toBe(con[0].key);
   });
 });
+
+/*
+ * REQUEST 109 (f), 2 October 2026: the picture read "On the crop: Amani Wekesa says Amani is growing maize ..."
+ * - a colon, and Amani named twice, because the side's own words already named her.
+ */
+describe('a difference is said in sentences, with each person once (request 109 f)', () => {
+  const lines = draftThePicture({
+    ...base,
+    differences: [{ topic: 'Which crop the cohort grows', sides: [
+      { who: 'Amani Wekesa', says: 'Amani is growing maize this season.' },
+      { who: 'Neema Achieng', says: 'Beans pay better than maize.' },
+    ] }],
+  } as any);
+  const line = lines.find((l) => l.key.startsWith('differs-'))!.text;
+
+  it('reads as full sentences, with no colon and nobody named twice', () => {
+    expect(line).toBe('People said different things about which crop the cohort grows. Amani is growing maize this season. Neema Achieng says beans pay better than maize.');
+    expect(line).not.toMatch(/Amani Wekesa says Amani/);
+    expect(line).not.toMatch(/:/);
+  });
+});

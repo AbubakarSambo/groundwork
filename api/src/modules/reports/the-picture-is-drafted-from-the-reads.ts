@@ -1,4 +1,5 @@
 import type { Drafted } from './the-engine-drafts-it-the-model-words-it';
+import { peopleSaidDifferentThingsAbout } from './what-people-said-differently-about';
 import { someOfThemHave } from './some-of-them-has-or-have';
 import { roleMapFor, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
 import { WHO_CAN_MOVE_IT, WHAT_IT_MEANS, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
@@ -160,10 +161,22 @@ export function draftThePicture(i: PictureInput): Drafted[] {
   for (const d of i.differences ?? []) {
     const sides = d.sides.filter((x) => x.who && x.says.trim());
     if (sides.length < 2) continue;
-    const said = sides.map((x) => `${x.who} says ${lower(theThing(x.says))}`);
+    /*
+     * EACH SIDE A SENTENCE, AND THE PERSON ONCE (request 109 f). It read "On the crop: Amani Wekesa says Amani is
+     * growing maize ...": a colon, and the person named twice, because the side's own words already name them.
+     * A side that already starts with the person is said as it is; any other side is "<name> says ...".
+     */
+    const startsWithThem = (who: string, says: string) => {
+      const first = who.trim().split(/\s+/)[0];
+      return !!first && new RegExp(`^(?:${who.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}|${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\b`, 'i').test(says.trim());
+    };
+    const said = sides.map((x) => {
+      const t = theThing(x.says).trim();
+      return startsWithThem(x.who, t) ? `${t.charAt(0).toUpperCase()}${t.slice(1)}.` : `${x.who} says ${lower(t)}.`;
+    });
     out.push({
       key: `differs-${d.topic.slice(0, 24)}`,
-      text: `On ${lower(theThing(d.topic))}: ${andList(said)}.`,
+      text: `${peopleSaidDifferentThingsAbout(d.topic)} ${said.join(' ')}`,
       mustKeep: sides.map((x) => lower(theThing(x.says))),
     });
   }
