@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException,
 import { PrismaService } from '../prisma/prisma.service';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
-import { mayApproveFor, whoApprovesFor } from './who-approves';
+import { couldBeNamed, decidesIt, theOneWhoDecides, theStepsFor } from './who-may-decide';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { aLeaveRequest } from './a-request-in-words';
 
@@ -40,6 +40,13 @@ export interface Waiting {
   /** Whether this reader is the one who approves it. */
   mayDecide: boolean;
 }
+
+/**
+ * Who the board is served to: an admin, a lead, or a member who reads it only because a request waits
+ * for them to decide ("approver"). An approver is served only the requests they decide, and in "off"
+ * only their own leave.
+ */
+export type BoardReader = 'admin' | 'lead' | 'approver';
 
 export interface Off { id: string; name: string; startsOn: Day; endsOn: Day; kind: 'annual' }
 
@@ -85,12 +92,14 @@ const overlaps = (a: { startsOn: Date; endsOn: Date }, b: { startsOn: Date; ends
  *   - a lead reads only their own team's (a-leads-team.ts): what is waiting, with the days left and
  *     who else in the team is off those days, which is only what is needed to decide, and who in the
  *     team is off in the next two weeks;
+ *   - whoever the rules name to decide a request (who-may-decide.ts) also reads that request, with
+ *     the days left and who else in the team is off those days: a lead from another team, or a member,
+ *     who opens the board as an "approver" and reads nothing else of anybody's leave;
  *   - each person reads only their own requests and their own days left (`mine`);
  *   - a colleague reads nothing of anybody else's leave, and nobody reads a reason, because none is
  *     kept.
- * WHO DECIDES follows the admin's answer when they switched the suite on: "Their manager" is the
- * person's manager in the directory, when that manager is a lead or an admin here; otherwise, and for
- * "An admin", any admin. Nobody decides their own. Nothing here reaches a check-in or its report.
+ * WHO DECIDES is the one approval resolver (who-may-decide.ts): the person's manager in the directory,
+ * when that manager is a lead or an admin here, or else any admin. Nobody decides their own. Nothing here reaches a check-in or its report.
  */
 @Injectable()
 export class LeaveBoardService {
@@ -100,10 +109,18 @@ export class LeaveBoardService {
     @Optional() private readonly told?: ARequestToldOnWhatsApp,
   ) {}
 
-  async board(reader: Reader, today = new Date()): Promise<{ waiting: Waiting[]; off: Off[] }> {
+  async board(reader: Reader, today = new Date()): Promise<{ reader: BoardReader; waiting: Waiting[]; off: Off[] }> {
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
-    if (role !== 'ADMIN' && role !== 'LEAD') throw new ForbiddenException(LEAVE_REFUSED.onlyAdminsAndLeads);
+    /*
+     * Whoever the rules name decides, whatever their role or team (who-may-decide.ts). A member the
+     * rules could name opens the board as an approver and is served only what waits for them; any
+     * other member, and a guest, are refused, as before.
+     */
+    const asApprover = role !== 'ADMIN' && role !== 'LEAD';
+    if (asApprover && !(role === 'MEMBER' && (await couldBeNamed(this.prisma, theStepsFor('leave', answers), reader.organizationId, { userId: reader.userId, role })))) {
+      throw new ForbiddenException(LEAVE_REFUSED.onlyAdminsAndLeads);
+    }
 
     const rows = (await this.prisma.leaveRequest.findMany({
       where: { organizationId: reader.organizationId, status: { in: ['waiting', 'approved'] } },
@@ -114,11 +131,14 @@ export class LeaveBoardService {
 
     const inScope = role === 'ADMIN'
       ? (_userId: string) => true
-      : await this.theLeadsTeam(reader, people);
+      : role === 'LEAD' ? await this.theLeadsTeam(reader, people) : (_userId: string) => false;
 
     const approved = rows.filter((r) => r.status === 'approved');
     const waiting: Waiting[] = [];
-    for (const r of rows.filter((x) => x.status === 'waiting' && x.userId !== reader.userId && inScope(x.userId))) {
+    for (const r of rows.filter((x) => x.status === 'waiting' && x.userId !== reader.userId)) {
+      /* A lead reads their own team's requests; anybody also reads each request that waits for them to decide. */
+      const decides = await this.mayDecide(reader, role, r, people, answers);
+      if (!inScope(r.userId) && !decides) continue;
       const team = people.get(r.userId)?.department?.trim() || null;
       const alsoOff = team
         ? approved.filter((a) => a.userId !== r.userId && people.get(a.userId)?.department?.trim() === team && overlaps(a, r))
@@ -134,7 +154,7 @@ export class LeaveBoardService {
         team,
         alsoOff: [...new Set(alsoOff)],
         standIn: r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null,
-        mayDecide: await this.mayDecide(reader, role, r, people),
+        mayDecide: decides,
       });
     }
 
@@ -145,7 +165,7 @@ export class LeaveBoardService {
       .filter((r) => overlaps(r, { startsOn: from, endsOn: to }))
       .map((r) => ({ id: r.id, name: names.get(r.userId)?.full ?? '', startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), kind: 'annual' as const }));
 
-    return { waiting: waiting.filter((w) => w.name), off: off.filter((o) => o.name) };
+    return { reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : 'approver', waiting: waiting.filter((w) => w.name), off: off.filter((o) => o.name) };
   }
 
   /** Each person's own requests and days left. Nobody else's. */
@@ -179,7 +199,7 @@ export class LeaveBoardService {
     const row = (await this.prisma.leaveRequest.findUnique({ where: { id } })) as Row | null;
     if (!row || row.organizationId !== reader.organizationId) throw new NotFoundException(LEAVE_REFUSED.notFound);
     const people = await this.directory(reader.organizationId, [row]);
-    if (!(await this.mayDecide(reader, role, row, people))) throw new ForbiddenException(LEAVE_REFUSED.notYours);
+    if (!(await this.mayDecide(reader, role, row, people, answers))) throw new ForbiddenException(LEAVE_REFUSED.notYours);
     if (row.status !== 'waiting') throw new BadRequestException(LEAVE_REFUSED.alreadyDecided);
     await this.prisma.leaveRequest.update({
       where: { id },
@@ -220,7 +240,8 @@ export class LeaveBoardService {
     });
     /* The one who approves is told on WhatsApp too (decision 82, item 1). */
     if (this.told && created?.id) {
-      const who = await whoApprovesFor(this.prisma, { organizationId, personUserId: userId }).catch(() => ({ kind: 'admin' as const }));
+      const answers = await this.suiteAnswers(organizationId);
+      const who = await theOneWhoDecides(this.prisma, theStepsFor('leave', answers), { organizationId, requesterUserId: userId }).catch(() => ({ kind: 'admin' as const }));
       const first = await this.told.firstNameOf(userId);
       await this.told.waiting(organizationId, await this.told.approversOf(organizationId, who, userId), aLeaveRequest(created.id, userId, first, input.startsOn, input.endsOn)).catch(() => undefined);
     }
@@ -235,11 +256,14 @@ export class LeaveBoardService {
     return Math.max(0, perYear - used);
   }
 
-  private mayDecide(reader: Reader, role: string | null, r: Row, people: Map<string, any>): Promise<boolean> {
-    return mayApproveFor(this.prisma, {
-      organizationId: r.organizationId, readerId: reader.userId, readerRole: role, personUserId: r.userId,
-      managerExternalId: people.get(r.userId)?.managerExternalId ?? null,
+  /** Whether this reader decides this request, by the one approval resolver (who-may-decide.ts). Never their own. */
+  private async mayDecide(reader: Reader, role: string | null, r: Row, people: Map<string, any>, answers: { approver: string | null }): Promise<boolean> {
+    if (r.userId === reader.userId) return false;
+    const who = await theOneWhoDecides(this.prisma, theStepsFor('leave', answers), {
+      organizationId: r.organizationId, requesterUserId: r.userId,
+      managerExternalId: people.get(r.userId)?.managerExternalId ?? null, team: people.get(r.userId)?.department ?? null,
     });
+    return decidesIt(who, { userId: reader.userId, role }, r.userId);
   }
 
   private async theLeadsTeam(reader: Reader, people: Map<string, { externalId: string; department: string | null; managerExternalId: string | null }>) {

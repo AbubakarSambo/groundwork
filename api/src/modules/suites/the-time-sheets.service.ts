@@ -2,7 +2,8 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException,
 import { PrismaService } from '../prisma/prisma.service';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
-import { mayApproveFor, whoApprovesFor } from './who-approves';
+import { whoApprovesFor } from './who-approves';
+import { couldBeNamed, decidesIt, theOneWhoDecides, theStepsFor } from './who-may-decide';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { anHoursRequest } from './a-request-in-words';
 
@@ -52,9 +53,12 @@ type Entry = { userId: string; client: string; onDay: Date; minutes: number };
  *   - nobody, while the suite is off;
  *   - an admin reads everybody's hours, week by week, and the hours against what each client agreed;
  *   - a lead reads only their own team's hours (a-leads-team.ts), which is what they need to approve;
+ *   - whoever the rules name to approve somebody's hours (who-may-decide.ts) also reads that person's
+ *     hours: a lead from another team, or a member, who opens the board as an "approver" and reads
+ *     nobody else's hours and no client's agreement;
  *   - each person reads only their own hours (`mine`);
  *   - a colleague and a guest are refused the board.
- * WHO APPROVES is the person's line manager in the staff directory, or an admin when there is none (who-approves.ts). A week is
+ * WHO APPROVES is the one approval resolver (who-may-decide.ts): the person's line manager in the staff directory, or an admin when there is none. A week is
  * approved with the total the approver saw; hours added later make it wait again.
  */
 @Injectable()
@@ -65,10 +69,18 @@ export class TimeSheetsService {
     @Optional() private readonly told?: ARequestToldOnWhatsApp,
   ) {}
 
-  async board(reader: Reader, today = new Date()): Promise<{ thisWeek: Day; weeks: AWeek[]; agreements: Agreement[] | null }> {
+  async board(reader: Reader, today = new Date()): Promise<{ reader: 'admin' | 'lead' | 'approver'; thisWeek: Day; weeks: AWeek[]; agreements: Agreement[] | null }> {
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
-    if (role !== 'ADMIN' && role !== 'LEAD') throw new ForbiddenException(TIME_REFUSED.onlyAdminsAndLeads);
+    /*
+     * Whoever the rules name approves, whatever their role or team (who-may-decide.ts). A member the
+     * rules could name opens the board as an approver and is served only the people whose hours wait
+     * for them; any other member, and a guest, are refused, as before.
+     */
+    const asApprover = role !== 'ADMIN' && role !== 'LEAD';
+    if (asApprover && !(role === 'MEMBER' && (await couldBeNamed(this.prisma, theStepsFor('time', answers), reader.organizationId, { userId: reader.userId, role })))) {
+      throw new ForbiddenException(TIME_REFUSED.onlyAdminsAndLeads);
+    }
 
     const thisWeek = mondayOf(today);
     const from = new Date(thisWeek.getTime() - WEEKS_BACK * 7 * DAY);
@@ -77,7 +89,13 @@ export class TimeSheetsService {
       select: { userId: true, client: true, onDay: true, minutes: true },
     })) as Entry[];
     const people = await this.directory(reader.organizationId, entries.map((e) => e.userId));
-    const inScope = role === 'ADMIN' ? () => true : await this.theLeadsTeam(reader, people);
+    const teamOf = role === 'ADMIN' ? () => true : role === 'LEAD' ? await this.theLeadsTeam(reader, people) : () => false;
+    /* A lead reads their own team's hours; anybody also reads the hours of each person whose hours wait for them to approve. */
+    const approves = new Map<string, boolean>();
+    for (const userId of new Set(entries.map((e) => e.userId))) {
+      if (userId !== reader.userId) approves.set(userId, await this.mayApprove(reader, role, userId, people, answers));
+    }
+    const inScope = (userId: string) => teamOf(userId) || approves.get(userId) === true;
     const mine = entries.filter((e) => e.userId !== reader.userId && inScope(e.userId));
 
     const approvals = await this.prisma.timeWeek.findMany({
@@ -108,10 +126,7 @@ export class TimeSheetsService {
           personId: userId, name, minutes, total,
           days: [...new Set(theirs.map((e) => dayOf(e.onDay)))].sort(),
           approved: approvedAt.get(`${w}|${userId}`) === total,
-          mayApprove: await mayApproveFor(this.prisma, {
-            organizationId: reader.organizationId, readerId: reader.userId, readerRole: role, personUserId: userId,
-            managerExternalId: people.get(userId)?.managerExternalId ?? null,
-          }),
+          mayApprove: approves.get(userId) === true,
         });
       }
       rows.sort((a, b) => a.name.localeCompare(b.name));
@@ -119,7 +134,10 @@ export class TimeSheetsService {
       if (current || rows.some((r) => !r.approved)) weeks.push({ weekOf: w, clients: order, people: rows });
     }
 
-    return { thisWeek: dayOf(thisWeek), weeks, agreements: role === 'ADMIN' ? await this.agreements(reader.organizationId, today) : null };
+    return {
+      reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : 'approver',
+      thisWeek: dayOf(thisWeek), weeks, agreements: role === 'ADMIN' ? await this.agreements(reader.organizationId, today) : null,
+    };
   }
 
   /** The approver approves one person's week, with the total they saw. */
@@ -129,10 +147,7 @@ export class TimeSheetsService {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(weekOf ?? '')) throw new BadRequestException(TIME_REFUSED.nothingToApprove);
     const monday = mondayOf(atMidnight(weekOf));
     const people = await this.directory(reader.organizationId, [personId]);
-    const ok = await mayApproveFor(this.prisma, {
-      organizationId: reader.organizationId, readerId: reader.userId, readerRole: role, personUserId: personId,
-      managerExternalId: people.get(personId)?.managerExternalId ?? null,
-    });
+    const ok = await this.mayApprove(reader, role, personId, people, answers);
     if (!ok) throw new ForbiddenException(TIME_REFUSED.notYours);
     const entries = await this.prisma.timeEntry.findMany({
       where: { organizationId: reader.organizationId, userId: personId, onDay: { gte: monday, lt: new Date(monday.getTime() + 7 * DAY) } },
@@ -205,7 +220,7 @@ export class TimeSheetsService {
     /* The one who approves is told on WhatsApp too (decision 82, item 1). */
     if (this.told) {
       try {
-        const who = await whoApprovesFor(this.prisma, { organizationId, personUserId: userId });
+        const who = await theOneWhoDecides(this.prisma, theStepsFor('time', answers), { organizationId, requesterUserId: userId });
         const first = await this.told.firstNameOf(userId);
         await this.told.waiting(organizationId, await this.told.approversOf(organizationId, who, userId), this.inWords(userId, first, rows));
       } catch { /* the hours stand */ }
@@ -301,6 +316,16 @@ export class TimeSheetsService {
     /* Linked entries, and entries matched to their sign-in by address (a-roster-entry-and-its-sign-in.ts). */
     const ps = await theirRosterEntries(this.prisma, organizationId, userIds, { externalId: true, department: true, managerExternalId: true });
     return new Map([...ps].map(([userId, p]) => [userId, { externalId: p.externalId as string, department: p.department as string | null, managerExternalId: p.managerExternalId as string | null }]));
+  }
+
+  /** Whether this reader approves this person's hours, by the one approval resolver (who-may-decide.ts). Never their own. */
+  private async mayApprove(reader: Reader, role: string | null, personId: string, people: Map<string, { department: string | null; managerExternalId: string | null }>, answers: { approver: string | null }): Promise<boolean> {
+    if (personId === reader.userId) return false;
+    const who = await theOneWhoDecides(this.prisma, theStepsFor('time', answers), {
+      organizationId: reader.organizationId, requesterUserId: personId,
+      managerExternalId: people.get(personId)?.managerExternalId ?? null, team: people.get(personId)?.department ?? null,
+    });
+    return decidesIt(who, { userId: reader.userId, role }, personId);
   }
 
   private async theLeadsTeam(reader: Reader, people: Map<string, { externalId: string; department: string | null; managerExternalId: string | null }>) {

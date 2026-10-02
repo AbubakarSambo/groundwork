@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
-import { decidesIt, theOneWhoDecides, theStepsFor, type WhoDecides } from './who-may-decide';
+import { couldBeNamed, decidesIt, theOneWhoDecides, theStepsFor, type WhoDecides } from './who-may-decide';
 import { withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { isProposedByGroundwork, theProposalSentence } from './a-review-falls-due';
 import { whatGroundworkNoticed } from './the-review-noticed-from-the-record';
@@ -142,8 +142,11 @@ type Person = { externalId: string; userId: string | null; linkedUserId: string 
  * WHO READS WHAT, decided here and never on the screen (decisions rule 6):
  *   - nobody, while the suite is off;
  *   - an admin reads every review; a lead only their own team's (a-leads-team.ts);
+ *   - whoever the rules name to write a review (who-may-decide.ts) also reads it on the board: a lead
+ *     from another team, or a member, who opens the board as an "approver" and reads only the reviews
+ *     they write;
  *   - the person who writes it with them (the organisation's answer: "Their manager" or "An admin",
- *     through who-approves.ts) starts it, writes their own words, and decides with reasons;
+ *     through who-may-decide.ts) starts it, writes their own words, and decides with reasons;
  *   - the person it is about reads the facts, their own view, and the decision with its reasons,
  *     and writes their own view; never a verdict, a label, or how their answers were rated;
  *   - a colleague and a guest are refused.
@@ -158,10 +161,18 @@ export class ReviewsService {
     @Optional() private readonly toldOnWhatsApp?: AReviewToldOnWhatsApp,
   ) {}
 
-  async board(reader: Reader, today = new Date()): Promise<{ every: string | null; next: NextReview[] }> {
+  async board(reader: Reader, today = new Date()): Promise<{ reader: 'admin' | 'lead' | 'approver'; every: string | null; next: NextReview[] }> {
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
-    if (role !== 'ADMIN' && role !== 'LEAD') throw new ForbiddenException(REVIEW_REFUSED.onlyAdminsAndLeads);
+    /*
+     * Whoever the rules name writes the review, whatever their role or team (who-may-decide.ts). A
+     * member the rules could name opens the board as an approver and is served only the reviews they
+     * write; any other member, and a guest, are refused, as before.
+     */
+    const asApprover = role !== 'ADMIN' && role !== 'LEAD';
+    if (asApprover && !(role === 'MEMBER' && (await couldBeNamed(this.prisma, theStepsFor('reviews', answers), reader.organizationId, { userId: reader.userId, role })))) {
+      throw new ForbiddenException(REVIEW_REFUSED.onlyAdminsAndLeads);
+    }
     const dues = await this.prisma.evaluationDue.findMany({
       where: { organizationId: reader.organizationId, dueOn: { gte: new Date(today.getTime() - 90 * DAY), lte: new Date(today.getTime() + 365 * DAY) } },
       orderBy: { dueOn: 'asc' },
@@ -183,7 +194,9 @@ export class ReviewsService {
     for (const d of dues) {
       const p = directory.get(d.personExternalId);
       if (!p || p.userId === reader.userId) continue;
-      if (role === 'LEAD' && !(me && inTheLeadsTeam(me, p))) continue;
+      /* A lead reads their own team's reviews; anybody also reads each review they write. */
+      const writesIt = await this.writes(reader, role, p, answers.writer);
+      if (role !== 'ADMIN' && !(role === 'LEAD' && me && inTheLeadsTeam(me, p)) && !writesIt) continue;
       const r = byDue.get(d.id);
       const writtenWith = r ? await this.fullNameOf(theOneWhoWrote(r as any), directory) : await this.whoWouldWrite(reader.organizationId, p, answers.writer, directory);
       const waitingFor = !r && p.userId ? openDecisions.get(p.userId) ?? null : null;
@@ -200,11 +213,11 @@ export class ReviewsService {
           startedAt: (r as any)?.startedAt ?? null, decidedAt: r?.decidedAt ?? null,
         }),
         reviewId: r?.id ?? null,
-        mayStart: stands === 'ready' && (await this.writes(reader, role, p, answers.writer)),
+        mayStart: stands === 'ready' && writesIt,
         proposal: stands === 'ready' && isProposedByGroundwork(d.source) ? theProposalSentence(d.source, this.firstOf(p)) : null,
       });
     }
-    return { every: answers.every, next: next.filter((n) => n.name) };
+    return { reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : 'approver', every: answers.every, next: next.filter((n) => n.name) };
   }
 
   /** The person who writes it with them starts it. */
