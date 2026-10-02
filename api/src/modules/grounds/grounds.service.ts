@@ -33,7 +33,7 @@ import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting 
 import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { leaveOfThePeopleOn, theAwayLinesFor, awayUntilAsServed, isFromOutside, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { LEAVE_NOTHING_WAITING, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
-import { offerToKeep, keepWhatWasOffered, dropWhatWasOffered } from '../knowledge/organisation-memory';
+import { offerToKeep, keepWhatWasOffered, dropWhatWasOffered, offeredBefore } from '../knowledge/organisation-memory';
 import { keepable, soundsCompanyWide, MEMORY_PROMPT, MEMORY_TOOL, NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
 import { restatesSuccess, saidBackForRestatedSuccess, askToRestateSuccess } from './restating-what-good-means';
 import { forHumans } from '../presentation/outbound';
@@ -3163,16 +3163,31 @@ export class GroundsService {
      * whether it may be offered (their words as typed, nothing private, nothing judging a person). The
      * offer is a row marked OFFERED that nothing reads; only the lead's yes keeps it.
      */
+    /*
+     * AND WHERE A SETUP QUESTION WAS WAITING, THE QUESTION GETS ITS ANSWER AND THE RULE IS OFFERED
+     * NEXT (decision 75, item 29). "Every quote over 1 million needs Grace's sign-off" said while the
+     * success question was open was taken as that answer and never offered for the organisation. Now
+     * the answer is said back as before, and the offer rides with it as `thenOffer`, asked straight
+     * after the lead's yes or no to the answer: one question to say yes to at a time. Offered once per
+     * rule, and never again once the lead said no (offeredBefore).
+     */
+    const answersASetupQuestion = !!openGap && !fromAPaste && !changeSay
+      && !['none', 'everything', 'change', 'restate_success', 'organisation_memory', 'leave_request'].includes(proposal.kind as string);
     let memoryOfferId: string | null = null;
-    if (proposal.kind === 'none' && lastFromLead && soundsCompanyWide(lastFromLead)) {
+    let thenOffer: { gap: 'organisation_memory'; say: string; offerId: string } | null = null;
+    if ((proposal.kind === 'none' || answersASetupQuestion) && lastFromLead && soundsCompanyWide(lastFromLead)) {
       try {
         const heard = await this.anthropic.extract<{ items?: { kind?: string; text?: string }[] }>(MEMORY_PROMPT, [{ role: 'user' as const, content: lastFromLead }], MEMORY_TOOL);
         const people = (await this.partiesForMatching(groundId)).flatMap((p: any) => [p.name, p.name?.split(' ')[0]].filter(Boolean)) as string[];
         const [one] = keepable(heard?.items, lastFromLead, people);
-        if (one) {
+        if (one && !(await offeredBefore(this.prisma, { organizationId: ground.organizationId, item: one, history }))) {
           const offered = await offerToKeep(this.prisma, { organizationId: ground.organizationId, groundId, userId: requestingUserId, item: one });
-          memoryOfferId = offered.offerId;
-          proposal = { kind: 'organisation_memory', say: offered.say } as any;
+          if (proposal.kind === 'none') {
+            memoryOfferId = offered.offerId;
+            proposal = { kind: 'organisation_memory', say: offered.say } as any;
+          } else {
+            thenOffer = { gap: 'organisation_memory', say: offered.say, offerId: offered.offerId };
+          }
         }
       } catch {
         /* nothing is offered; the conversation carries on */
@@ -3265,6 +3280,8 @@ export class GroundsService {
         gap: proposal.kind,
         say: sayBack as string,
         ...(memoryOfferId ? { offerId: memoryOfferId } : {}),
+        /* Asked straight after the yes or no to this answer (decision 75, item 29). */
+        ...(thenOffer ? { thenOffer } : {}),
         /*
          * EACH QUESTION FOR A PERSON, AS IT WILL BE ASKED. Not written yet, so no id: the yes to this
          * list keeps them, and each one is then confirmed, changed or left out on its own through

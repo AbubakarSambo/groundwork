@@ -1671,3 +1671,19 @@ Who reads it is unchanged: the person themselves and whoever runs the check-in; 
 - Miriam and Brian, in Sales where people see each other, read the same as Wairimu.
 - In a check-in where people do not see each other, a person reads this only about their own wait, never a colleague's.
 - An admin who may open every check-in reads every step and `whereItStarted`, so `waitingOn` is null for them. The person reviewed on a performance plan reads nothing of a chain that ends on the lead's step, as before.
+
+## Decision 75, item 29: a company rule said during setup is offered once, after the answer (2 October)
+
+When the lead says a company rule while a setup question is waiting, the question still gets its answer, said back as before, and the rule is offered for the whole organisation straight after the lead's yes or no to that answer. Only a yes keeps it. Each rule is offered once, and never again once the lead said no.
+
+What the lead reads, through Ask Groundwork (nothing to change on the screens there):
+- Ada answers the question about doing well with "Every quote over 1 million needs Grace's sign-off, and doing well means every quote goes out within two days." She reads the say-back of the answer, with its yes and no.
+- After her yes, she reads "I have recorded ..." and then, as its own question with its own yes and no: "Shall I keep "Every quote over 1 million needs Grace's sign-off" as a rule for the whole organisation, so later check-ins and Ask Groundwork can use it?"
+- After a no to the answer, she reads "I have left it as it was. Nothing was changed." and the same question about the rule.
+- A yes to the rule: "I have kept "Every quote over 1 million needs Grace's sign-off" as a rule for the whole organisation. Later check-ins and Ask Groundwork can now use it. You can see it on the Company page." A no: "I have not kept that for the organisation. It stays only on this check-in." followed by the setup question still open.
+
+On the old context chat route, `POST /grounds/:id/context-chat` now sends `proposal.thenOffer`: `{ gap: "organisation_memory", say, offerId }`, beside the answer's own `say`. Please show `thenOffer.say` with a yes and a no after the lead has answered the first proposal. The yes is the existing confirm with `{ offerId }`, and the no is the existing decline with `{ offerId }`, as for any offer to keep something for the organisation.
+
+Never offered again: while the offer is waiting, once it is kept, once the question is earlier in the same conversation, or once the lead said no to it through Ask Groundwork. A no still keeps nothing of the rule anywhere new.
+
+A person on the check-in, an admin who only reads, and anybody else cannot have the setup conversation or answer the offer, as before (decision 63).
