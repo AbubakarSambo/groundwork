@@ -13,6 +13,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { GroundStatus, CheckInStatus, TurnRole, PartyType, ReportActivationStatus } from '@prisma/client';
 import { PatternsService } from '../patterns/patterns.service';
@@ -642,7 +643,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           select: {
             id: true,
             email: true,
-            ground: { select: { label: true } },
+            ground: { select: { label: true, overWhatsApp: true } },
             /* No recordEntries here, structurally (NL-007): this sweep used to put the person's last
                private record line into the mail and the WhatsApp body as "Last time: ...". The product's
                central promise is that nothing they wrote reaches a mailbox; the reminder never needed it. */
@@ -680,7 +681,8 @@ export class GroundsCron implements OnApplicationBootstrap {
          */
         await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl);
 
-        if (p.user?.phoneNumber && (await this.whatsapp.isEnabled())) {
+        /* A check-in the lead keeps in the app is never announced on a phone (survey item 5). */
+        if (p.user?.phoneNumber && !keptOffThePhone(p.ground) && (await this.whatsapp.isEnabled())) {
           try {
             await this.whatsapp.sendMessage(p.user.phoneNumber, `Your next check-in for ${p.ground.label} is open.\n${checkInUrl}`, { checkInId: ci.id, kind: 'session-ready' });
           } catch (waErr: any) {

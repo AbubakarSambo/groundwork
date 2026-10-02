@@ -18,6 +18,7 @@ import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.
 import { asATextMessage } from './a-reply-reads-as-a-text-message';
 import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING } from '../whatsapp/a-message-outside-the-window';
+import { keptOffThePhone, answerItInTheApp } from '../whatsapp/a-check-in-kept-off-the-phone';
 import {
   aStrangerHearsNothing, NOT_ONE_OF_YOURS, type WhatCameBack, type WhoHoldsTheNumber,
 } from './their-number-stays-theirs';
@@ -165,7 +166,20 @@ export class WhatsAppForAnOrganisationService {
       }
     }
 
-    const open = userId ? await this.openCheckInsFor(organizationId, userId) : [];
+    const everyOpen = userId ? await this.openCheckInsFor(organizationId, userId) : [];
+    /*
+     * A CHECK-IN KEPT IN THE APP TAKES NOTHING FROM THE PHONE (survey item 5). The lead said this one
+     * stays off WhatsApp, so it is never offered in the list, never remembered as the current one, and
+     * a message that would have gone into it is answered with where to answer it instead.
+     */
+    const open = everyOpen.filter((c) => !c.keptOffThePhone);
+    const inTheApp = everyOpen.filter((c) => c.keptOffThePhone);
+    const thread = await this.prisma.whatsAppThread.findUnique({ where: { organizationId_phone: { organizationId, phone: WhatsAppService.normalize(from) } } }).catch(() => null);
+    if (!open.length && inTheApp.length) {
+      const meant = inTheApp.find((c) => c.id === thread?.checkInId) ?? inTheApp[0];
+      await say(answerItInTheApp(meant.label));
+      return;
+    }
 
     /* Nothing open: an invitation waiting, or the assistant. */
     if (!open.length) {
@@ -178,7 +192,6 @@ export class WhatsAppForAnOrganisationService {
     }
 
     /* Which one. A pick (tapped or typed) settles it; a remembered pick holds; two or more with neither asks. */
-    const thread = await this.prisma.whatsAppThread.findUnique({ where: { organizationId_phone: { organizationId, phone: WhatsAppService.normalize(from) } } }).catch(() => null);
     let current: AnOpenCheckIn | null = null;
     /* A typed number is a pick only while the question is fresh (a-whatsapp-message-is-routed.ts). */
     const picked = arrived.kind === 'pick' ? pickedOne(arrived.id, open) : arrived.kind === 'text' && open.length > 1 ? pickedFromText(arrived.text, open, thread?.pickPendingAt) : null;
@@ -291,9 +304,11 @@ export class WhatsAppForAnOrganisationService {
     try {
       const c = await this.prisma.checkIn.findUnique({
         where: { id: e.checkInId },
-        select: { id: true, sessionNumber: true, status: true, ground: { select: { id: true, organizationId: true, label: true } }, participant: { select: { userId: true, email: true } } },
+        select: { id: true, sessionNumber: true, status: true, ground: { select: { id: true, organizationId: true, label: true, overWhatsApp: true } }, participant: { select: { userId: true, email: true } } },
       });
       if (!c?.participant.userId) return;
+      /* Kept in the app by the lead: the report stays in the app too (survey item 5). */
+      if (keptOffThePhone(c.ground)) return;
       /* A guest's report never goes to the phone of an entry on the host's list that shares their address. See a-guest-is-never-somebody-on-the-hosts-list. */
       if (await isAGuestIn(this.prisma, c.ground.organizationId, c.participant)) return;
       const person = c.participant.email ? await this.prisma.person.findFirst({ where: { organizationId: c.ground.organizationId, email: c.participant.email }, select: { phone: true } }) : null;
@@ -379,9 +394,9 @@ export class WhatsAppForAnOrganisationService {
         OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
       },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, status: true, sessionNumber: true, ground: { select: { label: true } } },
+      select: { id: true, status: true, sessionNumber: true, ground: { select: { label: true, overWhatsApp: true } } },
     });
-    return rows.map((r) => ({ id: r.id, status: r.status, sessionNumber: r.sessionNumber, label: r.ground.label }));
+    return rows.map((r) => ({ id: r.id, status: r.status, sessionNumber: r.sessionNumber, label: r.ground.label, keptOffThePhone: keptOffThePhone(r.ground) }));
   }
 
   private async invitationWaitingFor(organizationId: string, personId: string | null): Promise<string | null> {

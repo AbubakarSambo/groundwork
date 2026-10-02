@@ -45,7 +45,8 @@ describe('GW-WA-01: a phone number does not switch email off', () => {
 
   it('and WhatsApp is still sent, so this is additive rather than a removal', () => {
     expect(BLOCK).toMatch(/this\.whatsapp\.sendMessage\(/);
-    expect(BLOCK).toMatch(/p\.user\?\.phoneNumber && \(await this\.whatsapp\.isEnabled\(\)\)/);
+    /* And never for a check-in the lead keeps in the app (survey item 5). */
+    expect(BLOCK).toMatch(/p\.user\?\.phoneNumber && !keptOffThePhone\(p\.ground\) && \(await this\.whatsapp\.isEnabled\(\)\)/);
   });
 
   it('a WhatsApp failure cannot take the email or the stamp with it', () => {

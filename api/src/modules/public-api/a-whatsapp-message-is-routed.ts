@@ -11,6 +11,8 @@ export interface AnOpenCheckIn {
   status: string;
   sessionNumber: number;
   label: string;
+  /** The lead keeps this check-in in the app (`overWhatsApp = false`). It is never answered from the phone. */
+  keptOffThePhone?: boolean;
 }
 
 /** "September sprint, session 3." One line, so somebody on three grounds knows which this is. */
