@@ -1928,8 +1928,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       The server falls back from a missing name to the ROLE rather than the email
                       address (W-UX-4), so the subtitle has to stop repeating it - otherwise a person
                       with no account yet reads "Engineer" over "Engineer".
+
+                      SECOND BOARD REVIEW: the reader's own card still headed with their own name -
+                      "Wairimu Kamau" over her own card, on the board she herself was reading. Every
+                      sentence inside the card already says "you" for its own record (see
+                      progress-reported-is-never-they.spec.tsx); the heading above it did not.
                     */}
-                    <div className="gwui-fs-15 gwui-ink-dark" style={{fontWeight: 700}}>{nameOnTheBoard(b, p.participantId, p.name)}</div>
+                    <div className="gwui-fs-15 gwui-ink-dark" style={{fontWeight: 700}}>
+                      {p.participantId === b.myParticipantId ? 'You' : nameOnTheBoard(b, p.participantId, p.name)}
+                    </div>
                     {p.role && p.role !== p.name && <div data-leads-note className="gwui-fs-13-5 gwui-ink-sub gwui-mt-1">{theLeadsNote(p.role)}</div>}
                   </div>
                   <div className="gwui-pt-2 gwui-pr-15 gwui-pb-10 gwui-pl-15">
