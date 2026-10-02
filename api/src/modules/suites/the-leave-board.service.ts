@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { mayApproveFor } from './who-approves';
 
@@ -221,10 +222,7 @@ export class LeaveBoardService {
   }
 
   private async theLeadsTeam(reader: Reader, people: Map<string, { externalId: string; department: string | null; managerExternalId: string | null }>) {
-    const me = await this.prisma.person.findFirst({
-      where: { organizationId: reader.organizationId, linkedUserId: reader.userId, active: true },
-      select: { externalId: true, department: true },
-    });
+    const me = await theirRosterEntry(this.prisma, reader.organizationId, reader.userId, { externalId: true, department: true });
     return (userId: string) => {
       const p = people.get(userId);
       return !!me && !!p && inTheLeadsTeam(me, p);
@@ -254,14 +252,9 @@ export class LeaveBoardService {
 
   /** The directory entry of each person a request is about, by user id. */
   private async directory(organizationId: string, rows: Row[]) {
-    const ids = [...new Set(rows.map((r) => r.userId))];
-    const ps = ids.length
-      ? await this.prisma.person.findMany({
-          where: { organizationId, linkedUserId: { in: ids }, active: true },
-          select: { linkedUserId: true, externalId: true, department: true, managerExternalId: true },
-        })
-      : [];
-    return new Map(ps.map((p) => [p.linkedUserId as string, { externalId: p.externalId, department: p.department, managerExternalId: p.managerExternalId }]));
+    /* Linked entries, and entries matched to their sign-in by address (a-roster-entry-and-its-sign-in.ts). */
+    const ps = await theirRosterEntries(this.prisma, organizationId, rows.map((r) => r.userId), { externalId: true, department: true, managerExternalId: true });
+    return new Map([...ps].map(([userId, p]) => [userId, { externalId: p.externalId as string, department: p.department as string | null, managerExternalId: p.managerExternalId as string | null }]));
   }
 
   /** First and full names, for the people and the stand-ins on these requests. Never an address. */

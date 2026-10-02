@@ -2,6 +2,7 @@ import type { PrismaService } from '../prisma/prisma.service';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { workingDays, type Day } from './the-leave-board.service';
 import { whoApprovesFor } from './who-approves';
+import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 
 /**
  * LEAVE DATES SAID IN CHAT GO TO THE LEAVE SUITE, NEVER TO THE RECORD (week 20, request 21).
@@ -176,10 +177,7 @@ const firstName = (p: { givenName?: string | null; displayName?: string | null }
 
 /** Whom the person asks (the one answer in who-approves.ts: their line manager, or an admin) and their team, for the say-back. */
 async function whoApproves(prisma: PrismaService, organizationId: string, userId: string) {
-  const me = await prisma.person.findFirst({
-    where: { organizationId, linkedUserId: userId, active: true },
-    select: { department: true, managerExternalId: true },
-  });
+  const me = await theirRosterEntry(prisma, organizationId, userId, { department: true, managerExternalId: true });
   const who = await whoApprovesFor(prisma, { organizationId, personUserId: userId, managerExternalId: me?.managerExternalId ?? null });
   return { name: who.kind === 'manager' ? who.firstName : null, team: me?.department?.trim() || null };
 }
@@ -195,10 +193,7 @@ async function alsoOff(prisma: PrismaService, organizationId: string, userId: st
     select: { userId: true },
   });
   if (!rows.length) return [];
-  const people = await prisma.person.findMany({
-    where: { organizationId, linkedUserId: { in: [...new Set(rows.map((r) => r.userId))] }, active: true, department: team },
-    select: { givenName: true, displayName: true },
-  });
+  const people = [...(await theirRosterEntries(prisma, organizationId, rows.map((r) => r.userId), { givenName: true, displayName: true }, { department: team })).values()];
   return [...new Set(people.map((p) => firstName(p)).filter((n): n is string => !!n))];
 }
 

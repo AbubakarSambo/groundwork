@@ -27,6 +27,7 @@ import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { LEAVE_NOT_SENT, LEAVE_NOTHING_WAITING, LEAVE_WHICH_DAYS, plainlyAsksForLeave, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
+import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
 import { SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
 import { NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
@@ -206,14 +207,16 @@ export class AssistantService {
     message = withoutBankDetails(message);
     const me = await this.prisma.person.findFirst({
       where: { id: personId, organizationId },
-      select: { externalId: true, linkedUserId: true },
+      select: { externalId: true, linkedUserId: true, email: true },
     });
     /* A guest's key is nobody's history, whichever entry carries it. See a-guests-questions-are-kept-apart. */
     const who = me?.externalId && !isAGuestsKey(me.externalId) ? me.externalId : null;
     /* The signed-in USER, not the Person row - `contextChat`/`applyContextProposal` check this
        against `ground.initiatorId` and against org-admin membership, neither of which a Person id
        can answer. Ask Groundwork always links the two (see ask.service.ts whoIsAsking). */
-    const userId = me?.linkedUserId ?? null;
+    /* Linked, or matched to their sign-in by address (decision 82, item 6): a roster entry that was
+       never linked is still this person for leave, hours and spending. */
+    const userId = await theirSignIn(this.prisma, organizationId, me).catch(() => me?.linkedUserId ?? null);
 
     const reply = await this.answer(organizationId, personId, who, message, false, groundId, userId, openedFromSetup);
 
@@ -283,8 +286,8 @@ export class AssistantService {
      * say-back, was answered "I cannot answer that one yet". It is read from their own entry.
      */
     if (userId === undefined && who) {
-      const mine = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { linkedUserId: true } }).catch(() => null);
-      userId = mine?.linkedUserId ?? null;
+      const mine = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { linkedUserId: true, email: true } }).catch(() => null);
+      userId = await theirSignIn(this.prisma, organizationId, mine).catch(() => mine?.linkedUserId ?? null);
     }
 
     /* Asking one person something is not an answer to the question the setup conversation has open,
@@ -2635,6 +2638,12 @@ export class AssistantService {
     return { lane: 'add_context', composedBy: 'rules', blocks: [text(first), { type: 'proposal', proposalId: row.id, summary: offer.say }] };
   }
 
+  /** The sign-in behind a roster entry, linked or matched by address (decision 82, item 6), for leave, hours and spending. */
+  private async theSignInOf(organizationId: string, who: string): Promise<{ linkedUserId: string | null }> {
+    const row = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true, email: true } });
+    return { linkedUserId: await theirSignIn(this.prisma, organizationId, row).catch(() => row?.linkedUserId ?? null) };
+  }
+
   /**
    * LEAVE SAID TO ASK GROUNDWORK (week 20): said back with the days, the days left and who else is
    * off, parked, and sent through the leave suite only on a yes. While the suite is off it says so
@@ -2661,7 +2670,7 @@ export class AssistantService {
       return rules('ask_for_leave', text(LEAVE_NOT_SENT));
     }
     const dates = parked.payload as { startsOn: string; endsOn: string };
-    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true } });
+    const person = await this.theSignInOf(organizationId, who);
     if (!person?.linkedUserId || !dates?.startsOn || !dates?.endsOn) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('ask_for_leave', text(LEAVE_NOTHING_WAITING));
@@ -2699,7 +2708,7 @@ export class AssistantService {
       return rules('log_hours', text(HOURS_NOT_SENT));
     }
     const said = parked.payload as HoursSaid;
-    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true } });
+    const person = await this.theSignInOf(organizationId, who);
     if (!person?.linkedUserId || !said?.onDay || !Array.isArray(said.entries) || !said.entries.length) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('log_hours', text(HOURS_NOTHING_WAITING));
@@ -2747,7 +2756,7 @@ export class AssistantService {
       return rules('ask_to_spend', text(SPEND_NOT_SENT));
     }
     const said = parked.payload as SpendSaid;
-    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true } });
+    const person = await this.theSignInOf(organizationId, who);
     if (!person?.linkedUserId || !(said?.amount > 0) || !said?.what) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('ask_to_spend', text(SPEND_NOTHING_WAITING));

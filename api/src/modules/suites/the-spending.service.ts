@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { whoApprovesFor } from './who-approves';
 
@@ -219,7 +220,7 @@ export class SpendingService {
     if (typeof input.amount !== 'number' || !Number.isFinite(input.amount) || input.amount <= 0 || input.amount > 1e12) throw new BadRequestException(SPEND_REFUSED.badAmount);
     const what = (input.what ?? '').trim().slice(0, 300);
     if (!what) throw new BadRequestException(SPEND_REFUSED.badWhat);
-    const person = await this.prisma.person.findFirst({ where: { organizationId, linkedUserId: userId, active: true }, select: { department: true } });
+    const person = await theirRosterEntry(this.prisma, organizationId, userId, { department: true });
     return this.prisma.spendRequest.create({
       data: { organizationId, userId, amount: input.amount, what, team: person?.department?.trim() || null },
       select: { id: true },
@@ -273,9 +274,11 @@ export class SpendingService {
   private async directory(organizationId: string): Promise<Map<string, Dir>> {
     const ps = await this.prisma.person.findMany({
       where: { organizationId, active: true },
-      select: { externalId: true, linkedUserId: true, department: true, managerExternalId: true },
+      select: { externalId: true, linkedUserId: true, email: true, department: true, managerExternalId: true },
     });
-    return new Map(ps.map((p) => [p.externalId, p]));
+    /* `linkedUserId` here is the entry's sign-in, linked or matched by address (a-roster-entry-and-its-sign-in.ts). */
+    const signed = await withTheirSignIns(this.prisma, organizationId, ps);
+    return new Map(signed.map((p) => [p.externalId, { externalId: p.externalId, linkedUserId: p.userId, department: p.department, managerExternalId: p.managerExternalId }]));
   }
 
   /** First and full names. Never an address. */
