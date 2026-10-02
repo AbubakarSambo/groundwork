@@ -124,7 +124,7 @@ import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, readsHowTheLeadingIsLanding } from '../patterns/who-reads-a-pattern';
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
-import { theShortNameOf } from '../reports/a-title-is-not-a-first-name';
+import { theFirstNameFrom, theShortNameOf } from '../reports/a-title-is-not-a-first-name';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -2533,7 +2533,9 @@ export class BoardService {
        * "no labels on people"). The lead, and an admin given access, read the label as the lead typed it.
        */
       if (isEvaluationCheckIn(ground.scenario) && !(isInitiator || evaluationWordsRunsIt)) {
-        const leadFirst = ((ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')?.user?.firstName ?? '').trim();
+        /* The first name, never a title in the first-name field: "Dr" with "Amina Bello" is Amina (item 18). */
+        const theLeadsUser = (ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')?.user;
+        const leadFirst = (theFirstNameFrom(theLeadsUser?.firstName, theLeadsUser?.lastName) ?? '').trim();
         const theirs = viewerIsTheSubjectOfAnEvaluationCheckIn({ scenario: ground.scenario, isLead: false, viewerParticipantId: me?.id ?? null, participants: ground.participants as any });
         walled.title = leadFirst ? `${theirs ? 'Your' : 'A'} check-in with ${leadFirst}` : (theirs ? 'Your check-in' : 'A check-in');
       }
