@@ -227,3 +227,123 @@ Found, read against these pictures:
 
 Nobody is marked "done" by this pass - that is the reviewer's own finding to make, not the
 builder's.
+
+## The sales board, section by section (2 October)
+
+Hafsah's new approach: get the sales team's board exactly right first, lead and participant, one
+section at a time against `salesorg.txt`/`.jpg` and `board-as-lead.txt`/`.jpg` (the lead) and
+`board-as-participant.txt`/`.jpg` (the participant), before touching any other kind of work. The
+check-in: "Sales team, Q3", `9028f0ad-293b-4592-9a4e-25b680dd91cd`, Rukia Otieno (lead) and Amani
+Wekesa (participant). This covers requests 105, 107 and 108 from the 2 October merge
+(`docs/answers-from-engine.md`), none of which was drawn before this pass.
+
+**Step 1, coaching.** The coaching drawn on 1 October (`e7b604c9`) sits right after "What needs you
+in this check-in" (`questionsForTheLead`), as `WhatToWorkOnNext` (this reader's own note) and,
+lead-only, `WhatToProbeThemOn` (the lead's read on everybody else). Neither prototype file for this
+board (`salesorg.txt`, `board-as-lead.txt`) has a "Coaching, and whether it changed anything"
+heading - that module (`docs/prototype/source/s7.js`'s `coachSec`, a per-person tone tag, a quote
+and an "afterwards" line) belongs to a different situation in `modules.md`'s own table ("Help
+someone get back on track", "Help a new manager take over") and is not one of "Set goals and keep
+the team on track"'s guaranteed sections. So there is no drift to fix here: the placement already
+matches where this board's own coaching belongs, and the richer follow-up module is simply a
+different, not-yet-requested feature for a different situation. No code changed in this step.
+
+**Step 2, the new fields, drawn in the prototype's own order.** Five commits
+(`a595db3d`..`39d7c316`):
+
+- **Blockers** (request 105 part 2, 107 b, 108): rewritten to draw the server's own `blockers`
+  field directly - one sentence per fact (`says`, `raised.says`, `proof.says`, `timeGiven`,
+  `wouldClearItSays`, `holdingUp`), no "Waiting on:"/"Raised:"/"What the proof shows:" labels. As
+  Rukia: "Baraka Mwangi is waiting on you for the discount decision." / "Blocking" / "This was
+  raised once, on 27 September." / "Nothing on record proves it yet. It rests on what Baraka Mwangi
+  said." / "No time has been given for it." / "Nobody has said what would clear it yet." - matching
+  the engine's own worked example in `docs/answers-from-engine.md` exactly, and the prototype's
+  shape (one card per blocker, its history, what would clear it) without the prototype's invented
+  "Affects:" (no field sends it) or "Would clear it:" label text.
+- **The headline question** (request 108 a): drawn above everything else, in `Callout
+  tone="emphasis"` (the one shared bold-sentence part, not a new type size). As Rukia: "Will we
+  sign 12 shops for kitchen appliances in Nairobi by 13 December?" - matches
+  `salesorg.txt`'s own "Will we reach 25 sales by 30 September?" in shape and placement (above "How
+  it is going"). This check-in's own aim has no answer yet (`answer: null`, no sessions closed), so
+  the prototype's "Not yet. 21 freezers are sold..." sentence and bars are correctly absent rather
+  than invented.
+- **Where each target stands** (request 108 b): a `Tag` beside the target's name, from
+  `objectives[].stands`. As Rukia: "You want us to sign 12 shops by 20 December. **Met**" (the
+  12-shop aim was reached this round).
+- **"Where this is heading"** (request 108 d): drawn beside the existing board-top
+  `ResolutionPanel`, whose "Record the decision" button it reuses (scrolled to, not duplicated). As
+  Rukia: heading "Where this is heading", "Set goals and keep the team on track", the three
+  situation outcomes, the signals (each with "This was raised once, on 27 September." underneath),
+  "Nothing on record says yet what would settle it.", "You decide.", "Groundwork lays out the
+  outcomes and the proof. It doesn't choose.", "Record the decision" - matches `board-as-lead.txt`'s
+  own "Where this is heading" section heading-for-heading, in the engine's own wording rather than
+  the prototype's fictional example text (different check-in, different facts).
+- **Each record's "Next", and its mark** (request 107 c part 1, 108 c): the deal grid's row name is
+  now preceded by the shared `ProofMark` (nothing drawn for `mark: "none"`, as both this board's
+  deals were added on the board with nothing behind them), and `nextSays` draws under "What shows
+  it": "Nobody has said what happens next." (Tuskys Westgate) and "You committed to visit Naivas
+  Karen on Wednesday 30 September to show them the fridges." (Naivas Karen) - matching the
+  prototype's "Next: Send the quote, with a photo" in substance, though this board's own records
+  have no proof attached yet so the ringed/filled distinction cannot be pictured on this check-in.
+- **By area, and reported against criteria** (request 107 c parts 3 and 4): both draw their
+  "not-known" state with the engine's own reason sentence ("Nothing on record says which site,
+  county, team or queue...", "Nothing on record says what a deal must show to be at each stage...")
+  plus, for the second, what was actually reported at each stage ("1 deal was reported at Quoted,
+  and it has no document behind it.", "...at Won..."). Never "criteria met", as the engine's answer
+  requires. `salesorg.txt` does show "By team" with real counts and a reported/criteria-met bar
+  chart - this check-in's own records simply carry no site/county/team/queue and no stage criteria,
+  so the honest "not-known" state is correct, not a regression against the prototype's richer
+  (different-data) example.
+
+**Step 3, the participant's board.** Amani's board is unchanged this pass and still matches
+`board-as-participant.txt`: "Today's team picture isn't shared yet." / "Rukia shares it. Your own
+report is ready now." / "Read your own report" / "The whole check-in" fold (closed) / "Ask" /
+"Feedback". None of the five new sections above reach her, correctly - the team picture has not
+been shared yet (request 105 part 3: `headline`, `whereThisIsHeading`, the quick read and the
+forecast are all held back until release), and `yourShare` and her own counted aim ("I am aiming
+for 3 shops in Kilimani") are not present in the server's response to her at all - see "What still
+differs" below.
+
+**Checks, every commit:** `cd client && npx vitest run src/pages/board src/components/gw` (200
+files, 1328 tests). At the end: `npx vitest run src/pages` (331 files, 2125 tests) and `npx vitest
+run src/components src/lib src/api src/hooks src/stores` (one pre-existing failure fixed along the
+way - `scroll-to.spec.ts` banned a raw `scrollIntoView` call the "Record the decision" button used
+at first; switched to the shared `scrollTo` helper, see Board fix 5e); both green after. `cd e2e &&
+npx playwright test the-prototype-count-of-buttons.spec.ts -g "sales"` - 2 passed (lead and
+participant). The one-off-style-class guard and the one-vocabulary guard both pass throughout: the
+new sections are built from `Section`/`Panel`/`Note`/`Stack`/`Callout`/`Tag`/`gwui-panel-text`
+only, and the progress-bar track colour, now needed in two files, was named `--gw-bar-track` rather
+than typed out a second time.
+
+**What now matches, screen for screen (lead):** the headline question's placement and shape; a
+target's own word; "Where this is heading" heading-for-heading, including "Record the decision";
+Blockers as one sentence per fact with no colon labels; each record's own "Next" line and its mark;
+"By area" and the sales-only "Reported, stage by stage", each saying honestly what the record does
+and doesn't hold.
+
+**What still differs, and why:**
+
+- **The headline's answer and bars are empty** on this board (`answer: null`, `bars: []`) because
+  no session has closed yet to measure the pace against - this is the engine's own rule (108 a:
+  "bars" and "answer" come from counts the board already serves), not a drawing gap. It will fill in
+  once this check-in has run further; nothing to fix on the screen.
+- **Amani's own counted aim ("I am aiming for 3 shops in Kilimani") is missing from her own
+  board.** Request 107 (c) item 6 says the engine fixed exactly this ("a participant's own number
+  goes on the board with somebody's name on it") - but the live fetch of her board
+  (`GET /grounds/.../board` as Amani) shows only two targets (the un-named 12-shop aim and "Rukia
+  Otieno wants us to sign 12 shops by 20 December"), neither hers. **Engine gap, not a screen gap**:
+  nothing on the client withholds it; the field simply is not in the response. Needs a request back
+  to the engine workspace.
+- **`yourShare` is entirely absent from the served board**, for both Rukia (whose board should not
+  get it, correctly) and Amani (who should: request 107 c part 5 says every participant gets
+  `{ objectiveId, says, whoSees }` for their own targets). It is not present in the JSON at all, not
+  even as `null`. **Engine gap**: the client is ready to draw it (ask for it in
+  `docs/requests-to-engine.md` before building a component with nothing to render against).
+- **Visual, pixel-level comparison against the prototype's `.jpg`s was not completed this pass.**
+  The session's Python had a broken Pillow install and no ImageMagick was available to crop the
+  very tall (1440x19727px) full-page screenshots into comparable strips; the sentence-by-sentence
+  comparison above (against the engine's own worked examples in `docs/answers-from-engine.md`,
+  which match this test check-in's facts) was used instead, which is the authoritative check per
+  CLAUDE.md ("Judge the output ... Check the rendered text"). The raw screenshots are saved at
+  `.../scratchpad/pictures/sales2/` (`a1440-`/`a375-` PNGs, `t-` text dumps) for the reviewer to
+  open directly.
