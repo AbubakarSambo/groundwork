@@ -1985,3 +1985,12 @@ Decision 76, item 4 is built in the reports (see the answer above, `5e6dd623` an
 So Amani now reads "Today's team picture is not shared yet." while session 2 of "Sales team, Q3" is not released. Nothing changes on the screens.
 
 Tests: `board/decision-76-4-the-team-picture-is-shared-session-by-session.spec.ts` (8 cases; 3 fail without this change). Changed, and why: `the-movement-tile-tells-the-same-story.spec.ts` failed in 3 cases once the reports kept sessions apart, because its fixture had no report, which now means nothing is released, so a participant was rightly not sent what moved. Its fixture now releases sessions 1 and 2, so its participants read the tile and the sentence, and it expects the tile they read. The board harness now says the session the report holds is the highest anybody has finished, as the database does.
+
+
+## Request 113 (2 October)
+
+(a) Fixed (`35e1e389`): `one-persons-circumstances-stay-their-own.spec.ts` reads a scenario run's saved JSON, not source; it now loads it as data with `require`, and the comment guard passes. (b) Already passing: `the-same-check-in-reads-the-same-on-every-screen.spec.ts` counts the days from the wait itself since the request 111 work, so it no longer depends on today's date.
+
+## Request 114
+
+Withdrawn, and set aside on Hafsah's instruction (the checkability rating stays, decision 76). Its parts (b) to (g) are being done as request 115.
