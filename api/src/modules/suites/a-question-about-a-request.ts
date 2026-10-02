@@ -94,6 +94,33 @@ export const anAnswerNotSent = (asker: string) =>
 
 export const NO_QUESTION_WAITING = 'There is no question about your leave waiting for your answer now, so I have not sent anything.';
 
+// ---------------------------------------------- WhatsApp ----------------------------------------------
+
+/** A question waiting for the person's answer, as the WhatsApp router needs it. */
+export interface AQuestionWaiting {
+  /** The question's id (`SuiteQuestion`). */
+  id: string;
+  suite: 'leave' | 'spend';
+  /** The request's id. */
+  ref: string;
+  /** Who asked it, by first name. */
+  askedBy: string;
+  /** What it is about, for the middle of a sentence: "your leave", "your request to spend". */
+  about: string;
+}
+
+const whoseName = (n: string) => (/s$/i.test(n.trim()) ? `${n.trim()}'` : `${n.trim()}'s`);
+
+/**
+ * Asked once on WhatsApp, when the person replies during an open check-in while a question about
+ * their own request waits for them: "Is this your answer to Wairimu's question about your leave?"
+ */
+export const isThisYourAnswer = (q: { askedBy: string; about: string }) =>
+  `Is this your answer to ${q.askedBy?.trim() ? whoseName(q.askedBy) : 'the'} question about ${q.about}?`;
+export const YES_OR_NO_TO_AN_ANSWER = (q: { askedBy: string; about: string }) => `Please reply yes or no. ${isThisYourAnswer(q)}`;
+/** After the yes, on WhatsApp: the check-in is still open. */
+export const BACK_TO_THE_CHECK_IN = 'Your check-in is still open, so carry on with it whenever you are ready.';
+
 // ---------------------------------------------- Today ----------------------------------------------
 
 /** "Wairimu asked you a question about your leave from Monday 12 October to Friday 16 October." */

@@ -33,7 +33,7 @@ import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
 import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
-import { LEAVE_ANSWER_KIND, LEAVE_QUESTION_KIND, LONGEST, NO_QUESTION_WAITING, QUESTION_REFUSED, aDeclineWithAReasonSaidBack, aReasonIn, anAnswerNotSent, anAnswerSaidBack, anAnswerSent } from '../suites/a-question-about-a-request';
+import { LEAVE_ANSWER_KIND, LEAVE_QUESTION_KIND, LONGEST, NO_QUESTION_WAITING, QUESTION_REFUSED, aDeclineWithAReasonSaidBack, aReasonIn, anAnswerNotSent, anAnswerSaidBack, anAnswerSent, type AQuestionWaiting } from '../suites/a-question-about-a-request';
 import { HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
 import { SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
 import { NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
@@ -2966,6 +2966,55 @@ export class AssistantService {
     const me = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { linkedUserId: true, email: true } }).catch(() => null);
     const userId = await theirSignIn(this.prisma, organizationId, me).catch(() => null);
     return !!userId && (await this.waitingForYouToDecide(organizationId, userId)).length > 0;
+  }
+
+  /**
+   * THE QUESTION WAITING FOR THIS PERSON'S ANSWER (decision 85, build step 7), for the WhatsApp router:
+   * the latest question whoever decides one of their own requests asked them, while that request
+   * still waits and the question is not answered. Only their own; never anybody else's. Null when none
+   * waits. Never throws.
+   */
+  async aQuestionWaitsForYourAnswer(organizationId: string, personId: string): Promise<AQuestionWaiting | null> {
+    try {
+      const me = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { linkedUserId: true, email: true } });
+      const userId = await theirSignIn(this.prisma, organizationId, me).catch(() => null);
+      const table = (this.prisma as any).suiteQuestion;
+      if (!userId || !table?.findMany) return null;
+      const open = await table.findMany({ where: { organizationId, toUserId: userId, answer: null }, orderBy: { askedAt: 'desc' }, take: 5 });
+      for (const q of open ?? []) {
+        const reader = { userId, organizationId };
+        if (q.suite === 'leave' && this.leave) {
+          const waiting = await Promise.resolve(this.leave.questionWaitingFor?.(reader, q.ref)).catch(() => null);
+          if (waiting) return { id: q.id, suite: 'leave', ref: q.ref, askedBy: waiting.askedBy, about: 'your leave' };
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * THE PERSON SAID YES, THIS IS MY ANSWER, ON WHATSAPP (decision 85, build step 7). Sent through the
+   * suite's own code, which checks again that the question is theirs and still waiting, and tells
+   * whoever asked. Returns what the person reads.
+   */
+  async answerAQuestionOnWhatsApp(organizationId: string, personId: string, questionId: string, answer: string): Promise<string> {
+    const waiting = await this.aQuestionWaitsForYourAnswer(organizationId, personId);
+    if (!waiting || waiting.id !== questionId) return NO_QUESTION_WAITING;
+    const typed = (answer ?? '').trim();
+    if (!typed) return NO_QUESTION_WAITING;
+    if (typed.length > LONGEST) return QUESTION_REFUSED.tooLong;
+    const me = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { linkedUserId: true, email: true } });
+    const userId = await theirSignIn(this.prisma, organizationId, me).catch(() => null);
+    try {
+      if (!userId || !this.leave) throw new Error(NO_QUESTION_WAITING);
+      await this.leave.answerAQuestion({ userId, organizationId }, waiting.ref, typed);
+      return anAnswerSent(waiting.askedBy);
+    } catch (err: any) {
+      const why = typeof err?.message === 'string' && err.message ? err.message : NO_QUESTION_WAITING;
+      return why === NO_QUESTION_WAITING || why === QUESTION_REFUSED.nothingToAnswer ? NO_QUESTION_WAITING : `I could not send it. ${why}`;
+    }
   }
 
   /**

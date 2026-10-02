@@ -3261,9 +3261,15 @@ model WhatsAppThread {
   /// of the API's memory, so the answer finds it after a restart or on another copy. The kind
   /// (`leave`, `hours`, `spending`), the words (the yes hands them to Ask Groundwork, the no puts them
   /// in the check-in), and when it was asked. All three are cleared on the answer, and after ten minutes.
+  /// The kind `answer` is a reply that may be the person's answer to a question about their own request.
   requestKind    String?   @map("request_kind")
   requestWords   String?   @map("request_words")
   requestAskedAt DateTime? @map("request_asked_at")
+  /// The question about the person's own request (a `SuiteQuestion` id) they were already asked about
+  /// here, "Is this your answer to Wairimu's question about your leave?" (decision 85, build step 7).
+  /// While `requestKind` is `answer`, it is the question the held words would answer. It stays after
+  /// a no, so the same question is asked about once only.
+  questionAskedAbout String? @map("question_asked_about")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   @@unique([organizationId, phone])

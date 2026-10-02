@@ -143,7 +143,7 @@ describe('Aisha, who asked for the leave', () => {
     await svc.askAQuestion(as('u-wairimu'), 'r-aisha', QUESTION);
     expect(sent).toEqual([{
       to: phoneOf('u-aisha'),
-      text: 'Hi Aisha, Wairimu has a question about your request for leave from Monday 12 October to Friday 16 October. Wairimu asked, “Who will cover the Project X milestone?” Open Groundwork to answer it. Your request is still waiting for Wairimu to decide.',
+      text: 'Hi Aisha, Wairimu has a question about your request for leave from Monday 12 October to Friday 16 October. Wairimu asked, “Who will cover the Project X milestone?” You can reply here with your answer, or answer it in Groundwork. Your request is still waiting for Wairimu to decide.',
       context: { kind: 'request-decided', params: ['Aisha', 'leave from Monday 12 October to Friday 16 October', 'asked about', 'Wairimu'] },
     }]);
   });

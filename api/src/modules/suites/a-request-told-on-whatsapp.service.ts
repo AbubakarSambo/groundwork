@@ -91,12 +91,14 @@ export class ARequestToldOnWhatsApp {
    * leave is told, as a reply to their own request, so it does not count towards Groundwork's one
    * message of the day. Inside the 24 hours they read the question itself: "Hi Aisha, Wairimu has a
    * question about your request for leave from Monday 12 October to Friday 16 October. Wairimu asked,
-   * “Who will cover the Project X milestone?” Open Groundwork to answer it. Your request is still
-   * waiting for Wairimu to decide." Outside them, until a template of its own is approved
-   * (docs/whatsapp-templates.md), the approved `groundwork_request_decided` template goes with "asked
-   * about": "Hi Aisha, your request for leave from ... was asked about by Wairimu. Open Groundwork to
-   * read it." It asks them to answer in Groundwork, not here, because a reply sent while a check-in
-   * is open on WhatsApp is taken into that check-in. True when it went.
+   * “Who will cover the Project X milestone?” You can reply here with your answer, or answer it in
+   * Groundwork. Your request is still waiting for Wairimu to decide." Outside them, until a template of
+   * its own is approved (docs/whatsapp-templates.md), the approved `groundwork_request_decided`
+   * template goes with "asked about": "Hi Aisha, your request for leave from ... was asked about by
+   * Wairimu. Open Groundwork to read it." A reply here reaches the question: with no check-in open it
+   * goes to Ask Groundwork, which says it back as the answer; with a check-in open, Groundwork asks once
+   * "Is this your answer to Wairimu's question about your leave?" before it goes anywhere. True when
+   * it went.
    */
   async asked(organizationId: string, request: AWaitingRequest, askerUserId: string, question: string): Promise<boolean> {
     if (!this.whatsapp || !request.personUserId) return false;
@@ -105,7 +107,7 @@ export class ARequestToldOnWhatsApp {
       if (!to.phone) return false;
       const asker = (await this.firstNameOf(askerUserId)) || 'The person who decides it';
       const said = aRequestWasDecided(to.firstName ?? request.firstName, request.what, 'asked about' as never, asker);
-      const text = `Hi ${to.firstName?.trim() || request.firstName || 'there'}, ${asker} has a question about your request for ${request.what}. ${asker} asked, ${inQuotes(question)} Open Groundwork to answer it. Your request is still waiting for ${asker} to decide.`;
+      const text = `Hi ${to.firstName?.trim() || request.firstName || 'there'}, ${asker} has a question about your request for ${request.what}. ${asker} asked, ${inQuotes(question)} You can reply here with your answer, or answer it in Groundwork. Your request is still waiting for ${asker} to decide.`;
       const sent = (await this.whatsapp.sendFor(organizationId, to.phone, text, { kind: said.kind, params: said.params })).sent;
       if (sent) await recordIt(this.prisma, { organizationId, suite: SUITE_OF_A_REQUEST[request.kind], ref: request.ref, kind: 'told', toUserId: request.personUserId, basis: { message: 'request-question' } });
       return sent;

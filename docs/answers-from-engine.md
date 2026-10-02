@@ -2973,3 +2973,17 @@ Tests: `api/src/modules/suites/a-question-about-leave-as-each-reader-reads-it.sp
 | Grace, the admin | no leave rules to read | "There are no kinds of leave set, so every request is simply leave, and each person has 21 days a year." |
 
 Tests: `api/src/modules/suites/the-leave-rules-as-each-reader-reads-them.spec.ts` (Grace the admin; Aisha and Neema asking; Wairimu who decides; Grace and Kamau on the board; Joy who looks after HR; Miriam a colleague). The say-back rows of the before and after table pass on the old code too, as they must; every other test fails on it. Two existing tests changed, only to add `leaveKind: null` and `rules: []` to the exact board row they compare: `the-leave-board-as-each-reader-reads-it.spec.ts` and `whoever-the-rules-name-decides-as-each-reader-reads-it.spec.ts`.
+
+## A reply on WhatsApp during a check-in can be the answer to a question about your own request (3 October, decision 85, build step 7)
+
+**When whoever decides a person's request has asked them a question, and the person has a check-in open on WhatsApp, their next reply no longer goes straight into the check-in. Groundwork asks once whether it is their answer, and acts only on their yes** (this commit). No route and no field on any screen changed. What the person reads on WhatsApp:
+
+- Aisha, with a check-in open and Wairimu's question waiting, writes "Brian will cover it, and I will brief him on Friday." She reads: "Is this your answer to Wairimu's question about your leave?" Nothing goes into the check-in yet.
+- She says yes: "I have sent your answer to Wairimu. Your leave request is still waiting for Wairimu to decide. Your check-in is still open, so carry on with it whenever you are ready." The answer goes through the same code as answering under her leave, so Wairimu reads it on her board ("Aisha answered on 6 October, “...”"), Grace reads it with both names, Wairimu is told it on WhatsApp, and the question waiting in Ask Groundwork is let go.
+- She says no: her words go into the check-in, as they would have before. The same question is never asked about again on WhatsApp.
+- Anything else: "Please reply yes or no. Is this your answer to Wairimu's question about your leave?"
+- A greeting, "finish", a decision or a new request for leave, hours or spending is never taken for an answer. With no check-in open, her reply goes to Ask Groundwork, which says it back as her answer, as before.
+
+**The message that tells her of the question changed** (inside the 24 hours): it ended "Open Groundwork to answer it." and now ends "You can reply here with your answer, or answer it in Groundwork. Your request is still waiting for Wairimu to decide."
+
+Tests: `api/src/modules/whatsapp/an-answer-to-a-question-during-a-check-in.spec.ts` (Aisha on WhatsApp, on a fresh copy of the API for the yes) and `api/src/modules/suites/an-answer-sent-from-whatsapp-as-each-reader-reads-it.spec.ts` (Aisha, Wairimu who asked, Grace an admin, Miriam a colleague, through the real leave suite). Every test of the asking fails on the old code, where the reply went into the check-in. One existing test changed, only for the new last sentence of the WhatsApp message: `a-question-about-leave-as-each-reader-reads-it.spec.ts`.
