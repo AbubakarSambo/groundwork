@@ -2010,6 +2010,25 @@ export class GroundsService {
        does. Reading only: the join link below, a write power, still asks `viewerAdminsThisOrg`. */
     const viewerReadsAsAnAdmin = viewerAdminsThisOrg || askedToApproveIt({ ...viewer, userId: requestingUserId }, ground as any);
     const viewerRunsThisGround = viewerIsInitiator || !!viewerReadsAsAnAdmin;
+    /*
+     * WHO MAY CHANGE THE SETUP, THE BRIEF INCLUDED (request 104, decisions 63 and 72): the lead, or an
+     * admin of this organisation once the lead's account shows they have left. Worked out by the same
+     * function the writers use, so the screen offers "Rewrite" to exactly whoever the server lets
+     * through. The lead's account is read only when the reader is an admin here and not the lead. A
+     * lead whose account says nothing either way is counted as present: nobody is let in on a guess.
+     */
+    const mayChangeSetup = viewerIsInitiator
+      ? true
+      : viewerAdminsThisOrg && ground.initiatorId
+        ? await (async () => {
+          const lead = await (this.prisma as any).user.findUnique({ where: { id: ground.initiatorId }, select: { isActive: true, firstName: true, lastName: true } }).catch(() => null);
+          return whoMayConfirmSetup(requestingUserId, ground as any, {
+            lead: lead ? { ...lead, isActive: lead.isActive !== false } : null,
+            confirmer: viewer as any,
+            organizationId: (ground as any).organizationId ?? null,
+          }).allowed;
+        })()
+        : false;
     /* Whether the session the stored report holds now has been released (decision 76, item 4). */
     const teamPictureNowShared = viewerRunsThisGround ? true : await isTheTeamPictureNowShared(this.prisma, id, (ground as any).report);
 
@@ -2637,6 +2656,8 @@ export class GroundsService {
        */
       viewerIsInitiator,
       viewerRunsThisGround,
+      /* Whether this reader may change the setup and rewrite the brief (request 104). See above. */
+      mayChangeSetup,
       /*
        * WHETHER THERE IS A WHATSAPP NUMBER TO ANSWER ON AT ALL.
        *
