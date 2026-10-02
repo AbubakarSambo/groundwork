@@ -75,6 +75,45 @@ function decisionOwnerTag(
   const isPerson = (participants ?? []).some((p) => p.name && p.name === owner)
   return isPerson ? `This comes from ${owner}.` : 'Decision needed'
 }
+
+/**
+ * ONE BLOCKER, NOT TWO ITEMS UNDER "WHAT NEEDS YOU IN THIS CHECK-IN" (board review, sales piece C,
+ * item 8). A dependency still waiting on the lead sends the SAME underlying blocker twice: once as
+ * a `leadActions` row ("You need to get back to Baraka Mwangi, who is waiting on you for the
+ * discount decision."), and again as a `source: 'blocker'` decision built from that same dependency
+ * ("Baraka Mwangi is waiting on the discount decision, so it needs deciding.").
+ *
+ * MATCHED BY THE DEPENDENCY THEY ACTUALLY POINT AT, NOT BY GUESSING FROM THE PROSE.
+ * `leadActions[].id` for this kind of row is always `waiting-on-the-lead-${dependency.id}` (the
+ * server's own id, see board.service.ts) - a real pointer at one of `b.dependencies`, not text to
+ * parse. `decisions` carries no id of its own, so a decision is matched to that SAME dependency
+ * only through the two structured facts the dependency itself holds: who it is waiting on (`on`)
+ * and what for (`what`), both of which the engine also wrote into the decision's own `question`.
+ * Neither field is invented here; a decision with nothing to check against (no `on` and no `what`
+ * on the dependency it would have to match) is never merged - "else don't merge".
+ */
+const WAITING_ON_THE_LEAD_PREFIX = 'waiting-on-the-lead-'
+
+export function decisionDuplicatesALeadAction(
+  decision: { question: string; source: string },
+  leadActions: { id: string }[] | undefined,
+  dependencies: { id: string; from: string | null; what: string | null }[] | undefined,
+): boolean {
+  if (decision.source !== 'blocker' || !leadActions?.length || !dependencies?.length) return false
+  const dependencyById = new Map(dependencies.map((dep) => [dep.id, dep]))
+  return leadActions.some((la) => {
+    if (!la.id.startsWith(WAITING_ON_THE_LEAD_PREFIX)) return false
+    const dep = dependencyById.get(la.id.slice(WAITING_ON_THE_LEAD_PREFIX.length))
+    if (!dep || (!dep.from && !dep.what)) return false
+    /* `from` is who the dependency is waiting on behalf of - the person named in both sentences
+       ("...Baraka Mwangi, who is waiting on you..." / "Baraka Mwangi is waiting on..."). `on` is
+       the lead themselves for every "waiting-on-the-lead" row, so it never distinguishes one
+       blocker from another and is not checked here. */
+    const sameWho = !dep.from || decision.question.includes(dep.from)
+    const sameSubject = !dep.what || decision.question.toLowerCase().includes(dep.what.toLowerCase())
+    return sameWho && sameSubject
+  })
+}
 import { WhereEachPersonIs } from '@/components/gw/where-each-person-is'
 import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-across-people'
 import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
@@ -1209,7 +1248,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   actions={<Link to={`/grounds/${id}`} className="gwui-plain-link">Open</Link>}
                 />
               ))}
-              {shown.decisions && b.decisions!.map((d, i) => (
+              {/*
+                ITEM 8: SKIP A DECISION THAT IS THE SAME BLOCKER AS A LEAD ACTION ABOVE. See
+                `decisionDuplicatesALeadAction`.
+              */}
+              {shown.decisions && b.decisions!
+                .filter((d) => !decisionDuplicatesALeadAction(d, b.leadActions, b.dependencies))
+                .map((d, i) => (
                 <EdgeRow
                   key={`decision-${i}`}
                   kind="decide"
