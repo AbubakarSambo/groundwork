@@ -5,6 +5,7 @@ import { inTheLeadsTeam } from './a-leads-team';
 import { whoApprovesFor } from './who-approves';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { aSpendRequest } from './a-request-in-words';
+import { readDuties, whoHolds } from './who-holds-each-duty';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const SPEND_REFUSED = {
@@ -23,7 +24,7 @@ export const SPEND_REFUSED = {
 
 export interface Reader { userId: string; organizationId: string }
 
-/** Who approves one request: the person's lead, a named person because it is over the limit, or an admin. */
+/** Who approves one request: the person's lead, a named person (or the holder of the team's budget or finance) because it is over the limit, or an admin. */
 export type Approver = { kind: 'manager' } | { kind: 'person'; firstName: string } | { kind: 'admin' };
 
 export interface Waiting {
@@ -71,12 +72,14 @@ const n = (x: unknown) => Number(x ?? 0);
  *   - an admin reads every request waiting and every team's budget, and sets the budgets;
  *   - a lead reads their own team's requests (a-leads-team.ts) and their team's budgets, and also any
  *     request from another team that waits for them to decide;
- *   - a member named for anything over the limit opens the board as an approver, and reads only the
+ *   - a member named for anything over the limit, or holding a team's budget or finance
+ *     (who-holds-each-duty.ts), opens the board as an approver, and reads only the
  *     requests that wait for them, each with what its team has left, never the budgets or the teams;
  *   - any other member, and a guest, are refused the board; nobody reads their own request here as waiting.
  * WHO APPROVES follows the admin's answers when they switched the suite on: up to "the most a manager
  * may approve on their own", the person's lead in the directory (when that lead is a lead or an admin
- * here), otherwise an admin; above it, the person the admin named. Nobody approves their own.
+ * here), otherwise an admin; above it, whoever holds the requester's team's budget, then whoever looks
+ * after finance, then the person the admin named (who-holds-each-duty.ts). Nobody approves their own.
  *
  * GROUNDWORK'S OWN BACK OFFICE ALSO HAS SPENDING (`OpsExpense`), but it is Groundwork's own books, with
  * no organisation on a row, so it is not reused: customers' requests could never be kept apart from
@@ -104,7 +107,7 @@ export class SpendingService {
      * or a lead is refused, as before.
      */
     const asApprover = role !== 'ADMIN' && role !== 'LEAD';
-    if (asApprover && !(role === 'MEMBER' && this.approvesOverTheLimit(reader.userId, answers))) throw new ForbiddenException(SPEND_REFUSED.onlyAdminsAndLeads);
+    if (asApprover && !(role === 'MEMBER' && (await this.approvesOverTheLimit(reader.organizationId, reader.userId, answers)))) throw new ForbiddenException(SPEND_REFUSED.onlyAdminsAndLeads);
     const org = reader.organizationId;
     const month = monthOf(today);
 
@@ -275,12 +278,25 @@ export class SpendingService {
 
   // ---------------------------------------------------------------------------------------------
 
+  /**
+   * Who approves one request. Over the limit: whoever holds the budget of the requester's team, then
+   * whoever looks after finance (who-holds-each-duty.ts), then the person the admin named, then an
+   * admin; never the requester, and never somebody who is no longer in the organisation or is a guest.
+   * Up to the limit: the requester's line manager, or an admin (who-approves.ts).
+   */
   private async approverOf(
-    organizationId: string, r: { userId: string; amount: unknown },
+    organizationId: string, r: { userId: string; amount: unknown; team?: string | null },
     answers: { limit: number | null; above: string | null },
     byUser: Map<string, Dir>, dir: Map<string, Dir>,
   ): Promise<{ kind: 'manager' | 'person'; userId: string } | { kind: 'admin' }> {
     if (answers.limit != null && n(r.amount) > answers.limit) {
+      const duties = await readDuties(this.prisma, organizationId);
+      const team = r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null;
+      for (const holder of [whoHolds(duties, 'budgetOwners', team), whoHolds(duties, 'finance')]) {
+        if (!holder || holder === r.userId) continue;
+        const role = await this.roleOf({ userId: holder, organizationId });
+        if (role && role !== 'GUEST') return { kind: 'person', userId: holder };
+      }
       if (answers.above && answers.above !== r.userId) return { kind: 'person', userId: answers.above };
       return { kind: 'admin' };
     }
@@ -289,9 +305,12 @@ export class SpendingService {
     return { kind: 'admin' };
   }
 
-  /** Whether this person is the one named for requests over the limit. */
-  private approvesOverTheLimit(userId: string, answers: { limit: number | null; above: string | null }): boolean {
-    return answers.limit != null && answers.above === userId;
+  /** Whether this person is named for requests over the limit: by the admin, or by holding a team's budget or finance. */
+  private async approvesOverTheLimit(organizationId: string, userId: string, answers: { limit: number | null; above: string | null }): Promise<boolean> {
+    if (answers.limit == null) return false;
+    if (answers.above === userId) return true;
+    const duties = await readDuties(this.prisma, organizationId);
+    return duties.finance === userId || Object.values(duties.budgetOwners ?? {}).includes(userId);
   }
 
   private mayDecide(reader: Reader, role: string | null, r: { userId: string }, who: { kind: string; userId?: string }): boolean {

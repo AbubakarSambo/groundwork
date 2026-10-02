@@ -52,6 +52,14 @@ class EquipmentItemDto extends EquipmentChangeDto {
   @IsString() @MaxLength(120) name!: string;
 }
 
+class DutiesDto {
+  @IsOptional() @IsString() @MaxLength(200) finance?: string | null;
+  @IsOptional() @IsString() @MaxLength(200) hr?: string | null;
+  @IsOptional() @IsString() @MaxLength(200) chiefExecutive?: string | null;
+  @IsOptional() @IsObject() budgetOwners?: Record<string, string | null>;
+  @IsOptional() @IsObject() departmentHeads?: Record<string, string | null>;
+}
+
 class AgreementsDto {
   @IsArray() agreements!: unknown[];
 }
@@ -256,6 +264,18 @@ export class SuitesController {
   @ApiOperation({ summary: 'An admin changes who has an item, or how it is' })
   changeEquipment(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: EquipmentChangeDto) {
     return this.equipment.change({ userId: user.id, organizationId: user.organizationId }, id, dto);
+  }
+
+  @Get('duties')
+  @ApiOperation({ summary: 'Who holds each duty (finance, HR, the chief executive, each team’s budget and head). For an admin only.' })
+  duties(@CurrentUser() user: CurrentUserData) {
+    return this.suites.duties({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Put('duties')
+  @ApiOperation({ summary: 'An admin says who holds each duty. A duty given as null is cleared; one left out is kept.' })
+  setDuties(@CurrentUser() user: CurrentUserData, @Body() dto: DutiesDto) {
+    return this.suites.setDuties({ userId: user.id, organizationId: user.organizationId }, dto);
   }
 
   @Put(':key')

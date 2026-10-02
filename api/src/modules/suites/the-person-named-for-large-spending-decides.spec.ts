@@ -201,3 +201,51 @@ describe('everybody else, unchanged', () => {
     expect(b.waiting.map((w) => w.name)).toEqual(['Miriam Wanjiku']);
   });
 });
+
+/*
+ * WHO HOLDS EACH DUTY (who-holds-each-duty.ts). Grace named herself for anything over the limit, and
+ * later said who holds each team's budget and who looks after finance. Spending over the limit now
+ * goes to the holder of the requester's team's budget, then to finance, then to Grace.
+ */
+describe('spending over the limit goes to whoever holds the duty', () => {
+  it('Omar holds the Product budget: Lina’s laptop waits for him, he decides it, and Grace no longer does', async () => {
+    const { svc, as, told } = setup({ above: 'u-grace', duties: { budgetOwners: { Product: 'u-omar' } } });
+    const omar = await svc.board(as('u-omar'), TODAY);
+    expect(omar.reader).toBe('approver');
+    expect(omar.waiting.map((w) => [w.name, w.mayDecide])).toEqual([['Lina Mutua', true]]);
+    const grace = await svc.board(as('u-grace'), TODAY);
+    expect(lina(grace)).toMatchObject({ approver: { kind: 'person', firstName: 'Omar' }, mayDecide: false });
+    await expect(svc.decide(as('u-grace'), 's-2', 'approved')).rejects.toThrow(new ForbiddenException(SPEND_REFUSED.notYours));
+    const c = await svc.checkForChat(ORG, 'u-lina', 95000, TODAY);
+    expect(spendingSaidBack({ amount: 95000, currency: 'KES', what: 'a new laptop' }, c, 'September')).toContain('This is over KES 20,000, so Omar must approve it.');
+    await svc.ask(ORG, 'u-lina', { amount: 25000, what: 'a monitor' });
+    expect(told.map((t) => t.to)).toEqual(['u-omar']);
+  });
+
+  it('with nobody holding Product’s budget, it goes to whoever looks after finance', async () => {
+    const { svc, as } = setup({ above: 'u-grace', duties: { finance: 'u-omar', budgetOwners: { Sales: 'u-wairimu' } } });
+    expect((await svc.board(as('u-omar'), TODAY)).waiting.map((w) => w.name)).toEqual(['Lina Mutua']);
+    /* Wairimu holds the Sales budget, but nothing over the limit waits from Sales, so her list is unchanged. */
+    expect((await svc.board(as('u-wairimu'), TODAY)).waiting.map((w) => [w.name, w.mayDecide])).toEqual([['Miriam Wanjiku', true]]);
+  });
+
+  it('nobody decides their own: Lina holds Product’s budget, so hers goes to finance', async () => {
+    const { svc } = setup({ above: 'u-grace', duties: { finance: 'u-omar', budgetOwners: { Product: 'u-lina' } } });
+    expect((await svc.checkForChat(ORG, 'u-lina', 95000, TODAY)).approverFirstName).toBe('Omar');
+  });
+
+  it('a holder who is now a guest is passed over, and with no duty held it falls back to the person Grace named', async () => {
+    const guest = setup({ above: 'u-grace', duties: { finance: 'u-tomas' } });
+    expect((await guest.svc.checkForChat(ORG, 'u-lina', 95000, TODAY)).approverFirstName).toBe('Grace');
+    const none = setup({ above: 'u-grace', duties: null });
+    expect((await none.svc.checkForChat(ORG, 'u-lina', 95000, TODAY)).approverFirstName).toBe('Grace');
+    await expect(none.svc.board(none.as('u-omar'), TODAY)).rejects.toThrow(new ForbiddenException(SPEND_REFUSED.onlyAdminsAndLeads));
+  });
+
+  it('under the limit, the duties change nothing: Kamau’s fuel still goes to Fatuma, his lead', async () => {
+    const { svc, as } = setup({ above: 'u-grace', duties: { finance: 'u-omar', budgetOwners: { Operations: 'u-omar' } } });
+    const fatuma = await svc.board(as('u-fatuma'), TODAY);
+    expect(fatuma.waiting.find((w) => w.name === 'Kamau Njenga')).toMatchObject({ approver: { kind: 'manager' }, mayDecide: true });
+    expect((await svc.board(as('u-omar'), TODAY)).waiting.map((w) => w.name)).toEqual(['Lina Mutua']);
+  });
+});
