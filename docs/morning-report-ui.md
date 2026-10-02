@@ -32,7 +32,7 @@ None of the eleven is done yet. A kind is marked done only when its pictures mat
 | Support desk | Not done, the same as engineering. | Not done, the same. |
 | Distribution operations | Not done, the same. | Not done, the same. |
 | Trader training programme | Not done, the same. | Not done, the same. |
-| Sales team | Not done. The screen, plus wrong facts the engine sends (request 109). | Not done. "Isn't ready" where the prototype says "isn't shared", and no "Your deals". |
+| Sales team | Not done. A review of this board alone (2 October) found the prototype's sections out of order, with about 25 extra sections mixed in among them, and one fact told nine times. "Where each target stands" is not beside the headline, the deal grid has no "Next" column and no marks, and one sentence under "The team today" is broken. Being fixed now. The engine's part is request 111: ratings it sends to readers, the wrong "Met" target, three repeated targets, two deadlines and counts that disagree. | Not done. "Every session" is folded away, the example question is not the prototype's, and the board reads the session row instead of whether the team picture is shared. The engine does not send Amani's own deals, her share or her aim (request 111). |
 | A government programme | Not done. Mainly the engine: its own sections are not sent (request 105). | Not done, the same. |
 | Asset loans | Not done. Mainly the engine (request 105). | Not done, the same. |
 | A law firm matter | Not done. Mainly the engine (request 105). | Not done, the same. |
@@ -70,7 +70,7 @@ What waits on the engine: requests 105, 107, 108 and 109.
 - each deal's mark and what happens next;
 - "By area", and "Reported, stage by stage".
 
-The participant's board still shows its short view, because the team picture is not shared yet. Two gaps are the engine's, as request 110: Amani's own share is not sent, and her own aim of 3 shops is not on the board. The board still says the 12-shop target is "Met", which comes from the wrong figure in request 109. A review of this board alone is under way. Its verdict decides whether the sales team is marked done.
+The participant's board still shows its short view, because the team picture is not shared yet. Two gaps are the engine's, as request 110: Amani's own share is not sent, and her own aim of 3 shops is not on the board. The board still says the 12-shop target is "Met", which comes from the wrong figure in request 109. The review of this board alone says it does not match yet, as the lead or as a participant. Its findings are in the board table above, and the screen's part is being fixed now. The engine's part is request 111, whose first item is privacy: the board sends readers each person's "confidence" figure, which the screen never draws, but which is a rating of a person's answers.
 
 ### Where the pictures are
 - **Side-by-side pictures of the earlier screens, with what changed on each:** `/Users/hafsahjumare/Documents/GitHub/groundwork-pictures/`, next to the project folder. Start with its `README.md`.
