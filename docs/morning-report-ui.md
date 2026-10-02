@@ -497,6 +497,8 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
 
+**2 October, morning: the boards, one at a time.** Two rounds of fixing all 22 boards at once have not converged, so the approach changes. First merge the engine's work: it finished requests 105, 106, 107 and 108 overnight, covering the five kinds' own board shapes, the blockers sections, the missing fields and its sentences. Then check which faults are already gone. Then get one board exactly right, the sales team as the lead and as a participant, section by section against its prototype example, until a review says it matches. Use it as the pattern for the other ten kinds, one at a time, each matched and reviewed before the next. Coaching stays first within each board, because it is protected. The board table in this report is kept up to date as each kind is matched.
+
 **1 October, night: the order, and the boards.** After batch C's check-in pages, the board for all eleven kinds of work comes next, before the Context and resources tab. That tab waits until the engine says Ask Groundwork's context work is ready and the old context chat can be switched off. For the boards, the order is:
 1. Draw the new fields: both parts of "What keeps coming up" with the lead's coaching, who said each record, someone an admin did not let in, and all 22 switchboard sections.
 2. Picture all eleven as the lead and a participant at both widths, against their prototype examples.
