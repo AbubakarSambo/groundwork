@@ -152,7 +152,18 @@ Run-25 was stopped: decision 86's reversals change what the engine writes, so it
 - Before anyone starts a review that any admin may write, its "Written with" is blank. Should it say "An admin"?
 - A member who approves leave sees only the requests waiting on them, not who else is off. Confirm or widen.
 
-Now running: decision 86's admin figures, and Today showing a named member what waits for them. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Decision 86 is in** (`92e2c434`, `4c647014`, `04053a91`; 9,700 tests pass across the folders touched).
+- **Patterns:** the `patterns.reach` setting is gone. The person reads "You are seeing this first. Tunde will see it too, with anything you say about it." The lead then reads the pattern and the person's answer on the board, the ending page, the weekly report and Today.
+- **Counts:** the lead reads "In the last four weeks, Kwame kept two of the eight commitments made in this check-in. That is 25%. When fewer than half are kept, Groundwork suggests extra support." The review writer reads "Aisha kept nine of the ten commitments …".
+- **Admins' figures:** an admin, the chief executive included, reads every person's aim and number on the board and in the weekly report ("Aisha Otieno is at 1 of 40, and 3 of the 4 rounds have gone."). The Company page already showed the figures.
+
+**For Hafsah:**
+- The Context page, the session report and Today still hide each person's figures from an admin who only reads, so the same admin reads Kwame's 17 on the board but not in the report. Should those show them too?
+- Patterns reach the lead and the admin who set the check-in up. Should every admin read them, after the person's turn?
+- A decision about a person (decision 46) stays the lead's alone, hidden from admins. Right?
+- Suggestions already stored keep their old wording without a count. Fine, with no live users?
+
+Now running: run-25 on `a7e0f76f`, and Today showing a named member what waits for them. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
