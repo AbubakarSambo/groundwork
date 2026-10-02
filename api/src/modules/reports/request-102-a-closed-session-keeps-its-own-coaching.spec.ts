@@ -74,7 +74,7 @@ describe('session 1, closed, as each reader is sent it', () => {
 describe('session 2, the one the report holds now, reads as the working copy does', () => {
   it('Rukia reads session 2\'s note, probes and inferences', async () => {
     const { r } = await sessionAs('u-rukia', 2);
-    expect(r.coaching.whyItMatters).toMatch(/^This is session 2 of this work\./);
+    expect(r.coaching.whyItMatters).toMatch(/^This is session 2 of 12 of this work\./);
     expect(r.coaching.beforeNextTime).toEqual(['Amani Wekesa is waiting on you for 2 days for SESSION-TWO-WAIT the price list. Either do it, or give a date you can do it by.']);
     expect(r.inferences.map((i: any) => i.text)).toEqual(['SESSION-TWO-INFERENCE The Tuskys order slipped because of the price list.']);
   });

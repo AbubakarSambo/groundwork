@@ -80,6 +80,8 @@ import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
 import { whatSituationThisIsAbout } from './what-situation-this-report-is-about';
 import { totalSessionsFor } from '../grounds/session-count';
+import { theSessionClock } from '../board/one-count-for-the-sessions';
+import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { hasEnded } from '../grounds/a-ground-that-has-ended';
 import { nobodyHasSaidWhoArrangedAnything } from '../conversation/who-secured-that-meeting';
 import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
@@ -5818,6 +5820,27 @@ happened, and what is in the way.`;
   }
 
   /**
+   * WHICH SESSION THIS IS, BY THE BOARD'S OWN CLOCK (screens request 117, part 3).
+   *
+   * The sales board's header said "Session 1 of 12" while the coaching note said "This is session 2" and the
+   * lead's questions said Baraka "has not answered this session", though the same board said he had checked
+   * in. Three counts: the header the open round among the people who check in (one-count-for-the-sessions),
+   * the coaching note the reader's own newest check-in, and the questions the highest row anybody had, rows
+   * written ahead of time included. All three now read this one: the open round among the people who check
+   * in (nobody an admin has not let in holds it back, decision 77), capped at the last planned session.
+   */
+  private async theBoardsClock(groundId: string, ground: any): Promise<{ current: number; planned: number | null }> {
+    const rows = ((await (this.prisma.checkIn?.findMany?.({
+      where: { groundId },
+      select: { participantId: true, sessionNumber: true, status: true, isSetup: true, availableFrom: true, startedAt: true, completedAt: true },
+    }) ?? Promise.resolve([] as any[]))?.catch?.(() => [] as any[])) ?? []) as any[];
+    const givers = new Set(((ground?.participants ?? []) as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p)).map((p) => p.id));
+    const planned = totalSessionsFor(ground?.timelineDays, ground?.cadence) ?? null;
+    const clock = theSessionClock(rows.filter((c) => !c.isSetup) as any, givers, planned);
+    return { current: clock.currentSession, planned: clock.plannedSessions };
+  }
+
+  /**
    * WHAT THIS PERSON SHOULD WORK ON NEXT, built from four things rather than from one session.
    *
    * SURFACED only. A CANDIDATE is the engine's first read and has not survived the three-period
@@ -5845,12 +5868,16 @@ happened, and what is in the way.`;
     const findingLines: string[] = myFinding?.hasGap && myFinding.text
       ? String(myFinding.text).split(/(?<=[.!?])\s+/).filter((l: string) => /count moved|two numbers|Nothing they have reported since|is in the way|The lead set/.test(l)).slice(0, 2).map((l: string) => l.replace(/^Nothing they have reported since/, 'Nothing you have reported since').replace(/^The lead set ([^ ]+) for them/, 'The lead set $1 for you').replace(/their own number/, 'your own number'))
       : [];
-    const sessionNumber = mySessions.length ? Math.max(...mySessions.map((c) => c.sessionNumber)) : 1;
-    const planned = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
+    const theirNewest = mySessions.length ? Math.max(...mySessions.map((c) => c.sessionNumber)) : 1;
+    /* One count for the sessions: the board's own clock, except on a closed session's own report, which is
+       about that session (request 117, part 3). */
+    const clock = asOf ? null : await this.theBoardsClock(groundId, ground);
+    const sessionNumber = clock ? clock.current : theirNewest;
+    const planned = clock?.planned ?? (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
 
     const map = roleMapFor((participant as any).detectedFunction);
     const thisOneIsTheClosingSession = !!(await this.prisma.checkIn.findFirst({
-      where: { groundId, participantId: participant.id, sessionNumber, isFinal: true },
+      where: { groundId, participantId: participant.id, sessionNumber: theirNewest, isFinal: true },
       select: { id: true },
     }));
     /* The board's numbers, for the sentences that are about this person's share of them. */
@@ -6139,8 +6166,10 @@ happened, and what is in the way.`;
     const fromTheRecord = Math.max(0, ...held.sessions.map((c: any) => c.sessionNumber ?? 0));
     const fromTheGround = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
     const planned = Math.max(fromTheRecord, fromTheGround);
-    /* The round a closed session's own report is about is that session, whatever came after it. */
-    const thisRound = asOf ? asOf.sessionNumber : planned > 0 ? planned : 1;
+    /* The round a closed session's own report is about is that session, whatever came after it. Otherwise the
+       board's own clock, so "has not answered this session" counts the session the header names (request 117,
+       part 3). */
+    const thisRound = asOf ? asOf.sessionNumber : (await this.theBoardsClock(groundId, ground)).current || (planned > 0 ? planned : 1);
 
     /*
      * NOBODY THE ORGANISATION HAS NOT LET IN (request 85, request 101 b). Faraji Odhiambo, whom an
