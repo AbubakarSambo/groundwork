@@ -2684,7 +2684,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     /* Too little on record to say anything about a person yet. A
                        hedge still reads as a verdict, so nothing is shown at all. */
                     <div className="gwui-fs-15 gwui-ink-muted gwui-mt-8" style={{lineHeight: 1.45, fontStyle: 'italic'}}>
-                      Not enough on record yet to say anything about this person's contribution.
+                      Not enough on record yet to say anything about this person's contribution. {c.basis}
                     </div>
                   ) : !c.remitDefined ? (
                     <div className="gwui-fs-15 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: 1.45}}>
@@ -2693,25 +2693,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   ) : (
                     <>
                       {/*
-                        PRIVACY (board review, third pass, item 1): when `c.nothingCheckable` is
-                        true, `c.reason` itself is the sentence about how checkable this person's
-                        answers are ("Nothing Faraji Odhiambo has said so far is checkable,
-                        because nobody else can check it yet..."), which CLAUDE.md's "Leads never
-                        see how a person's answers were rated" forbids just as much as `c.basis`
-                        below. A position is never shown without its reason, so when there is no
-                        reason fit to show, none is drawn.
+                        HAFSAH'S DECISION, 2 OCTOBER: THE CHECKABILITY RATING STAYS. It rates the
+                        answers, not the person - only a score of a person's own contribution or
+                        performance stays hidden. The prototype shows exactly this to the lead
+                        (docs/prototype/screens/G1-example-check-ins/salesorg.txt ~125 and ~157,
+                        eng.txt ~159, programme.txt ~154: "Nothing checkable" with what to ask
+                        next). This overturns the rule the second and third review passes followed
+                        here (CLAUDE.md's "Leads never see how a person's answers were rated" was
+                        read too broadly); `c.reason` and `c.basis` draw again, for the lead only -
+                        this whole section is already gated to whoever runs the check-in.
                       */}
-                      {!c.nothingCheckable && (
-                        <div className="gwui-mt-7 gwui-fs-15" style={{lineHeight: 1.45}}>
-                          {c.reason}
-                        </div>
-                      )}
-                      {/*
-                        PRIVACY (board review, second pass, item 9): `c.basis` is how much and how
-                        checkable the record behind this read is - "Based on 1 check-in, 0
-                        checkable things named..." - and this section is lead-only. CLAUDE.md:
-                        "Leads never see how a person's answers were rated." No longer drawn here.
-                      */}
+                      {/* A position is never shown without its reason. */}
+                      <div className="gwui-mt-7 gwui-fs-15" style={{lineHeight: 1.45}}>
+                        {c.reason}
+                      </div>
+                      {/* `Note tone="muted"` is the shared part for this, not a fresh one-off class pair. */}
+                      {c.basis && <Note tone="muted">{c.basis}</Note>}
                       {c.fnLabel && (
                         <div className="gwui-mt-6 gwui-gap-6" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
                           <Tag tone="action">read as {c.fnLabel.toLowerCase()}</Tag>
@@ -2801,11 +2798,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </div>
 
                   {/*
-                    PRIVACY (board review, second pass, item 9): `r.basis` is how much and how
-                    checkable the record behind this read is - "Based on 2 check-ins, 0 checkable
-                    things named..." - and this section is lead-only. CLAUDE.md: "Leads never see
-                    how a person's answers were rated." No longer drawn here.
+                    HAFSAH'S DECISION, 2 OCTOBER: THE CHECKABILITY RATING STAYS (see the matching
+                    comment in "Contribution against role", above). `r.basis` draws again, for the
+                    lead only - this section is already gated to whoever runs the check-in.
                   */}
+                  {/* `Note tone="muted"` is the shared part for this, not a fresh one-off class pair. */}
+                  {r.basis && <Note tone="muted">{r.basis}</Note>}
 
                   <div className="gwui-mt-7 gwui-fs-15 gwui-rule-dashed gwui-pt-6 gwui-pr-10 gwui-pb-6 gwui-pl-10 gwui-ink-muted" style={{lineHeight: 1.4, borderRadius: 9, fontStyle: 'italic'}}>
                     {r.ownVoice ?? 'No note. This person can add context through their next check-in.'}

@@ -50,12 +50,17 @@ const BOARD = {
 }
 
 /*
- * SECOND BOARD REVIEW, ITEM 9, PRIVACY: `contribution[].basis` and `coverage.reads[].basis` carry
- * how much and how checkable the record behind a read is - "Based on 1 check-in, 0 checkable
- * things named, none of it confirmed by anyone else.", "Nothing Faraji Odhiambo has said so far is
- * checkable..." - exactly what CLAUDE.md's "Leads never see how a person's answers were rated."
- * forbids. This section is lead-only already; this fixture adds `basis` to both rows and checks
- * the lead's own render never shows either sentence, while the rest of each card still does.
+ * HAFSAH'S DECISION, 2 OCTOBER: THE CHECKABILITY RATING STAYS, OVERTURNING THE SECOND AND THIRD
+ * REVIEW PASSES BELOW. `contribution[].basis` and `coverage.reads[].basis` carry how much and how
+ * checkable the record behind a read is - "Based on 1 check-in, 0 checkable things named, none of
+ * it confirmed by anyone else." - and the prototype shows exactly this to the lead
+ * (docs/prototype/screens/G1-example-check-ins/salesorg.txt ~125 and ~157, eng.txt ~159,
+ * programme.txt ~154: "Nothing checkable" with what to ask next). It rates the answers, not the
+ * person, so CLAUDE.md's "Leads never see how a person's answers were rated" does not reach it;
+ * only a score of a person's own contribution or performance stays hidden. This section is
+ * lead-only already; this fixture adds `basis` to both rows and checks the lead's own render
+ * shows both sentences, while a participant still reads neither (see "draws neither for a
+ * participant", above, which covers the whole section).
  */
 const BOARD_WITH_BASIS = {
   ...BOARD,
@@ -67,13 +72,14 @@ const BOARD_WITH_BASIS = {
 }
 
 /*
- * THIRD BOARD REVIEW, ITEM 1, PRIVACY: `contribution[].reason` itself can BE the sentence about
- * how checkable a person's answers are, when `nothingCheckable` is true - "Nothing Faraji
- * Odhiambo has said so far is checkable, because nobody else can check it yet. A number, a date
- * or a document for what moved would change that." CLAUDE.md's "Leads never see how a person's
- * answers were rated" forbids this exactly as much as `basis` above. This fixture carries the
- * real sentence seen on the sales board's third review, and the lead's own render must never show
- * it, while the rest of the card (the name, the tag, their own words) still draws.
+ * HAFSAH'S DECISION, 2 OCTOBER: THE SAME OVERTURN REACHES THIS SENTENCE TOO. `contribution[].reason`
+ * itself can BE the sentence about how checkable a person's answers are, when `nothingCheckable`
+ * is true - "Nothing Faraji Odhiambo has said so far is checkable, because nobody else can check
+ * it yet. A number, a date or a document for what moved would change that." The third review pass
+ * withheld this from the lead by the same (now overturned) reading of CLAUDE.md as `basis`,
+ * above; this fixture carries the real sentence seen on the sales board's third review, and the
+ * lead's own render shows it, while a participant still reads neither the sentence nor the rest
+ * of this lead-only section.
  */
 const BOARD_WITH_NOTHING_CHECKABLE = {
   ...BOARD,
@@ -115,19 +121,35 @@ describe('contribution and coverage are lead only, pending 0f', () => {
     expect(screen.queryByText('Where work is landing')).toBeNull()
   })
 
-  it('never draws how checkable a person’s answers are, for the lead', async () => {
+  it('draws how checkable a person’s answers are, for the lead (Hafsah’s decision, 2 October)', async () => {
     me = { id: 'u-lead', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(BOARD_WITH_BASIS)
     expect(await screen.findByText('She has closed three of her four accounts this quarter.')).toBeTruthy()
     expect(screen.getByText('Rukia said she closed the Nyali Fresh account this week.')).toBeTruthy()
+    expect(screen.getByText(/Based on 1 check-in, 0 checkable things named/)).toBeTruthy()
+    expect(screen.getByText(/Based on 2 check-ins, 0 checkable things named/)).toBeTruthy()
+  })
+
+  it('draws no one else’s checkability read for a participant, even when the server sends one', async () => {
+    me = { id: 'u-rukia', firstName: 'Rukia', role: 'MEMBER' }
+    renderBoard(BOARD_WITH_BASIS)
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.queryByText(/Based on 1 check-in, 0 checkable things named/)).toBeNull()
     expect(screen.queryByText(/Based on 2 check-ins, 0 checkable things named/)).toBeNull()
   })
 
-  it('never draws how checkable a person’s answers are when the reason itself says so, for the lead', async () => {
+  it('draws how checkable a person’s answers are when the reason itself says so, for the lead (Hafsah’s decision, 2 October)', async () => {
     me = { id: 'u-lead', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(BOARD_WITH_NOTHING_CHECKABLE)
     await screen.findByText('Faraji Odhiambo')
+    expect(screen.getByText(/Nothing Faraji Odhiambo has said so far is checkable/)).toBeTruthy()
+  })
+
+  it('draws no one else’s checkability read for a participant, when the reason itself says so', async () => {
+    me = { id: 'u-rukia', firstName: 'Rukia', role: 'MEMBER' }
+    renderBoard(BOARD_WITH_NOTHING_CHECKABLE)
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.queryByText(/Nothing Faraji Odhiambo has said so far is checkable/)).toBeNull()
+    expect(screen.queryByText('Faraji Odhiambo')).toBeNull()
   })
 })
