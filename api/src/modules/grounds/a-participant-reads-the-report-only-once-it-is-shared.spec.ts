@@ -13,7 +13,7 @@ import { ReportsService } from '../reports/reports.service';
 const PICTURE = 'The initiator reports 18 sales. Participant B is responsible for closing 4 sales.';
 const OPENING = 'The initiator’s plan counts on 4 sales from Participant A, but Participant A forecasts 2.';
 
-function serviceFor(opts: { released: boolean; peersVisible: boolean | null; viewerRole?: string; sharedAs?: string; noDoor?: boolean }) {
+function serviceFor(opts: { released: boolean; peersVisible: boolean | null; viewerRole?: string; sharedAs?: string; noDoor?: boolean; releasedSessions?: number[]; held?: number }) {
   const participants = [
     { id: 'pA', userId: 'userA', email: 'ada@example.test', partyType: 'PARTICIPANT', roleAsDescribed: null, user: { firstName: 'Ada', lastName: 'Lovelace' }, createdAt: new Date('2026-09-01') },
     { id: 'pB', userId: 'userB', email: 'blair@example.test', partyType: 'PARTICIPANT', roleAsDescribed: null, user: { firstName: 'Blair', lastName: 'Kane' }, createdAt: new Date('2026-09-02') },
@@ -31,6 +31,7 @@ function serviceFor(opts: { released: boolean; peersVisible: boolean | null; vie
     report: {
       id: 'r1', releasedAt: opts.released ? new Date() : null, sharedPicture: PICTURE, theOpening: OPENING, sharedAs: opts.sharedAs ?? null,
       createdAt: new Date(), agreements: [{ text: 'agreed thing' }], divergences: [{ text: 'a difference between Ada and Blair' }],
+      ...(opts.releasedSessions ? { releasedSessions: opts.releasedSessions } : {}),
     },
   };
   const prisma: any = {
@@ -42,7 +43,7 @@ function serviceFor(opts: { released: boolean; peersVisible: boolean | null; vie
     organization: { findUnique: async () => ({ subscriptionPlan: 'FREE', subscriptionStatus: 'ACTIVE', freeExtensionUsed: false }) },
     leadContextNote: { findMany: async () => [] },
     /* For the session progress the read works out while the report is not yet released. */
-    checkIn: { aggregate: async () => ({ _max: { sessionNumber: 1 } }), findMany: async () => [], count: async () => 0 },
+    checkIn: { aggregate: async () => ({ _max: { sessionNumber: opts.held ?? 1 } }), findMany: async () => [], count: async () => 0 },
   };
   /* The real report service, for its one naming door; nothing else of it is used. */
   const reports = new ReportsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
@@ -99,6 +100,28 @@ describe('the report on the check-in read, as a participant', () => {
   it('and so does an admin of the organisation', async () => {
     const res: any = await serviceFor({ released: false, peersVisible: true, viewerRole: 'ADMIN' }).get('g1', 'org1', 'userAdmin');
     expect(res.report.sharedPicture).toMatch(/Blair/);
+  });
+});
+
+describe('decision 76, item 4: the stored picture is the session the report holds now, released on its own', () => {
+  it('a participant reads none of it while session 2 is not released, though session 1 is', async () => {
+    const res: any = await serviceFor({ released: true, peersVisible: true, releasedSessions: [1], held: 2 }).get('g1', 'org1', 'userA');
+    expect(res.report).toEqual({ id: 'r1', releasedAt: expect.any(Date), releasedSessions: [1], createdAt: expect.any(Date) });
+    expect(JSON.stringify(res)).not.toContain('responsible for closing');
+    expect(JSON.stringify(res)).not.toContain('forecasts');
+  });
+
+  it('and reads it once session 2 is released', async () => {
+    const res: any = await serviceFor({ released: true, peersVisible: true, releasedSessions: [1, 2], held: 2 }).get('g1', 'org1', 'userA');
+    expect(res.report.releasedSessions).toEqual([1, 2]);
+    expect(res.report.sharedPicture).toMatch(/Blair Kane is responsible for closing 4 sales/);
+  });
+
+  it('the lead and an admin read it either way', async () => {
+    for (const [user, role] of [['userLead', 'MEMBER'], ['userAdmin', 'ADMIN']]) {
+      const res: any = await serviceFor({ released: true, peersVisible: true, releasedSessions: [1], held: 2, viewerRole: role }).get('g1', 'org1', user);
+      expect(res.report.sharedPicture).toMatch(/Blair/);
+    }
   });
 });
 

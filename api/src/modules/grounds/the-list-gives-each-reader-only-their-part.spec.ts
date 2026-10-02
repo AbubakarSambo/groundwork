@@ -117,6 +117,18 @@ describe('the list, where people are not named to each other', () => {
     const released = await listAs(PART, 'MEMBER', { ...shown, report: { releasedAt: new Date(), agreements: [], divergences: [] } });
     expect(released.latestSummary).toBe('Three deals moved.');
   });
+
+  it('and only once the latest round\'s own session is released (decision 76, item 4)', async () => {
+    const round2 = { reportRounds: [{ sessionNumber: 2, finding: 'Deals moved', sharedPicture: 'Three deals moved.' }] };
+    const onlyOne = await listAs(PART, 'MEMBER', { ...round2, report: { releasedAt: new Date(), releasedSessions: [1], agreements: [], divergences: [] } });
+    expect(onlyOne.latestSummary).toBeNull();
+    expect(onlyOne.latestFinding).toBeNull();
+    expect(onlyOne.report.releasedSessions).toEqual([1]);
+    const both = await listAs(PART, 'MEMBER', { ...round2, report: { releasedAt: new Date(), releasedSessions: [1, 2], agreements: [], divergences: [] } });
+    expect(both.latestSummary).toBe('Three deals moved.');
+    /* The lead reads it either way. */
+    expect((await listAs(LEAD, 'ADMIN', { ...round2, report: { releasedAt: new Date(), releasedSessions: [1], agreements: [], divergences: [] } })).latestSummary).toBe('Three deals moved.');
+  });
 });
 
 /*

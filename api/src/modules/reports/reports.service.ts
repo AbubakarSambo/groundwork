@@ -3765,12 +3765,22 @@ Close the report by framing - neutrally, without recommending one - the choice n
            * cannot disagree with the movement view. See what-changed-since-last-time.
            */
           sinceLastTime: await (async () => {
-            const kept = await (this.prisma.reportRound?.findMany?.({
-              where: { groundId },
+            /* Not while this session's picture is withheld from the reader: what changed IS that picture. */
+            if (pictureWithheld) return null;
+            /*
+             * THIS SESSION AND THE ONE BEFORE IT, NOT THE LATEST TWO. This read the two newest rounds
+             * whatever session was in hand, so session 1's report said what changed in session 2
+             * (found with decision 76, item 4). And for somebody who reads only what is released, only
+             * rounds that have been.
+             */
+            const kept = ((await (this.prisma.reportRound?.findMany?.({
+              where: { groundId, sessionNumber: { lte: sessionNumber } },
               orderBy: { sessionNumber: 'desc' },
               take: 2,
               select: { sessionNumber: true, divergences: true },
-            }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+            }) ?? Promise.resolve([] as any[])).catch(() => [] as any[])) as any[])
+              .filter((r: any) => typeof r?.sessionNumber !== 'number' || r.sessionNumber <= sessionNumber)
+              .filter((r: any) => viewerIsLead || !me || typeof r?.sessionNumber !== 'number' || isThisSessionReleased(ground.report as any, r.sessionNumber));
             /* A kept round holds what was said, not who had answered when it was taken, so the
                count is left out of the comparison rather than guessed at. */
             const rounds = (kept as any[]).map((r: any) => ({
