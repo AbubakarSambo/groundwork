@@ -92,6 +92,9 @@ describe('an admin and the three evaluation check-ins', () => {
       { initiatorId: 'a1' },
       { createdByUserId: 'a1' },
       { participants: { some: { userId: 'a1' } } },
+      /* Decision 75, item 2: one waiting for an admin to accept it, and one this admin decided. */
+      { status: 'AWAITING_APPROVAL' },
+      { approvedById: 'a1' },
     ]);
     expect(list.OR[0].scenario.notIn).toHaveLength(3);
   });

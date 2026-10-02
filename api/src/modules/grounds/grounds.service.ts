@@ -84,7 +84,7 @@ import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-sec
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { theLeadsWordsAbout } from './the-leads-words-about-someone';
 import { timelineDaysForAChosenEnd } from './session-count';
-import { adminsThisOrg, maySee, groundsAViewerMayList, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from './who-may-read-this-check-in';
+import { adminsThisOrg, askedToApproveIt, readsAsAnAdmin, maySee, groundsAViewerMayList, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from './who-may-read-this-check-in';
 import { EVALUATION_SCENARIOS, isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, briefChangedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
@@ -1988,7 +1988,10 @@ export class GroundsService {
       : null;
     /* An admin of a DIFFERENT organisation is a stranger, and this is not the rule to hand them. */
     const viewerAdminsThisOrg = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any);
-    const viewerRunsThisGround = viewerIsInitiator || !!viewerAdminsThisOrg;
+    /* Decision 75, item 2: the admin asked to approve an evaluation check-in reads it as an admin with access
+       does. Reading only: the join link below, a write power, still asks `viewerAdminsThisOrg`. */
+    const viewerReadsAsAnAdmin = viewerAdminsThisOrg || askedToApproveIt({ ...viewer, userId: requestingUserId }, ground as any);
+    const viewerRunsThisGround = viewerIsInitiator || !!viewerReadsAsAnAdmin;
 
     /* Whether this organisation has a number of its own, for the "where people answer this" setting. */
     const orgHasWhatsApp = !!(ground as any).organization?.whatsappConnection?.enabled;
@@ -2180,7 +2183,7 @@ export class GroundsService {
         if (r.status === 'DECLINED') notLetInByUser.set(r.userId, { decidedByUserId: r.decidedByUserId, decidedAt: r.decidedAt });
       }
     }
-    const canReadWhoDecided = viewerIsInitiator || !!viewerAdminsThisOrg;
+    const canReadWhoDecided = viewerIsInitiator || !!viewerReadsAsAnAdmin;
     const decidersById = new Map<string, string | null>();
     if (canReadWhoDecided && notLetInByUser.size) {
       const deciderIds = [...new Set([...notLetInByUser.values()].map((d) => d.decidedByUserId).filter((x): x is string => !!x))];
@@ -2391,7 +2394,7 @@ export class GroundsService {
       select: { id: true, kind: true, text: true, saidAs: true, audience: true, aboutParticipantId: true, closedAt: true, createdAt: true, exactQuestion: true, questionConfirmedAt: true, confirmedByAdminNote: true },
       orderBy: { createdAt: 'asc' },
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
-    const theLeadReadsThese = isInitiatorViewer || viewerAdminsThisOrg;
+    const theLeadReadsThese = isInitiatorViewer || viewerReadsAsAnAdmin;
     /* A file only its owner can open is not named on a line everybody reads, including a note already
        stored with the name in it (request 46; see documents/a-private-file-is-not-named). */
     const privateFileNamesHere = theLeadReadsThese ? [] : namesNotEverybodyMayOpen(
@@ -2400,7 +2403,7 @@ export class GroundsService {
     const contextItems = theLinesFor(contextLines as any, { isTheLead: theLeadReadsThese })
       .map((l: any) => (privateFileNamesHere.length ? { ...l, text: withoutPrivateFileNames(l.text ?? '', privateFileNamesHere) } : l));
     /* The lead's questions for people, one card each: never built for anybody else. See questionsForPeople. */
-    const questionsForPeople = (isInitiatorViewer || viewerAdminsThisOrg) ? await this.theQuestionsForPeople(id).catch(() => []) : undefined;
+    const questionsForPeople = (isInitiatorViewer || viewerReadsAsAnAdmin) ? await this.theQuestionsForPeople(id).catch(() => []) : undefined;
     /*
      * AND WHAT THE LEAD SAYS IS NOT SETTLED ABOUT A TARGET, BESIDE THE TARGET.
      *
@@ -4657,7 +4660,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    if (ground.initiatorId !== requestingUserId && !adminsThisOrg({ ...viewer, userId: requestingUserId }, ground)) {
+    if (ground.initiatorId !== requestingUserId && !readsAsAnAdmin({ ...viewer, userId: requestingUserId }, ground)) {
       throw new ForbiddenException('Only the person who runs this check-in can see or change the questions for people. Nothing was changed.');
     }
     return this.theQuestionsForPeople(groundId);
@@ -6006,7 +6009,7 @@ export class GroundsService {
   private async assertMaySeeGround(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { organizationId: true, initiatorId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
+      select: { organizationId: true, initiatorId: true, scenario: true, createdByUserId: true, status: true, approvedById: true, participants: { select: { userId: true } } },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     const user = await this.prisma.user.findUnique({
@@ -6974,7 +6977,8 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg({ ...asker, userId: requestingUserId }, ground);
+    /* Reading only, so the admin asked to approve it reads it too (decision 75, item 2). */
+    const isOrgAdmin = readsAsAnAdmin({ ...asker, userId: requestingUserId }, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('Recording where this stood at the start belongs to whoever runs this check-in.');
     }
@@ -7064,7 +7068,8 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg({ ...asker, userId: requestingUserId }, ground);
+    /* Reading only, so the admin asked to approve it reads it too (decision 75, item 2). */
+    const isOrgAdmin = readsAsAnAdmin({ ...asker, userId: requestingUserId }, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
@@ -7191,7 +7196,8 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg({ ...asker, userId: requestingUserId }, ground);
+    /* Reading only, so the admin asked to approve it reads it too (decision 75, item 2). */
+    const isOrgAdmin = readsAsAnAdmin({ ...asker, userId: requestingUserId }, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }

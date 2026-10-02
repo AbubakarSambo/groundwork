@@ -51,6 +51,12 @@ export interface CheckInInView {
   participants?: { userId: string | null }[];
   /** The department of the Person linked to the lead who runs it, when known. */
   leadDepartment?: string | null;
+  /**
+   * Whether it is waiting for an admin to accept it, and which admin decided, so the admin asked to approve
+   * an evaluation check-in can read it (decision 75, item 2). `undefined` grants nothing.
+   */
+  status?: string | null;
+  approvedById?: string | null;
 }
 
 /** What a caller adds to its select so the rule can tell whether an admin was given access (request 78). */
@@ -58,6 +64,9 @@ export const WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS = {
   scenario: true,
   createdByUserId: true,
   participants: { select: { userId: true } },
+  /* Decision 75, item 2: the admin asked to approve it reads it. */
+  status: true,
+  approvedById: true,
 } as const;
 
 export type ReadLevel = 'own' | 'shared' | 'lead';
@@ -94,6 +103,34 @@ export function adminsThisOrg(viewer: Viewer | null | undefined, checkIn: CheckI
   return runsOrSetItUp(viewer?.userId, checkIn);
 }
 
+/**
+ * THE ADMIN ASKED TO APPROVE AN EVALUATION CHECK-IN READS IT (decision 75, item 2).
+ *
+ * A performance plan, a promotion or renewal, or a probation set up by a lead who is not an admin waits for
+ * an admin to accept it. Every admin of the organisation is asked (the approval queue), so while it waits each
+ * of them reads it as an admin with access does, to see what they are approving. Once it is decided, the admin
+ * who decided keeps that access, and the others who were asked and did not decide go back to reading nothing.
+ *
+ * READING ONLY. This never makes them run it: `runsIt`, and every write that asks `adminsThisOrg`, are
+ * unchanged, so they cannot change its setup, invite anybody or confirm anything. Nobody else gains anything:
+ * a member, a lead or an admin of another organisation is never asked to approve.
+ */
+export function askedToApproveIt(viewer: Viewer | null | undefined, checkIn: CheckInInView): boolean {
+  if (!adminsTheOrg(viewer, checkIn.organizationId)) return false;
+  if (!viewer?.userId) return false;
+  if (checkIn.scenario === undefined || !isEvaluationCheckIn(checkIn.scenario)) return false;
+  if (checkIn.status === 'AWAITING_APPROVAL') return true;
+  return !!checkIn.approvedById && checkIn.approvedById === viewer.userId;
+}
+
+/**
+ * AN ADMIN WHO MAY READ IT AS AN ADMIN: everything `adminsThisOrg` says yes to, and the admin asked to approve
+ * an evaluation check-in (decision 75, item 2). For reads only; a write asks `adminsThisOrg` or `runsIt`.
+ */
+export function readsAsAnAdmin(viewer: Viewer | null | undefined, checkIn: CheckInInView): boolean {
+  return adminsThisOrg(viewer, checkIn) || askedToApproveIt(viewer, checkIn);
+}
+
 /** Runs it: the lead who started it, or an admin of its organisation covering for them. The write gate. */
 export function runsIt(userId: string, viewer: Viewer | null | undefined, checkIn: CheckInInView): boolean {
   return checkIn.initiatorId === userId || adminsThisOrg({ ...viewer, userId }, checkIn);
@@ -111,7 +148,9 @@ export function leadsTheSameDepartment(viewer: Viewer | null | undefined, checkI
 export function whatTheyMayRead(userId: string, viewer: Viewer | null | undefined, checkIn: CheckInInView): ReadLevel | null {
   if (runsIt(userId, { ...viewer, userId }, checkIn)) return 'lead';
   if (checkIn.createdByUserId && checkIn.createdByUserId === userId) return 'lead';
+  /* Before taking part: an admin asked to approve it who also takes part in it is not handed the manager's view. */
   if ((checkIn.participants ?? []).some((p) => p.userId === userId)) return 'own';
+  if (askedToApproveIt({ ...viewer, userId }, checkIn)) return 'lead';
   if (leadsTheSameDepartment(viewer, checkIn)) return 'shared';
   return null;
 }
@@ -144,6 +183,9 @@ export function groundsAViewerMayList(
         { initiatorId: userId },
         { createdByUserId: userId },
         { participants: { some: { userId } } },
+        /* Decision 75, item 2: one waiting for an admin to accept it, and one this admin decided. */
+        { status: 'AWAITING_APPROVAL' },
+        { approvedById: userId },
       ],
     };
   }

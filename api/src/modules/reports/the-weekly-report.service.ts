@@ -265,6 +265,8 @@ export class TheWeeklyReportService {
       where: { id: groundId },
       select: {
         organizationId: true, initiatorId: true, createdByUserId: true, scenario: true, peersVisibleToEachOther: true, whoSeesTargets: true, cadence: true,
+        /* Decision 75, item 2: the admin asked to approve an evaluation check-in reads it. */
+        status: true, approvedById: true,
         participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, email: true } } } },
       } as any,
     });

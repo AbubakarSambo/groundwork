@@ -1,6 +1,6 @@
 import { Injectable, Logger, Optional, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { adminsThisOrg, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from '../grounds/who-may-read-this-check-in';
+import { readsAsAnAdmin, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from '../grounds/who-may-read-this-check-in';
 import { PrismaService } from '../prisma/prisma.service';
 import { IntelligenceService } from '../intelligence';
 import { ReportsService } from '../reports';
@@ -58,8 +58,9 @@ export class ResolutionService {
         select: { role: true, organizationId: true },
       });
       /* An admin reads the outcome of a performance plan, a promotion or a renewal only when given access
-         (decision 5, request 78); otherwise it is as if there were no such check-in. */
-      if (!admin || !adminsThisOrg({ ...admin, userId }, ground)) throw new ForbiddenException('You are not part of this check-in.');
+         (decision 5, request 78), or when asked to approve it (decision 75, item 2); otherwise it is as if
+         there were no such check-in. Reading only: proposing and confirming below are unchanged. */
+      if (!admin || !readsAsAnAdmin({ ...admin, userId }, ground)) throw new ForbiddenException('You are not part of this check-in.');
     }
     return { ...(await this.buildState(groundId, userId)), theEndingPage: await theEndingPageFor({ prisma: this.prisma, suggestions: this.suggestions }, groundId, userId) };
   }

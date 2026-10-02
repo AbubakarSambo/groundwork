@@ -103,7 +103,7 @@ import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { isFromOutside, leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
-import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
+import { adminsThisOrg, askedToApproveIt } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument, notNothingWhereThePageSaysSomething } from './where-each-person-is-against-their-number';
@@ -386,7 +386,9 @@ export class BoardService {
       : null;
     /* Nobody held for a seat reads the board, its report's story or its names (request 49). */
     if ((viewer as any)?.awaitingOrgApproval === true) throw new ForbiddenException(CANNOT_OPEN_THE_BOARD_YET);
-    const adminHere = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any);
+    /* The board is read only, so the admin asked to approve an evaluation check-in reads it too (decision 75,
+       item 2). Patterns and colleagues' exact words still go only to whoever runs it or set it up. */
+    const adminHere = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any) || askedToApproveIt({ ...viewer, userId: requestingUserId }, ground as any);
     if (!me && !isInitiator && !isSetupAdmin && !adminHere) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
