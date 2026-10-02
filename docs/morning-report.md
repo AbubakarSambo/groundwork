@@ -62,7 +62,9 @@ The recognise suggestion is built and **off** (`reviews.recognise`). The proposa
 - Leave is read only to excuse a miss in the recognise check. Does "hours and leave never feed a review" allow that?
 - Submit `groundwork_review_started` and `groundwork_review_decided` with the other templates.
 
-Now running: request 118 then item 18 (the board helper), and a fix to one failing check plus email matching for reviews. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Reviews now find their person by email too** (`4d22feea`): an unlinked roster entry with the same email as a sign-in finds, reads and answers their own review, and is told on WhatsApp. **The failing audit of checks that can never be true passes again** (`16e147ee`): one check removed, one field renamed, nothing served changed. Its note to the screens landed in the board helper's commit `8bc65639` rather than its own; the text is in the file, and no history was rewritten.
+
+Now running: request 118 then item 18 (the board helper), and the back office's usage numbers (item 19). Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 

@@ -31,14 +31,14 @@ From now on, every change to what the board, reports or Today page send is writt
 **d. The three suites, end to end, including over WhatsApp**
 14. Leave requests. Said back and confirmed in chat: *done*; approval and telling people: item 3.
 15. Finance (spending) requests. As item 14.
-16. Performance reviews, as the prototype's suite shows it, on evaluation check-ins and judging, with a proposed threshold for a "recognise" suggestion for Hafsah to confirm. *Done* (`2a8e77eb` to `cdf5e3ee`); the recognise suggestion is off until Hafsah confirms it. Matching by email for reviews is *in progress*; reviews on Today wait until request 118 frees the Today code.
+16. Performance reviews, as the prototype's suite shows it, on evaluation check-ins and judging, with a proposed threshold for a "recognise" suggestion for Hafsah to confirm. *Done* (`2a8e77eb` to `cdf5e3ee`); the recognise suggestion is off until Hafsah confirms it. Matching by email for reviews is *done* (`4d22feea`); reviews on Today wait until request 118 frees the Today code.
 
 **e. The boards the client needs, from the engine**
 17. Request 117 (item 1). *Done*, as item 1.
 18. What the sales, onboarding and project boards still need from the engine. *In progress* (onboarding and project; sales is item 1).
 
 **f. The back office**
-19. Its usage numbers checked after this work, and anything broken fixed. *Not started.* Its rebuild comes last (item 22).
+19. Its usage numbers checked after this work, and anything broken fixed. *In progress.* Its rebuild comes last (item 22).
 
 **g. When the screens workspace stops, its screen work**
 20. The sales, onboarding and project boards, then the three suites, from `docs/screens-handover.md`. *Waiting for the screens workspace to stop.*
