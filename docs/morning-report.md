@@ -102,7 +102,9 @@ The rest of request 117 on the sales board is stored rows on the screens workspa
 
 **For Hafsah:** the person's request words ("Can I take Friday off?") are now written to the database while Groundwork waits for their yes or no, up to about 10 minutes, and cleared on the answer or by the next WhatsApp message anyone sends. The code needs the words to act on the yes. If you want them gone at 10 minutes even when nobody writes, a small clean-up can be added to the nightly jobs.
 
-Now running: the WhatsApp merge gap with reviews on Today, and scenario run-25. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**The API did not start, from `4baeb646` onwards.** Run-25 found it: the back office fix (item 19) made two files import each other, so the conversation service could not be set up and the server stopped at once. No test caught it, because no test starts the whole app. Nothing went anywhere, and only the scratchpad run was affected. Being fixed now, with a test that would catch it; run-25 waits on the fix.
+
+Now running: the start-up fix, and the WhatsApp merge gap with reviews on Today. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
