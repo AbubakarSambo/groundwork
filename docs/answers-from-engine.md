@@ -2064,3 +2064,38 @@ Tests (each fails without its part): `request-115-b-a-deal-row-as-the-prototype-
 ## 2 October: two more lines in your files, for you to check
 
 For request 115 (d), the engine work changed two lines in `client/src/components/gw/where-each-person-is.tsx` and `client/src/api/board.ts` so the new reason "waiting on someone" draws. Please check them and keep or redo them your way. The engine's test `the-board-answers-its-own-question.spec.ts` now accepts your filtered drawing of a difference's positions (only sides with words, after request 109).
+
+## Requests 100, 101 (c), (e) and (f), 104 and 115 (h) (2 October)
+
+Each is proven as each reader: the lead, the people who check in, an admin who only reads, the admin who set it up, and where it applies the person reviewed on an evaluation check-in.
+
+**Request 100 (1), `divergence.whyNothingYet`** (`563dee0d`). Already built on 1 October: it is deleted wherever there is a difference or an agreement. A new test holds the agreements-only case for all five readers, and fails without that line. Over a section with nothing in it, whoever runs it is still told why.
+
+**Request 100 (2), `kindOfWork`: not taken off the wire.** Your screens draw by it for every reader: the participant's own records (`TheParticipantsOwnView`), `isSalesOrg` (which keeps the deal grid off a participant's board), the section headings and the banner's sentence. Taking it away from people who do not set it would put back the defect your comment beside `isSalesOrg` describes. It is a key, like `scenario` and `family`, and a test now holds that no sentence any reader is sent quotes it. If you want it off the wire, say which sentence or flag should replace it, and I will serve that first.
+
+**Request 101 (c), "A colleague has not checked in yet." about Zawadi: not built. Needs Hafsah.** Zawadi has no name on record, only her address. Your roster's "Zawadi U8" is made from that address by `personLabel`. The engine's rule since 28 September (`fdc1439b`, Hafsah: nobody is ever shown an address as a name) is held by tests on the board and the report (`the-same-thing-for-three-check-ins.spec.ts`: "only her address is known, and it must never stand in for a name"). I built it and took it out again, because the board would then call her "Zawadi U8" while her report, which this workspace's other builder owns, calls her "a colleague", and those tests break. Your own review (morning-report-ui, item 4) also lists "makes up Zawadi U8 from her email" as a defect. The choice for Hafsah: either the lead and the admin who set it up read the name in the address everywhere, board and report together, or the roster stops making a name and says "a colleague", with the address beside it for the lead.
+
+**Request 101 (e), the Context tab's model call** (`90dfaecd`). Opening the tab sends `POST /grounds/:id/context-chat` with an empty history. That no longer asks the model. The opening is written from what is stored: the length and rhythm already set, then the product's own question for the first thing missing. Opening it twice reads the same both times. The first model call is made on the lead's first message. Ask Groundwork's empty opener goes the same way. Before, the reply was a new model reply on each open. Now, to the lead (and an admin of the organisation, whom this route already lets in), on a check-in with its length and rhythm set:
+
+> This check-in runs for 90 days and people check in once a week. What does doing well look like here? I do not mean a target for one person. What would make you say, at the end, that this went the way it should have?
+
+With no length set yet: "How long should this run? You can give an end date or a number of weeks. I need it to work out how many check-ins there will be." Somebody who checks in is still refused. Nothing on the screen needs to change.
+
+**Request 101 (f), one count for the sessions** (`8a986e1c`). `GET /grounds/:id` now serves `sessionClock: { currentSession, plannedSessions, says, whileOpen }`, from the board's own clock (request 107 e): the open round among the people who check in, capped at the last planned session. Please draw the header from `says`, and draw `whileOpen` (when it is not null) in place of "It went back to session N, because somebody new was added." Every reader gets the same thing; it names and counts nobody. With Rukia and Baraka on session 2 and Zawadi, newly added, not yet through session 1, all five readers get:
+- `says`: "Session 1 of 12."
+- `whileOpen`: "Session 2 has started for some people, while session 1 is still open."
+
+Once Zawadi finishes session 1: "Session 2 of 12." and `whileOpen: null`. A test checks this against the board's `phaseSpine` for the same rows.
+
+**Request 104, `mayChangeSetup`** (`41ec7b01`). The brief already follows decision 72 (built 1 October, tested in `whose-words-the-brief-is.spec.ts`). `GET /grounds/:id` now serves `mayChangeSetup`, worked out by the same function the writers use (`whoMayConfirmSetup`). It is true for the lead, and for an admin of the organisation only once the lead's account shows they have left. It is false for the people who check in, an admin who only reads, the admin who set it up while the lead is still there, and the person reviewed. Please offer "Rewrite" and "Write the brief" from it.
+
+**Request 115 (h), "Waiting on: Chandarana Westlands"** (`2d322746`). Each item in `dependencies` (the "Waiting on" cards) now has `waitingSays`, one sentence that says who is waiting on whom, with "you" for the reader on either side. Please draw it in place of "Waiting on: {on}". What each reader reads:
+- The lead, the admin who set it up, and Juma: "Baraka Otieno is waiting on Chandarana Westlands.", "Rukia Mwangi is waiting on the warehouse.", "Baraka Otieno is waiting on Rukia Mwangi."
+- Baraka: "You are waiting on Chandarana Westlands.", "You are waiting on Rukia Mwangi."
+- Rukia: "Baraka Otieno is waiting on you.", "You are waiting on the warehouse."
+- Where people see only themselves, Baraka reads only his own waits, and a colleague is "a colleague", never named.
+- An evaluation check-in has no "Waiting on" section, so the person reviewed is sent none.
+
+The second line on each card ("Baraka needs the signed agreement from Chandarana Westlands. This is waiting.") is built on your side and is already a sentence. "When this arrives, Baraka says: ..." is also yours, and is joined with a colon.
+
+**Also seen, not changed:** `POST /grounds/:id/context-chat` still lets any admin of the organisation in, not only once the lead has left (decision 63 says the same rule applies on the old context chat). Writes from it go through the confirm step. I left it alone because it is outside these requests.
