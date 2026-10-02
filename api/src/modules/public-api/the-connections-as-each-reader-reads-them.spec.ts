@@ -85,7 +85,7 @@ describe('the counts on the Connections page', () => {
     const asked: any[] = [];
     const prisma: any = {
       whatsAppConnection: { findUnique: jest.fn(async (q: any) => { asked.push(q.where); return opts.own === false ? null : { id: 'wa-1' }; }) },
-      whatsAppThread: { count: jest.fn(async (q: any) => { asked.push(q.where); return 6; }) },
+      whatsAppThread: { findMany: jest.fn(async (q: any) => { asked.push(q.where); return ['+254700000001', '+254700000002', '+254700000003', '+254700000004', '+254700000005', '+254700000006'].map((phone) => ({ phone })); }) },
       whatsAppSend: {
         findMany: jest.fn(async (q: any) => { asked.push(q.where); return [{ checkInId: 'c-1' }, { checkInId: 'c-2' }]; }),
         count: jest.fn(async (q: any) => { asked.push(q.where); return 0; }),
@@ -114,7 +114,8 @@ describe('the counts on the Connections page', () => {
     const { svc, prisma } = setup();
     await svc.read('org-baridi', NOW);
     const monthly = prisma.whatsAppSend.findMany.mock.calls[0][0];
-    expect(monthly.where.createdAt.gte.getDate()).toBe(1);
+    expect(monthly.where.sentAt.gte.toISOString()).toBe('2026-09-01T00:00:00.000Z');
+    expect(monthly.where.sentAt.lt.toISOString()).toBe('2026-10-01T00:00:00.000Z');
     expect(monthly.distinct).toEqual(['checkInId']);
     const weekly = prisma.whatsAppSend.count.mock.calls[0][0];
     expect(NOW.getTime() - weekly.where.failedAt.gte.getTime()).toBe(7 * 24 * 60 * 60 * 1000);
@@ -125,7 +126,7 @@ describe('the counts on the Connections page', () => {
     const got = await svc.read('org-baridi', NOW);
     expect(got.whatsapp).toBeNull();
     expect(got.figures.fromYourProduct).toBe(false);
-    expect(prisma.whatsAppThread.count).not.toHaveBeenCalled();
+    expect(prisma.whatsAppThread.findMany).not.toHaveBeenCalled();
     expect(prisma.whatsAppSend.count).not.toHaveBeenCalled();
   });
 });
