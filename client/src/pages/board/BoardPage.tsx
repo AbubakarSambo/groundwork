@@ -1068,6 +1068,25 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    */
   const isSalesOrg = ((b as any).kindOfWork ?? null) === 'sales org'
   /*
+   * ONBOARDING BOARD FIX 1 (SECOND REVIEW): THE WHOLE-CHECK-IN FOLD WAS BUILT FOR THE SALES
+   * PARTICIPANT'S OWN VIEW, AND NOW ONLY SALES HAS ONE. `TheParticipantsOwnView` drew a short
+   * personal view for every participant - whether today's team picture is shared, a way to their
+   * own report, their own records - and everything else sat folded below it, under "The whole
+   * check-in", so nothing they could already read was lost. `YourOwnRecordsSections` and "Your
+   * share" are now sales-only (see `isSalesKindOfWork` on `TheParticipantsOwnView`, above), and the
+   * team-picture panel draws only when the engine actually sends one - so for every other kind of
+   * work that personal view now draws nothing at all, and folding the rest of the board behind it
+   * left that reader a closed fold and nothing above it to open it for.
+   *
+   * The prototype says both people see the same pictures (day-30-and-60.txt: "Wairimu and Kwame
+   * see the same pictures"), so for the onboarding family - and any other kind of work whose
+   * participant view is likewise empty - the new hire now reads the same open sections as his
+   * lead, in the same order, with only the extras (never shown on any prototype board) in the one
+   * end fold, same as the lead gets. A sales participant is unchanged: her own view still leads,
+   * folded below it exactly as before.
+   */
+  const participantFoldsWhole = isParticipantView && isSalesOrg
+  /*
    * ITEM 6 (ONBOARDING BOARD FIX 2): "GROUNDWORK DOES NOT KNOW WHAT KIND OF WORK..." IS NOT THE
    * PROTOTYPE'S OWN SECTION. For a kind of work the engine has not been told yet, every one of
    * these sections comes back with `state: 'not-known'` and the same stock sentence - six headings
@@ -1431,7 +1450,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </Link>
         )}
 
-        <MaybeFolded fold={isParticipantView}>
+        <MaybeFolded fold={participantFoldsWhole}>
 
         {/*
           THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (request 108 a; board-as-lead.txt:
@@ -2105,7 +2124,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           and not in this check-in, the availability poll, the alignment feed, and the methodology
           legend.
         */}
-        <FoldEverythingElseUnless alreadyFolded={isParticipantView}>
+        <FoldEverythingElseUnless alreadyFolded={participantFoldsWhole}>
         {/*
           BOARD REVIEW, SALES PIECE C, ITEM 2 (c): THE KIND-OF-WORK LINE, THE SESSION PILLS, AND
           "BUILT FROM WHAT EACH PERSON SHARED…" - NONE OF THEM IN THE PROTOTYPE'S OWN HEADER. The
