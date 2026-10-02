@@ -86,7 +86,8 @@ describe('the handoff the conversation records', () => {
     await two.svc.extractDependencies('c1', 'p-miriam', 'sales');
     expect(two.created[0].waitingOnGroundId).toBeNull();
 
-    const own = scaffold({ dependencies: [{ ...finance18, onLabel: 'Sales' }] });
+    /* Who it is on is somebody they named (request 117, part 5), so the person says Sales here. */
+    const own = scaffold({ dependencies: [{ ...finance18, onLabel: 'Sales' }] }, [sales, finance, ops], 'PERSON: I am waiting on Sales for credit terms for Westgate Deli.');
     await own.svc.extractDependencies('c1', 'p-miriam', 'sales');
     expect(own.created[0].waitingOnGroundId).toBeNull();
 

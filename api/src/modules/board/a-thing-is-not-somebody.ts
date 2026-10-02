@@ -43,3 +43,21 @@ export function aWaitOnOneself(d: { fromParticipantId?: string | null; onPartici
   if (d.onParticipantId && d.fromParticipantId && d.onParticipantId === d.fromParticipantId) return true;
   return ONESELF.test((d.onLabel ?? '').trim().replace(/[.!?]+$/, ''));
 }
+
+/**
+ * WHO A WAIT IS ON IS SOMEBODY THEY NAMED (screens request 117, part 5). Neema Achieng said "I signed Karen Hardware
+ * on 22 September." and "Naivas Karen still has not answered me about the order.", and the record held her
+ * "waiting on the warehouse for a delivery to Naivas Karen": a warehouse she never mentioned. As with the time they
+ * gave for it (kept only where those words are in what they typed), who a wait is on is kept only where a word of it
+ * is in what the person typed in that check-in. A colleague matched by name is already theirs; this is for a label.
+ */
+const NOT_A_NAME_WORD = new Set(['the', 'a', 'an', 'our', 'my', 'their', 'his', 'her', 'your', 'some', 'of', 'for', 'and', 'from', 'to', 'on', 'at', 'in', 'team', 'people', 'person']);
+export function whoItIsOnIsInTheirWords(onLabel: string | null | undefined, typed: string | readonly string[]): boolean {
+  const label = (onLabel ?? '').trim();
+  if (!label) return true;
+  const words = (Array.isArray(typed) ? typed.join(' ') : String(typed ?? '')).toLowerCase();
+  const theirs = new Set(words.match(/[a-z0-9][a-z0-9'-]*/g) ?? []);
+  const keys = (label.toLowerCase().match(/[a-z0-9][a-z0-9'-]*/g) ?? []).filter((w) => w.length >= 3 && !NOT_A_NAME_WORD.has(w));
+  if (!keys.length) return true;
+  return keys.some((k) => theirs.has(k) || theirs.has(k.replace(/s$/, '')) || theirs.has(`${k}s`));
+}
