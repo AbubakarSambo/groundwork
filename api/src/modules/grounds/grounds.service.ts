@@ -2945,6 +2945,25 @@ export class GroundsService {
     }
 
     /*
+     * OPENING THE PAGE NEVER MAKES A MODEL CALL (request 101 e). The Context tab asks for the opening
+     * turn with an empty history every time it is opened, and each open asked the model again and
+     * showed a new opening question. The opening is now written from what is stored: the length and
+     * rhythm the check-in already has, and the product's own question for the first thing missing.
+     * The first model call is made on the lead's first message.
+     */
+    if (history.length === 0) {
+      const opened = openingLine(ground.timelineStated ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded);
+      const ask = (gaps[0] as { ask?: string } | undefined)?.ask ?? null;
+      return {
+        reply: forHumans([opened, ask].filter(Boolean).join(' ')),
+        gaps: gaps.map((g: { key: string }) => g.key),
+        openQuestion: ask,
+        done: false,
+        proposal: null,
+      };
+    }
+
+    /*
      * WHAT THEY ATTACHED, AND WHAT THE CHAT IS TO DO WITH IT. Appended rather than woven in, so the
      * refusals in `contextChatPrompt` stay the first thing the model reads.
      */
