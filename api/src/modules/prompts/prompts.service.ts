@@ -306,8 +306,12 @@ export class PromptsService implements OnModuleInit {
         orderBy: [{ key: 'asc' }, { version: 'desc' }],
         select: { id: true, key: true, version: true, isActive: true, activatedAt: true, createdAt: true },
       }),
+      /* WITH A TIME, OR NOT IN THE FEED (item 19). Postgres puts a null first in a descending
+         order, so one session marked complete with no completion time came first here, and the
+         sort below read its null date and threw: the whole System tab came back as an error. A
+         session with no time has no place in a list ordered by time; it is still counted above. */
       this.prisma.checkIn.findMany({
-        where: aSession,
+        where: { ...aSession, completedAt: { not: null } },
         orderBy: { completedAt: 'desc' },
         take: 15,
         select: {
@@ -388,6 +392,7 @@ export class PromptsService implements OnModuleInit {
         groundLabel: g.label,
       })),
     ]
+      .filter((a) => a.at instanceof Date)
       .sort((a, b) => b.at.getTime() - a.at.getTime())
       .slice(0, 20);
 
