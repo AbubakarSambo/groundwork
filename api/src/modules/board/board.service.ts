@@ -941,7 +941,9 @@ export class BoardService {
     if (theGlanceWait?.since) {
       out.howItIsGoing.glance.inTheWay = {
         ...theGlanceWait,
-        daysWaiting: wholeDaysTo(theGlanceWait.since, recordsClock),
+        /* No count of days (request 118, part 6): counted to the board's last change it read "2 days" beside "since 27
+           September", and counted to the moment it is read it would change on opening. `sinceSays` says it. */
+        daysWaiting: null,
         sinceSays: `since ${theDayItBegan(theGlanceWait.since, recordsClock)}`,
       };
     }
