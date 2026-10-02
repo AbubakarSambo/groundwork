@@ -36,15 +36,16 @@ const briefFor = (g: any, reader: { participantId: string | null; isLead: boolea
 const THE_LEADS_ANSWERS = [/often late/i, /stock counts/i, /confirmation decision/i, /when asked/i, /taken to mean/i];
 
 describe('what Aisha is handed in her own session', () => {
-  it('with no short version written, the situation only, and none of the lead’s answers', () => {
-    const says: string = briefFor(ground(null), { participantId: 'p-aisha', isLead: false }).says;
-    expect(says).toBe(SITUATION);
-    for (const word of THE_LEADS_ANSWERS) expect(says).not.toMatch(word);
+  /* Changed with decision 75, item 13: with no short version written, she reads nothing of the brief, not even its
+     situation sentences, which are the lead's words to the product. */
+  it('with no short version written, nothing of the brief, and none of the lead’s answers', () => {
+    const says = briefFor(ground(null), { participantId: 'p-aisha', isLead: false }).says;
+    expect(says).toBeNull();
   });
 
   it('the same for a colleague in the check-in', () => {
-    const says: string = briefFor(ground(null), { participantId: 'p-kofi', isLead: false }).says;
-    for (const word of THE_LEADS_ANSWERS) expect(says).not.toMatch(word);
+    const says = briefFor(ground(null), { participantId: 'p-kofi', isLead: false }).says;
+    expect(says).toBeNull();
   });
 
   it('with the short version written, that is what she reads', () => {
@@ -66,8 +67,9 @@ describe('the lead', () => {
 });
 
 describe('the check-in read and the list, through the one rule', () => {
-  it('serve the situation only', () => {
-    expect(whatSomeoneWhoDoesNotRunItReads({ brief: BRIEF, toldToParticipants: null })).toBe(SITUATION);
+  /* Changed with decision 75, item 13: nothing of the brief where no short version was written. */
+  it('serve nothing of the brief where no short version was written', () => {
+    expect(whatSomeoneWhoDoesNotRunItReads({ brief: BRIEF, toldToParticipants: null })).toBeNull();
   });
 });
 

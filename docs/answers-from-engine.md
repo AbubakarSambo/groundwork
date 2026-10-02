@@ -1610,3 +1610,7 @@ Every suggestion shape now carries `caughtUp`: null, or one sentence to show und
 ## Decision 75, item 46: a participant's one line is their own waits (2 October)
 
 `howItIsGoing.glance.inTheWay` on the board, and `glance.inTheWay` on the check-ins list (which Today reads), are now counted and named from the reader's own waits for every participant who does not run the check-in, also where people see each other. A wait the reader has on a named colleague still says whose ("Omar's login for the order system") where people see each other. Whoever runs it, the admin who set it up, and an admin who only reads still get the team's. Nothing new to send; the fields are the same.
+
+## Decision 75, item 13: the lead's brief is never quoted to a participant (2 October)
+
+A participant (and anybody else who does not run the check-in) is no longer served any sentence of the lead's brief. `brief` on the check-ins list, `briefAsEveryoneReadsIt` on `GET /grounds/:id`, and `brief.says` in a session now carry only the short version the lead confirmed (`toldToParticipants`), and are `null` where there is none, where they used to fall back to the brief's own situation sentences. The goals they may see still come with it. On a team update the lead's one line is still served, because it is the question everybody is asked. Please show nothing in "About this check-in" where it is `null`, rather than an empty box. The lead still reads the whole brief as before.

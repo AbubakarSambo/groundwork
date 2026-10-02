@@ -1884,7 +1884,7 @@ export class GroundsService {
       : null;
 
     /* What the people in it read about what this is for, and whose words those are (U.7 review). */
-    const briefAsEveryoneReadsIt: string | null = whatSomeoneWhoDoesNotRunItReads({ brief, toldToParticipants: (ground as any).toldToParticipants });
+    const briefAsEveryoneReadsIt: string | null = whatSomeoneWhoDoesNotRunItReads({ brief, toldToParticipants: (ground as any).toldToParticipants, scenario: (ground as any).scenario });
     const briefChange = rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).briefChangedBy ?? null : null;
     const changedBySomebodyElse = !!briefChange?.userId && briefChange.userId !== ground.initiatorId;
     /*

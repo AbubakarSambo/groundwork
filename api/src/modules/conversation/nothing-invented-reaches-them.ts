@@ -63,7 +63,7 @@ export type Screened = {
 
 export type Hit = {
   sentence: string;
-  check: 'a name nobody said' | 'a number nobody said' | 'called the reader by name' | "called the reader by somebody else's name" | 'a second question' | 'an apology' | 'a pronoun with nobody named' | 'a number claim the record does not support';
+  check: 'a name nobody said' | 'a number nobody said' | 'called the reader by name' | "called the reader by somebody else's name" | 'a second question' | 'an apology' | 'a pronoun with nobody named' | 'a number claim the record does not support' | "a quote of the lead's brief";
   offending: string[];
 };
 
@@ -336,6 +336,11 @@ export class SentenceGate {
      * run 2, 20 Sep 2026). Only the person's own words, never the prompt's.
      */
     private readonly theirWordsForNumbers?: string[],
+    /**
+     * A sentence that may never go out as it is written: one that quotes the lead's brief to a participant
+     * (decision 75, item 13, the-leads-brief-is-never-quoted-to-them). What streams is what is saved.
+     */
+    private readonly neverSaid?: (sentence: string) => boolean,
   ) {}
 
   /** Feed a delta. Returns whatever complete, checked sentences are now safe to send. */
@@ -393,6 +398,11 @@ export class SentenceGate {
         const said = asAnExample(repaired, false);
         if (!said) continue;
         repaired = said;
+      }
+      if (this.neverSaid?.(repaired)) {
+        this.droppedSentences.push(s);
+        this.hitRows.push({ sentence: s, check: "a quote of the lead's brief", offending: [] });
+        continue;
       }
       if (this.theirWordsForNumbers) {
         const bad = claimsTheNumbersDoNotSupport(repaired, { theirWords: this.theirWordsForNumbers });

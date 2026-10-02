@@ -1,4 +1,5 @@
 import { BLOCKER_TRACE_PROMPT, BLOCKER_TRACE_PROMPT_KEY } from './where-the-blocker-started';
+import { THE_BRIEF_IS_CONTEXT_ONLY } from './the-leads-brief-is-never-quoted-to-them';
 import { COMPANY_PICTURE_PROMPT, COMPANY_PICTURE_PROMPT_KEY } from '../grounds/the-company-picture';
 import { CUSTOMER_STANDING_PROMPT, CUSTOMER_STANDING_PROMPT_KEY } from '../suites/the-customer-standing';
 import { THINK_IT_THROUGH_PROMPT, THINK_IT_THROUGH_PROMPT_KEY } from '../assistant/think-it-through';
@@ -4578,7 +4579,9 @@ export function buildIntakeBlock(ctx: PromptContext): string {
       : []),
     ...(ctx.partyType !== PartyType.INITIATOR && ctx.adminBrief
       ? [
-          `ADMIN_BRIEF_ATTRIBUTION: The brief above is the situation as the person who opened this ground framed it. Use it as background so this person knows what they were invited into, and to ground your questions in the actual situation. It is NOT this person's account, NOT their words, and NOT established fact - it is one party's framing, pending this person's own version. Never present the brief's goals or claims as this person's own position. Never read it back as settled. Elicit THEIR independent account of the same situation, in their words - where their version differs from the brief, that difference is the record's value, not an error to smooth over.`,
+          /* Decision 75, item 13: the brief is context only, like the organisation's rules, and never quoted
+             to the person. The turn is also checked for it before it is saved (the-leads-brief-is-never-quoted-to-them). */
+          `ADMIN_BRIEF_ATTRIBUTION: The brief above is context for you only, like the organisation's rules. It is how the person who opened this check-in framed the situation, written to the product, not to this person. Use it to understand the situation and to ground your questions. ${THE_BRIEF_IS_CONTEXT_ONLY} It is NOT this person's account, NOT their words, and NOT established fact. Never present the brief's goals or claims as this person's own position. Elicit THEIR independent account of the same situation, in their words - where their version differs from the brief, that difference is the record's value, not an error to smooth over.`,
         ]
       : []),
     `PRIOR_CONTEXT: ${ctx.priorContext ?? 'none provided'}`,

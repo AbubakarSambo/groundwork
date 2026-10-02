@@ -224,6 +224,7 @@ import { withoutWhatTheLeadHasNotToldThemAbout, type AnUntoldGoalRow } from '../
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-set-it';
 import { withoutOurInstructions } from './our-instructions-never-reach-them';
+import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief } from './the-leads-brief-is-never-quoted-to-them';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargets } from '../board/a-hidden-target-stays-hidden';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
@@ -936,7 +937,7 @@ export class ConversationService {
          never the lead's instructions to the product. See what-a-participant-is-told-about-this. */
       says: reader?.isLead
         ? ground.brief?.trim() || null
-        : whatAParticipantIsToldAboutThis(ground.brief, maySee.shown as any, { told: (ground as any).toldToParticipants ?? null, readerParticipantId: reader?.participantId ?? null }),
+        : whatAParticipantIsToldAboutThis(ground.brief, maySee.shown as any, { told: (ground as any).toldToParticipants ?? null, readerParticipantId: reader?.participantId ?? null, scenario: (ground as any).scenario ?? null }),
       /* Each as a sentence about whoever set it, and only the fields a reader is shown: never the row as stored. */
       objectives: this.theTargetsAsSentences(maySee.shown as any[], ground as any, reader?.participantId ?? null),
       alsoSay: maySee.alsoSay,
@@ -1323,13 +1324,26 @@ export class ConversationService {
      * wrong asset: the brief lists four, and the model took the first. See a-thing-the-lead-listed-is-not-theirs.
      */
     if ((checkIn as any)?.id && (checkIn as any)?.participant?.partyType !== PartyType.INITIATOR && checkIn?.groundId) {
-      const brief = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true } }) ?? Promise.resolve(null)).then((g: any) => g?.brief ?? null).catch(() => null);
+      const setUp = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true, toldToParticipants: true, scenario: true, initiator: { select: { firstName: true } } } as any }) ?? Promise.resolve(null)).catch(() => null);
+      const brief: string | null = (setUp as any)?.brief ?? null;
       if (brief) {
         const theirs = await (this.prisma.conversationTurn?.findMany?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: (checkIn as any).participantId } }, select: { content: true } }) ?? Promise.resolve([]))
           .then((rows: any[]) => rows.map((r) => r.content ?? '')).catch(() => [] as string[]);
         const notTheirs = withoutAThingTheLeadListedAsTheirs(raw, brief, theirs, saidHereBefore);
         if (notTheirs.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${notTheirs.cut.length} sentence(s) naming something from the lead's list as this person's.`);
         raw = notTheirs.text;
+        /*
+         * AND THE LEAD'S BRIEF IS NEVER QUOTED TO THEM (decision 75, item 13). It guides the conversation as
+         * context; a sentence that copies six or more words of it in a row is cut. Their own words, and what the
+         * check-in tells them it is for (the lead confirmed it, and they already read it), are not a quote.
+         * Not on a team update: there the lead's one line IS the question their team is sent, word for word.
+         */
+        const theLineIsTheQuestion = (setUp as any)?.scenario === 'TEAM_UPDATES';
+        const notTheBrief = theLineIsTheQuestion
+          ? { text: raw, cut: [] as string[] }
+          : withoutTheLeadsBrief(raw, brief, [...theirs, (setUp as any)?.toldToParticipants ?? ''], saidHereBefore, (setUp as any)?.initiator?.firstName ?? null);
+        for (const c of notTheBrief.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence that quoted the lead's brief: "${c.slice(0, 160)}"`);
+        raw = notTheBrief.text;
       }
     }
     /*
@@ -3071,6 +3085,17 @@ export class ConversationService {
     };
   }
 
+  /** For a participant's own check-in, the test for a sentence that quotes the lead's brief; null for the lead, or a team update. */
+  private async aSentenceThatQuotesTheBriefFor(
+    checkIn: { groundId?: string; participantId?: string; participant?: { partyType?: PartyType | string | null } | null },
+    theirWords: string[],
+  ): Promise<((sentence: string) => boolean) | null> {
+    if (!checkIn?.groundId || checkIn.participant?.partyType === PartyType.INITIATOR) return null;
+    const g: any = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true, toldToParticipants: true, scenario: true, initiator: { select: { firstName: true } } } as any }) ?? Promise.resolve(null)).catch(() => null);
+    if (!g?.brief || g.scenario === 'TEAM_UPDATES') return null;
+    return aSentenceThatQuotesTheBrief(g.brief, [...theirWords, g.toldToParticipants ?? ''], g.initiator?.firstName ?? null);
+  }
+
   /**
    * The first draft, streamed to the screen as it is written, and returned whole for the plain
    * route's own checks. What is shown live goes through the same sentence gate the stream always
@@ -3088,11 +3113,15 @@ export class ConversationService {
     const personWords = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '').concat(message);
     const known = personWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
     const readerName = theFirstNameFrom(checkIn.participant?.user?.firstName, checkIn.participant?.user?.lastName);
+    /* Decision 75, item 13: a sentence quoting the lead's brief is not shown to a participant while it streams
+       either, the same test the saved turn is held to (theTurnAsItIsSaved). */
+    const quotesTheBrief = await this.aSentenceThatQuotesTheBriefFor(checkIn as any, personWords);
     const gate = new SentenceGate(
       known,
       readerName,
       turns.map((t) => t.content ?? ''),
       [...personWords, ...(this.theirEarlierWordsForThisTurn.get(checkIn.id) ?? [])],
+      quotesTheBrief ?? undefined,
     );
     let raw = '';
     let emitted = 0;

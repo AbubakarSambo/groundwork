@@ -312,11 +312,12 @@ export function theTellingHolds(rewrite: string | null | undefined, opts?: { oth
 export function whatAParticipantIsToldAboutThis(
   brief: string | null | undefined,
   goals: AGoalTheyMaySee[],
-  opts?: { told?: string | null; readerParticipantId?: string | null },
+  opts?: { told?: string | null; readerParticipantId?: string | null; scenario?: string | null },
 ): string | null {
   const parts: string[] = [];
-  const told = (opts?.told ?? '').trim();
-  const situation = told || theSituationIn(brief);
+  /* Decision 75, item 13: the short version the lead confirmed, never the brief's own sentences in its place.
+     On a team update the lead's one line is the question the team is sent, so it is theirs to read. */
+  const situation = (opts?.told ?? '').trim() || (opts?.scenario === 'TEAM_UPDATES' ? (brief ?? '').trim() : '');
   if (situation) parts.push(situation);
   const named = (goals ?? []).filter((g) => g?.name?.trim());
   const mine = opts?.readerParticipantId ? named.filter((g) => g.ownerParticipantId === opts.readerParticipantId) : [];
