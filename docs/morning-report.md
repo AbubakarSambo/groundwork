@@ -136,7 +136,7 @@ Run-25 was stopped: decision 86's reversals change what the engine writes, so it
 
 **Decision 86 so far:** patterns reach the lead again after the person's turn (`92e2c434`), and the manager reads the count behind a suggestion (`4c647014`). Admins' figures are in progress. **The privacy restrictions Claude chose are listed** in `docs/privacy-restrictions-for-hafsah.md`: 23 rows, 9 never seen by Hafsah, 13 confirmed only in bulk, 1 never asked on its own. Nothing changed until she answers.
 
-**Spending** (`a2990939`, `b7ff00b4`; 1,713 tests pass): a member named for spending over the limit could be told a request waited and then find nothing to approve. Now Omar reads on Today "Lina asked to spend KES 95,000 on a new laptop. It is waiting for you to approve.", and can approve in the app, in Ask Groundwork or by WhatsApp reply. **Each organisation now says who holds each duty** (finance, HR, the chief executive, each team's budget holder and head), set by an admin; spending over the limit goes to the team's budget holder, then finance, then the person named before. No migration.
+**Spending** (`a2990939`, `b7ff00b4`; 1,713 tests pass): a member named for spending over the limit could be told a request waited and then find nothing to approve. Now Omar can see it and approve it in the app, in Ask Groundwork or by WhatsApp reply. (Correction: an earlier version of this line said he also sees it on Today. He does not yet; Today hid approvals from members. That is being fixed now.) **Each organisation now says who holds each duty** (finance, HR, the chief executive, each team's budget holder and head), set by an admin; spending over the limit goes to the team's budget holder, then finance, then the person named before. No migration.
 
 **For Hafsah:**
 - Spending over the limit goes to the budget holder before finance, following decision 85's example. Or finance first, or both in turn?
@@ -144,7 +144,15 @@ Run-25 was stopped: decision 86's reversals change what the engine writes, so it
 - Only an admin reads who holds each duty. May leads or everybody read it?
 - A named approver who is not an admin sees no team budgets (the prototype shows them only to an admin). Should finance or an approver see every team's budget?
 
-Now running: decision 86's admin figures, and one approval rule for every suite, with the review bug (the person told their line manager started a review an admin started). Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**One approval rule for every suite** (`1625d046`, `18996ed6`, `04f1360a`; 1,853 tests pass). The three separate rules are replaced by one, which names approvers by role and reads who holds each duty. Across all 602 combinations of existing answers, the same person approves as before, except two where nobody could approve at all (a lead named as their own manager for a review; spending above the limit named to a guest or someone who has left); those now go to an admin. A member named as approver or review writer now opens the leave, hours or reviews board and sees only what waits on them. **The review bug is fixed:** where Grace, an admin, started Aisha's review, Aisha read "Wairimu has started your review."; she now reads "Grace has started your review." in the app, on Today and on WhatsApp.
+
+**For Hafsah:**
+- Leave and hours still ignore the answer "An admin" (decided 1 October), while reviews follow it. Should leave and hours follow it now?
+- A line manager who is a member (not a lead or admin) cannot approve their own people's requests; an admin does. Now that members can open the boards, should their line manager approve?
+- Before anyone starts a review that any admin may write, its "Written with" is blank. Should it say "An admin"?
+- A member who approves leave sees only the requests waiting on them, not who else is off. Confirm or widen.
+
+Now running: decision 86's admin figures, and Today showing a named member what waits for them. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
