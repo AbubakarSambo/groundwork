@@ -1,4 +1,3 @@
-import { setPatternReachInForce as theReachForThisFile } from '../patterns/who-reads-a-pattern';
 import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
 import { BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES } from '../patterns/pattern-library';
 
@@ -230,44 +229,32 @@ describe('a role can say the good version better, from its own map', () => {
 });
 
 /*
- * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
- * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
- * puts that reach in force for the whole file. Its last block puts the person-only reach in force
- * and reads the same surfaces again, so both settings are checked here.
+ * DECISION 86 REVERSES DECISION 74, ITEM 2. This block was "with the person-only reach, nobody reads
+ * the lead's coaching beside a pattern". There is no such reach now: with nothing put in force, the
+ * lead and the admin who set the check-in up read each pattern with its coaching, after the person's
+ * turn, and Femi reads his own without the coaching, told Tunde reads it too.
  */
-beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-afterAll(() => theReachForThisFile('PERSON_ONLY'));
-
-/*
- * DECISION 74, ITEM 2: THE PERSON-ONLY REACH, THE DEFAULT. The coaching beside a pattern is written
- * for the lead, so with the person-only reach nobody reads it: the lead and the setup admin read no
- * pattern, and the person reads their own without the lead's coaching.
- */
-describe.each(GROUNDS_TO_READ)('with the person-only reach, nobody reads the lead’s coaching beside a pattern (%s)', (_name, shape) => {
-  beforeAll(() => theReachForThisFile('PERSON_ONLY'));
-  afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-
-  it('the lead reads no pattern and no coaching, although both people answered', async () => {
+describe.each(GROUNDS_TO_READ)('with no setting at all, the lead reads the coaching beside each pattern (%s) (decision 86)', (_name, shape) => {
+  it('the lead reads both patterns, each with its coaching, since both people answered', async () => {
     const served = await everyPageAs(withTheSwitch(true), 'u-tunde', groundWith(shape), MORE_ROWS());
-    expect(served.board.patterns).toEqual([]);
-    expect(served.page.signals ?? []).toEqual([]);
-    expect(JSON.stringify(served)).not.toContain('Coach them towards');
-    expect(JSON.stringify(served)).not.toContain('One step they could take');
+    expect((served.board.patterns as any[]).map((p) => p.id).sort()).toEqual(['pd1', 'pd2']);
+    expect(JSON.stringify(served)).toContain('Coach them towards');
+    expect(JSON.stringify(served)).toContain('One step they could take');
   });
 
-  it('the admin who set the check-in up reads none either', async () => {
+  it('the admin who set the check-in up reads them too', async () => {
     USERS['u-setup-admin'] = { role: 'ADMIN', organizationId: 'org-1' };
     const served = await everyPageAs(withTheSwitch(true), 'u-setup-admin', { ...groundWith(shape), createdByUserId: 'u-setup-admin' }, MORE_ROWS());
-    expect(served.board.patterns).toEqual([]);
-    expect(JSON.stringify(served)).not.toContain('Coach them towards');
+    expect((served.board.patterns as any[]).length).toBeGreaterThan(0);
+    expect(JSON.stringify(served)).toContain('Coach them towards');
   });
 
-  it('Femi reads his own, with the part it belongs in, and none of the coaching', async () => {
+  it('Femi reads his own, with the part it belongs in, none of the coaching, and is told Tunde reads it too', async () => {
     const served = await everyPageAs(withTheSwitch(true), 'u-femi', groundWith(shape), MORE_ROWS());
     const own = served.board.patterns as any[];
     expect(own.map((p) => p.id)).toEqual(['pd2']);
     expect(own[0].about).toBe('what is said against what happened');
     expect(own[0].coachTowards).toBeNull();
-    expect(own[0].whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    expect(own[0].whoSeesIt).toBe('Tunde can see this too, with anything you say about it. Nothing is decided from it.');
   });
 });

@@ -1,4 +1,3 @@
-import { setPatternReachInForce as theReachForThisFile } from '../patterns/who-reads-a-pattern';
 import { NotFoundException } from '@nestjs/common';
 import { TheWeeklyReportService } from './the-weekly-report.service';
 import { theWeeksHeading, aTargetThisWeek, theCheckInsMade } from './the-weekly-report';
@@ -451,31 +450,15 @@ describe('the check-ins made, said the way a person says a count', () => {
 });
 
 /*
- * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
- * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
- * puts that reach in force for the whole file. Its last block puts the person-only reach in force
- * and reads the same surfaces again, so both settings are checked here.
+ * DECISION 86 REVERSES DECISION 74, ITEM 2. This block was "with the person-only reach, the weekly
+ * report carries a pattern only to the person it is about". There is no such reach now: with nothing
+ * put in force, the lead reads Baraka's pattern once he has had his turn, and is nudged to talk it through.
  */
-beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-afterAll(() => theReachForThisFile('PERSON_ONLY'));
-
-/*
- * DECISION 74, ITEM 2: THE PERSON-ONLY REACH, THE DEFAULT. The weekly report is read live, so the
- * same week reads differently under each reach: the lead reads no pattern and is never nudged to talk
- * one through, an admin reads none, and Baraka still reads both of his own.
- */
-describe('with the person-only reach, the weekly report carries a pattern only to the person it is about', () => {
-  beforeAll(() => theReachForThisFile('PERSON_ONLY'));
-  afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-
-  it('the lead reads no pattern, and no nudge to talk one through', async () => {
+describe('with no setting at all, the lead reads Baraka’s pattern in the week (decision 86)', () => {
+  it('the lead reads the pattern Baraka has had his turn on, and a nudge to talk it through', async () => {
     const { r } = await served(LEAD);
-    expect(r.threeInARow ?? []).toEqual([]);
-    expect((r.forNextWeek ?? []).filter((f: any) => f.comesFrom === 'This comes from something that kept happening.')).toEqual([]);
-    expect(r.forNextWeek).toHaveLength(2);
-    const all = JSON.stringify(r);
-    expect(all).not.toContain('The work stops until there is another call');
-    expect(all).not.toContain('A lot of communicating');
+    expect(JSON.stringify(r.threeInARow)).toContain('The work stops until there is another call');
+    expect((r.forNextWeek ?? []).filter((f: any) => f.comesFrom === 'This comes from something that kept happening.').length).toBeGreaterThan(0);
   });
 
   it('an admin who does not run the check-in reads none', async () => {

@@ -1,4 +1,3 @@
-import { setPatternReachInForce as theReachForThisFile } from './who-reads-a-pattern';
 /**
  * WHAT THE LEAD MADE OF A PATTERN (decision 57, items 2 and 3).
  *
@@ -161,40 +160,31 @@ describe('the nudge to talk it through, once, in plain words (decision 57, item 
 });
 
 /*
- * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
- * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
- * puts that reach in force for the whole file. Its last block puts the person-only reach in force
- * and reads the same surfaces again, so both settings are checked here.
+ * DECISION 86 REVERSES DECISION 74, ITEM 2. This block was "with the person-only reach, the lead
+ * cannot mark a pattern they do not read". There is no such reach now: with nothing put in force, the
+ * lead reads Femi's pattern after his turn, and can mark it and say they talked it through.
  */
-beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-afterAll(() => theReachForThisFile('PERSON_ONLY'));
-
-/*
- * DECISION 74, ITEM 2: THE PERSON-ONLY REACH, THE DEFAULT. The lead never reads the pattern, so the
- * lead cannot mark it or say they talked it through, and nothing is written.
- */
-describe('with the person-only reach, the lead cannot mark a pattern they do not read', () => {
-  beforeAll(() => theReachForThisFile('PERSON_ONLY'));
-  afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-
-  it('marking it right, wrong or not sure is refused, and nothing is written', async () => {
+describe('with no setting at all, the lead reads the pattern after Femi’s turn and can mark it (decision 86)', () => {
+  it('marking it right, wrong or not sure is accepted and written', async () => {
     const { svc, update } = serviceWith();
-    await expect(svc.markAsTheLead('pd2', 'u-tunde', 'RIGHT')).rejects.toHaveProperty('status', 403);
-    expect(update).not.toHaveBeenCalled();
+    await svc.markAsTheLead('pd2', 'u-tunde', 'RIGHT');
+    expect(update).toHaveBeenCalledTimes(1);
   });
 
-  it('marking that they talked it through is refused, and nothing is written', async () => {
+  it('marking that they talked it through is accepted and written', async () => {
     const { svc, update } = serviceWith();
-    await expect(svc.markTalkedAbout('pd2', 'u-tunde')).rejects.toHaveProperty('status', 403);
-    expect(update).not.toHaveBeenCalled();
+    await svc.markTalkedAbout('pd2', 'u-tunde');
+    expect(update).toHaveBeenCalledTimes(1);
   });
 
-  it('the lead is served nothing, and Femi is served his own without any mark', () => {
+  it('the lead is served it with the mark, and Femi is served his own without any mark, told Tunde reads it too', () => {
     const marked = { ...ROW, leadMark: 'WRONG' as ALeadPatternMark };
-    expect(servedPatterns([marked], { participantId: 'p-tunde', runsIt: true }, { on: true, now: new Date(NOW) })).toEqual([]);
+    const asTunde = servedPatterns([marked], { participantId: 'p-tunde', runsIt: true }, { on: true, now: new Date(NOW) });
+    expect(asTunde).toHaveLength(1);
+    expect(asTunde[0].leadMark).toBe('WRONG');
     const asFemi = servedPatterns([marked], { participantId: 'p-femi', runsIt: false }, { on: true, now: new Date(NOW) });
     expect(asFemi).toHaveLength(1);
     expect(asFemi[0].leadMark).toBeNull();
-    expect(asFemi[0].whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    expect(asFemi[0].whoSeesIt).not.toContain('Only you see this');
   });
 });

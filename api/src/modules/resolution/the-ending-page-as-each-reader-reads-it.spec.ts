@@ -1,4 +1,3 @@
-import { setPatternReachInForce as theReachForThisFile } from '../patterns/who-reads-a-pattern';
 import { GroundScenario, GroundStatus, PartyType } from '@prisma/client';
 import { ResolutionService } from './resolution.service';
 import { SuggestionsService } from '../suggestions/suggestions.service';
@@ -299,47 +298,35 @@ describe("on Kwame's first 90 days, which is an evaluation check-in", () => {
 });
 
 /*
- * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
- * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
- * puts that reach in force for the whole file. Its last block puts the person-only reach in force
- * and reads the same surfaces again, so both settings are checked here.
+ * DECISION 86 REVERSES DECISION 74, ITEM 2. This block was "with the person-only reach, only Kwame
+ * reads the signal about Kwame". There is no such reach now: with nothing put in force, Wairimu and
+ * Grace, who set the check-in up, read the signal after Kwame's turn, and Kwame is told Wairimu sees it.
+ * Aisha, a colleague, still reads none.
  */
-beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-afterAll(() => theReachForThisFile('PERSON_ONLY'));
-
-/*
- * DECISION 74, ITEM 2: THE PERSON-ONLY REACH, THE DEFAULT. On the ending page, Kwame still reads his
- * own signal, and is told that only he sees it. Wairimu, Grace and Aisha read no signal and no
- * question made from one. The suggestion is not a pattern, and is served exactly as before.
- */
-describe('with the person-only reach, only Kwame reads the signal about Kwame', () => {
-  beforeAll(() => theReachForThisFile('PERSON_ONLY'));
-  afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-
-  it('Wairimu reads the suggestion, and no signal and no question made from one', async () => {
+describe('with no setting at all, Wairimu reads the signal about Kwame after his turn (decision 86)', () => {
+  it('Wairimu reads the suggestion and the signal, with what Kwame said beside it', async () => {
     const w = world();
     await withASuggestion(w);
     const page = (await w.resolution.get('g1', WAIRIMU) as any).theEndingPage;
     expect(page.suggestions).toHaveLength(1);
-    expect(page.signals).toEqual([]);
-    expect(page.questions.every((q: any) => q.aboutName === 'Kwame')).toBe(true);
-    expect(page.questions.map((q: any) => q.question)).toContain("Were Kwame's goals clear enough from the first day?");
+    expect(page.signals).toHaveLength(1);
+    expect(page.signals[0].whoSeesIt).toBe('Kwame saw this first and said what is behind it.');
   });
 
-  it('Kwame reads his own signal, and is told only he sees it', async () => {
+  it('Kwame reads his own signal, and is never told only he sees it', async () => {
     const w = world();
     await withASuggestion(w, true);
     const page = (await w.resolution.get('g1', KWAME) as any).theEndingPage;
     expect(page.signals).toHaveLength(1);
     expect(page.signals[0].yours).toBe(true);
-    expect(page.signals[0].whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    expect(page.signals[0].whoSeesIt).not.toBe('Only you see this. Nothing is decided from it.');
   });
 
-  it('Grace, who set the check-in up, reads no signal', async () => {
+  it('Grace, who set the check-in up, reads the signal', async () => {
     const w = world({ scenario: GroundScenario.PIP, createdByUserId: GRACE });
     await withASuggestion(w);
     const page = (await w.resolution.get('g1', GRACE) as any).theEndingPage;
-    expect(page.signals).toEqual([]);
+    expect(page.signals).toHaveLength(1);
   });
 
   it('Aisha, a colleague, reads no signal', async () => {

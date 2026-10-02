@@ -1,4 +1,3 @@
-import { setPatternReachInForce as theReachForThisFile } from './who-reads-a-pattern';
 import { BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES } from './pattern-library';
 import { servedPatterns, whatHappenedIn, periodsSeen, thePersonHasHadTheirTurn, theOnesTheyAreSeeingFirst, whoIsWhoIn, patternRowAsOfSession, runsItForAPattern, type APatternRow } from './who-reads-a-pattern';
 
@@ -247,82 +246,56 @@ describe('runsItForAPattern (decision 58, screens request 84): only the lead, or
 });
 
 /*
- * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
- * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
- * puts that reach in force for the whole file. Its last block puts the person-only reach in force
- * and reads the same surfaces again, so both settings are checked here.
+ * DECISION 86 REVERSES DECISION 74, ITEM 2. There is no person-only reach any more. Every block above
+ * runs under the one reach the code has, with nothing put in force by the test, so the lead reads a
+ * pattern after the person has had their turn by default. This block was "with the person-only reach";
+ * it now pins that the restriction is gone, and that the person still sees it first.
  */
-beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-afterAll(() => theReachForThisFile('PERSON_ONLY'));
+describe('the lead reads a pattern after the person, with no setting to hold the lead back (decision 86)', () => {
+  const mod = require('./who-reads-a-pattern');
+  const { patternRowsThisReaderMayRead, readsHowTheLeadingIsLanding } = mod;
 
-/*
- * DECISION 74, ITEM 2: WHO A PATTERN REACHES IS A SETTING, AND ITS DEFAULT IS THE PERSON ONLY.
- * Detection, the three periods and the answer box are the same; only who reads changes.
- */
-describe('with the person-only reach, a pattern reaches only the person it is about', () => {
-  const {
-    patternRowsThisReaderMayRead, patternReachFrom, patternReachInForce, readPatternReach,
-    readsHowTheLeadingIsLanding, DEFAULT_PATTERN_REACH, PATTERN_REACH_KEY,
-  } = require('./who-reads-a-pattern');
-  beforeAll(() => theReachForThisFile('PERSON_ONLY'));
-  afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-
-  it('the default, in code, is the person only', () => {
-    expect(DEFAULT_PATTERN_REACH).toBe('PERSON_ONLY');
-    expect(PATTERN_REACH_KEY).toBe('patterns.reach');
-  });
-
-  it('each person reads their own, under the same three-period rule; the lead, an admin and a stranger read none', () => {
-    expect(servedPatterns(ROWS, NGOZI, on).map((p) => p.id)).toEqual(['pd1']);
-    expect(servedPatterns(ROWS, FEMI, on).map((p) => p.id)).toEqual(['pd2']);
-    for (const r of [LEAD, ADMIN, STRANGER]) {
-      expect(servedPatterns(ROWS, r, on)).toEqual([]);
-      expect(patternRowsThisReaderMayRead(ROWS, r, on)).toEqual([]);
+  it('there is no setting left: no default reach, no stored key, nothing that reads or sets one', () => {
+    for (const gone of ['DEFAULT_PATTERN_REACH', 'PATTERN_REACH_KEY', 'patternReachFrom', 'patternReachInForce', 'setPatternReachInForce', 'readPatternReach']) {
+      expect(mod[gone]).toBeUndefined();
     }
   });
 
-  it('the lead who also takes part reads their own, and nobody else’s', () => {
-    const leadsOwn: APatternRow = { id: 'pd9', participantId: 'p-lead', code: 'B11', observationText: null, seenInSessions: [1, 2, 3], periodsObserved: 3 };
-    expect(servedPatterns([...ROWS, leadsOwn], LEAD, on).map((p) => p.id)).toEqual(['pd9']);
+  it('each person reads their own; the lead and the admin who set it up read both after each person’s turn; a stranger reads none', () => {
+    expect(servedPatterns(ROWS, NGOZI, on).map((p) => p.id)).toEqual(['pd1']);
+    expect(servedPatterns(ROWS, FEMI, on).map((p) => p.id)).toEqual(['pd2']);
+    for (const r of [LEAD, ADMIN]) {
+      expect(servedPatterns(ROWS, r, on).map((p) => p.id).sort()).toEqual(['pd1', 'pd2']);
+      expect(patternRowsThisReaderMayRead(ROWS, r, on).map((p: APatternRow) => p.id).sort()).toEqual(['pd1', 'pd2']);
+    }
+    expect(servedPatterns(ROWS, STRANGER, on)).toEqual([]);
   });
 
-  it('the person is told that only they see it, and can still answer it', () => {
+  it('the lead reads Ngozi’s with her answer, and is told she saw it first', () => {
+    const ngozis = servedPatterns(ROWS, LEAD, on).find((p) => p.id === 'pd1')!;
+    expect(ngozis.whoSeesIt).toBe('Ngozi saw this first and said what is behind it.');
+    expect(ngozis.theirWords).toBe('The committee only meets on the last Friday of the month.');
+  });
+
+  it('the person is told that Tunde will see it too, never that only they see it, and can still answer it', () => {
     const [mine] = servedPatterns(ROWS, FEMI, on);
-    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    expect(mine.whoSeesIt).toBe('Tunde can see this too, with anything you say about it. Nothing is decided from it.');
+    expect(mine.whoSeesIt).not.toContain('Only you see this');
     expect(mine.canAnswer).toBe(true);
     expect(mine.secondReadNote).toBeNull();
     expect(mine.coachTowards).toBeNull();
   });
 
-  it('a call can still ask for the wider reach by name, and then the lead reads it after the person’s turn', () => {
-    expect(servedPatterns(ROWS, LEAD, { ...on, reach: 'PERSON_FIRST_THEN_LEAD' }).map((p) => p.id).sort()).toEqual(['pd1', 'pd2']);
+  it('still not before the person’s turn: a pattern shown yesterday and not answered stays with the person', () => {
+    const fresh: APatternRow = { id: 'pd8', participantId: 'p-femi', code: 'B3', observationText: null, seenInSessions: [1, 2, 3], periodsObserved: 3, readyAt: daysAgo(1), shownToPersonAt: daysAgo(1) };
+    expect(servedPatterns([fresh], LEAD, on)).toEqual([]);
+    expect(servedPatterns([fresh], FEMI, on).map((p) => p.id)).toEqual(['pd8']);
   });
 
-  it('the stored row widens it only with the exact word; anything else, or nothing, is the person only', () => {
-    expect(patternReachFrom(null)).toBe('PERSON_ONLY');
-    expect(patternReachFrom({ value: 'PERSON_FIRST_THEN_LEAD' })).toBe('PERSON_FIRST_THEN_LEAD');
-    expect(patternReachFrom({ value: { reach: 'PERSON_FIRST_THEN_LEAD' } })).toBe('PERSON_FIRST_THEN_LEAD');
-    expect(patternReachFrom({ value: 'person_first_then_lead' })).toBe('PERSON_ONLY');
-    expect(patternReachFrom({ value: true })).toBe('PERSON_ONLY');
-    expect(patternReachFrom({ value: 'PERSON_ONLY' })).toBe('PERSON_ONLY');
-  });
-
-  it('reading the row puts it in force, and a failed read puts the person only in force', async () => {
-    await readPatternReach({ platformSetting: { findUnique: async () => ({ value: 'PERSON_FIRST_THEN_LEAD' }) } });
-    expect(patternReachInForce()).toBe('PERSON_FIRST_THEN_LEAD');
-    await readPatternReach({ platformSetting: { findUnique: async () => { throw new Error('the database is away'); } } });
-    expect(patternReachInForce()).toBe('PERSON_ONLY');
-    await readPatternReach({ platformSetting: { findUnique: async () => ({ value: 'PERSON_FIRST_THEN_LEAD' }) } });
-    await readPatternReach({ platformSetting: { findUnique: async () => null } });
-    expect(patternReachInForce()).toBe('PERSON_ONLY');
-  });
-
-  it('"how the leading is landing" reaches only the lead, never the admin who set the check-in up', () => {
+  it('"how the leading is landing" reaches the lead and the admin who set the check-in up, never a colleague', () => {
     const checkIn = { initiatorId: 'u-tunde', createdByUserId: 'u-setup-admin' };
     expect(readsHowTheLeadingIsLanding(checkIn, 'u-tunde')).toBe(true);
-    expect(readsHowTheLeadingIsLanding(checkIn, 'u-setup-admin')).toBe(false);
+    expect(readsHowTheLeadingIsLanding(checkIn, 'u-setup-admin')).toBe(true);
     expect(readsHowTheLeadingIsLanding(checkIn, 'u-ngozi')).toBe(false);
-    expect(readsHowTheLeadingIsLanding(checkIn, 'u-setup-admin', 'PERSON_FIRST_THEN_LEAD')).toBe(true);
-    expect(readsHowTheLeadingIsLanding(checkIn, 'u-ngozi', 'PERSON_FIRST_THEN_LEAD')).toBe(false);
   });
 });
