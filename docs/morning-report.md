@@ -116,7 +116,9 @@ The rest of request 117 on the sales board is stored rows on the screens workspa
 
 **For Hafsah:** an admin who is waited on in a check-in where people are not named to each other reads "somebody in …", which is stricter than "Everything asked of you", where admins see names. Keep it strict, or let admins see the name there?
 
-Now running: run-25 on `4090223b`, and the "raised that they are stuck" group of "where am I needed", which could never show because one field was never read. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Waits taken further now show, to the right person only** (`72e9b0a6`; 5,000 tests pass). The group in "where am I needed" could never show, and its sentence ("has raised that they are stuck") was untrue: nobody raises a wait by hand; Groundwork stamps one still open after 14 days. Now Wairimu, who runs the check-in, reads "Femi Ade … has been waiting on Miriam Njeri for it since 10 September, in the check-in Sales team, Q3. It was still open after 14 days, so Groundwork raised it on 24 September." Wiring it as it was written would have shown every such wait in the organisation to everybody; only whoever runs that check-in reads it now. On WhatsApp, waits from check-ins kept in the app stay out.
+
+Now running: run-25 on `4090223b`, and a false sentence for the lead ("<who> has been told", when Groundwork only posted to the organisation's own connection). Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
