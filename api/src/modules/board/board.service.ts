@@ -1,5 +1,6 @@
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
 import { aPartyOutside, aWaitOnOneself } from './a-thing-is-not-somebody';
+import { whoSeesThisDifferently } from './who-sees-this-differently';
 import { whatEachSessionSays } from './one-count-for-the-sessions';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
@@ -1178,11 +1179,17 @@ export class BoardService {
               /* A label the model invented - "Person", twice, on a live three-person report - is
                  matched to somebody by position before any name is looked up. See
                  eachSideGetsSomebody. */
-              const real = (sides: any[]) => eachSideGetsSomebody(sides, visibleNames.keys()).map(named);
+              /* A side with no words is not served: Rukia's name was drawn with nothing under it (request 109 d). */
+              const real = (sides: any[]) => eachSideGetsSomebody(sides, visibleNames.keys()).map(named)
+                .filter((side: any) => String(side?.view ?? side?.says ?? side?.text ?? '').trim());
+              const positions = Array.isArray(d?.positions) ? real(d.positions) : null;
+              const perspectives = Array.isArray(d?.perspectives) ? real(d.perspectives) : null;
               return {
                 ...d,
-                ...(Array.isArray(d?.positions) ? { positions: real(d.positions) } : {}),
-                ...(Array.isArray(d?.perspectives) ? { perspectives: real(d.perspectives) } : {}),
+                ...(positions ? { positions } : {}),
+                ...(perspectives ? { perspectives } : {}),
+                /* Who sees it differently, everybody named once (request 109 e). See whoSeesThisDifferently. */
+                whoSeesIt: whoSeesThisDifferently([...(positions ?? []), ...(perspectives ?? [])].map((x: any) => x.who), me?.id ? nameOf(me.id) : null),
               };
             })
           : [],
