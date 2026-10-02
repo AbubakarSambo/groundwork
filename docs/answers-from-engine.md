@@ -1994,3 +1994,31 @@ Tests: `board/decision-76-4-the-team-picture-is-shared-session-by-session.spec.t
 ## Request 114
 
 Withdrawn, and set aside on Hafsah's instruction (the checkability rating stays, decision 76). Its parts (b) to (g) are being done as request 115.
+
+## Request 116: the checkability rating, field by field, and the two lines the lead read wrong (2 October)
+
+**(a) Which field is which, and who is sent it now.** Nothing needs putting back. Every form of the checkability read that decisions 40 and 43 allow is still sent, to exactly the readers they allow.
+
+| Field | What it is | Kind | Who is sent it now |
+| --- | --- | --- | --- |
+| `coverage.reads[].pct` | how much of a person's own remit other people say they did (0 to 100) | a score of where a person's work lands, not checkability | nobody |
+| `coverage.reads[].confidence` | how sure the engine is about that coverage read | a rating of a read of a person | nobody |
+| `contribution[].confidence` | how sure the engine is about the contribution read | a rating of a read of a person | nobody |
+| `coverage.reads[].evidenceCount`, `contribution[].evidenceCount` | checkable lines plus colleagues' confirmations, as one bare number | a number mixing checkability and other people's credit; not an allowed form for anybody | nobody |
+| `contribution[].reason` on the reader's own row ("2 lines taken from what they said, 2 with a name, a number or a date in them ...") and `coverage.reads[].basis` on the reader's own row | the person's own read of their answers, in words | checkability, the person's own | the person alone |
+| `specificityDimensions` with the person's own check-in in `GET /grounds/:id` (the Done page's "How checkable today's check-in was", "4 of 5") | the person's own read | checkability, the person's own | the person alone; the lead and the admins get null for everybody |
+| `eachPerson[].reason: "nothing checkable"`, its `says` and `ask` | "Nothing checkable" beside the name, with what to ask next | checkability, decision 40's form | the lead, the admin who set it up, an admin who only reads (not on an evaluation check-in without access) |
+| `contribution[].nothingCheckable` and its sentence on other people's rows | the same, across the whole check-in | checkability, decision 40's form | the lead and the admin who set it up |
+
+**(b) "Nothing to do" where the reason was that nothing is checkable.** The stop-gap from requests 8 and 11 (27 September) that served "nothing checkable" as "nothing to do" was removed on 28 September (`01379c6e`), and nothing else turns one into the other. One gap was left: a row that was "Nothing checkable" and also had a wait under a fortnight old that the person had already chased came out with no ask at all. Now it always asks for what would make it checkable (`21e12159`).
+- Amina (the lead), the admin who set it up, and Juma (an admin who only reads), before: "Nothing Baraka Otieno said this round can be checked yet. A number, a date or a document for what moved would change that." and no ask. Now the same, then "Ask Baraka Otieno for a photo, a message or a document that shows what moved."
+- Baraka: no rows about anybody, as before. He still reads his own five parts with his own check-in.
+- Neema, Amani and Baraka on "Sales team, Q3" (115 d) were "nothing to do" because their answers were checkable and their wait on Rukia was recent and chased, not because of the old rule. See 115 (d).
+
+**(c) Nobody is read on answers they never gave** (`21e12159`).
+- Amina and the admin who set it up, before: "Nothing Faraji Odhiambo has said so far is checkable, because nobody else can check it yet. ..." Now: "Faraji Odhiambo has not checked in yet." Under "Where each person is", as before: "Faraji Odhiambo has not checked in for this round yet." and "Ask Faraji Odhiambo to check in."
+- Faraji, before: "0 check-ins on record, nothing specific named yet." Now: "You have not checked in yet."
+- Juma: no contribution section, as before; no read on Faraji anywhere.
+- Somebody still waiting for the organisation to let them in gets no sentence there at all, so the lead is not asked to chase them (request 85).
+
+Test: `board/request-116-checkability-as-each-reader-reads-it.spec.ts` (11 cases, every reader, a team check-in and a performance plan). I could not run it on the code before the change: the safety guard refused the command that would have put the old files back for the run, so I stopped that line, as told.
