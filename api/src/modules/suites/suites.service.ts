@@ -4,6 +4,7 @@ import { GROUPS, SUITES, checkAnswers, suiteOf, type Answers, type Question, typ
 import { DUTIES_REFUSED, DUTIES_ROW, ORGANISATION_DUTIES, TEAM_DUTIES, changeDuties, dutiesFrom, type Duties } from './who-holds-each-duty';
 import { RULES_AN_ADMIN_MAY_SET, RULE_IN_WORDS, STEP_SUITES, WORKFLOWS_REFUSED, WORKFLOWS_ROW, aWorkflowSaid, changeWorkflows, workflowsFrom, type StepSuite, type Workflows } from './the-approval-steps';
 import { theStepsFor, type Step } from './who-may-decide';
+import { saidAsADate } from './a-request-is-recorded';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const REFUSED = {
@@ -61,6 +62,25 @@ export interface TheWorkflows {
   rules: { key: string; said: string }[];
 }
 
+/** Each change of a suite's rules, as an admin reads it (decision 85, build step 5). */
+export interface TheRulesHistory {
+  changes: {
+    /** The suite's key, "duties" or "workflows". */
+    suite: string;
+    /** Who changed it, by name, or null when not known. */
+    by: string | null;
+    at: string;
+    /** "Grace switched on Leave requests on 3 October." */
+    said: string;
+    /** What changed, each in a full sentence: "The answer to “How many days ...?” changed from 21 to 25." */
+    details: string[];
+    before: { isOn: boolean; answers: unknown } | null;
+    after: { isOn: boolean; answers: unknown };
+  }[];
+}
+
+export const RULES_HISTORY_REFUSED = 'Only an admin can read how the suites’ rules were changed.';
+
 export interface ForALead {
   reader: 'lead';
   suites: { key: string; name: string; line: string }[];
@@ -113,6 +133,8 @@ export class SuitesService {
     if (!suite) throw new NotFoundException(REFUSED.noSuchSuite);
     const on = input.on === true;
     const where = { organizationId_suite: { organizationId: reader.organizationId, suite: suite.key } };
+    /* What it was, kept with what it becomes (decision 85, build step 5). */
+    const before = (await this.rows(reader.organizationId).catch(() => new Map())).get(suite.key) ?? null;
     if (on) {
       const people = new Set((await this.people(reader.organizationId)).map((p) => p.id));
       const answers = checkAnswers(suite, input.answers, people);
@@ -122,12 +144,14 @@ export class SuitesService {
         create: { organizationId: reader.organizationId, suite: suite.key, isOn: true, answers, changedById: reader.userId },
         update: { isOn: true, answers, changedById: reader.userId },
       });
+      await this.keepTheChange(reader, suite.key, before, { isOn: true, answers });
     } else {
       await this.prisma.organizationSuite.upsert({
         where,
         create: { organizationId: reader.organizationId, suite: suite.key, isOn: false, changedById: reader.userId },
         update: { isOn: false, changedById: reader.userId },
       });
+      await this.keepTheChange(reader, suite.key, before, { isOn: false, answers: before?.answers ?? {} });
     }
     return (await this.forReader(reader)) as ForAnAdmin;
   }
@@ -185,6 +209,7 @@ export class SuitesService {
       create: { organizationId: org, suite: DUTIES_ROW, isOn: false, answers, changedById: reader.userId },
       update: { answers, changedById: reader.userId },
     });
+    await this.keepTheChange(reader, DUTIES_ROW, row ? { isOn: false, answers: row.answers } : null, { isOn: false, answers });
     return this.duties(reader);
   }
 
@@ -229,10 +254,103 @@ export class SuitesService {
       create: { organizationId: org, suite: WORKFLOWS_ROW, isOn: false, answers, changedById: reader.userId },
       update: { answers, changedById: reader.userId },
     });
+    await this.keepTheChange(reader, WORKFLOWS_ROW, row ? { isOn: false, answers: row.answers } : null, { isOn: false, answers });
     return this.workflows(reader);
   }
 
+  /**
+   * Each change of the suites' rules, newest first, for an admin only (decision 85, build step 5):
+   * who changed it, when, and from what to what, in full sentences. `OrganizationSuite` keeps only the
+   * last answers, so this is the only place an earlier rule can be read.
+   */
+  async rulesHistory(reader: Reader): Promise<TheRulesHistory> {
+    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(RULES_HISTORY_REFUSED);
+    const table = (this.prisma as any).suiteRuleChange;
+    const rows: { suite: string; changedById: string | null; changedAt: Date; before: any; after: any }[] = table?.findMany
+      ? await table.findMany({ where: { organizationId: reader.organizationId }, orderBy: { changedAt: 'desc' }, take: 100 })
+      : [];
+    const people = await this.people(reader.organizationId);
+    const nameOf = new Map(people.map((p) => [p.id, p.name]));
+    const firstOf = (id: string | null | undefined) => (id && nameOf.get(id)?.split(/\s+/)[0]) || null;
+    const teams = await this.teams(reader.organizationId);
+    return {
+      changes: rows.map((r) => {
+        const by = firstOf(r.changedById);
+        const who = by ?? 'Somebody';
+        const on = saidAsADate(new Date(r.changedAt));
+        const full = suiteOf(r.suite)?.name ?? r.suite;
+        const name = `${full.charAt(0).toLowerCase()}${full.slice(1)}`;
+        const said = r.suite === DUTIES_ROW ? `${who} changed who holds each duty on ${on}.`
+          : r.suite === WORKFLOWS_ROW ? `${who} changed the approval steps on ${on}.`
+          : !r.before?.isOn && r.after?.isOn ? `${who} switched on ${name} on ${on}.`
+          : r.before?.isOn && !r.after?.isOn ? `${who} switched off ${name} on ${on}.`
+          : `${who} changed the answers for ${name} on ${on}.`;
+        return {
+          suite: r.suite, by: by ?? null, at: new Date(r.changedAt).toISOString(), said,
+          details: this.whatChanged(r.suite, r.before?.answers ?? null, r.after?.answers ?? {}, nameOf, teams),
+          before: r.before ?? null, after: r.after,
+        };
+      }),
+    };
+  }
+
   // ---------------------------------------------------------------------------------------------
+
+  /** Keeps one change of a suite's rules. Never stops the change itself. */
+  private async keepTheChange(reader: Reader, suite: string, before: { isOn: boolean; answers: unknown } | null, after: { isOn: boolean; answers: unknown }) {
+    const table = (this.prisma as any).suiteRuleChange;
+    if (!table?.create) return;
+    if (before && before.isOn === after.isOn && JSON.stringify(before.answers ?? {}) === JSON.stringify(after.answers ?? {})) return;
+    const kept = before ? { isOn: !!before.isOn, answers: before.answers ?? {} } : undefined;
+    await table.create({
+      data: { organizationId: reader.organizationId, suite, changedById: reader.userId, before: kept as never, after: after as never },
+    }).catch(() => undefined);
+  }
+
+  /** What changed between two sets of answers, each in a full sentence, with people by name. */
+  private whatChanged(suite: string, before: any, after: any, nameOf: Map<string, string>, teams: string[]): string[] {
+    const b = (before ?? {}) as Record<string, any>;
+    const a = (after ?? {}) as Record<string, any>;
+    const person = (v: unknown) => (typeof v === 'string' ? nameOf.get(v) ?? 'somebody no longer here' : null);
+    const line = (ask: string, from: string | null, to: string | null): string | null => {
+      if (from === to) return null;
+      if (from == null) return `The answer to “${ask}” was set to ${to}.`;
+      if (to == null) return `The answer to “${ask}” was cleared. It was ${from}.`;
+      return `The answer to “${ask}” changed from ${from} to ${to}.`;
+    };
+    const out: (string | null)[] = [];
+    if (suite === DUTIES_ROW) {
+      for (const d of ORGANISATION_DUTIES) out.push(line(d.ask, person(b[d.key]), person(a[d.key])));
+      for (const t of [...new Set([...teams, ...Object.keys(b.budgetOwners ?? {}), ...Object.keys(a.budgetOwners ?? {}), ...Object.keys(b.departmentHeads ?? {}), ...Object.keys(a.departmentHeads ?? {})])]) {
+        out.push(line(`Who holds the ${t} budget?`, person(b.budgetOwners?.[t]), person(a.budgetOwners?.[t])));
+        out.push(line(`Who heads ${t}?`, person(b.departmentHeads?.[t]), person(a.departmentHeads?.[t])));
+      }
+    } else if (suite === WORKFLOWS_ROW) {
+      const wb = workflowsFrom(before);
+      const wa = workflowsFrom(after);
+      for (const key of STEP_SUITES) {
+        const said = (w: Workflows) => {
+          const x = w[key];
+          if (!x) return null;
+          const steps = x.steps ?? (key === 'spend' ? null : theStepsFor(key, {}));
+          return aWorkflowSaid(key, steps ?? theStepsFor('spend', { limit: null, above: null }, 0), x.stepsAbove ?? null, x.escalateAfter).join(' ');
+        };
+        const from = said(wb);
+        const to = said(wa);
+        if (from === to) continue;
+        const full = suiteOf(key)?.name ?? key;
+        const what = `${full.charAt(0).toLowerCase()}${full.slice(1)}`;
+        out.push(to == null ? `The approval steps for ${what} went back to how they always ran.` : `The approval steps for ${what} changed. ${to}`);
+      }
+    } else {
+      const s = suiteOf(suite);
+      for (const q of s?.questions ?? []) {
+        const said = (v: unknown) => (v == null ? null : q.kind === 'person' ? person(v) : Array.isArray(v) ? v.join(', ') : String(v));
+        out.push(line(q.ask, said(b[q.id]), said(a[q.id])));
+      }
+    }
+    return out.filter((x): x is string => !!x);
+  }
 
   /** The teams in the staff directory, by their department's name. */
   private async teams(organizationId: string): Promise<string[]> {

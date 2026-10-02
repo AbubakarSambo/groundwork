@@ -2878,3 +2878,18 @@ Tests: `api/src/modules/suites/a-request-waits-too-long-as-each-reader-reads-it.
 - **What is kept**, in the new table `suite_events`: the suite, the request, what happened (asked, told, approved, declined, escalated, started, decided), who did it, who it went to, the step, when, and on what information as references to rows only (the request's id, the say-back the person said yes to, the WhatsApp message's name, a week's total in minutes). Never a copy of anybody's words.
 
 Tests: `api/src/modules/suites/who-did-what-as-each-reader-reads-it.spec.ts` (Aisha who asked, Wairimu her manager, Omar in finance, Grace the admin, Miriam a colleague, Tomas a guest). All fail on the old code. Three existing tests changed, because the yes in Ask Groundwork now passes the say-back's reference on to the suite: `hours-and-spending-through-ask-groundwork.spec.ts` (two lines), `organisation-memory-and-leave-through-ask-groundwork.spec.ts` and `a-roster-entry-matched-by-email-asks-and-approves.spec.ts` now expect `proposalId` in the call.
+
+## Each change of the suites' rules is kept, and an admin reads it (3 October, decision 85, build step 5)
+
+**A suite switched on or off, its answers changed, who holds each duty, and the approval steps are each kept as a change, with who, when, and from what to what** (this commit). `OrganizationSuite` kept only the last answers.
+
+- **New route `GET /suites/rules/history`, for an admin only** (anybody else gets "Only an admin can read how the suites’ rules were changed."). It answers `{ changes: [{ suite, by, at, said, details, before, after }] }`, newest first. `said` is one full sentence and `details` says what changed, each in a full sentence. Please show it on the Suites page for an admin, under a heading such as "How the rules were changed". For example:
+  - "Grace switched on leave requests on 1 October." with "The answer to “How many days of leave does each person have in a year?” was set to 21." and "The answer to “Who approves a request for time off?” was set to Their manager."
+  - "Grace changed the answers for leave requests on 2 October." with "The answer to “How many days of leave does each person have in a year?” changed from 21 to 25."
+  - "Grace changed who holds each duty on 3 October." with "The answer to “Who looks after finance?” was set to Omar Abdi."
+  - "Grace changed the approval steps on 3 October." with "The approval steps for leave requests changed. A leave request goes first to the person’s manager, or else an admin, and then to whoever looks after finance, or else an admin. ..."
+  - "Grace switched off leave requests on 4 October."
+- `before` and `after` are `{ isOn, answers }` as kept, for a screen that wants to show them side by side; `before` is null the first time. Saving the same answers again keeps nothing.
+- **Unchanged:** `GET /suites`, `PUT /suites/:key`, `GET/PUT /suites/duties` and `GET/PUT /suites/workflows` answer exactly as before.
+
+Tests: `api/src/modules/suites/the-suites-rules-history-as-each-reader-reads-it.spec.ts` (Grace the admin; Wairimu a lead, Omar a member and Tomas a guest, refused). All fail on the old code. No existing test changed.

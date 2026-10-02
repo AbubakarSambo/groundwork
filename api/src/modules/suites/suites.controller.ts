@@ -308,6 +308,12 @@ export class SuitesController {
     return this.suites.setDuties({ userId: user.id, organizationId: user.organizationId }, dto);
   }
 
+  @Get('rules/history')
+  @ApiOperation({ summary: 'Each change of the suites’ rules, who holds each duty and the approval steps: who changed it, when, and from what to what. For an admin only.' })
+  rulesHistory(@CurrentUser() user: CurrentUserData) {
+    return this.suites.rulesHistory({ userId: user.id, organizationId: user.organizationId });
+  }
+
   @Get('workflows')
   @ApiOperation({ summary: 'The approval steps of leave, time sheets and spending, and the working days before a request is passed on. For an admin only.' })
   workflows(@CurrentUser() user: CurrentUserData) {
