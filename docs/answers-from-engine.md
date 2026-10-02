@@ -2428,7 +2428,7 @@ A person who wrote in the last 24 hours gets one message, once in 24 hours, for 
 
 ### Numbers
 
-Settings (`PATCH` of the profile), an admin's roster entry (`PATCH /users/:id`) and the roster import (SCIM, and `POST /people` through it) now keep every number as "+" and digits with the country code. A local number starting with 0 takes the organisation's country when it is known. Otherwise the request is refused with a 400 whose message is: "Please write the whole number with the country code at the start, for example +234 801 234 5678." Something that is not a phone number at all is refused with: "That does not look like a whole phone number. Please write it with the country code at the start, for example +234 801 234 5678." Show the message as it comes; the screen does not need its own check.
+Settings (`PATCH /auth/me`), an admin's roster entry (`PATCH /users/:id`) and the roster import (SCIM, and `POST /people` through it) now keep every number as "+" and digits with the country code. A local number starting with 0 takes the organisation's country when it is known. Otherwise the request is refused with a 400 whose message is: "Please write the whole number with the country code at the start, for example +234 801 234 5678." Something that is not a phone number at all is refused with: "That does not look like a whole phone number. Please write it with the country code at the start, for example +234 801 234 5678." Show the message as it comes; the screen does not need its own check.
 
 ### The Connections page
 

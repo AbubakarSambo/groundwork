@@ -80,7 +80,36 @@ export function reportAsText(report: any, label: string): string {
   const glance = (report?.atAGlance ?? []) as { label: string; value: string; sub?: string }[];
   if (glance.length) lines.push(glance.map((g) => `${g.label}: ${g.value}${g.sub ? ` (${g.sub})` : ''}`).join('\n'));
   if (report?.theConversationWorthHaving) lines.push(`Worth having: ${report.theConversationWorthHaving}`);
-  return lines.join('\n\n');
+  const whole = lines.join('\n\n');
+  /* Where the whole report would not fit in one WhatsApp message, one short line, and the app for the rest. */
+  return whole.length <= A_TEXT_MESSAGE_LIMIT ? whole : `${reportAsOneLine(report, label)} Open Groundwork to read it.`;
+}
+
+/** WhatsApp's limit for one ordinary message. */
+export const A_TEXT_MESSAGE_LIMIT = 4096;
+/** The longest "where things stand" line that goes into a template's blank. */
+export const ONE_SHORT_LINE = 200;
+
+/** The first sentence of where things stand, on one line and short. */
+export function whereThingsStandInOneLine(report: any): string {
+  const saying = String(report?.whereThingsStand?.saying ?? '').replace(/\s+/g, ' ').trim();
+  const first = (saying.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? saying).trim();
+  return first.length <= ONE_SHORT_LINE ? first : `${first.slice(0, ONE_SHORT_LINE - 1).replace(/\s+\S*$/, '')}…`;
+}
+
+/** "Your report for the sales team is ready. <where things stand, one line>" */
+export function reportAsOneLine(report: any, label: string): string {
+  const line = whereThingsStandInOneLine(report);
+  return line ? `Your report for ${label} is ready. ${line}` : `Your report for ${label} is ready.`;
+}
+
+/**
+ * THE REPORT AS ITS TEMPLATE'S BLANKS (groundwork_report_ready): the check-in's name, and one short
+ * line of where things stand. Never a line break: WhatsApp refuses a blank with one, and the report
+ * as written has several. The template says "Open Groundwork to read it." itself.
+ */
+export function reportAsTemplateBlanks(report: any, label: string): string[] {
+  return [label, whereThingsStandInOneLine(report) || 'It is in Groundwork under Report.'];
 }
 
 /** ISO 639-1 codes we will converse in. Anything else falls back to English with the person told so. */

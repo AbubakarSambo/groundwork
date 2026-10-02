@@ -568,6 +568,13 @@ export class WhatsAppService {
   /** Meta's template message. The plain text the caller composed rides as the body parameter. */
   private async sendTemplate(phoneNumberId: string, accessToken: string, organizationId: string | null, to: string, text: string, template: ATemplate, context: SendContext): Promise<SendResult> {
     let result: SendResult;
+    /* A template with more blanks than the product gave words for would be refused by Meta, or worse, sent half empty. */
+    const blanks = new Set(template.body.match(/\{\{\d+\}\}/g) ?? []).size;
+    if (blanks > (context.params?.length ?? 1)) {
+      result = { sent: false, error: `No words for every blank of ${template.name}; not sent` };
+      this.writeItDown(organizationId, to, result, { ...context, kind: `${context.kind}:template` });
+      return result;
+    }
     try {
       const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
         method: 'POST',

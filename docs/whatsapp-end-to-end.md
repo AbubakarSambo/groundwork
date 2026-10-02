@@ -28,7 +28,7 @@ Read from the code on 2 October 2026, branch `wip/plain-reports`. Nothing was ru
 
 - The webhook handshake and the signature on the real body, for Groundwork's number and each organisation's own.
 - Whether WhatsApp waits for a reply that takes several model calls.
-- The three message templates approved, in English, within WhatsApp's length limit, and whether a template accepts the line breaks the report and the session notice contain (probably not).
+- Hafsah's templates approved, in English, as Utility (see `docs/whatsapp-templates.md`, which says which may be refused and why). Line breaks are settled in the code (2 October): no blank ever holds a line break, a tab or a run of spaces, and every message fits WhatsApp's 1,024 characters. Outside the 24 hours the report goes as its name and one short line of where things stand, and the template itself says "Open Groundwork to read it."; inside the 24 hours it goes whole, or, where it would not fit one message, as that same short line. The session notice is `checkin_open`, which is one line.
 - List taps, photo and document download with the organisation's token, and the relay through a customer's own system.
 - Quick-reply buttons on `checkin_open` ("Start", "Not now"): they arrive as their own message type, which is read the same as typing the words, but this has not been seen from Meta.
 - The request waiting for a yes or a no is held in the memory of the copy of the API that asked. If two copies run, or the API restarts within those ten minutes, the answer finds nothing waiting: a "yes" or "no" then goes into the check-in as an answer. It should move to the database before two copies run.
