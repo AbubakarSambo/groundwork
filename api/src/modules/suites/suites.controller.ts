@@ -150,6 +150,12 @@ export class SuitesController {
     return this.reviews.start({ userId: user.id, organizationId: user.organizationId }, dueId);
   }
 
+  @Get('reviews/mine')
+  @ApiOperation({ summary: 'The reviews about you, once somebody has started them, and what you can do now' })
+  myReviews(@CurrentUser() user: CurrentUserData) {
+    return this.reviews.mine({ userId: user.id, organizationId: user.organizationId });
+  }
+
   @Get('reviews/:id')
   @ApiOperation({ summary: 'One review, as this reader may read it' })
   oneReview(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {

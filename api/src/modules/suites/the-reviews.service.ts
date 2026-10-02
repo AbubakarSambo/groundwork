@@ -47,6 +47,27 @@ export interface NextReview {
   proposal: string | null;
 }
 
+/**
+ * One of the person's own reviews, as they find it: only once somebody has started it (a proposal is
+ * never told to them, a-review-falls-due.ts), with what they can do now, in a plain sentence.
+ */
+export interface YourReview {
+  id: string;
+  dueOn: Day;
+  writtenWithFirstName: string | null;
+  stands: 'started' | 'decided';
+  says: string;
+}
+
+/** What the person reads about their own review. Nothing of what it says, only that it waits for them. */
+export function yourReviewSaid(stands: 'started' | 'decided', writerFirstName: string | null, hasTheirView: boolean): string {
+  const who = writerFirstName?.trim() || 'The person who writes it with you';
+  if (stands === 'decided') return `${who} has decided your review. You can read the decision and the reasons.`;
+  return hasTheirView
+    ? `${who} has started your review, and your own view is in it. You can read it and change your view before you meet.`
+    : `${who} has started your review. You can read it and add your own view before you meet.`;
+}
+
 /** The whole review, for whoever writes it with the person, their lead or an admin. */
 export interface ForTheWriter {
   reader: 'writer' | 'lead' | 'admin';
@@ -178,6 +199,32 @@ export class ReviewsService {
       select: { id: true },
     });
     return { id: r.id };
+  }
+
+  /**
+   * THE PERSON'S OWN REVIEWS (item 16). Before this, a review was read only by its id, which nobody gave
+   * the person, so Aisha could not find the review the prototype says she "sees before the meeting". Only
+   * reviews about this reader, only once started, and only what one() already serves them is said.
+   */
+  async mine(reader: Reader): Promise<YourReview[]> {
+    await this.suiteAnswers(reader.organizationId);
+    const directory = await this.directory(reader.organizationId);
+    const me = [...directory.values()].find((p) => p.linkedUserId === reader.userId);
+    if (!me) return [];
+    const rows = await this.prisma.performanceReview.findMany({
+      where: { organizationId: reader.organizationId, personExternalId: me.externalId },
+      select: { id: true, evaluationDueId: true, theirView: true, decidedAt: true, decision: true, decisionReasons: true },
+    });
+    const manager = me.managerExternalId ? directory.get(me.managerExternalId) ?? null : null;
+    const writer = manager ? this.firstOf(manager) : null;
+    const out: YourReview[] = [];
+    for (const r of rows) {
+      const due = await this.prisma.evaluationDue.findUnique({ where: { id: r.evaluationDueId }, select: { dueOn: true } });
+      if (!due) continue;
+      const stands = r.decidedAt && r.decision && r.decisionReasons ? 'decided' : 'started';
+      out.push({ id: r.id, dueOn: dayOf(due.dueOn), writtenWithFirstName: writer, stands, says: yourReviewSaid(stands, writer, !!r.theirView?.trim()) });
+    }
+    return out.sort((a, b) => b.dueOn.localeCompare(a.dueOn));
   }
 
   /** One review, as this reader may read it. */

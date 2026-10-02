@@ -2479,3 +2479,29 @@ On this Mac's test database the dry run read 1,589 check-ins and found 99 things
 Tests: `board/request-117-10-a-plainer-word`, `reports/request-117-6-nobody-waits-on-themselves`, `reports/request-117-3-one-count-for-the-sessions`, `board/request-117-9-a-wait-reads-the-same-at-any-hour`, `board/request-117-7-each-fact-once-per-row`, `board/request-117-8-a-repeated-sentence-said-once`, `board/request-117-11-a-persons-own-aim`, `board/request-117-4-a-deal-card-agrees-with-itself`, `conversation/request-117-2-the-number-in-the-aims-name`, and `journey/bring-a-check-in-up-to-date.spec.ts`; each fails without its change. Tests changed, each because it expected the defect: request-102 (the session count and the days), what-needs-you, the glance, the-same-check-in-reads-the-same, request-115-d, nothing-needs-you-while-somebody-waits-on-you, a-board-that-does-not-contradict-itself, and the five that expected "set an aim of ... for their own work".
 
 **Engine changes that need a scenario run before they are trusted:** an aim said in a check-in now keeps the count its name aims at, and what a check-in is told about a person's own aim reads "Your own aim is ...". Neither was run against the model here (no live keys).
+
+## Item 16: performance reviews
+
+The performance reviews suite (#/suite/reviews), end to end, as `docs/prototype/screens/E-suites/suite-reviews.txt` shows it. Each change below is what the suite now sends, field by field.
+
+### Where each review stands (`2a8e77eb`), `GET /suites/reviews/board`
+
+Each row of `next` has a new field, `standsSays`, the sentence under "Where it stands", in the prototype's words. **Please draw `standsSays`** in place of a sentence of your own. `stands` can now also be `'not-yet'`, and then `mayStart` is false: please show "Not yet" where "Start it" would be.
+
+- Ready, with check-ins behind it: "Ready to start. 6 months of check-ins to draw on." (whole months since the person's first check-in here; "1 month" for one).
+- Ready, with none: "Ready to start."
+- Waiting for another decision about the person (a probation or first 90 days, a performance plan, a promotion or a renewal still open): to somebody in that check-in, "After “Kwame, first 90 days” is decided."; to an admin or lead outside it, "After a check-in about Kwame is decided." The check-in's name is never sent to somebody outside it.
+- Started: "Started on 2 October 2026. Aisha can read it and add a view of their own."
+- Decided: "Decided on 12 March 2027."
+
+Starting a review while another decision about the person is open is refused with: "This review cannot start yet, because a check-in that decides something about this person is still open. It can start once that check-in is decided." A proposal's sentence (`proposal`) is now sent only while the review is ready to start.
+
+### The reviews about you (this commit), `GET /suites/reviews/mine`
+
+New. Before this, the person a review is about had no way to find it: a review was read only by its id. Now any signed-in person is sent the reviews about themselves, once somebody has started them; a review Groundwork only proposed is never sent to them. Each item is `{ id, dueOn, writtenWithFirstName, stands: 'started' | 'decided', says }`, and `id` opens it with `GET /suites/reviews/:id` as before. Nothing of the review's contents is in it. `says`, for Aisha:
+
+- "Wairimu has started your review. You can read it and add your own view before you meet."
+- After she has written her view: "Wairimu has started your review, and your own view is in it. You can read it and change your view before you meet."
+- Once decided: "Wairimu has decided your review. You can read the decision and the reasons."
+
+An admin and a lead are sent only reviews about themselves here. While the suite is off, it is refused with "The performance reviews suite is not switched on." Today does not show these yet: the Today service is being changed by another builder, so this list is the place to read them for now.
