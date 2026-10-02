@@ -5,7 +5,7 @@ import { notToldYet, theLeadIsNudgedToTell, aWeekHasPassedSinceNotTold } from '.
 import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 import { aCountThatMovedSaid } from './a-count-that-moved-is-one-sentence';
 import { whatMovedInTheRound } from './what-this-session-holds';
-import { yourOwnWhereYouAreTheSubject } from '../board/an-aim-is-a-sentence-about-somebody';
+import { yourOwnWhereYouAreTheSubject, anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { PATTERN_ROW_SELECT, servedPatterns, patternTalkNudge } from '../patterns/who-reads-a-pattern';
 
@@ -196,6 +196,7 @@ export async function sinceLastFrom(prisma: any, groundId: string, l: Loaded, re
         about: {
           speaker: setBy ? labels.get(setBy) ?? null : null,
           holder: o.ownerParticipantId ? labels.get(o.ownerParticipantId) ?? null : null,
+          setByTheHolder: anAimTheHolderSet(o, theLeadsRow),
         },
         aimAsTheReaderReadsIt: (inLabels) => yourOwnWhereYouAreTheSubject(withNames(inLabels, visible, labels.values(), { viewerLabel: readerLabel }), othersNames),
       },

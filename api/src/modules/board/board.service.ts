@@ -56,7 +56,7 @@ import {
 } from './board-families';
 import { totalSessionsFor } from '../grounds/session-count';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody, plainWordsByPerson, atTheStart, withNames } from '../reports/party-labels';
-import { anAimAsASentence, yourOwnWhereYouAreTheSubject } from './an-aim-is-a-sentence-about-somebody';
+import { anAimAsASentence, yourOwnWhereYouAreTheSubject, anAimTheHolderSet } from './an-aim-is-a-sentence-about-somebody';
 import {
   CoverageKind,
   CoverageRead,
@@ -1088,6 +1088,8 @@ export class BoardService {
           holder: o.ownerParticipantId ? labels.get(o.ownerParticipantId) ?? null : null,
           target: o.target ?? null,
           direction: asADirection(row.direction),
+          /* A person's own aim is theirs, never read as a number the lead set (decision 75, item 37). */
+          setByTheHolder: anAimTheHolderSet(row, theLeadsRow),
         });
         const named = withNames(inLabels, visibleNames, labels.values(), { viewerLabel: readerLabel });
         return { ...o, name: yourOwnWhereYouAreTheSubject(named, othersNames) };

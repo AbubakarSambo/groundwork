@@ -1,4 +1,5 @@
-import { aNumberPeopleCanRead, theNumbersPeopleCanRead, aboutTheSpeaker } from '../board/an-aim-is-a-sentence-about-somebody';
+import { aNumberPeopleCanRead, theNumbersPeopleCanRead, aboutTheSpeaker, anAimAsASentence, anAimTheHolderSet, yourOwnWhereYouAreTheSubject } from '../board/an-aim-is-a-sentence-about-somebody';
+import { withNames } from '../reports/party-labels';
 /**
  * WHAT A PARTICIPANT IS TOLD ABOUT THIS CHECK-IN: THE SITUATION AND THE GOALS, NEVER THE INSTRUCTION.
  *
@@ -82,6 +83,23 @@ export interface AGoalTheyMaySee {
   ownerParticipantId?: string | null;
   /** An aim to reach or a limit not to go over, where the lead has said (decision 69). */
   direction?: 'AIM' | 'LIMIT' | null;
+  /** Who said it, where it came out of a check-in. With the owner and not the lead, it is that person's own aim. */
+  setByParticipantId?: string | null;
+}
+
+/**
+ * A PERSON'S OWN AIM, AS THEIRS (decision 75, item 37). "You set yourself an aim of 3 shops in
+ * Kilimani." to them; "Rukia set an aim of 3 shops in Kilimani for their own work." to a colleague who
+ * may read it, and "A colleague set ..." where the name may not be said. Never "Your goal is", which
+ * reads as a number the lead set, and never "Your lead is aiming for", which it was not.
+ */
+function anOwnAimAsTheyReadIt(g: AGoalTheyMaySee, readerParticipantId: string | null | undefined, nameOf?: (participantId: string) => string | null): string {
+  const isTheReader = !!readerParticipantId && g.ownerParticipantId === readerParticipantId;
+  /* The reader is written as a label and then named "you" with its verbs, as the board does. */
+  const ME = 'Participant Z';
+  const holder = isTheReader ? ME : (nameOf?.(g.ownerParticipantId as string) ?? '').trim() || 'A colleague';
+  const said = anAimAsASentence(g.name ?? '', { speaker: holder, holder, target: g.target ?? null, direction: g.direction ?? null, setByTheHolder: true });
+  return isTheReader ? yourOwnWhereYouAreTheSubject(withNames(said, new Map(), [ME], { viewerLabel: ME }), []) : said;
 }
 
 /*
@@ -312,7 +330,13 @@ export function theTellingHolds(rewrite: string | null | undefined, opts?: { oth
 export function whatAParticipantIsToldAboutThis(
   brief: string | null | undefined,
   goals: AGoalTheyMaySee[],
-  opts?: { told?: string | null; readerParticipantId?: string | null; scenario?: string | null },
+  opts?: {
+    told?: string | null; readerParticipantId?: string | null; scenario?: string | null;
+    /** The participant row of whoever runs the check-in, so a person's own aim is told from one the lead set. */
+    leadParticipantId?: string | null;
+    /** A colleague's name, or null where this reader may not be told who they are. */
+    nameOf?: (participantId: string) => string | null;
+  },
 ): string | null {
   const parts: string[] = [];
   /* Decision 75, item 13: the short version the lead confirmed, never the brief's own sentences in its place.
@@ -322,12 +346,17 @@ export function whatAParticipantIsToldAboutThis(
   const named = (goals ?? []).filter((g) => g?.name?.trim());
   const mine = opts?.readerParticipantId ? named.filter((g) => g.ownerParticipantId === opts.readerParticipantId) : [];
   const shared = named.filter((g) => !mine.includes(g));
+  const ownAim = (g: AGoalTheyMaySee) => opts?.leadParticipantId !== undefined && anAimTheHolderSet(g, opts.leadParticipantId) && typeof g.target === 'number';
   for (const g of mine.slice(0, 4)) {
-    parts.push(aGoalAsTheyReadIt(g, { isTheirs: true, leadIn: mine.length === 1 ? 'Your goal is' : 'One of your goals is' }));
+    parts.push(ownAim(g)
+      ? anOwnAimAsTheyReadIt(g, opts?.readerParticipantId, opts?.nameOf)
+      : aGoalAsTheyReadIt(g, { isTheirs: true, leadIn: mine.length === 1 ? 'Your goal is' : 'One of your goals is' }));
   }
   const where = mine.length ? 'for the whole check-in' : 'on this check-in';
   for (const g of shared.slice(0, 4)) {
-    parts.push(aGoalAsTheyReadIt(g, { isTheirs: false, leadIn: shared.length === 1 ? `The goal ${where} is` : `One of the goals ${where} is` }));
+    parts.push(ownAim(g)
+      ? anOwnAimAsTheyReadIt(g, opts?.readerParticipantId, opts?.nameOf)
+      : aGoalAsTheyReadIt(g, { isTheirs: false, leadIn: shared.length === 1 ? `The goal ${where} is` : `One of the goals ${where} is` }));
   }
   const said = parts.filter(Boolean);
   return said.length ? said.join(' ') : null;

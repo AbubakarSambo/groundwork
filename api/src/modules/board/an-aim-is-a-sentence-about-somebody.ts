@@ -143,6 +143,60 @@ export interface WhoAnAimIsAbout {
   target: number | null;
   /** The lead said this number is a limit not to go over, or an aim to reach (decision 69). Null: not said. */
   direction?: 'AIM' | 'LIMIT' | null;
+  /**
+   * The person who holds this number set it themselves, in their own check-in, and they are not the
+   * person who runs the check-in (decision 75, item 37). Their own aim is said as theirs, never as a
+   * number somebody set for them: "You set yourself an aim of 3 shops in Kilimani." to them, and
+   * "Amani Wekesa set an aim of 3 shops in Kilimani for their own work." to anybody else.
+   */
+  setByTheHolder?: boolean;
+}
+
+/**
+ * Whether a stored target is a person's own aim: they hold it, they set it, and they do not run the
+ * check-in. A target with no setter (made on the setup form) or set by the lead is never one.
+ */
+export function anAimTheHolderSet(row: { ownerParticipantId?: string | null; setByParticipantId?: string | null }, leadsRow: string | null | undefined): boolean {
+  return !!row.ownerParticipantId && row.setByParticipantId === row.ownerParticipantId && row.ownerParticipantId !== (leadsRow ?? null);
+}
+
+/** Words that make a phrase somebody's own sentence rather than the thing aimed for. */
+const A_PERSON_IN_IT = /(?:^|[^\p{L}'’])(?:I|me|my|we|our|us|you|your)(?![\p{L}'’])/iu;
+
+/**
+ * THE THING AIMED FOR, WITH ITS NUMBER: "3 shops in Kilimani" from "I am aiming for 3 shops in
+ * Kilimani." or from "shops in Kilimani" with a target of 3. Null where it cannot be said without
+ * guessing; the caller then keeps the aim's own sentence.
+ */
+export function theAimItself(name: string, target: number | null): string | null {
+  const t = theNumbersPeopleCanRead((name ?? '').trim()).replace(/[.!?\s]+$/, '');
+  if (!t) return null;
+  let what: string | null = null;
+  if (onlySaysWhatIsCounted(t)) {
+    const words = t.replace(/[.,;:]+$/, '').split(/\s+/);
+    if (words.length > 1 && /(?:'|’)s$/i.test(words[0])) words.shift();
+    if (/^\p{Lu}\p{Ll}*$/u.test(words[0] ?? '') && (words.length === 1 || /^\p{Ll}/u.test(words[1]))) words[0] = words[0].toLowerCase();
+    what = words.join(' ');
+  } else {
+    const m = /\b(?:am|is|are|['’]m|['’]re)\s+aiming\s+(?:for|at|to\s+(?:get|reach|hit|close|sign|onboard|make|do))\s+(.+)$/i.exec(t)
+      ?? /\b(?:want|wants|aim|aims|plan|plans|hope|hopes|need|needs)\s+(?:to\s+(?:get|reach|hit|close|sign|onboard|make|do)\s+)?(.+)$/i.exec(t)
+      ?? /\b(?:goal|aim|target)\s+is\s+(?:to\s+(?:get|reach|hit|close|sign|onboard|make|do)\s+)?(.+)$/i.exec(t);
+    what = m ? m[1].trim() : null;
+  }
+  if (!what || A_PERSON_IN_IT.test(what)) return null;
+  if (target != null && !/^\d/.test(what)) {
+    const n = aNumberPeopleCanRead(target);
+    if (!what.includes(n)) what = `${n} ${what}`;
+  }
+  return what;
+}
+
+/** A person's own aim, in labels: "Participant A set an aim of 3 shops in Kilimani for their own work." */
+function anAimTheySetThemselves(sentence: string, name: string, who: WhoAnAimIsAbout): string {
+  const holder = who.holder as string;
+  if (who.direction === 'LIMIT') return `${sentence} ${holder} set this limit for their own work.`;
+  const what = theAimItself(name, who.target);
+  return what ? `${holder} set an aim of ${what} for their own work.` : `${sentence} ${holder} set this aim for their own work.`;
 }
 
 /**
@@ -179,7 +233,8 @@ export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {
     t = aboutTheSpeaker(t, who.speaker);
   }
   t = t.charAt(0).toUpperCase() + t.slice(1);
-  return /[.!?]$/.test(t) ? t : `${t}.`;
+  const sentence = /[.!?]$/.test(t) ? t : `${t}.`;
+  return who.setByTheHolder && who.holder ? anAimTheySetThemselves(sentence, name, who) : sentence;
 }
 
 /**
@@ -188,6 +243,7 @@ export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {
  * nobody else is named in it, so "You agree with Tobi on his plan" is left as it is.
  */
 export function yourOwnWhereYouAreTheSubject(text: string, otherNames: Iterable<string>): string {
+  text = yourOwnAimIsYours(text);
   if (!/^You\b/.test(text)) return theirOwnIsThe(text);
   for (const n of otherNames) {
     const name = (n ?? '').trim();
@@ -210,4 +266,14 @@ export function theirOwnIsThe(text: string): string {
   const again = new RegExp(String.raw`(?<=\s)${who}(?:\s[\p{Lu}][\p{L}-]*)?(?:'|’)s\b`, 'giu');
   const head = text.slice(0, subject[1].length);
   return head + text.slice(subject[1].length).replace(again, 'the');
+}
+
+/**
+ * A person's own aim, read by that person (decision 75, item 37): "You set yourself an aim of 3 shops
+ * in Kilimani.", not "You set an aim of 3 shops in Kilimani for their own work.".
+ */
+export function yourOwnAimIsYours(text: string): string {
+  return (text ?? '')
+    .replace(/(^|[.!?]\s+)You set an aim of (.+?) for their own work\./g, '$1You set yourself an aim of $2.')
+    .replace(/(^|[.!?]\s+)You set this (aim|limit) for their own work\./g, '$1You set yourself this $2.');
 }

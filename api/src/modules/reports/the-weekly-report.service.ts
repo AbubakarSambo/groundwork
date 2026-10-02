@@ -1,3 +1,4 @@
+import { anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { CheckInStatus, PartyType } from '@prisma/client';
@@ -114,7 +115,7 @@ export class TheWeeklyReportService {
       select: {
         initiatorId: true, cadence: true,
         participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true, email: true } } } },
-        objectives: { select: { id: true, name: true, target: true, count: true, direction: true, ownerParticipantId: true, isADecisionAboutAPerson: true } },
+        objectives: { select: { id: true, name: true, target: true, count: true, direction: true, ownerParticipantId: true, setByParticipantId: true, isADecisionAboutAPerson: true } },
       } as any,
     });
     if (!ground) return null;
@@ -195,6 +196,8 @@ export class TheWeeklyReportService {
         id: o.id, name: String(o.name ?? ''), target: typeof o.target === 'number' ? o.target : null,
         direction: o.direction === 'AIM' || o.direction === 'LIMIT' ? o.direction : null,
         ownerParticipantId: o.ownerParticipantId ?? null, isADecisionAboutAPerson: !!o.isADecisionAboutAPerson,
+        /* A person's own aim, kept as theirs (decision 75, item 37). An earlier week without it reads as before. */
+        setByTheHolder: anAimTheHolderSet(o, parties.find((p) => p.partyType === PartyType.INITIATOR)?.id ?? null),
         count: o.count, from: before ? before.count : null,
       };
     });

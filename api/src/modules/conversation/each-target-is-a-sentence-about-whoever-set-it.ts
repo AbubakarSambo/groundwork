@@ -16,7 +16,7 @@
  * It decides nothing about who may read a target. The caller passes only the targets this reader may
  * read (targetsFor and the untold-goal wall); this only words them.
  */
-import { anAimAsASentence, yourOwnWhereYouAreTheSubject, aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
+import { anAimAsASentence, yourOwnWhereYouAreTheSubject, aNumberPeopleCanRead, anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { asADirection, theListsWordsFor } from '../board/an-aim-or-a-limit';
 import { withNames } from '../reports/party-labels';
 
@@ -55,6 +55,8 @@ export function theTargetAsASentence(o: ATargetToWord, who: WhoIsInIt): string {
     holder: o.ownerParticipantId ? nameFor(o.ownerParticipantId) : null,
     target: o.target ?? null,
     direction,
+    /* A person's own aim is theirs, never a number the lead set for them (decision 75, item 37). */
+    setByTheHolder: anAimTheHolderSet(o, who.leadId),
   });
   const reader = who.readerFirstName?.trim();
   const toThem = reader ? withNames(inNames, new Map(), [reader], { viewerLabel: reader }) : inNames;

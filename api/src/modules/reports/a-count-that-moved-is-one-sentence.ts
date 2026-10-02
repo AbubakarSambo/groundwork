@@ -87,7 +87,9 @@ export function aCountThatMovedSaid(o: ACountThatMoved, who: WhoseCountItIs): st
   const against = (alreadySaid: string) => {
     if (!who.againstTheAim || typeof o.target !== 'number') return '';
     if (alreadySaid.includes(aNumberPeopleCanRead(o.target))) return '';
-    return `, against the ${isALimit ? 'limit' : 'aim'} of ${n(o.target)}`;
+    /* A person's own aim is said as theirs, never as one somebody set for them (decision 75, item 37). */
+    const whose = who.about?.setByTheHolder && who.whose !== 'team' ? (who.whose === 'you' ? 'your own' : `${who.whose.name}'s own`) : 'the';
+    return `, against ${whose} ${isALimit ? 'limit' : 'aim'} of ${n(o.target)}`;
   };
   const moved = `went from ${n(o.prevCount)} to ${n(o.count)}`;
 
@@ -101,6 +103,8 @@ export function aCountThatMovedSaid(o: ACountThatMoved, who: WhoseCountItIs): st
   const inLabels = anAimAsASentence(name, {
     speaker: who.about?.speaker ?? null, holder: who.about?.holder ?? null,
     target: counted ? o.target : null, direction: o.direction ?? null,
+    /* A person's own aim is said as theirs (decision 75, item 37). */
+    setByTheHolder: who.about?.setByTheHolder ?? false,
   });
   const aim = who.aimAsTheReaderReadsIt ? who.aimAsTheReaderReadsIt(inLabels) : inLabels;
   return `${aim} ${possessive(who.whose)} ${money ? 'total' : 'count'} ${moved}${against(aim)}.`;

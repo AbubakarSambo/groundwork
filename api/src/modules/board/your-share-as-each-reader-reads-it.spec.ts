@@ -25,7 +25,8 @@ describe('your share, as each reader reads it', () => {
     const b = await boardAs({ objectives: TARGETS }, ...RUKIA);
     expect(b.yourShare).toEqual([{
       objectiveId: 'o-rukia',
-      says: 'You are aiming for 3 shops in Kilimani. You have 1 of the 3 so far.',
+      /* Her own aim is said as hers (decision 75, item 37); it read "You are aiming for", as if set for her. */
+      says: 'You set yourself an aim of 3 shops in Kilimani. You have 1 of the 3 so far.',
       whoSees: 'Only you and Amina Wanjiru see your share.',
     }]);
     expect(JSON.stringify(b.yourShare)).not.toMatch(/Baraka|visits/);
@@ -33,7 +34,7 @@ describe('your share, as each reader reads it', () => {
 
   it('Baraka reads his, and never Rukia\'s', async () => {
     const b = await boardAs({ objectives: TARGETS }, ...BARAKA);
-    expect(b.yourShare.map((s: any) => s.says)).toEqual(['You want 5 visits a week. You have 2 of the 5 so far.']);
+    expect(b.yourShare.map((s: any) => s.says)).toEqual(['You set yourself an aim of 5 visits a week. You have 2 of the 5 so far.']);
   });
 
   it('where the lead chose that everybody sees every number, it says so', async () => {

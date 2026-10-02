@@ -1648,3 +1648,15 @@ Fixed on the way, in the same places:
 - The closing emails kept their own drifted copy of the labels ("Part ways"). They now read the same list: "Kwame, first 90 days has been closed. The outcome is that the new person stays in the role." and "Wairimu Kamau suggested how this ends." followed by the ending.
 
 For the screens: `client/src/lib/end-states.ts` mirrors the server file and is imported by nothing but its tripwire spec. I updated its labels, and the tripwire's sanity line, so `end-state-mirror.spec.ts` still passes. Please keep the server's wording if this touches your own changes there. If the panel adds its own full stop to a label, please stop, because each one now ends with one.
+
+## Decision 75, item 37: a person's own aim is said as their own (2 October)
+
+A target a person set themselves in their own check-in (they hold it, they said it, and they do not run the check-in) was read exactly like a number the lead set for them. It is now said as theirs, everywhere it is shown. Nothing new to send; the sentences in the fields you already draw have changed.
+
+- The board, `objectives[].name`: Rukia reads "You set yourself an aim of 3 shops in Kilimani." (before: "You are aiming for 3 shops in Kilimani."). Amina, who runs the check-in, reads "Rukia Mwangi set an aim of 3 shops in Kilimani for their own work." (before: "Rukia Mwangi is aiming for 3 shops in Kilimani."). A number Amina set for Baraka still reads "Baraka Otieno is aiming for 5 visits a week.", so the two are told apart. No pronoun is guessed.
+- `yourShare[].says`: "You set yourself an aim of 3 shops in Kilimani. You have 1 of the 3 so far."
+- The weekly report's figure: `of` is "3 shops in Kilimani, an aim you set yourself" to Rukia and "3 shops in Kilimani, an aim Rukia Mwangi set for their own work" to Amina; `says` starts "You set yourself an aim of 3 shops in Kilimani." (before: "I am aiming for 3 shops in Kilimani, your own number" and "I am aiming for ..."). An earlier week kept before this reads as it did.
+- Today and "since the last round": "Your shops in Kilimani went from 0 to 1, against your own aim of 3." and to Amina "Rukia Mwangi's shops in Kilimani went from 0 to 1, against Rukia Mwangi's own aim of 3."
+- In a check-in, "About this check-in" tells Rukia "You set yourself an aim of 3 shops in Kilimani." A colleague who may read it is told "Rukia set an aim of 3 shops in Kilimani for their own work." (before: "Your lead is aiming for 3 shops in Kilimani.", which was untrue), or "A colleague set ..." where names are not shared.
+
+Who reads it is unchanged: the person themselves and whoever runs the check-in; a colleague only where everybody sees every number, and never on a colleague's own board (request 105, part 3); not an admin who only reads.

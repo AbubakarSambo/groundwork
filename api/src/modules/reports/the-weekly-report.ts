@@ -27,7 +27,7 @@
  * proportion of a person shown to somebody else. How anybody's answers were rated is never read.
  */
 
-import { aNumberPeopleCanRead, theNumbersPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
+import { aNumberPeopleCanRead, theNumbersPeopleCanRead, theAimItself, yourOwnAimIsYours } from '../board/an-aim-is-a-sentence-about-somebody';
 import { asADirection, whatTheWordsSuggest } from '../board/an-aim-or-a-limit';
 import { aCountThatMovedSaid, theMoneyItCountsIn } from './a-count-that-moved-is-one-sentence';
 import { inOurVoice } from './what-the-record-shows-over-time';
@@ -47,6 +47,8 @@ export interface AWeeksTarget {
   count: number;
   /** The count before the week's first check-in, where there is one to compare with. */
   from: number | null;
+  /** The person who holds it set it themselves (decision 75, item 37). Absent on a week kept before. */
+  setByTheHolder?: boolean;
 }
 
 export interface AWeeksCommitment {
@@ -207,8 +209,11 @@ export function aTargetThisWeek(t: AWeeksTarget, whose: Whose, againstTheAim: bo
   const money = theMoneyItCountsIn(readable);
   const n = (x: number) => `${aNumberPeopleCanRead(x)}${money && x !== 0 ? ` ${money}` : ''}`;
   const direction = asADirection(t.direction) ?? whatTheWordsSuggest(name);
-  const whoseWords = whose === 'team' ? '' : whose === 'you' ? ', your own number' : `, ${whose.label}'s number`;
-  const of = `${lowerFirst(readable)}${whoseWords}`;
+  /* A person's own aim is said as theirs, never as a number somebody set for them (decision 75, item 37). */
+  const whoseWords = whose === 'team' ? ''
+    : t.setByTheHolder ? (whose === 'you' ? ', an aim you set yourself' : `, an aim ${whose.label} set for their own work`)
+      : whose === 'you' ? ', your own number' : `, ${whose.label}'s number`;
+  const of = `${(t.setByTheHolder && whose !== 'team' ? theAimItself(name, null) : null) ?? lowerFirst(readable)}${whoseWords}`;
 
   let says: string;
   if (t.from != null && t.from !== t.count) {
@@ -217,9 +222,15 @@ export function aTargetThisWeek(t: AWeeksTarget, whose: Whose, againstTheAim: bo
       {
         whose: whose === 'team' ? 'team' : whose === 'you' ? 'you' : { name: whose.label },
         againstTheAim,
-        about: { speaker: null, holder: typeof whose === 'object' ? whose.label : null },
+        about: {
+          speaker: null,
+          /* The reader's own aim is written about "You", then made theirs: "You set yourself an aim of ...". */
+          holder: typeof whose === 'object' ? whose.label : whose === 'you' && t.setByTheHolder ? 'You' : null,
+          setByTheHolder: !!t.setByTheHolder,
+        },
       },
     ) ?? `It went from ${n(t.from)} to ${n(t.count)} this week.`;
+    says = yourOwnAimIsYours(says);
     const moved = `went from ${n(t.from)} to ${n(t.count)}`;
     says = says.includes(moved) ? says.replace(moved, `${moved} this week`) : says.replace(/\.$/, ' this week.');
   } else if (t.from != null) {
