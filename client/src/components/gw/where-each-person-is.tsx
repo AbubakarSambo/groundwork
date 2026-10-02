@@ -80,6 +80,25 @@ const TONE: Record<Reason, TagTone> = {
   'not let in': 'plain',
 }
 
+/** A trailing "for their own work" / "for his own work" / "for her own work" clause, stripped
+    rather than carried into the row's own sentence - see `targetPhrase`'s own comment. Never
+    replaced with "he"/"she": the row already has its own way of saying whose target this is. */
+const PRONOUN_OWN_WORK_SUFFIX = /\s+for (?:their|his|her) own work$/i
+
+/**
+ * Splits a trailing "by <date>" clause off the end of a name, so the date can become its own
+ * sentence instead of running on into the row's "... yet"/"... so far". `lastIndexOf` rather than a
+ * regex match: a name can itself contain the word "by" (`"accounts opened by the regional team"`),
+ * and only the FINAL "by" clause is ever the date Groundwork attaches.
+ */
+function splitOffByDate(name: string): { name: string; date: string | null } {
+  const idx = name.toLowerCase().lastIndexOf(' by ')
+  if (idx === -1) return { name, date: null }
+  const date = name.slice(idx + ' by '.length).trim()
+  if (!date) return { name, date: null }
+  return { name: name.slice(0, idx), date }
+}
+
 /**
  * THE BROKEN SENTENCE (board review, sales piece A, item 3): "Baraka Mwangi has none of their 4
  * Onboard 4 shops in Westlands. yet." happened because `targetName` can arrive as the objective's
@@ -88,18 +107,40 @@ const TONE: Record<Reason, TagTone> = {
  * name after the row's own bare `{target}` number said the count twice, and appending words after
  * its trailing stop read as two sentences stapled together.
  *
+ * SALES BOARD, ITEM 4: THE SAME BUG FOR "BY <DATE> FOR THEIR OWN WORK". A `targetName` can also
+ * carry a deadline and a pronoun clause of its own - "shops in Kilimani by 20 December for their
+ * own work" - which read on, un-stripped, as "none of their 3 shops in Kilimani by 20 December for
+ * their own work yet.": one sentence with a date clause and a possessive bolted in the middle of it.
+ * Both are stripped from the name here; the date is not thrown away, `targetDateClause` below turns
+ * it into its own short sentence ("The aim is 3 by 20 December.").
+ *
  * This always returns one phrase, with the number said once: the trailing stop is stripped first,
- * and if the cleaned name already contains the target's own number as a whole word, everything up
- * to and including that number is dropped - "Onboard 4 shops in Westlands" becomes "shops in
- * Westlands", read exactly the way a plain noun phrase already was. A name with no number in it
- * (the plain case) is untouched, and no name at all falls back to "target"/"targets".
+ * then the pronoun clause, then the date clause, and if what is left still contains the target's
+ * own number as a whole word, everything up to and including that number is dropped - "Onboard 4
+ * shops in Westlands" becomes "shops in Westlands", read exactly the way a plain noun phrase already
+ * was. A name with none of this in it (the plain case) is untouched, and no name at all falls back
+ * to "target"/"targets".
  */
-export function targetPhrase(target: number, targetName: string | null | undefined): string {
-  const cleaned = (targetName ?? '').replace(/\.+\s*$/, '').trim()
-  if (!cleaned) return `${target} ${target === 1 ? 'target' : 'targets'}`
+function cleanedTargetName(target: number, targetName: string | null | undefined): { noun: string; date: string | null } {
+  const fallback = `${target} ${target === 1 ? 'target' : 'targets'}`
+  const withoutStop = (targetName ?? '').replace(/\.+\s*$/, '').trim()
+  if (!withoutStop) return { noun: fallback, date: null }
+  const withoutPronoun = withoutStop.replace(PRONOUN_OWN_WORK_SUFFIX, '').trim()
+  const { name, date } = splitOffByDate(withoutPronoun)
+  if (!name.trim()) return { noun: fallback, date }
   const upToTheNumber = new RegExp(`^.*?\\b${target}\\b\\s*`)
-  const noun = upToTheNumber.test(cleaned) ? cleaned.replace(upToTheNumber, '').trim() : cleaned
-  return `${target} ${noun || cleaned}`
+  const noun = upToTheNumber.test(name) ? name.replace(upToTheNumber, '').trim() : name
+  return { noun: `${target} ${noun || name}`, date }
+}
+
+export function targetPhrase(target: number, targetName: string | null | undefined): string {
+  return cleanedTargetName(target, targetName).noun
+}
+
+/** "The aim is 3 by 20 December." when `targetName` carries a deadline, otherwise nothing to add. */
+export function targetDateClause(target: number, targetName: string | null | undefined): string | null {
+  const { date } = cleanedTargetName(target, targetName)
+  return date ? `The aim is ${target} by ${date}.` : null
 }
 
 export type Square = { key: number; state: 'done' | 'empty' | 'upcoming' }
@@ -147,6 +188,11 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
               {r.target != null && (
                 <Note>
                   {r.who} has {r.count === 0 ? 'none' : r.count} of {r.count === 0 ? 'their' : 'the'} {targetPhrase(r.target, r.targetName)}{r.count === 0 ? ' yet' : ' so far'}.
+                  {/* SALES BOARD, ITEM 4: a deadline carried inside `targetName` ("...by 20
+                      December...") used to run on into this same sentence, after "for their own
+                      work" had already been bolted in ahead of it. It is now its own short
+                      sentence, read once the date has been split off the name above. */}
+                  {targetDateClause(r.target, r.targetName) && ` ${targetDateClause(r.target, r.targetName)}`}
                 </Note>
               )}
               <Stack gap={4}>

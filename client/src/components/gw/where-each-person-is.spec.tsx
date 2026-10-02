@@ -88,6 +88,57 @@ describe('WhereEachPersonIs: one plain sentence even when targetName carries its
 })
 
 /**
+ * SALES BOARD, ITEM 4: "BY <DATE> FOR THEIR OWN WORK" RAN ON INTO THE SAME SENTENCE.
+ *
+ * A `targetName` sent as "shops in Kilimani by 20 December for their own work" built "Amani Wekesa
+ * has none of their 3 shops in Kilimani by 20 December for their own work yet." - a pronoun clause
+ * bolted into the middle of the sentence, ahead of the date it was attached to. Both are stripped
+ * from the name; the date becomes its own short sentence instead of being dropped. Checked at count
+ * 0 and count 2, and against a clean name with neither clause to prove nothing breaks when there is
+ * nothing to strip.
+ */
+describe('WhereEachPersonIs: a deadline and a pronoun clause inside targetName read as plain sentences', () => {
+  it('count 0: strips "for their own work" and reads the date as its own sentence', () => {
+    render(<WhereEachPersonIs rows={[row({
+      who: 'Amani Wekesa', target: 3, count: 0, targetName: 'shops in Kilimani by 20 December for their own work',
+    })]} />)
+    expect(screen.getByText('Amani Wekesa has none of their 3 shops in Kilimani yet. The aim is 3 by 20 December.')).toBeTruthy()
+    expect(screen.queryByText(/for their own work/)).toBeNull()
+    expect(screen.queryByText(/by 20 December yet/)).toBeNull()
+  })
+
+  it('count 2: says "so far", and the date still reads as its own sentence', () => {
+    render(<WhereEachPersonIs rows={[row({
+      who: 'Amani Wekesa', target: 3, count: 2, targetName: 'shops in Kilimani by 20 December for their own work',
+    })]} />)
+    expect(screen.getByText('Amani Wekesa has 2 of the 3 shops in Kilimani so far. The aim is 3 by 20 December.')).toBeTruthy()
+  })
+
+  it('strips "for his own work" the same way, with no he/she introduced anywhere', () => {
+    render(<WhereEachPersonIs rows={[row({
+      who: 'Juma Otieno', target: 2, count: 0, targetName: 'accounts renewed by 1 March for his own work',
+    })]} />)
+    expect(screen.getByText('Juma Otieno has none of their 2 accounts renewed yet. The aim is 2 by 1 March.')).toBeTruthy()
+    expect(screen.queryByText(/\bhe\b/i)).toBeNull()
+    expect(screen.queryByText(/\bhis\b/i)).toBeNull()
+  })
+
+  it('a clean name with neither clause is read exactly as before, at count 0', () => {
+    render(<WhereEachPersonIs rows={[row({
+      who: 'Aisha Otieno', target: 5, count: 0, targetName: 'shops in Kilimani',
+    })]} />)
+    expect(screen.getByText('Aisha Otieno has none of their 5 shops in Kilimani yet.')).toBeTruthy()
+  })
+
+  it('a clean name with neither clause is read exactly as before, at count 2', () => {
+    render(<WhereEachPersonIs rows={[row({
+      who: 'Aisha Otieno', target: 5, count: 2, targetName: 'shops in Kilimani',
+    })]} />)
+    expect(screen.getByText('Aisha Otieno has 2 of the 5 shops in Kilimani so far.')).toBeTruthy()
+  })
+})
+
+/**
  * REQUEST 85: SOMEONE AN ADMIN DID NOT LET IN. The row's own sentence is enough - no chasing (ask
  * is always null for this reason, so the ask/finding line never appears) and no label (the reason
  * tag is left off entirely, rather than drawing a tag with an empty face).
