@@ -2830,19 +2830,13 @@ export class GroundsService {
     if (!ground) throw new NotFoundException('Check-in not found');
     /* Who is reading what this says back: a line about them says "you". */
     const reader = { participantId: ground.participants.find((p: any) => p.userId === requestingUserId)?.id ?? null };
-    /**
-     * SAME RULE AS THE NOTES. An admin in this organisation could release the report and close the
-     * check-in and could not steer it - so covering for an absent lead meant being able to end the
-     * thing without being able to set it up. See `addLeadContext` for the whole reasoning.
+    /*
+     * DECISIONS 63 AND 72: SETUP IS THE LEAD'S, OR AN ADMIN'S ONLY ONCE THE LEAD HAS LEFT THE
+     * ORGANISATION. This let in any admin of the organisation while the lead was still there, so an
+     * admin could steer a check-in its lead was running, while the confirm step behind it refused them.
+     * The same rule, and the same refusal naming the lead, as every writer of setup (mayConfirmSetupOn).
      */
-    const viewer = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { role: true, organizationId: true },
-    });
-    const isOrgAdmin = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground);
-    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException('Setting this check-in up is for the lead or an admin in your organisation. Your own check-ins are on your page.');
-    }
+    await this.mayConfirmSetupOn(ground, requestingUserId);
 
     /*
      * LEAVE DATES GO TO THE LEAVE SUITE, NOT TO THIS CHECK-IN'S RECORD (week 20). Read by rules. Said
@@ -3886,8 +3880,10 @@ export class GroundsService {
 
   /** A no to keeping something for the organisation: the offer is deleted and nothing is kept. */
   async declineContextOffer(groundId: string, requestingUserId: string, offerId: string) {
-    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } });
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, initiatorId: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* The same door as the conversation that made the offer (decisions 63 and 72). */
+    await this.mayConfirmSetupOn(ground, requestingUserId);
     await dropWhatWasOffered(this.prisma, { organizationId: ground.organizationId, offerId, userId: requestingUserId });
     return { changed: 'nothing', say: NOT_KEPT };
   }

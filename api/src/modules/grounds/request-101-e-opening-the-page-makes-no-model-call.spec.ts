@@ -32,8 +32,13 @@ describe('request 101 (e): the opening turn, with no model call', () => {
     expect(anthropic.respond).not.toHaveBeenCalled();
   });
 
-  it('an admin opening it reads the same opening, and the model is not asked either', async () => {
-    const { service, anthropic } = aSetupConversation({ ground: SET, userRole: 'ADMIN' });
+  /* Since decisions 63 and 72 reached this route (2 October), an admin opens it only once the lead has left. */
+  it('an admin opening it once the lead has left reads the same opening, and the model is not asked either', async () => {
+    const people: Record<string, any> = {
+      userLead: { role: 'MEMBER', organizationId: 'org1', firstName: 'Wanjiru', lastName: 'Mwangi', isActive: false },
+      userAdmin: { role: 'ADMIN', organizationId: 'org1', firstName: 'Otieno', lastName: 'Kamau', isActive: true },
+    };
+    const { service, anthropic } = aSetupConversation({ ground: SET, seed: { user: { findUnique: async ({ where }: any) => people[where.id] ?? null } } });
     const out: any = await service.contextChat('g1', 'userAdmin', []);
     expect(out.reply).toBe(OPENING);
     expect(anthropic.respond).not.toHaveBeenCalled();

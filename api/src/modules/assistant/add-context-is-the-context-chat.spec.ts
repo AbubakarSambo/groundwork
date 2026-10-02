@@ -26,6 +26,8 @@ function svc(opts: {
   parked?: any;
   contextChat?: jest.Mock;
   applyContextProposal?: jest.Mock;
+  /** Whether the lead's account shows they have left, so an admin may set the check-in up (decisions 63 and 72). */
+  leadHasLeft?: boolean;
 } = {}) {
   const proposals: any[] = [];
   const grounds = opts.grounds ?? [
@@ -67,7 +69,11 @@ function svc(opts: {
   };
   const knowledge: any = { retrieve: jest.fn(async () => ({ cards: [], truncated: false })) };
   const engine: any = { respond: jest.fn(async () => { throw new Error('model off for these tests'); }) };
-  const groundsService: any = { contextChat, applyContextProposal, declineContextOffer: jest.fn(async () => ({ changed: 'nothing' })) };
+  const groundsService: any = {
+    contextChat, applyContextProposal, declineContextOffer: jest.fn(async () => ({ changed: 'nothing' })),
+    /* GroundsService.mayOpenSetupChatFor, decision 63's rule: an admin only once the lead has left. */
+    mayOpenSetupChatFor: jest.fn(async () => !!opts.leadHasLeft),
+  };
 
   const service = new AssistantService(
     prisma,
@@ -93,11 +99,26 @@ describe('who reaches the setup conversation at all (inventory item 14)', () => 
     expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', [{ role: 'user', content: 'add this as context' }], { yesOrNo: true });
   });
 
-  it('an admin of the same organisation, covering for the lead, reaches it too', async () => {
+  /* Changed 2 October 2026: this used to let any admin of the organisation into the setup conversation while
+     the lead was still there. Decisions 63 and 72 say setup is the lead's, or an admin's only once the lead
+     has left the organisation, so the admin now reaches it only then. */
+  it('an admin of the same organisation does not reach it while the lead is still there', async () => {
     const { service, contextChat } = svc({
       person: { linkedUserId: 'admin-1' },
       viewerRole: 'ADMIN',
       viewerOrgId: 'org-a',
+    });
+    const r = await service.respond('org-a', 'p1', 'add this as context', 'g1');
+    expect(r.lane).toBe('unplaced');
+    expect(contextChat).not.toHaveBeenCalled();
+  });
+
+  it('an admin of the same organisation reaches it once the lead has left', async () => {
+    const { service, contextChat } = svc({
+      person: { linkedUserId: 'admin-1' },
+      viewerRole: 'ADMIN',
+      viewerOrgId: 'org-a',
+      leadHasLeft: true,
     });
     const r = await service.respond('org-a', 'p1', 'add this as context', 'g1');
     expect(r.lane).toBe('add_context');

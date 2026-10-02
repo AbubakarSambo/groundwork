@@ -2098,4 +2098,10 @@ Once Zawadi finishes session 1: "Session 2 of 12." and `whileOpen: null`. A test
 
 The second line on each card ("Baraka needs the signed agreement from Chandarana Westlands. This is waiting.") is built on your side and is already a sentence. "When this arrives, Baraka says: ..." is also yours, and is joined with a colon.
 
-**Also seen, not changed:** `POST /grounds/:id/context-chat` still lets any admin of the organisation in, not only once the lead has left (decision 63 says the same rule applies on the old context chat). Writes from it go through the confirm step. I left it alone because it is outside these requests.
+**The setup conversation follows decisions 63 and 72 now (2 October).** `POST /grounds/:id/context-chat` let any admin of the organisation in while the lead was still there. It now goes through the same rule as every setup writer (`mayConfirmSetupOn`), and so does `/context-chat/decline`; `/context-chat/confirm` already did. Ask Groundwork's setup lane offers the setup conversation only on check-ins this person may set up.
+- Wanjiru, the lead: opens it and talks in it, as before.
+- Otieno, an admin, and Neema, the admin who set it up, while Wanjiru is still there: before, they could open it and talk in it. Now each is refused (403) with "Only Wanjiru Mwangi, who runs this check-in, can change how it is set up. An admin can only do that once Wanjiru has left the organisation. Nothing was changed." In Ask Groundwork they get its ordinary answer, as somebody with nothing to set up does.
+- Otieno and Neema once Wanjiru has left: they may, as before.
+- Aisha, who checks in: refused, as before, now in the same words.
+
+Please offer the Context tab's conversation only where `mayChangeSetup` is true, so nobody opens a page that refuses them.

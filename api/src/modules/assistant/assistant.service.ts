@@ -2253,7 +2253,15 @@ export class AssistantService {
       select: { id: true, label: true, initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
     });
     const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
-    const candidates = grounds.filter((g) => runsIt(userId, viewer, g));
+    /*
+     * AND ONLY THE CHECK-INS THIS PERSON MAY SET UP (decisions 63 and 72): their own, or one whose lead
+     * has left the organisation, for an admin of it. An admin is no longer offered the setup
+     * conversation on a check-in its lead is still running; `contextChat` refuses it too.
+     */
+    const candidates = [] as typeof grounds;
+    for (const g of grounds.filter((x) => runsIt(userId, viewer, x))) {
+      if (g.initiatorId === userId || (await this.grounds.mayOpenSetupChatFor(g.id, userId, organizationId).catch(() => false))) candidates.push(g);
+    }
 
     /*
      * NOBODY TO SET UP. Not the lead or an admin of anything here, so this is answered exactly as an

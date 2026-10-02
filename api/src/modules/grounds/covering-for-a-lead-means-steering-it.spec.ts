@@ -43,7 +43,10 @@ describe('covering for a lead means being able to steer it', () => {
    * of the organisation act at any time, which this loop still checks; `addLeadContext` now goes
    * through `mayConfirmSetupOn` and has its own describe block below.
    */
-  for (const fn of ['contextChat', 'updateTimeline']) {
+  /* Changed 2 October 2026: contextChat left this loop. It let any admin of the organisation steer a check-in
+     while its lead was still there, which decisions 63 and 72 rule out; it now goes through mayConfirmSetupOn
+     (see its own describe block below, and request-63-the-context-chat-is-the-leads.spec.ts). */
+  for (const fn of ['updateTimeline']) {
     describe(fn, () => {
       it('lets an admin in the same organisation act', () => {
         const b = body(fn);
@@ -83,6 +86,14 @@ describe('covering for a lead means being able to steer it', () => {
    * organisation - an admin of it, through the one shared gate `mayConfirmSetupOn` (grounds.service)
    * / `whoMayConfirmSetup` (who-may-confirm-setup.ts) every setup writer in this file now calls.
    */
+  describe('contextChat', () => {
+    it('goes through the one decision 63 gate, not "any admin, any time"', () => {
+      const b = body('contextChat');
+      expect(b).toContain('await this.mayConfirmSetupOn(ground, requestingUserId);');
+      expect(b).not.toContain('isOrgAdmin');
+    });
+  });
+
   describe('addLeadContext', () => {
     it('goes through the one decision 63 gate, not its own copy of "any admin, any time"', () => {
       const b = body('addLeadContext');
