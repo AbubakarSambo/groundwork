@@ -88,6 +88,7 @@ import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, B
 import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
+import { scrollTo } from '@/lib/scroll-to'
 import { KindOfWorkBanner, WorkRecordsSections, YourOwnRecordsSections } from './WorkRecords'
 import {
   RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockersSection,
@@ -1077,7 +1078,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {(b as any).whereThisIsHeading && (
           <WhereThisIsHeadingSection
             data={(b as any).whereThisIsHeading}
-            onRecordTheDecision={() => document.getElementById('record-the-decision')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            onRecordTheDecision={() => scrollTo(document.getElementById('record-the-decision'), { block: 'start' })}
           />
         )}
 
