@@ -2105,3 +2105,66 @@ The second line on each card ("Baraka needs the signed agreement from Chandarana
 - Aisha, who checks in: refused, as before, now in the same words.
 
 Please offer the Context tab's conversation only where `mayChangeSetup` is true, so nobody opens a page that refuses them.
+
+## Request 101 (a), (b) and (d): the session report's picture, for each reader (2 October)
+
+All on `GET /grounds/:id/report/session/:n`, proven on a copy of "Sales team, Q3" (Rukia runs it and checks in; Amani, Baraka and Neema check in; Faraji was not let in; Juma is an admin who only reads; Grace set it up), and on a performance plan about Amani.
+
+**(a) A reading about each person, sent to everybody** (`16ea931f`). The shared picture carried the coverage read of each person, grouped and joined by a colon. A reading about a person reaches only that person and the lead, and the lead reads it on the board, so the picture no longer carries it at all (the contribution read went in request 111 a). The engine still makes both reads. The draft's grouped and pattern lines are now sentences, never names and a claim joined by a colon.
+- Before, Amani read: "Rukia Otieno, You, Baraka Mwangi and Neema Achieng: the role was never clearly defined, so there is no boundary to measure work against. Define what this role owns before reading anything into where work is landing." Rukia, Baraka, Juma and Grace read the same with their own names or "You".
+- Now, every reader: no such line. Amani's picture of session 1 reads "4 of 5 people have answered this session. There is enough here to talk about, and not enough to settle anything." and the wait of that session (below).
+
+**(b) "Faraji Odhiambo: 0 check-ins on record, nothing specific named yet."** This had already gone with request 111 (a) (`c52e4190`). A test now holds it for every reader: nothing in the picture is about Faraji, and no "check-ins on record" line is sent to anybody. Found while proving it: the lead's "What to ask each person" listed Faraji with "Faraji Odhiambo has not answered this session, so nothing below is from this round.", which asks the lead to chase somebody who cannot check in. He is no longer on that list (`33e7a809`). One thing left for you to decide: the session report's `counting` list (who this session is counting) still has a row `{ who: "Faraji Odhiambo", answered: false }`, and the count says "4 of 5". The count is shared with the rule that decides when a session is complete, so I have not changed it here. If Hafsah wants someone not yet let in out of the count, that changes when a session closes, and is hers to say.
+
+**(d) To Rukia about herself** (`16ea931f`). Every report read now says the reader's own label as "you" (and "your" for "'s"), with the verb mended. Only for the reader themselves: an admin who set it up still reads the lead's name.
+- Rukia, before: "Rukia Otieno makes a decision on the discount. That is what settles who decides the discount." Now: "You make a decision on the discount. That is what settles who decides the discount."
+- Amani, Juma and Grace, as before: "Rukia Otieno makes a decision on the discount. That is what settles who decides the discount."
+- "... are waiting on them for 3 days" was request 107 (b) and stays fixed: Rukia reads "Baraka Mwangi has been waiting for 3 days on you for a decision on the discount ...".
+- The same rule reaches the rounds: the lead now reads "You have accounts from Amani Kariuki and Juma Otieno this round.", Amani "Rukia Mwangi has accounts from you and Juma Otieno this round.", and an admin reads every name.
+- The board has its own copy of this read and still says the reader's own name there. That is the board's file, so I have not changed it: in `board/board.service.ts`, the call `whatEachLabelIsCalled(ground.participants as any[], { ... })` takes `readerIsYou: true` to do the same.
+
+Tests: `reports/request-101-the-session-report-for-each-reader.spec.ts` (19 cases, 10 fail on the code before). Changed, each because it expected the defect: `the-picture-is-drafted-from-the-reads` (the colon form), `how-this-has-moved-is-written-for-every-reader` (the lead reading her own name), `a-read-needs-the-marker-it-reads` (pinned a line that is gone; now it also holds that the report calls no per-person read).
+
+## Request 102: a closed session's own report carries its own coaching note, probe list and inferences (2 October)
+
+Done (`33e7a809`, `686abe3c`). `GET /grounds/:id/report/session/:n` now carries `coaching`, `probes` and `inferences`, each for that session. Please read them from there on a session's own page, and drop the "Since then, in the latest check-in" section, or keep it for the latest only.
+
+**How each is frozen.** For the session the report holds now, they are what `GET /grounds/:id/report` serves. For an earlier session, they are built from the record as it stood when it closed: its own sessions and lines, the waits raised by then and not cleared by then, documents added by then, each pattern counted only over the periods it had been seen in by then, and days waited counted to the day it closed. Each inference now carries the session it was concluded in. A new synthesis replaces only the items of the session the report holds now, and keeps earlier sessions' as they were; `GET /grounds/:id/report` now serves only the latest session's. An earlier session that was synthesised before this change has no kept inferences, so it gets an empty list rather than a later session's. Opening the page rebuilds nothing and asks no model (decision 7); a test checks the model is never called.
+
+**Who is sent what** (the same walls as `GET /grounds/:id/report`; a field a reader is not given is not sent at all):
+- Rukia, who runs it and checks in, on session 1 (closed 27 September). Before: nothing on this read; the page showed the working copy's "This is session 2 of this work." and "Baraka Mwangi ... Has not answered this session". Now: `coaching.whyItMatters` "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.", `coaching.beforeNextTime` "Baraka Mwangi is waiting on you for 3 days for a decision on the discount. Either do it, or give a date you can do it by.", `probes` for Amani, Baraka and Neema only (everybody answered session 1, so nobody "has not answered this session"), with Baraka's "Baraka Mwangi has been waiting for 3 days on you for a decision on the discount, and nothing on record says it was raised higher. This early, that is worth showing Baraka Mwangi rather than asking about.", and `inferences` with session 1's only.
+- Rukia on session 2: session 2's note ("Amani Wekesa is waiting on you for 2 days for the price list. ..."), probes and inferences, as the working copy has them.
+- Amani and Baraka: their own `coaching` for that session only ("This is session 1 of this work. ..."); no `probes`, no `inferences`.
+- Juma, an admin who only reads: no `coaching`, no `probes`; `inferences` of that session, as `GET /report` gives him.
+- Grace, the admin who set it up: `probes` and `inferences` of that session ("Baraka Mwangi has been waiting for 3 days on Rukia Otieno for ..."); no `coaching` of her own.
+- On a performance plan about Amani: Amani reads her own note only; Rukia and Grace read session 1's probes and inferences only; Juma, not given access, is refused the session report, as before.
+
+**Found with it, and fixed** (`686abe3c`). Session 1's own picture said "Amani Wekesa is waiting on you for the price list.", a wait raised in session 2, and left out the wait session 1 was about, because that one had been cleared since. A closed session's picture now waits on what was waited on then. Rukia reads "Baraka Mwangi is waiting on you for a decision on the discount, with no escalation on record."; Baraka "You are waiting on Rukia Otieno for ..."; Amani, Juma and Grace "Baraka Mwangi is waiting on Rukia Otieno for ...". Session 2's picture keeps session 2's wait.
+
+One thing to know: "Correct this" on an inference finds it by its id. If a later session's synthesis reuses an id an earlier item had, the earlier item is kept under a new id (`s1-<id>`), so a correction asked from its own page still finds the right one.
+
+Tests: `reports/request-102-a-closed-session-keeps-its-own-coaching.spec.ts` (20 cases, 15 fail on the code before).
+
+## Request 103: sessions scored before request 45's fix (2 October)
+
+Done (`01c74168`). The person's own read is now one function, `readTheTurns` (`conversation/the-specificity-read.ts`), used when a check-in completes and by a one-off script, `api/journey/bring-the-checkability-read-up-to-date.ts`. The script reads each finished check-in's own turns again under the current rule and raises any part the current rule reads higher. It never lowers a part, never changes the overall level, never touches anybody's words, and writes only `specificityDimensions`, which is served to the person alone (the lead and admins still get null).
+
+**Run on the local test database only** (`gw_pw9_1786222102`). The dry run first printed:
+> 6325 finished check-ins were read again under the current rule.
+> 4506 check-ins would have a part of the read raised. No part would be lowered, and nobody's words would change.
+> "One date, number or document" would be raised on 4371 check-ins.
+> "What you were waiting on, and from whom" would be raised on 984 check-ins.
+> "What you did, not just what was happening" would be raised on 1 check-in.
+
+Then the write, then a dry run that found 0 left. "Sales team, Q3" is on your database, not this one, so its check-in `7bad4943` was not touched; run the script there (below) when you want it.
+
+**What Amani reads on the Done page**, on a session shaped like hers ("... deliver three cookers to Tuskys Kilimani on 9 October ...", "I am waiting on Rukia for the price list."):
+- Before: "One date, number or document. Groundwork did not pick this up this time." and "What you were waiting on, and from whom. Groundwork did not pick this up this time."
+- Now: "One date, number or document. Groundwork found this." and "What you were waiting on, and from whom. Groundwork found this."
+- Rukia, Baraka, Juma and Grace: nothing of Amani's read, as before.
+
+With this, `SHOW_THE_COUNT` in `TheDonePage.tsx` no longer has to wait on request 103 for a database the script has run on.
+
+**A hosted database** is brought up to date as a release step, by whoever runs the release, with the same guard as the word-for-word script (decision 74, item 5). `DATABASE_URL=<hosted> npx ts-node -T journey/bring-the-checkability-read-up-to-date.ts --hosted-database` is a dry run that prints the counts above and writes nothing. Adding `--write` prints the same, then asks for the database's host name to be typed back, and writes only when it matches exactly; a wrong name, no answer, or no keyboard writes nothing. Without `--hosted-database`, any database not on this machine is refused before anything is read. The engine work never runs it anywhere but a local `gw_` database.
+
+Tests: `api/journey/bring-the-checkability-read-up-to-date.spec.ts` (8 cases: the rule, the dry run's words, only that column written, never lowered, what each reader is sent after it, and the hosted guard). Changed, because the lines they pinned moved unchanged into `the-specificity-read.ts`: `a-worse-session-scores-lower`, `one-checkable-turn-is-not-nothing-checkable`.
