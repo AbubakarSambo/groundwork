@@ -14,6 +14,7 @@ import {
   votesOf,
   whatCountsThisPeriod,
   MORE_READS_WHEN_SPLIT,
+  whatTheSettlingLetGo,
 } from './a-period-at-the-line-is-settled-on-all-the-evidence';
 
 describe('which periods are settled', () => {
@@ -78,6 +79,13 @@ describe('whatCountsThisPeriod', () => {
     expect(whatCountsThisPeriod(keeps('K3', 2, 5, 'first'), keeps('K3', 5, 5, 'more'), always, 3).get('K3')?.observation).toContain('first 1:');
   });
 
+  it('whatTheSettlingLetGo names only codes three of the first five kept that the ten reads did not', () => {
+    expect(whatTheSettlingLetGo(keeps('K3', 3, 5), keeps('K3', 1, 5), always, 3)).toEqual([{ code: 'K3', firstVotes: 3, votes: 4, reads: 10 }]);
+    expect(whatTheSettlingLetGo(keeps('K3', 2, 5), keeps('K3', 1, 5), always, 3)).toEqual([]);
+    expect(whatTheSettlingLetGo(keeps('K3', 3, 5), keeps('K3', 3, 5), always, 3)).toEqual([]);
+    expect(whatTheSettlingLetGo(keeps('K3', 3, 5), [], always, 3)).toEqual([]);
+  });
+
   it('votesOf gives one vote per read even if a read names a code twice', () => {
     const v = votesOf([[{ code: 'K3', observation: 'a' }, { code: 'K3', observation: 'b' }], [{ code: 'K3', observation: 'c' }]]);
     expect(v.get('K3')).toEqual({ count: 2, observation: 'a' });
@@ -130,8 +138,10 @@ describe('analyzeCheckIn settles a split period on five more reads', () => {
     const written: string[] = [];
     svc.observe = jest.fn(async (_g: string, _p: string, code: string) => { written.push(code); });
     svc.observePositive = jest.fn(async (_g: string, _p: string, code: string) => { written.push(code); });
+    const lines: string[] = [];
+    jest.spyOn(svc.logger, 'log').mockImplementation((m: any) => { lines.push(String(m)); });
     await svc.analyzeCheckIn('check-1');
-    return { written, reads: model.extract.mock.calls.length };
+    return { written, reads: model.extract.mock.calls.length, lines };
   }
 
   it('two of five, then four of the next five (six of ten): the period counts', async () => {
@@ -144,6 +154,17 @@ describe('analyzeCheckIn settles a split period on five more reads', () => {
     const r = await run(3, 1);
     expect(r.reads).toBe(5 + MORE_READS_WHEN_SPLIT);
     expect(r.written).toEqual([]);
+  });
+
+  it('when the settling lets a code go, the log says so in one line: the code and the reason, no observation', async () => {
+    const r = await run(3, 1);
+    const said = r.lines.filter((l) => l.includes('does not count'));
+    expect(said).toEqual(['Check-in check-1: K3 does not count for period 4. 3 of the first 5 reads kept it, but only 4 of all 10 reads did once the split was read again.']);
+    expect(said[0]).not.toContain('freezer');
+  });
+
+  it('when the settling keeps a code, no "does not count" line is written', async () => {
+    expect((await run(3, 4)).lines.some((l) => l.includes('does not count'))).toBe(false);
   });
 
   it('four of five agreed: no more reads, and the period counts', async () => {

@@ -1,4 +1,4 @@
-import { restsOnARecordNobodyHolds } from './a-pattern-does-not-rest-on-a-record-nobody-holds';
+import { restsOnARecordNobodyHolds, whatTheRecordRuleTookOut, aLineForWhatTheRecordRuleTookOut } from './a-pattern-does-not-rest-on-a-record-nobody-holds';
 import { Injectable, Optional, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
@@ -13,6 +13,8 @@ import {
   whatCountsThisPeriod,
   MORE_READS_WHEN_SPLIT,
   votesOf,
+  whatTheSettlingLetGo,
+  aLineForWhatTheSettlingLetGo,
 } from './a-period-at-the-line-is-settled-on-all-the-evidence';
 import { whatWasSeenLastPeriod, lastPeriodBlockFor, evidenceBorrowedFromAnotherCode, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
 import { AnthropicService } from '../conversation';
@@ -244,10 +246,14 @@ export class PatternsService {
      * call and every filter in the same order, and only decides what a single read would keep,
      * without writing anything. The five run in parallel, at the steadiest setting the model has.
      */
+    /* What each read left out because it rested on a record nobody holds, for one line at the end. */
+    const leftOutForARecord: { code: string; observation: string }[][] = [];
     const attempts = await Promise.allSettled(
-      Array.from({ length: READS_PER_CHECK_IN }, () =>
-        this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, getDetectionInput, whatThePersonSaid),
-      ),
+      Array.from({ length: READS_PER_CHECK_IN }, () => {
+        const leftOut: { code: string; observation: string }[] = [];
+        leftOutForARecord.push(leftOut);
+        return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, getDetectionInput, whatThePersonSaid, leftOut);
+      }),
     );
 
     const succeeded: { code: string; observation: string }[][] = [];
@@ -290,9 +296,11 @@ export class PatternsService {
     const more: { code: string; observation: string }[][] = [];
     if ([...firstVotes].some(([code, { count }]) => toSettle(code, count))) {
       const moreAttempts = await Promise.allSettled(
-        Array.from({ length: MORE_READS_WHEN_SPLIT }, () =>
-          this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, getDetectionInput, whatThePersonSaid),
-        ),
+        Array.from({ length: MORE_READS_WHEN_SPLIT }, () => {
+          const leftOut: { code: string; observation: string }[] = [];
+          leftOutForARecord.push(leftOut);
+          return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, getDetectionInput, whatThePersonSaid, leftOut);
+        }),
       );
       moreAttempts.forEach((attempt, i) => {
         if (attempt.status === 'fulfilled') more.push(attempt.value);
@@ -300,7 +308,15 @@ export class PatternsService {
       });
     }
 
-    for (const [code, { observation, votes, reads, settled }] of whatCountsThisPeriod(succeeded, more, toSettle, READS_THAT_MUST_AGREE)) {
+    const countsThisPeriod = whatCountsThisPeriod(succeeded, more, toSettle, READS_THAT_MUST_AGREE);
+    /* One line for each code either rule kept from counting, so a run shows what each one drops (2 October 2026). */
+    for (const letGo of whatTheSettlingLetGo(succeeded, more, toSettle, READS_THAT_MUST_AGREE)) {
+      this.logger.log(aLineForWhatTheSettlingLetGo(checkInId, period, letGo, succeeded.length));
+    }
+    for (const took of whatTheRecordRuleTookOut(leftOutForARecord, countsThisPeriod.keys())) {
+      this.logger.log(aLineForWhatTheRecordRuleTookOut(checkInId, period, took, succeeded.length + more.length));
+    }
+    for (const [code, { observation, votes, reads, settled }] of countsThisPeriod) {
       if (settled) this.logger.log(`Check-in ${checkInId}: ${code} was kept by ${votes} of ${reads} reads after the first five were split, so it counts for period ${period}.`);
       if (isPositiveCode(code)) {
         await this.observePositive(checkIn.groundId, checkIn.participantId, code, observation, period, await evidenceSourceFor(code));
@@ -346,6 +362,7 @@ export class PatternsService {
     theirDependencies: any[],
     getDetectionInput: () => Promise<DetectionInput>,
     whatThePersonSaid: string[] = [],
+    leftOutForARecord: { code: string; observation: string }[] = [],
   ): Promise<{ code: string; observation: string }[]> {
     const kept: { code: string; observation: string }[] = [];
 
@@ -364,6 +381,7 @@ export class PatternsService {
          pattern rests only on what the record holds. See a-pattern-does-not-rest-on-a-record-nobody-holds. */
       if (restsOnARecordNobodyHolds(d.observation, whatThePersonSaid)) {
         this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; it rests on a record this person's record does not hold.`);
+        leftOutForARecord.push({ code: d.code, observation: d.observation.trim() });
         continue;
       }
 

@@ -107,3 +107,26 @@ export function whatCountsThisPeriod(
   }
   return out;
 }
+
+/**
+ * WHAT THE SETTLING LET GO, so a run's log shows it (2 October 2026): the codes three or more of the first
+ * five reads kept, which would have counted before this rule, and which do not hold once all the reads are
+ * counted. Codes the settling brings in are already said where they are written.
+ */
+export function whatTheSettlingLetGo(
+  first: { code: string; observation: string }[][],
+  more: { code: string; observation: string }[][],
+  settle: (code: string, votes: number) => boolean,
+  readsThatMustAgree: number,
+): { code: string; firstVotes: number; votes: number; reads: number }[] {
+  if (!more.length) return [];
+  const counts = whatCountsThisPeriod(first, more, settle, readsThatMustAgree);
+  const all = votesOf([...first, ...more]);
+  return [...votesOf(first)]
+    .filter(([code, { count }]) => count >= readsThatMustAgree && settle(code, count) && !counts.has(code))
+    .map(([code, { count }]) => ({ code, firstVotes: count, votes: all.get(code)?.count ?? 0, reads: first.length + more.length }));
+}
+
+export function aLineForWhatTheSettlingLetGo(checkInId: string, period: number, letGo: { code: string; firstVotes: number; votes: number; reads: number }, firstReads: number): string {
+  return `Check-in ${checkInId}: ${letGo.code} does not count for period ${period}. ${letGo.firstVotes} of the first ${firstReads} reads kept it, but only ${letGo.votes} of all ${letGo.reads} reads did once the split was read again.`;
+}
