@@ -3568,9 +3568,32 @@ Close the report by framing - neutrally, without recommending one - the choice n
       latestSessionByPerson.set(c.participantId, Math.max(latestSessionByPerson.get(c.participantId) ?? 0, c.sessionNumber));
     }
     const withSession = (depRows as any[]).map((d) => ({ ...d, statedInSession: d.sourceCheckInId ? sessionOfCheckIn.get(d.sourceCheckInId) ?? null : null }));
-    const currentDeps = stillRaised(withSession, latestSessionByPerson);
+    let currentDeps = stillRaised(withSession, latestSessionByPerson);
     const wentQuiet = notRaisedAgain(withSession, latestSessionByPerson).length;
     if (wentQuiet) this.logger.log(`${wentQuiet} handoff(s) on ${groundId} have not been raised again; left out of the current read.`);
+    /*
+     * A CLOSED SESSION'S PICTURE WAITS ON WHAT WAS WAITED ON THEN (found with request 102). Session 1's
+     * picture, closed on 27 September, said "Amani Wekesa is waiting on you for the price list", a wait
+     * raised in session 2, and left out the wait on the discount that session 1 was about, because it
+     * had been cleared since. For a session before the one the report holds now, the waits are those
+     * raised by the day it closed and not cleared by then, taken further only if that was by then.
+     */
+    const closedAsOf = await this.whereThisSessionIsCut(groundId, sessionNumber, snapshot?.takenAt ?? null, periodOfThisSession).catch(() => undefined);
+    if (closedAsOf) {
+      const at = new Date(closedAsOf.at).getTime();
+      const by = (d: unknown) => !!d && new Date(d as any).getTime() <= at;
+      const then = await (this.prisma.groundDependency?.findMany?.({
+        where: { groundId },
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, clearedAt: true, escalatedAt: true, triedSaid: true, blockerKind: true, sourceCheckInId: true, namedTheThing: true } as any,
+      }) ?? Promise.resolve([])).catch(() => null);
+      if (Array.isArray(then)) {
+        currentDeps = (then as any[])
+          .filter((d) => by(d.createdAt))
+          .filter((d) => ['WAITING', 'BLOCKING'].includes(String(d.status)) || (!!d.clearedAt && !by(d.clearedAt)))
+          .map((d) => ({ ...d, escalatedAt: d.escalatedAt && by(d.escalatedAt) ? d.escalatedAt : null, statedInSession: d.sourceCheckInId ? sessionOfCheckIn.get(d.sourceCheckInId) ?? null : null }))
+          .filter((d) => d.statedInSession === null || d.statedInSession <= sessionNumber) as any;
+      }
+    }
 
     /*
      * THE ASSEMBLER'S OWN SENTENCES GO THROUGH THE SAME WORDING PASS AS EVERYTHING ELSE.
@@ -5977,6 +6000,22 @@ happened, and what is in the way.`;
   }
 
   /**
+   * WHERE THE RECORD IS CUT FOR ONE SESSION'S OWN REPORT (request 102). Nothing for the session the report
+   * holds now, which reads the record as it is. For an earlier one, the moment it closed: its kept round,
+   * or else the last answer given in it.
+   */
+  private async whereThisSessionIsCut(groundId: string, sessionNumber: number, closedAt: Date | null, period: number): Promise<AsOfARound | undefined> {
+    const holds = await theSessionTheReportHolds(this.prisma, groundId);
+    if (sessionNumber >= holds) return undefined;
+    const lastAnswer = closedAt ? null : await (this.prisma.checkIn?.findFirst?.({
+      where: { groundId, sessionNumber, status: CheckInStatus.COMPLETED },
+      orderBy: { completedAt: 'desc' },
+      select: { completedAt: true },
+    }) ?? Promise.resolve(null)).catch(() => null);
+    return { sessionNumber, at: closedAt ?? (lastAnswer as any)?.completedAt ?? new Date(), period };
+  }
+
+  /**
    * THE COACHING NOTE, THE PROBE LIST AND THE INFERENCES OF ONE SESSION, FOR ITS OWN REPORT (request 102).
    *
    * For the session the report holds now, the same as `GET /report` serves. For an earlier session,
@@ -5998,16 +6037,7 @@ happened, and what is in the way.`;
     period: number,
   ): Promise<{ coaching?: any; probes?: any; inferences?: any[] }> {
     const holds = await theSessionTheReportHolds(this.prisma, groundId);
-    let asOf: AsOfARound | undefined;
-    if (sessionNumber < holds) {
-      /* When the session closed: its kept round, or else the last answer given in it. */
-      const lastAnswer = closedAt ? null : await (this.prisma.checkIn?.findFirst?.({
-        where: { groundId, sessionNumber, status: CheckInStatus.COMPLETED },
-        orderBy: { completedAt: 'desc' },
-        select: { completedAt: true },
-      }) ?? Promise.resolve(null)).catch(() => null);
-      asOf = { sessionNumber, at: closedAt ?? (lastAnswer as any)?.completedAt ?? new Date(), period };
-    }
+    const asOf = await this.whereThisSessionIsCut(groundId, sessionNumber, closedAt, period);
     const labels = labelsForParties(ground.participants as any);
     const names = namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any, me?.id ?? null));
     const plainNameOf = (id: string): string | null => {

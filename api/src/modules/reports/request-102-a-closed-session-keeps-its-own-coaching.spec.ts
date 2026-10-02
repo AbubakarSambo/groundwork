@@ -134,3 +134,22 @@ describe('what a synthesis keeps of the inferences', () => {
     expect(theInferencesOfSession(one, 2, 2).map((i) => i.text)).toEqual(['From session 1.']);
   });
 });
+
+describe('the picture of a closed session waits on what was waited on then (found with request 102)', () => {
+  it.each([
+    ['Rukia', 'u-rukia', 'Baraka Mwangi is waiting on you for SESSION-ONE-WAIT a decision on the discount, with no escalation on record.'],
+    ['Amani', 'u-amani', 'Baraka Mwangi is waiting on Rukia Otieno for SESSION-ONE-WAIT a decision on the discount, with no escalation on record.'],
+    ['Baraka', 'u-baraka', 'You are waiting on Rukia Otieno for SESSION-ONE-WAIT a decision on the discount, with no escalation on record.'],
+    ['Juma', 'u-juma', 'Baraka Mwangi is waiting on Rukia Otieno for SESSION-ONE-WAIT a decision on the discount, with no escalation on record.'],
+    ['Grace', 'u-grace', 'Baraka Mwangi is waiting on Rukia Otieno for SESSION-ONE-WAIT a decision on the discount, with no escalation on record.'],
+  ])('%s reads session 1\'s wait in session 1\'s picture, and not session 2\'s', async (_who, userId, line) => {
+    const { r } = await sessionAs(userId, 1);
+    expect(r.pictureLines).toContain(line);
+    expect(JSON.stringify(r.pictureLines)).not.toMatch(/SESSION-TWO/);
+  });
+
+  it('session 2\'s picture still has session 2\'s wait', async () => {
+    const { r } = await sessionAs('u-rukia', 2);
+    expect(r.pictureLines).toContain('Amani Wekesa is waiting on you for SESSION-TWO-WAIT the price list, with no escalation on record.');
+  });
+});
