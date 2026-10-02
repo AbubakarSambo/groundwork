@@ -851,6 +851,12 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
  * pulled out and named as theirs. Draws nothing the server did not already send in `workRecords`;
  * only filters it down to `row.ownerParticipantId === myParticipantId`.
  */
+/** The prototype's own heading for this reader's own records (board-as-participant.txt: "Your
+    deals, day by day"), where it has one - otherwise the same shape every other kind uses. */
+const YOUR_OWN_HEADING: Partial<Record<KindOfWork, string>> = {
+  'sales org': 'Your deals, day by day',
+}
+
 export function YourOwnRecordsSections({ kindOfWork, sections, myParticipantId, leadFirstName }: {
   kindOfWork?: KindOfWork | null
   sections?: AServedWorkSection[]
@@ -859,26 +865,48 @@ export function YourOwnRecordsSections({ kindOfWork, sections, myParticipantId, 
 }) {
   if (!sections?.length || !myParticipantId) return null
   const itemNoun = (kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item').toLowerCase()
+  const heading = (kindOfWork ? YOUR_OWN_HEADING[kindOfWork] : undefined) ?? `Your own ${itemNoun}s, day by day`
+  const isSalesDeals = kindOfWork === 'sales org'
   const mine = sections
     .filter((s): s is Extract<AServedWorkSection, { state: 'filled' | 'none-yet' }> => s.state !== 'not-known')
     .flatMap((s) => (s.rows ?? []).filter((r) => r.ownerParticipantId === myParticipantId))
-  if (!mine.length) return null
   return (
-    <Section heading={`Your own ${itemNoun}s, day by day`} note="Only yours.">
-      <Panel pad={false}>
-        <RowList label={`Your own ${itemNoun}s, day by day`}>
-          {mine.map((row) => (
-            <Row key={row.id} columns="1fr" inset="record">
-              <div>
-                <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>{row.name}</div>
-                {row.stage && <div className="gwui-mt-2"><Tag tone="plain">{row.stage}</Tag></div>}
-                {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
-                <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={false} /></div>
-              </div>
-            </Row>
-          ))}
-        </RowList>
-      </Panel>
+    <Section heading={heading} note="Only yours.">
+      {/*
+        BOARD FIX (sales B, item 3b): A READER WITH NO ROWS STILL READS A SENTENCE, NOT A MISSING
+        SECTION. The engine itself sends every row ever said about this reader's own work (request
+        111 is about rows going missing server-side, not about this screen hiding what it is sent),
+        so an empty `mine` here is read plainly rather than by vanishing the whole heading.
+      */}
+      {mine.length === 0 ? (
+        <Note tone="muted">{`You have no ${itemNoun}s on record yet.`}</Note>
+      ) : (
+        <Stack gap={12}>
+          {isSalesDeals && <DealGridKey />}
+          <Panel pad={false}>
+            <RowList label={heading}>
+              {mine.map((row) => (
+                <Row key={row.id} columns="1fr" inset="record">
+                  <div>
+                    <div className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700 }}>
+                      {row.mark && row.mark !== 'none' && <><ProofMark mark={row.mark} />{' '}</>}
+                      {row.name}
+                    </div>
+                    {row.stage && <div className="gwui-mt-2"><Tag tone="plain">{row.stage}</Tag></div>}
+                    {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
+                    <div className="gwui-mt-4">
+                      <Stack gap={4}>
+                        <WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={false} />
+                        {isSalesDeals && <NextStepCell row={row} />}
+                      </Stack>
+                    </div>
+                  </div>
+                </Row>
+              ))}
+            </RowList>
+          </Panel>
+        </Stack>
+      )}
     </Section>
   )
 }

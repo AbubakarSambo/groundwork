@@ -84,7 +84,7 @@ import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
-import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded, Callout, Stack, SubHeading } from '@/components/gw/ui'
+import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded, Callout, Stack, SubHeading, Note } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
@@ -393,45 +393,50 @@ function MaybeFolded({ fold, children }: { fold: boolean; children: ReactNode })
  * everyone, naming colleagues - before the lead's own editing controls and judgement were taken
  * out of it. The prototype's own participant board instead opens on four short, personal things:
  * whether today's team picture is ready, a way to their own report, their own records (never
- * anybody else's), and their own share of the team's total once the engine sends one.
+ * anybody else's), and their own share of the team's total.
  *
- * ONLY WHAT IS ALREADY SENT, AND THE SAME FACT THE REPORTS LIST USES. This used to read
- * `howItIsGoing.glance.progress.roundsDone > 0`, which counts rounds the whole run has been
- * through and so said "shared" the moment session 2 opened, whatever today's own round had done -
- * a participant was told the team picture was shared when it was not (second board review). The
- * Reports list ("Every session", TheReportIsAListOfSessions.tsx) says "Shared" or "Not shared" from
- * one fact per round: `closed`, true once that round's report has actually gone out to everyone in
- * it (`roundCompletions`, see lib/session-rows.ts). This reads the same `closed` off the latest row
- * in `sessionRows` - the same rows that list already builds - so the two places on the board can
- * never disagree. "Your share" (board-as-participant.txt: "4 of your 5 sales so far... Only you
- * and Wairimu see your share") has no served field at all yet (request 107) and is left out
- * entirely rather than drawn as an empty box.
+ * BOARD FIX (sales B, item 3a): THE SERVER'S OWN `teamPicture.shared`, NOT A CLIENT-SIDE GUESS.
+ * This used to read `sessionRows[0]?.closed` - the same fact "Every session" uses for whether a
+ * round's report has gone out, but computed again here from the grid rather than read from the one
+ * place the engine itself decides it for a participant's own, narrowed board
+ * (a-participants-board-is-their-own.ts: `reader.released`). Two readings of "is it shared" is two
+ * chances for them to disagree; `teamPicture` is the engine's own single answer, so this now simply
+ * draws it. `teamPicture.yourOwnReport` is the server's own "Your own report is ready now." (or
+ * null when this reader has no report of their own yet), and "Read your own report" is drawn only
+ * then, as the prototype shows it only once there is one to read.
  */
-function TheParticipantsOwnView({ groundId, pictureShared, kindOfWork, workRecords, myParticipantId, leadFirstName }: {
+function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords, myParticipantId, leadFirstName, yourShare }: {
   groundId: string
-  pictureShared: boolean
+  teamPicture: BoardPresent['teamPicture']
   kindOfWork: string | null
   workRecords: BoardPresent['workRecords']
   myParticipantId: string | null
   leadFirstName: string | null
+  yourShare: BoardPresent['yourShare']
 }) {
+  const shared = teamPicture?.shared === true
   return (
     <>
       <Panel className="gwui-mt-16">
         <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700}}>
-          {pictureShared ? 'Today’s team picture is ready.' : 'Today’s team picture isn’t shared yet.'}
+          {shared ? 'Today’s team picture is ready.' : 'Today’s team picture isn’t shared yet.'}
         </div>
         <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>
-          {pictureShared
+          {shared
             ? 'It is below, with everything else from this check-in.'
             /* board-as-participant.txt: "Wairimu usually shares it by 7pm." - the server sends no
-               usual-share time yet, so that half is left out rather than invented; see the task
-               note to add it back once such a field exists. */
-            : `${leadFirstName ?? 'Your lead'} shares it. Your own report is ready now.`}
+               usual-share time yet, so that half is a plain sentence without one; see the task
+               note to add the time back once such a field exists. */
+            : [
+                `${leadFirstName ?? 'Your lead'} shares it.`,
+                !shared && teamPicture && 'yourOwnReport' in teamPicture ? teamPicture.yourOwnReport : null,
+              ].filter(Boolean).join(' ')}
         </div>
-        <div className="gwui-mt-10">
-          <UIButton kind="secondary" to={`/grounds/${groundId}/report`}>Read your own report</UIButton>
-        </div>
+        {(shared || (teamPicture && 'yourOwnReport' in teamPicture && teamPicture.yourOwnReport)) && (
+          <div className="gwui-mt-10">
+            <UIButton kind="secondary" to={`/grounds/${groundId}/report`}>Read your own report</UIButton>
+          </div>
+        )}
       </Panel>
       <YourOwnRecordsSections
         kindOfWork={kindOfWork as any}
@@ -440,9 +445,23 @@ function TheParticipantsOwnView({ groundId, pictureShared, kindOfWork, workRecor
         leadFirstName={leadFirstName}
       />
       {/*
-        "YOUR SHARE" (request 107): no field for it exists yet on `GET /grounds/:id/board` - drawn
-        nothing here, rather than an empty box with nothing behind it, until the engine sends one.
+        "YOUR SHARE" (request 107 c; board-as-participant.txt: "4 of your 5 sales so far; 3 paid.
+        Only you and Wairimu see your share."). `yourShare` is already the engine's own sentence,
+        each entry already ending in who else may see it - drawn exactly as sent, nothing left out
+        only because the field now exists where it did not before.
       */}
+      {!!yourShare?.length && (
+        <Section heading="Your share">
+          <Stack gap={8}>
+            {yourShare.map((s) => (
+              <div key={s.objectiveId}>
+                <p className="gwui-panel-text">{s.says}</p>
+                <Note tone="muted">{s.whoSees}</Note>
+              </div>
+            ))}
+          </Stack>
+        </Section>
+      )}
     </>
   )
 }
@@ -959,12 +978,31 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {isParticipantView && (
           <TheParticipantsOwnView
             groundId={id!}
-            pictureShared={sessionRows[0]?.closed ?? false}
+            teamPicture={b.teamPicture}
             kindOfWork={(b as any).kindOfWork ?? null}
             workRecords={b.workRecords}
             myParticipantId={b.myParticipantId}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+            yourShare={b.yourShare}
           />
+        )}
+
+        {/*
+          BOARD FIX (sales B, item 3d): "EVERY SESSION" SITS OUTSIDE THE FOLD, AFTER "YOUR SHARE"
+          (board-as-participant.txt ends on "Every session" then "Ask", neither of them behind
+          "The whole check-in"). This used to sit lower on the page, inside `MaybeFolded`, where a
+          participant had to open the fold to reach it - moved here, right after the personal view
+          `TheParticipantsOwnView` draws, with the same gate as before (`!shown.checkInGrid`, the
+          server's own signal that this reader may not see everyone's session state, so this is
+          never drawn for a lead, who has the Reports table itself instead).
+        */}
+        {!shown.checkInGrid && b.myParticipantId && (
+          <Link
+            to={`/grounds/${id}?tab=record`}
+            className="gwui-wide-outline-btn gwui-mt-20 gwui-pt-11 gwui-pr-16 gwui-pb-11 gwui-pl-16 gwui-fs-16"
+          >
+            {EVERY_SESSION.heading}
+          </Link>
         )}
 
         <MaybeFolded fold={isParticipantView}>
@@ -2846,22 +2884,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           table needs - so it is reused here rather than inventing a second, client-only privacy
           rule that could drift from the server's.
         */}
-        {/*
-          A PARTY STILL GETS "EVERY SESSION" (board-as-participant.txt ends with "Every session" and
-          "Ask", with no Reports table above it - just the link). Their own session-by-session record
-          lives on the "What I shared" tab (ground-tabs.ts key `record`); there is no page yet that is
-          specifically "every session, as a party reads it" the way TheReportIsAListOfSessions is for
-          whoever runs the check-in, so this points at the closest existing one rather than inventing
-          a destination. Noted for whoever picks up a dedicated one.
-        */}
-        {!shown.checkInGrid && b.myParticipantId && (
-          <Link
-            to={`/grounds/${id}?tab=record`}
-            className="gwui-wide-outline-btn gwui-mt-20 gwui-pt-11 gwui-pr-16 gwui-pb-11 gwui-pl-16 gwui-fs-16"
-          >
-            {EVERY_SESSION.heading}
-          </Link>
-        )}
 
         {/*
           THE WHOLE RUN, IN ONE PLACE. "I need the board to carry the entire history in one place."
@@ -2985,7 +3007,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           one ("Why is Baraka Mwangi still waiting on the discount decision?"), else the plain
           example asked for.
         */}
-        <AskTheBoard firstBlocker={b.dependencies?.[0] ?? null} />
+        <AskTheBoard firstBlocker={b.dependencies?.[0] ?? null} myParticipantId={b.myParticipantId} />
     </Page>
   )
 }
@@ -2995,11 +3017,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
  * Kept as its own small component so BoardPage's already-long body does not grow another inline
  * form; it owns nothing but the draft text, which it hands to the shared Ask Groundwork panel.
  */
-function AskTheBoard({ firstBlocker }: { firstBlocker: { from: string | null; what: string; on: string | null } | null }) {
+function AskTheBoard({ firstBlocker, myParticipantId }: {
+  firstBlocker: { from: string | null; fromParticipantId?: string | null; what: string; on: string | null } | null
+  myParticipantId: string | null
+}) {
   const [draft, setDraft] = useState('')
   const showWith = useAskStore((s) => s.showWith)
+  /*
+   * BOARD FIX (sales B, item 3e): "I", NOT HER OWN NAME, WHEN THE READER IS THE ONE WAITING.
+   * `firstBlocker.from` is always the third-person name ("Amani Wekesa") - right for a colleague
+   * or the lead reading about her, wrong on Amani's own board, where "Why is Amani Wekesa still
+   * waiting on the price list?" reads as a question about a stranger rather than the one she
+   * would actually ask ("Why am I still waiting on the price list?").
+   */
+  const readerIsWaiting = !!myParticipantId && firstBlocker?.fromParticipantId === myParticipantId
   const example = firstBlocker?.from
-    ? `Why is ${firstBlocker.from} still waiting on ${firstBlocker.what}?`
+    ? (readerIsWaiting
+      ? `Why am I still waiting on ${firstBlocker.what}?`
+      : `Why is ${firstBlocker.from} still waiting on ${firstBlocker.what}?`)
     : 'Who is waiting on whom?'
   return (
     <form

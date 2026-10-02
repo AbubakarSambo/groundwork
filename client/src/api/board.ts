@@ -65,6 +65,21 @@ export type BoardPresent = {
   /** The newest thing in the record the board is built from. Opening the board does not move it. */
   lastChangedAt?: string | null
   /**
+   * BOARD FIX (sales B, item 3a): WHETHER THE TEAM'S PICTURE IS SHARED, FOR A PARTICIPANT
+   * (a-participants-board-is-their-own.ts). `shared: true` once the report has gone out to the
+   * people in it; `shared: false` with `says` (the server's own sentence) and `yourOwnReport` (the
+   * server's own "Your own report is ready now.", or null when this reader has no report yet) while
+   * it has not. Present only on a participant's own narrowed board - absent for the lead.
+   */
+  teamPicture?: { shared: true } | { shared: false; says: string; yourOwnReport: string | null }
+  /**
+   * "YOUR SHARE" (request 107 c; board-as-participant.txt: "4 of your 5 sales so far; 3 paid. Only
+   * you and Wairimu see your share."). Only this reader's own targets with a number set, each
+   * already said as a full sentence (`says`) and already ending in who else may see it (`whoSees`).
+   * Present only for a participant who owns at least one such target.
+   */
+  yourShare?: { objectiveId: string; says: string; whoSees: string }[]
+  /**
    * Somebody named in an account as doing work here who has no account of their own. Guarded on
    * the server: nothing that quotes anybody, names a party, or was inferred reaches this.
    */
