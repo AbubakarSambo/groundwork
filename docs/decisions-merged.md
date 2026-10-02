@@ -182,3 +182,8 @@ These are settled. Do not change them. If one seems to block the work, stop and 
     - **Item 46.** A participant's one-line summary is narrowed to their own waits.
     - **Item 48.** The ending labels are changed to plain words, on both panels.
     - **Item 49.** The work record stays visible to the person reviewed.
+76. **Requests 109 and 111, Hafsah's answers** (decided 2 October).
+    1. **The checkability rating stays, as decisions 40 and 43 allow.** Request 111 removed ratings from what readers are sent; anything that is the rating of how specific and checkable a person's answers are goes back, in the prototype's form, for exactly the readers decisions 40 and 43 allow: the person's own "How checkable today's check-in was" (for example "4 of 5", with who, what, when, proof and next) to the person alone, and "Nothing checkable" beside the name, with what to ask next, to the lead and admins, never as a number. Scores of a person's contribution or performance stay removed. Tested.
+    2. **Item 51:** yes. **Item 53:** yes.
+    3. **Item 52:** yes for a restated aim (the team's one aim). But a record added on the board with nobody's name becomes somebody's deal only once the lead confirms it, because a claim is checked first.
+    4. **Item 54:** build the more private option: each session's team picture is released on its own, with the change to what is stored, so a participant never reads a later session's picture before it is released.
