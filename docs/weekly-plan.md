@@ -1,5 +1,50 @@
 # The weekly plan after release
 
+## The work for the first client, in order (decisions 81, 82 and 83, 2 October 2026)
+
+One list, merged from every instruction since decision 81, without duplicates. Marked **done**, **in progress** or **not started**.
+
+**a. What the helpers are already doing, finished first**
+1. Request 117, the sales board's engine faults. *In progress.*
+2. The WhatsApp fixes from `docs/whatsapp-end-to-end.md` (the "keep it off the phone" privacy fault, number tidying, switch words). *In progress.*
+
+**b. WhatsApp for the first client** (decisions 82 and 83)
+3. Approvals: the approver told on WhatsApp and in the app, approving or declining by WhatsApp reply (said back and confirmed), the person told the decision. *Not started.*
+4. Asking once whether a message during a check-in is a leave, hours or spending request ("Shall I treat this as a leave request?"), and the switch word "ask", said in the opening notice. *In progress.*
+5. The first session announced on Groundwork's number, with WhatsApp reminders and nudges. *In progress.*
+6. Never silence when WhatsApp is held by the add-on or the limit. *In progress.*
+7. The opening notice on one-to-one check-ins never says "released with everybody else's". *In progress.*
+8. Leave, hours and spending for people matched to their sign-in by email. *Not started.*
+9. Ask Groundwork never answers from a check-in kept in the app. *Not started.*
+10. The roster import tidies numbers the same way. *In progress.*
+11. The lead's daily summary on WhatsApp, Groundwork's one message of the day for the lead. Template *in progress*; the summary itself *not started.*
+12. Hafsah's eight templates in `docs/whatsapp-templates.md`, word for word, wired up, with the two-messages-on-the-day rule and a check against WhatsApp's rules. *In progress.*
+
+**c. WhatsApp settings**
+13. Every server setting's name, what it holds, and where it is found in Meta's tools, never a value. *Done* in `docs/whatsapp-settings.md`; linked from `docs/whatsapp-end-to-end.md` once the helper editing that file has finished. *In progress.*
+
+**d. The three suites, end to end, including over WhatsApp**
+14. Leave requests. Said back and confirmed in chat: *done*; approval and telling people: item 3.
+15. Finance (spending) requests. As item 14.
+16. Performance reviews, as the prototype's suite shows it, on evaluation check-ins and judging, with a proposed threshold for a "recognise" suggestion for Hafsah to confirm. *Not started.*
+
+**e. The boards the client needs, from the engine**
+17. Request 117 (item 1). *In progress.*
+18. What the sales, onboarding and project boards still need from the engine. *Not started.*
+
+**f. The back office**
+19. Its usage numbers checked after this work, and anything broken fixed. *Not started.* Its rebuild comes last (item 22).
+
+**g. When the screens workspace stops, its screen work**
+20. The sales, onboarding and project boards, then the three suites, from `docs/screens-handover.md`. *Waiting for the screens workspace to stop.*
+
+**h. Then everything else**
+21. The other seven boards, and the rest of the earlier list. *Not started.*
+22. The back office rebuild, last. *Not started.*
+
+Already done for this release: the WhatsApp survey (`docs/whatsapp-end-to-end.md`), WhatsApp billing (decision 78), the WhatsApp status page, the company-wide picture and its live check (decisions 79 and 80), and the one-month free trial.
+
+
 Hafsah's decision 37: deploy soon with what works, then improve the product every week.
 
 This is the order of those weeks. **Each week is one piece, small enough to build, test and review in a week**, and ends with the same proof:
