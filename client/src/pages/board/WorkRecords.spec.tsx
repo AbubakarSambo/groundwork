@@ -65,9 +65,16 @@ describe('a work record says whose words it is, by name', () => {
  * board with nothing behind it).
  */
 describe('a work record carries its own mark', () => {
+  /*
+   * BOARD FIX (sales B, item 1): the deal grid now also draws its own key above the table
+   * (board-as-lead.txt: "Contact with proof...", "Contact in their words..."), itself built from
+   * the shared ProofMark - so a sales deal grid with a proven row now carries two "Proven" marks,
+   * the key's own and the row's. `getAllByRole` (was `getByRole`, which only tolerates one match)
+   * checks there are at least that many, rather than asserting there is exactly one.
+   */
   it('draws the shared ProofMark for a proven line', () => {
     renderSections([dealGrid({ mark: 'proven' })])
-    expect(screen.getByRole('img', { name: 'Proven' })).toBeTruthy()
+    expect(screen.getAllByRole('img', { name: 'Proven' }).length).toBeGreaterThanOrEqual(1)
   })
 
   it('draws nothing for a record added on the board, with mark "none"', () => {

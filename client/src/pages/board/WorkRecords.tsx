@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { boardApi, KIND_OF_WORK_OPTIONS, type AServedWorkSection, type AServedWorkRow, type KindOfWork, type WorkItemInput } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
-import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack } from '@/components/gw/ui'
+import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack, Note } from '@/components/gw/ui'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -94,7 +94,11 @@ const ITEM_KINDS_FOR_HOLDS: Record<string, { value: string; label: string }[]> =
  * `holds` (that produced "All of the the parties" when `holds` was already "the parties").
  */
 const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
-  'sales org': 'Every sale, and what shows it',
+  /* Board fix (sales B, item 1): the prototype's own board screen for this kind of work
+     (docs/prototype/screens/B5-the-board/board-as-lead.txt, "Every deal, day by day") is the one
+     this component actually draws for - WorkRecordsSections is only ever called from the Board
+     page (BoardPage.tsx), never from the G1 example-check-ins screen the old heading quoted. */
+  'sales org': 'Every deal, day by day',
   /* Phase 2 of the board task, 1 October: the prototype's own eng example
      (docs/prototype/screens/G1-example-check-ins/eng.txt) heads this table "Every task, and
      what shows it" - the same words every other kind uses, not "Every release and task". */
@@ -108,6 +112,33 @@ const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
 }
 const WORK_PLAN_HEADING: Partial<Record<KindOfWork, string>> = {
   "founder's own check-in": 'Every commitment and decision, and what shows it',
+}
+
+/**
+ * THE DEAL GRID'S OWN SUBTITLE (board-as-lead.txt, directly under "Every deal, day by day":
+ * "Grouped by what the proof says about closing this quarter"). Said once here so the heading's
+ * `note` (Section's own slot for it) and the-prototype-count tests can't drift apart.
+ */
+const DEAL_GRID_NOTE: Partial<Record<KindOfWork, string>> = {
+  'sales org': 'Grouped by what the proof says about closing this quarter.',
+}
+
+/**
+ * THE DEAL GRID'S KEY (board-as-lead.txt, directly under its subtitle): what each mark means, and
+ * what the "Next step" column's two states mean. The first two lines are the shared `ProofMark`
+ * itself - filled for proof, ringed for someone's word (request 108 c) - so this key can never say
+ * something different from what the dot beside a deal's name actually draws. The last two describe
+ * the "Next step" column below, which carries no mark of its own.
+ */
+function DealGridKey() {
+  return (
+    <Stack gap={4}>
+      <Note tone="muted"><ProofMark mark="proven" /> Contact with proof: a photo, a quote, a payment</Note>
+      <Note tone="muted"><ProofMark mark="said" /> Contact in their words</Note>
+      <Note tone="muted">Next step booked</Note>
+      <Note tone="muted">Follow-up, no reply</Note>
+    </Stack>
+  )
 }
 const THEMES_HEADING: Partial<Record<KindOfWork, string>> = {
   'MarketView where next': 'Where next, ranked',
@@ -284,6 +315,19 @@ function WhatsNext({ row }: { row: AServedWorkRow }) {
   return <p className="gwui-panel-text-muted">{says}</p>
 }
 
+/**
+ * THE DEAL GRID'S OWN "NEXT STEP" COLUMN (board-as-lead.txt: "Next step" heading, then each row's
+ * own "Send the quote, with a photo" / "Nothing booked"). `nextSays` is never empty (the server's
+ * own fallback, what-happens-next-to-a-record.ts: "Nobody has said what happens next."), but the
+ * prototype's own word for that exact case is "Nothing booked" - said here only then.
+ */
+const NOTHING_HAS_BEEN_SAID = 'Nobody has said what happens next.'
+function NextStepCell({ row }: { row: AServedWorkRow }) {
+  const says = row.nextSays
+  const booked = !!says && says !== NOTHING_HAS_BEEN_SAID
+  return <p className="gwui-panel-text">{booked ? says : 'Nothing booked'}</p>
+}
+
 /** One row's add-or-change form: a record's name, kind, stage, owner and due date. Remove sits inside it, behind a confirmation. */
 function WorkItemForm({ section, participants, editing, onClose, onSaved, onRemove, removing }: {
   section: Extract<AServedWorkSection, { state: 'filled' | 'none-yet' }>
@@ -410,7 +454,7 @@ const NOBODY_SENTENCE_FOR_KIND: Record<KindOfWork, string> = {
   'a government programme': 'No owner is named yet.',
 }
 
-function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn, canEdit, onEdit }: {
+function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn, canEdit, onEdit, hasNextColumn }: {
   row: AServedWorkRow
   leadFirstName: string | null
   readerIsLead: boolean
@@ -419,6 +463,9 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
   hasStageColumn: boolean
   canEdit: boolean
   onEdit: () => void
+  /** The sales deal grid's own "Next step" column (board-as-lead.txt), drawn instead of folding
+      the same sentence inside "What shows it" (`WhatsNext`, still used by every other kind). */
+  hasNextColumn?: boolean
 }) {
   const fieldEntries = Object.entries(row.fields ?? {})
   const isFounder = kindOfWork === "founder's own check-in"
@@ -428,6 +475,7 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
   return (
     <div
       className={`gwui-work-row gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top${hasStageColumn ? '' : ' gwui-work-row-nostage'}`}
+      style={hasNextColumn ? NEXT_COLUMN_TEMPLATE : undefined}
       role="row"
       aria-label={row.name}
     >
@@ -475,9 +523,14 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
       <div>
         <Stack gap={4}>
           <WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
-          <WhatsNext row={row} />
+          {!hasNextColumn && <WhatsNext row={row} />}
         </Stack>
       </div>
+      {hasNextColumn && (
+        <div aria-label="Next step">
+          <NextStepCell row={row} />
+        </div>
+      )}
       {canEdit && (
         <div>
           <Button kind="quiet" size="small" onClick={onEdit}>Change</Button>
@@ -490,19 +543,32 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
 /** The column headings above the rows - the item's own noun, the kind's own word for whose it is.
     A kind with no stages carries no "Stage now" column at all (item 3); the founder's own
     check-in has no stages either, but keeps that slot for "Kind" (Commitment or Decision). */
-function WorkTableHead({ itemNoun, ownerLabel, hasStageColumn, isFounder, canEdit }: {
+/* BOARD FIX (sales B, item 1): the deal grid's extra "Next step" column (board-as-lead.txt) needs a
+   sixth grid track that none of the other ten kinds of work carry. Rather than a new one-off class
+   for one column count, the extra track is added by inline style, on top of the shared class's own
+   `grid-template-columns` - the same approach this file already uses throughout for one-off
+   layout, never a second CSS class. */
+const NEXT_COLUMN_TEMPLATE = { gridTemplateColumns: '1.3fr 0.8fr 0.8fr 1.4fr 1.3fr auto' }
+
+function WorkTableHead({ itemNoun, ownerLabel, hasStageColumn, isFounder, canEdit, hasNextColumn }: {
   itemNoun: string
   ownerLabel: string
   hasStageColumn: boolean
   isFounder: boolean
   canEdit: boolean
+  hasNextColumn?: boolean
 }) {
   return (
-    <div className={`gwui-work-head gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-13 gwui-ink-sub${hasStageColumn ? '' : ' gwui-work-head-nostage'}`} role="row">
+    <div
+      className={`gwui-work-head gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-13 gwui-ink-sub${hasStageColumn ? '' : ' gwui-work-head-nostage'}`}
+      style={hasNextColumn ? NEXT_COLUMN_TEMPLATE : undefined}
+      role="row"
+    >
       <span>{itemNoun}</span>
       <span>{ownerLabel}</span>
       {hasStageColumn && <span>{isFounder ? 'Kind' : 'Stage now'}</span>}
       <span>What shows it</span>
+      {hasNextColumn && <span>Next step</span>}
       {canEdit && <span />}
     </div>
   )
@@ -655,10 +721,12 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   })
 
   const heading = sectionHeading(kindOfWork, section)
+  const isDealGrid = section.section === 'Deal grid'
+  const note = (isDealGrid && kindOfWork ? DEAL_GRID_NOTE[kindOfWork] : undefined) ?? undefined
 
   if (section.state === 'not-known') {
     return (
-      <Section heading={heading}>
+      <Section heading={heading} note={note}>
         <p className="gwui-fs-13-5 gwui-ink-muted" style={{fontStyle: 'italic', lineHeight: 1.5}}>{section.why}</p>
       </Section>
     )
@@ -668,7 +736,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 
   if (section.state === 'none-yet') {
     return (
-      <Section heading={heading}>
+      <Section heading={heading} note={note}>
         <p className="gwui-ink-sub gwui-fs-15" style={{lineHeight: 1.55}}>
           {`No ${section.holds} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`}
         </p>
@@ -704,9 +772,8 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
     for (const row of section.rows) if (row.stage) stageCounts[row.stage] = (stageCounts[row.stage] ?? 0) + 1
   }
 
-  return (
-    <Section heading={heading}>
-      {isTimeline ? (
+  const showDealGridKey = isDealGrid && kindOfWork === 'sales org'
+  const dealGridContent = isTimeline ? (
         <TimelineList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} readerIsLead={readerIsLead} onEdit={setEditingRow} />
       ) : isObligations ? (
         <PartiesList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} readerIsLead={readerIsLead} onEdit={setEditingRow} />
@@ -715,7 +782,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       ) : (
         <Panel pad={false}>
           <div role="table" aria-label={heading}>
-            <WorkTableHead itemNoun={itemNoun} ownerLabel={ownerLabel} hasStageColumn={hasStageColumn} isFounder={isFounder} canEdit={canEdit} />
+            <WorkTableHead itemNoun={itemNoun} ownerLabel={ownerLabel} hasStageColumn={hasStageColumn} isFounder={isFounder} canEdit={canEdit} hasNextColumn={showDealGridKey} />
             {section.rows.map((row) => (
               <WorkRow
                 key={row.id}
@@ -726,11 +793,16 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
                 hasStageColumn={hasStageColumn}
                 canEdit={canEdit}
                 onEdit={() => setEditingRow(row)}
+                hasNextColumn={showDealGridKey}
               />
             ))}
           </div>
         </Panel>
-      )}
+      )
+
+  return (
+    <Section heading={heading} note={note}>
+      {showDealGridKey ? <Stack gap={12}><DealGridKey />{dealGridContent}</Stack> : dealGridContent}
 
       {!!section.stages?.length && (
         <div className="gwui-mt-14">
