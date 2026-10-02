@@ -153,12 +153,28 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     expect(within(whole).queryByText('Every deal, day by day')).toBeNull()
   })
 
-  it('says the picture is ready once the server itself says `teamPicture.shared`, not from a round count', async () => {
+  it('says the picture is shared once the server itself says `teamPicture.shared`, not from a round count, and links to it', async () => {
     me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
     renderBoard(board({ teamPicture: { shared: true } }))
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
-    expect(screen.getByText('Today’s team picture is ready.')).toBeTruthy()
+    /*
+     * BOARD REVIEW, SALES PIECE C, ITEM 6: "IT IS READY"/"IT IS BELOW" REPLACED. "Today's team
+     * picture is ready." (the heading) and "It is below, with everything else from this check-in."
+     * (the line under it) both claimed something about where the content was without giving a way
+     * there - everything past this view sits inside a closed fold. The heading now says "...is
+     * shared." and a real control opens that fold and jumps to it, which the old assertions never
+     * covered because there was nothing to click.
+     */
+    expect(screen.getByText('Today’s team picture is shared.')).toBeTruthy()
     expect(screen.queryByText('Today’s team picture isn’t shared yet.')).toBeNull()
+    expect(screen.queryByText('It is below, with everything else from this check-in.')).toBeNull()
+    expect(screen.getByText('Your own report is ready now.')).toBeTruthy()
+    const open = screen.getByRole('button', { name: 'Open it, below' })
+    expect(open).toBeTruthy()
+    const fold = screen.getByText('The whole check-in').closest('details') as HTMLDetailsElement
+    expect(fold.open).toBe(false)
+    open.click()
+    expect(fold.open).toBe(true)
   })
 
   it('reads "Your share" when the engine sends one, ending with who else sees it', async () => {

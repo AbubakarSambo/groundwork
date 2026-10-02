@@ -378,13 +378,29 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
  * was, just folded under one name below the personal view, so nothing they could read today is
  * taken away. The lead's own board is unchanged: for them this renders its children plainly.
  */
+/** So "Today's team picture is shared." can open this fold and jump straight to it - see item 6. */
+const THE_WHOLE_CHECK_IN_ID = 'the-whole-check-in'
+
 function MaybeFolded({ fold, children }: { fold: boolean; children: ReactNode }) {
   if (!fold) return <>{children}</>
   return (
-    <Folded summary="The whole check-in" note="Everything else from this check-in, for everyone in it.">
+    <Folded id={THE_WHOLE_CHECK_IN_ID} summary="The whole check-in" note="Everything else from this check-in, for everyone in it.">
       {children}
     </Folded>
   )
+}
+
+/**
+ * OPEN "THE WHOLE CHECK-IN" AND JUMP TO IT (board review, sales piece C, item 6).
+ *
+ * `Folded` is a plain, uncontrolled `<details>` - no script opens it, so this sets `.open` on the
+ * DOM node directly (the same thing a browser does when you click its own summary) rather than
+ * reaching for React state nothing here tracks, then scrolls to it.
+ */
+function openTheWholeCheckIn() {
+  const el = document.getElementById(THE_WHOLE_CHECK_IN_ID) as HTMLDetailsElement | null
+  if (el) el.open = true
+  scrollTo(el, { block: 'start' })
 }
 
 /**
@@ -440,24 +456,43 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
   return (
     <>
       <Panel className="gwui-mt-16">
+        {/*
+          BOARD REVIEW, SALES PIECE C, ITEM 6: NEVER CLAIM IT IS "BELOW" AS A PLAIN FACT - LINK TO
+          IT. "It is below, with everything else from this check-in." said where the team picture
+          actually was without giving a way there: everything past this view is folded under "The
+          whole check-in" (`MaybeFolded`), closed by default, so "below" alone left a reader to find
+          and open it themselves. This instead opens that fold and jumps straight to it.
+        */}
         <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700}}>
-          {shared ? 'Today’s team picture is ready.' : 'Today’s team picture isn’t shared yet.'}
+          {shared ? 'Today’s team picture is shared.' : 'Today’s team picture isn’t shared yet.'}
         </div>
         <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>
           {shared
-            ? 'It is below, with everything else from this check-in.'
+            ? null
             /* board-as-participant.txt: "Wairimu usually shares it by 7pm." - the server sends no
                usual-share time yet, so that half is a plain sentence without one; see the task
                note to add the time back once such a field exists. */
             : [
                 `${leadFirstName ?? 'Your lead'} shares it.`,
-                !shared && teamPicture && 'yourOwnReport' in teamPicture ? teamPicture.yourOwnReport : null,
+                teamPicture && 'yourOwnReport' in teamPicture ? teamPicture.yourOwnReport : null,
               ].filter(Boolean).join(' ')}
         </div>
+        {shared && (
+          <button type="button" onClick={openTheWholeCheckIn} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
+            Open it, below
+          </button>
+        )}
         {(shared || (teamPicture && 'yourOwnReport' in teamPicture && teamPicture.yourOwnReport)) && (
-          <div className="gwui-mt-10">
-            <UIButton kind="secondary" to={`/grounds/${groundId}/report`}>Read your own report</UIButton>
-          </div>
+          <>
+            {/* The prototype's own words, directly before the button (board-as-participant.txt:
+                "...Your own report is ready now. / Read your own report"). The non-shared branch
+                above already carries this sentence as part of its own paragraph; the shared
+                branch had none at all. */}
+            {shared && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.55}}>Your own report is ready now.</div>}
+            <div className="gwui-mt-10">
+              <UIButton kind="secondary" to={`/grounds/${groundId}/report`}>Read your own report</UIButton>
+            </div>
+          </>
         )}
       </Panel>
       <YourOwnRecordsSections
