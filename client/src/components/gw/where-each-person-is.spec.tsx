@@ -139,6 +139,41 @@ describe('WhereEachPersonIs: a deadline and a pronoun clause inside targetName r
 })
 
 /**
+ * ONBOARDING BOARD FIX 4: A VERB PHRASE IS NOT A NOUN A COUNT CAN SIT IN FRONT OF.
+ *
+ * "Tobi Adewale has none of their 1 Manage the renewal process for at least one of the clients
+ * yet." happened because this `targetName` is the objective's own full sentence - a verb, with its
+ * own count written as a WORD ("...at least one...") rather than a digit - so `cleanedTargetName`
+ * had no digit of the target's own number to find and strip, and kept the whole sentence where a
+ * plain noun was expected. Read live on Engagement Director, first 90 days
+ * (e2cfd3d8-f80a-4ac0-a680-e327daed0223).
+ */
+describe('WhereEachPersonIs: a verb-phrase targetName with no digit of its own reads as its own sentence', () => {
+  it('count 0: "has not yet done this: ...", never the broken "none of their 1 ... yet"', () => {
+    render(<WhereEachPersonIs rows={[row({
+      who: 'Tobi Adewale', target: 1, count: 0,
+      targetName: 'Manage the renewal process for at least one of the clients.',
+    })]} />)
+    expect(screen.getByText('Tobi Adewale has not yet done this: “Manage the renewal process for at least one of the clients.”')).toBeTruthy()
+    expect(screen.queryByText(/none of their 1/)).toBeNull()
+  })
+
+  it('count 1: "has done this: ...", not "so far"', () => {
+    render(<WhereEachPersonIs rows={[row({
+      who: 'Tobi Adewale', target: 1, count: 1,
+      targetName: 'Manage the renewal process for at least one of the clients.',
+    })]} />)
+    expect(screen.getByText('Tobi Adewale has done this: “Manage the renewal process for at least one of the clients.”')).toBeTruthy()
+  })
+
+  it('a sales targetName with its own digit is never read as a verb phrase', () => {
+    render(<WhereEachPersonIs rows={[row({ target: 4, count: 0, targetName: 'Onboard 4 shops in Westlands.' })]} />)
+    expect(screen.getByText('Baraka Mwangi has none of their 4 shops in Westlands yet.')).toBeTruthy()
+    expect(screen.queryByText(/has not yet done this/)).toBeNull()
+  })
+})
+
+/**
  * REQUEST 85: SOMEONE AN ADMIN DID NOT LET IN. The row's own sentence is enough - no chasing (ask
  * is always null for this reason, so the ask/finding line never appears) and no label (the reason
  * tag is left off entirely, rather than drawing a tag with an empty face).
