@@ -23,7 +23,7 @@ describe('the manager\'s week groups what was already decided', () => {
   });
 
   it('takes handoffs from the board rather than reading dependencies again', () => {
-    expect(WEEK).toContain('await this.waitingAcrossTheOrg(organizationId)');
+    expect(WEEK).toContain('await this.waitingAcrossTheOrg(organizationId, now, opts)');
   });
 
   it('puts the manager in their own list when they are the thing being waited for', () => {
