@@ -903,11 +903,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           reader, from the server's `lastChangedAt`. Then, for an admin who only reads, who runs it.
           The prototype has this small-grey line directly under the tab bar.
         */}
-        <p className="gwui-fs-15 gwui-ink-sub gwui-mt-14 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: 1.55}}>
+        <p className="gwui-fs-15 gwui-ink-sub gwui-mt-14" style={{lineHeight: 1.55}}>
           {whenTheBoardLastChanged(b.lastChangedAt)}
         </p>
         {b.readOnlyNote && (
-          <p role="note" className="gwui-fs-15 gwui-ink-text gwui-mt-8 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: 1.55}}>{b.readOnlyNote}</p>
+          <p role="note" className="gwui-fs-15 gwui-ink-text gwui-mt-8" style={{lineHeight: 1.55}}>{b.readOnlyNote}</p>
         )}
 
         {/*
