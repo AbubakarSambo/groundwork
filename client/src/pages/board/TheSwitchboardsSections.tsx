@@ -333,6 +333,57 @@ export function HeadlineSection({ headline, objectives }: { headline: BoardPrese
 }
 
 /**
+ * REQUEST 107 (c), PART 3: BY AREA (board-as-lead.txt doesn't show this one - no board in the
+ * suite's own test data has a site, county, team or queue said about its records). Drawn only
+ * when the server has something to group; the "not-known" state says why in the server's own
+ * words, so nothing is claimed Groundwork cannot back.
+ */
+export function ByAreaSection({ data }: { data: BoardPresent['byArea'] }) {
+  if (!data) return null
+  if (data.state === 'not-known') {
+    return (
+      <Section heading="By area">
+        <Note tone="muted">{data.why}</Note>
+      </Section>
+    )
+  }
+  return (
+    <Section heading={data.heading}>
+      <Panel pad={false}>
+        {data.areas.map((a) => (
+          <div key={a.area} className="gwui-panel-row">
+            <Stack gap={2}>
+              <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{a.area}</p>
+              <Note tone="muted">{a.says}</Note>
+            </Stack>
+          </div>
+        ))}
+      </Panel>
+    </Section>
+  )
+}
+
+/**
+ * REQUEST 107 (c), PART 4: REPORTED AGAINST CRITERIA, STAGE BY STAGE (board-as-lead.txt: "Reported
+ * vs criteria met, stage by stage"). The record holds no criteria, so this is always `not-known` -
+ * it counts what people reported and how much has a document behind it, never "criteria met".
+ */
+export function ReportedAgainstCriteriaSection({ data }: { data: BoardPresent['reportedAgainstCriteria'] }) {
+  if (!data) return null
+  return (
+    <Section heading="Reported, stage by stage" note={data.why}>
+      <Panel pad={false}>
+        {data.stages.map((s) => (
+          <div key={s.stage} className="gwui-panel-row">
+            <p className="gwui-panel-text">{s.says}</p>
+          </div>
+        ))}
+      </Panel>
+    </Section>
+  )
+}
+
+/**
  * "WHERE THIS IS HEADING" AND "RECORD THE DECISION" (request 108 d; board-as-lead.txt). Sent only
  * to whoever runs the check-in; `BoardPage.tsx` renders nothing else to gate it further. Opens the
  * existing `ResolutionPanel` from "Record the decision", as the engine's answer asks.

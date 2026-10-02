@@ -68,6 +68,15 @@ function baseBoard() {
       recordTheDecision: 'Record the decision',
       decided: null,
     },
+    byArea: { state: 'not-known' as const, why: 'Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet.' },
+    reportedAgainstCriteria: {
+      state: 'not-known' as const,
+      why: 'Nothing on record says what a deal must show to be at each stage, so the board counts what people reported and how much of it has a document behind it, but not how many meet the rules.',
+      stages: [
+        { stage: 'Quoted', reported: 1, withProof: 0, says: '1 deal was reported at Quoted, and it has no document behind it.' },
+        { stage: 'Won', reported: 1, withProof: 0, says: '1 deal was reported at Won, and it has no document behind it.' },
+      ],
+    },
   }
 }
 
@@ -125,5 +134,23 @@ describe('request 108 (d): "Where this is heading" and "Record the decision"', (
     renderBoard({ ...baseBoard(), whereThisIsHeading: null })
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.queryByText('Where this is heading')).not.toBeInTheDocument()
+  })
+})
+
+describe('request 107 (c), parts 3 and 4: by area, and reported against criteria', () => {
+  it('says why "by area" is not known, rather than inventing a grouping', async () => {
+    renderBoard(baseBoard())
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
+    expect(screen.getByText('By area')).toBeInTheDocument()
+    expect(screen.getByText(/Nothing on record says which site, county, team or queue/)).toBeInTheDocument()
+  })
+
+  it('counts what was reported at each stage, never "criteria met"', async () => {
+    renderBoard(baseBoard())
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
+    expect(screen.getByText('Reported, stage by stage')).toBeInTheDocument()
+    expect(screen.getByText('1 deal was reported at Quoted, and it has no document behind it.')).toBeInTheDocument()
+    expect(screen.getByText('1 deal was reported at Won, and it has no document behind it.')).toBeInTheDocument()
+    expect(document.body.textContent).not.toContain('criteria met')
   })
 })

@@ -93,7 +93,7 @@ import {
   RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockersSection,
   EvidenceIndexSection, BusyOrMovingSection, ObligationsSection, ForecastSection,
   ContradictionsSection, QuestionsForTheLeadSection, sameAsTheWorkPlan,
-  HeadlineSection, WhereThisIsHeadingSection, standsTone,
+  HeadlineSection, WhereThisIsHeadingSection, standsTone, ByAreaSection, ReportedAgainstCriteriaSection,
 } from './TheSwitchboardsSections'
 
 /**
@@ -1534,6 +1534,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           readerIsLead={viewerRunsThisCheckIn}
           canEdit={b.canEditFrame}
         />
+
+        {/*
+          REQUEST 107 (c), PARTS 3 AND 4: "BY AREA" AND "REPORTED, STAGE BY STAGE" (board-as-
+          lead.txt: "Reported vs criteria met, stage by stage"). Built from the records this
+          reader is already served, right after the kind of work's own records, same as the
+          prototype's own placement.
+        */}
+        <ByAreaSection data={(b as any).byArea} />
+        <ReportedAgainstCriteriaSection data={(b as any).reportedAgainstCriteria} />
 
         {/*
           REQUEST 70: THE SWITCHBOARD'S OWN SECTIONS, THE 13 THAT NOW HAVE A SERVED FIELD. Each
