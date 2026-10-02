@@ -7,7 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from './whatsapp.service';
 import { WhatsAppForAnOrganisationService } from '../public-api/whatsapp-for-an-organisation.service';
-import { pickWasAsked, pickedOrganisation, whichOrganisationAsText } from '../public-api/a-whatsapp-message-is-routed';
+import { pickWasAsked, pickedOrganisation, whichOrganisationAsText, A_SWITCH_WORD } from '../public-api/a-whatsapp-message-is-routed';
 
 /**
  * Inbound WhatsApp webhook. Meta calls GET once to verify the endpoint, then POSTs every inbound
@@ -119,9 +119,22 @@ export class WhatsAppController {
       const picked = pickedOrganisation(text, orgs);
       if (picked) {
         await this.prisma.whatsAppOrganisationPick.update({ where: { phone }, data: { organizationId: picked.id, pickPendingAt: null } });
-        await this.whatsapp.sendMessage(fromNumber, `${picked.name}. Carry on - what you write here goes to your check-in there.`);
+        await this.whatsapp.sendMessage(fromNumber, `${picked.name}. Carry on. What you write here goes to your check-in there. Write "switch" to choose again.`);
+        /* Chosen again after "switch": the check-ins open there follow, as "switch" gives inside one organisation. */
+        if (kept.organizationId) {
+          await this.inbound.handle(picked.id, { entry: [{ changes: [{ value: { messages: [{ from: fromNumber, type: 'text', text: { body: 'switch' } }] } }] }] }, 'ours');
+        }
         return null;
       }
+    }
+    /*
+     * "SWITCH" CHOOSES AGAIN (survey item 12). A number on two rosters kept its first pick for good.
+     * Now "switch" asks again which organisation, and the answer replaces the pick.
+     */
+    if (kept?.organizationId && A_SWITCH_WORD.test(text)) {
+      await this.prisma.whatsAppOrganisationPick.update({ where: { phone }, data: { pickPendingAt: new Date() } });
+      await this.whatsapp.sendMessage(fromNumber, whichOrganisationAsText(orgs), { kind: 'which-one' });
+      return null;
     }
     if (kept?.organizationId && orgs.some((o) => o.id === kept.organizationId)) return kept.organizationId;
     await this.prisma.whatsAppOrganisationPick.upsert({

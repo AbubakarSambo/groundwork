@@ -2408,3 +2408,28 @@ The other sentences in `saying`:
 - **Failed messages this week:** messages to this organisation's people that did not send in the last seven days. A message held because WhatsApp is not turned on for the organisation, or the month's messages are used up, is not counted here; Plan and billing says that.
 
 **Note:** `GET /integrations/connections` (the counts at a glance, `connections-at-a-glance.service.ts`) still serves its own three WhatsApp counts, made differently: its "check-ins this month" counts check-ins Groundwork sent a message for, and its "people" counts open WhatsApp threads. For the card, use the counts here.
+
+## WhatsApp for the first client: what a screen needs to know (2 October, decisions 82 and 83)
+
+The engine workspace changed what goes to and comes from WhatsApp. Nothing here needs a new screen; these are the words people now read on their phones, and what the app may want to say beside them.
+
+### Words people read on WhatsApp
+
+- **When a session opens** (every session, the first included, on Groundwork's number too): "Hi Miriam, your check-in for the sales team is open. It takes about five minutes, and you can answer right here. Reply START to begin." With two buttons, "Start" and "Not now". It never says words are "released with everybody else's".
+- **When the check-in starts on WhatsApp**, before the first question, one sentence: "You can write "ask" at any time to ask Groundwork something, "back" to come back to your check-in, and "switch" to choose another check-in." If the setup screen or Settings says how WhatsApp works, these are the three words.
+- **"Not now"**: "All right. I will not write to you first again today. Your check-in is still open, and you can answer here whenever you are ready."
+- **A check-in kept in the app** (`overWhatsApp = false`): a message to it is not taken in, and the person reads "Your check-in "Performance plan for Amina" is kept in the Groundwork app, so I cannot take your answers to it here. Please open Groundwork and answer it there." Nothing about it goes to a phone: no notice, no reminder, no report.
+- **A request during a check-in**: "Shall I treat this as a leave request?" (or "as a spending request?", "as hours?"); yes goes to Ask Groundwork, no goes into the check-in.
+- The morning reminders are Hafsah's templates, word for word, in `docs/whatsapp-templates.md`.
+
+### When WhatsApp is held (the add-on or the month's limit)
+
+A person who wrote in the last 24 hours gets one message, once in 24 hours, for example "Your organisation has not turned on WhatsApp, so this check-in stays in the app. You can carry on in the Groundwork app." Outside the 24 hours nothing can go. Every held message is kept in the send record (`WhatsAppSend`, `kind` ending in `:held`, `error` holding the sentence above without the last sentence), so the app can show the same sentence to the person where their check-in is.
+
+### Numbers
+
+Settings (`PATCH` of the profile), an admin's roster entry (`PATCH /users/:id`) and the roster import (SCIM, and `POST /people` through it) now keep every number as "+" and digits with the country code. A local number starting with 0 takes the organisation's country when it is known. Otherwise the request is refused with a 400 whose message is: "Please write the whole number with the country code at the start, for example +234 801 234 5678." Something that is not a phone number at all is refused with: "That does not look like a whole phone number. Please write it with the country code at the start, for example +234 801 234 5678." Show the message as it comes; the screen does not need its own check.
+
+### The Connections page
+
+`theNamesToSubmit` on `GET /integrations/whatsapp` is now every template the product starts, Hafsah's eight and `groundwork_report_ready`, not three. `reminders.approved` (and `canStartAConversation`) is true only when every one of them is approved.
