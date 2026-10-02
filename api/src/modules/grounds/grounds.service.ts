@@ -13,6 +13,7 @@ import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words'
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
+import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-an-admin-did-not-let-in';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
@@ -51,6 +52,7 @@ import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { theGlanceAsThisReaderMayReadIt, whatIsInTheWay } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
+import { theSessionClock } from '../board/one-count-for-the-sessions';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
@@ -1294,7 +1296,9 @@ export class GroundsService {
          * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
          * user field comes through.
          */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+        /* `awaitingOrgApproval`: whether an admin has let them in yet, which every count reads (decision 77). The
+           same yes or no the check-in's own read serves (SAFE_PARTICIPANT_SELECT). */
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
         checkIns: {
           /** `isSetup` so a setup conversation can be kept out of every session count. GW-EXP-6. */
           /**
@@ -1373,7 +1377,9 @@ export class GroundsService {
          * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
          * user field comes through.
          */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+        /* `awaitingOrgApproval`: whether an admin has let them in yet, which every count reads (decision 77). The
+           same yes or no the check-in's own read serves (SAFE_PARTICIPANT_SELECT). */
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
             checkIns: {
               /** Must match the sibling query above: both feed the same list. GW-EXP-6. */
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
@@ -1394,6 +1400,12 @@ export class GroundsService {
 
     /* Who is away today, for every check-in in the list at once (week 23). */
     const leaveOnTheList = await leaveOfThePeopleOn(this.prisma as any, [...orgGrounds, ...participantGrounds].map((g: any) => g.id));
+    /* Who an admin has not let in yet on each check-in, with who was declined, read once for the list (decision 77). */
+    const notLetInOnTheList = new Map<string, Map<string, { declined: boolean }>>();
+    for (const g of [...orgGrounds, ...participantGrounds] as any[]) {
+      if (!(g.participants ?? []).some(isNotLetInYet)) continue;
+      notLetInOnTheList.set(g.id, await whoIsNotLetInYet(this.prisma, g.participants ?? [], g.organizationId).catch(() => new Map()));
+    }
     return [...orgGrounds, ...participantGrounds]
       .map(g => {
         // Only set when the ground belongs to a different organisation than the one
@@ -1588,6 +1600,19 @@ export class GroundsService {
           ...(runsIt ? { joinToken } : {}),
           report: fullReport ? { releasedAt: fullReport.releasedAt ?? null, releasedSessions: releasedSessionsOf(fullReport as any) ?? [] } : null,
           alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName,
+          /*
+           * WHO IS WAITING TO BE LET IN, APART FROM "N OF M" (decision 77). Only whoever runs it, or an admin
+           * here, reads it; never a person who checks in.
+           */
+          waitingToBeLetIn: theWaitingToBeLetInLine(
+            [...(notLetInOnTheList.get(g.id) ?? new Map<string, { declined: boolean }>()).entries()]
+              .map(([pid, d]) => {
+                const p = ((allParticipants ?? []) as any[]).find((x) => x.id === pid);
+                return { p, declined: d.declined, name: [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim() || null };
+              })
+              .filter((w) => !!w.p && !w.p.managingOnly && runsIt)
+              .map(({ name, declined }) => ({ name, declined })),
+          ),
           /* Through the report's own door, for every reader, so no label is ever served (U.5 re-review). */
           ...(() => {
             if (!mayReadTheReport || (!latestFinding && !latestSummary)) return { latestFinding: null, latestSummary: null };
@@ -1671,7 +1696,7 @@ export class GroundsService {
      */
     if (requestingUserId) await this.assertMaySeeGround(id, requestingUserId);
     // Primary lookup by org - works for org members and the initiator.
-    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, isFinal: true, specificityLevel: true, specificityDimensions: true } as const;
+    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, startedAt: true, isFinal: true, specificityLevel: true, specificityDimensions: true } as const;
 
     let ground = await this.prisma.ground.findFirst({
       where: { id, organizationId },
@@ -1791,6 +1816,17 @@ export class GroundsService {
        doesn't have an end date" - it had one, as a count of days from a start nobody could see, and the
        header only spoke up in the last three of them. The same clock, read as a date, for every check-in. */
     const endsOn = deadlineOf(ground as any);
+    /*
+     * ONE COUNT FOR THE SESSIONS, THE BOARD'S OWN (request 101 f). Read from every check-in row before any
+     * reader's wall, because it names and counts nobody: the open round among the people who check in,
+     * capped at the last planned session, as the board's header and the list count it.
+     */
+    const sessionClock = theSessionClock(
+      (((ground as any).checkIns ?? []) as any[]).filter((c) => !c.isSetup),
+      /* Nobody an admin has not let in yet holds the clock back (decision 77). */
+      new Set((((ground as any).participants ?? []) as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p)).map((p) => p.id)),
+      totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+    );
 
     /*
      * BRIEF: the ground's own opening brief, or the released report's summary when there is none.
@@ -2010,6 +2046,25 @@ export class GroundsService {
        does. Reading only: the join link below, a write power, still asks `viewerAdminsThisOrg`. */
     const viewerReadsAsAnAdmin = viewerAdminsThisOrg || askedToApproveIt({ ...viewer, userId: requestingUserId }, ground as any);
     const viewerRunsThisGround = viewerIsInitiator || !!viewerReadsAsAnAdmin;
+    /*
+     * WHO MAY CHANGE THE SETUP, THE BRIEF INCLUDED (request 104, decisions 63 and 72): the lead, or an
+     * admin of this organisation once the lead's account shows they have left. Worked out by the same
+     * function the writers use, so the screen offers "Rewrite" to exactly whoever the server lets
+     * through. The lead's account is read only when the reader is an admin here and not the lead. A
+     * lead whose account says nothing either way is counted as present: nobody is let in on a guess.
+     */
+    const mayChangeSetup = viewerIsInitiator
+      ? true
+      : viewerAdminsThisOrg && ground.initiatorId
+        ? await (async () => {
+          const lead = await (this.prisma as any).user.findUnique({ where: { id: ground.initiatorId }, select: { isActive: true, firstName: true, lastName: true } }).catch(() => null);
+          return whoMayConfirmSetup(requestingUserId, ground as any, {
+            lead: lead ? { ...lead, isActive: lead.isActive !== false } : null,
+            confirmer: viewer as any,
+            organizationId: (ground as any).organizationId ?? null,
+          }).allowed;
+        })()
+        : false;
     /* Whether the session the stored report holds now has been released (decision 76, item 4). */
     const teamPictureNowShared = viewerRunsThisGround ? true : await isTheTeamPictureNowShared(this.prisma, id, (ground as any).report);
 
@@ -2224,6 +2279,8 @@ export class GroundsService {
       return {
         ...p,
         notLetIn: !!notLetInInfo,
+        /* Not let in yet, still waiting or declined: not counted in "N of M" nor waited on (decision 77). */
+        notLetInYet: isNotLetInYet(p),
         notLetInBy: notLetInInfo && canReadWhoDecided ? (decidersById.get(notLetInInfo.decidedByUserId ?? '') ?? null) : null,
         notLetInAt: notLetInInfo && canReadWhoDecided ? (notLetInInfo.decidedAt ?? null) : null,
         email: hideContact && !isSelf && !viewerIsInitiator ? null : p.email,
@@ -2637,6 +2694,8 @@ export class GroundsService {
        */
       viewerIsInitiator,
       viewerRunsThisGround,
+      /* Whether this reader may change the setup and rewrite the brief (request 104). See above. */
+      mayChangeSetup,
       /*
        * WHETHER THERE IS A WHATSAPP NUMBER TO ANSWER ON AT ALL.
        *
@@ -2650,6 +2709,24 @@ export class GroundsService {
       alignment,
       daysLeft,
       endsOn,
+      /* The header's count, from the board's own clock: "Session 1 of 12.", and the line for a later session
+         somebody has started. Every reader gets the same sentences (request 101 f). */
+      sessionClock,
+      /*
+       * WHO IS WAITING TO BE LET IN, APART FROM THE COUNT (decision 77): "Faraji Odhiambo is waiting to be
+       * let in." To whoever runs it and an admin, every such person, by name or as a count where no name is
+       * known. Never to a person who checks in, whether or not people see each other: whether somebody has
+       * been let in is the organisation's business.
+       */
+      waitingToBeLetIn: theWaitingToBeLetInLine(
+        ((ground.participants ?? []) as any[])
+          .filter((p) => !p.managingOnly && isNotLetInYet(p))
+          .map((p) => ({
+            name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() || null,
+            declined: !!(p.userId && notLetInByUser.has(p.userId)),
+          }))
+          .filter(() => canReadWhoDecided),
+      ),
       /* The lead and the organisation's admins read the brief they wrote. A participant reads the
          situation and nothing that tells the product how to interview them. See
          what-a-participant-is-told-about-this. Goals are on the payload already, under objectives. */
@@ -2795,19 +2872,13 @@ export class GroundsService {
     if (!ground) throw new NotFoundException('Check-in not found');
     /* Who is reading what this says back: a line about them says "you". */
     const reader = { participantId: ground.participants.find((p: any) => p.userId === requestingUserId)?.id ?? null };
-    /**
-     * SAME RULE AS THE NOTES. An admin in this organisation could release the report and close the
-     * check-in and could not steer it - so covering for an absent lead meant being able to end the
-     * thing without being able to set it up. See `addLeadContext` for the whole reasoning.
+    /*
+     * DECISIONS 63 AND 72: SETUP IS THE LEAD'S, OR AN ADMIN'S ONLY ONCE THE LEAD HAS LEFT THE
+     * ORGANISATION. This let in any admin of the organisation while the lead was still there, so an
+     * admin could steer a check-in its lead was running, while the confirm step behind it refused them.
+     * The same rule, and the same refusal naming the lead, as every writer of setup (mayConfirmSetupOn).
      */
-    const viewer = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { role: true, organizationId: true },
-    });
-    const isOrgAdmin = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground);
-    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException('Setting this check-in up is for the lead or an admin in your organisation. Your own check-ins are on your page.');
-    }
+    await this.mayConfirmSetupOn(ground, requestingUserId);
 
     /*
      * LEAVE DATES GO TO THE LEAVE SUITE, NOT TO THIS CHECK-IN'S RECORD (week 20). Read by rules. Said
@@ -2920,6 +2991,25 @@ export class GroundsService {
           'This check-in has what it needs: how long it runs, how often people check in, what doing well looks like, who is in it, and something in writing for everybody to work from. Nothing here needs fixing before the first session.',
         gaps: [],
         done: true,
+      };
+    }
+
+    /*
+     * OPENING THE PAGE NEVER MAKES A MODEL CALL (request 101 e). The Context tab asks for the opening
+     * turn with an empty history every time it is opened, and each open asked the model again and
+     * showed a new opening question. The opening is now written from what is stored: the length and
+     * rhythm the check-in already has, and the product's own question for the first thing missing.
+     * The first model call is made on the lead's first message.
+     */
+    if (history.length === 0) {
+      const opened = openingLine(ground.timelineStated ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded);
+      const ask = (gaps[0] as { ask?: string } | undefined)?.ask ?? null;
+      return {
+        reply: forHumans([opened, ask].filter(Boolean).join(' ')),
+        gaps: gaps.map((g: { key: string }) => g.key),
+        openQuestion: ask,
+        done: false,
+        proposal: null,
       };
     }
 
@@ -3832,8 +3922,10 @@ export class GroundsService {
 
   /** A no to keeping something for the organisation: the offer is deleted and nothing is kept. */
   async declineContextOffer(groundId: string, requestingUserId: string, offerId: string) {
-    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } });
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, initiatorId: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* The same door as the conversation that made the offer (decisions 63 and 72). */
+    await this.mayConfirmSetupOn(ground, requestingUserId);
     await dropWhatWasOffered(this.prisma, { organizationId: ground.organizationId, offerId, userId: requestingUserId });
     return { changed: 'nothing', say: NOT_KEPT };
   }
@@ -4719,13 +4811,9 @@ export class GroundsService {
   ): Promise<{ participantId: string; who: string; exactQuestion: string }> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } });
     if (!ground) throw new NotFoundException('Check-in not found');
-    const viewer = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { role: true, organizationId: true },
-    });
-    if (ground.initiatorId !== requestingUserId && !adminsThisOrg({ ...viewer, userId: requestingUserId }, ground)) {
-      throw new ForbiddenException('Only the person who runs this check-in can ask people things through it. Nothing was asked.');
-    }
+    /* Decisions 63 and 72: the lead, or an admin only once the lead has left, as at the yes that keeps it
+       (keepAQuestionForAPerson). Was any admin of the organisation, at any time. */
+    await this.mayConfirmSetupOn(ground, requestingUserId);
     const people = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } },
@@ -7497,7 +7585,17 @@ export class GroundsService {
           },
         ],
       },
-      select: { id: true },
+      select: { id: true, userId: true },
+    }).then(async (rows: any[]) => {
+      /* Nobody an admin has not let in yet, unless they answered anyway (decision 77): the session
+         closes once everybody let in has answered. Same rule as recordRoundCompletion. */
+      const notLetIn = await whoIsNotLetInYet(this.prisma, rows ?? []);
+      if (!notLetIn.size) return rows;
+      const spoke = new Set(((await this.prisma.checkIn.findMany({
+        where: { sessionNumber, status: { in: AN_ANSWER }, participantId: { in: [...notLetIn.keys()] } },
+        select: { participantId: true },
+      }).catch(() => [])) ?? []).map((c: any) => c.participantId));
+      return rows.filter((p) => !notLetIn.has(p.id) || spoke.has(p.id));
     });
     if (active.length < 2) return false;
 

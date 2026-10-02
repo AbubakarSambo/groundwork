@@ -17,7 +17,8 @@ const service = strip(readFileSync(join(__dirname, 'conversation.service.ts'), '
 describe('an aim said inside a check-in', () => {
   it('is written against the person who said it, unless the lead is setting a shared target for a team', () => {
     expect(service).toContain("const aimsAreShared = me.partyType === PartyType.INITIATOR && (ground as any).peopleWorkTogether !== false;");
-    expect(service).toMatch(/groundObjective\.createMany\(\{\s*data: fresh\.map\(\(a, i\) => \(\{ groundId, name: a\.name, target: a\.target, sortOrder: existing\.length \+ i, ownerParticipantId: aimsAreShared \? null : participantId, setByParticipantId: participantId \}\)\)/);
+    /* Request 117 (11): the row now also keeps a person's own aim's day apart from its name; whose it is has not changed. */
+    expect(service).toMatch(/groundObjective\.createMany\(\{\s*data: fresh\.map\(\(a, i\) => \{[\s\S]{0,400}?ownerParticipantId: aimsAreShared \? null : participantId, setByParticipantId: participantId/);
   });
 
   it('and only unowned targets or their own reach a person mid-conversation', () => {

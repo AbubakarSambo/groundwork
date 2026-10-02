@@ -47,7 +47,8 @@ export interface PersonRow {
   roundsSoFar: number;
   /** What they have said is in their way, oldest first. */
   /** `onTheReader`: what they wait on is with the person reading the board (request 65). */
-  inTheWay: { what: string; owner: string | null; days: number; tried: Effort; onTheReader?: boolean }[];
+  /** `since`: the day it began, said in place of a count of days (request 117, part 9). `days` is measured to the record's own clock. */
+  inTheWay: { what: string; owner: string | null; days: number; tried: Effort; onTheReader?: boolean; since?: string | null }[];
   /**
    * WHETHER ANYTHING THEY SAID THIS ROUND CAN BE CHECKED: the check-in's own read of how checkable
    * their answers were, and, for a check-in not read yet, whether the record of it holds a number, a
@@ -205,12 +206,14 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
       return `${start} has not checked in for this round yet.`;
     case 'stuck and not chasing': {
       const oldest = sittingUnchased(row)[0];
+      /* The day it began, never a count of days from the reading (request 117, part 9). */
       const days = `${oldest.days} ${oldest.days === 1 ? 'day' : 'days'}`;
-      if (oldest.onTheReader) return `${start} has been waiting ${days} on you for ${oldest.what}.`;
+      if (oldest.onTheReader) return oldest.since ? `${start} has been waiting on you for ${oldest.what} since ${oldest.since}.` : `${start} has been waiting ${days} on you for ${oldest.what}.`;
+      const sat = oldest.since ? `since ${oldest.since}` : `for ${days}`;
       if (oldest.tried === 'nothing') {
-        return `${start} has had something in the way for ${days}, and nobody has said yet what was tried to clear it. Finding out who could clear it, and asking them, would move it.`;
+        return `${start} has had something in the way ${sat}, and nobody has said yet what was tried to clear it. Finding out who could clear it, and asking them, would move it.`;
       }
-      return `${start} has had something in the way for ${days}, and so far it has only been asked about. Chasing it, or asking someone else, would move it.`;
+      return `${start} has had something in the way ${sat}, and so far it has only been asked about. Chasing it, or asking someone else, would move it.`;
     }
     case 'behind the pace': {
       const gone = Math.min(row.roundsSoFar, roundsPlanned ?? row.roundsSoFar);
@@ -227,6 +230,12 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
       const what = w.what.trim().replace(/[.!?]+$/, '').replace(/^(The|A|An|Whether|What|How|Which|Who|When|If)\b/, (x) => x.toLowerCase());
       const forWhat = /^(whether|what|how|which|who|when|if)\b/.test(what) ? `a decision on ${what}` : what;
       const owner = (w.owner ?? '').trim();
+      /* With the day it began, so the row's ask need not say the wait again (request 117, parts 7 and 9). */
+      if (w.since) {
+        return owner
+          ? `${start} has checked in, and has been waiting on ${owner} for ${forWhat} since ${w.since}.`
+          : `${start} has checked in, and has been waiting for ${forWhat} since ${w.since}.`;
+      }
       return owner
         ? `${start} has checked in, and is waiting on ${owner} for ${forWhat}.`
         : `${start} has checked in, and is waiting for ${forWhat}.`;
@@ -238,7 +247,9 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
       if (onYou) {
         const what = onYou.what.trim().replace(/[.!?]+$/, '').replace(/^(The|A|An|Whether|What|How|Which|Who|When|If)\b/, (w) => w.toLowerCase());
         const forWhat = /^(whether|what|how|which|who|when|if)\b/.test(what) ? `a decision on ${what}` : what;
-        return `${start} has checked in, and is waiting on you for ${forWhat}.`;
+        return onYou.since
+          ? `${start} has checked in, and has been waiting on you for ${forWhat} since ${onYou.since}.`
+          : `${start} has checked in, and is waiting on you for ${forWhat}.`;
       }
       /* Decision 53, item 11: never told "nothing here needs you" when this reader cannot see
          whether that is true. */
@@ -303,7 +314,7 @@ const WHAT_THEY_TRIED_SAID_IN_FULL: Record<Effort, string> = {
  * AND NOT TWICE. Where the row's `says` already tells the lead how long it has sat and what was
  * tried (the row is there because of it), the ask carries only the ask. Pass `alreadySaid` then.
  */
-export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null {
+export function whatToAskFor(row: PersonRow, alreadySaid: boolean | 'the wait' = false): string | null {
   const start = subjectFor(row, true);
   /* "Ask a colleague to check in" would mean anybody; the row is about one person, so "this colleague". */
   const them = subjectFor(row, false).replace(/^(?:a|an|one|another)\s+(?:[a-z]+\s+)?colleague$/, 'this colleague');
@@ -336,7 +347,10 @@ export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null
   if (worst.onTheReader) {
     const waiting = worst.days === 0 ? 'is waiting' : `has been waiting ${worst.days} ${worst.days === 1 ? 'day' : 'days'}`;
     const theAsk = `Give ${them} an answer, or say when you will.`;
-    return alreadySaid ? theAsk : `${start} ${waiting} on you for ${worst.what}. ${theAsk}`;
+    if (alreadySaid) return theAsk;
+    return worst.since
+      ? `${start} has been waiting on you for ${worst.what} since ${worst.since}. ${theAsk}`
+      : `${start} ${waiting} on you for ${worst.what}. ${theAsk}`;
   }
   if (worst.days < A_FORTNIGHT && worst.tried !== 'nothing') return null;
   /* What they said they are waiting on is often a thing, not somebody: "the handover from the current
@@ -346,8 +360,14 @@ export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null
   const owner = aPersonCalled(worst.owner) ? worst.owner : null;
   const first = waysThrough({ what: worst.what, owner, days: worst.days, tried: worst.tried, chaseBy: null })[0];
   const theAsk = `Ask ${them} to ${first.charAt(0).toLowerCase()}${first.slice(1)}`;
+  if (alreadySaid === 'the wait') {
+    /* The row's own sentence already says the wait and since when; the ask adds only what was tried, and the ask (request 117, part 7). */
+    const tried = WHAT_THEY_TRIED_SAID_IN_FULL[worst.tried];
+    return `${tried.charAt(0).toUpperCase()}${tried.slice(1)}. ${theAsk}`;
+  }
   if (alreadySaid) return theAsk;
   /* "has been waiting 0 days" was read live on run-14. Something that came up today says so. */
+  if (worst.since) return `${start} has been waiting on ${worst.what} since ${worst.since}, and ${WHAT_THEY_TRIED_SAID_IN_FULL[worst.tried]}. ${theAsk}`;
   const since = worst.days === 0 ? 'is waiting' : `has been waiting ${worst.days} ${worst.days === 1 ? 'day' : 'days'}`;
   return `${start} ${since} on ${worst.what}, and ${WHAT_THEY_TRIED_SAID_IN_FULL[worst.tried]}. ${theAsk}`;
 }
@@ -366,8 +386,22 @@ export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | nul
   return rows
     .map((r) => {
       const reason = whyThisRow(r, roundsPlanned);
-      /* The stuck row's `says` already names the days and what was tried; the ask does not repeat it. */
-      const ask = whatToAskFor(r, reason === 'stuck and not chasing');
+      /*
+       * EACH FACT ONCE PER ROW (request 117, part 7). The stuck row's `says` already names how long and what was
+       * tried, so the ask does not repeat it. And where `says` already names the wait and the day it began (a wait
+       * on the reader, or on somebody else), the ask does not say the wait again: Rukia read "Amani Wekesa has
+       * checked in, and is waiting on you for the price list." and then "Amani Wekesa has been waiting 4 days on
+       * you for the price list. Give Amani Wekesa an answer ..." on one row.
+       */
+      const sorted = [...r.inTheWay].sort((a, b) => b.days - a.days);
+      const theWaitSaid = reason === 'waiting on someone'
+        ? sorted[0]
+        : reason === 'nothing to do' ? r.inTheWay.find((b) => b.onTheReader) : undefined;
+      const theWaitAsked = sorted.filter((b) => b.tried !== 'escalated' && b.tried !== 'went-around')[0];
+      const saidAlready = reason === 'stuck and not chasing'
+        ? true
+        : theWaitSaid?.since && theWaitAsked && theWaitSaid === theWaitAsked ? (theWaitSaid.onTheReader ? true : 'the wait' as const) : false;
+      const ask = whatToAskFor(r, saidAlready);
       return {
         participantId: r.participantId,
         who: r.who,
@@ -428,4 +462,28 @@ export function notNothingWhereThePageSaysSomething<T extends { participantId: s
     const named = ids.has(row.participantId) || names.has(String(row.who ?? '').trim().toLowerCase());
     return named ? { ...row, says: row.says.replace(NOTHING_NEEDS_YOU, '.') } : row;
   });
+}
+
+/**
+ * THE ROW'S FINDING DOES NOT SAY THE WAIT A THIRD TIME (request 117, part 7). "The team today" read, on Amani's
+ * row, "Amani Wekesa has checked in, and is waiting on you for the price list." in `says`, the same wait again in
+ * `ask`, and "Amani is waiting for you to send a price list." in `finding`, the report's sentence about her. Where
+ * the row already says a wait, a sentence of the finding that is about waiting for the same thing is left out.
+ * The rest of the finding stays as the report wrote it. Null where nothing is left.
+ */
+const SMALL_WORDS = new Set(['the', 'a', 'an', 'for', 'to', 'of', 'on', 'and', 'from', 'with', 'about', 'their', 'your', 'this', 'that', 'send', 'sent', 'get', 'give']);
+const wordsIn = (t: string) => (t.toLowerCase().match(/[a-z][a-z'-]+/g) ?? []).filter((w) => w.length >= 3 && !SMALL_WORDS.has(w));
+export function aFindingThatDoesNotSayTheWaitAgain(finding: string, waitsTheRowSays: readonly string[]): string | null {
+  const text = (finding ?? '').trim();
+  if (!text || !waitsTheRowSays.length) return text || null;
+  const kept = text.split(/(?<=[.!?])\s+/).filter((sentence) => {
+    if (!/\bwait(?:s|ing|ed)?\b/i.test(sentence)) return true;
+    const here = new Set(wordsIn(sentence));
+    return !waitsTheRowSays.some((w) => {
+      const theirs = wordsIn(w);
+      return theirs.length > 0 && theirs.every((x) => here.has(x));
+    });
+  });
+  const out = kept.join(' ').trim();
+  return out || null;
 }

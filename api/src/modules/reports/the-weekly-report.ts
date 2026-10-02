@@ -213,7 +213,8 @@ export function aTargetThisWeek(t: AWeeksTarget, whose: Whose, againstTheAim: bo
   const n = (x: number) => (direction === 'RATE' ? `${aNumberPeopleCanRead(x)}%` : `${aNumberPeopleCanRead(x)}${money && x !== 0 ? ` ${money}` : ''}`);
   /* A person's own aim is said as theirs, never as a number somebody set for them (decision 75, item 37). */
   const whoseWords = whose === 'team' ? ''
-    : t.setByTheHolder ? (whose === 'you' ? ', an aim you set yourself' : `, an aim ${whose.label} set for their own work`)
+    /* "3 shops in Kilimani, your own aim" and ", Amani Wekesa's own aim" (request 117, part 11). */
+    : t.setByTheHolder ? (whose === 'you' ? ', your own aim' : `, ${whose.label}'s own aim`)
       : whose === 'you' ? ', your own number' : `, ${whose.label}'s number`;
   const of = `${(t.setByTheHolder && whose !== 'team' ? theAimItself(name, null) : null) ?? lowerFirst(readable)}${whoseWords}`;
 

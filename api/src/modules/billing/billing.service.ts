@@ -1,10 +1,11 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
-import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT, freePlanApplies } from './pricing.service';
+import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT, freePlanApplies, WHATSAPP_ADD_ON_KIND } from './pricing.service';
+import { WhatsAppAddOnService } from './whatsapp-add-on.service';
 
 /**
  * WHAT SOMEBODY READS WHEN THEY RUN OUT OF SEATS.
@@ -70,6 +71,9 @@ export class BillingService {
     private config: ConfigService,
     private email: EmailService,
     private usage: UsageService,
+    /* WhatsApp, the paid add-on (decision 78): its Stripe line follows the plan. Optional so a test
+       that builds billing by hand without it still runs; Nest always provides it. */
+    @Optional() private whatsappAddOn?: WhatsAppAddOnService,
   ) {}
 
   /**
@@ -628,7 +632,10 @@ export class BillingService {
 
     const newPriceId = await this.pricing.getOrCreateStripePrice(newPlan);
     const sub = await this.stripe.stripe.subscriptions.retrieve(org.subscriptionStripeId);
-    const itemId = sub.items.data[0]?.id;
+    /* The plan's own line, never the WhatsApp add-on's, which is a second line on the same subscription. */
+    const itemId = sub.items.data.find(
+      (i: any) => i.id !== org.whatsappAddOnItemId && i.price?.metadata?.kind !== WHATSAPP_ADD_ON_KIND,
+    )?.id;
     if (!itemId) throw new NotFoundException('Subscription has no billable item.');
 
     const updated = await this.stripe.stripe.subscriptions.update(org.subscriptionStripeId, {
@@ -643,6 +650,8 @@ export class BillingService {
       data: { subscriptionPlan: newPlan, subscriptionPeriodEnd: periodEnd },
     });
 
+    /* The WhatsApp add-on's line moves to the new plan's add-on price. */
+    await this.whatsappAddOn?.syncTheStripeLine(organizationId).catch((err: any) => this.logger.error(`WhatsApp add-on line for ${organizationId} did not follow the plan change: ${err?.message}`));
     await this.tellThemBillingChanged(organizationId, `Your plan changed to ${PLAN_LABELS[newPlan]}.`).catch(() => undefined);
     this.logger.log(`Org ${organizationId} subscription changed to plan ${newPlan}`);
     return { plan: newPlan, periodEnd };
@@ -1222,6 +1231,8 @@ export class BillingService {
               await this.email.sendSubscriptionConfirmed(orgData.email, plan, periodEnd).catch(() => undefined);
             }
             this.logger.log(`Org subscription activated: org ${orgId} plan ${plan}`);
+            /* An organisation that turned WhatsApp on gets its add-on line now, if its trial is over. */
+            await this.whatsappAddOn?.syncTheStripeLine(orgId).catch((err: any) => this.logger.error(`WhatsApp add-on line for ${orgId} was not added after checkout: ${err?.message}`));
           }
           break;
         }
@@ -1280,7 +1291,8 @@ export class BillingService {
           const orgData = await this.prisma.organization.findUnique({ where: { id: orgId }, select: { email: true, subscriptionPlan: true } });
           await this.prisma.organization.update({
             where: { id: orgId },
-            data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null, subscriptionEndsAt: null },
+            /* The add-on's line ended with the subscription it was on. */
+            data: { subscriptionPlan: null, subscriptionStatus: 'cancelled' satisfies SubscriptionStatus, subscriptionStripeId: null, subscriptionPeriodEnd: null, subscriptionEndsAt: null, whatsappAddOnItemId: null },
           });
           if (orgData?.email && orgData.subscriptionPlan) {
             await this.email.sendSubscriptionCancelled(orgData.email, orgData.subscriptionPlan).catch(() => undefined);

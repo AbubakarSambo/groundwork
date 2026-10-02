@@ -3,6 +3,7 @@ import { CheckInStatus } from '@prisma/client';
 import { awayUntilOn, type Stretch } from '../suites/who-is-away';
 import { atAGlance, type AtAGlance } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
+import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { notTheWordParty } from '../reports/not-the-word-party';
 import { inOneFormOfNumber, theStoryHasSomeoneToPointTo } from '../reports/the-picture-in-plain-sentences';
@@ -50,7 +51,14 @@ export interface WhatItTakes {
 }
 
 export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): HowItIsGoing {
-  const sessions = (it.checkIns ?? []).filter((ci) => !(ci as any).isSetup);
+  /*
+   * NOT LET IN YET, NOT WAITED ON (decision 77). A row still to answer, belonging to somebody an admin
+   * has not let in, neither keeps a round from being done nor holds the open round back. Anything
+   * they did answer still counts.
+   */
+  const heldOut = new Set(((it.participants ?? []) as any[]).filter(isNotLetInYet).map((p: any) => p.id));
+  const sessions = (it.checkIns ?? []).filter((ci) => !(ci as any).isSetup)
+    .filter((ci: any) => !(ci.participantId && heldOut.has(ci.participantId) && ci.status !== CheckInStatus.COMPLETED && ci.status !== CheckInStatus.DECLINED));
 
   /*
    * A round is done when EVERY party's check-in for it is COMPLETED, which is the rule the ground

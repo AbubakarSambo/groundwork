@@ -1,8 +1,12 @@
+import { wholeDaysTo, theDayItBegan } from './a-wait-is-dated-not-counted';
+import { aFindingThatDoesNotSayTheWaitAgain } from './where-each-person-is-against-their-number';
+import { eachRepeatedSentenceSaidOnce } from './each-repeated-sentence-said-once';
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
 import { aPartyOutside, aWaitOnOneself } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
 import { whoSeesThisDifferently } from './who-sees-this-differently';
 import { whatEachSessionSays } from './one-count-for-the-sessions';
+import { aWaitSaidInFull } from './a-wait-said-in-full';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
 import { aParticipantsOwnBoard } from './a-participants-board-is-their-own';
@@ -26,7 +30,7 @@ import { isTheTeamPictureNowShared } from '../reports/each-sessions-picture-is-r
 import { whatToDoAboutALeadAction, whatToDoAboutADecision, isAYesOrNoQuestion, theAnswerAsALine } from './what-needs-you-and-what-to-do';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
-import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
+import { whoAnAdminDidNotLetIn, isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from '../grounds/who-an-admin-did-not-let-in';
 import { theSharedReadWithoutTheLeadsJudgement } from './what-the-room-says-is-not-a-reading-of-the-lead';
 import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 import { withoutWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals } from './an-untold-goal-is-not-a-board-objective';
@@ -89,7 +93,7 @@ import { theSessionReport } from '../reports/the-session-report';
 import { isThisACascade } from './is-this-a-cascade';
 import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
 import { asADirection, whatTheWordsSuggest, theQuestionAboutWhichWay, theDayItIsDue, THE_KINDS_NAME, type TargetDirection } from './an-aim-or-a-limit';
-import { aDateOnly } from './the-day-in-words';
+import { aDateOnly, theDayInWords } from './the-day-in-words';
 
 /** Whether a date-only day has passed on this clock, read in Lagos as every board date is. */
 function aDeadlineHasPassed(dueOn: Date | string | null | undefined, now: Date): boolean {
@@ -564,7 +568,8 @@ export class BoardService {
        `which-round-is-open.ts` had another, and the two disagreed: this one took the lowest
        unfinished session, which is next week's row written ahead of time, so every tile counted a
        round with nothing in it. The rule now lives in one function and both callers ask it. */
-    const givers = new Set(ground.participants.filter((p: any) => !p.managingOnly).map((p: any) => p.id));
+    /* Nobody an admin has not let in yet holds the round open (decision 77). */
+    const givers = new Set(ground.participants.filter((p: any) => !p.managingOnly && !isNotLetInYet(p)).map((p: any) => p.id));
     const mine = checkIns.filter((c) => givers.has(c.participantId));
     const openRound = mine.length ? whichRoundIsOpen(mine as any) : maxSession;
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
@@ -870,6 +875,19 @@ export class BoardService {
        * `aTeamReportComes` (grounds.service): a yes or no, never how many.
        */
       aTeamReportComes: ground.participants.filter((p) => !p.managingOnly).length > 1,
+      /*
+       * WHO IS WAITING TO BE LET IN, APART FROM THE COUNT (decision 77). Not in "N of M" and not waited on;
+       * said here instead. Whoever runs it, the admin who set it up and an admin read each by name ("Faraji
+       * Odhiambo is waiting to be let in."), or as a count where no name is known. Never a person who checks
+       * in, whether or not people see each other: whether somebody has been let in is the organisation's business.
+       */
+      waitingToBeLetIn: theWaitingToBeLetInLine(
+        [...(await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId)).entries()]
+          .filter(([pid]) => !checkIns.some((c) => c.participantId === pid && c.sessionNumber === openRound && (c.status === CheckInStatus.COMPLETED || c.status === CheckInStatus.DECLINED)))
+          .map(([pid, d]) => ({ pid, name: hiddenFromThisReader(pid) ? null : nameOf(pid), declined: d.declined }))
+          .filter(() => isInitiator || isSetupAdmin || adminHere)
+          .map(({ name, declined }) => ({ name, declined })),
+      ),
       /* WHO IS AWAY AND NOT WAITED ON THIS ROUND (week 23). Dates only. The lead reads it for each person;
          a colleague only for a person the board already names to them; a person reads their own. */
       whoIsAway: theAwayLinesFor(
@@ -911,6 +929,21 @@ export class BoardService {
     else if (out.howItIsGoing?.glance && me && !isInitiator && !isSetupAdmin && !adminHere) {
       const theirOwn = theGlanceAsThisReaderMayReadIt(out.howItIsGoing.glance, { participantId: me.id }, ((ground as any).dependencies ?? []) as any[]);
       out.howItIsGoing = { ...out.howItIsGoing, glance: { ...out.howItIsGoing.glance, inTheWay: theirOwn.inTheWay } };
+    }
+
+    /*
+     * THE RECORD'S OWN CLOCK (request 117, part 9). The newest thing the board is built from, never the moment it
+     * is read. How long a wait has sat is measured to this, and said as the day it began, so the board reads the
+     * same at 20:46 and at 20:51 and the next morning, until something new comes in (decision 7).
+     */
+    const recordsClock = out.lastChangedAt ? new Date(out.lastChangedAt) : now;
+    const theGlanceWait = out.howItIsGoing?.glance?.inTheWay;
+    if (theGlanceWait?.since) {
+      out.howItIsGoing.glance.inTheWay = {
+        ...theGlanceWait,
+        daysWaiting: wholeDaysTo(theGlanceWait.since, recordsClock),
+        sinceSays: `since ${theDayItBegan(theGlanceWait.since, recordsClock)}`,
+      };
     }
 
     if (has('phaseSpine')) {
@@ -1150,6 +1183,8 @@ export class BoardService {
           direction: asADirection(row.direction),
           /* A person's own aim is theirs, never read as a number the lead set (decision 75, item 37). */
           setByTheHolder: anAimTheHolderSet(row, theLeadsRow),
+          /* Its day, kept apart from its name (request 117, part 11). */
+          dueOnSays: (row as any).dueOn && aDateOnly((row as any).dueOn) ? theDayInWords(aDateOnly((row as any).dueOn)!, now) : null,
         });
         const named = withNames(inLabels, visibleNames, labels.values(), { viewerLabel: readerLabel });
         return { ...o, name: yourOwnWhereYouAreTheSubject(named, othersNames) };
@@ -1323,7 +1358,10 @@ export class BoardService {
        * page of red on the morning the round begins, about a round nobody was late for. A round
        * nobody has touched is next week's.
        */
-      const openRound = whichRoundIsOpen(checkIns as any);
+      /* Not held back by somebody an admin has not let in yet (decision 77): the same givers as the header. */
+      const heldAtTheDoor = new Set(ground.participants.filter((p: any) => isNotLetInYet(p)).map((p: any) => p.id));
+      const roundRows = checkIns.filter((c) => !heldAtTheDoor.has(c.participantId) || c.status === CheckInStatus.COMPLETED || c.status === CheckInStatus.DECLINED);
+      const openRound = whichRoundIsOpen((roundRows.length ? roundRows : checkIns) as any);
       /*
        * WHAT THIS ROUND PUT ON THE RECORD, so the board can say whether it holds anything to count.
        * The record, not the rating: the lead may read what was written down, and never how anybody's
@@ -1419,10 +1457,13 @@ export class BoardService {
               .filter((d: any) => d.fromParticipantId === p.id && d.status !== 'CLEARED')
               .map((d: any) => ({
                 what: d.what,
-                owner: d.onParticipantId ? nameOf(d.onParticipantId) : (d.onLabel ?? null),
+                /* A thing is never said as who something comes from (request 107 b): "a decision on who owns them" is nobody. */
+                owner: d.onParticipantId ? nameOf(d.onParticipantId) : (aPartyOutside(d) ? (d.onLabel ?? null) : null),
                 /* With the reader themselves: the ask is theirs, not "speak to <their own name>" (request 65). */
                 onTheReader: !!me?.id && d.onParticipantId === me.id,
-                days: Math.max(0, Math.floor((Date.now() - new Date(d.createdAt).getTime()) / 86_400_000)),
+                /* Measured to the record's own clock and said as the day it began, never counted from the reading (request 117, part 9). */
+                days: wholeDaysTo(d.createdAt, recordsClock),
+                since: d.createdAt ? theDayItBegan(d.createdAt, recordsClock) : null,
                 /* Read off their own words. Nobody has said is 'nothing', which is the truth. */
                 tried: d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? ''),
               })),
@@ -1464,9 +1505,15 @@ export class BoardService {
           const f = byId.get(row.participantId);
           if (!f) return row;
           const label = String(labelOf.get(row.participantId) ?? '');
-          const text = label
+          const named = label
             ? String(f.text ?? '').replace(new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), row.who ?? 'They')
             : String(f.text ?? '');
+          /* Each fact once per row: a wait the row already says is not said again in the finding (request 117, part 7). */
+          const waitsTheRowSays = /\bwaiting\b/.test(`${row.says ?? ''} ${row.ask ?? ''}`)
+            ? ((ground as any).dependencies ?? []).filter((d: any) => d.fromParticipantId === row.participantId && d.status !== 'CLEARED').map((d: any) => String(d.what ?? ''))
+            : [];
+          const text = aFindingThatDoesNotSayTheWaitAgain(named, waitsTheRowSays);
+          if (!text) return row;
           return { ...row, finding: text, hasGap: !!f.hasGap, ...(f.mark ? { findingMark: f.mark, findingMarkSays: f.markSays, ...(f.markNote ? { findingMarkNote: f.markNote } : {}) } : {}) };
         });
       }
@@ -1591,6 +1638,10 @@ export class BoardService {
         then: d.then,
         /* How often it was raised, and over which days (request 107 c; the prototype's "Raised: 3 times, 1 Sep to 23 Sep"). */
         raised: howOftenItWasRaised((d as any).raisedAt),
+      })).map((d) => ({
+        ...d,
+        /* Who waits on whom, in one sentence for this reader, in place of "Waiting on: <on>" (request 115 h). */
+        waitingSays: aWaitSaidInFull(d, me?.id ?? null),
       }));
     }
 
@@ -2111,6 +2162,13 @@ export class BoardService {
           r.valueSays = value ? null : NO_VALUE_SAID;
           r.contactHistory = theContactHistory(r.name, readable, now);
           r.contactHistorySays = WHAT_CONTACT_HISTORY_IS;
+          /*
+           * ONE ANSWER TO "WHEN WAS IT LAST SPOKEN ABOUT" (request 117, part 4). A deal added on the board has no line
+           * it came from, so its group said "Nobody has spoken about it in a check-in yet." beside "On 27 September,
+           * somebody spoke about it". The newest day in its contact history is the day it was last spoken about.
+           */
+          const newest = r.contactHistory[0]?.on ?? null;
+          if (newest && (!r.lastSaidOn || newest > r.lastSaidOn)) r.lastSaidOn = newest;
           const theirs = mayReadTheWordsOf(r.ownerParticipantId)
             ? turns.filter((t) => ownerOfCheckIn.get(t.checkInId) === r.ownerParticipantId).map((t) => String(t.content ?? ''))
             : [];
@@ -2502,7 +2560,8 @@ export class BoardService {
            reviewed on an evaluation check-in is never told how many others answered or are waiting (decision 17). */
         if (kind && readerRunsIt) {
           const answeredBy = new Set((checkIns as any[]).filter((c) => String(c.status).toUpperCase() === 'COMPLETED').map((c) => c.participantId));
-          const people = (ground.participants as any[]).map((p) => ({
+          /* Somebody an admin has not let in yet is not one of the cohort's count (decision 77). */
+          const people = (ground.participants as any[]).filter((p) => !isNotLetInYet(p) || answeredBy.has(p.id)).map((p) => ({
             id: p.id,
             name: p.id === me?.id ? 'You' : (nameOf(p.id) ?? aColleague(p.id)),
             managingOnly: !!p.managingOnly,
@@ -2577,7 +2636,8 @@ export class BoardService {
         walled.openIssues = { state: 'not-known', why: NO_OPEN_ISSUES_ON_RECORD };
       }
       /* And no number that rates a person leaves on any section, whoever reads it (request 111 a). */
-      return withNoRatingNumber(walled);
+      /* A sentence true of several people is said once for the section (request 117, part 8). */
+      return withNoRatingNumber(eachRepeatedSentenceSaidOnce(walled));
     }
   }
 
@@ -3412,6 +3472,8 @@ export class BoardService {
 
     const deps: OrgDependency[] = [];
     for (const r of rows) {
+      /* Nobody waits on themselves (request 117, part 6): Today and Ask Groundwork read this too. */
+      if (aWaitOnOneself(r)) continue;
       const from = r.fromParticipant?.email?.toLowerCase();
       if (!from) continue;
       deps.push({
@@ -3527,7 +3589,7 @@ export class BoardService {
       }),
       this.prisma.groundDocument.findMany({ where: { groundId, visibility: 'OPEN' as any }, select: { fileName: true, participantId: true, origin: true } }),
       (this.prisma as any).groundBaseline?.findFirst?.({ where: { groundId }, select: { successLooksLike: true } }) ?? Promise.resolve(null),
-      this.prisma.groundDependency.findMany({ where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } }, select: { what: true, status: true, blockerKind: true } }),
+      this.prisma.groundDependency.findMany({ where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } }, select: { what: true, status: true, blockerKind: true, fromParticipantId: true, onParticipantId: true, onLabel: true } }).then((rows: any[]) => rows.filter((d) => !aWaitOnOneself(d))),
     ]);
     const labels = labelsForParties(ground.participants as any);
     const nameOf = (pid: string | null) => (pid ? (labels.get(pid) ?? 'A colleague') : null);

@@ -116,7 +116,7 @@ describe('Today, as Miriam, who takes part in the sales team', () => {
     open.checkIns = open.checkIns.filter((c) => c.id !== 'c4');
     const mine = whatNeedsYou([open], { userId: MIRIAM, role: 'MEMBER', organizationId: 'org' }, [], NOW);
     expect(mine.line).toBe('Your check-in for Sales team, Q3 is open.');
-    expect(mine.needs[0]).toMatchObject({ title: 'Your own check-in for Sales team, Q3', detail: 'About two minutes. It opened 9 days ago.' });
+    expect(mine.needs[0]).toMatchObject({ title: 'Your own check-in for Sales team, Q3', detail: 'About two minutes. It opened on 14 September.' });
   });
 });
 
@@ -227,6 +227,6 @@ describe('a turn of your own while you are on leave', () => {
 
   it('reads as before for somebody who is not away', () => {
     const notAway = whatNeedsYou([first], { userId: MIRIAM, role: 'MEMBER', organizationId: 'org' }, [], NOW);
-    expect(notAway.needs[0].detail).toBe('About two minutes. It opened 8 days ago.');
+    expect(notAway.needs[0].detail).toBe('About two minutes. It opened on 15 September.');
   });
 });

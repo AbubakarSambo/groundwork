@@ -2064,3 +2064,372 @@ Tests (each fails without its part): `request-115-b-a-deal-row-as-the-prototype-
 ## 2 October: two more lines in your files, for you to check
 
 For request 115 (d), the engine work changed two lines in `client/src/components/gw/where-each-person-is.tsx` and `client/src/api/board.ts` so the new reason "waiting on someone" draws. Please check them and keep or redo them your way. The engine's test `the-board-answers-its-own-question.spec.ts` now accepts your filtered drawing of a difference's positions (only sides with words, after request 109).
+
+## Requests 100, 101 (c), (e) and (f), 104 and 115 (h) (2 October)
+
+Each is proven as each reader: the lead, the people who check in, an admin who only reads, the admin who set it up, and where it applies the person reviewed on an evaluation check-in.
+
+**Request 100 (1), `divergence.whyNothingYet`** (`563dee0d`). Already built on 1 October: it is deleted wherever there is a difference or an agreement. A new test holds the agreements-only case for all five readers, and fails without that line. Over a section with nothing in it, whoever runs it is still told why.
+
+**Request 100 (2), `kindOfWork`: not taken off the wire.** Your screens draw by it for every reader: the participant's own records (`TheParticipantsOwnView`), `isSalesOrg` (which keeps the deal grid off a participant's board), the section headings and the banner's sentence. Taking it away from people who do not set it would put back the defect your comment beside `isSalesOrg` describes. It is a key, like `scenario` and `family`, and a test now holds that no sentence any reader is sent quotes it. If you want it off the wire, say which sentence or flag should replace it, and I will serve that first.
+
+**Request 101 (c), "A colleague has not checked in yet." about Zawadi: not built. Needs Hafsah.** Zawadi has no name on record, only her address. Your roster's "Zawadi U8" is made from that address by `personLabel`. The engine's rule since 28 September (`fdc1439b`, Hafsah: nobody is ever shown an address as a name) is held by tests on the board and the report (`the-same-thing-for-three-check-ins.spec.ts`: "only her address is known, and it must never stand in for a name"). I built it and took it out again, because the board would then call her "Zawadi U8" while her report, which this workspace's other builder owns, calls her "a colleague", and those tests break. Your own review (morning-report-ui, item 4) also lists "makes up Zawadi U8 from her email" as a defect. The choice for Hafsah: either the lead and the admin who set it up read the name in the address everywhere, board and report together, or the roster stops making a name and says "a colleague", with the address beside it for the lead.
+
+**Request 101 (e), the Context tab's model call** (`90dfaecd`). Opening the tab sends `POST /grounds/:id/context-chat` with an empty history. That no longer asks the model. The opening is written from what is stored: the length and rhythm already set, then the product's own question for the first thing missing. Opening it twice reads the same both times. The first model call is made on the lead's first message. Ask Groundwork's empty opener goes the same way. Before, the reply was a new model reply on each open. Now, to the lead (and an admin of the organisation, whom this route already lets in), on a check-in with its length and rhythm set:
+
+> This check-in runs for 90 days and people check in once a week. What does doing well look like here? I do not mean a target for one person. What would make you say, at the end, that this went the way it should have?
+
+With no length set yet: "How long should this run? You can give an end date or a number of weeks. I need it to work out how many check-ins there will be." Somebody who checks in is still refused. Nothing on the screen needs to change.
+
+**Request 101 (f), one count for the sessions** (`8a986e1c`). `GET /grounds/:id` now serves `sessionClock: { currentSession, plannedSessions, says, whileOpen }`, from the board's own clock (request 107 e): the open round among the people who check in, capped at the last planned session. Please draw the header from `says`, and draw `whileOpen` (when it is not null) in place of "It went back to session N, because somebody new was added." Every reader gets the same thing; it names and counts nobody. With Rukia and Baraka on session 2 and Zawadi, newly added, not yet through session 1, all five readers get:
+- `says`: "Session 1 of 12."
+- `whileOpen`: "Session 2 has started for some people, while session 1 is still open."
+
+Once Zawadi finishes session 1: "Session 2 of 12." and `whileOpen: null`. A test checks this against the board's `phaseSpine` for the same rows.
+
+**Request 104, `mayChangeSetup`** (`41ec7b01`). The brief already follows decision 72 (built 1 October, tested in `whose-words-the-brief-is.spec.ts`). `GET /grounds/:id` now serves `mayChangeSetup`, worked out by the same function the writers use (`whoMayConfirmSetup`). It is true for the lead, and for an admin of the organisation only once the lead's account shows they have left. It is false for the people who check in, an admin who only reads, the admin who set it up while the lead is still there, and the person reviewed. Please offer "Rewrite" and "Write the brief" from it.
+
+**Request 115 (h), "Waiting on: Chandarana Westlands"** (`2d322746`). Each item in `dependencies` (the "Waiting on" cards) now has `waitingSays`, one sentence that says who is waiting on whom, with "you" for the reader on either side. Please draw it in place of "Waiting on: {on}". What each reader reads:
+- The lead, the admin who set it up, and Juma: "Baraka Otieno is waiting on Chandarana Westlands.", "Rukia Mwangi is waiting on the warehouse.", "Baraka Otieno is waiting on Rukia Mwangi."
+- Baraka: "You are waiting on Chandarana Westlands.", "You are waiting on Rukia Mwangi."
+- Rukia: "Baraka Otieno is waiting on you.", "You are waiting on the warehouse."
+- Where people see only themselves, Baraka reads only his own waits, and a colleague is "a colleague", never named.
+- An evaluation check-in has no "Waiting on" section, so the person reviewed is sent none.
+
+The second line on each card ("Baraka needs the signed agreement from Chandarana Westlands. This is waiting.") is built on your side and is already a sentence. "When this arrives, Baraka says: ..." is also yours, and is joined with a colon.
+
+**The setup conversation follows decisions 63 and 72 now (2 October).** `POST /grounds/:id/context-chat` let any admin of the organisation in while the lead was still there. It now goes through the same rule as every setup writer (`mayConfirmSetupOn`), and so does `/context-chat/decline`; `/context-chat/confirm` already did. Ask Groundwork's setup lane offers the setup conversation only on check-ins this person may set up.
+- Wanjiru, the lead: opens it and talks in it, as before.
+- Otieno, an admin, and Neema, the admin who set it up, while Wanjiru is still there: before, they could open it and talk in it. Now each is refused (403) with "Only Wanjiru Mwangi, who runs this check-in, can change how it is set up. An admin can only do that once Wanjiru has left the organisation. Nothing was changed." In Ask Groundwork they get its ordinary answer, as somebody with nothing to set up does.
+- Otieno and Neema once Wanjiru has left: they may, as before.
+- Aisha, who checks in: refused, as before, now in the same words.
+
+Please offer the Context tab's conversation only where `mayChangeSetup` is true, so nobody opens a page that refuses them.
+
+## Request 101 (a), (b) and (d): the session report's picture, for each reader (2 October)
+
+All on `GET /grounds/:id/report/session/:n`, proven on a copy of "Sales team, Q3" (Rukia runs it and checks in; Amani, Baraka and Neema check in; Faraji was not let in; Juma is an admin who only reads; Grace set it up), and on a performance plan about Amani.
+
+**(a) A reading about each person, sent to everybody** (`16ea931f`). The shared picture carried the coverage read of each person, grouped and joined by a colon. A reading about a person reaches only that person and the lead, and the lead reads it on the board, so the picture no longer carries it at all (the contribution read went in request 111 a). The engine still makes both reads. The draft's grouped and pattern lines are now sentences, never names and a claim joined by a colon.
+- Before, Amani read: "Rukia Otieno, You, Baraka Mwangi and Neema Achieng: the role was never clearly defined, so there is no boundary to measure work against. Define what this role owns before reading anything into where work is landing." Rukia, Baraka, Juma and Grace read the same with their own names or "You".
+- Now, every reader: no such line. Amani's picture of session 1 reads "4 of 5 people have answered this session. There is enough here to talk about, and not enough to settle anything." and the wait of that session (below).
+
+**(b) "Faraji Odhiambo: 0 check-ins on record, nothing specific named yet."** This had already gone with request 111 (a) (`c52e4190`). A test now holds it for every reader: nothing in the picture is about Faraji, and no "check-ins on record" line is sent to anybody. Found while proving it: the lead's "What to ask each person" listed Faraji with "Faraji Odhiambo has not answered this session, so nothing below is from this round.", which asks the lead to chase somebody who cannot check in. He is no longer on that list (`33e7a809`). One thing left for you to decide: the session report's `counting` list (who this session is counting) still has a row `{ who: "Faraji Odhiambo", answered: false }`, and the count says "4 of 5". The count is shared with the rule that decides when a session is complete, so I have not changed it here. If Hafsah wants someone not yet let in out of the count, that changes when a session closes, and is hers to say.
+
+**(d) To Rukia about herself** (`16ea931f`). Every report read now says the reader's own label as "you" (and "your" for "'s"), with the verb mended. Only for the reader themselves: an admin who set it up still reads the lead's name.
+- Rukia, before: "Rukia Otieno makes a decision on the discount. That is what settles who decides the discount." Now: "You make a decision on the discount. That is what settles who decides the discount."
+- Amani, Juma and Grace, as before: "Rukia Otieno makes a decision on the discount. That is what settles who decides the discount."
+- "... are waiting on them for 3 days" was request 107 (b) and stays fixed: Rukia reads "Baraka Mwangi has been waiting for 3 days on you for a decision on the discount ...".
+- The same rule reaches the rounds: the lead now reads "You have accounts from Amani Kariuki and Juma Otieno this round.", Amani "Rukia Mwangi has accounts from you and Juma Otieno this round.", and an admin reads every name.
+- The board has its own copy of this read and still says the reader's own name there. That is the board's file, so I have not changed it: in `board/board.service.ts`, the call `whatEachLabelIsCalled(ground.participants as any[], { ... })` takes `readerIsYou: true` to do the same.
+
+Tests: `reports/request-101-the-session-report-for-each-reader.spec.ts` (19 cases, 10 fail on the code before). Changed, each because it expected the defect: `the-picture-is-drafted-from-the-reads` (the colon form), `how-this-has-moved-is-written-for-every-reader` (the lead reading her own name), `a-read-needs-the-marker-it-reads` (pinned a line that is gone; now it also holds that the report calls no per-person read).
+
+## Request 102: a closed session's own report carries its own coaching note, probe list and inferences (2 October)
+
+Done (`33e7a809`, `686abe3c`). `GET /grounds/:id/report/session/:n` now carries `coaching`, `probes` and `inferences`, each for that session. Please read them from there on a session's own page, and drop the "Since then, in the latest check-in" section, or keep it for the latest only.
+
+**How each is frozen.** For the session the report holds now, they are what `GET /grounds/:id/report` serves. For an earlier session, they are built from the record as it stood when it closed: its own sessions and lines, the waits raised by then and not cleared by then, documents added by then, each pattern counted only over the periods it had been seen in by then, and days waited counted to the day it closed. Each inference now carries the session it was concluded in. A new synthesis replaces only the items of the session the report holds now, and keeps earlier sessions' as they were; `GET /grounds/:id/report` now serves only the latest session's. An earlier session that was synthesised before this change has no kept inferences, so it gets an empty list rather than a later session's. Opening the page rebuilds nothing and asks no model (decision 7); a test checks the model is never called.
+
+**Who is sent what** (the same walls as `GET /grounds/:id/report`; a field a reader is not given is not sent at all):
+- Rukia, who runs it and checks in, on session 1 (closed 27 September). Before: nothing on this read; the page showed the working copy's "This is session 2 of this work." and "Baraka Mwangi ... Has not answered this session". Now: `coaching.whyItMatters` "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.", `coaching.beforeNextTime` "Baraka Mwangi is waiting on you for 3 days for a decision on the discount. Either do it, or give a date you can do it by.", `probes` for Amani, Baraka and Neema only (everybody answered session 1, so nobody "has not answered this session"), with Baraka's "Baraka Mwangi has been waiting for 3 days on you for a decision on the discount, and nothing on record says it was raised higher. This early, that is worth showing Baraka Mwangi rather than asking about.", and `inferences` with session 1's only.
+- Rukia on session 2: session 2's note ("Amani Wekesa is waiting on you for 2 days for the price list. ..."), probes and inferences, as the working copy has them.
+- Amani and Baraka: their own `coaching` for that session only ("This is session 1 of this work. ..."); no `probes`, no `inferences`.
+- Juma, an admin who only reads: no `coaching`, no `probes`; `inferences` of that session, as `GET /report` gives him.
+- Grace, the admin who set it up: `probes` and `inferences` of that session ("Baraka Mwangi has been waiting for 3 days on Rukia Otieno for ..."); no `coaching` of her own.
+- On a performance plan about Amani: Amani reads her own note only; Rukia and Grace read session 1's probes and inferences only; Juma, not given access, is refused the session report, as before.
+
+**Found with it, and fixed** (`686abe3c`). Session 1's own picture said "Amani Wekesa is waiting on you for the price list.", a wait raised in session 2, and left out the wait session 1 was about, because that one had been cleared since. A closed session's picture now waits on what was waited on then. Rukia reads "Baraka Mwangi is waiting on you for a decision on the discount, with no escalation on record."; Baraka "You are waiting on Rukia Otieno for ..."; Amani, Juma and Grace "Baraka Mwangi is waiting on Rukia Otieno for ...". Session 2's picture keeps session 2's wait.
+
+One thing to know: "Correct this" on an inference finds it by its id. If a later session's synthesis reuses an id an earlier item had, the earlier item is kept under a new id (`s1-<id>`), so a correction asked from its own page still finds the right one.
+
+Tests: `reports/request-102-a-closed-session-keeps-its-own-coaching.spec.ts` (20 cases, 15 fail on the code before).
+
+## Request 103: sessions scored before request 45's fix (2 October)
+
+Done (`01c74168`). The person's own read is now one function, `readTheTurns` (`conversation/the-specificity-read.ts`), used when a check-in completes and by a one-off script, `api/journey/bring-the-checkability-read-up-to-date.ts`. The script reads each finished check-in's own turns again under the current rule and raises any part the current rule reads higher. It never lowers a part, never changes the overall level, never touches anybody's words, and writes only `specificityDimensions`, which is served to the person alone (the lead and admins still get null).
+
+**Run on the local test database only** (`gw_pw9_1786222102`). The dry run first printed:
+> 6325 finished check-ins were read again under the current rule.
+> 4506 check-ins would have a part of the read raised. No part would be lowered, and nobody's words would change.
+> "One date, number or document" would be raised on 4371 check-ins.
+> "What you were waiting on, and from whom" would be raised on 984 check-ins.
+> "What you did, not just what was happening" would be raised on 1 check-in.
+
+Then the write, then a dry run that found 0 left. "Sales team, Q3" is on your database, not this one, so its check-in `7bad4943` was not touched; run the script there (below) when you want it.
+
+**What Amani reads on the Done page**, on a session shaped like hers ("... deliver three cookers to Tuskys Kilimani on 9 October ...", "I am waiting on Rukia for the price list."):
+- Before: "One date, number or document. Groundwork did not pick this up this time." and "What you were waiting on, and from whom. Groundwork did not pick this up this time."
+- Now: "One date, number or document. Groundwork found this." and "What you were waiting on, and from whom. Groundwork found this."
+- Rukia, Baraka, Juma and Grace: nothing of Amani's read, as before.
+
+With this, `SHOW_THE_COUNT` in `TheDonePage.tsx` no longer has to wait on request 103 for a database the script has run on.
+
+**A hosted database** is brought up to date as a release step, by whoever runs the release, with the same guard as the word-for-word script (decision 74, item 5). `DATABASE_URL=<hosted> npx ts-node -T journey/bring-the-checkability-read-up-to-date.ts --hosted-database` is a dry run that prints the counts above and writes nothing. Adding `--write` prints the same, then asks for the database's host name to be typed back, and writes only when it matches exactly; a wrong name, no answer, or no keyboard writes nothing. Without `--hosted-database`, any database not on this machine is refused before anything is read. The engine work never runs it anywhere but a local `gw_` database.
+
+Tests: `api/journey/bring-the-checkability-read-up-to-date.spec.ts` (8 cases: the rule, the dry run's words, only that column written, never lowered, what each reader is sent after it, and the hosted guard). Changed, because the lines they pinned moved unchanged into `the-specificity-read.ts`: `a-worse-session-scores-lower`, `one-checkable-turn-is-not-nothing-checkable`.
+
+## Context lines, private notes and questions for people follow decisions 63 and 72 (2 October)
+
+A context line is setup, a lead's private note is the lead's own, and a question for a person is the lead's to ask. Each is now written only by the lead, or by an admin of the organisation once the lead has left. Anybody else is refused with the same sentence as every setup change: "Only Wanjiru Mwangi, who runs this check-in, can change how it is set up. An admin can only do that once Wanjiru has left the organisation. Nothing was changed." Who may read a private note does not change: only the lead.
+
+**The writers, behind their own routes and Ask Groundwork's doors:**
+- These already refused under this rule, and a test now proves it for each reader: adding and changing a context line (`POST` and `PATCH /grounds/:id/context`), keeping and sharing a private note (`POST /grounds/:id/lead-context`, `.../share`), and keeping, confirming and leaving out a question for a person (`.../questions-for-people/:itemId/confirm` and `/decline`).
+- One did not: the step that works out the exact question before the lead's yes (`theQuestionForAPerson`) let any admin of the organisation in. Before, Otieno (an admin) and Neema (the admin who set it up) got the sentence while Wanjiru was still there. Now both are refused, and Aisha's refusal is in the shared sentence instead of "Only the person who runs this check-in can ask people things through it. Nothing was asked."
+
+**Ask Groundwork's doors** (a context line, a private note, a question for a person) list only the check-ins this person may set up. Before, an admin was offered every check-in in the organisation while its lead was still there, and was refused only after saying yes. Now that admin, and the admin who set it up, get Ask Groundwork's ordinary answer, as somebody with nothing to set up does.
+
+**As each reader, on each writer and each door:** Wanjiru, the lead, may. Otieno and Neema may not while Wanjiru is there, and may once she has left. Aisha, who checks in, may not, before or after.
+
+Reading the list of questions waiting for people (`GET /grounds/:id/questions-for-people`) is a read, and is unchanged: the lead and an admin with access to the check-in.
+
+## Request 101 (b), the count: somebody not let in yet is not counted (decision 77, 2 October)
+
+Hafsah decided item 64: "A person an admin hasn't let in yet is left out of both the 'N of M have answered' count and the count that decides when a session closes. They are shown separately as waiting to be let in." Done (`44c7b88b`, `508cde24`).
+
+**Who is meant.** Somebody whose sign-in is still held at the organisation's door (`user.awaitingOrgApproval`), whether an admin has not decided yet or has said no. The conversation already refuses them, so no count waits on them. One function decides it for every count: `isNotLetInYet` and `whoIsNotLetInYet` in `api/src/modules/grounds/who-an-admin-did-not-let-in.ts`. Once an admin lets them in, they are counted again at once.
+
+**What changes on the wire.** On "Sales team, Q3" (Rukia runs it and checks in; Amani, Baraka and Neema check in; Faraji Odhiambo is not let in yet; all four let in have answered session 1):
+- The session report: every reader's opening line was "4 of 5 people have answered this session." It is now "4 of 4 people have answered this session. There is enough here to talk about, and not enough to settle anything." `counting` no longer has a row for Faraji.
+- The board and the check-ins list: `howItIsGoing.glance.progress` / `glance.progress` count `answeredThisRound` and `ofPeople` without him, `waitingOn` never holds him, and a round is done once everybody let in has answered.
+- `GET /grounds/:id`: `sessionClock` is no longer held back by him. With Rukia already in session 2 it read "Session 1 of 12." and "Session 2 has started for some people, while session 1 is still open."; it now reads "Session 2 of 12." with `whileOpen: null`.
+- Today: "In Sales team, Q3, 4 of 5 have checked in for the first check-in. Brian has not checked in yet." where it was "4 of 6", for somebody still waiting as well as somebody declined.
+- The weekly report: his check-in is not one of those due ("Both check-ins due this week were made.") and he is not written up as not having checked in.
+- The session closes, and its report is written and released, once everybody let in has answered.
+
+**The separate line, `waitingToBeLetIn`** (a sentence, or null), on the session report, the board, `GET /grounds/:id` and each row of the check-ins list. Please draw it beside the count, never inside it. It goes only to whoever runs the check-in, the admin who set it up and an admin with access, because whether somebody has been let in is the organisation's business:
+- Rukia, Grace (who set it up) and Juma (an admin): "Faraji Odhiambo is waiting to be let in." After an admin said no: "Faraji Odhiambo was not let in." Where no name is known: "1 person is waiting to be let in."
+- Amani, Baraka and anybody else who checks in: null, before and after a decline, whether or not people see each other. Their counts still leave him out.
+- With nobody held at the door: null for everybody.
+
+**For your own count.** Each row of `GET /grounds/:id` `participants` now carries `notLetInYet` (true or false); `user.awaitingOrgApproval` was already there. `whoIsInRound` in `client/src/lib/who-is-in-this-round.ts` still counts every row, so a header drawn from it would read "4 of 5" beside the engine's "4 of 4". Please leave out a row with `notLetInYet: true` that has not answered, or draw the count from the served numbers.
+
+
+## Decision 79, item 1: the Company page, section by section, and exactly what it receives (2 October)
+
+Commit `61f0840d`. The route is the same: `GET /company`, for anybody signed in to the organisation. A guest from another company is refused with 403 and "Only people in this organisation can read its company page." Everything below is written once, when something new comes in (a check-in completes, a handoff is raised, or the nightly look finds the organisation's priorities changed), and only read when the page opens. Until it is written, `reading` is null, `levels` is empty and the lists are empty: draw nothing in their place.
+
+### Who is given what
+
+| Reader | Name, counts, priorities, owners, `fedBy` | `reading`, `levels`, `namedByTeams` | `notReaching` | `saidAndShown` | `whatWeKeep` |
+| --- | --- | --- | --- | --- | --- |
+| An admin | Yes, with `measure` and `target` | Yes, each item only if they may open every check-in it rests on | All | Yes | Yes |
+| A lead (role LEAD) | Yes, without `measure` and `target` | Yes, each item only if they may open every check-in it rests on | Only the questions asked of them, with `forWhom` "For you" | No (empty) | Yes |
+| Somebody who runs a check-in (any role) | Same as a lead | Same as a lead | Same as a lead | No (empty) | Yes |
+| Somebody who only takes part in check-ins | Yes, as before | No: `reading` null, `levels` empty, `namedByTeams` empty | No (empty) | No (empty) | Absent |
+| A guest from another company | Refused | Refused | Refused | Refused | Refused |
+
+This is new: before today, somebody who only took part in the check-in that feeds a priority read that priority's `reading`. They no longer do (decided for Hafsah to confirm, below). They still read the page's name, counts, priorities and who owns them, because the prototype shows "Company" to everybody and the priorities hold nothing private.
+
+### The fields, in the prototype's order (company.txt)
+
+    GET /company
+    {
+      name: string,
+      line: string | null,
+      readsTargets: boolean,
+      priorities: [{
+        id: string, number: number, title: string,
+        owner: string | null, tag: string | null, fedBy: string | null, staleSays: string | null,
+        reading: { tag: string, says: string } | null,
+        levels: [{ id: string, depth: number, level: string, title: string, changedHere: string | null, fedBy: string | null }],
+        measure?: string | null, target?: string | null          // admins only
+      }],
+      notReaching: [{ id: string, observation: string, question: string, forWhom: string }],
+      namedByTeams: [{ id: string, title: string, touches: string,
+                       teams: [{ team: string, says: string, checkIns: [{ id: string, name: string }] }] }],
+      saidAndShown: [{ id: string, area: string, youSaid: string, checkInsShow: string }],
+      whatWeKeep?: { readBy: string, items: [{ id: string, kind: string, says: string, source: string }] }
+    }
+
+**1. The heading.** `name`: "Baridi Appliances". `line`, to an admin: "3 teams and 11 people work here, and there were 34 check-ins this week." To anybody else: "3 teams and 11 people work here." The prototype's "Strategy v2, since 1 September." is not served: nothing keeps versions of the strategy (see "Not built"). "Ask about the whole organisation", "Company context" and "Ask about the strategy" are buttons of yours; nothing new is served for them.
+
+**2. Is the strategy moving? One card per priority.** "Priority 1" is `number`. `title`: "Improve delivery". The tag at the top right is `reading.tag`, one of "Nobody owns it yet", "Nothing is moving it yet", "At risk", "Quiet for a month", "Moving, but not enough of it", "Moving". When `reading` is null, draw `tag` instead (it is "Nobody owns it yet" or null). The sentences are `reading.says`, for example "One handoff is stopping work on this priority, so delivery is not moving yet." or, written from the counts, "1 check-in feeds this priority, and 2 were finished in the last 30 days. 1 handoff is waiting on other work." or "Nobody owns this priority yet and no check-in feeds it." The line at the bottom is `fedBy`: "Fed by Sales team, Q3" or "No team feeds it" (null when what feeds it is not the reader's to open). `staleSays`: "This was last updated on 28 August."
+
+**3. What each level understood (new).** On each priority, `levels`, top down: the priority itself (`depth` 0, `level` "Priority 2"), then each objective and project under it (`level` "Objective" or "Project", `depth` 1, 2 and so on, in the order the organisation's own system gave them). For example:
+
+- `depth` 0, "Priority 2", "Improve delivery", `changedHere` null, `fedBy` null
+- `depth` 1, "Objective", "Reduce delivery delays", `changedHere` null, `fedBy` "Fed by Operations, Q3"
+- `depth` 2, "Project", "Buy 20 delivery vans", `changedHere` "The meaning changed here, from orders arriving on time to more vans.", `fedBy` null
+
+`changedHere` is said only where the model found the aim means something other than the aim above it, and its words named nobody, held no number and judged nobody. `fedBy` names only check-ins the reader may open. This is the prototype's "What each level understood" (what-each-level-understood.txt), within one organisation; it is the same on the Company page and on a board, so draw it where you prefer (under a priority card that opens, or as its own part of the page).
+
+**4. Where the strategy isn't reaching the work.** `notReaching`, in this order: a priority with no owner, a priority with an owner but nothing under it, an objective or project under no current priority, and one still open past its date. For example `observation` "Priority 3 has no owner and nothing underneath it.", `question` "Who owns priority 3, Build a stronger organisation?", `forWhom` "For you". Or "The customer portal sits under no current priority.", "Which priority does The customer portal serve?", "For Lina Ali, Product lead". Or "Sign the Nakuru distributor is still open, and its date has passed.", "Should Sign the Nakuru distributor get a new date, or be closed?", "For Wairimu Kamau, Sales lead", which Wairimu herself reads as "For you". Draw "Decide" for "For you" and "Ask" for anybody else; neither button has a route yet (see "Not built"). A customer or a decision is never listed here (that was a fault, fixed today).
+
+**5. Named by more than one team.** `namedByTeams`: `title` "No way for customers to order in bulk"; `touches` "Touches priorities 1 and 2. Nobody owns it." ("Nobody owns it." only when not one of its handoffs says who or what it waits on; "It does not sit under any priority yet." when it touches none). Each team, in alphabetical order: `team` "Operations", `says` "Bulk orders are typed in a second time by hand, which holds up delivery." or, from the counts, "Customers raised this in 1 check-in, with 1 open handoff.", and `checkIns` [{ id "g-ops", name "Operations, Q3" }], where "Read what each team said" can take the reader. Only things at least two teams raised, and only to a reader who may open every check-in behind it. Never a colleague's own words.
+
+**6. What you say, and where the time goes.** `saidAndShown`, admins only, once at least three check-ins on priorities were finished in the last 30 days: `area` "Priority 1", `youSaid` "Grow revenue 50%, enterprise first", `checkInsShow` "2 of the 3 check-ins finished in the last 30 days that belong to a priority were about this one. 1 handoff is open in them." `youSaid` is the priority as the organisation's own system wrote it, not anybody's words, so please draw it without quotation marks. The line under it, "People appear here as counts. What each person said stays with them and their own lead.", is yours and stays true.
+
+**7. What new people keep asking.** Not served (see "Decided for Hafsah to confirm"). Draw nothing.
+
+### The company board, the ministry's board and its questions
+
+- company-board.txt is the older page; it is served by the same fields (priorities with `reading`, `owner`, `fedBy`; "Observations, as questions" is `notReaching`; "The same thing, named in three places" is `namedByTeams`; "Leadership says, teams report" is `saidAndShown`). Its "Evidence" line and "Strategy history" are not served (see "Not built"). The view switch (Leadership, Sales lead, Everyone) is decided on the server by who is reading, never on screen.
+- what-each-level-understood.txt: "What each level understood" is `levels`, within one organisation. The counties, "Each county is its own organisation", and "What the visit log shows" are not served (see "Not built").
+- questions-for-the-ministry.txt: within one organisation, the nearest is `namedByTeams` (a problem several teams raise, said once, as a question). Questions from linked organisations are not served.
+
+### Not built, and what each would need
+
+- **"Strategy v2, since 1 September", the History tab and "Strategy history".** Nothing keeps versions of the priorities, and no check-in records which version was active. It needs a new table for each version of the organisation's priorities and the date it began, and a column on each check-in for the version active that day. That is a schema change, which I have not made.
+- **The figures in the prototype's sentences** ("4 of 12 qualified", "On time is 88% against 95%", "6 in 10 sales visits went to small shops", "Founders made 9 decisions this month"). The first two are a check-in's own aims; decision 73 keeps a check-in's aims and limits from an admin who only reads, so they cannot go on a page an admin reads without a decision from Hafsah. The last two need records the product does not hold (visits by kind of customer, and decisions taken by a founder that sat inside someone else's role).
+- **"One sales goal still points to last quarter's strategy."** Needs strategy versions, above.
+- **The Teams tab.** No screen shows what is in it.
+- **The buttons "Decide", "Ask", "Make someone responsible" and "Open".** No route acts on them yet.
+- **Linked organisations** (the ministry and its counties, "You see summaries, never officers' own words", questions for the ministry). Nothing links two organisations, and what one may read of another is a privacy rule for Hafsah (request 17 (f), item 26.6).
+- **What new people keep asking.** Built only from questions to Ask Groundwork, which are private always (request 17 (g), item 26.1).
+
+### Decided for Hafsah to confirm
+
+1. **Who reads the company-wide picture.** An admin, a lead, and anybody who runs a check-in, the same readers as what the organisation keeps. Somebody who only takes part reads the page's name, counts, priorities and owners, and none of what the engine wrote. This is the more private option; before today a participant read how the priority their check-in feeds was moving.
+2. **A lead is asked their own questions.** Where the strategy is not reaching the work goes in full to admins; a lead, or anybody who runs a check-in, is given only the questions asked of them, as "For you". The prototype says each question "goes to the person who can answer it".
+3. **What new people keep asking (request 17 (g)) is not built.** No decision since 27 September answers item 26.1, and the rule is that questions to Ask Groundwork are private always, so the more private option is to leave it out.
+4. **Linked organisations (request 17 (f)) are not built.** No decision answers item 26.6. "What each level understood" is built within one organisation instead, from the organisation's own aims, which needs no new privacy rule.
+
+## Decision 78: the free trial is one month, and WhatsApp is a paid add-on, on Plan and billing (2 October)
+
+Commits `510f9479` (the trial) and `c694a670` (the add-on and the limit). Nothing in `client/` was touched. Everything a person reads below is served by the API, built from the database; please show the sentences as they come and do not write any of them, or any price, limit or number of months, into the screen.
+
+### The free trial is one month
+
+`GET /billing/pricing` still serves `trial: { on, teamsUnder, months }`. `months` is now `1` (the setting `pricing.freeTrial`, and its shipped default). The switch is still off, so nothing about the trial is shown until Hafsah turns it on. When it is on, the prototype's "3 months" has to come from `months`, and one month reads as "1 month", never "1 months": for example "Teams of fewer than 20 people get 1 month free." The screens' own sentence builder (`client/src/lib/the-free-trial.ts`) is yours to check for the singular.
+
+### WhatsApp on Plan and billing
+
+**`GET /billing/whatsapp`**, for anybody signed in to the organisation. What it serves depends on who reads it, and the server decides that, not the screen.
+
+An admin of the organisation (role ADMIN) is served:
+
+    {
+      on: boolean,                       // whether the organisation has turned WhatsApp on
+      plan: 'STARTER' | 'SMALL_TEAM' | 'GROWTH' | 'BUSINESS' | 'SCALE' | 'ENTERPRISE' | null,
+      price: { amountCents: number, currency: 'USD' } | null,   // the add-on's price on this plan, a month
+      charged: boolean,                  // whether it is a line on the Stripe subscription now
+      freeTrial: { months: number, endsOn: string } | null,     // only while the organisation is in its free trial
+      onTheFreePlan: boolean,
+      use: { month: '2026-10', sent: number, limit: number | null, startsAgainOn: string },
+      sending: boolean,                  // whether a WhatsApp message for this organisation goes now
+      heldBecause: 'not turned on' | 'not on a paid plan' | 'at the limit' | null,
+      says: {
+        onOrOff: string,
+        price: string | null,
+        charge: string,
+        use: string,
+        atTheLimit: string | null,
+        reachedTheLimit: string | null,
+        held: string | null
+      }
+    }
+
+Anybody else (a lead, somebody who takes part, a guest) is served only:
+
+    { sending: boolean, says: string | null }
+
+They are never served the price, the use, the limit or whether the organisation pays.
+
+**`PATCH /billing/whatsapp`** with `{ on: true }` or `{ on: false }`, an admin of the organisation only (a lead or member gets 403). It answers with the admin's shape above. Turning it on for a plan that does not sell it (Enterprise) is refused with 400 and "WhatsApp is not sold by itself on Enterprise. Contact us to arrange it."
+
+### What to show, and where
+
+A new section on Plan and billing, under "Your plan", titled **WhatsApp**, for an admin:
+
+| Row | Show | Example, as served |
+| --- | --- | --- |
+| On or off | `says.onOrOff`, with a switch that sends `PATCH /billing/whatsapp` | "WhatsApp is on for your organisation." or "WhatsApp is off for your organisation, so check-ins stay in the app." |
+| Price | `says.price` | "WhatsApp costs $72 a month on your Small Team plan." |
+| What is charged | `says.charge` | During the trial: "Your free trial lasts 1 month and ends on 1 November 2026. Nothing is charged for WhatsApp until then." On the free plan: "Nothing is charged for WhatsApp while you are on the free plan." Paying, with it on: "WhatsApp is added to your monthly bill as a second line." Paying, with it off: "If you turn WhatsApp on, it is added to your monthly bill as a second line." While the trial switch is off: "Nothing is charged for WhatsApp at the moment." |
+| This month | `says.use` | "Your organisation has sent 412 of its 2,000 WhatsApp messages this month." |
+| At the limit | `says.atTheLimit` | "If your organisation sends all 2,000 messages in a month, nothing more is sent by WhatsApp until the next month begins. Check-ins carry on in the app, and you are told once." |
+| Reached | `says.reachedTheLimit`, only when not null, in place of the "At the limit" row | "Your organisation has used all 2,000 of its WhatsApp messages for October. Nothing more is sent by WhatsApp until 1 November 2026. Check-ins carry on in the app, so nobody misses one." |
+
+If you draw a bar for the use, use `use.sent` and `use.limit`; with `limit` null, draw no bar.
+
+For everybody, including the admin: where a check-in would have gone to their phone (the check-in page, and Settings beside their WhatsApp number), when `says` (or `says.held` for an admin) is not null, show it as it comes. The three sentences are:
+
+- "Your organisation has not turned on WhatsApp, so this check-in stays in the app."
+- "Your organisation is not on a paid plan at the moment, so this check-in stays in the app."
+- "Your organisation has used all its WhatsApp messages for this month, so this check-in stays in the app. WhatsApp starts again on 1 November 2026."
+
+### What happens, so the screen does not have to guess
+
+- While the free trial's switch is off, which is how it ships, nothing is held and nothing is charged. WhatsApp goes exactly as today. The monthly limit still applies.
+- Once it is on: during the free trial and on the free plan, WhatsApp goes and nothing is charged. After the trial, an organisation that pays with WhatsApp turned on has it as a second monthly line on its Stripe subscription; without it turned on, nothing goes by WhatsApp.
+- At the limit, nothing more goes by WhatsApp until the first day of the next month (UTC). The check-in carries on in the app, and the organisation's admins are emailed once that month.
+
+### For Groundwork's own staff (Admin, System, Pricing)
+
+`GET /admin/pricing` now carries `whatsappAddOnCents` and `whatsappMonthlyLimit` on each plan. `PATCH /admin/pricing/:plan` takes either or both, beside `amountCents` and `memberCap`: the price in cents (empty takes it off sale on that plan), and the limit as a whole number of messages a month (empty means no limit). A changed price creates a new Stripe price the next time it is needed.
+
+## WhatsApp on the Connections page: exactly what `GET /integrations/whatsapp` serves (2 October)
+
+For the WhatsApp card on Connections (`docs/prototype/screens/F1-connections/connections.txt`): "WhatsApp", "Connected", the sentence, and the three counts. Organisation admins only, as before; a lead, a member or a guest gets 403 from the server. Built in `api/src/modules/public-api/whatsapp-as-the-admin-reads-it.ts`, served by `whatsapp-for-an-organisation.controller.ts`, tested in `whatsapp-as-the-admin-reads-it.spec.ts`.
+
+**No secret is served, and no part of one.** Two fields were taken off `connection`: `verifyToken` and `tokenEndsWith` (the access token's last four characters). **This affects the setup page:** its step 3, "Verify token, Copy", read `connection.verifyToken` from this response, and will now show an empty field. Whether the verify token is set is now `callback.verifyTokenSet`, a yes or a no. How the admin gets the token to paste into Meta is a decision still to make (for example, shown once when the number is connected, or a separate reveal for the admin); the `PUT` and the switch routes still return it today, unchanged.
+
+### Every field
+
+Unchanged, still served: `connection` (now without `verifyToken` and `tokenEndsWith`), `webhookPath`, `languages`, `canStartAConversation`, `theNamesToSubmit`, `approvedHere`.
+
+`connection`, when the organisation has its own number, else `null`: `phoneNumberId` (string), `businessAccountId` (string or null), `displayNumber` (string or null), `approvedTemplates` (string[]), `enabled` (boolean), `connectedAt` (date), `lastInboundAt` (date or null), `lastOutboundAt` (date or null), `webhookProvenAt` (date or null).
+
+New:
+
+| Field | Type | Example, as served |
+| --- | --- | --- |
+| `state` | `'connected'` \| `'groundworks_number'` \| `'switched_off'` \| `'not_connected'` | `'connected'` |
+| `stateLabel` | string, the word beside "WhatsApp" | "Connected", "On Groundwork's number", "Switched off", "Not connected" |
+| `saying` | string, the card's sentence | Connected: "Your people check in by replying to +254 709 000 111, Baridi Appliances' WhatsApp Business number. A reply is their check-in, exactly as if typed here." |
+| `whatIsOff` | `('your_switch' \| 'groundworks_switch')[]`, empty unless switched off | `['your_switch']` |
+| `numberInUse.whose` | `'yours'` \| `'groundworks'` \| `null` | `'yours'` |
+| `numberInUse.number` | string or null | "+254 709 000 111" |
+| `numberInUse.saying` | string | "The number in use is +254 709 000 111, your WhatsApp Business number." |
+| `callback.address` | string or null (null until the API's public address is set) | "https://api.myground.work/api/v1/webhooks/whatsapp/org-baridi" |
+| `callback.path` | string | "/api/v1/webhooks/whatsapp/org-baridi" |
+| `callback.saying` | string | "The callback address to paste into Meta is https://api.myground.work/api/v1/webhooks/whatsapp/org-baridi." or, unset: "The full callback address will be known once Groundwork is hosted. It ends in /api/v1/webhooks/whatsapp/org-baridi." |
+| `callback.verifyTokenSet` | boolean | `true` |
+| `callback.verifyTokenSaying` | string | "The verify token is set." or "There is no verify token yet. One is made when you connect your number." |
+| `counts.peopleOnWhatsApp` | `{ label: string, count: number, saying: string }` | label "people checking in on WhatsApp", count 6, "6 people in your check-ins have a WhatsApp number and can check in by replying." With none: "Nobody in your check-ins has a WhatsApp number yet. You can add numbers under People." |
+| `counts.checkInsThisMonth` | `{ label: string, count: null, saying: string }` | label "check-ins this month", count `null`, "Groundwork does not yet record which check-ins came in by WhatsApp, so this number cannot be shown." |
+| `counts.failedThisWeek` | `{ label: string, count: number, saying: string }` | label "failed messages this week", count 0, "No messages failed to send in the last seven days." or "2 messages failed to send in the last seven days." |
+| `reminders.approved` | boolean (the same as `canStartAConversation`) | `false` |
+| `reminders.saying` | string | "Meta has not approved the reminder messages yet. Until it does, Groundwork can only answer people who write first. It cannot send the first message, so no reminders go by WhatsApp." or "Meta has approved the reminder messages, so Groundwork can send the first message, such as a reminder that a check-in is open." |
+
+The other sentences in `saying`:
+
+- On Groundwork's number: "Your people check in by replying to +44 7700 900123, Groundwork's WhatsApp number. A reply is their check-in, exactly as if typed here. You can connect your own WhatsApp Business number instead." With no number set, "replying to Groundwork's WhatsApp number."
+- Switched off by the organisation: "Your WhatsApp Business number, +254 709 000 111, is set up, but you have switched it off, so nobody can check in by replying to it. Turn it on to use it again. Until then, messages from Groundwork go from Groundwork's WhatsApp number." (The last sentence only when Groundwork's number is on.)
+- Switched off by Groundwork: "Your WhatsApp Business number, +254 709 000 111, is set up and switched on, but Groundwork has switched WhatsApp off for everyone for now. You do not need to do anything."
+- Both: "Your WhatsApp Business number, +254 709 000 111, is set up, but you have switched it off, so nobody can check in by replying to it. Turn it on to use it again. Groundwork has also switched WhatsApp off for everyone for now."
+- Not connected: "WhatsApp is not connected. Connect your organisation's WhatsApp Business number, and your people can check in by replying to it."
+
+### How each count is made, so the screen does not have to guess
+
+- **People checking in on WhatsApp:** people on the organisation's roster who are active, have a phone number, have not said STOP, and are part of a check-in here that is still running and not kept off the phone. A count only; no number or name is served.
+- **Check-ins this month:** the record does not say which check-ins came in by WhatsApp (a conversation turn does not record where it was typed), so the count is `null` and the sentence says so. Show the sentence in place of a number. It needs one new field on each turn to be counted; that is engine work, not yet planned.
+- **Failed messages this week:** messages to this organisation's people that did not send in the last seven days. A message held because WhatsApp is not turned on for the organisation, or the month's messages are used up, is not counted here; Plan and billing says that.
+
+**Note:** `GET /integrations/connections` (the counts at a glance, `connections-at-a-glance.service.ts`) still serves its own three WhatsApp counts, made differently: its "check-ins this month" counts check-ins Groundwork sent a message for, and its "people" counts open WhatsApp threads. For the card, use the counts here.
+
+## WhatsApp for the first client: what a screen needs to know (2 October, decisions 82 and 83)
+
+The engine workspace changed what goes to and comes from WhatsApp. Nothing here needs a new screen; these are the words people now read on their phones, and what the app may want to say beside them.
+
+### Words people read on WhatsApp
+
+- **When a session opens** (every session, the first included, on Groundwork's number too): "Hi Miriam, your check-in for the sales team is open. It takes about five minutes, and you can answer right here. Reply START to begin." With two buttons, "Start" and "Not now". It never says words are "released with everybody else's".
+- **When the check-in starts on WhatsApp**, before the first question, one sentence: "You can write "ask" at any time to ask Groundwork something, "back" to come back to your check-in, and "switch" to choose another check-in." If the setup screen or Settings says how WhatsApp works, these are the three words.
+- **"Not now"**: "All right. I will not write to you first again today. Your check-in is still open, and you can answer here whenever you are ready."
+- **A check-in kept in the app** (`overWhatsApp = false`): a message to it is not taken in, and the person reads "Your check-in "Performance plan for Amina" is kept in the Groundwork app, so I cannot take your answers to it here. Please open Groundwork and answer it there." Nothing about it goes to a phone: no notice, no reminder, no report.
+- **A request during a check-in**: "Shall I treat this as a leave request?" (or "as a spending request?", "as hours?"); yes goes to Ask Groundwork, no goes into the check-in.
+- The morning reminders are Hafsah's templates, word for word, in `docs/whatsapp-templates.md`.
+
+### When WhatsApp is held (the add-on or the month's limit)
+
+A person who wrote in the last 24 hours gets one message, once in 24 hours, for example "Your organisation has not turned on WhatsApp, so this check-in stays in the app. You can carry on in the Groundwork app." Outside the 24 hours nothing can go. Every held message is kept in the send record (`WhatsAppSend`, `kind` ending in `:held`, `error` holding the sentence above without the last sentence), so the app can show the same sentence to the person where their check-in is.
+
+### Numbers
+
+Settings (`PATCH /auth/me`), an admin's roster entry (`PATCH /users/:id`) and the roster import (SCIM, and `POST /people` through it) now keep every number as "+" and digits with the country code. A local number starting with 0 takes the organisation's country when it is known. Otherwise the request is refused with a 400 whose message is: "Please write the whole number with the country code at the start, for example +234 801 234 5678." Something that is not a phone number at all is refused with: "That does not look like a whole phone number. Please write it with the country code at the start, for example +234 801 234 5678." Show the message as it comes; the screen does not need its own check.
+
+### The Connections page
+
+`theNamesToSubmit` on `GET /integrations/whatsapp` is now every template the product starts, Hafsah's eight and `groundwork_report_ready`, not three. `reminders.approved` (and `canStartAConversation`) is true only when every one of them is approved.

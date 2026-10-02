@@ -9,7 +9,7 @@ import { seatsIn } from '../../common/seats';
 
 /**
  * THE FREE TRIAL, GIVEN FOR REAL (U.19). Hafsah's decision of 26 September: teams of fewer than 20
- * people get Groundwork free for 3 months.
+ * people get Groundwork free. Decision 78 (2 October) made it one month; the length is the setting's.
  *
  * BEHIND THE ONE SETTING. `pricing.freeTrial` holds the size and the length and whether it is on,
  * and the screens say the trial's sentence only while it is on (client/src/lib/the-free-trial.ts).

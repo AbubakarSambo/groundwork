@@ -1,5 +1,50 @@
 # The weekly plan after release
 
+## The work for the first client, in order (decisions 81, 82 and 83, 2 October 2026)
+
+One list, merged from every instruction since decision 81, without duplicates. Marked **done**, **in progress** or **not started**.
+
+**a. What the helpers are already doing, finished first**
+1. Request 117, the sales board's engine faults. *In progress.*
+2. The WhatsApp fixes from `docs/whatsapp-end-to-end.md` (the "keep it off the phone" privacy fault, number tidying, switch words). *Done* (`937c1c6b` to `3c318354`).
+
+**b. WhatsApp for the first client** (decisions 82 and 83)
+3. Approvals: the approver told on WhatsApp and in the app, approving or declining by WhatsApp reply (said back and confirmed), the person told the decision. *In progress.*
+4. Asking once whether a message during a check-in is a leave, hours or spending request ("Shall I treat this as a leave request?"), and the switch word "ask", said in the opening notice. *Done* (`ee0ac236`). The switch words are said in the first reply, because Hafsah's `checkin_open` template has no room for them.
+5. The first session announced on Groundwork's number, with WhatsApp reminders and nudges. *Done* (`045f5a5f`). `checkin_closes_soon` is not sent, because nothing closes at a set hour.
+6. Never silence when WhatsApp is held by the add-on or the limit. *Done* (`f66363a0`).
+7. The opening notice on one-to-one check-ins never says "released with everybody else's". *Done on WhatsApp* (`ee0ac236`); the same phrase is still in three assistant and embed files, now with the item 3 helper.
+8. Leave, hours and spending for people matched to their sign-in by email. *In progress.*
+9. Ask Groundwork never answers from a check-in kept in the app. *In progress.* (Nothing about such a check-in reaches a phone already: `937c1c6b`.)
+10. The roster import tidies numbers the same way. *Done* (`e02ed275`, `96e6ba5c`).
+11. The lead's daily summary on WhatsApp, Groundwork's one message of the day for the lead. Template registered; the summary itself *in progress.*
+12. Hafsah's eight templates in `docs/whatsapp-templates.md`, word for word, wired up, with the two-messages-on-the-day rule and a check against WhatsApp's rules. *Done* (`045f5a5f`, `3c318354`), apart from the three wording questions for Hafsah in the templates file.
+
+**c. WhatsApp settings**
+13. Every server setting's name, what it holds, and where it is found in Meta's tools, never a value. *Done* in `docs/whatsapp-settings.md`, and linked from `docs/whatsapp-end-to-end.md`.
+
+**d. The three suites, end to end, including over WhatsApp**
+14. Leave requests. Said back and confirmed in chat: *done*; approval and telling people: item 3.
+15. Finance (spending) requests. As item 14.
+16. Performance reviews, as the prototype's suite shows it, on evaluation check-ins and judging, with a proposed threshold for a "recognise" suggestion for Hafsah to confirm. *Not started.*
+
+**e. The boards the client needs, from the engine**
+17. Request 117 (item 1). *In progress.*
+18. What the sales, onboarding and project boards still need from the engine. *Not started.*
+
+**f. The back office**
+19. Its usage numbers checked after this work, and anything broken fixed. *Not started.* Its rebuild comes last (item 22).
+
+**g. When the screens workspace stops, its screen work**
+20. The sales, onboarding and project boards, then the three suites, from `docs/screens-handover.md`. *Waiting for the screens workspace to stop.*
+
+**h. Then everything else**
+21. The other seven boards, and the rest of the earlier list. *Not started.*
+22. The back office rebuild, last. *Not started.*
+
+Already done for this release: the WhatsApp survey (`docs/whatsapp-end-to-end.md`), WhatsApp billing (decision 78), the WhatsApp status page, the company-wide picture and its live check (decisions 79 and 80), and the one-month free trial.
+
+
 Hafsah's decision 37: deploy soon with what works, then improve the product every week.
 
 This is the order of those weeks. **Each week is one piece, small enough to build, test and review in a week**, and ends with the same proof:
@@ -156,3 +201,8 @@ It says, for example, "Yemi is on leave until Friday 2 October, so this round do
 - The misleading "No patterns have surfaced yet…" is fixed while patterns are off.
 - The two sidebar tests that fail without any code change are fixed.
 - The screens for weeks 5, 6, 7, 8, 11, 13, 14, 15 and 16 are built, each after its engine week.
+
+**Later. Strategy history (decision 80, item 68).** Keep versions of the organisation's strategy, with the date each was active and which version each check-in ran under, so the Company page can say "Strategy v2, since 1 September" and show how the strategy changed. A change to what is stored.
+
+**Later. Linked organisations (decision 80, item 67).** Organisations that work together, with a privacy rule for what one may read of another.
+

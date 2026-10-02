@@ -103,6 +103,8 @@ describe('every surface that hands out whose number it is', () => {
     /* Request 110: a person's own aim kept only as their promise is put among the rows the board then passes through targetsFor, before any reader is served. */
     'modules/board/an-aim-kept-only-as-their-promise.ts': 'builds rows the board adds to ground.objectives before it asks targetsFor; serves nobody itself',
     'modules/board/__fixtures__/a-page-that-contradicts-itself.ts': 'test rows for a-board-that-does-not-contradict-itself; the board asks targetsFor',
+    /* Request 117: the sales board as the fifth review read it; the board asks targetsFor over these rows. */
+    'modules/board/__fixtures__/sales-board-review-5.ts': 'test rows for the request 117 specs; the board asks targetsFor',
   };
 
   it('goes through the one rule, or says why it is not a reader', () => {

@@ -43,7 +43,7 @@ describe('the platform handler', () => {
   it('hands a message from a number on one roster to the organisation handler, for that organisation', async () => {
     const { c, inboundHandler, sent } = platform([{ id: 'org-1', name: 'Acme' }]);
     await c.receive(inbound('We signed the supplier on Monday.') as any);
-    expect(inboundHandler.handle).toHaveBeenCalledWith('org-1', expect.objectContaining({ entry: expect.any(Array) }));
+    expect(inboundHandler.handle).toHaveBeenCalledWith('org-1', expect.objectContaining({ entry: expect.any(Array) }), 'ours');
     expect(sent).toEqual([]);
   });
 
@@ -74,7 +74,7 @@ describe('the platform handler', () => {
   it('a kept pick routes without asking again', async () => {
     const { c, inboundHandler } = platform([{ id: 'a', name: 'Acme' }, { id: 'b', name: 'Bolt' }], undefined, { phone: '+2348000000001', organizationId: 'b', pickPendingAt: null });
     await c.receive(inbound('More happened.') as any);
-    expect(inboundHandler.handle).toHaveBeenCalledWith('b', expect.anything());
+    expect(inboundHandler.handle).toHaveBeenCalledWith('b', expect.anything(), 'ours');
   });
 
   it.each([
@@ -112,7 +112,8 @@ describe('the organisation handler', () => {
   it('retries the report SEND and never re-runs the report', () => {
     const at = SRC.indexOf('private async sendTheReport(');
     const body = SRC.slice(at, SRC.indexOf('private async readLanguageOnce('));
-    expect(body.match(/this\.whatsapp\.sendFor\(/g)).toHaveLength(2);
+    /* sendOn: the same send, on the number the person last wrote to (survey item 8). */
+    expect(body.match(/this\.whatsapp\.sendOn\(/g)).toHaveLength(2);
     expect(body.match(/this\.reports\.sessionReport\(/g)).toHaveLength(1);
   });
 

@@ -1,3 +1,4 @@
+import { theDayKeptApart } from '../board/an-aim-is-a-sentence-about-somebody';
 import { suggestAnswers } from './suggested-answers';
 import { whatTheYesSays, startsWithAYes } from './yes-but-a-new-number';
 import { READS_DIFFERENTLY, alreadyAsked as theLinesInTheStamps, theStampForWhatItRaised } from './a-document-that-disagrees-is-asked-once';
@@ -63,7 +64,8 @@ import { theProofSettlements, thePrompt as theProofPrompt, WHICH_COMMITMENT_A_LI
 import { whoAddedEachBackingDocument } from '../reports/how-a-line-is-known';
 import { aWaitThatConfirms, theLineToConfirm, thePrompt as theDeliveredPrompt, WHICH_LINE_WAS_DELIVERED_PROMPT, WHICH_LINE_WAS_DELIVERED_SCHEMA } from './confirmed-by-who-received-it';
 import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
-import { mapSpecificityLevel, NOTHING_SAID, SpecificityLevel, whatWasSaidOnce, atLeastMet } from './how-checkable-a-session-was';
+import type { SpecificityLevel } from './how-checkable-a-session-was';
+import { readTheTurns } from './the-specificity-read';
 
 /** `CheckIn.closedReason` when the sweep, not the person, ended the session. */
 export const CLOSED_BY_THE_CLOCK = 'auto_closed';
@@ -6713,53 +6715,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       orderBy: { createdAt: 'asc' },
       select: { content: true },
     });
-    if (personTurns.length === 0) {
-      /* One verdict about nothing, not two: the level and every dimension are the bottom. */
-      const dims = { delivery: NOTHING_SAID, evidence: NOTHING_SAID, enablement: NOTHING_SAID, coverage: NOTHING_SAID, commitment: NOTHING_SAID };
-      return { level: NOTHING_SAID, dimensions: dims };
-    }
-
-    const all = personTurns.map(t => runIntake(t.content));
-    /*
-     * A RELUCTANT PERSON GIVES ONE FACT PER TURN, AND THE MEAN PUNISHED THEM FOR IT. "Forty tonnes a
-     * week." "October." "Six of them." were three checkable answers between six "fine"s and "no"s,
-     * and the mean over nine turns came out under the bottom cut: "managed", "nothing checkable", on
-     * a rice miller who had named his tonnage, his month and his headcount (adversarial run, 20 Sep
-     * 2026). The level is read over the turns that said anything - a bare "no" or "fine" is a turn
-     * of the conversation, not a turn of the account - and whether ANY turn was checkable is kept
-     * as its own fact, because that is the question the board asks.
-     */
-    const substantive = all.filter((r, i) => r.checkable || (personTurns[i].content ?? '').trim().split(/\s+/).length > 3);
-    const intakes = substantive.length ? substantive : all;
-    const anyCheckable = all.some((r) => r.checkable);
-    const n = intakes.length;
-    const avgSpecificity = intakes.reduce((s, r) => s + r.specificity, 0) / n;
-
-    // Five dimensions derived from runIntake() aggregates.
-    const avgDelivery   = intakes.reduce((s, r) => s + r.outputScore, 0) / n;
-    const avgEnablement = intakes.reduce((s, r) => s + r.thinkingScore, 0) / n;
-    const coverageScore = Math.min(1, (intakes.filter(r => r.types.includes('absorption') || r.types.includes('rescue')).length / n) * 1.5);
-    const commitScore   = intakes.filter(r => r.types.includes('movement')).length / n;
-
-    /* Two of the five read as the Done page names them: said once is there (request 45). */
-    const attachedADocument = await this.theyAttachedADocumentIn(checkInId);
-    const saidOnce = whatWasSaidOnce(personTurns.map((t) => t.content ?? ''), attachedADocument);
-
-    const dimensions: Record<string, SpecificityLevel> = {
-      delivery:   mapSpecificityLevel(avgDelivery),
-      evidence:   atLeastMet(mapSpecificityLevel(avgSpecificity), anyCheckable || saidOnce.aDateNumberOrDocument),
-      enablement: atLeastMet(mapSpecificityLevel(avgEnablement), saidOnce.whatTheyWereWaitingOn),
-      coverage:   mapSpecificityLevel(coverageScore),
-      commitment: mapSpecificityLevel(commitScore),
-      /* Kept as a level so the column's type holds: 'specific' means at least one turn could be checked. */
-      checkable:  anyCheckable ? 'specific' : NOTHING_SAID,
-    };
-
-    return {
-      /* A session with a checkable turn in it is never "nothing checkable was said". */
-      level: anyCheckable && mapSpecificityLevel(avgSpecificity) === NOTHING_SAID ? 'vague' : mapSpecificityLevel(avgSpecificity),
-      dimensions,
-    };
+    /* The rule lives in the-specificity-read.ts, so a stored session is brought up to date by the same one (request 103). */
+    const attachedADocument = personTurns.length ? await this.theyAttachedADocumentIn(checkInId) : false;
+    return readTheTurns(personTurns.map((t) => t.content ?? ''), attachedADocument);
   }
 
   /**
@@ -9420,7 +9378,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const fresh = theAimsThatAreNew(aims, existing as any, (n) => numbersInTheirWords.has(n));
       if (fresh.length) {
         await this.prisma.groundObjective.createMany({
-          data: fresh.map((a, i) => ({ groundId, name: a.name, target: a.target, sortOrder: existing.length + i, ownerParticipantId: aimsAreShared ? null : participantId, setByParticipantId: participantId })),
+          /* A person's own aim keeps the thing counted as its name, and its day as its date (request 117, part 11). */
+          data: fresh.map((a, i) => {
+            const kept = aimsAreShared ? { name: a.name, dueOn: null } : theDayKeptApart(a.name, (said) => theDayTheyMeant(said, new Date()));
+            return { groundId, name: kept.name, target: a.target, sortOrder: existing.length + i, ownerParticipantId: aimsAreShared ? null : participantId, setByParticipantId: participantId, ...(kept.dueOn ? { dueOn: kept.dueOn } : {}) };
+          }),
         });
         const withNumbers = fresh.filter((a) => a.target != null).length;
         this.logger.log(`Ground ${groundId}: kept ${fresh.length} aim(s), ${withNumbers} with a number.`);
@@ -9510,7 +9472,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const wrote = await this.prisma.groundObjective.createMany({
       data: fresh.map((t, i) => ({
         groundId,
-        name: t.name,
+        /* The thing counted as the name, and the day it is due by as its date (request 117, part 11). */
+        ...(() => {
+          const kept = theDayKeptApart(t.name, (said) => theDayTheyMeant(said, new Date()));
+          return { name: kept.name, ...(kept.dueOn ? { dueOn: kept.dueOn } : {}) };
+        })(),
         target: t.target,
         ownerParticipantId: t.participantId,
         /* The speaker: the lead setting "150 each" for three people, or a person naming their own. */

@@ -37,9 +37,10 @@ export interface ProbeInput {
   /** Surfaced patterns for this person. Recurrence is carried, because it is the finding. */
   patterns: { code: string; periodsObserved: number; signal: string; probe?: string }[];
   /** What they say they are waiting on. */
-  waitingOn: { what: string; who: string | null; daysOld: number; escalated: boolean; kind?: Kind | null }[];
+  /** `since`: the day it began, in words ("27 September"), said in place of a count of days (request 117, part 9). */
+  waitingOn: { what: string; who: string | null; daysOld: number; escalated: boolean; kind?: Kind | null; since?: string | null }[];
   /** What somebody else's record says they are waiting on from this person. */
-  holdingUp: { what: string; who: string | null; daysOld: number; kind?: Kind | null }[];
+  holdingUp: { what: string; who: string | null; daysOld: number; kind?: Kind | null; since?: string | null }[];
   /** Anything concrete they put on record: a target, a number, an attached document. */
   concrete: string[];
   /** Of `concrete`, the ones stamped as the person's own words, word for word. Only those are quoted. */
@@ -70,6 +71,18 @@ import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT, type Kind } from '../board/what-kind-of
  * duration is suppressed rather than phrased: it carries no information either way.
  */
 const howLong = (n: number) => (n <= 0 ? '' : n === 1 ? ' since yesterday' : ` for ${n} days`);
+
+/**
+ * THE DAY THE OLDEST BEGAN, NOT A COUNT OF DAYS FROM THE READING (request 117, part 9). The probe said "for 5
+ * days" where the board's row said "4 days", and both moved every time the page was opened. Where the caller
+ * gives the day, the sentence says it; a caller that gives only a count keeps the count.
+ */
+export const theOldestSince = (xs: { daysOld: number; since?: string | null }[]): string | null =>
+  [...xs].sort((a, b) => b.daysOld - a.daysOld)[0]?.since ?? null;
+const sinceOrHowLong = (xs: { daysOld: number; since?: string | null }[]): string => {
+  const since = theOldestSince(xs);
+  return since ? ` since ${since}` : howLong(Math.max(...xs.map((d) => d.daysOld)));
+};
 
 /**
  * WHAT THEY ARE WAITING ON, AS ITS OWN CLAUSE.
@@ -142,8 +155,16 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     const named = [...new Set(i.holdingUp.map((d) => d.who).filter(Boolean))] as string[];
     const who = named.length ? andList(named) : 'Somebody';
     const oldest = Math.max(...i.holdingUp.map((d) => d.daysOld));
+    const Who = `${who.charAt(0).toUpperCase()}${who.slice(1)}`;
+    const many = named.length > 1 || /^you$/i.test(who);
+    const items = andList(i.holdingUp.map((d) => theThing(d.what)));
+    const since = theOldestSince(i.holdingUp);
     probe.push(
-      `${who.charAt(0).toUpperCase()}${who.slice(1)} ${named.length > 1 || /^you$/i.test(who) ? 'are' : 'is'} waiting on ${you ? 'you' : them}${howLong(oldest)} for ${andList(i.holdingUp.map((d) => theThing(d.what)))}. Ask what that is waiting on.`,
+      !since
+        ? `${Who} ${many ? 'are' : 'is'} waiting on ${you ? 'you' : them}${howLong(oldest)} for ${items}. Ask what that is waiting on.`
+        : i.holdingUp.length === 1 && !many
+          ? `${Who} has been waiting on ${you ? 'you' : them} for ${items} since ${since}. Ask what that is waiting on.`
+          : `${Who} ${many ? 'are' : 'is'} waiting on ${you ? 'you' : them} for ${items}. The first of these waits began on ${since}. Ask what that is waiting on.`,
     );
     const kind = whatKindOfThing(i.holdingUp);
     if (kind) probe.push(kind);
@@ -153,19 +174,23 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     const escalated = i.waitingOn.filter((d) => d.escalated);
     const notYet = i.waitingOn.filter((d) => !d.escalated);
     if (escalated.length) {
-      const oldest = Math.max(...escalated.map((d) => d.daysOld));
       probe.push(
-        `${He} ${has} been waiting${howLong(oldest)} for ${andList(escalated.map((d) => theThing(d.what)))}, and ${has} raised it higher. Ask what happened after that.`,
+        `${He} ${has} been waiting for ${andList(escalated.map((d) => theThing(d.what)))}${sinceOrHowLong(escalated)}, and ${has} raised it higher. Ask what happened after that.`,
       );
     }
     if (notYet.length) {
       const from = [...new Set(notYet.map((d) => d.who).filter(Boolean))] as string[];
       const oldest = Math.max(...notYet.map((d) => d.daysOld));
       const items = andList(notYet.map((d) => theThing(d.what)));
+      const since = theOldestSince(notYet);
+      /* With the day it began where the caller gives it: "has been waiting on you for the price list since 28 September". */
+      const waited = since
+        ? `${He} ${has} been waiting${from.length ? ` on ${andList(from)}` : ''} for ${items} since ${since}`
+        : `${He} ${has} been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}`;
       probe.push(
         earlyDays(i)
-          ? `${He} ${has} been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, and nothing on record says it was raised higher. This early, that is worth showing ${you ? 'you' : them} rather than asking about.`
-          : `${He} ${has} been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, and nothing on record says it was raised higher. Ask what has stopped ${you ? 'you' : them} raising it.`,
+          ? `${waited}, and nothing on record says it was raised higher. This early, that is worth showing ${you ? 'you' : them} rather than asking about.`
+          : `${waited}, and nothing on record says it was raised higher. Ask what has stopped ${you ? 'you' : them} raising it.`,
       );
       const kind = whatKindOfThing(notYet);
       if (kind) probe.push(kind);

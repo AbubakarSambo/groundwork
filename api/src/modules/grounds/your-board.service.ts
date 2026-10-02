@@ -1,3 +1,4 @@
+import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { notToldYet, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
 import { ForbiddenException, Injectable, Optional } from '@nestjs/common';
@@ -113,7 +114,8 @@ export class YourBoardService {
               ground: { select: { label: true, initiatorId: true, scenario: true, peersVisibleToEachOther: true, participants: { select: { id: true, userId: true, partyType: true, managingOnly: true, createdAt: true } } } },
             },
             orderBy: { createdAt: 'asc' },
-          })
+          /* Nobody waits on themselves (request 117, part 6). */
+          }).then((rows: any[]) => rows.filter((d) => !aWaitOnOneself(d)))
         : none,
       /*
        * "SOMETHING THAT KEEPS COMING UP", ACROSS EVERY CHECK-IN YOU ARE IN. Your own participant

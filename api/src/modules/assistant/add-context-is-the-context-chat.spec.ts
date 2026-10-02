@@ -26,6 +26,8 @@ function svc(opts: {
   parked?: any;
   contextChat?: jest.Mock;
   applyContextProposal?: jest.Mock;
+  /** Whether the lead's account shows they have left, so an admin may set the check-in up (decisions 63 and 72). */
+  leadHasLeft?: boolean;
 } = {}) {
   const proposals: any[] = [];
   const grounds = opts.grounds ?? [
@@ -67,7 +69,12 @@ function svc(opts: {
   };
   const knowledge: any = { retrieve: jest.fn(async () => ({ cards: [], truncated: false })) };
   const engine: any = { respond: jest.fn(async () => { throw new Error('model off for these tests'); }) };
-  const groundsService: any = { contextChat, applyContextProposal, declineContextOffer: jest.fn(async () => ({ changed: 'nothing' })) };
+  const groundsService: any = {
+    contextChat, applyContextProposal, declineContextOffer: jest.fn(async () => ({ changed: 'nothing' })),
+    /* GroundsService.mayOpenSetupChatFor, decision 63's rule: an admin only once the lead has left. */
+    mayOpenSetupChatFor: jest.fn(async () => !!opts.leadHasLeft),
+    questionsForPeople: jest.fn(async () => []),
+  };
 
   const service = new AssistantService(
     prisma,
@@ -93,11 +100,26 @@ describe('who reaches the setup conversation at all (inventory item 14)', () => 
     expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', [{ role: 'user', content: 'add this as context' }], { yesOrNo: true });
   });
 
-  it('an admin of the same organisation, covering for the lead, reaches it too', async () => {
+  /* Changed 2 October 2026: this used to let any admin of the organisation into the setup conversation while
+     the lead was still there. Decisions 63 and 72 say setup is the lead's, or an admin's only once the lead
+     has left the organisation, so the admin now reaches it only then. */
+  it('an admin of the same organisation does not reach it while the lead is still there', async () => {
     const { service, contextChat } = svc({
       person: { linkedUserId: 'admin-1' },
       viewerRole: 'ADMIN',
       viewerOrgId: 'org-a',
+    });
+    const r = await service.respond('org-a', 'p1', 'add this as context', 'g1');
+    expect(r.lane).toBe('unplaced');
+    expect(contextChat).not.toHaveBeenCalled();
+  });
+
+  it('an admin of the same organisation reaches it once the lead has left', async () => {
+    const { service, contextChat } = svc({
+      person: { linkedUserId: 'admin-1' },
+      viewerRole: 'ADMIN',
+      viewerOrgId: 'org-a',
+      leadHasLeft: true,
     });
     const r = await service.respond('org-a', 'p1', 'add this as context', 'g1');
     expect(r.lane).toBe('add_context');
@@ -544,5 +566,50 @@ describe('a company rule said while a setup question was waiting (decision 75, i
     const r = await no.service.respond('org-a', 'p1', 'no');
     expect(no.groundsService.declineContextOffer).toHaveBeenCalledWith('g1', 'lead-1', 'o1');
     expect(r.blocks[0]).toMatchObject({ type: 'text', body: 'I have not kept that for the organisation. It stays only on this check-in.\n\nWho takes part in this check-in?' });
+  });
+});
+
+
+/*
+ * DECISIONS 63 AND 72 ON ASK GROUNDWORK'S OTHER SETUP DOORS (2 October 2026): a context line, a private note
+ * and a question for a person list only the check-ins this person may set up. Before, an admin of the
+ * organisation was offered every check-in while its lead was still there, and only the writer behind the
+ * yes refused them.
+ */
+describe('the other setup doors list only check-ins this person may set up', () => {
+  const DOORS: [string, string, string][] = [
+    ['a context line', 'addContextLineByChat', 'decision: we will drop the pilot'],
+    ['a private note', 'addLeadNoteByChat', 'private note: Aisha is new to the territory'],
+    ['a question for a person', 'questionsForPeopleByChat', 'what questions are waiting for people?'],
+  ];
+  const at = (s: any, door: string, userId: string, said: string) => s[door]('org-a', 'u-1', userId, undefined, said);
+
+  it.each(DOORS)('%s: the lead reaches it', async (_what, door, said) => {
+    const { service } = svc({ person: { linkedUserId: 'lead-1' } });
+    expect((await at(service, door, 'lead-1', said)).lane).not.toBe('unplaced');
+  });
+
+  it.each(DOORS)('%s: an admin, while the lead is still there, gets the ordinary answer', async (_what, door, said) => {
+    const { service, proposals } = svc({ person: { linkedUserId: 'admin-1' }, viewerRole: 'ADMIN', viewerOrgId: 'org-a' });
+    expect((await at(service, door, 'admin-1', said)).lane).toBe('unplaced');
+    expect(proposals).toEqual([]);
+  });
+
+  it.each(DOORS)('%s: the admin who set it up, while the lead is still there, gets the ordinary answer', async (_what, door, said) => {
+    const grounds = [{ id: 'g1', label: 'Q4 sales', initiatorId: 'lead-1', organizationId: 'org-a', scenario: 'NEW_PROJECT', createdByUserId: 'admin-1' }];
+    const { service, proposals } = svc({ person: { linkedUserId: 'admin-1' }, viewerRole: 'ADMIN', viewerOrgId: 'org-a', grounds });
+    expect((await at(service, door, 'admin-1', said)).lane).toBe('unplaced');
+    expect(proposals).toEqual([]);
+  });
+
+  it.each(DOORS)('%s: an admin reaches it once the lead has left', async (_what, door, said) => {
+    const { service } = svc({ person: { linkedUserId: 'admin-1' }, viewerRole: 'ADMIN', viewerOrgId: 'org-a', leadHasLeft: true });
+    expect((await at(service, door, 'admin-1', said)).lane).not.toBe('unplaced');
+  });
+
+  it.each(DOORS)('%s: a participant gets the ordinary answer', async (_what, door, said) => {
+    const { service, proposals } = svc({ person: { linkedUserId: 'member-1' }, viewerRole: 'MEMBER', viewerOrgId: 'org-a', leadHasLeft: true });
+    expect((await at(service, door, 'member-1', said)).lane).toBe('unplaced');
+    expect(proposals).toEqual([]);
   });
 });

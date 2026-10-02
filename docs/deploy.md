@@ -28,9 +28,9 @@ The local `main` on this computer is old (11 August, pull request 130), so compa
 
 ## 2. The database migrations, in the order they run
 
-There are **67 new migrations** since the remote `main`. They run in name order. The last one the remote `main` has is `20260923140000_what_we_have_so_far`; these come after it.
+There are **71 new migrations** since the remote `main` (67 listed in the table below, and four added on 2 October, listed after it). They run in name order. The last one the remote `main` has is `20260923140000_what_we_have_so_far`; these come after it.
 
-**Read this first: six of the 67 do something to existing rows. The other 61 only add new tables, new empty columns, new types or new indexes.**
+**Read this first: six of the 67 in the table do something to existing rows, and two of the four added on 2 October do too (see below). The rest only add new tables, new empty columns, new types or new indexes.**
 
 | What happens to existing rows | Migration |
 | --- | --- |
@@ -113,15 +113,44 @@ Every migration, in order, in one sentence each:
 | 66 | `20261001190000_organisation_memory` | New table for what the organisation keeps as memory. | New table |
 | 67 | `20261001200000_a_target_is_an_aim_or_a_limit` | Adds whether a target is an aim or a limit, with a new type. | Untouched |
 
+**Added on 2 October, after the table above was written:**
+
+| # | Migration | What it does | Existing rows |
+| --- | --- | --- | --- |
+| 68 | `20261002100000_a_suggestion_says_when_the_person_caught_up` | Adds when a person caught up, on a suggestion. | Untouched |
+| 69 | `20261002120000_five_kinds_of_target` | Adds three kinds of target (rate, deadline, zero) and a due date on a target. | Untouched |
+| 70 | `20261002140000_each_sessions_picture_is_released_on_its_own` | Adds which sessions' team pictures are released on a report, and fills it in for existing reports from their completed sessions. | **Fills a new column on existing reports** |
+| 71 | `20261002160000_whatsapp_is_a_paid_add_on` | Decision 78. Adds the WhatsApp add-on's monthly price, its cached Stripe price and the monthly WhatsApp limit on each plan, and writes the prices and limits; adds whether an organisation has turned WhatsApp on and the Stripe line that charges it; adds a new table counting each organisation's WhatsApp messages per calendar month; and writes the free trial's setting as one month, leaving its switch as it is (off unless somebody turned it on). | **Writes values into `pricing_plans` and the `pricing.freeTrial` settings row** |
+
+The prices and limits migration 71 writes, all editable afterwards at Admin, System, Pricing (`PATCH /admin/pricing/:plan` with `whatsappAddOnCents` and `whatsappMonthlyLimit`):
+
+| Plan | Plan price | WhatsApp add-on, a month | WhatsApp messages a month |
+| --- | --- | --- | --- |
+| Starter | $25 | $20 (2,000 cents) | 500 |
+| Small Team | $90 | $72 (7,200 cents) | 2,000 |
+| Growth | $400 | $320 (32,000 cents) | 10,000 |
+| Business | $900 | $720 (72,000 cents) | 25,000 |
+| Scale | $1,650 | $1,320 (132,000 cents) | 50,000 |
+| Enterprise | none | none | no limit |
+
+The limits are a proposal, used until Hafsah answers (see the morning report). Migration 71 creates nothing in Stripe. **The Stripe prices for the add-on are created in Stripe test mode only, until Hafsah says otherwise:** one is created the first time an organisation's add-on has to be charged on a plan whose add-on price has none cached, exactly as plan prices are, and a changed add-on price clears the cached one. Do not put a live Stripe key on any environment for this.
+
 Things worth knowing about how they run:
 - Columns added with a fixed default (`false`, an empty list) do not rewrite the table on Postgres 11 or later, so none of these should lock a table for long.
 - The new unique indexes on existing tables (`organizations.join_domain`, `organizations.invite_link_code`) are on new columns that start empty, so they cannot fail on existing data.
 - Two pairs of migrations share a timestamp (`20260927180000_*` and `20260927190000_*`). Prisma runs them in full name order, which is the order above.
-- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261001200000_a_target_is_an_aim_or_a_limit`.
+- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261002160000_whatsapp_is_a_paid_add_on`.
 
 ## 3. Settings and environment variables
 
-**No new environment variable is read by the code since the remote `main`.** The API reads the same names as before, and the client reads the same names as before. (The client now also reads `DEV`, which Vite sets itself.) So no environment variable has to be added for this release.
+**Two new environment variables are read by the API since the remote `main`, and neither is a secret.** Both are optional: the API starts and works without them. The client reads the same names as before. (The client now also reads `DEV`, which Vite sets itself.)
+
+| Name | What it is | Is it a secret? | Without it |
+| --- | --- | --- | --- |
+| `PUBLIC_API_URL` | The API's public address, without `/api/v1`, for example `https://api.myground.work`. The Connections page builds the WhatsApp callback address from it: `<PUBLIC_API_URL>/api/v1/webhooks/whatsapp/<organisation id>`, which an organisation's admin pastes into Meta. | No. It is an address anybody can see. | The page says the full callback address will be known once Groundwork is hosted, and gives the part after the address. |
+| `WHATSAPP_DISPLAY_NUMBER` | Groundwork's own WhatsApp number as people read it, for example `+44 7700 900123`. Shown on the Connections page to an organisation that uses Groundwork's number rather than its own. Display only: sending still uses `WHATSAPP_PHONE_NUMBER_ID`. | No. It is the number people reply to. | The page says "Groundwork's WhatsApp number" without a number. |
+
+Neither may hold a token, a key or anything from `.env` that is a secret. The WhatsApp access token, app secret and verify token are unchanged and are never served to anybody.
 
 Two things about existing variables did change and matter at release:
 
@@ -140,7 +169,8 @@ For reference, the production start-up check (unchanged since the remote `main`)
 | `release.time_running_out_warnings_from` | Written once by the first start of this version (decision 74, item 7). Never changed after. | The moment of the release. A check-in already in its last week, or past its end, at that moment gets no "time running out" email. | Yes. If it is missing when the warning job runs, the job writes it then. |
 | `job.<name>.ran_for`, one per scheduled job | Written by each daily, weekly or hourly job when it runs (decision 74, item 7). | The time slot the job last ran for, so a second copy of the API does not run it again for the same night, week or hour. One row per job, overwritten each time. | Yes. A missing row is written by the first run. |
 | `suggestions.thresholds` | Written by migration 59 if absent; an admin can change it at Admin. | Sets when extra support is suggested about a person on a performance plan, promotion or renewal. | Yes. Without the row, no suggestion is ever reached. |
-| `pricing.freeTrial` | Set by an admin at Admin, System, Pricing. Not written by any migration. | Switches on the free trial for teams under 20 people for 3 months, and stops the free plan for organisations created after that moment. | Yes. Without the row the trial is off, and billing is exactly as today. |
+| `pricing.freeTrial` | Written by migration 71 as `{"on": false, "teamsUnder": 20, "months": 1}` if absent; if present, only its months are set to 1. Switched on by an admin at Admin, System, Pricing. | Switches on the free trial for teams under 20 people for one month (decision 78), and stops the free plan for organisations created after that moment. The same switch starts decision 78's WhatsApp rules: after its trial, an organisation sends WhatsApp only with the paid add-on turned on, and is charged for it. | Yes. Without the row, or with `on: false`, the trial is off, nothing about WhatsApp is held or charged, and billing is exactly as today. |
+| `job.whatsapp-add-on-lines.ran_for` | Written by the nightly WhatsApp add-on job (01:00 UTC). | The night the job last ran, so it runs once across copies. | Yes. |
 
 **A changed default for an existing settings row:**
 
@@ -161,7 +191,8 @@ For reference, the production start-up check (unchanged since the remote `main`)
 | The old context chat | No separate switch; it is part of the check-in page. | **On**, and must stay on. Hafsah decided it stays until the screens workspace confirms Ask Groundwork's screens do everything live. | Do nothing. Do not set `CONTEXT_ENABLED=false`, which would switch off the whole context feature, not only the old chat. |
 | Coaching in live check-ins | Settings row `coaching_live` | **On** if the row is missing (see section 3). | Decide before release whether production has the row, and what it says. |
 | Suggestions about a person | Settings row `suggestions.thresholds` | **On**, on performance plans, promotions and renewals only, from migration 59. | Nothing, unless Hafsah wants them held back at release. |
-| Free trial | Settings row `pricing.freeTrial` | **Off.** | Stays off until Stripe billing is wired and tested. |
+| Free trial | Settings row `pricing.freeTrial` | **Off**, one month long. | Stays off until Stripe billing is wired and tested, and Hafsah switches it on. |
+| WhatsApp as a paid add-on (decision 78) | The same `pricing.freeTrial` switch; prices and limits in `pricing_plans`; each organisation's choice in `organizations.whatsapp_add_on_on` | **Not charging and not holding anything** while the trial is off. The monthly WhatsApp limit for each plan applies from release. | Nothing at release. The add-on's Stripe prices are created in test mode only until Hafsah says otherwise. |
 | WhatsApp | Settings row `whatsapp_enabled`, and `WHATSAPP_APPROVED_TEMPLATES` | Unchanged; off unless someone switched it on. | Stays off until Meta approves the templates. Groundwork cannot write first on WhatsApp until then. |
 | Suites (leave, hours, spending, reviews, leaving, role map, customers, equipment) | Table `organization_suites`, one row per organisation and suite | **Off** for every organisation until an admin switches a suite on. | Nothing. Each organisation chooses. |
 | Real emails | `EMAIL_SENDS_FOR_REAL` | Production must say `true`; anything else must not. | Unchanged. |
@@ -185,6 +216,15 @@ For reference, the production start-up check (unchanged since the remote `main`)
 2. **Then the run that writes.** The same command with `--hosted-database --write`. It prints the same counts, then asks for the database's host name to be typed back. It writes only when the typed name is exactly the host in `DATABASE_URL`. A different name, an empty answer, or no keyboard to answer from (a pipe or a scheduled job) writes nothing.
 
 Without `--hosted-database` it refuses any database that is not on the machine it runs on, and reads nothing. On a database on the same machine it writes by default, as it always has, and `--dry-run` only reads. It writes only the marks that change. A dry run on the local test database read 42,495 record lines and 1,626 commitments and would change none. The engine work never runs it on anything but a local database.
+
+**Must run once on each database after the migrations: bringing the checkability read up to date (request 103).** Sessions read before 29 September keep an older read of how checkable each person's own answers were, which misses a date, a number or a document that was said, and who they were waiting on. Until the script runs, the person's Done page and session report undercount ("One date, number or document. Groundwork did not pick this up this time."). The script is `api/journey/bring-the-checkability-read-up-to-date.ts`. It writes only `specificityDimensions`, the person's own read, which is served to them alone; it only raises a part of the read and never lowers one; it never changes the overall level or anybody's words.
+
+**How to run it (decision 74, item 5, the same as the word-for-word script).** Only whoever runs the release runs it, once on each database, after the migrations, and only with their explicit confirmation:
+
+1. **A dry run first.** `DATABASE_URL=<the hosted database> npx ts-node -T journey/bring-the-checkability-read-up-to-date.ts --hosted-database`. It reads, prints how many check-ins would be raised and in which part, and writes nothing.
+2. **Then the run that writes.** The same command with `--hosted-database --write`. It prints the same counts, then asks for the database's host name to be typed back, and writes only when the typed name is exactly the host in `DATABASE_URL`. Anything else writes nothing.
+
+Without `--hosted-database` it refuses any database that is not on the machine it runs on. On the local test database a dry run read 6,325 check-ins and found 4,506 to raise; after the write, a second dry run found none left. The engine work never runs it on anything but a local database.
 
 **Must never run on a hosted database:**
 
@@ -232,11 +272,12 @@ Every report updated after the release should name the newest `report_synthesis`
 ## 7. The checks to run after deploy
 
 **Before any person reads anything:**
-1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 70;` shows all 67 new migrations finished, and none failed.
+1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 75;` shows all 71 new migrations finished, and none failed.
 2. The API answers `/health`.
 3. The active prompt versions match section 6.
 4. The script in section 5 has run, and a report built after it shows quotation marks around people's words again.
-5. `SELECT key, value FROM platform_settings WHERE key IN ('coaching_live', 'suggestions.thresholds', 'pricing.freeTrial', 'whatsapp_enabled');` shows what was agreed in section 4.
+5. `SELECT key, value FROM platform_settings WHERE key IN ('coaching_live', 'suggestions.thresholds', 'pricing.freeTrial', 'whatsapp_enabled');` shows what was agreed in section 4, and `pricing.freeTrial` says `"months": 1` and `"on": false`.
+6. `SELECT plan, whatsapp_add_on_cents, whatsapp_monthly_limit, whatsapp_add_on_stripe_price_id FROM pricing_plans ORDER BY plan;` shows the prices and limits in section 2, and no Stripe price id yet.
 
 **Then read what each person reads, on one test organisation made for the purpose** (never a customer's). Use a team check-in with at least three people, and one performance plan.
 
@@ -259,7 +300,7 @@ None of these files were changed. This is what they say.
 
 | File | What triggers it | What it would do |
 | --- | --- | --- |
-| `api/railway.toml` | Whatever branch the API's hosting project is connected to. That is set in the hosting dashboard, not in the repository. | On every start: marks one old failed migration (`20260627000000_contributor_code_system`) as rolled back, then **runs `prisma migrate deploy`, which applies all 67 migrations with no backup step**, and then starts the API. If a migration fails, the API does not start, and the host retries three times. |
+| `api/railway.toml` | Whatever branch the API's hosting project is connected to. That is set in the hosting dashboard, not in the repository. | On every start: marks one old failed migration (`20260627000000_contributor_code_system`) as rolled back, then **runs `prisma migrate deploy`, which applies all 71 migrations with no backup step**, and then starts the API. If a migration fails, the API does not start, and the host retries three times. |
 | `client/vercel.json` | A push to `main` or to the other long-lived branch, through the hosting provider's own link to the repository. | Builds and publishes the screens. Every other branch is switched off. |
 | `.github/workflows/staging-deploy.yml` | A push to the other long-lived branch that changes `client/`. | Builds the screens with the hosting provider's command-line tool and points the fixed preview address at the new build. Not triggered by `main`. |
 | `.github/workflows/preview-deploy.yml` | A pull request that changes `client/`. | Builds a preview of the screens and comments the address on the pull request. |

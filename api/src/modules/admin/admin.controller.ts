@@ -17,6 +17,8 @@ const MIN_PLAN_AMOUNT_CENTS = 50;
 const MAX_PLAN_AMOUNT_CENTS = 500000;
 /** A seat cap larger than this is a typo, not a plan. Enterprise expresses unlimited with null. */
 const MAX_PLAN_MEMBER_CAP = 100000;
+/** The most WhatsApp messages a plan may allow in a month, against a typed extra zero. */
+const MAX_WHATSAPP_MONTHLY_LIMIT = 10_000_000;
 import { SubscriptionPlan, ApiAccessStatus } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
@@ -142,7 +144,10 @@ export class AdminController {
 
   @Patch('pricing/:plan')
   @ApiOperation({ summary: 'Update the monthly price (in cents) for a subscription plan' })
-  async setPricing(@Param('plan') plan: string, @Body() body: { amountCents?: number; memberCap?: number | null }) {
+  async setPricing(
+    @Param('plan') plan: string,
+    @Body() body: { amountCents?: number; memberCap?: number | null; whatsappAddOnCents?: number | null; whatsappMonthlyLimit?: number | null },
+  ) {
     if (!Object.values(SubscriptionPlan).includes(plan as SubscriptionPlan)) {
       throw new BadRequestException(`Unknown plan: ${plan}`);
     }
@@ -165,10 +170,31 @@ export class AdminController {
       await this.pricing.setMemberCap(plan as SubscriptionPlan, cap);
     }
 
+    /**
+     * WHATSAPP, THE PAID ADD-ON, AND ITS MONTHLY LIMIT (decision 78). Edited here the way the plan
+     * price is, so neither lives in code. The add-on price is bounded like a plan price, because it
+     * bills the same cards; null takes it off sale on this plan. The limit is a count of messages a
+     * month; null means no limit.
+     */
+    if (body?.whatsappAddOnCents !== undefined) {
+      const c = body.whatsappAddOnCents;
+      if (c !== null && (!Number.isInteger(c) || c < MIN_PLAN_AMOUNT_CENTS || c > MAX_PLAN_AMOUNT_CENTS)) {
+        throw new BadRequestException(`The WhatsApp price must be empty, or a whole number of cents between ${MIN_PLAN_AMOUNT_CENTS} and ${MAX_PLAN_AMOUNT_CENTS}.`);
+      }
+      await this.pricing.setWhatsAppAddOnCents(plan as SubscriptionPlan, c);
+    }
+    if (body?.whatsappMonthlyLimit !== undefined) {
+      const l = body.whatsappMonthlyLimit;
+      if (l !== null && (!Number.isInteger(l) || l < 0 || l > MAX_WHATSAPP_MONTHLY_LIMIT)) {
+        throw new BadRequestException(`The WhatsApp limit must be empty for no limit, or a whole number of messages between 0 and ${MAX_WHATSAPP_MONTHLY_LIMIT}.`);
+      }
+      await this.pricing.setWhatsAppMonthlyLimit(plan as SubscriptionPlan, l);
+    }
+
     /** Enterprise has no self-serve price, but it does have a cap, so it reaches this method. */
     if (body?.amountCents === undefined) {
-      if (body?.memberCap === undefined) {
-        throw new BadRequestException('Nothing to change. Send amountCents, memberCap, or both.');
+      if (body?.memberCap === undefined && body?.whatsappAddOnCents === undefined && body?.whatsappMonthlyLimit === undefined) {
+        throw new BadRequestException('Nothing to change. Send amountCents, memberCap, whatsappAddOnCents or whatsappMonthlyLimit.');
       }
       return this.pricing.listPlans();
     }

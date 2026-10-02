@@ -25,43 +25,35 @@ const CRON = readFileSync(join(__dirname, 'grounds.cron.ts'), 'utf8')
 /** The session-ready sender only, so an unrelated notifier cannot satisfy or break these. */
 const BLOCK = (() => {
   const at = CRON.indexOf('const newlyOpen');
-  return CRON.slice(at, CRON.indexOf('private async sendRemindersInner', at));
+  return CRON.slice(at, CRON.indexOf('async sendWhatsAppReminders(', at));
 })();
+const LISTENER = readFileSync(join(__dirname, '..', 'webhooks', 'webhooks.listener.ts'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '');
 
+/*
+ * Changed 2 October (survey items 7 and 8): this sweep no longer sends its own WhatsApp message. The
+ * WhatsApp notice for every session is the opening notice in webhooks.listener.ts, which now goes on
+ * Groundwork's number as well as an organisation's own; two messages for one session was the defect.
+ * What this file has always pinned still holds: the email never depends on a phone number.
+ */
 describe('GW-WA-01: a phone number does not switch email off', () => {
   it('there is no else-branch handing the choice to one channel', () => {
     /** The exact shape of the defect: an email send reachable only when WhatsApp was not used. */
     expect(BLOCK).not.toMatch(/\}\s*else\s*\{\s*await this\.email\.sendSessionReady/);
   });
 
-  it('the email send is not nested inside the WhatsApp condition', () => {
+  it('the email is sent whatever number the person has, and before the stamp', () => {
     const emailAt = BLOCK.indexOf('this.email.sendSessionReady');
-    const waCondAt = BLOCK.indexOf('this.whatsapp.isEnabled');
     expect(emailAt).toBeGreaterThan(-1);
-    expect(waCondAt).toBeGreaterThan(-1);
-    /** Email first means it cannot be guarded by anything decided after it. */
-    expect(emailAt).toBeLessThan(waCondAt);
+    expect(BLOCK.slice(0, emailAt)).not.toMatch(/phoneNumber &&/);
+    expect(BLOCK.indexOf('data: { sessionReadyNotifiedAt: now }')).toBeGreaterThan(emailAt);
   });
 
-  it('and WhatsApp is still sent, so this is additive rather than a removal', () => {
-    expect(BLOCK).toMatch(/this\.whatsapp\.sendMessage\(/);
-    expect(BLOCK).toMatch(/p\.user\?\.phoneNumber && \(await this\.whatsapp\.isEnabled\(\)\)/);
-  });
-
-  it('a WhatsApp failure cannot take the email or the stamp with it', () => {
-    /**
-     * Without its own catch, a throw from the second channel would skip the notified stamp, and the
-     * next pass would email the same person a second time - a duplicate caused by the channel that
-     * is not even live.
-     */
-    const waAt = BLOCK.indexOf('this.whatsapp.sendMessage');
-    expect(BLOCK.slice(0, waAt)).toMatch(/try \{\s*$/m);
-    expect(BLOCK.slice(waAt)).toMatch(/catch \(waErr/);
-    /**
-     * The WRITE, not the first mention: `sessionReadyNotifiedAt` also appears in the query's `where`
-     * clause that selects un-notified rows, which is above all of this. Matching that instead was the
-     * first version of this assertion and it failed for the right reason.
-     */
-    expect(BLOCK.indexOf('data: { sessionReadyNotifiedAt: now }')).toBeGreaterThan(waAt);
+  it('and WhatsApp is still sent for the same session, once, by the opening notice', () => {
+    expect(BLOCK).not.toMatch(/this\.whatsapp\.send/);
+    expect(LISTENER).toMatch(/await this\.whatsapp\.sendFor\(ground\.organizationId, phone, said\.text/);
+    /* A WhatsApp failure there cannot touch the email: it is a different job, in its own catch. */
+    expect(LISTENER).toMatch(/this\.announceOnWhatsApp\(e, ground\)\.catch\(/);
   });
 });

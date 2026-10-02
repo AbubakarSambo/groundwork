@@ -24,9 +24,18 @@ const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/
 const SRC = strip(readFileSync(join(__dirname, 'reports.service.ts'), 'utf8'));
 
 describe('the entries handed to the reads keep their verifiability marker', () => {
-  it('the read input passes the raw text, not the cleaned text', () => {
+  /*
+   * Changed for request 101 (a), 2 October 2026: the shared picture no longer hands any entries to the
+   * reads, because a read about each person is never put in a picture everybody reads. So the guard is
+   * now that the report does not call the reads at all; if it ever calls them again, the raw text must
+   * go to them, as before.
+   */
+  it('the read input passes the raw text, not the cleaned text, wherever the report hands entries to the reads', () => {
     const at = SRC.indexOf('entries: everyEntry.map(');
-    expect(at).toBeGreaterThan(-1);
+    if (at < 0) {
+      expect(SRC).not.toMatch(/\bbuild(?:Coverage|Contribution)\(/);
+      return;
+    }
     const line = SRC.slice(at, SRC.indexOf('\n', at + 40));
     expect(line).toContain('text: e.text');
     expect(line).not.toContain('cleanText');

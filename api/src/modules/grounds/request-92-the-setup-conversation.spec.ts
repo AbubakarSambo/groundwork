@@ -264,10 +264,12 @@ describe('point 11: a question for one person, through the real grounds code', (
       .rejects.toThrow('I cannot find anybody called Zawadi on this check-in, so nothing was asked. Say the name as it is on the check-in and I will try again.');
   });
 
+  /* Changed 2 October 2026: this step now refuses with the same sentence as every setup change (decisions 63
+     and 72, mayConfirmSetupOn), as the yes that keeps the question already did. */
   it('a participant cannot ask anybody anything through it', async () => {
     const { service } = withPeople();
     await expect(service.theQuestionForAPerson('g1', 'uA', { name: 'Rukia', leadWords: 'Ask Rukia whether the shops paid' }))
-      .rejects.toThrow('Only the person who runs this check-in can ask people things through it. Nothing was asked.');
+      .rejects.toThrow('Only the person who runs this check-in can change how it is set up. An admin can only do that once that person has left the organisation. Nothing was changed.');
   });
 
   it('the yes keeps the question for the lead alone and confirms the very sentence she read', async () => {

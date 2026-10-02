@@ -157,3 +157,62 @@ describe.each([[true, 'people see each other'], [false, 'people see only themsel
     expect(farajiRow(b).notLetIn).toBe(false);
   });
 });
+
+/*
+ * DECISION 77 (2 October 2026): "A person an admin hasn't let in yet is left out of both the 'N of M have
+ * answered' count and the count that decides when a session closes. They are shown separately as waiting
+ * to be let in." Miriam and Aisha have answered session 1; Faraji has not been let in.
+ */
+describe('decision 77 on the board: Faraji is not counted, and is said apart', () => {
+  const STILL_WAITING = { findMany: jest.fn(async () => []) };
+  const pending = (b: { prisma: any }) => { b.prisma.membershipRequest = STILL_WAITING; return b; };
+
+  it.each([['the lead', 'u-wairimu', 'MEMBER'], ['the admin who set it up', 'u-setup', 'ADMIN'], ['an admin', 'u-other-admin', 'ADMIN'], ['Miriam, who checks in', 'u-miriam', 'MEMBER']])(
+    '%s reads 2 of 3 answered this round (Wairimu answers session 1 too), not 2 of 4',
+    async (_who, userId, role) => {
+      const b = await boardFor(userId, role, {}, withFaraji).board;
+      expect(b.howItIsGoing.glance.progress.answeredThisRound).toBe(2);
+      expect(b.howItIsGoing.glance.progress.ofPeople).toBe(3);
+      expect(b.howItIsGoing.glance.progress.waitingOn).not.toContain('p-faraji');
+    },
+  );
+
+  it.each([['the lead', 'u-wairimu', 'MEMBER'], ['the admin who set it up', 'u-setup', 'ADMIN'], ['an admin', 'u-other-admin', 'ADMIN']])(
+    'still waiting for an admin, %s reads "Faraji Odhiambo is waiting to be let in."',
+    async (_who, userId, role) => {
+      const h = boardFor(userId, role, {}, withFaraji);
+      pending(h);
+      expect((await h.board).waitingToBeLetIn).toBe('Faraji Odhiambo is waiting to be let in.');
+    },
+  );
+
+  it('still waiting, Miriam reads nothing about it, whether people see each other or only themselves', async () => {
+    const seen = boardFor('u-miriam', 'MEMBER', {}, withFaraji);
+    pending(seen);
+    const s = await seen.board;
+    expect(s.waitingToBeLetIn ?? null).toBeNull();
+    expect(JSON.stringify(s)).not.toContain('let in');
+    const hidden = boardFor('u-miriam', 'MEMBER', {}, { ...withFaraji, peersVisibleToEachOther: false, peopleWorkTogether: false });
+    pending(hidden);
+    const b = await hidden.board;
+    expect(b.waitingToBeLetIn ?? null).toBeNull();
+    expect(JSON.stringify(b)).not.toContain('Faraji');
+  });
+
+  it('declined by an admin, the lead and the admins read "Faraji Odhiambo was not let in." and Miriam reads nothing about him', async () => {
+    expect((await boardFor('u-wairimu', 'MEMBER', {}, withFaraji).board).waitingToBeLetIn).toBe('Faraji Odhiambo was not let in.');
+    expect((await boardFor('u-setup', 'ADMIN', {}, withFaraji).board).waitingToBeLetIn).toBe('Faraji Odhiambo was not let in.');
+    const b = await boardFor('u-miriam', 'MEMBER', {}, withFaraji).board;
+    expect(b.waitingToBeLetIn ?? null).toBeNull();
+    expect(JSON.stringify(b)).not.toContain('not let in');
+  });
+
+  it('once he is let in, he is counted again: 2 of 4, and nobody is told he is waiting', async () => {
+    const letIn = { ...withFaraji, participants: [...GROUND.participants, { ...FARAJI, user: { firstName: 'Faraji', lastName: 'Odhiambo', awaitingOrgApproval: false } }] };
+    const b = await boardFor('u-wairimu', 'MEMBER', {}, letIn).board;
+    expect(b.howItIsGoing.glance.progress.answeredThisRound).toBe(2);
+    expect(b.howItIsGoing.glance.progress.ofPeople).toBe(4);
+    expect(b.howItIsGoing.glance.progress.waitingOn).toContain('p-faraji');
+    expect(b.waitingToBeLetIn).toBeNull();
+  });
+});

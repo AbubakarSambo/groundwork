@@ -52,16 +52,20 @@ describe('what each round led with', () => {
     expect(line).not.toMatch(/^You /);
   });
 
-  /* The same sentence, with names, for every reader: the one they read in that round's picture. */
-  const SAME = 'Rukia Mwangi has accounts from Amani Kariuki and Juma Otieno this round.';
+  /*
+   * The sentence that round's picture said, with names, for every reader, and the reader is "you"
+   * about themselves only (request 101 d, 2 October 2026). This expected Rukia to read her own name,
+   * which was the defect request 101 (d) names; what request 66 forbids, the lead's "you" sent to
+   * everybody, is still held: nobody reads "you" for anybody but themselves.
+   */
   it.each([
-    ['the lead', 'u-rukia', 'MEMBER'],
-    ['Amani', 'u-amani', 'MEMBER'],
-    ['Juma', 'u-juma', 'MEMBER'],
-    ['an admin who only reads', 'u-grace', 'ADMIN'],
-  ])('reads, for %s, as that round\'s picture said it, with names', async (_who, userId, role) => {
+    ['the lead', 'u-rukia', 'MEMBER', 'You have accounts from Amani Kariuki and Juma Otieno this round.'],
+    ['Amani', 'u-amani', 'MEMBER', 'Rukia Mwangi has accounts from you and Juma Otieno this round.'],
+    ['Juma', 'u-juma', 'MEMBER', 'Rukia Mwangi has accounts from Amani Kariuki and you this round.'],
+    ['an admin who only reads', 'u-grace', 'ADMIN', 'Rukia Mwangi has accounts from Amani Kariuki and Juma Otieno this round.'],
+  ])('reads, for %s, as that round\'s picture said it, with names', async (_who, userId, role, expected) => {
     const { line } = await says(userId, role);
-    expect(line).toBe(SAME);
-    expect(line).not.toMatch(/\b(you|your)\b|Participant|the initiator/i);
+    expect(line).toBe(expected);
+    expect(line).not.toMatch(/Participant|the initiator/i);
   });
 });

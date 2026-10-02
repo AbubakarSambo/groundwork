@@ -26,7 +26,7 @@ describe('request 115 (d): a wait on a colleague is said as one', () => {
     const board = await boardAs(setup as any, ...(reader as readonly [string, string]));
     const row = board.eachPerson.find((r: any) => r.participantId === 'p-baraka');
     expect(row.reason).toBe('waiting on someone');
-    expect(row.says).toBe('Baraka Otieno has checked in, and is waiting on Rukia Mwangi for the discount decision.');
+    expect(row.says).toBe('Baraka Otieno has checked in, and has been waiting on Rukia Mwangi for the discount decision since 30 September.');
     /* Rukia waits on nobody, so nothing here needs the lead about her. */
     expect(board.eachPerson.find((r: any) => r.participantId === 'p-rukia').reason).toBe('nothing to do');
   });
@@ -35,7 +35,7 @@ describe('request 115 (d): a wait on a colleague is said as one', () => {
     const onAmina = { ...setup, dependencies: [handoff('d-b', 'p-baraka', 'the price list', { onParticipantId: 'p-amina', status: 'WAITING', triedSaid: 'I asked twice.', createdAt: twoDaysAgo })] };
     const row = (await boardAs(onAmina as any, ...AMINA)).eachPerson.find((r: any) => r.participantId === 'p-baraka');
     expect(row.reason).toBe('nothing to do');
-    expect(row.says).toBe('Baraka Otieno has checked in, and is waiting on you for the price list.');
+    expect(row.says).toBe('Baraka Otieno has checked in, and has been waiting on you for the price list since 30 September.');
   });
 
   it.each([['Rukia', RUKIA], ['Baraka', BARAKA]])('%s, who checks in, is sent no rows about people', async (_who, reader) => {

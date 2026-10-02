@@ -3,7 +3,7 @@ import { PricingService, DEFAULT_FREE_TRIAL, FREE_TRIAL_KEY } from './pricing.se
 
 /**
  * THE FREE TRIAL IS A SETTING, AND IT IS OFF UNTIL BILLING GIVES IT. U.2, Hafsah's decision of
- * 26 September: teams under 20 people get Groundwork free for 3 months. The numbers live in the
+ * 26 September: teams under 20 people get Groundwork free; decision 78 (2 October) made it one month. The numbers live in the
  * database, every screen builds its sentence from them, and nothing says it until it is switched on,
  * which waits for billing to really grant it (U.19).
  */
@@ -20,9 +20,9 @@ function service(row: any) {
 }
 
 describe('the free trial', () => {
-  it('is off by default, with the decided numbers ready', async () => {
-    expect(DEFAULT_FREE_TRIAL).toEqual({ on: false, teamsUnder: 20, months: 3 });
-    expect(await service(null).svc.getFreeTrial()).toEqual({ on: false, teamsUnder: 20, months: 3 });
+  it('is off by default, with the decided numbers ready: one month, for teams under 20 (decision 78)', async () => {
+    expect(DEFAULT_FREE_TRIAL).toEqual({ on: false, teamsUnder: 20, months: 1 });
+    expect(await service(null).svc.getFreeTrial()).toEqual({ on: false, teamsUnder: 20, months: 1 });
   });
 
   it('a nonsense row means the default, which is off, never a trial nobody set', async () => {
@@ -36,7 +36,7 @@ describe('the free trial', () => {
 
   it('is on the public pricing read, next to the free limits', async () => {
     const res = await service(null).svc.publicPricing();
-    expect(res.trial).toEqual({ on: false, teamsUnder: 20, months: 3 });
+    expect(res.trial).toEqual({ on: false, teamsUnder: 20, months: 1 });
   });
 
   it('an admin change keeps what it does not mention, and refuses numbers that make no sense', async () => {

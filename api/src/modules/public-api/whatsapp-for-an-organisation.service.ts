@@ -16,8 +16,13 @@ import { validateSync } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { asATextMessage } from './a-reply-reads-as-a-text-message';
-import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE } from './a-whatsapp-message-is-routed';
+import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
+  AN_ASK_WORD, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
+  ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, type ARequest,
+} from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING } from '../whatsapp/a-message-outside-the-window';
+import { keptOffThePhone, answerItInTheApp } from '../whatsapp/a-check-in-kept-off-the-phone';
+import { WhichNumber, anInboundKey } from '../whatsapp/one-number-per-conversation';
 import {
   aStrangerHearsNothing, NOT_ONE_OF_YOURS, type WhatCameBack, type WhoHoldsTheNumber,
 } from './their-number-stays-theirs';
@@ -48,19 +53,24 @@ export class WhatsAppForAnOrganisationService {
     private readonly anthropic: AnthropicService,
   ) {}
 
-  async handle(organizationId: string, body: any): Promise<void> {
+  /**
+   * `via` is the number the message came in on: `theirs` (the organisation's own, the default) or
+   * `ours` (Groundwork's). Every reply goes back on that same number (survey item 8).
+   */
+  async handle(organizationId: string, body: any, via: WhichNumber = 'theirs'): Promise<void> {
     const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     if (!message) return;
     const from: string = message.from;
     if (!from) return;
-    /* A redelivery is not a second answer. The id is claimed before anything else happens. */
-    if (message.id && !(await this.firstTimeWeSeeThis(organizationId, String(message.id)))) return;
-    await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { lastInboundAt: new Date() } }).catch(() => undefined);
+    /* A redelivery is not a second answer. The id is claimed before anything else happens, with the
+       number it came in on, which is how the last number this person wrote to is known. */
+    if (message.id && !(await this.firstTimeWeSeeThis(organizationId, anInboundKey(via, WhatsAppService.normalize(from), String(message.id))))) return;
+    if (via === 'theirs') await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { lastInboundAt: new Date() } }).catch(() => undefined);
     await this.route(organizationId, from, whatArrived(message), {
       who: 'we do',
-      say: (text) => this.whatsapp.sendFor(organizationId, from, text),
-      list: (prompt, rows, asText) => this.whatsapp.sendListFor(organizationId, from, prompt, rows, asText),
-      fetchMedia: (mediaId) => this.whatsapp.fetchMediaFor(organizationId, mediaId),
+      say: (text) => this.whatsapp.sendOn(via, organizationId, from, text),
+      list: (prompt, rows, asText) => this.whatsapp.sendListOn(via, organizationId, from, prompt, rows, asText),
+      fetchMedia: (mediaId) => this.whatsapp.fetchMediaOn(via, organizationId, mediaId),
     });
   }
 
@@ -88,7 +98,7 @@ export class WhatsAppForAnOrganisationService {
      */
     const who = await this.whatsapp.whoIsWritingTo(organizationId, from).catch(() => ({ personId: null, userId: null } as any));
     if (!who.personId && !who.userId) return NOT_ONE_OF_YOURS;
-    if (messageId && !(await this.firstTimeWeSeeThis(organizationId, String(messageId)))) return { mine: true };
+    if (messageId && !(await this.firstTimeWeSeeThis(organizationId, anInboundKey('theirs', WhatsAppService.normalize(from), String(messageId))))) return { mine: true };
     await this.prisma.whatsAppConnection
       .update({ where: { organizationId }, data: { lastInboundAt: new Date() } })
       .catch(() => undefined);
@@ -136,6 +146,8 @@ export class WhatsAppForAnOrganisationService {
     }
 
     const who = await this.whatsapp.whoIsWritingTo(organizationId, from);
+    /* START said to begin the check-in, not to resume after STOP. */
+    let beginning = false;
     if (!who.personId && !who.userId) {
       await say("This number is not on your organisation's roster yet. Ask your admin to add it, or add it yourself under Settings in Groundwork, then message again.");
       return;
@@ -148,11 +160,25 @@ export class WhatsAppForAnOrganisationService {
         await say(STOPPED_SAYING);
         return;
       }
+      /*
+       * START: after STOP it resumes; otherwise it is the "Reply START to begin" of checkin_open
+       * (decision 83), and begins the check-in like a greeting rather than becoming an answer.
+       */
       if (arrived.kind === 'text' && A_START_WORD.test(arrived.text)) {
-        await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: null, whatsappConsentAt: new Date() } }).catch(() => undefined);
-        await say(RESUMED_SAYING);
-        return;
+        const me = await this.prisma.person.findUnique({ where: { id: who.personId }, select: { whatsappStoppedAt: true } }).catch(() => null);
+        if (me?.whatsappStoppedAt) {
+          await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: null, whatsappConsentAt: new Date() } }).catch(() => undefined);
+          await say(RESUMED_SAYING);
+          return;
+        }
+        beginning = true;
       }
+    }
+    /* "Not now" always works (decision 83): nothing more is written first to this person today. */
+    if (arrived.kind === 'text' && A_NOT_NOW.test(arrived.text)) {
+      await this.whatsapp.notNow(organizationId, from);
+      await say(NOT_NOW_SAYING);
+      return;
     }
     let userId = who.userId;
     if (!userId && who.personId) {
@@ -165,7 +191,71 @@ export class WhatsAppForAnOrganisationService {
       }
     }
 
-    const open = userId ? await this.openCheckInsFor(organizationId, userId) : [];
+    const everyOpen = userId ? await this.openCheckInsFor(organizationId, userId) : [];
+    /*
+     * A CHECK-IN KEPT IN THE APP TAKES NOTHING FROM THE PHONE (survey item 5). The lead said this one
+     * stays off WhatsApp, so it is never offered in the list, never remembered as the current one, and
+     * a message that would have gone into it is answered with where to answer it instead.
+     */
+    const open = everyOpen.filter((c) => !c.keptOffThePhone);
+    const inTheApp = everyOpen.filter((c) => c.keptOffThePhone);
+    const thread = await this.prisma.whatsAppThread.findUnique({ where: { organizationId_phone: { organizationId, phone: WhatsAppService.normalize(from) } } }).catch(() => null);
+    const said = arrived.kind === 'text' ? arrived.text : '';
+
+    /*
+     * "ASK" REACHES ASK GROUNDWORK, AND "BACK" RETURNS (survey item 2). Ask Groundwork was blocked
+     * while any check-in was open, so a question became an answer in the check-in. Now "ask" (or "Ask
+     * Groundwork") moves this conversation to Ask Groundwork and every message after it goes there,
+     * until "back", or the check-in's name or number from the list, returns them.
+     */
+    if (arrived.kind === 'text' && AN_ASK_WORD.test(said)) {
+      if (!who.personId) { await say(ASKING_NEEDS_A_ROSTER_ENTRY); return; }
+      const goBackTo = isAsking(thread?.checkInId)
+        ? wasIn(thread?.checkInId)
+        : (open.find((c) => c.id === thread?.checkInId) ?? (open.length === 1 ? open[0] : null))?.id ?? null;
+      await this.rememberAsking(organizationId, from, goBackTo);
+      await say(NOW_ASKING);
+      return;
+    }
+    if (isAsking(thread?.checkInId) && who.personId) {
+      const named = arrived.kind === 'pick' ? pickedOne(arrived.id, open) : arrived.kind === 'text' ? namedCheckIn(said, open) : null;
+      if (named || (arrived.kind === 'text' && A_BACK_WORD.test(said))) {
+        const target = named ?? open.find((c) => c.id === wasIn(thread?.checkInId)) ?? (open.length === 1 ? open[0] : null);
+        if (target) {
+          await this.remember(organizationId, from, target.id);
+          const opened = await this.openIfWaiting(target, userId!);
+          await say(opened ? `${sessionHeader(target)} ${THE_WORDS}\n\n${opened}` : BACK_IN(target));
+          return;
+        }
+        if (open.length > 1) {
+          await this.askWhichOne(organizationId, from);
+          await out.list('You have more than one check-in open. Which is this for?', whichOneRows(open), whichOneAsText(open));
+          return;
+        }
+        await say(inTheApp.length ? answerItInTheApp(inTheApp[0].label) : BACK_TO_NOTHING);
+        return;
+      }
+      if (arrived.kind !== 'text') { await say(ASK_READS_WORDS); return; }
+      await say(asATextMessage(await this.assistant.respond(organizationId, who.personId, said)) || 'Noted.');
+      return;
+    }
+
+    /* "SWITCH": the list of open check-ins again (survey item 2). */
+    if (arrived.kind === 'text' && A_SWITCH_WORD.test(said)) {
+      if (open.length > 1) {
+        await this.askWhichOne(organizationId, from);
+        await out.list('You have more than one check-in open. Which is this for?', whichOneRows(open), whichOneAsText(open));
+        return;
+      }
+      await say(open.length === 1 ? ONLY_ONE_OPEN(open[0].label) : inTheApp.length ? answerItInTheApp(inTheApp[0].label) : NONE_OPEN);
+      return;
+    }
+
+    if (!open.length && inTheApp.length) {
+      const meant = inTheApp.find((c) => c.id === thread?.checkInId) ?? inTheApp[0];
+      await say(answerItInTheApp(meant.label));
+      return;
+    }
 
     /* Nothing open: an invitation waiting, or the assistant. */
     if (!open.length) {
@@ -178,7 +268,6 @@ export class WhatsAppForAnOrganisationService {
     }
 
     /* Which one. A pick (tapped or typed) settles it; a remembered pick holds; two or more with neither asks. */
-    const thread = await this.prisma.whatsAppThread.findUnique({ where: { organizationId_phone: { organizationId, phone: WhatsAppService.normalize(from) } } }).catch(() => null);
     let current: AnOpenCheckIn | null = null;
     /* A typed number is a pick only while the question is fresh (a-whatsapp-message-is-routed.ts). */
     const picked = arrived.kind === 'pick' ? pickedOne(arrived.id, open) : arrived.kind === 'text' && open.length > 1 ? pickedFromText(arrived.text, open, thread?.pickPendingAt) : null;
@@ -188,7 +277,7 @@ export class WhatsAppForAnOrganisationService {
       if (arrived.kind === 'pick' || /^\s*\d{1,2}\s*$/.test(arrived.kind === 'text' ? arrived.text : '')) {
         /* The pick itself is not an answer. Open it if it is waiting, and say where they are. */
         const opened = await this.openIfWaiting(current, userId!);
-        await say(`${sessionHeader(current)}${opened ? `\n\n${opened}` : ' Carry on where you left off.'}`);
+        await say(`${sessionHeader(current)}${opened ? ` ${THE_WORDS}\n\n${opened}` : ' Carry on where you left off.'}`);
         return;
       }
     } else if (thread && open.some((c) => c.id === thread.checkInId)) {
@@ -220,7 +309,39 @@ export class WhatsAppForAnOrganisationService {
     }
 
     if (arrived.kind !== 'text') return;
-    const text = arrived.text;
+    let text = arrived.text;
+
+    /*
+     * A LEAVE, HOURS OR SPENDING REQUEST SAID DURING A CHECK-IN (decision 82, item 2). "I want leave on
+     * 20 October" became an answer in the check-in. Now a message that plainly is one is asked about,
+     * once, in Hafsah's words ("Shall I treat this as a leave request?"), and only the person's answer
+     * decides: yes hands it to Ask Groundwork through its own entry, which says it back and asks before
+     * anything is sent; no puts it in the check-in, as it would have gone before.
+     */
+    const pending = this.aRequestAskedAbout(organizationId, from);
+    if (pending) {
+      if (A_YES.test(text) && who.personId) {
+        this.forgetTheRequest(organizationId, from);
+        await this.rememberAsking(organizationId, from, current.id);
+        const answered = asATextMessage(await this.assistant.respond(organizationId, who.personId, pending.text)) || 'Noted.';
+        await say(`${answered}\n\nWrite "back" to return to your check-in.`);
+        return;
+      }
+      if (A_NO.test(text)) {
+        this.forgetTheRequest(organizationId, from);
+        text = pending.text;
+      } else {
+        await say(YES_OR_NO(pending.kind));
+        return;
+      }
+    } else if (who.personId) {
+      const kind = looksLikeARequest(text);
+      if (kind) {
+        this.askAboutTheRequest(organizationId, from, text, kind);
+        await say(shallITreatThisAs(kind));
+        return;
+      }
+    }
 
     /*
      * FINISH, MATCHED BEFORE THE STATUS IS LOOKED AT. "finish" on a session not yet opened used to be
@@ -253,15 +374,17 @@ export class WhatsAppForAnOrganisationService {
      * them went to the controller's log-only catch. The person got silence, which on a phone reads as
      * the product being dead. One try, and say() the sentence. The highest-harm line in the slice.
      */
+    if (beginning && current.status !== 'NOT_STARTED') { await say(`${sessionHeader(current)} Carry on where you left off.`); return; }
     try {
       let reply = '';
       if (current.status === 'NOT_STARTED') {
         const first = await this.conversation.open(current.id, userId!);
-        reply = `${sessionHeader(current)}\n\n${first.reply}`;
+        /* The words that switch, said once, when the check-in starts on WhatsApp. */
+        reply = `${sessionHeader(current)} ${THE_WORDS}\n\n${first.reply}`;
         /* A short first answer is still an answer. "Not much yet", "It's blocked", "Behind again" are
            twelve characters or fewer and were thrown away. Only a greeting and nothing else is not
            handed in - matched by a list, not by a length. */
-        if (A_GREETING_ALONE.test(text)) { await say(reply); return; }
+        if (A_GREETING_ALONE.test(text) || beginning) { await say(reply); return; }
       }
       const r = await this.conversation.sendMessage(current.id, userId!, text, { door: 'whatsapp' });
       reply = reply ? `${reply}\n\n${r.reply}` : r.reply;
@@ -291,9 +414,11 @@ export class WhatsAppForAnOrganisationService {
     try {
       const c = await this.prisma.checkIn.findUnique({
         where: { id: e.checkInId },
-        select: { id: true, sessionNumber: true, status: true, ground: { select: { id: true, organizationId: true, label: true } }, participant: { select: { userId: true, email: true } } },
+        select: { id: true, sessionNumber: true, status: true, ground: { select: { id: true, organizationId: true, label: true, overWhatsApp: true } }, participant: { select: { userId: true, email: true } } },
       });
       if (!c?.participant.userId) return;
+      /* Kept in the app by the lead: the report stays in the app too (survey item 5). */
+      if (keptOffThePhone(c.ground)) return;
       /* A guest's report never goes to the phone of an entry on the host's list that shares their address. See a-guest-is-never-somebody-on-the-hosts-list. */
       if (await isAGuestIn(this.prisma, c.ground.organizationId, c.participant)) return;
       const person = c.participant.email ? await this.prisma.person.findFirst({ where: { organizationId: c.ground.organizationId, email: c.participant.email }, select: { phone: true } }) : null;
@@ -331,12 +456,16 @@ export class WhatsAppForAnOrganisationService {
     }
     let text = report ? reportAsText(report, c.label) : `Your check-in on ${c.label} is on record. The report is being written and is in Groundwork under Report.`;
     text = await this.inTheirLanguage(text, row.participant.language);
+    /* Outside the 24 hours it goes as groundwork_report_ready: the name and one short line, never a line break. */
+    const params = reportAsTemplateBlanks(report, c.label);
     /* Retry the SEND, not the report. The synthesis, four polls and a translation are already paid for; a
        failed send is retried once with the text in hand rather than by running all of that again. */
-    const first = await this.whatsapp.sendFor(organizationId, phone, text, { checkInId: c.id, kind: 'report' });
+    /* On the number the person last wrote to, so the report arrives in the same conversation (survey item 8). */
+    const via = (await this.whatsapp.lastWroteTo(organizationId, phone).catch(() => null)) ?? 'theirs';
+    const first = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report', params });
     if (!first.sent) {
       await new Promise((r) => setTimeout(r, 3000));
-      const second = await this.whatsapp.sendFor(organizationId, phone, text, { checkInId: c.id, kind: 'report-retry' });
+      const second = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report-retry', params });
       if (!second.sent) this.logger.error(`The report for check-in ${c.id} could not be sent to WhatsApp twice: ${second.error ?? 'no detail'}`);
     }
   }
@@ -379,9 +508,9 @@ export class WhatsAppForAnOrganisationService {
         OR: [{ availableFrom: null }, { availableFrom: { lte: new Date() } }],
       },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, status: true, sessionNumber: true, ground: { select: { label: true } } },
+      select: { id: true, status: true, sessionNumber: true, ground: { select: { label: true, overWhatsApp: true } } },
     });
-    return rows.map((r) => ({ id: r.id, status: r.status, sessionNumber: r.sessionNumber, label: r.ground.label }));
+    return rows.map((r) => ({ id: r.id, status: r.status, sessionNumber: r.sessionNumber, label: r.ground.label, keptOffThePhone: keptOffThePhone(r.ground) }));
   }
 
   private async invitationWaitingFor(organizationId: string, personId: string | null): Promise<string | null> {
@@ -404,6 +533,37 @@ export class WhatsAppForAnOrganisationService {
       update: { checkInId, pickPendingAt: null },
     }).catch(() => undefined);
   }
+
+  /** Talking to Ask Groundwork now, with the check-in to go back to. */
+  private async rememberAsking(organizationId: string, from: string, goBackTo: string | null) {
+    const phone = WhatsAppService.normalize(from);
+    const checkInId = `${ASKING}${goBackTo ?? ''}`;
+    await this.prisma.whatsAppThread.upsert({
+      where: { organizationId_phone: { organizationId, phone } },
+      create: { organizationId, phone, checkInId },
+      update: { checkInId, pickPendingAt: null },
+    }).catch(() => undefined);
+  }
+
+  /*
+   * THE REQUEST WAITING FOR A YES OR A NO. Held here for ten minutes, by organisation and number. It
+   * is the person's own words, so it is never written anywhere until they answer. Kept in this copy
+   * of the API only: if the answer reaches another copy, or this one restarted, the person is asked
+   * to say it again rather than anything being guessed.
+   */
+  private readonly requestsAskedAbout = new Map<string, { text: string; kind: ARequest; at: number }>();
+  private static readonly A_REQUEST_WAITS_MS = 10 * 60 * 1000;
+  private requestKey(organizationId: string, from: string) { return `${organizationId}:${WhatsAppService.normalize(from)}`; }
+  private askAboutTheRequest(organizationId: string, from: string, text: string, kind: ARequest) {
+    this.requestsAskedAbout.set(this.requestKey(organizationId, from), { text, kind, at: Date.now() });
+  }
+  private aRequestAskedAbout(organizationId: string, from: string) {
+    const key = this.requestKey(organizationId, from);
+    const got = this.requestsAskedAbout.get(key);
+    if (got && Date.now() - got.at > WhatsAppForAnOrganisationService.A_REQUEST_WAITS_MS) { this.requestsAskedAbout.delete(key); return null; }
+    return got ?? null;
+  }
+  private forgetTheRequest(organizationId: string, from: string) { this.requestsAskedAbout.delete(this.requestKey(organizationId, from)); }
 
   /** The question was asked now; a typed number is an answer to it only while that is fresh. */
   private async askWhichOne(organizationId: string, from: string) {

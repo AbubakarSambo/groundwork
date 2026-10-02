@@ -15,6 +15,7 @@ import { AuthService } from '../auth/auth.service';
 import { addressesIn, namesIn, planFor, summarise, MOST_IN_ONE_PASTE, Row } from './putting-a-whole-company-on';
 import { RolloutFacts } from './where-a-rollout-has-got-to';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { tidyANumberFor } from '../whatsapp/the-organisations-country';
 import { theDomainOf, mayBeJoinedBy, effectiveJoinDomain } from '../../common/an-email-domain';
 import { isCovered } from '../../common/subscription';
 import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
@@ -796,6 +797,9 @@ export class UsersService {
      * switcher - see `a-role-is-stored-twice.ts`. Both writes in one transaction with the rest, so
      * a promotion cannot half-land.
      */
+    /* One stored form for every number, the way WhatsApp sends it (survey item 6). Tidied before the
+       transaction, so a number that needs its country refuses with a sentence and nothing is half written. */
+    const phoneNumber = dto.phoneNumber === undefined ? undefined : dto.phoneNumber?.trim() ? await tidyANumberFor(this.prisma as any, organizationId, dto.phoneNumber) : null;
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
         where: { id },
@@ -806,7 +810,7 @@ export class UsersService {
           ...(typeof dto.isActive === 'boolean' && { isActive: dto.isActive }),
           /* A blank box means remove the number, so an empty string is stored as nothing rather
              than as an empty string nobody can send a message to. */
-          ...(dto.phoneNumber !== undefined && { phoneNumber: dto.phoneNumber?.trim() || null }),
+          ...(phoneNumber !== undefined && { phoneNumber }),
         },
         select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true },
       });

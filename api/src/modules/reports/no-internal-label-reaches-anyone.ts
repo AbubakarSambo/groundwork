@@ -24,6 +24,13 @@ export interface WhoIsReading {
   viewerParticipantId: string | null;
   viewerIsLead: boolean;
   peersAreNamed: boolean;
+  /**
+   * THE READER'S OWN LABEL IS "YOU" (request 101 d). Without it, the reader's own label became their
+   * own name, so Rukia read about herself "Rukia Otieno makes a decision on the discount." on her own
+   * session report. Only where the reader is that very person in the check-in: an admin who set it up
+   * is never "you" for the lead. Asked for by the report reads; the other callers keep the name.
+   */
+  readerIsYou?: boolean;
 }
 
 /** The words for each label, for this reader. */
@@ -34,7 +41,10 @@ export function whatEachLabelIsCalled(parties: LabelParty[], reader: WhoIsReadin
   const viewerLabel = asWhom ? labels.get(asWhom) ?? null : null;
   const plain = plainWordsByPerson(parties ?? [], visible, viewerLabel);
   const out = new Map<string, string>();
-  for (const [id, label] of labels) out.set(label.toLowerCase(), visible.get(label) ?? plain.get(id) ?? 'a colleague');
+  for (const [id, label] of labels) {
+    const isTheReader = !!reader.readerIsYou && !!reader.viewerParticipantId && id === reader.viewerParticipantId;
+    out.set(label.toLowerCase(), isTheReader ? 'you' : visible.get(label) ?? plain.get(id) ?? 'a colleague');
+  }
   /* And each person's address, said the same way: never an address as a name (Hafsah, 28 Sep 2026). */
   for (const p of parties ?? []) {
     const label = labels.get(p.id);
@@ -116,7 +126,7 @@ export function withoutInternalLabels(text: string, called: Map<string, string>)
       said = andList(letters.map((l) => called.get(`participant ${l.toLowerCase()}`) ?? 'a colleague'));
     }
     return startsASentence(whole, offset) ? withACapital(said) : said;
-  });
+  }).replace(/\b([Yy])ou's\b/g, (_m, y: string) => `${y}our`);
 }
 
 /**

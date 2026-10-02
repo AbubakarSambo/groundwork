@@ -1,4 +1,5 @@
 import { anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
+import { whoIsNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -144,6 +145,9 @@ export class TheWeeklyReportService {
     const leave = await leaveOfThePeopleOn(this.prisma as any, [groundId]).catch(() => new Map<string, Stretch[]>());
     const awayThisWeek = (pid: string) => (leave.get(pid) ?? []).some((l) => l.from.getTime() <= at.getTime() && l.to.getTime() >= start.getTime());
 
+    /* Somebody an admin has not let in yet cannot check in, so is neither due nor written up as absent (decision 77). */
+    const notLetIn = await whoIsNotLetInYet(this.prisma, parties);
+
     /* THE SENTENCE ABOUT EACH PERSON. */
     const eachPerson: { participantId: string; says: string }[] = [];
     for (const p of parties) {
@@ -155,6 +159,7 @@ export class TheWeeklyReportService {
       const here = checkedIn.has(p.id);
       /* The lead who ran it and did not check in this week is not someone the week is about. */
       if (p.partyType === PartyType.INITIATOR && !here && !lines.length) continue;
+      if (notLetIn.has(p.id) && !here && !lines.length) continue;
       const says = theSentenceAbout({ label, checkedIn: here, lines, onLeave: awayThisWeek(p.id) });
       if (says && theSentenceIsSafe(says, { label, lines })) eachPerson.push({ participantId: p.id, says });
     }
@@ -169,7 +174,9 @@ export class TheWeeklyReportService {
       .filter((c) => (c.status === CheckInStatus.COMPLETED && inTheWeek(c.completedAt)) || (c.status !== CheckInStatus.COMPLETED && inTheWeek(c.availableFrom ?? c.createdAt)))
       /* Not one that opened while its person was away, nor one that waits for somebody away now. */
       .filter((c) => c.status === CheckInStatus.COMPLETED
-        || !(fallsInLeave(new Date(c.availableFrom ?? c.createdAt), leave.get(c.participantId) ?? []) || awayUntilOn(leave.get(c.participantId), at)));
+        || !(fallsInLeave(new Date(c.availableFrom ?? c.createdAt), leave.get(c.participantId) ?? []) || awayUntilOn(leave.get(c.participantId), at)))
+      /* Nor one that waits for somebody an admin has not let in yet, who cannot make it (decision 77). */
+      .filter((c) => c.status === CheckInStatus.COMPLETED || !notLetIn.has(c.participantId));
     const made = due.filter((c) => c.status === CheckInStatus.COMPLETED).length;
 
     /* WHAT WAS SAID, AND HOW MUCH OF IT HAS SOMETHING BEHIND IT. Never the rating of an answer. */

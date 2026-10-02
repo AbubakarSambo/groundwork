@@ -83,14 +83,14 @@ export class CompanyPictureService {
     const [subjectRows, grounds, memberships, persons, participants] = await Promise.all([
       this.prisma.subject.findMany({
         where: { organizationId },
-        select: { id: true, externalId: true, type: true, title: true, ownerExternalId: true, parentExternalId: true, status: true, dueDate: true, syncedAt: true, sourceDeletedAt: true, createdAt: true },
+        select: { id: true, externalId: true, type: true, title: true, measure: true, ownerExternalId: true, parentExternalId: true, status: true, dueDate: true, syncedAt: true, sourceDeletedAt: true, createdAt: true },
       }),
       this.prisma.ground.findMany({
         where: { organizationId, scenario: { notIn: EVALUATION_SCENARIOS } },
         select: {
           id: true, initiatorId: true, subjectExternalId: true,
           checkIns: { select: { status: true, completedAt: true, isSetup: true } },
-          dependencies: { where: { status: { in: ['WAITING', 'BLOCKING'] }, clearedAt: null }, select: { id: true, what: true, status: true } },
+          dependencies: { where: { status: { in: ['WAITING', 'BLOCKING'] }, clearedAt: null }, select: { id: true, what: true, status: true, onParticipantId: true, onLabel: true, waitingOnGroundId: true } },
         },
       }),
       this.prisma.organizationMembership.findMany({
@@ -101,7 +101,8 @@ export class CompanyPictureService {
       this.prisma.groundParticipant.findMany({ where: { ground: { organizationId } }, select: { nameGiven: true, email: true } }),
     ]);
 
-    const live = (subjectRows as any[]).filter((s) => freshnessOf(s, now) !== 'disconnected');
+    const live = (subjectRows as any[]).filter((s) => freshnessOf(s, now) !== 'disconnected')
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     const top = live.filter((s) => s.type === 'OBJECTIVE' && !s.parentExternalId).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     const under = (externalId: string): Set<string> => {
       const seen = new Set<string>([externalId]);
@@ -138,12 +139,13 @@ export class CompanyPictureService {
     const numbersOf = (groundId: string) => priorities.filter((p) => p.feedingGroundIds.includes(groundId)).map((p) => p.number);
     const handoffs: HandoffFact[] = gs.flatMap((g) => g.dependencies.map((d: any) => ({
       id: d.id, groundId: g.id, team: g.team, about: (d.what ?? '').trim(), status: d.status, priorityNumbers: numbersOf(g.id),
+      waitsOnSomebody: !!(d.onParticipantId || d.waitingOnGroundId || (d.onLabel ?? '').trim()),
     }))).filter((h: HandoffFact) => h.about).slice(0, 60);
 
     const onPriorities = gs.filter((g) => priorities.some((p) => p.feedingGroundIds.includes(g.id)));
     const subjects: SubjectFact[] = live.map((s) => ({
       id: s.id, externalId: s.externalId, type: s.type, title: s.title, ownerExternalId: s.ownerExternalId ?? null,
-      parentExternalId: s.parentExternalId ?? null,
+      parentExternalId: s.parentExternalId ?? null, measure: s.measure ?? null,
       overdue: !!s.dueDate && s.dueDate.getTime() < now.getTime() && !DONE.test(s.status ?? ''),
     }));
 

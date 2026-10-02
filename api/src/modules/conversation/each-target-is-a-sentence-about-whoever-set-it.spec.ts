@@ -71,9 +71,9 @@ describe('what Ngozi\'s check-in is given', () => {
       + 'Bisi is aiming for 120 million naira disbursed this quarter. '
       + 'The team is keeping spending on field visits to no more than 180,000. '
       /* Ngozi set this number herself, so it is hers (decision 75, item 37). */
-      + 'You set yourself an aim of 14 approved facilities.',
+      + 'Your own aim is 14 approved facilities.',
     );
-    expect(prompt).toContain('Theirs, said by them: You set yourself an aim of 14 approved facilities, 0 of 14');
+    expect(prompt).toContain('Theirs, said by them: Your own aim is 14 approved facilities, 0 of 14');
     expect(prompt).toContain('Bisi is aiming for 120 million naira disbursed this quarter, the whole check-in is at 0 of 120 million');
   });
 
@@ -94,7 +94,7 @@ describe('what Ngozi\'s check-in is given', () => {
     expect(brief.objectives).toEqual([
       { name: 'Bisi is aiming for 120 million naira disbursed this quarter.', target: 120000000, direction: 'AIM' },
       { name: 'The team is keeping spending on field visits to no more than 180,000.', target: 180000, direction: 'LIMIT' },
-      { name: 'You set yourself an aim of 14 approved facilities.', target: 14, direction: null },
+      { name: 'Your own aim is 14 approved facilities.', target: 14, direction: null },
     ]);
     expect(JSON.stringify(brief)).not.toMatch(/ownerParticipantId|setByParticipantId|p2|22/);
   });
@@ -114,8 +114,8 @@ describe('what Bisi\'s check-in is given', () => {
     expect(objectivesLine(prompt)).toBe(
       'OBJECTIVES: Each is written as it is said to the person you are talking to, so "you" in them is that person. '
       + 'You are aiming for 120 million naira disbursed this quarter. '
-      + 'Ngozi set an aim of 14 approved facilities for their own work. '
-      + 'Kwame set an aim of 22 approved facilities for their own work. '
+      + 'Ngozi\'s own aim is 14 approved facilities. '
+      + 'Kwame\'s own aim is 22 approved facilities. '
       + 'The team is keeping spending on field visits to no more than 180,000.',
     );
   });

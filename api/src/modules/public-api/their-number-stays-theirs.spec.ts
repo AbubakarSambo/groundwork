@@ -82,7 +82,8 @@ describe('one route, two doors', () => {
   /* A redelivery is not a second answer, the same as on the webhook. */
   it('and a message we have already answered is not answered twice', () => {
     const fn = SRC.slice(SRC.indexOf('async relay('), SRC.indexOf('private async route('));
-    expect(fn).toMatch(/firstTimeWeSeeThis\(organizationId, String\(messageId\)\)/);
+    /* Claimed with the number it came in on, their own (survey item 8). */
+    expect(fn).toMatch(/firstTimeWeSeeThis\(organizationId, anInboundKey\('theirs', WhatsAppService\.normalize\(from\), String\(messageId\)\)\)/);
   });
 
   it('and the door is their own credential, scoped', () => {
@@ -129,6 +130,6 @@ describe('the first message into a check-in that has not started', () => {
 
   /* A greeting on its own gets the opener and stops - there is nothing to answer yet. */
   it('and a greeting alone stops after the opener', () => {
-    expect(route).toMatch(/if \(A_GREETING_ALONE\.test\(text\)\) \{ await say\(reply\); return; \}/);
+    expect(route).toMatch(/if \(A_GREETING_ALONE\.test\(text\)( \|\| beginning)?\) \{ await say\(reply\); return; \}/);
   });
 });

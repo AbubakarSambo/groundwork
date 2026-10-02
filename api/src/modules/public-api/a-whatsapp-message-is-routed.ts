@@ -11,6 +11,8 @@ export interface AnOpenCheckIn {
   status: string;
   sessionNumber: number;
   label: string;
+  /** The lead keeps this check-in in the app (`overWhatsApp = false`). It is never answered from the phone. */
+  keptOffThePhone?: boolean;
 }
 
 /** "September sprint, session 3." One line, so somebody on three grounds knows which this is. */
@@ -51,6 +53,8 @@ export function pickedOne(said: string, open: AnOpenCheckIn[]): AnOpenCheckIn | 
 export function whatArrived(message: any): { kind: 'text'; text: string } | { kind: 'pick'; id: string } | { kind: 'media'; mediaId: string; mimeType: string; fileName: string; caption: string } | { kind: 'other' } {
   if (!message) return { kind: 'other' };
   if (message.type === 'text') return { kind: 'text', text: (message.text?.body ?? '').trim() };
+  /* A template's quick-reply button ("Start", "Not now") arrives as its own type, with the words on it. */
+  if (message.type === 'button' && (message.button?.text || message.button?.payload)) return { kind: 'text', text: String(message.button.text ?? message.button.payload).trim() };
   if (message.type === 'interactive') {
     const id = message.interactive?.list_reply?.id ?? message.interactive?.button_reply?.id;
     return id ? { kind: 'pick', id } : { kind: 'other' };
@@ -76,7 +80,36 @@ export function reportAsText(report: any, label: string): string {
   const glance = (report?.atAGlance ?? []) as { label: string; value: string; sub?: string }[];
   if (glance.length) lines.push(glance.map((g) => `${g.label}: ${g.value}${g.sub ? ` (${g.sub})` : ''}`).join('\n'));
   if (report?.theConversationWorthHaving) lines.push(`Worth having: ${report.theConversationWorthHaving}`);
-  return lines.join('\n\n');
+  const whole = lines.join('\n\n');
+  /* Where the whole report would not fit in one WhatsApp message, one short line, and the app for the rest. */
+  return whole.length <= A_TEXT_MESSAGE_LIMIT ? whole : `${reportAsOneLine(report, label)} Open Groundwork to read it.`;
+}
+
+/** WhatsApp's limit for one ordinary message. */
+export const A_TEXT_MESSAGE_LIMIT = 4096;
+/** The longest "where things stand" line that goes into a template's blank. */
+export const ONE_SHORT_LINE = 200;
+
+/** The first sentence of where things stand, on one line and short. */
+export function whereThingsStandInOneLine(report: any): string {
+  const saying = String(report?.whereThingsStand?.saying ?? '').replace(/\s+/g, ' ').trim();
+  const first = (saying.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? saying).trim();
+  return first.length <= ONE_SHORT_LINE ? first : `${first.slice(0, ONE_SHORT_LINE - 1).replace(/\s+\S*$/, '')}…`;
+}
+
+/** "Your report for the sales team is ready. <where things stand, one line>" */
+export function reportAsOneLine(report: any, label: string): string {
+  const line = whereThingsStandInOneLine(report);
+  return line ? `Your report for ${label} is ready. ${line}` : `Your report for ${label} is ready.`;
+}
+
+/**
+ * THE REPORT AS ITS TEMPLATE'S BLANKS (groundwork_report_ready): the check-in's name, and one short
+ * line of where things stand. Never a line break: WhatsApp refuses a blank with one, and the report
+ * as written has several. The template says "Open Groundwork to read it." itself.
+ */
+export function reportAsTemplateBlanks(report: any, label: string): string[] {
+  return [label, whereThingsStandInOneLine(report) || 'It is in Groundwork under Report.'];
 }
 
 /** ISO 639-1 codes we will converse in. Anything else falls back to English with the person told so. */
@@ -113,6 +146,10 @@ export function pickedFromText(text: string, open: AnOpenCheckIn[], pickPendingA
 /** A greeting and nothing else. The only text that opens a session without being handed in as an answer. */
 export const A_GREETING_ALONE = /^\s*((hi|hello|hey|hiya|yo)(\s+there)?|good\s+(morning|afternoon|evening))\s*[.!]*\s*$/i;
 
+/** "Not now" (the quick reply on checkin_open, or typed): nothing more is written first today (decision 83). */
+export const A_NOT_NOW = /^\s*(not\s+now|later|not\s+today)\s*[.!]?\s*$/i;
+export const NOT_NOW_SAYING = 'All right. I will not write to you first again today. Your check-in is still open, and you can answer here whenever you are ready.';
+
 /** The words that close a session. Matched before the status is looked at, so "finish" on a session not yet opened gets an honest answer. */
 export const A_FINISH_WORD = /^\s*(finish|complete|done|close)\s*[.!]?\s*$/i;
 
@@ -125,3 +162,74 @@ export function pickedOrganisation(text: string, orgs: { id: string; name: strin
   const n = /^\s*\d{1,2}\s*$/.test(text ?? '') ? Number(text.trim()) : NaN;
   return Number.isInteger(n) && n >= 1 && n <= orgs.length ? orgs[n - 1] : null;
 }
+
+/* ---------------- switching between a check-in and Ask Groundwork (survey items 2 and 12) ---------------- */
+
+/** "ask" or "Ask Groundwork": the next messages go to Ask Groundwork, until "back". */
+export const AN_ASK_WORD = /^\s*(ask|ask\s+groundwork)\s*[.!]?\s*$/i;
+/** "back": from Ask Groundwork to the check-in. */
+export const A_BACK_WORD = /^\s*(back|go\s+back|back\s+to\s+(my\s+)?check-?in)\s*[.!]?\s*$/i;
+/** "switch": the list of check-ins again, or, on Groundwork's number, the list of organisations. */
+export const A_SWITCH_WORD = /^\s*switch\s*[.!]?\s*$/i;
+export const A_YES = /^\s*(yes|yeah|yep|y|ok|okay|sure|please do)\s*[.!]?\s*$/i;
+export const A_NO = /^\s*(no|nope|n|no thanks|keep it|keep it in the check-?in)\s*[.!]?\s*$/i;
+
+/** The one sentence that says the words, said when a check-in starts on WhatsApp. */
+export const THE_WORDS = 'You can write "ask" at any time to ask Groundwork something, "back" to come back to your check-in, and "switch" to choose another check-in.';
+export const NOW_ASKING = 'You are now talking to Ask Groundwork. Ask me anything about your work. Write "back" to return to your check-in.';
+export const ASKING_NEEDS_A_ROSTER_ENTRY = 'Ask Groundwork needs your number on your organisation\'s roster. Ask your admin to add it, then write "ask" again.';
+export const ASK_READS_WORDS = 'Ask Groundwork reads words here. Write "back" first, and then send the file to put it on your check-in.';
+export const ONLY_ONE_OPEN = (label: string) => `You have one check-in open, "${label}". Carry on here, or write "ask" to ask Groundwork something.`;
+export const NONE_OPEN = 'You have no check-in open right now. Write "ask" to ask Groundwork something.';
+export const BACK_IN = (c: { label: string; sessionNumber: number }) => `You are back in your check-in. ${sessionHeader(c)} Carry on where you left off.`;
+export const BACK_TO_NOTHING = 'You have no check-in open right now, so there is nothing to go back to. Ask Groundwork is still here.';
+
+/** The thread remembers Ask Groundwork as "ask:" and the check-in to go back to, when there was one. */
+export const ASKING = 'ask:';
+export function isAsking(checkInId: string | null | undefined): boolean {
+  return !!checkInId && checkInId.startsWith(ASKING);
+}
+export function wasIn(checkInId: string | null | undefined): string | null {
+  return isAsking(checkInId) ? checkInId!.slice(ASKING.length) || null : null;
+}
+
+/** A check-in named by the person: its number in the list, or its name. */
+export function namedCheckIn(text: string, open: AnOpenCheckIn[]): AnOpenCheckIn | null {
+  const t = (text ?? '').trim().toLowerCase().replace(/[.!]$/, '');
+  if (!t) return null;
+  const byNumber = /^\d{1,2}$/.test(t) ? open[Number(t) - 1] : undefined;
+  if (byNumber) return byNumber;
+  return open.find((c) => c.label.trim().toLowerCase() === t) ?? null;
+}
+
+/* ---------------- a request said during a check-in (decision 82, item 2) ---------------- */
+
+export type ARequest = 'leave' | 'spending' | 'hours';
+
+const ASKS = /\b(i\s+(want|need|would\s+like|'d\s+like|wish)|i'd\s+like|can\s+i|could\s+i|may\s+i|please|request|apply\s+for|book)\b/i;
+const LEAVE = /\b(leave|day\s+off|days\s+off|time\s+off|holiday|vacation|annual\s+leave|sick\s+leave)\b/i;
+const A_DAY = /\b(\d{1,2}(st|nd|rd|th)?\s+(of\s+)?(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*|(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2}|monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|next\s+week|\d{4}-\d{2}-\d{2})\b/i;
+const LOG_HOURS = /^\s*(please\s+)?(log|record|put\s+down|add)\s+(\d+(?:[.,]\d+)?|an?|half\s+an)\s*(hours?|hrs?|h)\b/i;
+const SPEND = /\b(i\s+(need|want|would\s+like|have)\s+to\s+spend|i'd\s+like\s+to\s+spend|(can|may|could)\s+(i|we)\s+spend|request\s+to\s+spend|approve\s+(spending|a\s+spend))\b/i;
+const A_SUM = /\d/;
+
+/**
+ * WHETHER A MESSAGE IS PLAINLY A LEAVE, HOURS OR SPENDING REQUEST, rather than an answer. Narrow on
+ * purpose: "I was on leave on Monday" or "I spent 12,000 on fuel" are things a person tells their
+ * check-in, and stay there. Only a request in the person's own words is asked about, and the person's
+ * answer decides; nothing is guessed.
+ */
+export function looksLikeARequest(text: string): ARequest | null {
+  const t = (text ?? '').trim();
+  if (!t) return null;
+  if (LOG_HOURS.test(t)) return 'hours';
+  if (SPEND.test(t) && A_SUM.test(t)) return 'spending';
+  if (LEAVE.test(t) && ASKS.test(t) && A_DAY.test(t)) return 'leave';
+  return null;
+}
+
+/** The one question, in Hafsah's words (decision 82, item 2). */
+export function shallITreatThisAs(kind: ARequest): string {
+  return kind === 'leave' ? 'Shall I treat this as a leave request?' : kind === 'spending' ? 'Shall I treat this as a spending request?' : 'Shall I treat this as hours?';
+}
+export const YES_OR_NO = (kind: ARequest) => `Please reply yes or no. ${shallITreatThisAs(kind)}`;

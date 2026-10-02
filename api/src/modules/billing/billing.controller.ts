@@ -5,6 +5,7 @@ import { ThreeMonthsOnTheHouseService } from './three-months-on-the-house.servic
 import { BillingService } from './billing.service';
 import { StripeService } from './stripe.service';
 import { PricingService } from './pricing.service';
+import { WhatsAppAddOnService } from './whatsapp-add-on.service';
 import { CurrentUser, Roles, Role, Public } from '../../common';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 
@@ -37,6 +38,7 @@ export class BillingController {
     private readonly stripe: StripeService,
     private readonly pricing: PricingService,
     private readonly freeRuns: ThreeMonthsOnTheHouseService,
+    private readonly whatsappAddOn: WhatsAppAddOnService,
   ) {}
 
   /**
@@ -87,6 +89,34 @@ export class BillingController {
      * business but the admin's. So the counts are the part that is gated, not the route.
      */
     return theStatusAsTheyMayReadIt(await this.billing.getStatus(organizationId, role === 'ADMIN'), role);
+  }
+
+  /**
+   * WHATSAPP ON PLAN AND BILLING (decision 78). Read by anybody signed in, because a person whose
+   * check-in stays in the app needs to read why. An admin of the organisation is served the price on
+   * their plan, on or off, the trial, this month's use against the limit and what happens at the
+   * limit; anybody else is served only whether their check-ins go by WhatsApp and the sentence why not.
+   */
+  @Get('whatsapp')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'WhatsApp, the paid add-on: on or off, its price on this plan, and this month\'s use against the limit' })
+  async whatsapp(
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('role') role: string,
+  ) {
+    return this.whatsappAddOn.whatTheyRead(organizationId, role === 'ADMIN');
+  }
+
+  @Patch('whatsapp')
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Turn the WhatsApp add-on on or off for this organisation (an admin of the organisation only)' })
+  async turnWhatsApp(
+    @CurrentUser('organizationId') organizationId: string,
+    @Body() body: { on: boolean },
+  ) {
+    await this.whatsappAddOn.turn(organizationId, body?.on);
+    return this.whatsappAddOn.whatTheyRead(organizationId, true);
   }
 
   @Delete('account')

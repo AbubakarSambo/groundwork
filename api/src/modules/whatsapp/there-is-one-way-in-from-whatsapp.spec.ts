@@ -14,7 +14,8 @@ const org = strip(readFileSync(join(__dirname, '..', 'public-api', 'whatsapp-for
 
 describe('the platform route', () => {
   it('delegates to the organisation handler and keeps no routing body of its own', () => {
-    expect(platform).toMatch(/await this\.inbound\.handle\(organizationId, body\)/);
+    /* With the number it came in on, so the reply goes back on the same one (survey item 8). */
+    expect(platform).toMatch(/await this\.inbound\.handle\(organizationId, body, 'ours'\)/);
     for (const gone of ['this.conversation.open(', 'this.conversation.sendMessage(', 'checkIn.findFirst', 'findUserByPhoneNumber']) {
       expect(platform).not.toContain(gone);
     }
@@ -31,7 +32,7 @@ describe('the organisation handler', () => {
   });
   it('keeps a short first answer and drops only a greeting, matched by a list', () => {
     expect(org).not.toMatch(/text\.length <= 12/);
-    expect(org).toMatch(/if \(A_GREETING_ALONE\.test\(text\)\) \{ await say\(reply\); return; \}/);
+    expect(org).toMatch(/if \(A_GREETING_ALONE\.test\(text\)( \|\| beginning)?\) \{ await say\(reply\); return; \}/);
   });
   it('matches finish before the status and answers honestly on a session not yet opened', () => {
     const finishOnNotStarted = org.indexOf("A_FINISH_WORD.test(text) && current.status === 'NOT_STARTED'");

@@ -23,26 +23,102 @@ export function insideTheServiceWindow(lastInboundAt: Date | string | null | und
 }
 
 /** The kinds of send the product starts, as opposed to a reply to something the person just wrote. */
-export const BUSINESS_INITIATED: ReadonlySet<string> = new Set(['session-ready', 'opening', 'report', 'report-retry', 'nudge']);
+export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
+  'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
+  'report', 'report-retry',
+]);
+
+/**
+ * HOW OFTEN GROUNDWORK WRITES FIRST (decision 83, alongside decision 13). These are the messages
+ * Groundwork starts on its own; each person gets at most one a day, or two on a day one of their
+ * check-ins opens or closes. A report is not one of them: it follows the person finishing.
+ */
+export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
+  'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
+]);
+/** The messages that mark a day a check-in opens or closes, when two may go. */
+export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon']);
+export const NOT_TODAY = 'Groundwork has already written first to this person as often as it may today; not sent';
+export const THEY_SAID_NOT_NOW = 'This person replied "Not now" today; not sent';
 
 export function isBusinessInitiated(kind: string | null | undefined): boolean {
   return !!kind && BUSINESS_INITIATED.has(kind);
 }
 
+/**
+ * A TEMPLATE PARAMETER IS ONE LINE (hosted item). WhatsApp refuses a parameter with a line break, a
+ * tab, or more than four spaces in a row, so whatever the product puts into one is made a single
+ * line first, and kept within the limit.
+ */
+export const A_TEMPLATE_BODY_LIMIT = 1024;
+export function oneLine(text: string, limit = A_TEMPLATE_BODY_LIMIT): string {
+  const flat = (text ?? '').replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim();
+  return flat.length <= limit ? flat : `${flat.slice(0, limit - 1).replace(/\s+\S*$/, '')}…`;
+}
+
 export interface ATemplate {
   name: string;
   language: string;
-  /** The body's positional parameters, in Meta's shape, from the plain text the caller would have sent. */
-  components: (text: string) => { type: 'body'; parameters: { type: 'text'; text: string }[] }[];
+  /** The approved wording, with {{1}}, {{2}} where the product puts its own words. The same words go as free text inside the window. */
+  body: string;
+  /** The body's positional parameters, in Meta's shape. `params` are the product's own words for {{1}}, {{2}}; without them the composed text is the one parameter. */
+  components: (text: string, params?: string[]) => { type: 'body'; parameters: { type: 'text'; text: string }[] }[];
 }
 
-/** The three business-initiated bodies. Names are ours; approval is Meta's. */
+/**
+ * The product's words for a body's blanks, each one line, and together within WhatsApp's 1,024
+ * characters for the whole body: when they would not fit, the longest is cut at a word and ends "…".
+ */
+export function withinTheLimit(body: string, params: string[]): string[] {
+  const fixed = body.replace(/\{\{\d+\}\}/g, '').length;
+  const out = params.map((p) => oneLine(p ?? ''));
+  let over = fixed + out.reduce((n, p) => n + p.length, 0) - A_TEMPLATE_BODY_LIMIT;
+  while (over > 0) {
+    const i = out.reduce((best, p, j) => (p.length > out[best].length ? j : best), 0);
+    const keep = Math.max(1, out[i].length - over - 1);
+    const cut = oneLine(out[i], keep + 1);
+    over -= out[i].length - cut.length;
+    if (cut.length >= out[i].length) break;
+    out[i] = cut;
+  }
+  return out;
+}
+
+const aTemplate = (name: string, body: string): ATemplate => ({
+  name,
+  language: 'en',
+  body,
+  components: (text, params) => [{ type: 'body', parameters: withinTheLimit(body, params?.length ? params : [text]).map((p) => ({ type: 'text' as const, text: p })) }],
+});
+
+/** The words a person reads, from a template's body and the product's own words for its blanks. */
+export function fill(body: string, params: string[]): string {
+  const fitted = withinTheLimit(body, params);
+  return body.replace(/\{\{(\d+)\}\}/g, (_m, n) => fitted[Number(n) - 1] ?? '');
+}
+
+/**
+ * Every business-initiated body. Hafsah's eight (decision 83) word for word, and two of ours that
+ * hers do not cover, kept as a proposal for her (the report). Names are
+ * ours; approval is Meta's. docs/whatsapp-templates.md holds the same wording, for submitting.
+ * The parameters are in the order the body numbers them, whatever order they appear in.
+ */
 export const TEMPLATES: Record<string, ATemplate> = {
-  'session-ready': { name: 'groundwork_session_ready', language: 'en', components: (text) => [{ type: 'body', parameters: [{ type: 'text', text: text.slice(0, 1024) }] }] },
-  opening: { name: 'groundwork_check_in_opened', language: 'en', components: (text) => [{ type: 'body', parameters: [{ type: 'text', text: text.slice(0, 1024) }] }] },
-  report: { name: 'groundwork_report_ready', language: 'en', components: (text) => [{ type: 'body', parameters: [{ type: 'text', text: text.slice(0, 1024) }] }] },
+  'checkin-open': aTemplate('checkin_open', 'Hi {{1}}, your check-in for {{2}} is open. It takes about five minutes, and you can answer right here. Reply START to begin.'),
+  'due-tomorrow': aTemplate('checkin_due_tomorrow', 'Hi {{1}}, your check-in for {{2}} is due tomorrow, {{3}}. You can answer here whenever suits you before then.'),
+  'opens-soon': aTemplate('checkin_opens_soon', "Hi {{1}}, your check-in for {{2}} opens in an hour, at {{3}}. Reply here when it opens and we'll begin."),
+  'closes-soon': aTemplate('checkin_closes_soon', 'Hi {{1}}, your check-in for {{2}} closes in an hour, at {{3}}. Five minutes now means your view is part of this round.'),
+  overdue: aTemplate('checkin_overdue', "Hi {{1}}, your check-in for {{2}} is overdue. It's still open, so you can answer here now."),
+  'team-almost-in': aTemplate('checkin_team_almost_in', "Hi {{1}}, {{3}} of {{4}} people have checked in for {{2}}, and the team's picture is coming together without your part. Add yours and it's included."),
+  'your-view-matters': aTemplate('checkin_your_view_matters', "Hi {{1}}, your check-in for {{2}} is still waiting. Your answers help {{3}} understand what's in your way, and where they can help. It takes about five minutes, and you can answer here."),
+  'lead-summary': aTemplate('lead_daily_summary', "Good morning {{1}}. Here's today's summary of your check-ins: {{2}} Open the board for the full picture: {{3}}"),
+  /* Ours, proposed to Hafsah: hers do not cover it. */
+  report: aTemplate('groundwork_report_ready', 'Your report for {{1}} is ready. {{2}} Open Groundwork to read it.'),
 };
 TEMPLATES['report-retry'] = TEMPLATES.report;
+
+/** The names an organisation submits to Meta, once each: every template the product starts. */
+export const THE_NAMES_TO_SUBMIT: string[] = [...new Set(Object.values(TEMPLATES).map((t) => t.name))];
 
 export function templateFor(kind: string | null | undefined, approved: readonly string[]): ATemplate | null {
   const t = kind ? TEMPLATES[kind] : null;

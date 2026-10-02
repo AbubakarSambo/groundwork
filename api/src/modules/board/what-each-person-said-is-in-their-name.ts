@@ -104,7 +104,9 @@ export function eachLineInTheirName<T extends AWhoOwnsWhatRow>(
         /* Already said as theirs (this ran once before on it): left as it is. */
         const alreadyTheirs = saidAs === undefined && (text.startsWith(`${who} said`) || text.startsWith(`${who} has `) || text.startsWith(`${who} have `));
         if (!text || notTheirWords.includes(text) || alreadyTheirs) return item ? rest : item;
-        if (saidAs === 'not-their-words') return { ...rest, text: saidWithoutTheirWords(who, rest.type) };
+        /* The text already says what kind of line it is ("You have reported progress."), so the screen need not
+           say it again under it (request 117, part 8): `itsKindIsSaid`. */
+        if (saidAs === 'not-their-words') return { ...rest, text: saidWithoutTheirWords(who, rest.type), itsKindIsSaid: true };
         /* Their own marks inside a quote become single ones, so one quote is never closed by another. */
         const words = text.replace(/["“”]/g, "'");
         if (saidAs === 'their-sentences') return { ...rest, text: `${who} said, "${/[.!?]$/.test(words) ? words : `${words}.`}"` };

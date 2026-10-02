@@ -3,6 +3,7 @@ import { fromTheReadersSide, noInstructionToAskYourself, theirOwnIsTheReaders } 
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { theShortNameOf } from './a-title-is-not-a-first-name';
 import { theQuotesKept } from './a-quote-is-what-they-said';
+import { aPlainerWord } from './a-plainer-word';
 
 export type LabelParty = {
   id: string;
@@ -683,7 +684,8 @@ export function withNames(
   opts?: { viewerLabel?: string | null },
 ): string {
   if (!text) return text;
-  return theQuotesKept(text, (outside) => withNamesOutsideTheQuotes(outside, visible, allLabels, opts));
+  /* And a plainer word where the report wrote a harder one, never inside a quotation (request 117, part 10). */
+  return theQuotesKept(text, (outside) => aPlainerWord(withNamesOutsideTheQuotes(outside, visible, allLabels, opts)));
 }
 
 function withNamesOutsideTheQuotes(
