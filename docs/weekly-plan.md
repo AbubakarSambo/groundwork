@@ -4,6 +4,11 @@
 
 One list, merged from every instruction since decision 81, without duplicates. Marked **done**, **in progress** or **not started**.
 
+**Now, before anything else (decision 86, 3 October)**
+- Reverse three privacy choices: the lead sees patterns after the person's answer or 3 or 7 days; the manager's suggestion shows its counts; admins and the chief executive see the figures on priorities and the aims and limits on boards. *In progress.*
+- List every privacy restriction in the product that came from Claude's choice rather than Hafsah's words or the prototype, for her yes or no. Change nothing in it until she answers. *In progress.*
+- The scenario run waits until the reversals are in, because they change what the engine writes.
+
 **First, before anything else (decision 84)**
 0. Request 118: Rukia's Today page failing when nobody is left in "not checked in yet" (with an empty-list test on every page that has such a list), the two sentences that name Rukia on her own board instead of "you", and what is still open from request 117 (the false "Met", the headline with no number, deal owners, Neema's shop, "waiting on themselves"). *Done in code* (`c12aa05f` to `969cbe72`). What is left is stored rows on the screens workspace's database: the script fixes the false "Met" and the headline; deal owners wait on Rukia answering the claim; Neema's shop waits on the model's next read.
 
@@ -56,7 +61,7 @@ From now on, every change to what the board, reports or Today page send is writt
 **d2. The suites as one request and workflow layer (decision 85, 3 October)**
 - Compare leave, spending and payments, timesheets and performance reviews with the seven layers, suite by suite, and list what exists, what is partly there and what is missing. *In progress* (`docs/suites-against-the-workflow-model.md`).
 - Then build the missing parts in this order: approvers by rule and escalation; who sees what by record, field and action, with an audit record; leave's manager view (balance, who else is away, what the person owns in those days); spending thresholds, finance verifying, exporting and marking paid; timesheets drafted from the record; the review as the record interpreted, with the person correcting it; and the conversational setup. *Not started.*
-- The parts that meet decisions 53, 73 and 74 wait for Hafsah.
+- Decision 86 settled the counts and patterns; the payment-system connection is dropped. Calendar connections still wait.
 
 **h. Then everything else**
 21. The other seven boards, and the rest of the earlier list. *Not started.*
