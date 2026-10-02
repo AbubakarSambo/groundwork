@@ -1,3 +1,4 @@
+import { whichRoundIsOpen } from './which-round-is-open';
 /**
  * ONE COUNT FOR THE SESSIONS, FROM THE BOARD'S OWN CLOCK (request 107 e, with request 97 a).
  *
@@ -66,3 +67,40 @@ export function whatEachSessionSays(n: number, rows: ASessionRow[], openRound: n
   return { says: `Session ${n} has not opened yet.`, openedOn: null };
 }
 
+
+/**
+ * THE SAME COUNT, FOR THE CHECK-IN'S OWN HEADER (request 101 f). The lead's header read "Session 1 of 12. ...
+ * It went back to session 1, because somebody new was added." while the Report tab listed session 2, because
+ * the screen worked the header out on its own. The check-in read now serves the board's own clock, from the
+ * same rule (the open round among the people who check in, capped at the last planned session):
+ *   `says`: "Session 1 of 12." (the prototype's words, theHeaderSays)
+ *   `whileOpen`: "Session 2 has started for some people, while session 1 is still open." where a later
+ *     session has started, and null otherwise. It names nobody and counts nobody.
+ */
+export interface TheSessionClock {
+  currentSession: number;
+  plannedSessions: number | null;
+  says: string;
+  whileOpen: string | null;
+}
+
+export function theSessionClock(
+  rows: (ASessionRow & { participantId: string })[],
+  whoChecksIn: ReadonlySet<string>,
+  planned: number | null,
+  now = new Date(),
+): TheSessionClock {
+  const theirs = rows.filter((r) => whoChecksIn.has(r.participantId));
+  const highest = rows.reduce((m, r) => Math.max(m, r.sessionNumber ?? 1), 1);
+  const open = theirs.length ? whichRoundIsOpen(theirs as any) : highest;
+  const current = planned && planned > 0 ? Math.min(Math.max(open, 1), planned) : Math.max(open, 1);
+  const done = (r: ASessionRow) => r.status === 'COMPLETED' || r.status === 'DECLINED';
+  const allFinished = !!planned && theirs.length > 0 && theirs.every(done) && theirs.some((r) => r.sessionNumber >= planned);
+  const ahead = [...new Set(theirs.filter((r) => r.sessionNumber > current && r.status !== 'NOT_STARTED').map((r) => r.sessionNumber))].sort((a, b) => a - b)[0];
+  return {
+    currentSession: current,
+    plannedSessions: planned,
+    says: theHeaderSays(current, planned, allFinished),
+    whileOpen: ahead ? whatEachSessionSays(ahead, theirs, current, now).says : null,
+  };
+}

@@ -51,6 +51,7 @@ import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { theGlanceAsThisReaderMayReadIt, whatIsInTheWay } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
+import { theSessionClock } from '../board/one-count-for-the-sessions';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
@@ -1671,7 +1672,7 @@ export class GroundsService {
      */
     if (requestingUserId) await this.assertMaySeeGround(id, requestingUserId);
     // Primary lookup by org - works for org members and the initiator.
-    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, isFinal: true, specificityLevel: true, specificityDimensions: true } as const;
+    const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, startedAt: true, isFinal: true, specificityLevel: true, specificityDimensions: true } as const;
 
     let ground = await this.prisma.ground.findFirst({
       where: { id, organizationId },
@@ -1791,6 +1792,16 @@ export class GroundsService {
        doesn't have an end date" - it had one, as a count of days from a start nobody could see, and the
        header only spoke up in the last three of them. The same clock, read as a date, for every check-in. */
     const endsOn = deadlineOf(ground as any);
+    /*
+     * ONE COUNT FOR THE SESSIONS, THE BOARD'S OWN (request 101 f). Read from every check-in row before any
+     * reader's wall, because it names and counts nobody: the open round among the people who check in,
+     * capped at the last planned session, as the board's header and the list count it.
+     */
+    const sessionClock = theSessionClock(
+      (((ground as any).checkIns ?? []) as any[]).filter((c) => !c.isSetup),
+      new Set((((ground as any).participants ?? []) as any[]).filter((p) => !p.managingOnly).map((p) => p.id)),
+      totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
+    );
 
     /*
      * BRIEF: the ground's own opening brief, or the released report's summary when there is none.
@@ -2671,6 +2682,9 @@ export class GroundsService {
       alignment,
       daysLeft,
       endsOn,
+      /* The header's count, from the board's own clock: "Session 1 of 12.", and the line for a later session
+         somebody has started. Every reader gets the same sentences (request 101 f). */
+      sessionClock,
       /* The lead and the organisation's admins read the brief they wrote. A participant reads the
          situation and nothing that tells the product how to interview them. See
          what-a-participant-is-told-about-this. Goals are on the payload already, under objectives. */
