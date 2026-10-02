@@ -219,12 +219,18 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
                   the server sent one. */}
               {r.target != null && (
                 isAVerbPhraseWithNoNumber(r.target, r.targetName) ? (
-                  /* ONBOARDING BOARD FIX 4: a verb phrase is not a count to slot a number in front
-                     of - "has not yet done this: ..." says what is still owed, in the objective's
-                     own words, rather than a broken "has none of their 1 Manage the renewal
-                     process... yet." */
+                  /*
+                   * ONBOARDING BOARD FIX 4 (SECOND REVIEW): TWO FULL SENTENCES, NOT ONE JOINED ON
+                   * A COLON. "Tobi Adewale has not yet done this: "..."" still joined a name to a
+                   * quote with a colon - CLAUDE.md asks for plain, full sentences, never pieces
+                   * joined with colons. Now "{name}'s target is "{the objective, word for word}."
+                   * It is not done yet." - or "It is done." once it is - two sentences, each
+                   * complete on its own. The reader's own row reads "Your target is ...", the same
+                   * way every other first-person row on this board already says "you" rather than
+                   * their own name.
+                   */
                   <Note>
-                    {r.who} has {r.count === 0 ? 'not yet done this' : 'done this'}: &ldquo;{verbPhraseSentence(r.targetName)}&rdquo;
+                    {r.who === 'You' ? 'Your' : `${r.who}’s`} target is &ldquo;{verbPhraseSentence(r.targetName)}&rdquo; It is {r.count === 0 ? 'not done yet' : 'done'}.
                   </Note>
                 ) : (
                   <Note>
