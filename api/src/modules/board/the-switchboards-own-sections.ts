@@ -733,7 +733,7 @@ export const WHAT_A_FORECAST_CANNOT_TELL_YOU =
  * Needs a number to aim at, two sessions counted, and the check-in still to run past the last count.
  */
 export function theForecast(
-  targets: { id: string; about: string; target: number | null; ownerParticipantId: string | null; direction: 'AIM' | 'LIMIT' }[],
+  targets: { id: string; about: string; target: number | null; ownerParticipantId: string | null; direction: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' }[],
   counts: { objectiveId: string; sessionNumber: number; count: number }[],
   totalSessions: number | null,
 ): AForecast[] {
@@ -741,7 +741,9 @@ export function theForecast(
   const read = (n: number) => aNumberPeopleCanRead(n);
   const out: AForecast[] = [];
   for (const t of targets) {
-    if (t.ownerParticipantId || typeof t.target !== 'number' || !t.about?.trim()) continue;
+    /* A date to meet is met or not, so it has no pace to carry forward (decision 75, item 17). */
+    if (t.direction === 'DEADLINE') continue;
+    if (t.ownerParticipantId || (typeof t.target !== 'number' && t.direction !== 'ZERO') || !t.about?.trim()) continue;
     const mine = counts.filter((c) => c.objectiveId === t.id).sort((a, b) => a.sessionNumber - b.sessionNumber);
     if (mine.length < 2) continue;
     const first = mine[0];
@@ -749,15 +751,31 @@ export function theForecast(
     if (last.sessionNumber <= first.sessionNumber || last.sessionNumber >= totalSessions) continue;
     const pace = (last.count - first.count) / (last.sessionNumber - first.sessionNumber);
     const ends = Math.max(0, Math.round(last.count + pace * (totalSessions - last.sessionNumber)));
-    const against = t.direction === 'LIMIT' ? `against a limit of ${read(t.target)}` : `against an aim of ${read(t.target)}`;
-    const says = pace === 0
-      ? `It has not moved since session ${first.sessionNumber}, so if nothing changes it would still be ${read(last.count)} by session ${totalSessions}, ${against}.`
-      : `If it keeps moving at the pace it has since session ${first.sessionNumber}, it would be about ${read(ends)} by session ${totalSessions}, ${against}.`;
+    const target = t.target as number;
+    let says: string;
+    if (t.direction === 'ZERO') {
+      /* A count to keep at zero: none is where it should stay, and any at all is already a breach. */
+      says = last.count === 0
+        ? `It has stayed at zero since session ${first.sessionNumber}. If nothing changes, it will still be zero by session ${totalSessions}.`
+        : `It is at ${read(last.count)}, and this should stay at zero, so any at all is already a breach whatever the pace.`;
+    } else if (t.direction === 'RATE') {
+      /* A share, carried in a straight line like a count, and never past 100%. */
+      const share = Math.min(100, ends);
+      says = pace === 0
+        ? `It has stayed at ${read(last.count)}% since session ${first.sessionNumber}, so if nothing changes it would still be ${read(last.count)}% by session ${totalSessions}, against an aim of ${read(target)}% or more.`
+        : `If it keeps changing at the pace it has since session ${first.sessionNumber}, it would be about ${read(share)}% by session ${totalSessions}, against an aim of ${read(target)}% or more.`;
+    } else {
+      const against = t.direction === 'LIMIT' ? `against a limit of ${read(target)}` : `against an aim of ${read(target)}`;
+      says = pace === 0
+        ? `It has not moved since session ${first.sessionNumber}, so if nothing changes it would still be ${read(last.count)} by session ${totalSessions}, ${against}.`
+        : `If it keeps moving at the pace it has since session ${first.sessionNumber}, it would be about ${read(ends)} by session ${totalSessions}, ${against}.`;
+    }
+    const unit = t.direction === 'RATE' ? '%' : '';
     out.push({
       objectiveId: t.id,
       about: t.about.trim(),
       says,
-      restsOn: `It was ${read(first.count)} in session ${first.sessionNumber} and ${read(last.count)} in session ${last.sessionNumber}, and this check-in runs for ${totalSessions} sessions.`,
+      restsOn: `It was ${read(first.count)}${unit} in session ${first.sessionNumber} and ${read(last.count)}${unit} in session ${last.sessionNumber}, and this check-in runs for ${totalSessions} sessions.`,
       cannotTellYou: WHAT_A_FORECAST_CANNOT_TELL_YOU,
     });
   }

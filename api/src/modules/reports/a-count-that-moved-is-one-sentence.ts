@@ -46,7 +46,7 @@ export interface ACountThatMoved {
   target: number | null;
   count: number;
   prevCount: number;
-  direction?: 'AIM' | 'LIMIT' | null;
+  direction?: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null;
 }
 
 export interface WhoseCountItIs {
@@ -68,7 +68,7 @@ const possessive = (w: WhoseCountItIs['whose']): string =>
 function whatIsCounted(readable: string): string {
   const words = readable.replace(/[.,;:]+$/, '').split(/\s+/);
   if (words.length > 1 && /(?:'|’)s$/i.test(words[0])) words.shift();
-  if (/^\p{Lu}\p{Ll}*$/u.test(words[0] ?? '') && (words.length === 1 || /^\p{Ll}/u.test(words[1]))) words[0] = words[0].toLowerCase();
+  if (/^\p{Lu}\p{Ll}*(?:-\p{Ll}+)*$/u.test(words[0] ?? '') && (words.length === 1 || /^\p{Ll}/u.test(words[1]))) words[0] = words[0].toLowerCase();
   return words.join(' ');
 }
 
@@ -81,12 +81,19 @@ export function aCountThatMovedSaid(o: ACountThatMoved, who: WhoseCountItIs): st
   if (!name) return null;
   const readable = theNumbersPeopleCanRead(name);
   const money = theMoneyItCountsIn(readable);
-  /* "from 0 to 31 million naira": nought needs no money word. */
-  const n = (x: number) => `${aNumberPeopleCanRead(x)}${money && x !== 0 ? ` ${money}` : ''}`;
+  /* "from 0 to 31 million naira": nought needs no money word. A share is said with its "%". */
+  const n = (x: number) => (o.direction === 'RATE' ? `${aNumberPeopleCanRead(x)}%` : `${aNumberPeopleCanRead(x)}${money && x !== 0 ? ` ${money}` : ''}`);
   const isALimit = o.direction === 'LIMIT';
   const against = (alreadySaid: string) => {
+    /* A count to keep at zero says so whoever reads it; a date to meet has no number to be against. */
+    if (o.direction === 'ZERO') return o.count > 0 ? ', and this should stay at zero' : '';
+    if (o.direction === 'DEADLINE') return '';
     if (!who.againstTheAim || typeof o.target !== 'number') return '';
     if (alreadySaid.includes(aNumberPeopleCanRead(o.target))) return '';
+    if (o.direction === 'RATE') {
+      const whoseRate = who.about?.setByTheHolder && who.whose !== 'team' ? (who.whose === 'you' ? 'your own' : `${who.whose.name}'s own`) : 'the';
+      return `, against ${whoseRate} aim of ${n(o.target)} or more`;
+    }
     /* A person's own aim is said as theirs, never as one somebody set for them (decision 75, item 37). */
     const whose = who.about?.setByTheHolder && who.whose !== 'team' ? (who.whose === 'you' ? 'your own' : `${who.whose.name}'s own`) : 'the';
     return `, against ${whose} ${isALimit ? 'limit' : 'aim'} of ${n(o.target)}`;
@@ -94,6 +101,12 @@ export function aCountThatMovedSaid(o: ACountThatMoved, who: WhoseCountItIs): st
   const moved = `went from ${n(o.prevCount)} to ${n(o.count)}`;
 
   const counted = onlySaysWhatIsCounted(readable);
+  /* A date to meet is done or not; its count of 0 or 1 is never said (decision 75, item 17). */
+  if (o.direction === 'DEADLINE') {
+    const done = o.count >= (typeof o.target === 'number' && o.target > 0 ? o.target : 1);
+    const isOrNot = done ? 'is done' : 'is not done yet';
+    if (counted && !/^\d/.test(whatIsCounted(readable))) return `${possessive(who.whose)} ${whatIsCounted(readable)} ${isOrNot}.`;
+  }
   if (counted && !/^\d/.test(whatIsCounted(readable))) {
     return `${possessive(who.whose)} ${whatIsCounted(readable)} ${moved}${against('')}.`;
   }
@@ -107,5 +120,6 @@ export function aCountThatMovedSaid(o: ACountThatMoved, who: WhoseCountItIs): st
     setByTheHolder: who.about?.setByTheHolder ?? false,
   });
   const aim = who.aimAsTheReaderReadsIt ? who.aimAsTheReaderReadsIt(inLabels) : inLabels;
+  if (o.direction === 'DEADLINE') return `${aim} ${o.count >= (typeof o.target === 'number' && o.target > 0 ? o.target : 1) ? 'It is done.' : 'It is not done yet.'}`;
   return `${aim} ${possessive(who.whose)} ${money ? 'total' : 'count'} ${moved}${against(aim)}.`;
 }

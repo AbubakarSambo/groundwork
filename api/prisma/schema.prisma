@@ -1877,10 +1877,16 @@ model CheckInGap {
   @@map("check_in_gaps")
 }
 
-/// Which way is good for a target: an aim to reach, or a limit not to go over (decision 69).
+/// Which way is good for a target (decision 69), as one of the prototype's five kinds (decision 75, item 17).
+/// AIM is "Up" (an aim to reach), LIMIT is "Lower is better" (a limit not to go over), RATE is a share or
+/// ratio over a period to keep at or above its number, DEADLINE is a date to meet (`dueOn`), and ZERO is a
+/// count to keep at zero, where any at all is a breach.
 enum TargetDirection {
   AIM
   LIMIT
+  RATE
+  DEADLINE
+  ZERO
 }
 
 model GroundObjective {
@@ -1924,6 +1930,9 @@ model GroundObjective {
   /// word-based guess (a-measure-that-goes-down-is-still-going-well.ts) until the lead sets one.
   /// The suggestion is never stored here; only what the lead confirmed is.
   direction TargetDirection?
+  /// THE DATE TO MEET, for a target whose kind is DEADLINE (decision 75, item 17). Set by the lead, never
+  /// read from the name. Null on every other kind, and on a deadline nobody has given a date for yet.
+  dueOn     DateTime? @map("due_on") @db.Date
   /// Who SAID this target, when it came out of a check-in rather than the setup form. A target the
   /// lead set for a person is put to that person as the lead's expectation; one they set themselves
   /// is theirs. Without this the two read the same and a rep was asked about "the N4m gap that the

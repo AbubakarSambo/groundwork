@@ -108,7 +108,7 @@ describe('the question to the lead, and only to the lead', () => {
   const PUMPS = aim('o-1', 'Pumps sold under the new scheme', 40, 0);
   it('Helen is asked which way 40 goes, with what the words suggest, while nobody has said', async () => {
     const [o] = await served([PUMPS], 'u-helen', 'MEMBER', []);
-    expect(o.directionQuestion).toBe('Is 40 something to reach, or a limit not to go over?');
+    expect(o.directionQuestion).toBe('What kind of number is 40? It can be something to reach, a limit not to go over, a share to keep at or above, a date to meet, or a count to keep at zero.');
     expect(o.directionSuggested).toBe('AIM');
   });
   it('Chidi and an admin outside are never asked, and are not handed the suggestion', async () => {
@@ -134,13 +134,19 @@ describe('the sentences a say-back carries', () => {
   it('says each number as an aim to reach or a limit not to go over, in one sentence', () => {
     expect(whichWayItIsSaid('Pumps sold', 40, 'AIM')).toBe('"Pumps sold" is an aim of 40 to reach.');
     expect(whichWayItIsSaid('Spending this quarter.', 180000, 'LIMIT')).toBe('"Spending this quarter" is a limit of 180,000 not to go over.');
-    expect(theQuestionAboutWhichWay(120000000)).toBe('Is 120 million something to reach, or a limit not to go over?');
+    expect(theQuestionAboutWhichWay(120000000)).toBe('What kind of number is 120 million? It can be something to reach, a limit not to go over, a share to keep at or above, a date to meet, or a count to keep at zero.');
     expect(theQuestionAboutWhichWay(null)).toBeNull();
   });
-  it('takes only AIM or LIMIT, and anything else is not set', () => {
+  /* Decision 75, item 17: the five kinds, and the prototype's names for the first two. It took only AIM or LIMIT. */
+  it('takes the five kinds, and the prototype\'s names for them, and anything else is not set', () => {
     expect(asADirection('limit')).toBe('LIMIT');
     expect(asADirection('AIM')).toBe('AIM');
-    expect(asADirection('up')).toBeNull();
+    expect(asADirection('up')).toBe('AIM');
+    expect(asADirection('Lower is better')).toBe('LIMIT');
+    expect(asADirection('rate')).toBe('RATE');
+    expect(asADirection('DEADLINE')).toBe('DEADLINE');
+    expect(asADirection('zero')).toBe('ZERO');
+    expect(asADirection('sideways')).toBeNull();
     expect(asADirection(null)).toBeNull();
   });
 });

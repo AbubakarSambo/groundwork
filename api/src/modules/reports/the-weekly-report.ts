@@ -29,6 +29,7 @@
 
 import { aNumberPeopleCanRead, theNumbersPeopleCanRead, theAimItself, yourOwnAimIsYours } from '../board/an-aim-is-a-sentence-about-somebody';
 import { asADirection, whatTheWordsSuggest } from '../board/an-aim-or-a-limit';
+import { aDeadlineIsDone } from '../board/a-measure-that-goes-down-is-still-going-well';
 import { aCountThatMovedSaid, theMoneyItCountsIn } from './a-count-that-moved-is-one-sentence';
 import { inOurVoice } from './what-the-record-shows-over-time';
 import { theWeekOf } from './the-weekly-sentence-about-each-person';
@@ -41,7 +42,7 @@ export interface AWeeksTarget {
   id: string;
   name: string;
   target: number | null;
-  direction: 'AIM' | 'LIMIT' | null;
+  direction: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null;
   ownerParticipantId: string | null;
   isADecisionAboutAPerson: boolean;
   count: number;
@@ -207,8 +208,9 @@ export function aTargetThisWeek(t: AWeeksTarget, whose: Whose, againstTheAim: bo
   if (!name) return null;
   const readable = theNumbersPeopleCanRead(name).replace(/[.]+$/, '');
   const money = theMoneyItCountsIn(readable);
-  const n = (x: number) => `${aNumberPeopleCanRead(x)}${money && x !== 0 ? ` ${money}` : ''}`;
-  const direction = asADirection(t.direction) ?? whatTheWordsSuggest(name);
+  const direction = asADirection(t.direction) ?? whatTheWordsSuggest(name, t.target);
+  /* A share is said with its "%" (decision 75, item 17). */
+  const n = (x: number) => (direction === 'RATE' ? `${aNumberPeopleCanRead(x)}%` : `${aNumberPeopleCanRead(x)}${money && x !== 0 ? ` ${money}` : ''}`);
   /* A person's own aim is said as theirs, never as a number somebody set for them (decision 75, item 37). */
   const whoseWords = whose === 'team' ? ''
     : t.setByTheHolder ? (whose === 'you' ? ', an aim you set yourself' : `, an aim ${whose.label} set for their own work`)
@@ -234,15 +236,28 @@ export function aTargetThisWeek(t: AWeeksTarget, whose: Whose, againstTheAim: bo
     const moved = `went from ${n(t.from)} to ${n(t.count)}`;
     says = says.includes(moved) ? says.replace(moved, `${moved} this week`) : says.replace(/\.$/, ' this week.');
   } else if (t.from != null) {
-    says = `It stayed at ${n(t.count)} this week.`;
+    says = direction === 'ZERO' && t.count === 0 ? 'There were none again this week, which is where it should stay.' : `It stayed at ${n(t.count)} this week.`;
   } else {
     says = `It is at ${n(t.count)}, and there is no earlier count this week to compare it with.`;
+  }
+  /* Each of the other kinds says what it is, to whoever reads the figure (decision 75, item 17). */
+  if (direction === 'ZERO' && t.count > 0) says += /should stay at zero/.test(says) ? ' Any at all is a breach.' : ' This should stay at zero, so any at all is a breach.';
+  if (direction === 'DEADLINE') {
+    /* A date is met or not: the figure says which, never a count of 0 or 1. */
+    const done = aDeadlineIsDone(t.count, t.target);
+    const doneThisWeek = done && t.from != null && !aDeadlineIsDone(t.from, t.target);
+    return { figure: done ? 'Done' : 'Not done yet', of, says: doneThisWeek ? 'It was done this week.' : done ? 'It is done.' : 'It is a date to meet, and it is not done yet.' };
   }
   if (againstTheAim && typeof t.target === 'number') {
     /* The limit or the aim is said once: where the sentence already gave it, it is not repeated. */
     const ofIt = says.includes(n(t.target)) ? '' : ` of ${n(t.target)}`;
     if (direction === 'LIMIT' && t.count > t.target) says += ` That is ${n(t.count - t.target)} over the limit${ofIt}.`;
     else if (direction === 'AIM' && t.count >= t.target && t.target > 0) says += ` The aim${ofIt} has been reached.`;
+    else if (direction === 'RATE') {
+      says += ofIt
+        ? (t.count >= t.target ? ` That meets the aim${ofIt} or more.` : ` That is below the aim${ofIt} or more.`)
+        : (t.count >= t.target ? ' That meets it.' : ' That is below it.');
+    }
   }
   return { figure: n(t.count), of, says };
 }

@@ -9,7 +9,13 @@ import { aNumberPeopleCanRead } from './an-aim-is-a-sentence-about-somebody';
  */
 export function theShareSays(name: string, count: number | null | undefined, target: number, direction?: string | null): string {
   const aim = /[.!?]$/.test((name ?? '').trim()) ? name.trim() : `${(name ?? '').trim()}.`;
+  if (direction === 'ZERO' && (count == null || count === 0)) return `${aim} There have been none so far, which is where it should stay.`;
+  if (direction === 'DEADLINE' && (count == null || count === 0)) return `${aim} It is not done yet.`;
   if (count == null || count === 0) return `${aim} Nothing has been counted against it yet.`;
   if (direction === 'LIMIT') return `${aim} You are at ${aNumberPeopleCanRead(count)} so far.`;
+  /* The other kinds, each in its own words (decision 75, item 17). */
+  if (direction === 'RATE') return `${aim} You are at ${aNumberPeopleCanRead(count)}% so far.`;
+  if (direction === 'ZERO') return `${aim} There ${count === 1 ? 'has been 1' : `have been ${aNumberPeopleCanRead(count)}`} so far, and any at all is a breach.`;
+  if (direction === 'DEADLINE') return `${aim} ${count >= (target > 0 ? target : 1) ? 'It is done.' : 'It is not done yet.'}`;
   return `${aim} You have ${aNumberPeopleCanRead(count)} of the ${aNumberPeopleCanRead(target)} so far.`;
 }

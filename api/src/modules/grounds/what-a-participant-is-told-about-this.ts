@@ -82,7 +82,7 @@ export interface AGoalTheyMaySee {
   /** Whose goal it is; null for the whole check-in's. */
   ownerParticipantId?: string | null;
   /** An aim to reach or a limit not to go over, where the lead has said (decision 69). */
-  direction?: 'AIM' | 'LIMIT' | null;
+  direction?: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null;
   /** Who said it, where it came out of a check-in. With the owner and not the lead, it is that person's own aim. */
   setByParticipantId?: string | null;
 }
@@ -140,16 +140,23 @@ export function aGoalAsTheyReadIt(g: AGoalTheyMaySee, opts: { isTheirs: boolean;
   if (A_CLAUSE.test(readable)) {
     const said = opts.isTheirs ? asTheReader(readable) : aboutTheSpeaker(readable, 'Your lead');
     const sentence = `${said.charAt(0).toUpperCase()}${said.slice(1)}.`;
+    if (g.direction === 'ZERO') return `${sentence} This should stay at zero, so any at all is a breach.`;
+    if (g.direction === 'DEADLINE') return `${sentence} It is a date to meet.`;
+    if (g.direction === 'RATE' && number) return `${sentence} The share to keep at or above is ${number}%.`;
     return number && !sentence.includes(number)
       ? `${sentence} The ${isALimit ? 'limit not to go over' : 'number to reach'} is ${number}.`
       : sentence;
   }
   const words = readable.split(/\s+/);
-  if (/^\p{Lu}\p{Ll}*$/u.test(words[0] ?? '') && (words.length === 1 || /^[\p{Ll}\p{N}]/u.test(words[1]))) words[0] = words[0].toLowerCase();
+  if (/^\p{Lu}\p{Ll}*(?:-\p{Ll}+)*$/u.test(words[0] ?? '') && (words.length === 1 || /^[\p{Ll}\p{N}]/u.test(words[1]))) words[0] = words[0].toLowerCase();
   const phrase = `${A_VERB_FIRST.test(words[0]) ? 'to ' : ''}${words.join(' ')}`;
-  const withTheNumber = number && !phrase.includes(number)
-    ? `, and the ${isALimit ? 'limit not to go over' : 'number to reach'} is ${number}`
-    : '';
+  /* Each kind in its own words (decision 75, item 17). */
+  const withTheNumber = g.direction === 'ZERO' ? ', which should stay at zero, so any at all is a breach'
+    : g.direction === 'DEADLINE' ? ', which is a date to meet'
+      : g.direction === 'RATE' && number ? `, and the share to keep at or above is ${number}%`
+        : number && !phrase.includes(number)
+          ? `, and the ${isALimit ? 'limit not to go over' : 'number to reach'} is ${number}`
+          : '';
   return `${opts.leadIn} ${phrase}${withTheNumber}.`;
 }
 

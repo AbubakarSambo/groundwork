@@ -65,5 +65,9 @@ export function theTargetAsASentence(o: ATargetToWord, who: WhoIsInIt): string {
   if (!direction || o.target == null) return sentence;
   if (direction === 'LIMIT' && /\bno more than\b/i.test(sentence)) return sentence;
   if (direction === 'AIM' && /\baim(?:ing)?\b/i.test(sentence)) return sentence;
+  /* Each of the other kinds in its own words (decision 75, item 17). */
+  if (direction === 'RATE') return sentence.includes(`${aNumberPeopleCanRead(o.target)}%`) ? sentence : `${sentence} The share to keep at or above is ${aNumberPeopleCanRead(o.target)}%.`;
+  if (direction === 'ZERO') return /\bat zero\b/.test(sentence) ? sentence : `${sentence} This should stay at zero, so any at all is a breach.`;
+  if (direction === 'DEADLINE') return /\bdate to meet\b/.test(sentence) ? sentence : `${sentence} It is a date to meet.`;
   return `${sentence} The number ${aNumberPeopleCanRead(o.target)} is ${theListsWordsFor(direction)}.`;
 }

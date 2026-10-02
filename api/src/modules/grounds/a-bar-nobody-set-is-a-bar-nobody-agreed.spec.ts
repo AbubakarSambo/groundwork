@@ -41,7 +41,7 @@ describe('a bar nobody set is a bar nobody agreed', () => {
       { name: 'the new depot running', target: null, direction: null },
     ]);
     /* Each measure is named, and the one with no number says so (found live, 1 October 2026). */
-    expect(p.say).toBe('I will set 2 measures for this check-in. "shops onboarded" is an aim of 40 to reach. "the new depot running" has no number, so it will be followed but not counted. You can change any of them on the board, including whether a number is an aim or a limit.');
+    expect(p.say).toBe('I will set 2 measures for this check-in. "shops onboarded" is an aim of 40 to reach. "the new depot running" has no number, so it will be followed but not counted. A number can be something to reach, a limit not to go over, a share to keep at or above, a date to meet, or a count to keep at zero. You can change any of them on the board, including what kind of number each one is.');
   });
 
   it('says plainly when nothing is counted rather than implying it is', () => {

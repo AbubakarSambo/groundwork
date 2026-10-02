@@ -141,8 +141,8 @@ export interface WhoAnAimIsAbout {
   /** The label of the person who holds the number, or null for the team. */
   holder: string | null;
   target: number | null;
-  /** The lead said this number is a limit not to go over, or an aim to reach (decision 69). Null: not said. */
-  direction?: 'AIM' | 'LIMIT' | null;
+  /** The lead's kind for this number (decision 69, and decision 75 item 17's five kinds). Null: not said. */
+  direction?: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null;
   /**
    * The person who holds this number set it themselves, in their own check-in, and they are not the
    * person who runs the check-in (decision 75, item 37). Their own aim is said as theirs, never as a
@@ -175,7 +175,7 @@ export function theAimItself(name: string, target: number | null): string | null
   if (onlySaysWhatIsCounted(t)) {
     const words = t.replace(/[.,;:]+$/, '').split(/\s+/);
     if (words.length > 1 && /(?:'|’)s$/i.test(words[0])) words.shift();
-    if (/^\p{Lu}\p{Ll}*$/u.test(words[0] ?? '') && (words.length === 1 || /^\p{Ll}/u.test(words[1]))) words[0] = words[0].toLowerCase();
+    if (/^\p{Lu}\p{Ll}*(?:-\p{Ll}+)*$/u.test(words[0] ?? '') && (words.length === 1 || /^\p{Ll}/u.test(words[1]))) words[0] = words[0].toLowerCase();
     what = words.join(' ');
   } else {
     const m = /\b(?:am|is|are|['’]m|['’]re)\s+aiming\s+(?:for|at|to\s+(?:get|reach|hit|close|sign|onboard|make|do))\s+(.+)$/i.exec(t)
@@ -219,13 +219,17 @@ export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {
       return t.charAt(0).toUpperCase() + t.slice(1);
     }
     if (words.length > 1 && /(?:'|’)s$/i.test(words[0]) && who.holder) words.shift();
-    if (/^\p{Lu}\p{Ll}*$/u.test(words[0] ?? '') && (words.length === 1 || /^\p{Ll}/u.test(words[1]))) words[0] = words[0].toLowerCase();
+    if (/^\p{Lu}\p{Ll}*(?:-\p{Ll}+)*$/u.test(words[0] ?? '') && (words.length === 1 || /^\p{Ll}/u.test(words[1]))) words[0] = words[0].toLowerCase();
     const what = words.join(' ');
     const howMany = who.target != null && !/^\d/.test(what) ? `${aNumberPeopleCanRead(who.target)} ` : '';
-    /* A limit the lead set is not something anybody is aiming for (decision 69). */
-    t = who.target != null && who.direction === 'LIMIT'
-      ? `${holder} is keeping ${what} to no more than ${aNumberPeopleCanRead(who.target)}.`
-      : who.target != null ? `${holder} is aiming for ${howMany}${what}.` : `${holder} is working on ${what}.`;
+    /* A limit the lead set is not something anybody is aiming for (decision 69), and each of the other
+       kinds says what it is (decision 75, item 17). */
+    t = who.direction === 'ZERO' ? `${holder} is keeping ${what} at zero.`
+      : who.direction === 'DEADLINE' ? `${holder} has a date to meet for ${what}.`
+        : who.target != null && who.direction === 'RATE' ? `${holder} is aiming to keep ${what} at ${aNumberPeopleCanRead(who.target)}% or more.`
+          : who.target != null && who.direction === 'LIMIT'
+            ? `${holder} is keeping ${what} to no more than ${aNumberPeopleCanRead(who.target)}.`
+            : who.target != null ? `${holder} is aiming for ${howMany}${what}.` : `${holder} is working on ${what}.`;
   } else if (who.holder && /^They\b/.test(t)) {
     /* "They" with nobody before it is whoever holds the number, where somebody does (request 107 b). */
     t = aboutTheSpeaker(t, who.holder);

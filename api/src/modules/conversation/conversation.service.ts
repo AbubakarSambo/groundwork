@@ -582,7 +582,7 @@ export class ConversationService {
     rows: { name: string; target: number | null; ownerParticipantId?: string | null; setByParticipantId?: string | null; direction?: string | null }[],
     ground: { participants?: any[]; scenario?: any; peersVisibleToEachOther?: boolean | null } | null,
     readerParticipantId: string | null,
-  ): { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | null }[] {
+  ): { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null }[] {
     const people = (ground?.participants ?? []) as any[];
     const first = (p: any) => (p?.user?.firstName ?? p?.nameGiven ?? '').trim() || null;
     const reader = people.find((p) => p.id === readerParticipantId);
@@ -920,7 +920,7 @@ export class ConversationService {
      */
     reader?: { participantId: string | null; isLead: boolean },
     untold: AnUntoldGoalRow[] = [],
-  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | null }[]; alsoSay?: string | null } | null {
+  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | 'RATE' | 'DEADLINE' | 'ZERO' | null }[]; alsoSay?: string | null } | null {
     if (!ground) return null;
     const allowed = targetsFor(
       ground.objectives ?? [],

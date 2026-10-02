@@ -1687,3 +1687,31 @@ On the old context chat route, `POST /grounds/:id/context-chat` now sends `propo
 Never offered again: while the offer is waiting, once it is kept, once the question is earlier in the same conversation, or once the lead said no to it through Ask Groundwork. A no still keeps nothing of the rule anywhere new.
 
 A person on the check-in, an admin who only reads, and anybody else cannot have the setup conversation or answer the offer, as before (decision 63).
+
+## Decision 75, item 17: the five kinds of target (2 October)
+
+Each target's `direction` now takes the prototype's five kinds. The two values that existed keep their names, because they already meant the prototype's first two kinds, so every stored row reads as before:
+
+| `direction` | The prototype's name (`kind`) | In plain words |
+| --- | --- | --- |
+| `"AIM"` | "Up" | something to reach |
+| `"LIMIT"` | "Lower is better" | a limit not to go over |
+| `"RATE"` | "Rate" | a share to keep at or above (a percentage over a period, `target` is the percentage) |
+| `"DEADLINE"` | "Deadline" | a date to meet (the day is the new field `dueOn`) |
+| `"ZERO"` | "Zero" | a count to keep at zero, where any at all is a breach |
+
+Migration `20261002120000_five_kinds_of_target` adds the three values and the column `due_on`. A date to meet is done once its count reaches its number, or 1 where it has none.
+
+**On the board** (`GET /grounds/:id/board`), each row of `objectives` also carries `kind` (the prototype's name, or null where nobody set one) and `dueOn` ("2026-10-30", only on a date to meet), to whoever may read the target. `directionQuestion` now offers the five: "What kind of number is 40? It can be something to reach, a limit not to go over, a share to keep at or above, a date to meet, or a count to keep at zero." Please offer five answers, worded "Something to reach", "A limit not to go over", "A share to keep at or above", "A date to meet" and "A count to keep at zero", and for a date, a day. `directionSuggested` can be any of the five. `POST /grounds/:id/board/objectives` and `PATCH .../objectives/:objectiveId` take `direction` as any of the five and `dueOn` as "YYYY-MM-DD" (null takes it off). The plan card's confirm takes the five as well.
+
+What Bisi, who runs the sales check-in, reads on 2 October:
+- A share: "The team is aiming to keep follow-up within 48 hours at 90% or more." then "It was 80% at the start and is 86% now, below the aim of 90% or more.", with "Close" and "It is 86%, close to the aim of 90% or more." (90% of its number or more is "Close", less is "Behind", at or above it is "Met").
+- Zero: "The team is keeping unexplained transactions at zero." then "There have been 2 so far. This should stay at zero, so any at all is a breach.", with "Over limit". None reads "There have been none so far, which is where it should stay." with "Met".
+- A date: "The team has a date to meet for month-end close." then "It was due by 30 September, and it is not done yet." with "Behind". Before its day: "It is due by 30 October, and it is not done yet." and no word. Done: "It is done. It was due by 30 September." with "Met".
+- Up and Lower is better read as before.
+- The headline asks each kind in its own words: "Will we keep follow-up within 48 hours at 90% or more and keep unexplained transactions at zero by 30 November?" and answers "So far it is 86%, below the aim of 90% or more. So far there have been 2, and any at all is a breach." A share has a bar (`kind: "aim"`, filled towards its number); a date and zero have none.
+- The forecast: "If it keeps changing at the pace it has since session 1, it would be about 100% by session 6, against an aim of 90% or more." for a share (never past 100%), and "It is at 2, and this should stay at zero, so any at all is already a breach whatever the pace." for zero. A date has no pace, so it is not forecast.
+
+**Elsewhere:** the weekly report ("... went from 80% to 86% this week, against the aim of 90% or more. That is below it."; a date's figure is "Done" or "Not done yet"), Today and "since the last round" ("The team's month-end close is done."), a person's own share ("You are at 86% so far."), the targets a check-in is given, and "About this check-in" ("... and the share to keep at or above is 90%.") each say the kind in their own words. The say-backs at setup state each kind ("\"Follow-up within 48 hours\" is a share to keep at 90% or more.") and then offer the five: "A number can be something to reach, a limit not to go over, a share to keep at or above, a date to meet, or a count to keep at zero."
+
+Who reads what is unchanged (decisions 58 and 73, request 105): the word, the headline and the forecast go to whoever runs the check-in, and to a participant only where everybody sees the targets and the picture is shared; an admin who only reads and the person reviewed on an evaluation check-in get none of them.

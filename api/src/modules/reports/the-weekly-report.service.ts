@@ -1,4 +1,5 @@
 import { anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
+import { asADirection } from '../board/an-aim-or-a-limit';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { CheckInStatus, PartyType } from '@prisma/client';
@@ -194,7 +195,7 @@ export class TheWeeklyReportService {
         .sort((a, b) => b.sessionNumber - a.sessionNumber)[0];
       return {
         id: o.id, name: String(o.name ?? ''), target: typeof o.target === 'number' ? o.target : null,
-        direction: o.direction === 'AIM' || o.direction === 'LIMIT' ? o.direction : null,
+        direction: asADirection(o.direction),
         ownerParticipantId: o.ownerParticipantId ?? null, isADecisionAboutAPerson: !!o.isADecisionAboutAPerson,
         /* A person's own aim, kept as theirs (decision 75, item 37). An earlier week without it reads as before. */
         setByTheHolder: anAimTheHolderSet(o, parties.find((p) => p.partyType === PartyType.INITIATOR)?.id ?? null),
