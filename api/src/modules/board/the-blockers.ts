@@ -106,6 +106,34 @@ export interface ALineForTheBlockers {
   wordsMayBeRead: boolean;
 }
 
+/** A word that says the sentence is somebody speaking for themselves. */
+const FIRST_PERSON = /(?<![\p{L}'’])(?:I|I'm|I’m|I'll|I’ll|I've|I’ve|I'd|I’d|me|my|mine|myself|we|we'll|we’ll|we're|we’re|our|ours|us)(?![\p{L}'’])/iu;
+
+/**
+ * WHAT A BLOCKER IS HOLDING UP, NEVER AS A LINE WITH NOBODY'S NAME IN IT (request 115 e).
+ *
+ * "Once it is cleared, I will ask Chandarana for the signed agreement on 2 October when they decide." put
+ * the waiting person's own "I" in the product's sentence, so nobody could tell who "I" was. Now:
+ *  - where it is not said in the first person, as before: "Once it is cleared, the delivery can go out.";
+ *  - where it is, and it is word for word what they typed, it is quoted as theirs and never changed:
+ *    "Baraka Mwangi said that once it is cleared, "I will ask Chandarana ..."";
+ *  - where it is the record's own words in the first person, "I will" becomes the name ("Baraka Mwangi
+ *    will ask ..."), and only where nothing else in it is first person; otherwise it says only that they
+ *    said what happens next, because rewriting more would put words in their mouth.
+ */
+export function whatItIsHoldingUp(then: string, theirWords: string | null, who: string): string {
+  const t = then.trim().replace(/[.!?]+$/, '');
+  if (!FIRST_PERSON.test(t)) return `Once it is cleared, ${inASentence(t)}.`;
+  if (theirWords) {
+    const q = theirWords.trim();
+    return `${who} said that once it is cleared, "${/[.!?]$/.test(q) ? q : `${q}.`}"`;
+  }
+  const subject = who === 'You' ? 'you' : mid(who);
+  const swapped = t.replace(/^I(?:\s+will|['’]ll)\s+/i, `${subject} will `);
+  if (swapped !== t && !FIRST_PERSON.test(swapped.slice(subject.length + 6))) return `Once it is cleared, ${swapped}.`;
+  return `${who} said what ${who === 'You' ? 'you will' : 'they will'} do once it is cleared.`;
+}
+
 export function theBlockers(
   handoffs: (AHandoff & { raisedAt?: { at: Date | string | null; checkInId: string | null }[] | null; then?: string | null })[],
   commitments: ACommitment[],
@@ -195,7 +223,7 @@ export function theBlockers(
       timeGiven,
       wouldClearIt,
       wouldClearItSays,
-      holdingUp: then ? `Once it is cleared, ${inASentence(then)}.` : null,
+      holdingUp: then ? whatItIsHoldingUp(then, (d as any).thenTheirWords ?? null, who) : null,
       order: new Date(d.createdAt).getTime(),
     });
   }

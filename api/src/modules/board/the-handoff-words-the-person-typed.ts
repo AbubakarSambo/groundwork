@@ -79,12 +79,19 @@ export function theirWordsItCameFrom(stored: string | null | undefined, said: st
   return found.length > 3 ? null : found.length ? found : null;
 }
 
-export function withTheirWordsChecked<T extends { fromParticipantId: string; sourceCheckInId?: string | null; triedSaid?: string | null; dueSaid?: string | null }>(
+export function withTheirWordsChecked<T extends { fromParticipantId: string; sourceCheckInId?: string | null; triedSaid?: string | null; dueSaid?: string | null; then?: string | null }>(
   handoffs: T[],
   typed: Map<string, string[]>,
-): (T & { triedSaidTheirWords: string[] | null; dueSaidTheirWords: string[] | null })[] {
+): (T & { triedSaidTheirWords: string[] | null; dueSaidTheirWords: string[] | null; thenTheirWords: string | null })[] {
   return handoffs.map((d) => {
     const said = d.sourceCheckInId ? typed.get(d.sourceCheckInId) : undefined;
-    return { ...d, triedSaidTheirWords: theirWordsItCameFrom(d.triedSaid, said), dueSaidTheirWords: theirWordsItCameFrom(d.dueSaid, said) };
+    /* What happens once it is cleared, only where it is word for word what they typed (request 115 e). */
+    const then = (d.then ?? '').trim();
+    return {
+      ...d,
+      triedSaidTheirWords: theirWordsItCameFrom(d.triedSaid, said),
+      dueSaidTheirWords: theirWordsItCameFrom(d.dueSaid, said),
+      thenTheirWords: then && said?.length ? theRecordsWordsFor(then, said) : null,
+    };
   });
 }
