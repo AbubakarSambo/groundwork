@@ -557,8 +557,9 @@ export interface AServedWorkRow {
   /**
    * DECISION 76, ITEM 3: a record with nobody's name on it that somebody says is theirs. Sent to
    * the lead alone, with the claim already said as a full sentence; her yes or no goes to
-   * `POST .../work-items/:itemId/claim` with `{ yes }`. Nobody else is ever sent a claim. Not yet
-   * drawn on the deal grid - see the note beside `deleteWorkItem`, below.
+   * `POST .../work-items/:itemId/claim` with `{ yes }` (`boardApi.claimWorkItem`, below). Nobody
+   * else is ever sent a claim. Drawn on the deal grid row, beside "Nobody is named for it yet." -
+   * see `SalesDealGridRow` in WorkRecords.tsx.
    */
   ownerClaim?: { participantId: string; who: string; says: string } | null
   /** REQUEST 115 (b): what somebody said it is worth, where they said - and the sentence where nobody has. */
@@ -639,13 +640,22 @@ export const boardApi = {
   deleteWorkItem: (groundId: string, itemId: string) =>
     apiClient.delete<{ deleted: true }>(`/grounds/${groundId}/board/work-items/${itemId}`).then((r) => r.data),
 
-  /*
-   * REQUEST 112 (b): an item's own `AnAction.choices[].route` (the exact call the engine built to
-   * keep that answer - today, `PATCH .../commitments/:id` and `POST .../decisions/:itemId/answer`)
-   * is run generically, by `ActionButtons` in BoardPage.tsx, rather than through a named wrapper
-   * per route here. Decision 76 item 3's `POST .../work-items/:itemId/claim` runs the same way once
-   * a deal row's own `ownerClaim` is drawn with its yes/no - not yet done, so it has no caller yet.
+  /**
+   * DECISION 76, ITEM 3: THE LEAD'S YES OR NO TO A RECORD'S `ownerClaim`. The path is built only
+   * from this call's own `groundId` and `itemId` (never a route string read off the server), the
+   * same way `addWorkItem`/`updateWorkItem`/`deleteWorkItem` above already call this check-in's
+   * own path - so there is nothing here for a served value to redirect. A yes answers with
+   * `{ record: { id, ownerParticipantId }, saidBack: "The Westgate Deli deal is now Amani Wekesa's." }`;
+   * a no with `{ record: { id, ownerParticipantId: null }, saidBack: "The Westgate Deli deal still
+   * has nobody's name on it." }`. Lead only; refused otherwise.
    */
+  claimWorkItem: (groundId: string, itemId: string, yes: boolean) =>
+    apiClient
+      .post<{ record: { id: string; ownerParticipantId: string | null }; saidBack: string }>(
+        `/grounds/${groundId}/board/work-items/${itemId}/claim`,
+        { yes },
+      )
+      .then((r) => r.data),
 
   /** Initiator only: set the availability question and the times. */
   upsertPoll: (groundId: string, dto: { question: string; options: string[] }) =>

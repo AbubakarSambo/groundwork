@@ -639,13 +639,17 @@ function DealDetail({ row, groundId }: { row: AServedWorkRow; groundId: string }
   )
 }
 
-function SalesDealGridRow({ row, groundId, leadFirstName, readerIsLead, canEdit, onEdit }: {
+function SalesDealGridRow({ row, groundId, leadFirstName, readerIsLead, canEdit, onEdit, onClaim, claimPending }: {
   row: AServedWorkRow
   groundId: string
   leadFirstName: string | null
   readerIsLead: boolean
   canEdit: boolean
   onEdit: () => void
+  /** Decision 76, item 3: the lead's yes or no to this row's own `ownerClaim`. Absent for anyone
+      else - the server never sends a claim to a colleague, an admin, or the person who said it. */
+  onClaim?: (yes: boolean) => void
+  claimPending?: boolean
 }) {
   /*
    * REQUEST 115 (b): THE DEAL'S OWN VALUE, where somebody said it (board-as-lead.txt: "Aisha, KES
@@ -674,6 +678,23 @@ function SalesDealGridRow({ row, groundId, leadFirstName, readerIsLead, canEdit,
       <div>
         <DealMarkAndName row={row} />
         <SmallSubLine text={repLine} />
+        {/*
+          DECISION 76, ITEM 3: "You said the Tuskys Westgate deal is yours. Is it?", next to
+          "Nobody is named for it yet." above - sent to the lead alone, with the claim already
+          said as a full sentence. Only her yes sets the owner (`POST .../work-items/:itemId/claim`
+          with `{ yes }`, through `boardApi.claimWorkItem`, the same fixed, this-check-in-only path
+          every other record call on this row already uses). Secondary buttons, never a second
+          navy one beside "Change".
+        */}
+        {readerIsLead && row.ownerClaim && (
+          <Stack gap={4}>
+            <Note tone="muted">{row.ownerClaim.says}</Note>
+            <div className="gwui-edge-acts">
+              <Button kind="secondary" size="small" disabled={claimPending} onClick={() => onClaim?.(true)}>Yes</Button>
+              <Button kind="secondary" size="small" disabled={claimPending} onClick={() => onClaim?.(false)}>No</Button>
+            </div>
+          </Stack>
+        )}
         <DueLine due={row.due} />
         {lastContact && <SmallSubLine text={lastContact} />}
         <WhatShowsItBlock row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
@@ -856,6 +877,18 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
     onSuccess: () => { setEditingRow(null); invalidate() },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That record was not removed. Nothing has changed, so try again.'),
   })
+  /**
+   * DECISION 76, ITEM 3: THE LEAD'S YES OR NO TO A RECORD'S `ownerClaim` ("You said the Tuskys
+   * Westgate deal is yours. Is it?"). `saidBack` is the engine's own sentence for what just
+   * happened ("The Tuskys Westgate deal is now Rukia Otieno's.", or "...still has nobody's name on
+   * it."), read back the same way `useRunBoardAction` already reads `saidBack` for every other
+   * action on this board (BoardPage.tsx).
+   */
+  const claimItem = useMutation({
+    mutationFn: (v: { itemId: string; yes: boolean }) => boardApi.claimWorkItem(groundId, v.itemId, v.yes),
+    onSuccess: (data) => { invalidate(); if (data?.saidBack) toast.success(data.saidBack) },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Nothing has changed, so try again.'),
+  })
 
   const heading = sectionHeading(kindOfWork, section)
   const isDealGrid = section.section === 'Deal grid'
@@ -957,6 +990,8 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
                         readerIsLead={readerIsLead}
                         canEdit={canEdit}
                         onEdit={() => setEditingRow(row)}
+                        onClaim={(yes) => claimItem.mutate({ itemId: row.id, yes })}
+                        claimPending={claimItem.isPending}
                       />
                     ) : null
                   })}
@@ -971,6 +1006,8 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
                   readerIsLead={readerIsLead}
                   canEdit={canEdit}
                   onEdit={() => setEditingRow(row)}
+                  onClaim={(yes) => claimItem.mutate({ itemId: row.id, yes })}
+                  claimPending={claimItem.isPending}
                 />
               ))}
           </div>
