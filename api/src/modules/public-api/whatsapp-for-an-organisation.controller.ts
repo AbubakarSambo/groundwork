@@ -13,6 +13,7 @@ import { Public, CurrentUser, Roles, Role } from '../../common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { WhatsAppForAnOrganisationService } from './whatsapp-for-an-organisation.service';
+import { whatsAppAsTheAdminReadsIt, peopleOnWhatsAppIn, failedThisWeekIn, CALLBACK_PATH } from './whatsapp-as-the-admin-reads-it';
 
 /**
  * AN ORGANISATION'S WHATSAPP, IN TWO HALVES.
@@ -93,18 +94,69 @@ export class WhatsAppForAnOrganisationController {
       to ours for the case that is our number. It read the env var either way, which told a customer
       who had done everything right that they still could not start a conversation.
     */
-    const connection = await this.whatsapp.connectionFor(organizationId);
+    /*
+      NO SECRET, AND NO PART OF ONE. This used to hand back the connection as WhatsAppService builds
+      it, which carries the verify token itself and the access token's last four characters, and both
+      are a credential or a piece of one. The row is read here with the secrets left out of what is
+      served; whether the verify token is set is a yes or a no. The setup page's "Verify token, Copy"
+      step read the token from here, and now needs its own way to it (docs/answers-from-engine.md).
+    */
+    const now = new Date();
+    const [row, org, toggle, peopleOnWhatsApp, failedThisWeek] = await Promise.all([
+      this.prisma.whatsAppConnection.findUnique({
+        where: { organizationId },
+        select: {
+          phoneNumberId: true, businessAccountId: true, displayNumber: true, approvedTemplates: true, enabled: true,
+          connectedAt: true, lastInboundAt: true, lastOutboundAt: true, webhookVerifiedAt: true,
+          verifyToken: true,
+        },
+      }),
+      this.prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }),
+      this.whatsapp.getToggleState(),
+      peopleOnWhatsAppIn(this.prisma, organizationId),
+      failedThisWeekIn(this.prisma, organizationId, now),
+    ]);
+    const connection = row
+      ? {
+          phoneNumberId: row.phoneNumberId,
+          businessAccountId: row.businessAccountId,
+          displayNumber: row.displayNumber,
+          approvedTemplates: row.approvedTemplates,
+          enabled: row.enabled,
+          connectedAt: row.connectedAt,
+          lastInboundAt: row.lastInboundAt,
+          lastOutboundAt: row.lastOutboundAt,
+          /* U.18: the callback address is proven once Meta's handshake answered, or a message came in through it. */
+          webhookProvenAt: row.webhookVerifiedAt ?? row.lastInboundAt ?? null,
+        }
+      : null;
     const ours = this.config.get<string[]>('whatsapp.approvedTemplates') ?? [];
-    const approved = connection ? connection.approvedTemplates : ours;
+    const approved = row ? row.approvedTemplates : ours;
+    const canStartAConversation = WhatsAppForAnOrganisationController.THE_ONES_WE_START.every((t) => approved.includes(t));
     return {
       connection,
-      webhookPath: `/api/v1/webhooks/whatsapp/${organizationId}`,
+      webhookPath: CALLBACK_PATH(organizationId),
       languages: Object.values(LANGUAGES_WE_CONVERSE_IN),
-      canStartAConversation: WhatsAppForAnOrganisationController.THE_ONES_WE_START.every((t) => approved.includes(t)),
+      canStartAConversation,
       /* The exact names to submit to Meta, from the one place that defines them. A page that typed
          them out would be a fourth copy of a name Meta matches byte for byte. */
       theNamesToSubmit: WhatsAppForAnOrganisationController.THE_ONES_WE_START,
       approvedHere: approved,
+      /* The Connections page's card, in sentences (F1). See whatsapp-as-the-admin-reads-it. */
+      ...whatsAppAsTheAdminReadsIt({
+        organizationId,
+        organisationName: org?.name ?? '',
+        own: row ? { enabled: row.enabled, displayNumber: row.displayNumber, verifyTokenSet: !!row.verifyToken } : null,
+        groundwork: {
+          credentialsConfigured: toggle.credentialsConfigured,
+          switchedOn: toggle.adminEnabled,
+          displayNumber: this.config.get<string>('whatsapp.displayNumber') ?? null,
+        },
+        publicApiUrl: this.config.get<string>('app.publicApiUrl') ?? null,
+        peopleOnWhatsApp,
+        failedThisWeek,
+        remindersApproved: canStartAConversation,
+      }),
     };
   }
 
