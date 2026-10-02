@@ -174,7 +174,20 @@ Run-25 was stopped: decision 86's reversals change what the engine writes, so it
 - Should a review have steps (for example the manager writes it and HR signs it off)?
 - Should the person be told on WhatsApp at each step, not only at the end? That needs a new template.
 
-Now running: run-25 on `a7e0f76f`, and the manager's view of a leave request with the leave rules (decision 85, steps 7 and 8). Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Leave, as decision 85 describes it** (`1ccc4172` to `4bf35fb2`; migration 75, local only; 3,815 tests pass).
+- **The approver reads:** "Aisha asked for annual leave from Thursday 8 October to Friday 9 October, which is 2 working days.", "Aisha has 21 days of annual leave left.", "Brian and Neema are also off on some of those days, so Sales would be three short.", and "Aisha owns "Project X milestone" on Sales, Q3, due on Thursday 15 October."
+- **Asking a question:** the approver can ask one ("Who will cover the Project X milestone?"). Aisha is told in the app and on WhatsApp, answers, and the request keeps waiting. A decline can carry a reason, which Aisha reads.
+- **Leave rules, set by an admin:** kinds with their own allowances, notice, blackout periods, 90 days before leave, sick notes, and HR told. Aisha's say-back names a rule that applies ("Annual leave needs two weeks' notice, and this starts in three days. Shall I still send it to Wairimu?").
+- With no rules set, everything reads exactly as before.
+
+**For Hafsah:**
+- The kind of leave ("Sick leave") is now shown to whoever decides, admins, the team's lead, HR, and in "Who's off". The engine still gets dates only (decision 31). All of those readers, or only whoever decides and HR?
+- Where should a sick note be kept? No file is stored yet; the rule is only said.
+- "Time here" counts from when the person was added to Groundwork, because there is no start date. Should the staff directory have one?
+- Should a request waiting on the person's answer stop counting towards being passed on?
+- Two templates are proposed: a question about a request, and leave told to HR. Submit them?
+
+Now running: run-25 on `a7e0f76f`, and spending rules with finance's part (verify, code, export, mark paid), plus a WhatsApp answer to an approver's question reaching the question rather than an open check-in. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
