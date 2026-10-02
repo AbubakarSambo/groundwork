@@ -854,6 +854,11 @@ export function overTimeAsServed(
     ...it,
     sessions: sessionsSoFar,
     inSessions: inSessions(sessionsSoFar),
+    /* A wait's line that lost the sentence naming it is not served (item 18): Amina read "Nothing on record says
+       anybody has chased it since. This is work you owe Tobi Adewale, not the other way round." about nothing. */
+    dependencies: Array.isArray(it.dependencies)
+      ? it.dependencies.map((d: any) => (d && typeof d.say === 'string' && !theThingIsNamed(d.say) ? { ...d, say: null } : d))
+      : it.dependencies,
     commitments,
     stillOpen: (rebuilt as unknown[]).filter(theThingIsNamed) as string[],
     patterns: [],
