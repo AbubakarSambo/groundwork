@@ -84,7 +84,21 @@ The recognise suggestion is built and **off** (`reviews.recognise`). The proposa
 
 **The Connections page's WhatsApp numbers are fixed** (`1d706656`): in a seeded week, "5 people checking in on WhatsApp, 9 check-ins this month, 4 failed messages this week" now reads 2, 2 and 2, because Ask Groundwork conversations, held messages and the free "WhatsApp is off" notice are no longer counted. Nothing on the screen moves. **The billing dates use the one shared format** (`84c2c0ed`); the emails read the same. 979 tests in those parts pass.
 
-Now running: request 118 then item 18 (the board helper), and WhatsApp's waiting answers kept in the database. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Request 118 and item 18 are done in code** (`c12aa05f` to `ed2e4e5c`, pushed; 5,775 tests in board, reports and grounds pass). Each change is written in `docs/answers-from-engine.md` in its own commit.
+- Rukia's Today no longer fails when nobody is left to name; an empty list is tested on Today, the board and the lead's summary.
+- Rukia reads "No position is shown for you, Amani Wekesa, …" instead of her own name.
+- The stored story's "You are waiting on themselves to approve a discount" now reads "You still have to approve a discount for Baraka Mwangi and to send a price list to Amani Wekesa.", fixed where it is served.
+- "People see two things differently. People said different things." is said once; a deal added on the board is "put at Won on the board", not "reported".
+- Onboarding and project boards, 14 faults: for example "Put Kwabena Mensah, Kwabena, and Samuel Aryee, Samuel, in a room" now reads "Put Kwabena Mensah and Samuel Aryee in a room together …"; Tobi reads "Your check-in with Amina", not "with Dr"; the person's own row says "you" throughout.
+
+The rest of request 117 on the sales board is stored rows on the screens workspace's own database, not code: the record script fixes the false "Met" and the headline; deal owners wait on Rukia answering the claim the script puts to her; Neema's shop waits on the model's next read. One rule slip: one commit (`089002fd`) was made with two git commands joined; nothing else.
+
+**For Hafsah:**
+- The prototype's onboarding board shows sections the engine does not build: what was agreed at the start, change since the last check-in, the 90 days in three steps, the person's 12-week history, and "Where this is heading" (keep on, extend, change the role, part ways). That last one is left off evaluation check-ins on purpose (decision 6), and a first 90 days is one. Should a first 90 days show it?
+- Should onboarding and project check-ins have a kind of work, so the project board can show releases and tasks as the prototype's engineering example does?
+- The coaching role maps have clipped phrases ("Busy in the weeds on comfortable work; …"), and the lead of a first 90 days is read as "Founder or CEO". Rewrite them?
+
+Now running: WhatsApp's waiting answers kept in the database, and the WhatsApp merge gap with reviews on Today. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 

@@ -5,7 +5,7 @@
 One list, merged from every instruction since decision 81, without duplicates. Marked **done**, **in progress** or **not started**.
 
 **First, before anything else (decision 84)**
-0. Request 118: Rukia's Today page failing when nobody is left in "not checked in yet" (with an empty-list test on every page that has such a list), the two sentences that name Rukia on her own board instead of "you", and what is still open from request 117 (the false "Met", the headline with no number, deal owners, Neema's shop, "waiting on themselves"). *In progress.*
+0. Request 118: Rukia's Today page failing when nobody is left in "not checked in yet" (with an empty-list test on every page that has such a list), the two sentences that name Rukia on her own board instead of "you", and what is still open from request 117 (the false "Met", the headline with no number, deal owners, Neema's shop, "waiting on themselves"). *Done in code* (`c12aa05f` to `969cbe72`). What is left is stored rows on the screens workspace's database: the script fixes the false "Met" and the headline; deal owners wait on Rukia answering the claim; Neema's shop waits on the model's next read.
 
 From now on, every change to what the board, reports or Today page send is written in `docs/answers-from-engine.md` in the same commit.
 
@@ -35,7 +35,7 @@ From now on, every change to what the board, reports or Today page send is writt
 
 **e. The boards the client needs, from the engine**
 17. Request 117 (item 1). *Done*, as item 1.
-18. What the sales, onboarding and project boards still need from the engine. *In progress* (onboarding and project; sales is item 1).
+18. What the sales, onboarding and project boards still need from the engine. *Done* for what the engine serves (14 faults, `fbd5d8a9` to `ed2e4e5c`). Sections the prototype shows that the engine does not build wait on Hafsah.
 
 **f. The back office**
 19. Its usage numbers checked after this work, and anything broken fixed. *Done* (`aeb8d414` to `bf6bd58f`): eight wrong numbers fixed. Connections' WhatsApp numbers and the billing date format also fixed (`84c2c0ed`, `1d706656`). Its rebuild comes last (item 22).
@@ -44,7 +44,7 @@ From now on, every change to what the board, reports or Today page send is writt
 20. The sales, onboarding and project boards, then the three suites, from `docs/screens-handover.md`. *Waiting for the screens workspace to stop.*
 
 **Found on the way, to do when the board files are free**
-- On WhatsApp, the board merges two alike waits from different check-ins before Ask Groundwork leaves out the ones kept in the app, so in a rare case a wait from such a check-in could be said. The fix is an option in the board's own reads (`waitingAcrossTheOrg`, `whoNeedsYouThisWeek`) to leave them out before merging. *Not started.*
+- On WhatsApp, the board merges two alike waits from different check-ins before Ask Groundwork leaves out the ones kept in the app, so in a rare case a wait from such a check-in could be said. The fix is an option in the board's own reads (`waitingAcrossTheOrg`, `whoNeedsYouThisWeek`) to leave them out before merging. *In progress*, with reviews on Today and one grammar slip.
 
 - WhatsApp's waiting yes-or-no answers and parked approvals kept in the database, so a restart or a second copy of the server does not lose them. *In progress.*
 
