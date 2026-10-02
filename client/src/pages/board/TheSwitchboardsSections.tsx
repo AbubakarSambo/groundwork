@@ -1,6 +1,5 @@
-import { Section, Panel, Tag, Note, Stack } from '@/components/gw/ui'
+import { Section, Panel, Tag, Note, Stack, Callout } from '@/components/gw/ui'
 import type { BoardPresent } from '@/api/board'
-import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * THE SWITCHBOARD'S OWN SECTIONS (request 70): THE 22 PURPLE SECTIONS WITH NO SERVED FIELD BEFORE
@@ -284,6 +283,116 @@ export function QuestionsForTheLeadSection({ rows }: { rows: BoardPresent['quest
           </div>
         ))}
       </Panel>
+    </Section>
+  )
+}
+
+/** The word request 108 (b) gives each target, turned into the tag tone that already exists. */
+export function standsTone(word: string): import('@/components/gw/ui').TagTone {
+  if (word === 'Met' || word === 'Within') return 'proven'
+  if (word === 'On time') return 'plain'
+  if (word === 'Close') return 'attention'
+  if (word === 'Not settled') return 'attention'
+  return 'concern' // Behind, Over limit
+}
+
+/**
+ * THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (request 108 a; board-as-lead.txt: "Will we
+ * reach 25 sales by 30 September?"). Drawn above everything else on the board, in the largest
+ * type, as the engine's own answer asks: the question, then the answer, then one bar per entry in
+ * `bars` - `howItIsGoing.latestSummary` keeps its place straight after, unchanged.
+ */
+export function HeadlineSection({ headline, objectives }: { headline: BoardPresent['headline']; objectives: BoardPresent['objectives'] }) {
+  if (!headline) return null
+  const names = new Map((objectives ?? []).map((o) => [o.id, o.name]))
+  return (
+    <Panel>
+      <Stack gap={10}>
+        {/* The question, in the largest type on the board - `Callout tone="emphasis"` is the one
+            shared part that already draws a bold, near-black sentence at panel level, carried over
+            from "The gap" on TheJudgement rather than a new one-off size invented for this. */}
+        <Callout tone="emphasis">{headline.question}</Callout>
+        {headline.answer && <p className="gwui-panel-text">{headline.answer}</p>}
+        {headline.bars.length > 0 && (
+          <Stack gap={10}>
+            {headline.bars.map((bar) => (
+              <div key={bar.objectiveId} className="gwui-gap-12" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                <p className="gwui-panel-text-muted" style={{ flex: 1, minWidth: 140 }}>{names.get(bar.objectiveId) ?? ''}</p>
+                <div style={{ width: 140, height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${bar.filled}%`, background: 'var(--gw-navy)', borderRadius: 6 }} />
+                </div>
+                <p className="gwui-panel-text-muted" style={{ minWidth: 90, textAlign: 'right' }}>{bar.now} of {bar.target}</p>
+                {bar.word && <Tag tone={standsTone(bar.word)}>{bar.word}</Tag>}
+              </div>
+            ))}
+          </Stack>
+        )}
+      </Stack>
+    </Panel>
+  )
+}
+
+/**
+ * "WHERE THIS IS HEADING" AND "RECORD THE DECISION" (request 108 d; board-as-lead.txt). Sent only
+ * to whoever runs the check-in; `BoardPage.tsx` renders nothing else to gate it further. Opens the
+ * existing `ResolutionPanel` from "Record the decision", as the engine's answer asks.
+ */
+export function WhereThisIsHeadingSection({ data, onRecordTheDecision }: {
+  data: BoardPresent['whereThisIsHeading']
+  onRecordTheDecision?: () => void
+}) {
+  if (!data) return null
+  return (
+    <Section heading={data.heading} note={data.about}>
+      <Stack gap={12}>
+        {data.outcomes.length > 0 ? (
+          <SentenceRows rows={data.outcomes.map((o) => ({ id: o.value, says: o.says }))} />
+        ) : (
+          data.outcomesSays && <Note tone="muted">{data.outcomesSays}</Note>
+        )}
+        <Panel pad={false}>
+          <div className="gwui-panel-row">
+            <Stack gap={6}>
+              <Note tone="muted">The signals behind them</Note>
+              {data.signals.length > 0 ? (
+                data.signals.map((s, i) => (
+                  <Stack gap={2} key={i}>
+                    <p className="gwui-panel-text">{s.says}</p>
+                    <Note tone="muted">{s.from}</Note>
+                  </Stack>
+                ))
+              ) : (
+                <Note tone="muted">{data.signalsSays}</Note>
+              )}
+            </Stack>
+          </div>
+          <div className="gwui-panel-row">
+            <Stack gap={6}>
+              <Note tone="muted">What would settle it</Note>
+              {data.whatWouldSettleIt.length > 0 ? (
+                data.whatWouldSettleIt.map((w, i) => <p className="gwui-panel-text" key={i}>{w}</p>)
+              ) : (
+                <Note tone="muted">{data.whatWouldSettleItSays}</Note>
+              )}
+            </Stack>
+          </div>
+          <div className="gwui-panel-row">
+            <Stack gap={4}>
+              <p className="gwui-panel-text">{data.whoDecides}</p>
+              <Note tone="muted">{data.groundworkDoesNotChoose}</Note>
+            </Stack>
+          </div>
+        </Panel>
+        {data.decided ? (
+          <p className="gwui-panel-text">{data.decided}</p>
+        ) : (
+          data.recordTheDecision && (
+            <button type="button" onClick={onRecordTheDecision} className="gwui-btn gwui-btn-secondary gwui-btn-small">
+              {data.recordTheDecision}
+            </button>
+          )
+        )}
+      </Stack>
     </Section>
   )
 }

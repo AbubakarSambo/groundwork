@@ -93,6 +93,7 @@ import {
   RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockersSection,
   EvidenceIndexSection, BusyOrMovingSection, ObligationsSection, ForecastSection,
   ContradictionsSection, QuestionsForTheLeadSection, sameAsTheWorkPlan,
+  HeadlineSection, WhereThisIsHeadingSection, standsTone,
 } from './TheSwitchboardsSections'
 
 /**
@@ -968,6 +969,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         <MaybeFolded fold={isParticipantView}>
 
         {/*
+          THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (request 108 a; board-as-lead.txt:
+          "Will we reach 25 sales by 30 September?"). Above everything else, in the largest type,
+          as the engine's own answer asks - `howItIsGoing.latestSummary` keeps its place right
+          after it, unchanged.
+        */}
+        {(b as any).headline && (
+          <Stack gap={12}>
+            <HeadlineSection headline={(b as any).headline} objectives={b.objectives} />
+          </Stack>
+        )}
+
+        {/*
           THE KIND OF WORK, SAID ONCE, NEAR THE TOP OF THE BOARD (item 4). The lead, or an admin of
           this organisation, can change it and its own stage names; a participant reads the same
           sentence and gets no "Change" button. See WorkRecords.tsx.
@@ -1047,7 +1060,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           Once it has ended, everyone reads the outcome, who decided, when, and why. Near the end,
           the lead reads "It’s yours to decide how this ends." with the way to the ending page.
         */}
-        <div className="gwui-mt-14">
+        <div className="gwui-mt-14" id="record-the-decision">
           <ResolutionPanel
             groundId={id!}
             place="board-top"
@@ -1055,6 +1068,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             lastSessionDone={lastSessionDone}
           />
         </div>
+
+        {/*
+          "WHERE THIS IS HEADING" (request 108 d; board-as-lead.txt). Sent to whoever runs the
+          check-in only. "Record the decision" opens the existing ResolutionPanel above - the one
+          place that already lets the lead record an outcome - rather than building a second one.
+        */}
+        {(b as any).whereThisIsHeading && (
+          <WhereThisIsHeadingSection
+            data={(b as any).whereThisIsHeading}
+            onRecordTheDecision={() => document.getElementById('record-the-decision')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          />
+        )}
 
         {/*
           DID THIS FEEL FAIR? Moved here from the dead Report tab body (ReportBody), which nothing
@@ -1330,6 +1355,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           sentence is the lead's own; it does not change or block the target.
                         */}
                         {o.notSettled && <span className="gwui-ml-7"><Tag tone="attention">definition not settled</Tag></span>}
+                        {/* REQUEST 108 (b): the word for where this target stands, next to its name. */}
+                        {(o as any).stands?.word && (
+                          <>{' '}<Tag tone={standsTone((o as any).stands.word)}>{(o as any).stands.word}</Tag></>
+                        )}
                       </div>
                       {/*
                         NOTHING TO MEASURE MEANS NOTHING TO DRAW. An aim with no number got an empty
@@ -1339,7 +1368,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       */}
                       {o.target != null ? (
                         <>
-                          <div style={{width: 140, height: 7, borderRadius: 6, background: '#D6DBEA', overflow: 'hidden'}}>
+                          <div style={{width: 140, height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden'}}>
                             <div style={{height: '100%', width: `${pct}%`, background: 'var(--gw-navy)', borderRadius: 6}} />
                           </div>
                           {/* Three numbers a person can check, rather than a share of a target that
@@ -2295,7 +2324,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </div>
 
                   {b.coverageVariant === 'bar' && r.remitDefined && (
-                    <div className="gwui-mt-9" style={{height: 7, borderRadius: 6, background: '#D6DBEA', overflow: 'hidden'}}>
+                    <div className="gwui-mt-9" style={{height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden'}}>
                       <div style={{height: '100%', width: `${r.pct}%`, borderRadius: 6, background: r.kind === 'LEAKING' ? 'var(--gw-amber-b)' : r.kind === 'ABSORBING' ? 'var(--gw-navy)' : 'var(--gw-muted)'}} />
                     </div>
                   )}

@@ -116,6 +116,10 @@
   /* The stronger warm line, for the edge of an input or a secondary button: the design system's
      second rule colour. It replaces #D8D5CF, a grey typed once for the input border. */
   --gw-rule-2: #DFD3BE;
+  /* THE TRACK BEHIND A TARGET'S PROGRESS BAR (board task): a pale blue-grey, typed as #D6DBEA in
+     the objectives list and again, untouched, in the headline's own bars - a colour on more than
+     one file is a decision, named here so the two cannot drift (one-vocabulary.spec.ts). */
+  --gw-bar-track: #D6DBEA;
   /* WAS #9B9590, WHICH FAILED CONTRAST ON EVERY GROUND IT IS USED ON.
      Measured: 2.51 on --gw-bg, 2.96 on white, 2.84 on --gw-paper, 2.67 on --gw-paper-2, against
      the 4.5 normal text needs. It carries the smallest text in the product - 10 and 11px section
