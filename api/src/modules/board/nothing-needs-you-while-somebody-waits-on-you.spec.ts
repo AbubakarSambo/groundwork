@@ -18,6 +18,6 @@ describe('week 16: the board never says nothing needs the lead while somebody is
     const brian = rows.filter((l) => /^Brian/.test(l));
     expect(brian.length).toBeGreaterThan(0);
     for (const l of brian) expect(l).not.toMatch(/nothing here needs you/);
-    expect(brian.join(' ')).toMatch(/waiting on you for a decision on whether a price range counts as a budget\./);
+    expect(brian.join(' ')).toMatch(/waiting on you for a decision on whether a price range counts as a budget since 20 September\./);
   });
 });

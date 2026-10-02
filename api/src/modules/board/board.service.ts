@@ -1,4 +1,5 @@
 import { wholeDaysTo, theDayItBegan } from './a-wait-is-dated-not-counted';
+import { aFindingThatDoesNotSayTheWaitAgain } from './where-each-person-is-against-their-number';
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
 import { aPartyOutside, aWaitOnOneself } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
@@ -1501,9 +1502,15 @@ export class BoardService {
           const f = byId.get(row.participantId);
           if (!f) return row;
           const label = String(labelOf.get(row.participantId) ?? '');
-          const text = label
+          const named = label
             ? String(f.text ?? '').replace(new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), row.who ?? 'They')
             : String(f.text ?? '');
+          /* Each fact once per row: a wait the row already says is not said again in the finding (request 117, part 7). */
+          const waitsTheRowSays = /\bwaiting\b/.test(`${row.says ?? ''} ${row.ask ?? ''}`)
+            ? ((ground as any).dependencies ?? []).filter((d: any) => d.fromParticipantId === row.participantId && d.status !== 'CLEARED').map((d: any) => String(d.what ?? ''))
+            : [];
+          const text = aFindingThatDoesNotSayTheWaitAgain(named, waitsTheRowSays);
+          if (!text) return row;
           return { ...row, finding: text, hasGap: !!f.hasGap, ...(f.mark ? { findingMark: f.mark, findingMarkSays: f.markSays, ...(f.markNote ? { findingMarkNote: f.markNote } : {}) } : {}) };
         });
       }

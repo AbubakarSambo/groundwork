@@ -26,8 +26,8 @@ describe('the sales board: one count per thing, and nobody with something open i
     const says = Object.fromEntries((b.eachPerson as any[]).map((r) => [r.who, r.says]));
     /* Read on the run: "Femi Okonkwo has checked in, and nothing here needs you this week." */
     /* Changed 2 Oct 2026 (request 115 d): the wait is said in full, on whom and for what, from the record. */
-    expect(says['Femi Okonkwo']).toBe('Femi Okonkwo has checked in, and is waiting on the customers for the customer\'s bank statements and other things we need.');
-    expect(says['Ngozi Eze']).toBe('Ngozi Eze has checked in, and is waiting on the credit committee for review and approval for their eleven files.');
+    expect(says['Femi Okonkwo']).toBe('Femi Okonkwo has checked in, and has been waiting on the customers for the customer\'s bank statements and other things we need since 29 September.');
+    expect(says['Ngozi Eze']).toBe('Ngozi Eze has checked in, and has been waiting on the credit committee for review and approval for their eleven files since 29 September.');
     expect(says['Kwame Mensah']).toBe('Kwame Mensah has checked in.');
     for (const line of Object.values(says)) expect(line).not.toMatch(/nothing here needs you/);
   });

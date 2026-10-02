@@ -48,7 +48,7 @@ describe('request 117 (9): the same record reads the same at any hour', () => {
     }
     const grace = await readAt(READ_AT_20_46, GRACE_SET_IT_UP);
     const amani = (grace.eachPerson as any[]).find((r) => r.participantId === 'p-amani');
-    expect(amani.ask).toContain('since 28 September');
+    expect(amani.says).toContain('since 28 September');
   });
 });
 
