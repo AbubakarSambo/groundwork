@@ -384,8 +384,8 @@ function TheParticipantsOwnView({ groundId, roundsDone, kindOfWork, workRecords,
 }) {
   const pictureShared = roundsDone != null && roundsDone > 0
   return (
-    <div className="gwui-mt-16">
-      <Panel>
+    <>
+      <Panel className="gwui-mt-16">
         <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 700}}>
           {pictureShared ? 'Today’s team picture is ready.' : 'Today’s team picture isn’t ready yet.'}
         </div>
@@ -408,7 +408,7 @@ function TheParticipantsOwnView({ groundId, roundsDone, kindOfWork, workRecords,
         "YOUR SHARE" (request 107): no field for it exists yet on `GET /grounds/:id/board` - drawn
         nothing here, rather than an empty box with nothing behind it, until the engine sends one.
       */}
-    </div>
+    </>
   )
 }
 

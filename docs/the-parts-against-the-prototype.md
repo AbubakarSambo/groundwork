@@ -509,3 +509,20 @@ this run, not a one-off margin class or a wrapper div: `Stack` wraps the two con
 the targets `Panel` together, so the 8px lands between whichever of the three are actually rendered,
 same as the per-element margins did, with nothing added before the first of them (`SplitOneTotalAcrossPeople`,
 outside the `Stack`, keeps its own unchanged, margin-free spot in front).
+
+## Board task, batch 3, part 8 (Hafsah: `TheParticipantsOwnView` and `MaybeFolded`, checked against the shared parts)
+
+`MaybeFolded` (`client/src/pages/board/BoardPage.tsx`) draws nothing of its own - only `Folded`,
+already a shared part - so it is unchanged.
+
+`TheParticipantsOwnView` wrapped its `Panel` and `YourOwnRecordsSections` in a `<div
+className="gwui-mt-16">` purely to carry one top margin before the whole block - a margin wrapper
+with no other purpose, the pattern "never add... a margin wrapper" exists to stop. `Panel` already
+takes a `className` (merged onto its own `gwui-panel`/`gwui-panel-pad` classes, `Panel.tsx`), so the
+`gwui-mt-16` one-off class now sits directly on the `Panel` itself and the wrapper `div` is gone, in
+favour of a plain fragment. Nothing else in either function reuses a one-off class in place of a
+named part, or carries a style this batch's shared parts (`Row`'s insets, `Callout`, `Stack`) already
+cover - the remaining one-off classes (`gwui-fs-16`/`gwui-ink-dark` with an inline `fontWeight: 700`,
+`gwui-fs-15`/`gwui-ink-sub` with an inline `lineHeight`, `gwui-mt-4`/`gwui-mt-10`) are the same plain
+text-and-spacing convention used the same way everywhere else on this board, not a wrapper standing
+in for a part that already exists, so they are left as they were. No wording or behaviour changed.
