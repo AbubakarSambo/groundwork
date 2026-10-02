@@ -444,6 +444,26 @@ function openTheWholeCheckIn() {
 }
 
 /**
+ * AN ACTION CALL GOES ONLY TO THIS CHECK-IN. `action.choices[].route` is sent by the server, but
+ * this runs whatever method and path it carries - a route to another check-in, to some other part
+ * of the API entirely, or to another site altogether, would be sent exactly the same way a correct
+ * one is. This is the one gate every such call passes through: only `POST` or `PATCH`, and only a
+ * relative path that starts with this check-in's own `/grounds/:id/`, with no `..` (a way out of
+ * that path), no `//` (a scheme-relative address, `//evil.example`) and no scheme of its own
+ * (`https:`, `javascript:`...). Anything else is refused before the network is ever touched.
+ */
+export function isARouteToThisCheckIn(groundId: string, route: { method: string; path: string } | null | undefined): boolean {
+  if (!route) return false
+  if (route.method !== 'POST' && route.method !== 'PATCH') return false
+  const path = route.path
+  if (typeof path !== 'string' || !path) return false
+  if (path.includes('..')) return false
+  if (path.includes('//')) return false
+  if (/^[a-z][a-z0-9+.-]*:/i.test(path)) return false
+  return path.startsWith(`/grounds/${groundId}/`)
+}
+
+/**
  * REQUEST 112 (b): WHAT THE LEAD CAN DO ABOUT ONE ITEM UNDER "What needs you" (board-as-lead.txt:
  * "Yes, it counts" / "No", "Ask him"). `action.route` is the exact call the engine already built
  * to keep that answer (`POST .../board/decisions/:id/answer`, `PATCH .../commitments/:id`); this
@@ -453,8 +473,12 @@ function openTheWholeCheckIn() {
 function useRunBoardAction(groundId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (route: NonNullable<AnAction['choices']>[number]['route']) =>
-      apiClient.request({ method: route!.method, url: route!.path, data: route!.body }).then((r) => r.data),
+    mutationFn: (route: NonNullable<AnAction['choices']>[number]['route']) => {
+      if (!isARouteToThisCheckIn(groundId, route)) {
+        return Promise.reject(new Error('That did not save. Nothing has changed, so try again.'))
+      }
+      return apiClient.request({ method: route!.method, url: route!.path, data: route!.body }).then((r) => r.data)
+    },
     onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ['board', groundId] })
       if (data?.saidBack) toast.success(data.saidBack)
