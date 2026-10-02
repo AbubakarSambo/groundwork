@@ -1,0 +1,32 @@
+# WhatsApp end to end, for the first client (decision 81, item 1)
+
+Read from the code on 2 October 2026, branch `wip/plain-reports`. Nothing was run against WhatsApp: no test talks to Meta, and nothing here was tried on a real number.
+
+## What works today
+
+- **Every kind of check-in the client needs works over WhatsApp:** a sales team's check-in, company planning (objectives), onboarding and probation, performance plans, recognition and renewals, and project check-ins. A person can open one, answer it, send a photo or a document, say "finish", and get the report back on their phone, in their own language.
+- **Ask Groundwork works over WhatsApp, but only when the person has no check-in open.** It is the same Ask Groundwork as in the app: the same questions, memory, "what did I say", to-dos, deadlines, and leave, hours and spending requests said back and confirmed with a yes before anything is written.
+- **Leave, hours and spending requests** go to the right approver: the line manager if they lead or are an admin, otherwise an admin; spending over the limit goes to the person the rule names.
+- **Safety:** every incoming message's signature is checked; "stop" stops messages; the same message twice gets one answer.
+
+## What is missing, or works only in the app
+
+1. **Approving or declining leave and spending is only in the app**, and **nobody is told**: not the approver when a request is made, not the person when it is decided.
+2. **Ask Groundwork is blocked while any check-in is open.** "I want leave on 20 October" then becomes an answer in the check-in. There is no word to switch from a check-in to Ask Groundwork, or from one check-in to another.
+3. **Ask Groundwork's leave, hours and spending lanes are skipped** when the person's roster entry is matched to their sign-in by email rather than linked.
+4. **Performance management around the check-in is app-only:** the person's side, their appeal, the admin's decision on an appeal, and agreeing how a check-in ends.
+5. **The "keep this check-in off the phone" setting is only half kept:** the session-ready message, the report sent to the phone, and incoming messages ignore it, so a performance plan's report can reach a phone after the lead set it to stay in the app. This is a privacy fault.
+6. **Numbers typed by an admin are not tidied** ("+234 801 234 5678", or a local "0801..."), so they never match the number WhatsApp sends.
+7. **On Groundwork's own number, the first session is never announced on WhatsApp**, and there are no reminders or nudges by WhatsApp at all (the "nudge" has no template and nothing sends it).
+8. **An organisation with its own number gets two notices** for sessions 2 onward (one from each number), and **replies can come from a number the person never wrote to**, which WhatsApp is likely to refuse. The 24-hour window is tracked per person, not per business number.
+9. **The opening notice says "what you say is released with everybody else's"**, which is wrong for a one-to-one check-in such as a performance plan or probation.
+10. **Suggested answers are dropped** on WhatsApp; boards and reports beyond the text summary say "There is more on this in Groundwork."
+11. **Silence when WhatsApp is held** by the paid add-on or the monthly limit: the person writes and hears nothing on WhatsApp (item 71 of the morning report).
+12. **A number in two organisations** on Groundwork's number keeps its first pick for good, with no way to switch.
+
+## What can only be tested once hosted
+
+- The webhook handshake and the signature on the real body, for Groundwork's number and each organisation's own.
+- Whether WhatsApp waits for a reply that takes several model calls.
+- The three message templates approved, in English, within WhatsApp's length limit, and whether a template accepts the line breaks the report and the session notice contain (probably not).
+- List taps, photo and document download with the organisation's token, and the relay through a customer's own system.
