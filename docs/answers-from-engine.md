@@ -2182,3 +2182,25 @@ A context line is setup, a lead's private note is the lead's own, and a question
 **As each reader, on each writer and each door:** Wanjiru, the lead, may. Otieno and Neema may not while Wanjiru is there, and may once she has left. Aisha, who checks in, may not, before or after.
 
 Reading the list of questions waiting for people (`GET /grounds/:id/questions-for-people`) is a read, and is unchanged: the lead and an admin with access to the check-in.
+
+## Request 101 (b), the count: somebody not let in yet is not counted (decision 77, 2 October)
+
+Hafsah decided item 64: "A person an admin hasn't let in yet is left out of both the 'N of M have answered' count and the count that decides when a session closes. They are shown separately as waiting to be let in." Done (`44c7b88b`, `508cde24`).
+
+**Who is meant.** Somebody whose sign-in is still held at the organisation's door (`user.awaitingOrgApproval`), whether an admin has not decided yet or has said no. The conversation already refuses them, so no count waits on them. One function decides it for every count: `isNotLetInYet` and `whoIsNotLetInYet` in `api/src/modules/grounds/who-an-admin-did-not-let-in.ts`. Once an admin lets them in, they are counted again at once.
+
+**What changes on the wire.** On "Sales team, Q3" (Rukia runs it and checks in; Amani, Baraka and Neema check in; Faraji Odhiambo is not let in yet; all four let in have answered session 1):
+- The session report: every reader's opening line was "4 of 5 people have answered this session." It is now "4 of 4 people have answered this session. There is enough here to talk about, and not enough to settle anything." `counting` no longer has a row for Faraji.
+- The board and the check-ins list: `howItIsGoing.glance.progress` / `glance.progress` count `answeredThisRound` and `ofPeople` without him, `waitingOn` never holds him, and a round is done once everybody let in has answered.
+- `GET /grounds/:id`: `sessionClock` is no longer held back by him. With Rukia already in session 2 it read "Session 1 of 12." and "Session 2 has started for some people, while session 1 is still open."; it now reads "Session 2 of 12." with `whileOpen: null`.
+- Today: "In Sales team, Q3, 4 of 5 have checked in for the first check-in. Brian has not checked in yet." where it was "4 of 6", for somebody still waiting as well as somebody declined.
+- The weekly report: his check-in is not one of those due ("Both check-ins due this week were made.") and he is not written up as not having checked in.
+- The session closes, and its report is written and released, once everybody let in has answered.
+
+**The separate line, `waitingToBeLetIn`** (a sentence, or null), on the session report, the board, `GET /grounds/:id` and each row of the check-ins list. Please draw it beside the count, never inside it:
+- Rukia, Grace (who set it up) and Juma (an admin): "Faraji Odhiambo is waiting to be let in." After an admin said no: "Faraji Odhiambo was not let in." Where no name is known: "1 person is waiting to be let in."
+- Amani and Baraka, who read everybody on this check-in: "Faraji Odhiambo is waiting to be let in." After a decline: null, because a person who checks in is never told that an admin said no.
+- Somebody who checks in where people see only themselves: null, and nothing about him anywhere.
+- With nobody held at the door: null for everybody.
+
+**For your own count.** Each row of `GET /grounds/:id` `participants` now carries `notLetInYet` (true or false); `user.awaitingOrgApproval` was already there. `whoIsInRound` in `client/src/lib/who-is-in-this-round.ts` still counts every row, so a header drawn from it would read "4 of 5" beside the engine's "4 of 4". Please leave out a row with `notLetInYet: true` that has not answered, or draw the count from the served numbers.
