@@ -58,7 +58,7 @@ import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
-import { Page, CheckInHeader, Section, Panel, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded } from '@/components/gw/ui'
+import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
@@ -1506,15 +1506,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.divergence && b.divergence && (
           <Section heading="Where people differ" note="Built from what each person said in their check-in.">
             <Panel pad={false}>
+              <RowList label="Where people differ">
               {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
                 /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
                    more than one person has checked in" on a round where everybody had, three inches
                    under a tile that said so. The server computes it from the one counter. */
-                <div className="gwui-panel-row"><div className="gwui-fs-15 gwui-ink-muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (b.divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></div>
+                <Row columns="1fr"><div className="gwui-pl-22 gwui-pr-22"><div className="gwui-fs-15 gwui-ink-muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (b.divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></div></Row>
               ) : (
                 <>
                   {b.divergence.items.map((d: any, i: number) => (
-                    <div key={i} className="gwui-panel-row">
+                    <Row key={i} columns="1fr"><div className="gwui-pl-22 gwui-pr-22">
                       {/*
                         A TAG GLUED TO THE SENTENCE BEFORE IT. "...12 shops.agreed" read on a live
                         board: the pill sat right after the topic with only a CSS margin between
@@ -1567,18 +1568,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           {d.atStake}
                         </div>
                       )}
-                    </div>
+                    </div></Row>
                   ))}
                   {b.divergence.agreements.map((a: any, i: number) => (
-                    <div key={`a${i}`} className="gwui-panel-row">
+                    <Row key={`a${i}`} columns="1fr"><div className="gwui-pl-22 gwui-pr-22">
                       <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600}}>
                         {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
                       </div>
                       <div className="gwui-fs-15 gwui-ink-green gwui-mt-2">Everybody agrees on this.</div>
-                    </div>
+                    </div></Row>
                   ))}
                 </>
               )}
+              </RowList>
               {/*
                 THE POINTER IS GONE BECAUSE THE DETAIL ARRIVED.
 
@@ -1629,36 +1631,40 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   <div className="gwui-pt-13 gwui-pr-15 gwui-pb-10 gwui-pl-15 gwui-fs-15 gwui-ink-dark gwui-rule-bottom" style={{fontWeight: 700}}>
                     What people are trying to do
                   </div>
-                  <div className="gwui-pt-2 gwui-pr-15 gwui-pb-12 gwui-pl-15">
+                  <div className="gwui-pt-2 gwui-pb-12">
+                    <RowList label="What people are trying to do">
                     {b.whatTheRoomIsAbout.aims.length === 0 ? (
-                      <div className="gwui-fs-15 gwui-ink-muted gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0">Nobody has said what they are after yet.</div>
+                      <Row columns="1fr"><div className="gwui-pl-15 gwui-pr-15 gwui-fs-15 gwui-ink-muted">Nobody has said what they are after yet.</div></Row>
                     ) : b.whatTheRoomIsAbout.aims.map((a) => (
-                      <div key={a.aim} className="gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0 gwui-inner-row">
+                      <Row key={a.aim} columns="1fr"><div className="gwui-pl-15 gwui-pr-15">
                         <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline'}}>
                           <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{a.aim}</div>
                           <Tag>{a.held.length === 1 ? '1 person' : `${a.held.length} people`}</Tag>
                         </div>
                         <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3" style={{lineHeight: 1.5}}>{a.held.join(', ')}</div>
-                      </div>
+                      </div></Row>
                     ))}
+                    </RowList>
                   </div>
                 </Panel>
                 </div>
                 {([['Places named', b.whatTheRoomIsAbout.places], ['What it is about', b.whatTheRoomIsAbout.things]] as const).map(([label, rows]) => (
                   <Panel key={label} pad={false}>
                     <div className="gwui-pt-13 gwui-pr-15 gwui-pb-10 gwui-pl-15 gwui-fs-15 gwui-ink-dark gwui-rule-bottom" style={{fontWeight: 700}}>{label}</div>
-                    <div className="gwui-pt-2 gwui-pr-15 gwui-pb-12 gwui-pl-15">
+                    <div className="gwui-pt-2 gwui-pb-12">
+                      <RowList label={label}>
                       {rows.length === 0 ? (
-                        <div className="gwui-fs-15 gwui-ink-muted gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0">Nobody named one.</div>
+                        <Row columns="1fr"><div className="gwui-pl-15 gwui-pr-15 gwui-fs-15 gwui-ink-muted">Nobody named one.</div></Row>
                       ) : rows.map((r) => (
-                        <div key={r.name} className="gwui-pt-9 gwui-pr-0 gwui-pb-9 gwui-pl-0 gwui-inner-row">
+                        <Row key={r.name} columns="1fr"><div className="gwui-pl-15 gwui-pr-15">
                           <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline'}}>
                             <div className="gwui-fs-16 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{r.name}</div>
                             <Tag>{r.named.length}</Tag>
                           </div>
                           <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3" style={{lineHeight: 1.5}}>{r.named.join(', ')}</div>
-                        </div>
+                        </div></Row>
                       ))}
+                      </RowList>
                     </div>
                   </Panel>
                 ))}
@@ -1687,34 +1693,45 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               widths the prototype always draws as a single row of four white tiles. A fixed
               four-column grid keeps them together; on a phone this still hands off to the list.
             */}
-            <div
-              className={onAPhone ? 'gw-qr-list gwui-rule gwui-pt-2 gwui-pr-14 gwui-pb-2 gwui-pl-14' : 'gwui-gap-10'}
-              style={onAPhone ? { background: 'white', borderRadius: 12 } : { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}
-            >
-              {/*
-                U.10 RE-REVIEW ITEM 6: A SENTENCE, THE WAY U.9's tileSentence ALREADY DOES IT.
-                "Differences / None / no disagreement, as the written report reads it" was a label,
-                a bare value and a fragment, stacked - the same bug U.9's report review found and
-                fixed with `tileSentence`, reused here rather than reworded: this is the same tile
-                shape (label/value/sub), from the same server function (atAGlanceTiles). The label
-                stays for a screen reader, without being shown as its own heading.
-              */}
-              {b.quickRead.map((q) => {
-                const toneClass = q.tone === 'bad' ? 'gwui-ink-red' : q.tone === 'warn' ? 'gwui-ink-amber' : q.tone === 'good' ? 'gwui-ink-green' : 'gwui-ink-text'
-                const said = tileSentence(q)
-                return onAPhone ? (
-                  <div key={q.label} className="gwui-pt-11 gwui-pr-0 gwui-pb-11 gwui-pl-0 gwui-inner-row">
-                    <span className="gw-sr-only">{q.label}</span>
-                    <div className={`gwui-fs-15 ${toneClass}`} style={{lineHeight: 1.5}}>{said}</div>
-                  </div>
-                ) : (
-                  <div key={q.label} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14" style={{background: 'white', borderRadius: 12}}>
-                    <span className="gw-sr-only">{q.label}</span>
-                    <div className={`gwui-fs-15 ${toneClass}`} style={{lineHeight: 1.5}}>{said}</div>
-                  </div>
-                )
-              })}
-            </div>
+            {/*
+              U.10 RE-REVIEW ITEM 6: A SENTENCE, THE WAY U.9's tileSentence ALREADY DOES IT.
+              "Differences / None / no disagreement, as the written report reads it" was a label,
+              a bare value and a fragment, stacked - the same bug U.9's report review found and
+              fixed with `tileSentence`, reused here rather than reworded: this is the same tile
+              shape (label/value/sub), from the same server function (atAGlanceTiles). The label
+              stays for a screen reader, without being shown as its own heading.
+            */}
+            {onAPhone ? (
+              <Panel pad={false}>
+                <div className="gwui-pt-2 gwui-pb-2 gwui-pl-14 gwui-pr-14">
+                  <RowList label="The quick read">
+                    {b.quickRead.map((q) => {
+                      const toneClass = q.tone === 'bad' ? 'gwui-ink-red' : q.tone === 'warn' ? 'gwui-ink-amber' : q.tone === 'good' ? 'gwui-ink-green' : 'gwui-ink-text'
+                      return (
+                        <Row key={q.label} columns="1fr">
+                          <span className="gw-sr-only">{q.label}</span>
+                          <div className={`gwui-fs-15 ${toneClass}`} style={{lineHeight: 1.5}}>{tileSentence(q)}</div>
+                        </Row>
+                      )
+                    })}
+                  </RowList>
+                </div>
+              </Panel>
+            ) : (
+              <div className="gwui-gap-10" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+                {b.quickRead.map((q) => {
+                  const toneClass = q.tone === 'bad' ? 'gwui-ink-red' : q.tone === 'warn' ? 'gwui-ink-amber' : q.tone === 'good' ? 'gwui-ink-green' : 'gwui-ink-text'
+                  return (
+                    <Panel key={q.label} pad={false}>
+                      <div className="gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14">
+                        <span className="gw-sr-only">{q.label}</span>
+                        <div className={`gwui-fs-15 ${toneClass}`} style={{lineHeight: 1.5}}>{tileSentence(q)}</div>
+                      </div>
+                    </Panel>
+                  )
+                })}
+              </div>
+            )}
           </Section>
         )}
 
