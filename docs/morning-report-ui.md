@@ -268,6 +268,10 @@ Two things were not forced, for good reasons:
 
 All the tests pass, the button test passes on every board, and no picture showed the sign-in page. The pictures are in the scratchpad's `pictures/boards-after3b/`. The board page itself, about 640 one-off uses, is now being done section by section.
 
+**The board page, first two sections done:** the header, then the story and the quick read. "Where people differ", "What people are after" and the quick read's tiles are now panels and rows, and their pictures match. Two lists got a little tighter, because the shared row's spacing replaced their own.
+
+One step was taken against the rule: to give the rows their side padding, the builder reused old one-off padding classes. The next part gives the shared row a named side-padding option at the prototype's values, and replaces every one of those, before the remaining nine sections.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
