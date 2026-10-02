@@ -4,6 +4,9 @@ import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-labe
 import { theShortNameOf } from './a-title-is-not-a-first-name';
 import { theQuotesKept } from './a-quote-is-what-they-said';
 import { aPlainerWord } from './a-plainer-word';
+import { aNameSaidTwiceInARow } from './a-name-said-twice-in-a-row';
+import { nobodyWaitsOnThemselvesInAStory } from './nobody-waits-on-themselves-in-a-story';
+import { peopleDisagreeInASentence } from './people-disagree-in-a-sentence';
 
 export type LabelParty = {
   id: string;
@@ -954,12 +957,15 @@ function withNamesOutsideTheQuotes(
   }
   /* AND A NAME IS NOT A TITLE. "The Daniel Osei. has completed" was 55 lines across 19 scenarios,
      and neither the article nor the stop came from the name. See aNameIsNotATitle. */
-  const named = aNameIsNotATitle(out, visible.values());
+  /* AND A NAME IS SAID ONCE: "Kwabena Mensah, Kwabena Mensah, and ..." (item 18). See aNameSaidTwiceInARow. */
+  const named = aNameIsNotATitle(aNameSaidTwiceInARow(out, visible.values()), visible.values());
   /* AND THE READER IS ONE OF THE PEOPLE IN IT. "Both Caroline Mensah and you have answered. They
      disagree" puts the reader second in their own report and then leaves them out of a
      disagreement they are half of. Self-gating: it only acts where a "you" is present, which only
      happens where the reader's own label was just substituted. */
-  return fromTheReadersSide(named, visible.values());
+  /* AND NOBODY WAITS ON THEMSELVES in a story stored before request 111 (e) (request 118). */
+  /* And "People disagree on 1: ..." from the model's brief is said as a sentence (item 18). */
+  return peopleDisagreeInASentence(nobodyWaitsOnThemselvesInAStory(fromTheReadersSide(named, visible.values())));
 }
 
 /**

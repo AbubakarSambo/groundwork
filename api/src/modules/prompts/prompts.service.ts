@@ -2,9 +2,9 @@ import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleIni
 import { PrismaService } from '../prisma/prisma.service';
 import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import { SEED_PROMPTS } from '../conversation/prompt-library';
-import { SEAT_RELATION_COUNT } from '../../common/seats';
+import { seatsByOrganisation } from '../../common/seats';
 import { Prisma } from '@prisma/client';
-import { A_CUSTOMER, A_REAL_CHECK_IN, A_REAL_SESSION, aRealUsageEvent, aMean, inRange, session2RateOfThoseDue, sinceFor } from './what-the-platform-has-actually-done';
+import { A_CUSTOMER, A_REAL_CHECK_IN, A_REAL_SESSION, CLOSED_BY_THE_CLOCK, usageEventsByCustomers, aMean, inRange, session2RateOfThoseDue, sinceFor } from './what-the-platform-has-actually-done';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
 /** What the start writes in `activated_by` when it activates a version itself (decision 74, item 6). */
@@ -164,7 +164,8 @@ export class PromptsService implements OnModuleInit {
         ),
       ),
 
-      // 2. Avg session duration in minutes, with the sample size (raw SQL)
+      // 2. Avg session duration in minutes, with the sample size (raw SQL). Only sessions a person
+      //    finished: the clock closes the rest a day later (see CLOSED_BY_THE_CLOCK).
       this.prisma.$queryRaw<{ session_number: number; avg_minutes: number; n: number }[]>`
         SELECT ci.session_number, ROUND(AVG(EXTRACT(EPOCH FROM (ci.completed_at - ci.started_at)) / 60)::numeric, 1)::float as avg_minutes, COUNT(*)::int as n
         FROM check_ins ci
@@ -172,6 +173,7 @@ export class PromptsService implements OnModuleInit {
         JOIN organizations o ON o.id = g.organization_id
         WHERE ci.status = 'COMPLETED' AND ci.started_at IS NOT NULL AND ci.completed_at IS NOT NULL
           AND ci.is_setup = false AND o.is_internal = false ${sinceSql}
+          AND ci.closed_reason IS DISTINCT FROM ${CLOSED_BY_THE_CLOCK}
         GROUP BY ci.session_number
         ORDER BY ci.session_number
       `,
@@ -306,8 +308,12 @@ export class PromptsService implements OnModuleInit {
         orderBy: [{ key: 'asc' }, { version: 'desc' }],
         select: { id: true, key: true, version: true, isActive: true, activatedAt: true, createdAt: true },
       }),
+      /* WITH A TIME, OR NOT IN THE FEED (item 19). Postgres puts a null first in a descending
+         order, so one session marked complete with no completion time came first here, and the
+         sort below read its null date and threw: the whole System tab came back as an error. A
+         session with no time has no place in a list ordered by time; it is still counted above. */
       this.prisma.checkIn.findMany({
-        where: aSession,
+        where: { ...aSession, completedAt: { not: null } },
         orderBy: { completedAt: 'desc' },
         take: 15,
         select: {
@@ -352,13 +358,23 @@ export class PromptsService implements OnModuleInit {
       },
     });
 
+    /* CHECK-INS USING A VERSION ARE CHECK-INS (item 19). `groundsUsingIt` counted outcomes, which only
+       a check-in that reached an agreed end has: on the test database 24 against 1,393 customers'
+       check-ins that record a version, and the active version read 0. */
+    const groundsByVersion = await this.prisma.ground.groupBy({
+      by: ['promptVersionId'],
+      where: { ...A_REAL_CHECK_IN, promptVersionId: { not: null } },
+      _count: { id: true },
+    });
+    const groundsOn = new Map(groundsByVersion.map((r) => [r.promptVersionId, r._count.id]));
+
     const promptPerformance = promptVersions.map((pv) => {
       const pvOutcomes = outcomes.filter((o) => o.promptVersionId === pv.id);
       const pvFeedback = feedback.filter((f) => f.ground.promptVersionId === pv.id);
       const fairCount = pvFeedback.filter((f) => f.feltFair).length;
       return {
         ...pv,
-        groundsUsingIt: pvOutcomes.length,
+        groundsUsingIt: groundsOn.get(pv.id) ?? 0,
         outcomesResolved: pvOutcomes.filter((o) => o.resolvedState !== 'STALLED').length,
         fairnessRate: pvFeedback.length > 0 ? Math.round((fairCount / pvFeedback.length) * 100) : null,
         feedbackResponses: pvFeedback.length,
@@ -388,6 +404,7 @@ export class PromptsService implements OnModuleInit {
         groundLabel: g.label,
       })),
     ]
+      .filter((a) => a.at instanceof Date)
       .sort((a, b) => b.at.getTime() - a.at.getTime())
       .slice(0, 20);
 
@@ -495,9 +512,11 @@ export class PromptsService implements OnModuleInit {
         careFeeStatus: true,
         createdAt: true,
         isInternal: true,
-        _count: { select: { grounds: true, ...SEAT_RELATION_COUNT } },
+        _count: { select: { grounds: true } },
       },
     });
+    /* People by the seat rule the organisation's own People page and its plan read (item 19). */
+    const seats = await seatsByOrganisation(this.prisma);
 
     const lastSession = await this.prisma.checkIn.groupBy({
       by: ['groundId'],
@@ -526,7 +545,7 @@ export class PromptsService implements OnModuleInit {
       careFeeStatus: org.careFeeStatus,
       isInternal: org.isInternal,
       groundCount: org._count.grounds,
-      userCount: org._count.users,
+      userCount: seats.get(org.id) ?? 0,
       lastActivity: lastActivityMap[org.id] ?? null,
       createdAt: org.createdAt,
     }));
@@ -549,13 +568,7 @@ export class PromptsService implements OnModuleInit {
         where: { ...aSession, completedAt: { gte: fourteenDaysAgo } },
         select: { completedAt: true, sessionNumber: true },
       }),
-      aRealUsageEvent(this.prisma).then((byACustomer) =>
-        this.prisma.usageEvent.groupBy({
-          by: ['type'],
-          where: { ...byACustomer, ...inRange('createdAt', since) },
-          _count: { id: true },
-        }),
-      ),
+      usageEventsByCustomers(this.prisma, since),
       this.prisma.checkIn.count({ where: { ...aSession, ...inRange('completedAt', since) } }),
       this.prisma.ground.count({ where: { ...A_REAL_CHECK_IN, report: { releasedAt: since ? { gte: since } : { not: null } } } }),
       this.prisma.ground.count({ where: { ...A_REAL_CHECK_IN, ...inRange('createdAt', since) } }),
@@ -574,7 +587,7 @@ export class PromptsService implements OnModuleInit {
       if (key in dayBuckets) dayBuckets[key]++;
     }
 
-    const usageMap = Object.fromEntries(usageEvents.map(e => [e.type, e._count.id]));
+    const usageMap = usageEvents;
 
     return {
       range: range ?? 'all',
@@ -635,7 +648,17 @@ Rules: No verdicts. No judgements of any person. No em dashes. Straight quotes. 
   }
 
   async feedbackSummary() {
+    /* EVERY ANSWER, AND ONLY CUSTOMERS' (item 19). `total` and `fairRate` were read off the fifty most
+       recent answers, so past fifty the total stopped at 50 and the rate covered only the latest; and
+       our own organisations' answers were counted. Both are counted over all customers' answers now;
+       the list still shows the latest fifty. */
+    const ofACustomer = { ground: A_REAL_CHECK_IN };
+    const [total, fairCount] = await Promise.all([
+      this.prisma.outcomeFeedback.count({ where: ofACustomer }),
+      this.prisma.outcomeFeedback.count({ where: { ...ofACustomer, feltFair: true } }),
+    ]);
     const feedback = await this.prisma.outcomeFeedback.findMany({
+      where: ofACustomer,
       orderBy: { createdAt: 'desc' },
       take: 50,
       select: {
@@ -646,9 +669,6 @@ Rules: No verdicts. No judgements of any person. No em dashes. Straight quotes. 
         ground: { select: { label: true, organization: { select: { slug: true } } } },
       },
     });
-
-    const total = feedback.length;
-    const fairCount = feedback.filter(f => f.feltFair).length;
 
     return {
       total,

@@ -25,16 +25,30 @@ export function insideTheServiceWindow(lastInboundAt: Date | string | null | und
 /** The kinds of send the product starts, as opposed to a reply to something the person just wrote. */
 export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
   'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
-  'report', 'report-retry',
+  'report', 'report-retry', 'request-waiting', 'request-decided', 'review-started', 'review-decided',
 ]);
 
 /**
  * HOW OFTEN GROUNDWORK WRITES FIRST (decision 83, alongside decision 13). These are the messages
  * Groundwork starts on its own; each person gets at most one a day, or two on a day one of their
  * check-ins opens or closes. A report is not one of them: it follows the person finishing.
+ *
+ * APPROVALS (decision 82, item 1). Telling an approver that a request waits for them IS one of them:
+ * the approver did nothing to start it, so it counts towards their one message of the day, and when
+ * it is held back here the lead's morning summary carries it instead. Telling a person what was
+ * decided about their own request is NOT one of them, for the same reason as the report: it answers
+ * something they did (they asked). It still never goes after STOP, and outside the 24 hours it goes
+ * only as its approved template.
  */
 export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
   'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
+  'request-waiting',
+  /*
+   * A REVIEW (item 16). The person did nothing to start their review or to have it decided, so both
+   * count towards their one message of the day. Held back, the review still waits for them in the app
+   * (GET /suites/reviews/mine), so nothing is lost.
+   */
+  'review-started', 'review-decided',
 ]);
 /** The messages that mark a day a check-in opens or closes, when two may go. */
 export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon']);
@@ -98,8 +112,8 @@ export function fill(body: string, params: string[]): string {
 }
 
 /**
- * Every business-initiated body. Hafsah's eight (decision 83) word for word, and two of ours that
- * hers do not cover, kept as a proposal for her (the report). Names are
+ * Every business-initiated body. Hafsah's eight (decision 83) word for word, and five of ours that
+ * hers do not cover, kept as a proposal for her (the report, a request waiting, a request decided, a review started, a review decided). Names are
  * ours; approval is Meta's. docs/whatsapp-templates.md holds the same wording, for submitting.
  * The parameters are in the order the body numbers them, whatever order they appear in.
  */
@@ -114,6 +128,15 @@ export const TEMPLATES: Record<string, ATemplate> = {
   'lead-summary': aTemplate('lead_daily_summary', "Good morning {{1}}. Here's today's summary of your check-ins: {{2}} Open the board for the full picture: {{3}}"),
   /* Ours, proposed to Hafsah: hers do not cover it. */
   report: aTemplate('groundwork_report_ready', 'Your report for {{1}} is ready. {{2}} Open Groundwork to read it.'),
+  /* Ours, proposed to Hafsah (decision 82, item 1): an approval waiting, and the decision told to the person. */
+  'request-waiting': aTemplate('groundwork_request_waiting', 'Hi {{1}}, {{2}} has asked for {{3}}, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first.'),
+  'request-decided': aTemplate('groundwork_request_decided', 'Hi {{1}}, your request for {{2}} was {{3}} by {{4}}. Open Groundwork to read it.'),
+  /*
+   * Ours, proposed to Hafsah (item 16): a review waits for the person in the app. Never anything the
+   * review says, only who started or decided it, so its contents stay in the app.
+   */
+  'review-started': aTemplate('groundwork_review_started', 'Hi {{1}}, {{2}} has started your review. Open Groundwork to read it and add your own view before you meet.'),
+  'review-decided': aTemplate('groundwork_review_decided', 'Hi {{1}}, {{2}} has decided your review. Open Groundwork to read the decision and the reasons.'),
 };
 TEMPLATES['report-retry'] = TEMPLATES.report;
 

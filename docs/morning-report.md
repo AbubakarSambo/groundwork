@@ -30,7 +30,79 @@ Groundwork writes first at most once a day, or twice on the day a check-in opens
 - **Three template wording points**, each with a proposed fix in `docs/whatsapp-templates.md`: `lead_daily_summary` ends on a blank, which WhatsApp refuses; `checkin_team_almost_in` numbers its blanks out of order; and three templates may be classed by Meta as marketing, not utility.
 - **Before two copies of the API run:** the waiting "yes or no" on a request is held in memory for ten minutes, and should move to the database.
 
-Now running: request 117 (the sales board), and approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Request 117, the sales board, is done** (`39f692e3` to `40946e19`, pushed). Rukia's row for Amani now reads "Amani Wekesa has checked in, and has been waiting on you for the price list since 28 September." once, instead of the same wait three times. Her coaching note no longer says "waiting on themselves", and says "session 1 of 12" rather than "session 2". Amani's aim reads "Amani Wekesa's own aim is 3 shops in Kilimani by 20 December." Every reader gets the same board at any hour. A local script, `api/journey/bring-a-check-in-up-to-date.ts`, brings stored rows up to today's rules without the model. Its dry run here found 99 changes and wrote nothing. It is a release step that needs your explicit yes (`docs/deploy.md`, section 5). Tests: 9,251 pass, 2 fail that are not its own (one read another helper's half-written file, one passes when run alone).
+
+- **Part 5 is not fixed.** A rule for who a wait is on would have removed 310 stored waits, most of them real, so it was taken back out. Neema's shop and her invented wait "on the warehouse" stay until the model reads her check-in again.
+- **For Hafsah:** should a round's numbers be counted when one person's check-in closes, rather than when everybody has finished? Today Neema's shop waits on Faraji. And should a deal's "Cooling" be measured to the record's own clock, so it does not change with the day the board is read?
+
+**Approvals, email matching, Ask Groundwork and the daily summary are done** (`1b77ebda` to `7ce68216`, pushed; 3,600 tests in those parts pass, none changed).
+- The approver, on WhatsApp: "Hi Wairimu, Amina has asked for leave from Monday 5 October to Friday 9 October, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first." Her "approve" is said back ("You are approving Amina's leave ... Is that right?") and acted on only after yes.
+- The person: "Hi Amina, your request for leave from Monday 5 October to Friday 9 October was approved by Wairimu. Open Groundwork to read it."
+- A roster entry with no sign-in linked is matched by email, trimmed and ignoring capitals; an email on two entries matches nobody.
+- On WhatsApp, Ask Groundwork leaves check-ins kept in the app out of every read, checked on the prompt the model is given. In the app it is unchanged.
+- The lead's summary at 07:00: "Good morning Wairimu. ... In "Sales team, Q3", 5 of 6 people have checked in, and Omar has not yet. Amina's leave ... is waiting for you to approve or decline."
+- A one-to-one check-in now says only "It takes about ten minutes.", never "released with everybody else's".
+
+**For Hafsah:**
+- Should an admin who approves, but runs no check-in, get a morning summary too? Today they are told about a waiting request on WhatsApp only if they have had no other message that day; otherwise only in the app.
+- The app says "about ten minutes" and the WhatsApp notice "about five minutes". Which?
+- Submit `groundwork_request_waiting` and `groundwork_request_decided` with the other templates.
+- Because the summary is the lead's one message of the day, a lead who also answers elsewhere does not get their own morning reminder that day (decision 13).
+- Hours can be approved but not declined, as on the board.
+
+**Performance reviews, item 16, are done** (`2a8e77eb` to `cdf5e3ee`, pushed; 3,159 tests in those parts pass, none changed). Each review now says where it stands ("Ready to start. 6 months of check-ins to draw on.", "Started on 2 October 2026. Aisha can read it and add a view of their own."). A review cannot start while a probation or plan about the same person is still open. The person finds their own review ("Wairimu has started your review. You can read it and add your own view before you meet.") and is told on WhatsApp that it waits in the app, never what it says. A fault was fixed on the way: the writer's suggestion on a review was always empty, because a service was never given to it.
+
+The recognise suggestion is built and **off** (`reviews.recognise`). The proposal: suggest recognising somebody when, in the four weeks before the review started, at least 8 commitments in the writer's check-ins with them were settled and at least nine in ten were kept; a miss during approved leave does not count. The person reads the numbers first; the writer reads no number (decision 53), and only after the person has written their view or three days have passed.
+
+**For Hafsah:**
+- Confirm the threshold above, and whether to switch it on. There is no admin page for it yet.
+- The prototype gives the manager a count ("She kept 41 of her 44"). Decision 53 forbids that, so the manager reads none. Keep it that way?
+- Should a review have an appeal? Decision 6 says the person can appeal, but the prototype's review screen shows none.
+- An admin outside the check-in reads "After a check-in about Kwame is decided." This says some decision about Kwame is open without naming it. Acceptable?
+- Leave is read only to excuse a miss in the recognise check. Does "hours and leave never feed a review" allow that?
+- Submit `groundwork_review_started` and `groundwork_review_decided` with the other templates.
+
+**Reviews now find their person by email too** (`4d22feea`): an unlinked roster entry with the same email as a sign-in finds, reads and answers their own review, and is told on WhatsApp. **The failing audit of checks that can never be true passes again** (`16e147ee`): one check removed, one field renamed, nothing served changed. Its note to the screens landed in the board helper's commit `8bc65639` rather than its own; the text is in the file, and no history was rewritten.
+
+**The back office's usage numbers, item 19, are checked and fixed** (`aeb8d414` to `bf6bd58f`, pushed; 1,121 of 1,122 tests pass in those parts, and the one failure is a date format being fixed now). Every number was compared with the local test database. Eight were wrong:
+
+| Number | Served | Now |
+| --- | --- | --- |
+| The System tab | An error, so no numbers at all | 1,412 organisations, 1,589 check-ins, 6,596 sessions |
+| Average minutes per session, 1 / 2 / 3 | 110.3 / 105.3 / 189 | 13.9 / 7.7 / 12.7 (sessions the clock closed are no longer timed) |
+| Usage events, check-ins completed | Missing | 6,325 |
+| People per organisation | 4,721 | 4,723, by the People page's seat rule |
+| Check-ins per prompt version | Counted outcomes (0 on the version that runs) | Counted check-ins (89 on v44) |
+| Subscribed organisations | Any plan, paused or past due included | Active plans only |
+| Check-ins that were Paid | 193 | 166, and 27 free with no reason recorded |
+| Feedback total | Never more than 50, our own organisations included | Every customer's answer |
+
+**For Hafsah:**
+- Should "Sessions completed" and the drop-off counts include the 470 sessions the clock closed? They are no longer timed, but still counted.
+- **Privacy question:** the platform admin reads people's outcome feedback notes word for word, on the dashboard and the Feedback tab. Is that allowed, given the console should show counts, never what people said? Nothing was changed; this needs your decision.
+- For the rebuild (item 22): the console shows no WhatsApp sends and no Ask Groundwork use; "Sessions in balance" means nothing under subscriptions; the drop-off chart stops at session 7.
+
+**The Connections page's WhatsApp numbers are fixed** (`1d706656`): in a seeded week, "5 people checking in on WhatsApp, 9 check-ins this month, 4 failed messages this week" now reads 2, 2 and 2, because Ask Groundwork conversations, held messages and the free "WhatsApp is off" notice are no longer counted. Nothing on the screen moves. **The billing dates use the one shared format** (`84c2c0ed`); the emails read the same. 979 tests in those parts pass.
+
+**Request 118 and item 18 are done in code** (`c12aa05f` to `ed2e4e5c`, pushed; 5,775 tests in board, reports and grounds pass). Each change is written in `docs/answers-from-engine.md` in its own commit.
+- Rukia's Today no longer fails when nobody is left to name; an empty list is tested on Today, the board and the lead's summary.
+- Rukia reads "No position is shown for you, Amani Wekesa, …" instead of her own name.
+- The stored story's "You are waiting on themselves to approve a discount" now reads "You still have to approve a discount for Baraka Mwangi and to send a price list to Amani Wekesa.", fixed where it is served.
+- "People see two things differently. People said different things." is said once; a deal added on the board is "put at Won on the board", not "reported".
+- Onboarding and project boards, 14 faults: for example "Put Kwabena Mensah, Kwabena, and Samuel Aryee, Samuel, in a room" now reads "Put Kwabena Mensah and Samuel Aryee in a room together …"; Tobi reads "Your check-in with Amina", not "with Dr"; the person's own row says "you" throughout.
+
+The rest of request 117 on the sales board is stored rows on the screens workspace's own database, not code: the record script fixes the false "Met" and the headline; deal owners wait on Rukia answering the claim the script puts to her; Neema's shop waits on the model's next read. One rule slip: one commit (`089002fd`) was made with two git commands joined; nothing else.
+
+**For Hafsah:**
+- The prototype's onboarding board shows sections the engine does not build: what was agreed at the start, change since the last check-in, the 90 days in three steps, the person's 12-week history, and "Where this is heading" (keep on, extend, change the role, part ways). That last one is left off evaluation check-ins on purpose (decision 6), and a first 90 days is one. Should a first 90 days show it?
+- Should onboarding and project check-ins have a kind of work, so the project board can show releases and tasks as the prototype's engineering example does?
+- The coaching role maps have clipped phrases ("Busy in the weeds on comfortable work; …"), and the lead of a first 90 days is read as "Founder or CEO". Rewrite them?
+
+**WhatsApp's waiting yes-or-no now survives a restart and a second copy of the server** (`12b132b7`, migration 72, applied to the local test database only; 1,026 tests pass). Nothing a person reads changed. Approvals waiting for a yes were already stored.
+
+**For Hafsah:** the person's request words ("Can I take Friday off?") are now written to the database while Groundwork waits for their yes or no, up to about 10 minutes, and cleared on the answer or by the next WhatsApp message anyone sends. The code needs the words to act on the yes. If you want them gone at 10 minutes even when nobody writes, a small clean-up can be added to the nightly jobs.
+
+Now running: the WhatsApp merge gap with reviews on Today, and scenario run-25. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 

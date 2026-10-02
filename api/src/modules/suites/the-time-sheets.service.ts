@@ -1,7 +1,10 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { mayApproveFor, whoApprovesFor } from './who-approves';
+import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
+import { anHoursRequest } from './a-request-in-words';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const TIME_REFUSED = {
@@ -56,7 +59,11 @@ type Entry = { userId: string; client: string; onDay: Date; minutes: number };
  */
 @Injectable()
 export class TimeSheetsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    /* Tells the approver, and then the person, on WhatsApp (decision 82, item 1). Optional so a test built by hand still runs. */
+    @Optional() private readonly told?: ARequestToldOnWhatsApp,
+  ) {}
 
   async board(reader: Reader, today = new Date()): Promise<{ thisWeek: Day; weeks: AWeek[]; agreements: Agreement[] | null }> {
     const answers = await this.suiteAnswers(reader.organizationId);
@@ -129,7 +136,7 @@ export class TimeSheetsService {
     if (!ok) throw new ForbiddenException(TIME_REFUSED.notYours);
     const entries = await this.prisma.timeEntry.findMany({
       where: { organizationId: reader.organizationId, userId: personId, onDay: { gte: monday, lt: new Date(monday.getTime() + 7 * DAY) } },
-      select: { minutes: true },
+      select: { minutes: true, client: true, onDay: true },
     });
     const total = entries.reduce((n, e) => n + e.minutes, 0);
     if (total === 0) throw new BadRequestException(TIME_REFUSED.nothingToApprove);
@@ -138,6 +145,7 @@ export class TimeSheetsService {
       create: { organizationId: reader.organizationId, userId: personId, weekOf: monday, approvedMinutes: total, approvedById: reader.userId },
       update: { approvedMinutes: total, approvedById: reader.userId, approvedAt: new Date() },
     });
+    await this.tellThePerson(reader.organizationId, personId, monday, entries as Entry[], reader.userId);
     return this.board(reader, today);
   }
 
@@ -194,7 +202,31 @@ export class TimeSheetsService {
     });
     if (!rows.length) throw new BadRequestException(TIME_REFUSED.badHours);
     await this.prisma.timeEntry.createMany({ data: rows });
+    /* The one who approves is told on WhatsApp too (decision 82, item 1). */
+    if (this.told) {
+      try {
+        const who = await whoApprovesFor(this.prisma, { organizationId, personUserId: userId });
+        const first = await this.told.firstNameOf(userId);
+        await this.told.waiting(organizationId, await this.told.approversOf(organizationId, who, userId), this.inWords(userId, first, rows));
+      } catch { /* the hours stand */ }
+    }
     return { recorded: rows.length };
+  }
+
+  /** Hours as every reader reads them: how many, on which clients, for which day or week. Never how much somebody works. */
+  private inWords(userId: string, firstName: string, es: { client: string; onDay: Date; minutes: number }[]) {
+    const minutes: Record<string, number> = {};
+    for (const e of es) minutes[e.client] = (minutes[e.client] ?? 0) + e.minutes;
+    const days = [...new Set(es.map((e) => dayOf(e.onDay)))].sort();
+    return anHoursRequest(userId, dayOf(mondayOf(es[0].onDay)), firstName, minutes, es.reduce((t, e) => t + e.minutes, 0), days);
+  }
+
+  /** The person whose week was approved is told, on WhatsApp (decision 82, item 1). True when it went. */
+  async tellThePerson(organizationId: string, personId: string, monday: Date, entries: { client: string; onDay: Date; minutes: number }[], deciderUserId: string): Promise<boolean> {
+    if (!this.told || !entries.length) return false;
+    const first = await this.told.firstNameOf(personId);
+    const r = this.inWords(personId, first, entries);
+    return this.told.decided(organizationId, { ...r, what: r.what.replace(/^approval of /, ''), ref: `${personId}|${dayOf(monday)}` }, 'approved', deciderUserId).catch(() => false);
   }
 
   /** An admin says what each client agreed. It replaces the list. */
@@ -266,21 +298,13 @@ export class TimeSheetsService {
   }
 
   private async directory(organizationId: string, userIds: string[]) {
-    const ids = [...new Set(userIds)];
-    const ps = ids.length
-      ? await this.prisma.person.findMany({
-          where: { organizationId, linkedUserId: { in: ids }, active: true },
-          select: { linkedUserId: true, externalId: true, department: true, managerExternalId: true },
-        })
-      : [];
-    return new Map(ps.map((p) => [p.linkedUserId as string, { externalId: p.externalId, department: p.department, managerExternalId: p.managerExternalId }]));
+    /* Linked entries, and entries matched to their sign-in by address (a-roster-entry-and-its-sign-in.ts). */
+    const ps = await theirRosterEntries(this.prisma, organizationId, userIds, { externalId: true, department: true, managerExternalId: true });
+    return new Map([...ps].map(([userId, p]) => [userId, { externalId: p.externalId as string, department: p.department as string | null, managerExternalId: p.managerExternalId as string | null }]));
   }
 
   private async theLeadsTeam(reader: Reader, people: Map<string, { externalId: string; department: string | null; managerExternalId: string | null }>) {
-    const me = await this.prisma.person.findFirst({
-      where: { organizationId: reader.organizationId, linkedUserId: reader.userId, active: true },
-      select: { externalId: true, department: true },
-    });
+    const me = await theirRosterEntry(this.prisma, reader.organizationId, reader.userId, { externalId: true, department: true });
     return (userId: string) => {
       const p = people.get(userId);
       return !!me && !!p && inTheLeadsTeam(me, p);

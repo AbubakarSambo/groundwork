@@ -1,4 +1,5 @@
 import type { PrismaService } from '../prisma/prisma.service';
+import { theirSignIn, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 
 /**
  * WHO APPROVES, FOR THE SUITES THAT ASK (U.17): leave requests and time sheets. It follows the admin's
@@ -16,14 +17,15 @@ export async function mayApprove(
   if (input.approver === 'Their manager' && input.managerExternalId) {
     const m = await prisma.person.findFirst({
       where: { organizationId: input.organizationId, externalId: input.managerExternalId, active: true },
-      select: { linkedUserId: true },
+      select: { linkedUserId: true, email: true },
     });
-    if (m?.linkedUserId) {
+    const managerUserId = await theirSignIn(prisma, input.organizationId, m);
+    if (managerUserId) {
       const r = await prisma.organizationMembership.findUnique({
-        where: { userId_organizationId: { userId: m.linkedUserId, organizationId: input.organizationId } },
+        where: { userId_organizationId: { userId: managerUserId, organizationId: input.organizationId } },
         select: { role: true },
       });
-      if (r?.role === 'LEAD' || r?.role === 'ADMIN') return m.linkedUserId === input.readerId;
+      if (r?.role === 'LEAD' || r?.role === 'ADMIN') return managerUserId === input.readerId;
     }
   }
   return input.readerRole === 'ADMIN';
@@ -46,25 +48,25 @@ export async function whoApprovesFor(
 ): Promise<Approver> {
   let managerExternalId = input.managerExternalId;
   if (managerExternalId === undefined) {
-    const me = await prisma.person.findFirst({
-      where: { organizationId: input.organizationId, linkedUserId: input.personUserId, active: true },
-      select: { managerExternalId: true },
-    });
+    /* The person's own entry, linked or matched by address (a-roster-entry-and-its-sign-in.ts). */
+    const me = await theirRosterEntry(prisma, input.organizationId, input.personUserId, { managerExternalId: true });
     managerExternalId = me?.managerExternalId ?? null;
   }
   if (managerExternalId) {
     const m = await prisma.person.findFirst({
       where: { organizationId: input.organizationId, externalId: managerExternalId, active: true },
-      select: { linkedUserId: true, givenName: true, displayName: true },
+      select: { linkedUserId: true, email: true, givenName: true, displayName: true },
     });
-    if (m?.linkedUserId && m.linkedUserId !== input.personUserId) {
+    /* A manager whose entry is matched to their sign-in by address approves too (decision 82, item 6). */
+    const managerUserId = await theirSignIn(prisma, input.organizationId, m);
+    if (m && managerUserId && managerUserId !== input.personUserId) {
       const r = await prisma.organizationMembership.findUnique({
-        where: { userId_organizationId: { userId: m.linkedUserId, organizationId: input.organizationId } },
+        where: { userId_organizationId: { userId: managerUserId, organizationId: input.organizationId } },
         select: { role: true },
       });
       if (r?.role === 'LEAD' || r?.role === 'ADMIN') {
         const firstName = m.givenName?.trim() || m.displayName?.trim().split(/\s+/)[0] || null;
-        return { kind: 'manager', userId: m.linkedUserId, firstName };
+        return { kind: 'manager', userId: managerUserId, firstName };
       }
     }
   }

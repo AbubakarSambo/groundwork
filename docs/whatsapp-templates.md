@@ -81,11 +81,15 @@ The code holds the same wording in `api/src/modules/whatsapp/a-message-outside-t
 - **Category:** Utility. **Language:** en.
 - **Body:** Good morning {{1}}. Here's today's summary of your check-ins: {{2}} Open the board for the full picture: {{3}}
 - **Examples:** {{1}} Wairimu. {{2}} 5 of 6 people checked in yesterday, and Omar has not yet. One leave request is waiting for you. {{3}} https://myground.work/c/sales/board
-- **Why:** the lead's one message of the day (decision 13). Anything else waiting for the lead that day, such as an approval or a reminder, goes inside {{2}} rather than as a separate message. Registered in the code; the summary itself is for the next builder.
+- **Why:** the lead's one message of the day (decision 13). Anything else waiting for the lead that day, such as an approval or a reminder, goes inside {{2}} rather than as a separate message. Built on 2 October: it goes at seven in the morning in Lagos to each lead with a check-in open, and it counts as Groundwork writing first, so the morning reminders do not also write to that lead that day.
+- **What {{2}} says:** one sentence for each of the lead's open check-ins, then one for what waits for them to decide. For example: "In "Sales team, Q3", 5 of 6 people have checked in, and Omar has not yet. Amina's leave from Monday 5 October to Friday 9 October is waiting for you to approve or decline." Nobody an admin has not let in yet, and nobody who only manages, is counted or named (decision 77). Nothing from a check-in the lead keeps in the app is in it, and a lead whose only open check-ins are kept in the app gets no summary. Nothing anybody said is ever in it. A lead on approved leave that day gets nothing. {{3}} is the board of the check-in when there is one, otherwise the list of check-ins.
 - **How {{2}} is kept short:** it is one paragraph with no line breaks. When the lead has written to Groundwork in the last 24 hours, the full summary goes as an ordinary message. Otherwise the template goes, and if the words would make the whole message longer than 1,024 characters, Groundwork cuts the summary at a word and ends it with "…". The board has the rest.
-- **Checked against WhatsApp's rules:** it ends with a blank ({{3}}), and WhatsApp refuses a template that starts or ends with a blank. **Proposal for Hafsah:** keep the body as "Good morning {{1}}. Here's today's summary of your check-ins: {{2}}" followed by a sentence, for example "Good morning {{1}}. Here's today's summary of your check-ins: {{2}} The board has the full picture.", and put the link in a button: a URL button "Open the board" whose address ends with a blank for the board's own path. Replying "not now" pauses it for the day, and "stop" stops it.
+- **Checked against WhatsApp's rules:** it ends with a blank ({{3}}), and WhatsApp refuses a template whose body starts or ends with a blank, so as written it will be refused. Inside the 24 hours this does not matter, because the same words go as an ordinary message with the link in them. Outside the 24 hours nothing goes until a version is approved, and Groundwork records it as not sent.
+- **Proposal for Hafsah (not yet in the code, because the wording is yours to decide):** body: "Good morning {{1}}. Here's today's summary of your check-ins: {{2}} The board has the full picture." Then one button, of the kind "Visit website", with the text "Open the board" and the address https://myground.work/{{1}}, where Groundwork fills in the board's own path (for example grounds/g-sales/board). Examples to give Meta: {{1}} Wairimu. {{2}} In "Sales team, Q3", 5 of 6 people have checked in, and Omar has not yet. One leave request is waiting for you. Button {{1}} grounds/g-sales/board. With this, the body ends with words, the link is in the button, and the body has two blanks instead of three. If you approve it, the body changes in one place in the code (`a-message-outside-the-window.ts`), and the button's path is added where the summary is sent (`whatsapp/the-leads-daily-summary.ts`). Replying "not now" pauses it for the day, and "stop" stops it.
 
 ## Ours, proposed for Hafsah (hers do not cover these)
+
+All three are now on the list the Connections page asks an admin to submit (`theNamesToSubmit`), so "every reminder approved" there means these three as well.
 
 ### `groundwork_report_ready`
 
@@ -100,7 +104,7 @@ The code holds the same wording in `api/src/modules/whatsapp/a-message-outside-t
 - **Category:** Utility. **Language:** en.
 - **Body:** Hi {{1}}, {{2}} has asked for {{3}}, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first.
 - **Examples:** {{1}} Wairimu. {{2}} Miriam. {{3}} leave from 20 to 22 October.
-- **Why:** to tell the approver a leave, hours or spending request is waiting. For a lead, this goes inside the daily summary instead, once that is built. Not wired yet: the approval by reply is the next builder's.
+- **Why:** to tell the approver a leave, hours or spending request is waiting, as soon as the person has confirmed it. {{3}} is the request in plain words: "leave from Monday 5 October to Friday 9 October", "approval of 6 hours on Atlas for Monday 5 October", or "KES 12,000 for fuel". It goes to the person's line manager when they approve, otherwise to every admin (the person named for spending over the limit gets it for that). It counts as Groundwork writing first, so if that person has already had their message for the day, it waits, and the lead's daily summary carries it the next morning. The approver replies "approve" or "decline" (for example "approve Amina's leave"), Groundwork says back what they are deciding ("You are approving Amina's leave from Monday 5 October to Friday 9 October. Is that right?"), and acts only on a yes. Wired on 2 October.
 - **Checked against WhatsApp's rules:** passes.
 
 ### `groundwork_request_decided` (decision 82, item 1: the decision told to the person)
@@ -108,7 +112,23 @@ The code holds the same wording in `api/src/modules/whatsapp/a-message-outside-t
 - **Category:** Utility. **Language:** en.
 - **Body:** Hi {{1}}, your request for {{2}} was {{3}} by {{4}}. Open Groundwork to read it.
 - **Examples:** {{1}} Miriam. {{2}} leave from 20 to 22 October. {{3}} approved. {{4}} Wairimu.
-- **Why:** to tell the person what was decided. Not wired yet: the next builder's.
+- **Why:** to tell the person what was decided, whether it was decided in the app or by a reply on WhatsApp. It is not counted as Groundwork writing first, because it answers the person's own request, the same as the report; it still never goes after STOP. Hours cannot be declined in Groundwork, so for hours {{3}} is only ever "approved". Wired on 2 October.
+- **Checked against WhatsApp's rules:** passes.
+
+### `groundwork_review_started` (item 16: a review waits for the person)
+
+- **Category:** Utility. **Language:** en.
+- **Body:** Hi {{1}}, {{2}} has started your review. Open Groundwork to read it and add your own view before you meet.
+- **Examples:** {{1}} Aisha. {{2}} Wairimu.
+- **Why:** to tell the person a review is about that the person who writes it with them has started it, so they can read it and add their own view before they meet, as the prototype says ("Aisha sees it before the meeting"). Nothing of the review is in it. It goes only to the person the review is about, only once somebody has said yes and started it, never for a review Groundwork only proposed. It counts as Groundwork writing first. Proposed by the engine on 2 October, for Hafsah to confirm.
+- **Checked against WhatsApp's rules:** passes.
+
+### `groundwork_review_decided` (item 16: the person is told their review is decided)
+
+- **Category:** Utility. **Language:** en.
+- **Body:** Hi {{1}}, {{2}} has decided your review. Open Groundwork to read the decision and the reasons.
+- **Examples:** {{1}} Aisha. {{2}} Wairimu.
+- **Why:** to tell the person that the decision and its reasons are written and waiting in the app. The decision itself is never sent. It goes once, the first time the review is decided. It counts as Groundwork writing first. Proposed by the engine on 2 October, for Hafsah to confirm.
 - **Checked against WhatsApp's rules:** passes.
 
 ## Names no longer used

@@ -28,7 +28,7 @@ The local `main` on this computer is old (11 August, pull request 130), so compa
 
 ## 2. The database migrations, in the order they run
 
-There are **71 new migrations** since the remote `main` (67 listed in the table below, and four added on 2 October, listed after it). They run in name order. The last one the remote `main` has is `20260923140000_what_we_have_so_far`; these come after it.
+There are **72 new migrations** since the remote `main` (67 listed in the table below, and five added on 2 and 3 October, listed after it). They run in name order. The last one the remote `main` has is `20260923140000_what_we_have_so_far`; these come after it.
 
 **Read this first: six of the 67 in the table do something to existing rows, and two of the four added on 2 October do too (see below). The rest only add new tables, new empty columns, new types or new indexes.**
 
@@ -121,6 +121,7 @@ Every migration, in order, in one sentence each:
 | 69 | `20261002120000_five_kinds_of_target` | Adds three kinds of target (rate, deadline, zero) and a due date on a target. | Untouched |
 | 70 | `20261002140000_each_sessions_picture_is_released_on_its_own` | Adds which sessions' team pictures are released on a report, and fills it in for existing reports from their completed sessions. | **Fills a new column on existing reports** |
 | 71 | `20261002160000_whatsapp_is_a_paid_add_on` | Decision 78. Adds the WhatsApp add-on's monthly price, its cached Stripe price and the monthly WhatsApp limit on each plan, and writes the prices and limits; adds whether an organisation has turned WhatsApp on and the Stripe line that charges it; adds a new table counting each organisation's WhatsApp messages per calendar month; and writes the free trial's setting as one month, leaving its switch as it is (off unless somebody turned it on). | **Writes values into `pricing_plans` and the `pricing.freeTrial` settings row** |
+| 72 | `20261003090000_a_request_asked_about_on_whatsapp_survives_a_restart` | Decision 82, item 2. Adds three empty columns to WhatsApp threads for a leave, hours or spending request waiting for the person's yes or no (its kind, its words and when it was asked), and an index on when it was asked. It was held in the API's memory, so a restart or a second copy lost it. | Untouched |
 
 The prices and limits migration 71 writes, all editable afterwards at Admin, System, Pricing (`PATCH /admin/pricing/:plan` with `whatsappAddOnCents` and `whatsappMonthlyLimit`):
 
@@ -139,7 +140,7 @@ Things worth knowing about how they run:
 - Columns added with a fixed default (`false`, an empty list) do not rewrite the table on Postgres 11 or later, so none of these should lock a table for long.
 - The new unique indexes on existing tables (`organizations.join_domain`, `organizations.invite_link_code`) are on new columns that start empty, so they cannot fail on existing data.
 - Two pairs of migrations share a timestamp (`20260927180000_*` and `20260927190000_*`). Prisma runs them in full name order, which is the order above.
-- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261002160000_whatsapp_is_a_paid_add_on`.
+- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261003090000_a_request_asked_about_on_whatsapp_survives_a_restart`.
 
 ## 3. Settings and environment variables
 
@@ -226,6 +227,15 @@ Without `--hosted-database` it refuses any database that is not on the machine i
 
 Without `--hosted-database` it refuses any database that is not on the machine it runs on. On the local test database a dry run read 6,325 check-ins and found 4,506 to raise; after the write, a second dry run found none left. The engine work never runs it on anything but a local database.
 
+**Must run once on each database after the migrations: bringing each check-in's record up to today's rules (request 117).** Some rows were written before a fix to how the engine writes them, and nothing rewrites a stored row when a board is opened (decision 7). So "Sales team, Q3" still read "12 now, up from 0" and "Met" for an aim nobody had reached, one aim as three targets, the team's aim with no number, "You are waiting on themselves to approve ...", and two deals nobody was asked about. The script is `api/journey/bring-a-check-in-up-to-date.ts`. It reads each check-in's stored rows again under the rules the engine now writes by, and changes only those rows: a wait on oneself is taken off; a count read off a line that only said the aim goes back; the team's aim keeps the count its own name aims at ("Sign 12 shops ..."); the team's number said again as a target of its own is taken off, and its day kept on the team's aim; a person's own aim keeps its day apart from its name; a deal added on the board that somebody then said was theirs gets that claim put to the lead, who answers it on her board (decision 76, item 3). It asks nothing of anybody, calls no model, and never changes anybody's words. What only the model reads (a number somebody reported, which wait a person meant, the written report's sentences) is read again when the next check-in comes in.
+
+**How to run it (decision 74, item 5, the same as the word-for-word script).** Only whoever runs the release runs it, once on each database, after the migrations and after the two scripts above, and only with their explicit confirmation:
+
+1. **A dry run first.** `DATABASE_URL=<the hosted database> npx ts-node -T journey/bring-a-check-in-up-to-date.ts --hosted-database`. It reads, prints each change in a sentence ("Sales team, Q3: the target "They want us to sign 12 shops by 20 December" is the team's aim "Sign 12 shops for kitchen appliances in Nairobi" said again. It would be taken off."), lists what it leaves for the lead, and writes nothing. Add `--check-in <id>` to read one check-in only.
+2. **Then the run that writes.** The same command with `--hosted-database --write`. It prints the same, then asks for the database's host name to be typed back, and writes only when the typed name is exactly the host in `DATABASE_URL`. Anything else writes nothing.
+
+Without `--hosted-database` it refuses any database that is not on the machine it runs on. On the local test database a dry run read 1,589 check-ins and found 99 things to change (4 waits on oneself, 6 counts that were the aim, 8 team aims that keep the number in their name, 81 targets that are the team's number said again) and 6 left for the lead; it wrote nothing. The engine work never runs it on anything but a local database. The screens workspace brings its own database up to date the same way on its own machine: the dry run first, then the run without `--dry-run`.
+
 **Must never run on a hosted database:**
 
 | Script | Why not |
@@ -272,7 +282,7 @@ Every report updated after the release should name the newest `report_synthesis`
 ## 7. The checks to run after deploy
 
 **Before any person reads anything:**
-1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 75;` shows all 71 new migrations finished, and none failed.
+1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 75;` shows all 72 new migrations finished, and none failed.
 2. The API answers `/health`.
 3. The active prompt versions match section 6.
 4. The script in section 5 has run, and a report built after it shows quotation marks around people's words again.
@@ -300,7 +310,7 @@ None of these files were changed. This is what they say.
 
 | File | What triggers it | What it would do |
 | --- | --- | --- |
-| `api/railway.toml` | Whatever branch the API's hosting project is connected to. That is set in the hosting dashboard, not in the repository. | On every start: marks one old failed migration (`20260627000000_contributor_code_system`) as rolled back, then **runs `prisma migrate deploy`, which applies all 71 migrations with no backup step**, and then starts the API. If a migration fails, the API does not start, and the host retries three times. |
+| `api/railway.toml` | Whatever branch the API's hosting project is connected to. That is set in the hosting dashboard, not in the repository. | On every start: marks one old failed migration (`20260627000000_contributor_code_system`) as rolled back, then **runs `prisma migrate deploy`, which applies all 72 migrations with no backup step**, and then starts the API. If a migration fails, the API does not start, and the host retries three times. |
 | `client/vercel.json` | A push to `main` or to the other long-lived branch, through the hosting provider's own link to the repository. | Builds and publishes the screens. Every other branch is switched off. |
 | `.github/workflows/staging-deploy.yml` | A push to the other long-lived branch that changes `client/`. | Builds the screens with the hosting provider's command-line tool and points the fixed preview address at the new build. Not triggered by `main`. |
 | `.github/workflows/preview-deploy.yml` | A pull request that changes `client/`. | Builds a preview of the screens and comments the address on the pull request. |

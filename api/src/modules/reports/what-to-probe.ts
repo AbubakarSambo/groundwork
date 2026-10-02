@@ -62,6 +62,7 @@ export interface WhatToProbe {
   triedToUnblock: string;
 }
 import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
+import { eachWaitUnderWhoeverHoldsIt, waitingOnEachHolder } from './each-wait-under-whoever-holds-it';
 
 /**
  * HOW LONG, IN WORDS SOMEBODY WOULD USE.
@@ -157,7 +158,8 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     const oldest = Math.max(...i.holdingUp.map((d) => d.daysOld));
     const Who = `${who.charAt(0).toUpperCase()}${who.slice(1)}`;
     const many = named.length > 1 || /^you$/i.test(who);
-    const items = andList(i.holdingUp.map((d) => theThing(d.what)));
+    /* Each thing once: a wait recorded twice is one thing (item 18). */
+    const items = andList([...new Map(i.holdingUp.map((d) => [theThing(d.what).toLowerCase(), theThing(d.what)] as const)).values()]);
     const since = theOldestSince(i.holdingUp);
     probe.push(
       !since
@@ -179,14 +181,14 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
       );
     }
     if (notYet.length) {
-      const from = [...new Set(notYet.map((d) => d.who).filter(Boolean))] as string[];
       const oldest = Math.max(...notYet.map((d) => d.daysOld));
-      const items = andList(notYet.map((d) => theThing(d.what)));
+      /* Each wait under whoever holds it, and each thing once (item 18). See each-wait-under-whoever-holds-it.ts. */
+      const onEach = waitingOnEachHolder(eachWaitUnderWhoeverHoldsIt(notYet));
       const since = theOldestSince(notYet);
       /* With the day it began where the caller gives it: "has been waiting on you for the price list since 28 September". */
       const waited = since
-        ? `${He} ${has} been waiting${from.length ? ` on ${andList(from)}` : ''} for ${items} since ${since}`
-        : `${He} ${has} been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}`;
+        ? `${He} ${has} been waiting ${onEach}${onEach.includes(', and ') ? ',' : ''} since ${since}`
+        : `${He} ${has} been waiting${howLong(oldest)} ${onEach}`;
       probe.push(
         earlyDays(i)
           ? `${waited}, and nothing on record says it was raised higher. This early, that is worth showing ${you ? 'you' : them} rather than asking about.`

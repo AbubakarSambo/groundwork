@@ -15,9 +15,18 @@
 const A_VERB = /\s(?:is|are|was|were|has|have|had|does|do|did|differs?|disagrees?|agrees?|can|cannot|can't|will|would|should|could|may|might|must|seems?|appears?|remains?|needs?|wants?|depends?|lacks?|exceeds?)\b/i;
 const STARTS_A_NOUN_CLAUSE = /^(?:whether|what|how|who|when|where|which|why|if)\b/i;
 
+/*
+ * A NOUN CLAUSE WITH A VERB OF ITS OWN AFTER IT IS STILL A WHOLE SENTENCE (item 18). "Who has the final authority on
+ * the completion of the Atlas analysis is not agreed." starts like "who has ..." but says something of it, so Tunde read
+ * "People in this check-in said different things about who has the final authority ... is not agreed".
+ */
+const SAYS_SOMETHING_OF_IT = /\s(?:is|are|was|were)\s+(?:still\s+)?(?:not\s+)?(?:agreed|clear|settled|decided|known|defined|shared)(?:\s+(?:upon|on))?$|\s(?:is|are|remains?|was|were)\s+(?:unclear|undecided|unsettled|disputed|undefined|open|contested)$/i;
+
 export function isAWholeSentence(topic: string): boolean {
-  const t = (topic ?? '').trim();
-  return !!t && !STARTS_A_NOUN_CLAUSE.test(t) && A_VERB.test(` ${t}`);
+  const t = (topic ?? '').trim().replace(/[.!?]+$/, '');
+  if (!t) return false;
+  if (STARTS_A_NOUN_CLAUSE.test(t)) return SAYS_SOMETHING_OF_IT.test(t);
+  return A_VERB.test(` ${t}`);
 }
 
 const inASentence = (phrase: string): string => {
@@ -26,9 +35,17 @@ const inASentence = (phrase: string): string => {
 };
 
 /** "People said different things about the price list." or "People said different things. The accounts differ on ...". */
+/*
+ * A TOPIC THAT ONLY SAYS PEOPLE DIFFER (request 118, from request 117, part 8). Rukia read "People see two things
+ * differently. People said different things." The topic the report wrote was itself only "people see two things
+ * differently", which says no more than the sentence it was put in, so the two said one fact twice. Such a topic is
+ * left out, and the sentence is said once.
+ */
+const ONLY_SAYS_PEOPLE_DIFFER = /^(?:people|they|the team|everybody|everyone)\s+(?:see|saw|said|say|describe|described|read|view)\s+(?:(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+|some|several|a few|many)\s+)?(?:things?|this|it|matters?)?\s*(?:differently|different things)$/i;
+
 export function peopleSaidDifferentThingsAbout(topic: string): string {
   const t = (topic ?? '').trim().replace(/[.!?]+$/, '');
-  if (!t) return 'People said different things.';
+  if (!t || ONLY_SAYS_PEOPLE_DIFFER.test(t)) return 'People said different things.';
   if (isAWholeSentence(t)) return `People said different things. ${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
   return `People said different things about ${inASentence(t)}.`;
 }

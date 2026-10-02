@@ -1,4 +1,8 @@
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
+import { LeaveBoardService } from '../suites/the-leave-board.service';
+import { TimeSheetsService } from '../suites/the-time-sheets.service';
+import { SpendingService } from '../suites/the-spending.service';
+import { sendTheLeadsDailySummaries } from '../whatsapp/the-leads-daily-summary';
 import { onceAcrossCopies, theDay, theWeek } from '../prisma/once-across-copies';
 import { theReleaseMoment, reachedTheWarningPointBefore } from './the-release-moment';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
@@ -74,6 +78,10 @@ export class GroundsCron implements OnApplicationBootstrap {
     private whatsapp: WhatsAppService,
     /** Last, so the specs that build this positionally keep compiling. The sweep only decides which sessions are stale; finishing one is the conversation module's job. */
     private conversation: ConversationService,
+    /* The three boards, read only for what waits for a lead to decide in their daily summary (decision 82, item 9). Optional and last for the same reason. */
+    @Optional() private leave?: LeaveBoardService,
+    @Optional() private timeSheets?: TimeSheetsService,
+    @Optional() private spending?: SpendingService,
   ) {}
 
   /**
@@ -774,6 +782,26 @@ export class GroundsCron implements OnApplicationBootstrap {
     }
     if (sent) this.logger.log(`WhatsApp: ${sent} morning reminder(s) tried.`);
     return { sent };
+  }
+
+  /**
+   * THE LEAD'S DAILY SUMMARY ON WHATSAPP (decision 82, item 9), at seven in the morning in Lagos, an
+   * hour and a half before the reminders, so it is the lead's one message of the day. What it says,
+   * and what it never says, is in whatsapp/the-leads-daily-summary.ts; how often, STOP, "Not now",
+   * the 24 hours and the template are the sender's.
+   */
+  @Cron('0 7 * * *', { timeZone: 'Africa/Lagos' })
+  async sendTheLeadsDailySummaries() {
+    await onceAcrossCopies(this.prisma, 'lead-daily-summary', theDay(), () => this.sendTheLeadsDailySummariesInner());
+  }
+
+  async sendTheLeadsDailySummariesInner(now: Date = new Date()): Promise<{ tried: number }> {
+    const result = await sendTheLeadsDailySummaries(
+      { prisma: this.prisma, whatsapp: this.whatsapp, boards: { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending }, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The leads' daily summaries could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`WhatsApp: ${result.tried} lead summary message(s) tried.`);
+    return result;
   }
 
   /**

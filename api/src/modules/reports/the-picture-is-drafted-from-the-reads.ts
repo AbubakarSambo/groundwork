@@ -1,8 +1,14 @@
 import type { Drafted } from './the-engine-drafts-it-the-model-words-it';
-import { peopleSaidDifferentThingsAbout } from './what-people-said-differently-about';
+import { peopleSaidDifferentThingsAbout, isAWholeSentence } from './what-people-said-differently-about';
 import { someOfThemHave } from './some-of-them-has-or-have';
 import { roleMapFor, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
 import { WHO_CAN_MOVE_IT, WHAT_IT_MEANS, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
+
+/** A topic that is a whole sentence, said as one. */
+const theTopicAsASentence = (topic: string): string => {
+  const t = topic.trim().replace(/[.!?]+$/, '');
+  return `${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
+};
 
 /**
  * THE PICTURE FROM EVERYBODY IS DRAFTED FROM THE READS. THE MODEL WORDS IT.
@@ -341,9 +347,15 @@ export function draftTheQuestion(i: QuestionInput): Drafted | null {
     const settles = (difference.settledBy ?? '').trim().replace(/\s+/g, ' ');
     return {
       key: 'question',
-      text: settles
-        ? `${settles.replace(/[.]+$/, '')}. That is what settles ${lower(difference.topic.trim().replace(/[.]+$/, ''))}.`
-        : `Settle ${lower(difference.topic.trim().replace(/[.]+$/, ''))} between the people who described it differently.`,
+      /* A topic that is a whole sentence is said as one, never after "settles" (item 18): Tunde read "That is what
+         settles the delivery deadline for the analysis is not agreed upon." */
+      text: isAWholeSentence(difference.topic)
+        ? (settles
+          ? `${theTopicAsASentence(difference.topic)} ${settles.replace(/[.]+$/, '')}.`
+          : `${theTopicAsASentence(difference.topic)} Settle it between the people who described it differently.`)
+        : settles
+          ? `${settles.replace(/[.]+$/, '')}. That is what settles ${lower(difference.topic.trim().replace(/[.]+$/, ''))}.`
+          : `Settle ${lower(difference.topic.trim().replace(/[.]+$/, ''))} between the people who described it differently.`,
       mustKeep: [difference.topic.trim(), ...(settles ? [settles] : [])],
     };
   }

@@ -179,6 +179,16 @@ Sessions read before 29 September undercount how checkable each person's own ans
 | Run it, once on each database, after the migrations and after the word-for-word script. | Read the dry run, then run it with `--hosted-database --write`, typing the host name back, and check one person's Done page from before 29 September. |
 | Do not run it. | Sessions read before 29 September keep undercounting on the person's own Done page and report. New check-ins are not affected. Hafsah decides if that is acceptable. |
 
+### 12c. How should the one-off script that brings each check-in's record up to today's rules run on a hosted database? (request 117)
+
+Rows written before a fix to how the engine writes them stay as they were, because nothing rewrites a stored row when a board is opened (decision 7). On "Sales team, Q3" that meant a false "Met", one aim kept as three targets, the team's aim with no number, "You are waiting on themselves", and two deals the lead was never asked about. `api/journey/bring-a-check-in-up-to-date.ts` reads each check-in's stored rows again under today's rules and changes only those rows. It asks nothing of anybody, calls no model and never changes anybody's words. It is a release step only whoever runs the release may take, with explicit confirmation: `--hosted-database` alone is a dry run that prints each change in a sentence; with `--write` it asks for the database's host name to be typed back and writes nothing unless it matches. The engine work never runs it on anything but its own machine.
+
+| Answer | What we would do |
+| --- | --- |
+| Run it, once on each database, after the migrations and after the two scripts above. | Read the dry run, check a few of its sentences against the boards they name, then run it with `--hosted-database --write`, typing the host name back. |
+| Run it on one check-in at a time. | Add `--check-in <id>` to both runs. |
+| Do not run it. | Check-ins written before the fixes keep their old rows until the lead corrects them on the board. New check-ins are not affected. Hafsah decides if that is acceptable. |
+
 ### 13. Which of the two histories goes first?
 
 This branch was started before pull requests 295 to 317 reached the remote `main`. Their changes are all on this branch under other commit hashes, but the two histories have not been joined. The release needs one join of this branch onto the remote `main`, and whoever does it should expect conflicts in files both sides touched. `docs/ready-to-deploy.md` also asked whether an earlier pull request of Hafsah's had been taken in first.

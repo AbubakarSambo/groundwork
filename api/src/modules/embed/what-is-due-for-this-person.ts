@@ -12,6 +12,8 @@ export interface ASessionStanding {
   groundId: string;
   label: string;
   standing: 'waiting on you to start' | 'open to you' | 'invitation not accepted';
+  /** A performance plan, a probation or a review: nobody else's answers to release theirs with. */
+  aboutOnePerson?: boolean;
 }
 
 export interface ADueCheckIn {
@@ -22,6 +24,8 @@ export interface ADueCheckIn {
   sessionNumber: number;
   /** What their own earlier sessions left open, in their own words. Theirs, shown to them. */
   leftOpen: string[];
+  /** A check-in about one person, where nothing is "released with everybody else's". */
+  aboutOnePerson?: boolean;
 }
 
 export interface WhatIsDue {
@@ -46,6 +50,7 @@ export function whatIsDueFor(args: {
       label: s.label,
       sessionNumber: args.sessionNumbers.get(s.checkInId as string) ?? 1,
       leftOpen: args.leftOpen.get(s.checkInId as string) ?? [],
+      aboutOnePerson: !!s.aboutOnePerson,
     }));
   const toStart = args.sessions
     .filter((s) => s.standing === 'waiting on you to start')
@@ -90,7 +95,8 @@ export function openingOnWhatIsDue(due: WhatIsDue, firstName: string): {
   const more = due.checkIns.length > 1 ? ` ${due.checkIns.length - 1} more ${due.checkIns.length - 1 === 1 ? 'is' : 'are'} open as well.` : '';
   const thread = c.leftOpen.length ? ` Last time you left this open: "${c.leftOpen[0]}".` : '';
   return {
-    line: `${firstName}, ${which} on "${c.label}" is open. About ten minutes, and what you say is released with everybody else's, not before.${thread}${more}`,
+    /* "Released with everybody else's" only where there is somebody else (decision 82, item 5). */
+    line: `${firstName}, ${which} on "${c.label}" is open. ${c.aboutOnePerson ? 'It takes about ten minutes.' : "About ten minutes, and what you say is released with everybody else's, not before."}${thread}${more}`,
     source: 'session_open',
     suggestions: ['What is due?', 'What did I commit to?'],
     acts: [{ label: 'Start it', kind: 'open_a_check_in', id: c.checkInId }],

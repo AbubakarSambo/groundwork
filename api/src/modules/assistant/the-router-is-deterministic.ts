@@ -50,6 +50,8 @@ export type Lane =
   | 'log_hours'
   /** A request to spend said in chat, checked against the budget and the rule, sent on a yes (week 22). */
   | 'ask_to_spend'
+  /** An approver deciding a leave, hours or spending request by saying so: said back, and decided on a yes (decision 82, item 1). */
+  | 'decide_a_request'
   | 'unplaced';
 
 export interface Routed {

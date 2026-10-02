@@ -52,6 +52,9 @@ export interface MetricDefinition {
 
 const within = (window: MetricWindow) => ({ gte: window.from, lte: window.to });
 
+/** `CheckIn.closedReason` when the sweep, not the person, ended a session (the product's CLOSED_BY_THE_CLOCK). */
+export const SESSION_CLOSED_BY_THE_CLOCK = 'auto_closed';
+
 /**
  * Turns the company ids on activity rows into names.
  *
@@ -415,7 +418,7 @@ export const METRICS: MetricDefinition[] = [
     label: 'How long a session takes',
     shape: 'derived',
     capability: 'product:read',
-    counts: 'The median minutes from a session being started to being completed, over customers\' real sessions completed in the window. The copy says about ten.',
+    counts: 'The median minutes from a session being started to being completed, over customers\' real sessions a person finished in the window, leaving out those the clock closed. The copy says about ten.',
     async compute(prisma, window) {
       const sessions = await prisma.checkIn.findMany({
         where: {
@@ -424,6 +427,10 @@ export const METRICS: MetricDefinition[] = [
           startedAt: { not: null },
           completedAt: within(window),
           ground: { organization: { isInternal: false } },
+          /* Not one the clock closed a day after the person walked away (item 19). The ops system
+             may not import the product, so the product's word for it is written here, and
+             item-19-a-session-the-clock-closed-is-not-timed.spec.ts holds the two the same. */
+          OR: [{ closedReason: null }, { closedReason: { not: SESSION_CLOSED_BY_THE_CLOCK } }],
         },
         select: { id: true, sessionNumber: true, startedAt: true, completedAt: true },
       });

@@ -156,3 +156,32 @@ export function theAimsThatAreNew(fresh: AnAim[], existing: AnAim[], theySaid: (
   }
   return kept;
 }
+
+/**
+ * A NUMBER IN THE AIM'S OWN NAME IS ITS NUMBER, WHERE THEY SAID IT (screens request 117, part 2). "Sign 12 shops for
+ * kitchen appliances in Nairobi." was kept with `target: null`, so the board's headline had no answer and no bar. The
+ * setup chat reads the figure in the name (a740e362); an aim said in a check-in follows the same rule, and only with a
+ * figure that is in the person's own words. An aim that already has a number keeps it.
+ */
+export function theNumberInTheNameIsKept<T extends { name: string; target: number | null }>(aims: T[], saidByThem: (n: number) => boolean): T[] {
+  return aims.map((a) => {
+    if (a.target != null) return a;
+    const n = theCountTheNameAimsAt(a.name);
+    return n != null && saidByThem(n) ? { ...a, target: n } : a;
+  });
+}
+
+/**
+ * ONLY THE COUNT THE NAME AIMS AT, NEVER ANY FIGURE IN IT. "Sign 12 shops for kitchen appliances in Nairobi." aims at
+ * 12 shops: a doing word, then the figure, then what is counted. "A signed renewal before the end of March with no
+ * discount past 12 percent" holds 12 as well, and it is a limit on the discount, not the aim. Read over a whole test
+ * database, the looser rule would have given a hundred aims a number nobody meant. So the figure counts only where it
+ * comes straight after the doing word that starts the name, and is not a share or a sum of money.
+ */
+const AIMS_AT = /^(?:sign|reach|hit|close|sell|win|onboard|recruit|hire|train|deliver|open|visit|enrol|register|collect|approve|disburse|install|serve|get|bring|complete|finish|launch|publish|submit)\s+(\d{1,3}(?:,\d{3})+|\d+)\s+(?!%|percent\b|per cent\b|naira\b|dollars?\b|shillings?\b|kes\b|ngn\b|usd\b|million\b|thousand\b|billion\b|k\b|m\b)[a-z]/i;
+export function theCountTheNameAimsAt(name: string | null | undefined): number | null {
+  const m = AIMS_AT.exec((name ?? '').trim());
+  if (!m) return null;
+  const n = Number(m[1].replace(/,/g, ''));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}

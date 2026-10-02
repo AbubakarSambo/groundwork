@@ -27,6 +27,11 @@ import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { LEAVE_NOT_SENT, LEAVE_NOTHING_WAITING, LEAVE_WHICH_DAYS, plainlyAsksForLeave, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
+import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
+import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
+import { whoIsBeingWaitedOn } from '../board/what-the-whole-place-is-waiting-on';
+import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
+import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
 import { HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
 import { SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
 import { NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
@@ -125,7 +130,7 @@ const ROUNDS_RECALLED = 3;
  * (inventory item 2). All four are setup-side administration of a check-in a lead runs, in the same
  * spirit as `add_context` itself, which decision 50 already settled this way - see `respond`.
  */
-const SETUP_LANES = new Set<string>(['add_context', 'context_line', 'lead_note', 'questions_for_people', 'ask_for_leave', 'log_hours', 'ask_to_spend'] satisfies Lane[]);
+const SETUP_LANES = new Set<string>(['add_context', 'context_line', 'lead_note', 'questions_for_people', 'ask_for_leave', 'log_hours', 'ask_to_spend', 'decide_a_request'] satisfies Lane[]);
 
 /**
  * SOMEBODY SAYING THEY JUST PUT A DOCUMENT IN, in the past tense - "I added the Q4 targets sheet",
@@ -201,19 +206,30 @@ export class AssistantService {
    * With it true, the message is routed straight to `addContext` for `groundId`, whatever it says,
    * empty included - `addContext` already opens on what is missing when there is nothing to answer.
    */
+  /**
+   * ASK GROUNDWORK, ASKED ON WHATSAPP (decision 82, item 7). The same answer as in the app, except that
+   * nothing is read from a check-in the lead keeps in the app: every read below asks `keptInTheApp`,
+   * which is empty in the app. See a-check-in-kept-in-the-app-is-not-read-on-whatsapp.ts.
+   */
+  respondOnWhatsApp(organizationId: string, personId: string, message: string): Promise<Reply> {
+    return onWhatsApp(() => this.respond(organizationId, personId, message));
+  }
+
   async respond(organizationId: string, personId: string, message: string, groundId?: string, openedFromSetup = false): Promise<Reply> {
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
     message = withoutBankDetails(message);
     const me = await this.prisma.person.findFirst({
       where: { id: personId, organizationId },
-      select: { externalId: true, linkedUserId: true },
+      select: { externalId: true, linkedUserId: true, email: true },
     });
     /* A guest's key is nobody's history, whichever entry carries it. See a-guests-questions-are-kept-apart. */
     const who = me?.externalId && !isAGuestsKey(me.externalId) ? me.externalId : null;
     /* The signed-in USER, not the Person row - `contextChat`/`applyContextProposal` check this
        against `ground.initiatorId` and against org-admin membership, neither of which a Person id
        can answer. Ask Groundwork always links the two (see ask.service.ts whoIsAsking). */
-    const userId = me?.linkedUserId ?? null;
+    /* Linked, or matched to their sign-in by address (decision 82, item 6): a roster entry that was
+       never linked is still this person for leave, hours and spending. */
+    const userId = await theirSignIn(this.prisma, organizationId, me).catch(() => me?.linkedUserId ?? null);
 
     const reply = await this.answer(organizationId, personId, who, message, false, groundId, userId, openedFromSetup);
 
@@ -283,14 +299,24 @@ export class AssistantService {
      * say-back, was answered "I cannot answer that one yet". It is read from their own entry.
      */
     if (userId === undefined && who) {
-      const mine = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { linkedUserId: true } }).catch(() => null);
-      userId = mine?.linkedUserId ?? null;
+      const mine = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { linkedUserId: true, email: true } }).catch(() => null);
+      userId = await theirSignIn(this.prisma, organizationId, mine).catch(() => mine?.linkedUserId ?? null);
     }
 
     /* Asking one person something is not an answer to the question the setup conversation has open,
        even inside it (request 92, point 11): it is said back as the exact question and confirmed. */
     if (forceAddContext && parseAskAPerson(message)) return this.questionsForPeopleByChat(organizationId, who, userId ?? null, groundId, message);
     if (forceAddContext) return this.addContext(organizationId, who, userId ?? null, groundId, message);
+
+    /*
+     * AN APPROVER DECIDING BY SAYING SO (decision 82, item 1), on WhatsApp or here: "approve",
+     * "decline Omar's spending". What they are deciding is said back and decided only on a yes,
+     * through the same code the boards use, which checks again that they are the one who approves.
+     */
+    if (who && userId && aDecisionIn(message)) {
+      const proposed = await this.proposeADecision(organizationId, who, userId, message);
+      if (proposed) return proposed;
+    }
 
     /*
      * LEAVE DATES GO TO THE LEAVE SUITE (week 20), said back and sent only on a yes. Read by rules,
@@ -315,6 +341,7 @@ export class AssistantService {
       const proposed = await this.proposeSpending(organizationId, who, userId, message);
       if (proposed) return proposed;
     }
+
 
     const routed = route(message);
 
@@ -473,7 +500,7 @@ export class AssistantService {
     if (userId && this.reports && (role === 'LEAD' || role === 'ADMIN')) {
       const asker = { userId, organizationId, role };
       try {
-        for (const g of (await checkInsTheyMayRead(this.prisma as any, asker)).slice(0, 3)) {
+        for (const g of (await checkInsTheyMayRead(await this.theCheckInsItMayRead(organizationId), asker)).slice(0, 3)) {
           const [round] = await latestRounds(this.prisma as any, g.id);
           if (!round) continue;
           let served: any;
@@ -611,7 +638,7 @@ export class AssistantService {
       return rules('where_am_i_needed', text('I cannot match you to a check-in, so I cannot tell you where you are needed.'));
     }
 
-    const week = await this.board.whoNeedsYouThisWeek(organizationId, key);
+    const week = await (await this.theBoardItMayRead(organizationId)).whoNeedsYouThisWeek(organizationId, key);
     if (!week.buckets.length) return rules('where_am_i_needed', text(NOTHING_FLAGGED));
 
     const parts = week.buckets.map((b) => [
@@ -625,7 +652,7 @@ export class AssistantService {
   }
 
   private async whatIsStuck(organizationId: string, who: string | null, question = ''): Promise<Reply> {
-    const { waiting, waitedOn } = await this.board.waitingAcrossTheOrg(organizationId);
+    const { waiting, waitedOn } = await (await this.theBoardItMayRead(organizationId)).waitingAcrossTheOrg(organizationId);
 
     const person = who
       ? await this.prisma.person.findFirst({
@@ -719,7 +746,8 @@ export class AssistantService {
     }
 
     const state = await this.prisma.coachingState.findFirst({
-      where: { participant: { email: person.email, ground: { organizationId } } },
+      /* On WhatsApp, never a step from a check-in kept in the app (decision 82, item 7). */
+      where: { participant: { email: person.email, ground: { organizationId }, ...this.notInAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId)) } },
       orderBy: { updatedAt: 'desc' },
       select: { currentStep: true, staircase: true },
     });
@@ -759,7 +787,7 @@ export class AssistantService {
   private async theConvertingMoves(organizationId: string, personExternalId: string): Promise<string> {
     const since = new Date(Date.now() - 30 * 86_400_000);
     const commitments = await this.prisma.commitment.findMany({
-      where: { organizationId, personExternalId },
+      where: { organizationId, personExternalId, ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') },
       select: { id: true, text: true, state: true, statedAt: true, dueAt: true, lastFollowedUpAt: true },
     });
     if (!commitments.length) return '';
@@ -775,7 +803,7 @@ export class AssistantService {
       lastMentionedAt: c.lastFollowedUpAt,
     }));
 
-    const { waiting } = await this.board.waitingAcrossTheOrg(organizationId);
+    const { waiting } = await (await this.theBoardItMayRead(organizationId)).waitingAcrossTheOrg(organizationId);
     const person = await this.prisma.person.findFirst({
       where: { organizationId, externalId: personExternalId }, select: { email: true },
     });
@@ -807,14 +835,73 @@ export class AssistantService {
     if (!who) return rules('what_next', text('I cannot see you in your organisation records, so I have nothing to put first.'));
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { email: true } });
     const [commitments, toDos] = await Promise.all([
-      this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }),
+      this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN', ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }),
       this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
     ]);
     const key = person?.email?.toLowerCase() ?? null;
-    const week = key ? await this.board.whoNeedsYouThisWeek(organizationId, key) : { buckets: [] as any[] };
+    const week = key ? await (await this.theBoardItMayRead(organizationId)).whoNeedsYouThisWeek(organizationId, key) : { buckets: [] as any[] };
     const waitingOnYou = (week.buckets as any[]).filter((b) => b.kind === 'WAITING_ON_YOU').flatMap((b) => b.needs as any[]);
     const reply = theOneToDoFirst({ commitments: commitments as any, toDos: toDos as any, waitingOnYou, now: new Date() });
     return this.compose(reply, whatMustSurviveIn(reply));
+  }
+
+  /**
+   * THE CHECK-INS ASK GROUNDWORK MAY READ FOR THIS QUESTION (decision 82, item 7). In the app, all of
+   * them, as before. On WhatsApp, never one kept in the app: the query never selects it.
+   */
+  private async theCheckInsItMayRead(organizationId: string): Promise<any> {
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
+    if (!kept.size) return this.prisma as any;
+    const prisma = this.prisma as any;
+    return {
+      ground: { findMany: (args: any) => prisma.ground.findMany({ ...args, where: { ...(args?.where ?? {}), AND: [...(args?.where?.AND ?? []), notAKeptCheckIn(kept)] } }) },
+      checkIn: { findMany: (args: any) => prisma.checkIn.findMany({ ...args, where: { ...(args?.where ?? {}), AND: [...(args?.where?.AND ?? []), { ground: notAKeptCheckIn(kept) }] } }) },
+      person: { findMany: (args: any) => prisma.person.findMany(args) },
+    };
+  }
+
+  /** A participant's `groundId` that is not a check-in kept in the app. Nothing in the app. */
+  private notInAKeptCheckIn(kept: Set<string>): { groundId?: { notIn: string[] } | { in: string[] } } {
+    const id = notAKeptCheckIn(kept).id;
+    return id ? { groundId: id } : {};
+  }
+
+  /** The served report, refused for a check-in kept in the app when the question came in on WhatsApp. */
+  private async theReportsItMayRead(organizationId: string): Promise<any> {
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
+    if (!this.reports || !kept.size) return this.reports as any;
+    const reports = this.reports;
+    return {
+      sessionReport: (groundId: string, sessionNumber: number, userId: string, orgId?: string) => (mayBeRead(kept, groundId)
+        ? reports.sessionReport(groundId, sessionNumber, userId, orgId)
+        : Promise.reject(new Error('This check-in is kept in the Groundwork app.'))),
+    };
+  }
+
+  /**
+   * WHAT IS WAITING, AS THE BOARD WORKS IT OUT, WITHOUT A CHECK-IN KEPT IN THE APP when the question
+   * came in on WhatsApp (decision 82, item 7). The board's own code runs; only its two reads of the
+   * record are narrowed, so nothing from such a check-in is ever read, rather than read and hidden.
+   */
+  private async theBoardItMayRead(organizationId: string): Promise<BoardService> {
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
+    if (!kept.size) return this.board;
+    const board = this.board as any;
+    const view = Object.create(board);
+    view.waitingAcrossTheOrg = async (org: string, now?: Date) => {
+      const all = await board.waitingAcrossTheOrg(org, now);
+      const waiting = (all?.waiting ?? []).filter((w: any) => mayBeRead(kept, w.groundId));
+      return { waiting, waitedOn: whoIsBeingWaitedOn(waiting) };
+    };
+    const prisma = board.prisma;
+    if (prisma) {
+      view.prisma = new Proxy(prisma, {
+        get: (target, prop) => (prop === 'checkIn'
+          ? { ...target.checkIn, findMany: (args: any) => target.checkIn.findMany({ ...args, where: { ...(args?.where ?? {}), AND: [...(args?.where?.AND ?? []), { ground: notAKeptCheckIn(kept) }] } }) }
+          : Reflect.get(target, prop, target)),
+      });
+    }
+    return view as BoardService;
   }
 
   /**
@@ -827,7 +914,7 @@ export class AssistantService {
       ? await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } })
       : null;
     const reply = await whatSomeoneSaid(
-      { db: this.prisma as any, reports: this.reports as any },
+      { db: await this.theCheckInsItMayRead(organizationId), reports: await this.theReportsItMayRead(organizationId) },
       { userId, organizationId, role: membership?.role ?? null },
       subject,
       message,
@@ -1351,7 +1438,7 @@ export class AssistantService {
         .map((x) => ({ groundId: x.groundId, label: x.label })),
       open: sessions
         .filter((x) => x.standing === 'open to you')
-        .map((x) => ({ checkInId: x.checkInId as string, label: x.label })),
+        .map((x) => ({ checkInId: x.checkInId as string, label: x.label, aboutOnePerson: x.aboutOnePerson })),
       notAccepted: sessions
         .filter((x) => x.standing === 'invitation not accepted')
         .map((x) => ({ label: x.label })),
@@ -1679,6 +1766,9 @@ export class AssistantService {
     if (parked.kind === 'spend_request') {
       return this.resolveParkedSpending(organizationId, who, parked, decision);
     }
+    if (parked.kind === 'request_decision') {
+      return this.resolveParkedDecision(organizationId, who, parked, decision);
+    }
     if (parked.kind === 'document_numbers') {
       return this.resolveParkedDocumentNumbers(organizationId, who, parked, decision);
     }
@@ -1767,7 +1857,8 @@ export class AssistantService {
     if (!who) return rules('what_should_we_talk_about', text('I cannot find you in what your organisation has sent us.'));
 
     /* Mapped, not cast. `says` lives inside the evidence blob - see `fromRow`. */
-    const pending = (await this.scenarios.pendingFor(organizationId, who)).map(fromRow);
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
+    const pending = (await this.scenarios.pendingFor(organizationId, who)).filter((r: any) => mayBeRead(kept, r?.groundId)).map(fromRow);
     if (!pending.length) return rules('what_should_we_talk_about', text(NOTHING_PENDING));
 
     const now = new Date();
@@ -2033,8 +2124,10 @@ export class AssistantService {
     });
     if (!me?.email) return rules('what_came_of_it', text('I cannot find you in what your organisation has sent us.'));
 
+    /* On WhatsApp, a check-in kept in the app is never recalled (decision 82, item 7). */
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
     const mine = await this.prisma.groundParticipant.findMany({
-      where: { email: me.email, ground: { organizationId } },
+      where: { email: me.email, ground: { organizationId, ...notAKeptCheckIn(kept) } },
       select: {
         id: true,
         ground: {
@@ -2635,6 +2728,12 @@ export class AssistantService {
     return { lane: 'add_context', composedBy: 'rules', blocks: [text(first), { type: 'proposal', proposalId: row.id, summary: offer.say }] };
   }
 
+  /** The sign-in behind a roster entry, linked or matched by address (decision 82, item 6), for leave, hours and spending. */
+  private async theSignInOf(organizationId: string, who: string): Promise<{ linkedUserId: string | null }> {
+    const row = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true, email: true } });
+    return { linkedUserId: await theirSignIn(this.prisma, organizationId, row).catch(() => row?.linkedUserId ?? null) };
+  }
+
   /**
    * LEAVE SAID TO ASK GROUNDWORK (week 20): said back with the days, the days left and who else is
    * off, parked, and sent through the leave suite only on a yes. While the suite is off it says so
@@ -2661,7 +2760,7 @@ export class AssistantService {
       return rules('ask_for_leave', text(LEAVE_NOT_SENT));
     }
     const dates = parked.payload as { startsOn: string; endsOn: string };
-    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true } });
+    const person = await this.theSignInOf(organizationId, who);
     if (!person?.linkedUserId || !dates?.startsOn || !dates?.endsOn) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('ask_for_leave', text(LEAVE_NOTHING_WAITING));
@@ -2699,7 +2798,7 @@ export class AssistantService {
       return rules('log_hours', text(HOURS_NOT_SENT));
     }
     const said = parked.payload as HoursSaid;
-    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true } });
+    const person = await this.theSignInOf(organizationId, who);
     if (!person?.linkedUserId || !said?.onDay || !Array.isArray(said.entries) || !said.entries.length) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('log_hours', text(HOURS_NOTHING_WAITING));
@@ -2747,7 +2846,7 @@ export class AssistantService {
       return rules('ask_to_spend', text(SPEND_NOT_SENT));
     }
     const said = parked.payload as SpendSaid;
-    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true } });
+    const person = await this.theSignInOf(organizationId, who);
     if (!person?.linkedUserId || !(said?.amount > 0) || !said?.what) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('ask_to_spend', text(SPEND_NOTHING_WAITING));
@@ -2763,6 +2862,85 @@ export class AssistantService {
     }
     await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
     return rules('ask_to_spend', text(reply));
+  }
+
+  /**
+   * WHAT IS WAITING FOR THIS PERSON TO DECIDE (decision 82, item 1), read from the boards themselves,
+   * which already say row by row whether this reader is the one who approves (who-approves.ts). A
+   * board this reader may not open, or a suite that is off, gives nothing.
+   */
+  private async waitingForYouToDecide(organizationId: string, userId: string): Promise<AWaitingRequest[]> {
+    return whatWaitsForYouToDecide({ userId, organizationId }, { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending as any });
+  }
+
+  /** Whether anything waits for this person to approve or decline. The WhatsApp router asks, so a decision is never taken into a check-in. */
+  async somethingWaitsForYouToDecide(organizationId: string, personId: string): Promise<boolean> {
+    const me = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { linkedUserId: true, email: true } }).catch(() => null);
+    const userId = await theirSignIn(this.prisma, organizationId, me).catch(() => null);
+    return !!userId && (await this.waitingForYouToDecide(organizationId, userId)).length > 0;
+  }
+
+  /**
+   * "APPROVE", "DECLINE OMAR'S SPENDING" (decision 82, item 1). Narrowed by the first name and the kind
+   * said in the reply; with one left it is said back ("You are approving Amina's leave from ... Is that
+   * right?") and parked; with more, the person is asked which. Null when nothing waits and the
+   * message said more than the decision, so the other lanes answer it.
+   */
+  private async proposeADecision(organizationId: string, who: string, userId: string, message: string): Promise<Reply | null> {
+    const outcome = aDecisionIn(message)!;
+    const all = await this.waitingForYouToDecide(organizationId, userId);
+    if (!all.length) return onlyTheDecision(message) ? rules('decide_a_request', text(NOTHING_TO_DECIDE)) : null;
+    const said = message.toLowerCase();
+    const byName = all.filter((r) => r.firstName && new RegExp(`\\b${r.firstName.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(said));
+    const named = byName.length ? byName : all;
+    const kinds = { leave: /\b(leave|time off|days? off)\b/, hours: /\b(hours?|time ?sheets?)\b/, spend: /\b(spend|spending|money|budget|expense)\b/ };
+    const byKind = named.filter((r) => kinds[r.kind].test(said));
+    const left = byKind.length ? byKind : named;
+    if (left.length > 1) return rules('decide_a_request', text(whichDecision(left)));
+    const r = left[0];
+    if (r.kind === 'hours' && outcome === 'declined') return rules('decide_a_request', text(HOURS_ARE_NOT_DECLINED(r.firstName)));
+    const say = aDecisionSaidBack(r, outcome);
+    const row = await this.prisma.assistantProposal.create({
+      data: { organizationId, personExternalId: who, kind: 'request_decision', summary: say, payload: { request: r, outcome } as never },
+      select: { id: true },
+    });
+    return { lane: 'decide_a_request', composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
+  }
+
+  /**
+   * THE APPROVER'S YES, THROUGH THE BOARDS' OWN CODE (decision 82, item 1). `decide` and `approve`
+   * check again that this reader is the one who approves and that it is still waiting, and tell the
+   * person what was decided. A no changes nothing.
+   */
+  private async resolveParkedDecision(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    const { request, outcome } = (parked.payload ?? {}) as { request: AWaitingRequest; outcome: 'approved' | 'declined' };
+    if (decision === 'decline' || !request?.ref) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('decide_a_request', text(request?.ref ? aDecisionNotMade(request) : NOTHING_TO_DECIDE));
+    }
+    const me = await this.theSignInOf(organizationId, who);
+    let reply: string;
+    try {
+      if (!me.linkedUserId) throw new Error(NOTHING_TO_DECIDE);
+      const reader = { userId: me.linkedUserId, organizationId };
+      if (request.kind === 'leave') {
+        if (!this.leave) throw new Error(NOTHING_TO_DECIDE);
+        await this.leave.decide(reader, request.ref, outcome);
+      } else if (request.kind === 'spend') {
+        if (!this.spending) throw new Error(NOTHING_TO_DECIDE);
+        await this.spending.decide(reader, request.ref, outcome);
+      } else {
+        if (!this.timeSheets) throw new Error(NOTHING_TO_DECIDE);
+        const [personId, weekOf] = request.ref.split('|');
+        await this.timeSheets.approve(reader, personId, weekOf);
+      }
+      reply = aDecisionDone(request, outcome);
+    } catch (err: any) {
+      const why = typeof err?.message === 'string' && err.message ? err.message : NOTHING_TO_DECIDE;
+      reply = why === NOTHING_TO_DECIDE ? why : `I could not do that. ${why}`;
+    }
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    return rules('decide_a_request', text(reply));
   }
 
   /**
@@ -3646,7 +3824,7 @@ export class AssistantService {
     if (!me) return rules('what_did_i_commit_to', text('I cannot find you in what your organisation has sent us.'));
 
     const open = await this.prisma.commitment.findMany({
-      where: { organizationId, personExternalId: me.externalId, state: 'OPEN' },
+      where: { organizationId, personExternalId: me.externalId, state: 'OPEN', ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') },
       orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }],
     });
     if (!open.length) {

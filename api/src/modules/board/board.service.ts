@@ -124,7 +124,9 @@ import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, readsHowTheLeadingIsLanding } from '../patterns/who-reads-a-pattern';
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
-import { theShortNameOf } from '../reports/a-title-is-not-a-first-name';
+import { theFirstNameFrom, theShortNameOf } from '../reports/a-title-is-not-a-first-name';
+import { aHolderInTheirOwnWords } from './a-holder-in-their-own-words';
+import { yourOwnRowsSayYou } from './your-own-read-says-you';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -397,6 +399,12 @@ export class BoardService {
     const isInitiator = ground.initiatorId === requestingUserId;
     const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId);
+    /* A wait on "my direct reports" is said from this reader's side, never as the reader's own (item 18). */
+    if (Array.isArray((ground as any).dependencies)) {
+      (ground as any).dependencies = (ground as any).dependencies.map((d: any) => (d && typeof d.onLabel === 'string'
+        ? { ...d, onLabel: aHolderInTheirOwnWords(d.onLabel, !!me && d.fromParticipantId === me.id) }
+        : d));
+    }
     /**
      * AND AN ADMIN OF THIS ORGANISATION, WHO WAS BEING TURNED AWAY FROM HER OWN COMPANY'S BOARD.
      *
@@ -823,7 +831,11 @@ export class BoardService {
        * was entirely about them. See what-the-record-shows-over-time.
        */
       /* Without its patterns while they are not served, or the lines built from them. See patterns-are-served. */
-      overTime: isInitiator ? overTimeAsServed((ground as any).report?.overTime ?? null) : null,
+      /* Counted to the sessions somebody has finished, as the work plan counts them, so one commitment is open for the
+         same number of sessions in both (item 18). */
+      overTime: isInitiator ? overTimeAsServed((ground as any).report?.overTime ?? null, {
+        sessionsSoFar: Math.max(0, ...checkIns.filter((c: any) => !c.isSetup && c.status === CheckInStatus.COMPLETED).map((c: any) => c.sessionNumber ?? 0)),
+      }) : null,
       myParticipantId: me?.id ?? null,
       // Whether the caller may set the frame (targets, the poll question). The
       // board is otherwise read-only, so the client should not offer controls it
@@ -941,7 +953,9 @@ export class BoardService {
     if (theGlanceWait?.since) {
       out.howItIsGoing.glance.inTheWay = {
         ...theGlanceWait,
-        daysWaiting: wholeDaysTo(theGlanceWait.since, recordsClock),
+        /* No count of days (request 118, part 6): counted to the board's last change it read "2 days" beside "since 27
+           September", and counted to the moment it is read it would change on opening. `sinceSays` says it. */
+        daysWaiting: null,
         sinceSays: `since ${theDayItBegan(theGlanceWait.since, recordsClock)}`,
       };
     }
@@ -2533,7 +2547,9 @@ export class BoardService {
        * "no labels on people"). The lead, and an admin given access, read the label as the lead typed it.
        */
       if (isEvaluationCheckIn(ground.scenario) && !(isInitiator || evaluationWordsRunsIt)) {
-        const leadFirst = ((ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')?.user?.firstName ?? '').trim();
+        /* The first name, never a title in the first-name field: "Dr" with "Amina Bello" is Amina (item 18). */
+        const theLeadsUser = (ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')?.user;
+        const leadFirst = (theFirstNameFrom(theLeadsUser?.firstName, theLeadsUser?.lastName) ?? '').trim();
         const theirs = viewerIsTheSubjectOfAnEvaluationCheckIn({ scenario: ground.scenario, isLead: false, viewerParticipantId: me?.id ?? null, participants: ground.participants as any });
         walled.title = leadFirst ? `${theirs ? 'Your' : 'A'} check-in with ${leadFirst}` : (theirs ? 'Your check-in' : 'A check-in');
       }
@@ -2637,7 +2653,9 @@ export class BoardService {
       }
       /* And no number that rates a person leaves on any section, whoever reads it (request 111 a). */
       /* A sentence true of several people is said once for the section (request 117, part 8). */
-      return withNoRatingNumber(eachRepeatedSentenceSaidOnce(walled));
+      /* And what is left on the reader's own rows is said to them, as "you" (item 18). After the said-once pass, which
+         already says "you" for the reader where a sentence is true of several people (request 118, part 2). */
+      return withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null));
     }
   }
 

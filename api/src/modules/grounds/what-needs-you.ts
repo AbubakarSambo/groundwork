@@ -149,6 +149,8 @@ function openSession(g: ListedCheckIn, now: number): number {
 
 /** "Omar has not checked in yet.", "Omar and Brian have not checked in yet.", "You have not checked in yet.", or a count. */
 function whoHasNotYet(missing: { name: string | null; isMe: boolean }[]): string {
+  /* Nobody left to name (request 118, 1): never "who[0]" of nothing. The caller says no line at all then. */
+  if (!missing.length) return '';
   const said = missing.map((m) => (m.isMe ? 'you' : m.name));
   if (missing.length <= 2 && said.every(Boolean)) {
     const [a, b] = said as string[];
@@ -305,7 +307,14 @@ export function whatNeedsYou(
       const total = useCounted ? counted!.ofPeople! - heldOut : rows.length;
       const answered = useCounted ? counted!.answeredThisRound ?? 0 : rows.filter((c) => c.status === 'COMPLETED').length;
       const waitingIds = useCounted ? counted!.waitingOn!.filter((id) => !notLetInIds.has(id)) : rows.filter((c) => c.status !== 'COMPLETED').map((c) => c.participantId);
-      if (n > 0 && total > 1 && answered < total && (!line || total > line.people)) {
+      /*
+       * NOBODY LEFT WHO CAN BE ASKED (request 118, 1). The count people read ("4 of 5") is the round header's;
+       * who is still waited on is the round-closing rule's, which also leaves out somebody not let in yet or
+       * whose invitation lapsed. Where that leaves nobody to wait on, there is nobody to name or chase, so
+       * Today says nothing about this round, rather than "4 of 5 have checked in." with nobody missing. This
+       * threw "Cannot read properties of undefined" and Rukia's Today was a 500.
+       */
+      if (n > 0 && total > 1 && answered < total && waitingIds.length > 0 && (!line || total > line.people)) {
         const byId = new Map((g.participants ?? []).map((p) => [p.id, p]));
         const missing = waitingIds.map((id) => {
           const p = byId.get(id);

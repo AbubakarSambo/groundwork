@@ -80,7 +80,10 @@ function theGroup(f: Facts, endKey: string | null): ADealGroup {
   return 'possible';
 }
 
-function headingAndReason(g: ADealGroup, end: Date | null, now: Date, lastStage: string | null): { heading: string; reason: string } {
+/* How the deals at the last stage got there (request 118, part 5): all said in a check-in, all put there on the board, or some of each. */
+type HowTheyGotThere = 'said' | 'on the board' | 'both';
+
+function headingAndReason(g: ADealGroup, end: Date | null, now: Date, lastStage: string | null, how: HowTheyGotThere = 'said'): { heading: string; reason: string } {
   const endDay = end ? theDayInWords(end, now) : null;
   switch (g) {
     case 'likely':
@@ -99,7 +102,18 @@ function headingAndReason(g: ADealGroup, end: Date | null, now: Date, lastStage:
     case 'cold':
       return { heading: 'Cold', reason: '' };
     case 'won':
-      return { heading: lastStage ?? 'Won', reason: `Somebody reported each of these at ${lastStage ?? 'the last stage'}, the last stage.` };
+    {
+      /* "Somebody reported each of these at Won" was said of a deal the lead added on the board, which nobody reported. */
+      const at = lastStage ? `${lastStage}, the last stage` : 'the last stage';
+      return {
+        heading: lastStage ?? 'Won',
+        reason: how === 'on the board'
+          ? `Each of these was put at ${at}, on the board.`
+          : how === 'both'
+            ? `Each of these is at ${at}. Some were reported in a check-in, and some were put there on the board.`
+            : `Somebody reported each of these at ${at}.`,
+      };
+    }
   }
 }
 
@@ -127,7 +141,11 @@ export function eachDealInItsGroup(kind: KindOfWork | null, sections: AServedSec
     const groups = ORDER
       .map((g) => ({ g, ids: rows.filter((r: any) => r.group === g).map((r: any) => r.id) }))
       .filter((x) => x.ids.length)
-      .map((x) => ({ group: x.g, ...headingAndReason(x.g, end, now, lastStage), rowIds: x.ids }));
+      .map((x) => {
+        const onBoard = rows.filter((r: any) => x.ids.includes(r.id)).map((r: any) => theFacts(r, lastStage, now).addedOnTheBoard);
+        const how: HowTheyGotThere = onBoard.every(Boolean) ? 'on the board' : onBoard.some(Boolean) ? 'both' : 'said';
+        return { group: x.g, ...headingAndReason(x.g, end, now, lastStage, how), rowIds: x.ids };
+      });
     const groupsNote = [NO_CRITERIA_ARE_CHECKED, NO_DEAL_IS_COLD, ...(endKey ? [] : [NO_END_DATE])];
     return { ...sec, rows, groups, groupsNote };
   });

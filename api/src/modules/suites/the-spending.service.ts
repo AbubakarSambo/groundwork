@@ -1,7 +1,10 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { whoApprovesFor } from './who-approves';
+import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
+import { aSpendRequest } from './a-request-in-words';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const SPEND_REFUSED = {
@@ -76,7 +79,11 @@ const n = (x: unknown) => Number(x ?? 0);
  */
 @Injectable()
 export class SpendingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    /* Tells the approver, and then the person, on WhatsApp (decision 82, item 1). Optional so a test built by hand still runs. */
+    @Optional() private readonly told?: ARequestToldOnWhatsApp,
+  ) {}
 
   async board(reader: Reader, today = new Date()): Promise<SpendBoard> {
     const answers = await this.suiteAnswers(reader.organizationId);
@@ -144,6 +151,7 @@ export class SpendingService {
     if (!this.mayDecide(reader, role, r, await this.approverOf(reader.organizationId, r, answers, byUser, dir))) throw new ForbiddenException(SPEND_REFUSED.notYours);
     if (r.status !== 'waiting') throw new BadRequestException(SPEND_REFUSED.alreadyDecided);
     await this.prisma.spendRequest.update({ where: { id }, data: { status: outcome, decidedById: reader.userId, decidedAt: new Date() } });
+    await this.tellThePerson(r, answers.currency, outcome, reader.userId);
     return this.board(reader, today);
   }
 
@@ -219,11 +227,30 @@ export class SpendingService {
     if (typeof input.amount !== 'number' || !Number.isFinite(input.amount) || input.amount <= 0 || input.amount > 1e12) throw new BadRequestException(SPEND_REFUSED.badAmount);
     const what = (input.what ?? '').trim().slice(0, 300);
     if (!what) throw new BadRequestException(SPEND_REFUSED.badWhat);
-    const person = await this.prisma.person.findFirst({ where: { organizationId, linkedUserId: userId, active: true }, select: { department: true } });
-    return this.prisma.spendRequest.create({
+    const person = await theirRosterEntry(this.prisma, organizationId, userId, { department: true });
+    const created = await this.prisma.spendRequest.create({
       data: { organizationId, userId, amount: input.amount, what, team: person?.department?.trim() || null },
       select: { id: true },
     });
+    /* The one who approves is told on WhatsApp too (decision 82, item 1): the lead, the person named for over the limit, or the admins. */
+    if (this.told && created?.id) {
+      try {
+        const answers = await this.suiteAnswers(organizationId);
+        const dir = await this.directory(organizationId);
+        const byUser = new Map([...dir.values()].filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p]));
+        const who = await this.approverOf(organizationId, { userId, amount: input.amount }, answers, byUser, dir);
+        const first = await this.told.firstNameOf(userId);
+        await this.told.waiting(organizationId, await this.told.approversOf(organizationId, who, userId), aSpendRequest(created.id, userId, first, input.amount, answers.currency, what));
+      } catch { /* the request stands */ }
+    }
+    return created;
+  }
+
+  /** The person who asked is told what was decided, on WhatsApp (decision 82, item 1). True when it went. */
+  async tellThePerson(r: { id: string; organizationId: string; userId: string; amount: unknown; what: string }, currency: string | null, outcome: 'approved' | 'declined', deciderUserId: string): Promise<boolean> {
+    if (!this.told) return false;
+    const first = await this.told.firstNameOf(r.userId);
+    return this.told.decided(r.organizationId, aSpendRequest(r.id, r.userId, first, n(r.amount), currency, r.what), outcome, deciderUserId).catch(() => false);
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -273,9 +300,11 @@ export class SpendingService {
   private async directory(organizationId: string): Promise<Map<string, Dir>> {
     const ps = await this.prisma.person.findMany({
       where: { organizationId, active: true },
-      select: { externalId: true, linkedUserId: true, department: true, managerExternalId: true },
+      select: { externalId: true, linkedUserId: true, email: true, department: true, managerExternalId: true },
     });
-    return new Map(ps.map((p) => [p.externalId, p]));
+    /* `linkedUserId` here is the entry's sign-in, linked or matched by address (a-roster-entry-and-its-sign-in.ts). */
+    const signed = await withTheirSignIns(this.prisma, organizationId, ps);
+    return new Map(signed.map((p) => [p.externalId, { externalId: p.externalId, linkedUserId: p.userId, department: p.department, managerExternalId: p.managerExternalId }]));
   }
 
   /** First and full names. Never an address. */

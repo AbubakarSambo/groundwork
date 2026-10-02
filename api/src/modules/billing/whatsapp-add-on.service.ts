@@ -7,6 +7,7 @@ import { EmailService } from '../email/email.service';
 import { PricingService, PLAN_LABELS, freePlanApplies, WHATSAPP_ADD_ON_KIND } from './pricing.service';
 import { StripeService } from './stripe.service';
 import { whatCoversThem } from '../../common/subscription';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
 /**
  * WHATSAPP IS A PAID ADD-ON (decision 78, 2 October 2026).
@@ -48,14 +49,14 @@ export function theNextMonthStarts(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
 }
 
-/** "1 November 2026". */
+/** "1 November 2026", by the UTC calendar the monthly count keeps. */
 export function aDay(d: Date): string {
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  return whenItWas(d, 'full', 'UTC');
 }
 
-/** "October". */
+/** "October", by the UTC calendar the monthly count keeps. */
 function aMonthName(d: Date): string {
-  return d.toLocaleDateString('en-GB', { month: 'long', timeZone: 'UTC' });
+  return whenItWas(d, 'month', 'UTC');
 }
 
 /** "$72", or "$12.50" when there are cents. */
@@ -115,7 +116,7 @@ export class WhatsAppAddOnService {
     private readonly prisma: PrismaService,
     private readonly pricing: PricingService,
     private readonly stripe: StripeService,
-    @Optional() private readonly email?: EmailService,
+    @Optional() private readonly mailer?: EmailService,
   ) {}
 
   /** Where this organisation stands with WhatsApp now. Throws only for an organisation that does not exist. */
@@ -225,13 +226,13 @@ export class WhatsAppAddOnService {
   }
 
   private async tellTheAdmins(organizationId: string, what: string): Promise<void> {
-    if (!this.email) return;
+    if (!this.mailer) return;
     const admins = await this.prisma.user.findMany({
       where: { organizationId, role: UserRole.ADMIN, deletedAt: null },
       select: { email: true, firstName: true },
     });
     for (const a of admins) {
-      await this.email.sendBillingChangeNotification(a.email, a.firstName ?? 'there', what).catch(() => undefined);
+      await this.mailer.sendBillingChangeNotification(a.email, a.firstName ?? 'there', what).catch(() => undefined);
     }
   }
 

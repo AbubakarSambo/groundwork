@@ -15,10 +15,12 @@ export interface AnOpenRow {
 
 export function anInboundHarness(opts: {
   open?: AnOpenRow[];
-  thread?: { checkInId: string | null; pickPendingAt?: Date | null } | null;
+  thread?: { checkInId: string | null; pickPendingAt?: Date | null; requestKind?: string | null; requestWords?: string | null; requestAskedAt?: Date | null } | null;
   who?: { personId: string | null; userId: string | null; externalId?: string | null };
   completed?: { overWhatsApp?: boolean | null; scenario?: string; label?: string };
   personPhone?: string | null;
+  /** Something waits for this person to approve or decline (decision 82, item 1). */
+  decisionWaiting?: boolean;
 } = {}) {
   const said: string[] = [];
   const sent: { org: string | null; via?: string; to: string; text: string; context?: any }[] = [];
@@ -41,6 +43,13 @@ export function anInboundHarness(opts: {
       findUnique: jest.fn(async () => thread),
       upsert: jest.fn(async (q: any) => { thread = { ...(thread ?? { organizationId: 'org-1', phone: '+2348012345678', checkInId: null, pickPendingAt: null }), ...(thread ? q.update : q.create) }; return thread; }),
       update: jest.fn(async (q: any) => { thread = { ...(thread as any), ...q.data }; return thread; }),
+      /* Clearing a waiting request: everybody's past its time, or this number's on an answer. */
+      updateMany: jest.fn(async (q: any) => {
+        const before = q.where?.requestAskedAt?.lt;
+        const matches = thread && (before ? thread.requestAskedAt && new Date(thread.requestAskedAt) < before : true);
+        if (matches) thread = { ...(thread as any), ...q.data };
+        return { count: matches ? 1 : 0 };
+      }),
       deleteMany: jest.fn(async () => ({})),
     },
     whatsAppSend: { findFirst: jest.fn(async () => null) },
@@ -63,11 +72,21 @@ export function anInboundHarness(opts: {
     sendMessage: jest.fn(async () => ({ reply: 'Thank you. What happens next?', sessionComplete: false })),
     complete: jest.fn(async () => ({})),
   };
-  const assistant: any = { respond: jest.fn(async () => ({ blocks: [{ type: 'text', body: 'Ask Groundwork answered.' }] })) };
+  const assistant: any = {
+    respond: jest.fn(async () => ({ blocks: [{ type: 'text', body: 'Ask Groundwork answered.' }] })),
+    somethingWaitsForYouToDecide: jest.fn(async () => !!opts.decisionWaiting),
+  };
+  /* On WhatsApp the router asks through this door (decision 82, item 7); it is the same answer, so it is counted as `respond`. */
+  assistant.respondOnWhatsApp = jest.fn((...args: any[]) => assistant.respond(...args));
   const reports: any = { sessionReport: jest.fn(async () => ({ whereThingsStand: { saying: 'Amina met two of the three goals.' } })) };
   const anthropic: any = { extract: jest.fn(async () => ({ language: 'en' })), respond: jest.fn(async (_s: string, m: any[]) => m[0].content) };
-  const service = new WhatsAppForAnOrganisationService(prisma, whatsapp, conversation, assistant, {} as any, {} as any, reports, anthropic);
-  (service as any).logger = { log: jest.fn(), warn: jest.fn(), error: jest.fn() };
+  const aCopy = () => {
+    const copy = new WhatsAppForAnOrganisationService(prisma, whatsapp, conversation, assistant, {} as any, {} as any, reports, anthropic);
+    (copy as any).logger = { log: jest.fn(), warn: jest.fn(), error: jest.fn() };
+    return copy;
+  };
+  const service = aCopy();
   const message = (text: string, from = '2348012345678', id?: string) => ({ entry: [{ changes: [{ value: { messages: [{ id: id ?? `wamid.${Math.random()}`, from, type: 'text', text: { body: text } }] } }] }] });
-  return { service, prisma, whatsapp, conversation, assistant, reports, said, sent, message, thread: () => thread };
+  /* Another copy of the API on the same database, or this one after a restart: nothing in memory carries over. */
+  return { service, aFreshCopy: aCopy, prisma, whatsapp, conversation, assistant, reports, said, sent, message, thread: () => thread };
 }
