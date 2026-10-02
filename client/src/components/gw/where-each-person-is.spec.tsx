@@ -65,6 +65,29 @@ describe('WhereEachPersonIs: a count reads as a sentence, not a bare "0 of 4"', 
 })
 
 /**
+ * BOARD REVIEW, SALES PIECE A, ITEM 3: THE BROKEN SENTENCE.
+ *
+ * "Baraka Mwangi has none of their 4 Onboard 4 shops in Westlands. yet." happened when `targetName`
+ * arrived as the objective's own full name (a verb, the count, a trailing full stop) rather than the
+ * plain noun phrase this row assumed. It must always read as one plain full sentence, the number said
+ * once, whatever `targetName` carries - checked here for count 0 and count 2, with a `targetName`
+ * ending in a full stop and carrying its own leading verb and number.
+ */
+describe('WhereEachPersonIs: one plain sentence even when targetName carries its own verb, number and full stop', () => {
+  it('count 0: strips the trailing stop and never repeats the number', () => {
+    render(<WhereEachPersonIs rows={[row({ target: 4, count: 0, targetName: 'Onboard 4 shops in Westlands.' })]} />)
+    expect(screen.getByText('Baraka Mwangi has none of their 4 shops in Westlands yet.')).toBeTruthy()
+    expect(screen.queryByText(/4 Onboard 4 shops/)).toBeNull()
+    expect(screen.queryByText(/Westlands\. yet/)).toBeNull()
+  })
+
+  it('count 2: says "so far", the number once, and the trailing stop is gone', () => {
+    render(<WhereEachPersonIs rows={[row({ target: 4, count: 2, targetName: 'Onboard 4 shops in Westlands.' })]} />)
+    expect(screen.getByText('Baraka Mwangi has 2 of the 4 shops in Westlands so far.')).toBeTruthy()
+  })
+})
+
+/**
  * REQUEST 85: SOMEONE AN ADMIN DID NOT LET IN. The row's own sentence is enough - no chasing (ask
  * is always null for this reason, so the ask/finding line never appears) and no label (the reason
  * tag is left off entirely, rather than drawing a tag with an empty face).

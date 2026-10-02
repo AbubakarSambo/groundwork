@@ -77,6 +77,28 @@ const TONE: Record<Reason, TagTone> = {
   'not let in': 'plain',
 }
 
+/**
+ * THE BROKEN SENTENCE (board review, sales piece A, item 3): "Baraka Mwangi has none of their 4
+ * Onboard 4 shops in Westlands. yet." happened because `targetName` can arrive as the objective's
+ * own full name - a verb, the count, and a trailing full stop ("Onboard 4 shops in Westlands.") -
+ * not only the plain noun phrase the row above assumed ("shops in Westlands"). Appending that whole
+ * name after the row's own bare `{target}` number said the count twice, and appending words after
+ * its trailing stop read as two sentences stapled together.
+ *
+ * This always returns one phrase, with the number said once: the trailing stop is stripped first,
+ * and if the cleaned name already contains the target's own number as a whole word, everything up
+ * to and including that number is dropped - "Onboard 4 shops in Westlands" becomes "shops in
+ * Westlands", read exactly the way a plain noun phrase already was. A name with no number in it
+ * (the plain case) is untouched, and no name at all falls back to "target"/"targets".
+ */
+export function targetPhrase(target: number, targetName: string | null | undefined): string {
+  const cleaned = (targetName ?? '').replace(/\.+\s*$/, '').trim()
+  if (!cleaned) return `${target} ${target === 1 ? 'target' : 'targets'}`
+  const upToTheNumber = new RegExp(`^.*?\\b${target}\\b\\s*`)
+  const noun = upToTheNumber.test(cleaned) ? cleaned.replace(upToTheNumber, '').trim() : cleaned
+  return `${target} ${noun || cleaned}`
+}
+
 export type Square = { key: number; state: 'done' | 'empty' | 'upcoming' }
 
 /**
@@ -121,7 +143,7 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
                   the server sent one. */}
               {r.target != null && (
                 <Note>
-                  {r.who} has {r.count === 0 ? 'none' : r.count} of {r.count === 0 ? 'their' : 'the'} {r.target} {r.targetName ?? (r.target === 1 ? 'target' : 'targets')}{r.count === 0 ? ' yet' : ' so far'}.
+                  {r.who} has {r.count === 0 ? 'none' : r.count} of {r.count === 0 ? 'their' : 'the'} {targetPhrase(r.target, r.targetName)}{r.count === 0 ? ' yet' : ' so far'}.
                 </Note>
               )}
               <Stack gap={4}>
