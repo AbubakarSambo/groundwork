@@ -43,6 +43,12 @@ export interface Waiting {
 }
 
 export interface SpendBoard {
+  /**
+   * Who this board is served to: an admin, a lead, or somebody who reads it only because a request
+   * over the limit waits for them to decide ("approver"). An approver is served only the requests
+   * they decide, with what each one's team has left, and no budgets or teams.
+   */
+  reader: 'admin' | 'lead' | 'approver';
   currency: string | null;
   limit: number | null;
   waiting: Waiting[];
@@ -63,8 +69,11 @@ const n = (x: unknown) => Number(x ?? 0);
  * the screen:
  *   - nobody, while the suite is off;
  *   - an admin reads every request waiting and every team's budget, and sets the budgets;
- *   - a lead reads only their own team's requests (a-leads-team.ts) and their team's budgets;
- *   - a member and a guest are refused the board; nobody reads their own request here as waiting.
+ *   - a lead reads their own team's requests (a-leads-team.ts) and their team's budgets, and also any
+ *     request from another team that waits for them to decide;
+ *   - a member named for anything over the limit opens the board as an approver, and reads only the
+ *     requests that wait for them, each with what its team has left, never the budgets or the teams;
+ *   - any other member, and a guest, are refused the board; nobody reads their own request here as waiting.
  * WHO APPROVES follows the admin's answers when they switched the suite on: up to "the most a manager
  * may approve on their own", the person's lead in the directory (when that lead is a lead or an admin
  * here), otherwise an admin; above it, the person the admin named. Nobody approves their own.
@@ -88,14 +97,21 @@ export class SpendingService {
   async board(reader: Reader, today = new Date()): Promise<SpendBoard> {
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
-    if (role !== 'ADMIN' && role !== 'LEAD') throw new ForbiddenException(SPEND_REFUSED.onlyAdminsAndLeads);
+    /*
+     * The person named for anything over the limit decides those requests, whatever their role or
+     * department (bug 1 of docs/suites-against-the-workflow-model.md). A member named there opens the
+     * board as an approver and is served only what waits for them; anybody else who is not an admin
+     * or a lead is refused, as before.
+     */
+    const asApprover = role !== 'ADMIN' && role !== 'LEAD';
+    if (asApprover && !(role === 'MEMBER' && this.approvesOverTheLimit(reader.userId, answers))) throw new ForbiddenException(SPEND_REFUSED.onlyAdminsAndLeads);
     const org = reader.organizationId;
     const month = monthOf(today);
 
     const dir = await this.directory(org);
     const byUser = new Map([...dir.values()].filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p]));
     const me = byUser.get(reader.userId) ?? null;
-    const inScope = (userId: string) => role === 'ADMIN' || (!!me && !!byUser.get(userId) && inTheLeadsTeam(me, byUser.get(userId)!));
+    const inScope = (userId: string) => role === 'ADMIN' || (role === 'LEAD' && !!me && !!byUser.get(userId) && inTheLeadsTeam(me, byUser.get(userId)!));
     const myTeams = new Set<string>();
     if (role === 'LEAD' && me) {
       if (me.department?.trim()) myTeams.add(me.department.trim());
@@ -117,8 +133,11 @@ export class SpendingService {
 
     const names = await this.names(rows.map((r) => r.userId));
     const waiting: Waiting[] = [];
-    for (const r of rows.filter((x) => x.status === 'waiting' && x.userId !== reader.userId && inScope(x.userId))) {
+    for (const r of rows.filter((x) => x.status === 'waiting' && x.userId !== reader.userId)) {
       const who = await this.approverOf(org, r, answers, byUser, dir);
+      const decides = this.mayDecide(reader, role, r, who);
+      /* A lead reads their own team's requests, and also any request that waits for them to decide. */
+      if (!inScope(r.userId) && !decides) continue;
       const nm = names.get(r.userId);
       if (!nm?.full) continue;
       waiting.push({
@@ -126,15 +145,16 @@ export class SpendingService {
         left: leftOf(r.team),
         over: answers.limit != null && n(r.amount) > answers.limit,
         approver: who.kind === 'person' ? { kind: 'person', firstName: (await this.names([who.userId])).get(who.userId)?.first ?? '' } : { kind: who.kind },
-        mayDecide: this.mayDecide(reader, role, r, who),
+        mayDecide: decides,
       });
     }
 
     return {
+      reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : 'approver',
       currency: answers.currency,
       limit: answers.limit,
       waiting,
-      budgets: budgets.filter((b) => teamInScope(b.team)).map((b) => ({ team: b.team, budget: n(b.amount), spent: spent.get(b.team) ?? 0, left: leftOf(b.team)! }))
+      budgets: budgets.filter((b) => !asApprover && teamInScope(b.team)).map((b) => ({ team: b.team, budget: n(b.amount), spent: spent.get(b.team) ?? 0, left: leftOf(b.team)! }))
         .sort((a, b) => a.team.localeCompare(b.team)),
       teams: role === 'ADMIN' ? [...new Set([...dir.values()].map((p) => p.department?.trim()).filter((t): t is string => !!t))].sort() : [],
     };
@@ -267,6 +287,11 @@ export class SpendingService {
     const lead = await whoApprovesFor(this.prisma, { organizationId, personUserId: r.userId, managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null });
     if (lead.kind === 'manager') return { kind: 'manager', userId: lead.userId };
     return { kind: 'admin' };
+  }
+
+  /** Whether this person is the one named for requests over the limit. */
+  private approvesOverTheLimit(userId: string, answers: { limit: number | null; above: string | null }): boolean {
+    return answers.limit != null && answers.above === userId;
   }
 
   private mayDecide(reader: Reader, role: string | null, r: { userId: string }, who: { kind: string; userId?: string }): boolean {
