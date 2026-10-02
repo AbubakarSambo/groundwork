@@ -1,3 +1,4 @@
+import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { onceAcrossCopies, theHour, theWeek } from '../prisma/once-across-copies';
 import { theJudgementWithItsConversationPoints } from './the-judgement-and-a-goal-not-told';
@@ -3573,7 +3574,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       started(() => this.prisma.groundDependency.findMany({
         where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
         select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, escalatedAt: true, triedSaid: true, blockerKind: true, sourceCheckInId: true },
-      }), [] as any[]),
+      /* Nobody waits on themselves: a wait on oneself stored before request 111 (e) is not read as one (request 117, part 6). */
+      }).then((rows: any[]) => rows.filter((d) => !aWaitOnOneself(d))), [] as any[]),
     ]);
 
     /*
@@ -4145,7 +4147,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       this.prisma.groundDependency.findMany({
         where: { groundId, status: 'WAITING' },
         select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true, triedSaid: true, blockerKind: true },
-      }),
+      }).then((rows) => rows.filter((d) => !aWaitOnOneself(d))),
       this.prisma.delivery.findMany({ where: { groundId }, select: { participantId: true, objectiveId: true, text: true } }),
       /*
        * WHAT THEY SAID ABOUT WHY, AS A CLASSIFICATION AND NEVER AS WORDS.
@@ -5734,12 +5736,20 @@ happened, and what is in the way.`;
       ? (entriesNow as any[]).filter((e) => typeof e.checkIn?.sessionNumber !== 'number' || e.checkIn.sessionNumber <= asOf.sessionNumber) as typeof entriesNow
       : entriesNow;
     const docs = asOf ? (docsNow as any[]).filter((d) => !d.createdAt || by(d.createdAt)) as typeof docsNow : docsNow;
+    /*
+     * NOBODY WAITS ON THEMSELVES, HERE TOO (request 117, part 6). Rukia's own "to approve a discount for Baraka
+     * Mwangi and to send a price list to Amani Wekesa", stored as a wait on "themselves" before request 111 (e),
+     * still reached her coaching note ("Put to approve a discount ... in writing") and the lead's probe list,
+     * because the board left it out and this read did not. Her colleagues' own waits on her already say it:
+     * "Baraka Mwangi and Amani Wekesa are waiting on you for the discount and the price list."
+     */
+    const dependenciesNowReal = (dependenciesNow as any[]).filter((d) => !aWaitOnOneself(d)) as typeof dependenciesNow;
     const dependencies = asOf
-      ? (dependenciesNow as any[])
+      ? (dependenciesNowReal as any[])
         .filter((d) => by(d.createdAt))
         .filter((d) => ['WAITING', 'BLOCKING'].includes(String(d.status)) ? true : !!d.clearedAt && !by(d.clearedAt))
         .map((d) => ({ ...d, escalatedAt: d.escalatedAt && by(d.escalatedAt) ? d.escalatedAt : null })) as typeof dependenciesNow
-      : dependenciesNow;
+      : dependenciesNowReal;
     const detections = asOf
       ? (detectionsNow as APatternRow[]).map((r) => patternRowAsOfSession(r, asOf.period))
       : detectionsNow;
@@ -6302,8 +6312,10 @@ happened, and what is in the way.`;
        * "Amina", "finance". Where it names a team rather than a person, `waysThrough` opens with
        * "find out who owns this by name", which is exactly the right first move.
        */
-      select: { id: true, what: true, onLabel: true, createdAt: true, triedSaid: true, escalatedAt: true },
+      select: { id: true, what: true, onLabel: true, onParticipantId: true, createdAt: true, triedSaid: true, escalatedAt: true },
     }) ?? Promise.resolve([] as any[]))?.catch?.(() => []) ?? [];
+    /* Nobody waits on themselves, so nobody is told to "speak to themselves" (request 117, part 6). */
+    const mineReal = (mine as any[]).filter((d) => !aWaitOnOneself({ ...d, fromParticipantId: participantId }));
 
     /*
      * THE SAME COLLAPSE THE BOARD DOES, BECAUSE THE ADVICE QUOTED THE STALE ROW.
@@ -6314,7 +6326,7 @@ happened, and what is in the way.`;
      * not recognise. The board deduped on read for exactly this reason and this path did not.
      */
     const theirs = oneBlockerPerThingWaitedOn(
-      (mine as any[]).map((d) => ({ ...d, fromParticipantId: participantId })) as any,
+      mineReal.map((d) => ({ ...d, fromParticipantId: participantId })) as any,
     ) as any[];
 
     const day = 24 * 60 * 60 * 1000;

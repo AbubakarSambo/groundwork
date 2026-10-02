@@ -3435,6 +3435,8 @@ export class BoardService {
 
     const deps: OrgDependency[] = [];
     for (const r of rows) {
+      /* Nobody waits on themselves (request 117, part 6): Today and Ask Groundwork read this too. */
+      if (aWaitOnOneself(r)) continue;
       const from = r.fromParticipant?.email?.toLowerCase();
       if (!from) continue;
       deps.push({
@@ -3550,7 +3552,7 @@ export class BoardService {
       }),
       this.prisma.groundDocument.findMany({ where: { groundId, visibility: 'OPEN' as any }, select: { fileName: true, participantId: true, origin: true } }),
       (this.prisma as any).groundBaseline?.findFirst?.({ where: { groundId }, select: { successLooksLike: true } }) ?? Promise.resolve(null),
-      this.prisma.groundDependency.findMany({ where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } }, select: { what: true, status: true, blockerKind: true } }),
+      this.prisma.groundDependency.findMany({ where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } }, select: { what: true, status: true, blockerKind: true, fromParticipantId: true, onParticipantId: true, onLabel: true } }).then((rows: any[]) => rows.filter((d) => !aWaitOnOneself(d))),
     ]);
     const labels = labelsForParties(ground.participants as any);
     const nameOf = (pid: string | null) => (pid ? (labels.get(pid) ?? 'A colleague') : null);
