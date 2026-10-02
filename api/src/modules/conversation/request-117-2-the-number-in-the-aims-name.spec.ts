@@ -19,6 +19,11 @@ describe('request 117 (2): the number in the aim\'s own name', () => {
       .toEqual([{ name: 'Sign 12 shops for kitchen appliances in Nairobi.', target: 12 }]);
     expect(theNumberInTheNameIsKept([{ name: 'Sign 40 shops.', target: null }], (n) => said.has(n))).toEqual([{ name: 'Sign 40 shops.', target: null }]);
     expect(theNumberInTheNameIsKept([{ name: 'Sign 12 shops.', target: 15 }], () => true)).toEqual([{ name: 'Sign 12 shops.', target: 15 }]);
+    /* Only the count the name aims at: a figure elsewhere in it is not the aim (read over the whole test database). */
+    expect(theNumberInTheNameIsKept([{ name: 'a signed renewal before the end of March with no discount past 12 percent', target: null }], () => true))
+      .toEqual([{ name: 'a signed renewal before the end of March with no discount past 12 percent', target: null }]);
+    expect(theNumberInTheNameIsKept([{ name: 'Reach 40 percent of the market.', target: null }], () => true)).toEqual([{ name: 'Reach 40 percent of the market.', target: null }]);
+    expect(theNumberInTheNameIsKept([{ name: 'Disburse 120 million naira.', target: null }], () => true)).toEqual([{ name: 'Disburse 120 million naira.', target: null }]);
   });
 
   it('the check-in\'s write asks the rule', () => {
