@@ -214,4 +214,5 @@ These are settled. Do not change them. If one seems to block the work, stop and 
     6. **Leave, hours and spending** work for people matched to their sign-in by email, not only linked ones.
     7. **Ask Groundwork on WhatsApp** never answers from a check-in kept in the app.
     8. **The roster import** tidies numbers the same way (`tidyANumberFor`).
+    9. **The lead's daily summary on WhatsApp.** The lead receives a daily summary of their check-ins' boards on WhatsApp: plain sentences, only what the lead can see in the app, nothing from a check-in kept in the app, and a link to the full board. It is Groundwork's one message of the day for that lead (decision 13), so it carries anything else waiting for them that day, such as approvals or reminders, rather than sending separate messages. The lead chooses the time (default: morning in their own time zone) and can reply "not now" or stop it. Its template is in `docs/whatsapp-templates.md`.
     `docs/whatsapp-end-to-end.md` also says plainly the exact name of every server setting WhatsApp needs, what each holds, and where it is found in Meta's tools, never a value.
