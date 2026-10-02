@@ -31,7 +31,7 @@ From now on, every change to what the board, reports or Today page send is writt
 **d. The three suites, end to end, including over WhatsApp**
 14. Leave requests. Said back and confirmed in chat: *done*; approval and telling people: item 3.
 15. Finance (spending) requests. As item 14.
-16. Performance reviews, as the prototype's suite shows it, on evaluation check-ins and judging, with a proposed threshold for a "recognise" suggestion for Hafsah to confirm. *In progress.*
+16. Performance reviews, as the prototype's suite shows it, on evaluation check-ins and judging, with a proposed threshold for a "recognise" suggestion for Hafsah to confirm. *Done* (`2a8e77eb` to `cdf5e3ee`); the recognise suggestion is off until Hafsah confirms it. Matching by email for reviews is *in progress*; reviews on Today wait until request 118 frees the Today code.
 
 **e. The boards the client needs, from the engine**
 17. Request 117 (item 1). *Done*, as item 1.

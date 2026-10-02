@@ -50,7 +50,19 @@ Groundwork writes first at most once a day, or twice on the day a check-in opens
 - Because the summary is the lead's one message of the day, a lead who also answers elsewhere does not get their own morning reminder that day (decision 13).
 - Hours can be approved but not declined, as on the board.
 
-Now running: the onboarding and project boards' engine faults (item 18), and the performance reviews suite (item 16). Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Performance reviews, item 16, are done** (`2a8e77eb` to `cdf5e3ee`, pushed; 3,159 tests in those parts pass, none changed). Each review now says where it stands ("Ready to start. 6 months of check-ins to draw on.", "Started on 2 October 2026. Aisha can read it and add a view of their own."). A review cannot start while a probation or plan about the same person is still open. The person finds their own review ("Wairimu has started your review. You can read it and add your own view before you meet.") and is told on WhatsApp that it waits in the app, never what it says. A fault was fixed on the way: the writer's suggestion on a review was always empty, because a service was never given to it.
+
+The recognise suggestion is built and **off** (`reviews.recognise`). The proposal: suggest recognising somebody when, in the four weeks before the review started, at least 8 commitments in the writer's check-ins with them were settled and at least nine in ten were kept; a miss during approved leave does not count. The person reads the numbers first; the writer reads no number (decision 53), and only after the person has written their view or three days have passed.
+
+**For Hafsah:**
+- Confirm the threshold above, and whether to switch it on. There is no admin page for it yet.
+- The prototype gives the manager a count ("She kept 41 of her 44"). Decision 53 forbids that, so the manager reads none. Keep it that way?
+- Should a review have an appeal? Decision 6 says the person can appeal, but the prototype's review screen shows none.
+- An admin outside the check-in reads "After a check-in about Kwame is decided." This says some decision about Kwame is open without naming it. Acceptable?
+- Leave is read only to excuse a miss in the recognise check. Does "hours and leave never feed a review" allow that?
+- Submit `groundwork_review_started` and `groundwork_review_decided` with the other templates.
+
+Now running: request 118 then item 18 (the board helper), and a fix to one failing check plus email matching for reviews. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
