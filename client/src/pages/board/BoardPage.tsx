@@ -8,7 +8,8 @@ import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { WhatToSettleTogether } from '@/components/gw/what-to-settle-together'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckInLinks } from './CheckInLinks'
-import { boardApi, type BoardPresent, type CoverageVariant } from '@/api/board'
+import { boardApi, type BoardPresent, type CoverageVariant, type AnAction } from '@/api/board'
+import { apiClient } from '@/api/client'
 import { groundsApi } from '@/api/grounds'
 import { participantRequestsApi } from '@/api/participantRequests'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
@@ -440,6 +441,61 @@ function openTheWholeCheckIn() {
   const el = document.getElementById(THE_WHOLE_CHECK_IN_ID) as HTMLDetailsElement | null
   if (el) el.open = true
   scrollTo(el, { block: 'start' })
+}
+
+/**
+ * REQUEST 112 (b): WHAT THE LEAD CAN DO ABOUT ONE ITEM UNDER "What needs you" (board-as-lead.txt:
+ * "Yes, it counts" / "No", "Ask him"). `action.route` is the exact call the engine already built
+ * to keep that answer (`POST .../board/decisions/:id/answer`, `PATCH .../commitments/:id`); this
+ * calls it generically and reads back `saidBack`, the engine's own sentence for what just
+ * happened. A choice with `route: null` ("Not yet") changes nothing, so it carries no call at all.
+ */
+function useRunBoardAction(groundId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (route: NonNullable<AnAction['choices']>[number]['route']) =>
+      apiClient.request({ method: route!.method, url: route!.path, data: route!.body }).then((r) => r.data),
+    onSuccess: (data: any) => {
+      qc.invalidateQueries({ queryKey: ['board', groundId] })
+      if (data?.saidBack) toast.success(data.saidBack)
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Nothing has changed, so try again.'),
+  })
+}
+
+/**
+ * REQUEST 112 (b): ONE ITEM'S OWN ACTION, REPLACING THE GENERIC "Open". Each choice becomes its
+ * own button (board-as-lead.txt's own "Yes, it counts" / "No"); with no choices, one button to
+ * where the lead settles it ("check-in" or "context"), in the engine's own words for the button
+ * ("Ask him", "Reply in your check-in"...). `kind="secondary"` always - never a second navy button
+ * on a page that already has its own primary action. Where the engine has sent no `action` at all
+ * (an older server), this falls back to the plain "Open" text link it replaces.
+ */
+function ActionButtons({ groundId, action }: { groundId: string; action?: AnAction }) {
+  const run = useRunBoardAction(groundId)
+  if (!action) return <Link to={`/grounds/${groundId}`} className="gwui-plain-link">Open</Link>
+  if (action.choices?.length) {
+    return (
+      <>
+        {action.choices.map((c) => (
+          <UIButton
+            key={c.label}
+            kind="secondary"
+            size="small"
+            disabled={run.isPending}
+            onClick={c.route ? () => run.mutate(c.route) : undefined}
+          >
+            {c.label}
+          </UIButton>
+        ))}
+      </>
+    )
+  }
+  return (
+    <UIButton kind="secondary" size="small" to={`/grounds/${groundId}?tab=${action.goesTo === 'context' ? 'context' : 'chat'}`}>
+      {action.label}
+    </UIButton>
+  )
 }
 
 /**
@@ -1242,15 +1298,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 />
               ))}
               {/*
-                BOARD FIX (sales B, item 2): EVERY ITEM GETS ITS OWN ACTION. `needsHere` above
-                already carries a real one from Today's own API (`n.action`); `leadActions` and
-                `decisions` carried none at all - a reader could see what needed them but had
-                nothing to press. Neither field sends a choice or a target to act on directly
-                (no "Yes, it counts" / "No" the server built, no record id to jump to), so rather
-                than invent a control that does something nobody asked for, each gets the same
-                quiet "Open" text action (never navy - `.gwui-plain-link` is not counted as a
-                button at all, see e2e/the-prototype-count-of-buttons.spec.ts) to the Check-in tab,
-                where the lead actually settles this kind of thing, in conversation.
+                REQUEST 112 (b): EVERY ITEM GETS ITS OWN ACTION, FROM THE ENGINE'S OWN `action`
+                (board-as-lead.txt: "Yes, it counts" / "No", "Ask him"). `leadActions` and
+                `decisions` used to carry none at all, so every row fell back to the same quiet
+                "Open" text link to the Check-in tab - the engine now sends, per item, either real
+                choices with the route that keeps each answer, or one named button to where the
+                lead settles it. `ActionButtons` falls back to that same "Open" link on an older
+                server that sends no `action`.
               */}
               {shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan) && b.leadActions!.map((r) => (
                 <EdgeRow
@@ -1258,7 +1312,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   kind="look"
                   title={r.says}
                   detail={r.because ?? undefined}
-                  actions={<Link to={`/grounds/${id}`} className="gwui-plain-link">Open</Link>}
+                  actions={<ActionButtons groundId={id!} action={r.action} />}
                 />
               ))}
               {/*
@@ -1288,7 +1342,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       {d.owner && <span className="gwui-fs-13-5 gwui-ink-sub gwui-ml-7">{decisionOwnerTag(d.owner, b.participants, myName)}</span>}
                     </>
                   )}
-                  actions={<Link to={`/grounds/${id}`} className="gwui-plain-link">Open</Link>}
+                  actions={<ActionButtons groundId={id!} action={d.action} />}
                 />
               ))}
             </EdgeList>
