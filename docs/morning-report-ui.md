@@ -62,6 +62,16 @@ What waits on the engine: requests 105, 107, 108 and 109.
 - On the sales board, the engine's fields for the headline question, where each target stands, the record marks, "Where this is heading", blockers and the participant's own board are now sent, but the screen does not draw them yet.
 - Following your new approach, the sales board alone is being made exactly right, section by section, as the lead and as a participant. The other ten follow one at a time.
 
+**The sales board, first pass.** It now draws the engine's new fields:
+- the headline question, "Will we sign 12 shops for kitchen appliances in Nairobi by 13 December?";
+- a word for where each target stands;
+- "Where this is heading", with "Record the decision";
+- blockers as sentences, such as "Baraka Mwangi is waiting on you for the discount decision." and "This was raised once, on 27 September.";
+- each deal's mark and what happens next;
+- "By area", and "Reported, stage by stage".
+
+The participant's board still shows its short view, because the team picture is not shared yet. Two gaps are the engine's, as request 110: Amani's own share is not sent, and her own aim of 3 shops is not on the board. The board still says the 12-shop target is "Met", which comes from the wrong figure in request 109. A review of this board alone is under way. Its verdict decides whether the sales team is marked done.
+
 ### Where the pictures are
 - **Side-by-side pictures of the earlier screens, with what changed on each:** `/Users/hafsahjumare/Documents/GitHub/groundwork-pictures/`, next to the project folder. Start with its `README.md`.
 - **The boards:** the scratchpad's `pictures/`.
