@@ -1,3 +1,4 @@
+import { theDayInWords } from '../board/the-day-in-words';
 import { startsWithAPronoun, whoseIsIt } from './a-blocker-that-says-her-or-his';
 import { whereTheTeamIs, howManyAreDone } from './which-check-in-it-is';
 import { DependencyStatus } from '@prisma/client';
@@ -45,7 +46,15 @@ export interface AtAGlance {
   };
   /** What is in the way, counted as the board counts it, with the longest-standing one named. */
   inTheWay: {
-    count: number; oldest: string | null; daysWaiting: number | null;
+    count: number; oldest: string | null;
+    /**
+     * Whole days the oldest one has waited, measured to the clock the caller gives. The board gives the record's
+     * own clock, so it never changes when the board is opened (request 117, part 9). Please draw `sinceSays`.
+     */
+    daysWaiting: number | null;
+    /** When the oldest one began, as a time, and as words: "since 28 September" (request 117, part 9). */
+    since?: string | null;
+    sinceSays?: string | null;
     /** Who the oldest one is waited on from, so the list can name them for a reader who may. Never the screen's to read. */
     oldestOnParticipantId?: string | null;
   };
@@ -142,8 +151,11 @@ export function whatIsInTheWay(dependencies: GlanceInput['dependencies'], now: D
     oldest: oldest?.what ? (startsWithAPronoun(oldest.what) ? whoseIsIt(oldest.what) : oldest.what) : null,
     ...(forTheList && oldest && startsWithAPronoun(oldest.what) ? { oldestOnParticipantId: (oldest as any).onParticipantId ?? null } : {}),
     daysWaiting: oldest?.createdAt
-      ? Math.max(0, Math.floor((now.getTime() - oldest.createdAt.getTime()) / A_DAY))
+      ? Math.max(0, Math.floor((now.getTime() - new Date(oldest.createdAt).getTime()) / A_DAY))
       : null,
+    /* The day it began, which reads the same at any hour (request 117, part 9). */
+    since: oldest?.createdAt ? new Date(oldest.createdAt).toISOString() : null,
+    sinceSays: oldest?.createdAt ? `since ${theDayInWords(new Date(oldest.createdAt), now)}` : null,
   };
 }
 

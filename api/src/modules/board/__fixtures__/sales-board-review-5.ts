@@ -142,8 +142,8 @@ export const REVIEW_5_COMMITMENTS = [
 /** The board read at 20:46 and again at 20:51 on 2 October, Nairobi time, with nothing new in between. */
 export const READ_AT_20_46 = oct('02', '17:46:00');
 export const READ_AT_20_51 = oct('02', '17:51:00');
-/** And the next morning, still with nothing new. */
-export const READ_NEXT_MORNING = oct('03', '06:30:00');
+/** And the next evening, a day later, still with nothing new. */
+export const READ_NEXT_EVENING = oct('03', '19:00:00');
 
 export function review5(more: Partial<Setup> = {}): Setup {
   return {

@@ -1,3 +1,4 @@
+import { theRecordsClock, theDayItBegan, wholeDaysTo } from '../board/a-wait-is-dated-not-counted';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { onceAcrossCopies, theHour, theWeek } from '../prisma/once-across-copies';
@@ -5708,7 +5709,7 @@ happened, and what is in the way.`;
         where: asOf ? { groundId } : { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
         select: {
           fromParticipantId: true, onParticipantId: true, onLabel: true,
-          what: true, createdAt: true, escalatedAt: true, triedSaid: true,
+          what: true, createdAt: true, updatedAt: true, escalatedAt: true, triedSaid: true,
           /* What kind of thing is in the way, and therefore who can move it. The row has carried
              this all along and both coaching surfaces said "waiting on X" without reading it. */
           blockerKind: true,
@@ -5722,7 +5723,7 @@ happened, and what is in the way.`;
       this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true, ...(asOf ? { createdAt: true } : {}) } }),
       this.prisma.checkIn.findMany({
         where: { groundId, status: CheckInStatus.COMPLETED },
-        select: { participantId: true, sessionNumber: true },
+        select: { participantId: true, sessionNumber: true, completedAt: true },
       }),
     ]);
     /*
@@ -5755,11 +5756,24 @@ happened, and what is in the way.`;
     const detections = asOf
       ? (detectionsNow as APatternRow[]).map((r) => patternRowAsOfSession(r, asOf.period))
       : detectionsNow;
-    const now = cut ?? Date.now();
+    /*
+     * HOW LONG IS MEASURED TO THE RECORD'S OWN CLOCK, NEVER THE READING (request 117, part 9). The coaching said
+     * "for 5 days" where the board's row said 4, and both moved each time the page was opened. The clock is the
+     * newest thing this record holds: a finished check-in, a wait raised or changed, or the report rewritten. A
+     * closed session's own report is measured to the day it closed, as before. And each wait is said with the day
+     * it began.
+     */
+    const recordsClock = cut !== null ? new Date(cut) : theRecordsClock([
+      ...(sessions as any[]).map((c) => c.completedAt),
+      ...(dependencies as any[]).flatMap((d) => [d.createdAt, d.updatedAt]),
+      ground?.report?.updatedAt,
+    ], new Date());
+    const now = recordsClock.getTime();
     const wholeDays = (d: Date) => Math.max(0, Math.floor((now - new Date(d).getTime()) / 86400000));
+    const since = (d: Date) => theDayItBegan(d, recordsClock);
     /* Every row, for the two builders to narrow to their reader: the coaching note to the person's own,
        the probe list to what the lead may read. See patterns/who-reads-a-pattern. */
-    return { detections, dependencies, entries, docs, sessions, wholeDays, ground };
+    return { detections, dependencies, entries, docs, sessions, wholeDays, since, ground };
   }
 
   /**
@@ -5943,6 +5957,7 @@ happened, and what is in the way.`;
              Only a resolved participant is somebody you can be waiting on. */
           who: d.onParticipantId ? nameOf(d.onParticipantId, null) : null,
           daysOld: held.wholeDays(d.createdAt),
+          since: held.since(d.createdAt),
           escalated: itWasTakenFurther(d),
           kind: (d.blockerKind as any) ?? null,
         })),
@@ -5952,6 +5967,7 @@ happened, and what is in the way.`;
           what: d.what,
           who: nameOf(d.fromParticipantId, null),
           daysOld: held.wholeDays(d.createdAt),
+          since: held.since(d.createdAt),
           escalated: itWasTakenFurther(d),
           kind: (d.blockerKind as any) ?? null,
         })),
@@ -6231,6 +6247,7 @@ happened, and what is in the way.`;
              Only a resolved participant is somebody you can be waiting on. */
           who: d.onParticipantId ? nameOf(d.onParticipantId, null) : null,
               daysOld: held.wholeDays(d.createdAt),
+              since: held.since(d.createdAt),
               escalated: itWasTakenFurther(d),
               kind: (d.blockerKind as any) ?? null,
             })),
@@ -6240,6 +6257,7 @@ happened, and what is in the way.`;
               what: d.what,
               who: nameOf(d.fromParticipantId, null),
               daysOld: held.wholeDays(d.createdAt),
+              since: held.since(d.createdAt),
               kind: (d.blockerKind as any) ?? null,
             })),
           concrete: mine
@@ -6358,14 +6376,18 @@ happened, and what is in the way.`;
       mineReal.map((d) => ({ ...d, fromParticipantId: participantId })) as any,
     ) as any[];
 
-    const day = 24 * 60 * 60 * 1000;
+    /* How long it has sat is measured to the record's own clock, never the reading (request 117, part 9). */
+    const finished = ((await (this.prisma.checkIn?.findMany?.({
+      where: { groundId, status: CheckInStatus.COMPLETED }, select: { completedAt: true },
+    }) ?? Promise.resolve([] as any[]))?.catch?.(() => [] as any[])) ?? []) as any[];
+    const recordsClock = theRecordsClock([...finished.map((c) => c.completedAt), ...(mine as any[]).map((d) => d.createdAt)], new Date());
     return whatTheyCouldTry(
       theirs.map((d) => ({
         id: d.id,
         what: d.what,
         /* Only a resolved person is somebody you can be waiting on - a team cannot answer an email. */
         owner: d.onLabel ?? null,
-        days: Math.max(0, Math.floor((Date.now() - new Date(d.createdAt).getTime()) / day)),
+        days: wholeDaysTo(d.createdAt, recordsClock),
         tried: (d.escalatedAt ? 'escalated' : (d.triedSaid ?? 'nothing')) as any,
         /*
          * Nothing stores a chase date on a dependency - `chaseBy` exists on Standing and on no

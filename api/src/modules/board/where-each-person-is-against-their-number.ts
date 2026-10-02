@@ -47,7 +47,8 @@ export interface PersonRow {
   roundsSoFar: number;
   /** What they have said is in their way, oldest first. */
   /** `onTheReader`: what they wait on is with the person reading the board (request 65). */
-  inTheWay: { what: string; owner: string | null; days: number; tried: Effort; onTheReader?: boolean }[];
+  /** `since`: the day it began, said in place of a count of days (request 117, part 9). `days` is measured to the record's own clock. */
+  inTheWay: { what: string; owner: string | null; days: number; tried: Effort; onTheReader?: boolean; since?: string | null }[];
   /**
    * WHETHER ANYTHING THEY SAID THIS ROUND CAN BE CHECKED: the check-in's own read of how checkable
    * their answers were, and, for a check-in not read yet, whether the record of it holds a number, a
@@ -205,12 +206,14 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
       return `${start} has not checked in for this round yet.`;
     case 'stuck and not chasing': {
       const oldest = sittingUnchased(row)[0];
+      /* The day it began, never a count of days from the reading (request 117, part 9). */
       const days = `${oldest.days} ${oldest.days === 1 ? 'day' : 'days'}`;
-      if (oldest.onTheReader) return `${start} has been waiting ${days} on you for ${oldest.what}.`;
+      if (oldest.onTheReader) return oldest.since ? `${start} has been waiting on you for ${oldest.what} since ${oldest.since}.` : `${start} has been waiting ${days} on you for ${oldest.what}.`;
+      const sat = oldest.since ? `since ${oldest.since}` : `for ${days}`;
       if (oldest.tried === 'nothing') {
-        return `${start} has had something in the way for ${days}, and nobody has said yet what was tried to clear it. Finding out who could clear it, and asking them, would move it.`;
+        return `${start} has had something in the way ${sat}, and nobody has said yet what was tried to clear it. Finding out who could clear it, and asking them, would move it.`;
       }
-      return `${start} has had something in the way for ${days}, and so far it has only been asked about. Chasing it, or asking someone else, would move it.`;
+      return `${start} has had something in the way ${sat}, and so far it has only been asked about. Chasing it, or asking someone else, would move it.`;
     }
     case 'behind the pace': {
       const gone = Math.min(row.roundsSoFar, roundsPlanned ?? row.roundsSoFar);
@@ -336,7 +339,10 @@ export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null
   if (worst.onTheReader) {
     const waiting = worst.days === 0 ? 'is waiting' : `has been waiting ${worst.days} ${worst.days === 1 ? 'day' : 'days'}`;
     const theAsk = `Give ${them} an answer, or say when you will.`;
-    return alreadySaid ? theAsk : `${start} ${waiting} on you for ${worst.what}. ${theAsk}`;
+    if (alreadySaid) return theAsk;
+    return worst.since
+      ? `${start} has been waiting on you for ${worst.what} since ${worst.since}. ${theAsk}`
+      : `${start} ${waiting} on you for ${worst.what}. ${theAsk}`;
   }
   if (worst.days < A_FORTNIGHT && worst.tried !== 'nothing') return null;
   /* What they said they are waiting on is often a thing, not somebody: "the handover from the current
@@ -348,6 +354,7 @@ export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null
   const theAsk = `Ask ${them} to ${first.charAt(0).toLowerCase()}${first.slice(1)}`;
   if (alreadySaid) return theAsk;
   /* "has been waiting 0 days" was read live on run-14. Something that came up today says so. */
+  if (worst.since) return `${start} has been waiting on ${worst.what} since ${worst.since}, and ${WHAT_THEY_TRIED_SAID_IN_FULL[worst.tried]}. ${theAsk}`;
   const since = worst.days === 0 ? 'is waiting' : `has been waiting ${worst.days} ${worst.days === 1 ? 'day' : 'days'}`;
   return `${start} ${since} on ${worst.what}, and ${WHAT_THEY_TRIED_SAID_IN_FULL[worst.tried]}. ${theAsk}`;
 }

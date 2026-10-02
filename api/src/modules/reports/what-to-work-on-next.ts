@@ -76,8 +76,10 @@ export interface Dependency {
   what: string;
   /** The other person, named or labelled by the caller. Null when nobody was named. */
   who: string | null;
-  /** Whole days since it was first recorded. */
+  /** Whole days since it was first recorded, measured to the record's own clock. */
   daysOld: number;
+  /** The day it began, in words ("27 September"), said in place of a count of days (request 117, part 9). */
+  since?: string | null;
   escalated: boolean;
   /** What kind of thing is in the way, where the person waiting said. Decides who can move it. */
   kind?: Kind | null;
@@ -249,7 +251,9 @@ function aboutWaiting(d: Dependency): string {
     return `You have already taken ${it} to somebody above them. Put a date on when you need it by, and say what you will do if it does not arrive.`;
   }
   if (d.daysOld >= 14) {
-    return `You have been waiting ${howLong(d.daysOld)}${from} for ${it}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`;
+    return d.since
+      ? `You have been waiting${from} for ${it} since ${d.since}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`
+      : `You have been waiting ${howLong(d.daysOld)}${from} for ${it}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`;
   }
   return `Put ${it} in writing${from}, with the date you need it by.`;
 }
@@ -321,8 +325,15 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     const who = named.length === 1 ? named[0] : named.length ? `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}` : 'Somebody';
     const items = i.holdingUp.map((d) => theThing(d.what));
     const oldest = Math.max(...i.holdingUp.map((d) => d.daysOld));
+    const since = [...i.holdingUp].sort((a, b) => b.daysOld - a.daysOld)[0]?.since ?? null;
+    const doIt = `Either do ${items.length > 1 ? 'them' : 'it'}, or give a date you can do ${items.length > 1 ? 'them' : 'it'} by.`;
+    /* The day it began, never a count of days from the reading (request 117, part 9). */
     actions.push(
-      `${who} ${named.length > 1 ? 'are' : 'is'} waiting on you${howLong(oldest)} for ${andList(items)}. Either do ${items.length > 1 ? 'them' : 'it'}, or give a date you can do ${items.length > 1 ? 'them' : 'it'} by.`,
+      !since
+        ? `${who} ${named.length > 1 ? 'are' : 'is'} waiting on you${howLong(oldest)} for ${andList(items)}. ${doIt}`
+        : items.length === 1 && named.length <= 1
+          ? `${who} has been waiting on you for ${andList(items)} since ${since}. ${doIt}`
+          : `${who} ${named.length > 1 ? 'are' : 'is'} waiting on you for ${andList(items)}. The first of these waits began on ${since}. ${doIt}`,
     );
     const kind = whatKindOfThing(i.holdingUp);
     if (kind) actions.push(kind);
@@ -335,9 +346,12 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
       const from = [...new Set(notYet.map((d) => d.who).filter(Boolean))] as string[];
       const oldest = Math.max(...notYet.map((d) => d.daysOld));
       const items = andList(notYet.map((d) => theThing(d.what)));
+      const since = [...notYet].sort((a, b) => b.daysOld - a.daysOld)[0]?.since ?? null;
       actions.push(
         oldest >= 14
-          ? `You have been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`
+          ? (since
+            ? `You have been waiting${from.length ? ` on ${andList(from)}` : ''} for ${items} since ${since}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`
+            : `You have been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`)
           : `Put ${items} in writing${from.length ? ` to ${andList(from)}` : ''}, with the date you need ${notYet.length > 1 ? 'them' : 'it'} by.`,
       );
       const kind = whatKindOfThing(notYet);

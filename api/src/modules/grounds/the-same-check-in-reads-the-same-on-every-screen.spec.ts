@@ -182,7 +182,9 @@ describe('(d) "Her login for the order system is holding it up" says whose', () 
     const r = await listAs(AMANI, 'MEMBER', { ...stuck('p-omar'), peersVisibleToEachOther: false });
     /* The list reads the days at the real clock, and the wait was raised 9 days before this file's NOW, so
        the days are counted from the wait itself: on 2 October this said 10 and the test failed on the date. */
-    expect(r.glance.inTheWay).toEqual({ count: 1, oldest: "A colleague's login for the order system", daysWaiting: Math.floor((Date.now() - ago(9).getTime()) / day) });
+    expect(r.glance.inTheWay).toMatchObject({ count: 1, oldest: "A colleague's login for the order system", daysWaiting: Math.floor((Date.now() - ago(9).getTime()) / day) });
+    /* And the day it began, which reads the same at any hour (request 117, part 9). */
+    expect(r.glance.inTheWay.sinceSays).toMatch(/^since \d{1,2} [A-Z][a-z]+$/);
     expect(JSON.stringify(r.glance)).not.toMatch(/Omar/);
     expect(JSON.stringify(r.participants)).not.toMatch(/Omar/);
   });

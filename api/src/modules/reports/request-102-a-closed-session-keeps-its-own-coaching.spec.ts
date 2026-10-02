@@ -25,8 +25,8 @@ async function sessionAs(userId: string, n: number, kind: 'sales' | 'review' = '
   return { r, respond };
 }
 
-/* The clock the "for 2 days" below was written against (2 October 2026, morning). Read from the real clock,
-   it turned into "3 days" at 18:00 UTC that day, three days after the wait was raised. */
+/* A fixed clock, as before. Since request 117 (part 9) a wait is said with the day it began ("since 29
+   September"), so these sentences no longer depend on the hour they are read at. */
 beforeAll(() => { jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] }); jest.setSystemTime(new Date('2026-10-02T09:00:00Z')); });
 afterAll(() => { jest.useRealTimers(); });
 
@@ -34,10 +34,10 @@ describe('session 1, closed, as each reader is sent it', () => {
   it('Rukia, who runs it and checks in, reads her own note, her probe list and the inferences of session 1 only', async () => {
     const { r, respond } = await sessionAs('u-rukia', 1);
     expect(r.coaching.whyItMatters).toBe('This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.');
-    expect(r.coaching.beforeNextTime).toEqual(['Baraka Mwangi is waiting on you for 3 days for SESSION-ONE-WAIT a decision on the discount. Either do it, or give a date you can do it by.']);
+    expect(r.coaching.beforeNextTime).toEqual(['Baraka Mwangi has been waiting on you for SESSION-ONE-WAIT a decision on the discount since 24 September. Either do it, or give a date you can do it by.']);
     expect(r.probes.map((p: any) => p.who)).toEqual(['Amani Wekesa', 'Baraka Mwangi', 'Neema Achieng']);
     expect(r.probes.find((p: any) => p.who === 'Baraka Mwangi').probe).toEqual([
-      'Baraka Mwangi has been waiting for 3 days on you for SESSION-ONE-WAIT a decision on the discount, and nothing on record says it was raised higher. This early, that is worth showing Baraka Mwangi rather than asking about.',
+      'Baraka Mwangi has been waiting on you for SESSION-ONE-WAIT a decision on the discount since 24 September, and nothing on record says it was raised higher. This early, that is worth showing Baraka Mwangi rather than asking about.',
     ]);
     /* Everybody answered session 1, so nobody is said not to have. */
     expect(JSON.stringify(r.probes)).not.toMatch(/has not answered this session/);
@@ -65,7 +65,7 @@ describe('session 1, closed, as each reader is sent it', () => {
   it('Grace, the admin who set it up, reads the probe list and inferences of session 1, and no note of her own', async () => {
     const { r } = await sessionAs('u-grace', 1);
     expect(r).not.toHaveProperty('coaching');
-    expect(r.probes.find((p: any) => p.who === 'Baraka Mwangi').probe[0]).toMatch(/^Baraka Mwangi has been waiting for 3 days on Rukia Otieno for SESSION-ONE-WAIT/);
+    expect(r.probes.find((p: any) => p.who === 'Baraka Mwangi').probe[0]).toMatch(/^Baraka Mwangi has been waiting on Rukia Otieno for SESSION-ONE-WAIT a decision on the discount since 24 September/);
     expect(r.inferences.map((i: any) => i.text)).toEqual(['SESSION-ONE-INFERENCE Nobody has priced the cookers yet.']);
     expect(everyString({ p: r.probes, i: r.inferences }).filter((s) => LATER.test(s))).toEqual([]);
   });
@@ -75,7 +75,7 @@ describe('session 2, the one the report holds now, reads as the working copy doe
   it('Rukia reads session 2\'s note, probes and inferences', async () => {
     const { r } = await sessionAs('u-rukia', 2);
     expect(r.coaching.whyItMatters).toMatch(/^This is session 2 of 12 of this work\./);
-    expect(r.coaching.beforeNextTime).toEqual(['Amani Wekesa is waiting on you for 2 days for SESSION-TWO-WAIT the price list. Either do it, or give a date you can do it by.']);
+    expect(r.coaching.beforeNextTime).toEqual(['Amani Wekesa has been waiting on you for SESSION-TWO-WAIT the price list since 29 September. Either do it, or give a date you can do it by.']);
     expect(r.inferences.map((i: any) => i.text)).toEqual(['SESSION-TWO-INFERENCE The Tuskys order slipped because of the price list.']);
   });
 

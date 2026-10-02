@@ -1,3 +1,4 @@
+import { theDayInWords } from '../board/the-day-in-words';
 import { theAwayLine } from '../suites/who-is-away';
 import { isNotLetInYet } from './who-an-admin-did-not-let-in';
 import { theCheckIn, yourCheckIn } from './which-check-in-it-is';
@@ -228,7 +229,8 @@ export function whatNeedsYou(
             ? `${theAwayLine('the person', null, reader.awayUntil)} You can still answer it if you want to.`
             : [
               next.sessionNumber === 1 && iRunIt ? 'About two minutes. Everyone else’s answers are read against yours.' : 'About two minutes.',
-              days > A_WHILE ? `It opened ${days} days ago.` : null,
+              /* The day it opened, never a count of days from the reading (request 117, part 9). */
+              days > A_WHILE && opened ? `It opened on ${theDayInWords(new Date(opened), new Date(at))}.` : null,
             ].filter(Boolean).join(' '),
           action: { label: 'Start it', to: `/checkin/${next.id}` },
           ...base,

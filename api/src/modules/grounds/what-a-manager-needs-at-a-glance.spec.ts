@@ -121,6 +121,6 @@ describe('what is in the way', () => {
 
   it('and says nothing is in the way as a fact, not as an absence', () => {
     const g = atAGlance(base as any, NOW);
-    expect(g.inTheWay).toEqual({ count: 0, oldest: null, daysWaiting: null });
+    expect(g.inTheWay).toEqual({ count: 0, oldest: null, daysWaiting: null, since: null, sinceSays: null });
   });
 });

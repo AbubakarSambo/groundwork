@@ -1,3 +1,4 @@
+import { wholeDaysTo, theDayItBegan } from './a-wait-is-dated-not-counted';
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
 import { aPartyOutside, aWaitOnOneself } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
@@ -928,6 +929,21 @@ export class BoardService {
       out.howItIsGoing = { ...out.howItIsGoing, glance: { ...out.howItIsGoing.glance, inTheWay: theirOwn.inTheWay } };
     }
 
+    /*
+     * THE RECORD'S OWN CLOCK (request 117, part 9). The newest thing the board is built from, never the moment it
+     * is read. How long a wait has sat is measured to this, and said as the day it began, so the board reads the
+     * same at 20:46 and at 20:51 and the next morning, until something new comes in (decision 7).
+     */
+    const recordsClock = out.lastChangedAt ? new Date(out.lastChangedAt) : now;
+    const theGlanceWait = out.howItIsGoing?.glance?.inTheWay;
+    if (theGlanceWait?.since) {
+      out.howItIsGoing.glance.inTheWay = {
+        ...theGlanceWait,
+        daysWaiting: wholeDaysTo(theGlanceWait.since, recordsClock),
+        sinceSays: `since ${theDayItBegan(theGlanceWait.since, recordsClock)}`,
+      };
+    }
+
     if (has('phaseSpine')) {
       /*
        * ONE COUNT, FROM THE BOARD'S OWN CLOCK (request 107 e). The header and every session's line are
@@ -1437,10 +1453,13 @@ export class BoardService {
               .filter((d: any) => d.fromParticipantId === p.id && d.status !== 'CLEARED')
               .map((d: any) => ({
                 what: d.what,
-                owner: d.onParticipantId ? nameOf(d.onParticipantId) : (d.onLabel ?? null),
+                /* A thing is never said as who something comes from (request 107 b): "a decision on who owns them" is nobody. */
+                owner: d.onParticipantId ? nameOf(d.onParticipantId) : (aPartyOutside(d) ? (d.onLabel ?? null) : null),
                 /* With the reader themselves: the ask is theirs, not "speak to <their own name>" (request 65). */
                 onTheReader: !!me?.id && d.onParticipantId === me.id,
-                days: Math.max(0, Math.floor((Date.now() - new Date(d.createdAt).getTime()) / 86_400_000)),
+                /* Measured to the record's own clock and said as the day it began, never counted from the reading (request 117, part 9). */
+                days: wholeDaysTo(d.createdAt, recordsClock),
+                since: d.createdAt ? theDayItBegan(d.createdAt, recordsClock) : null,
                 /* Read off their own words. Nobody has said is 'nothing', which is the truth. */
                 tried: d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? ''),
               })),
