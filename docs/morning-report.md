@@ -124,7 +124,17 @@ The rest of request 117 on the sales board is stored rows on the screens workspa
 
 **Decision 85, the suites as one workflow layer, recorded.** The comparison of each suite with the seven layers is running. Four points meet earlier decisions and wait for Hafsah: counts in the manager's review briefing (decision 53), patterns about one person (decision 74), the chief executive seeing individual records (decision 73), and calendar and payment-system connections.
 
-Now running: run-25 on `4090223b`, and the suites compared with the seven layers. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**The suites compared with the seven layers** (`docs/suites-against-the-workflow-model.md`, `54f4d4a1`). No reader is sent more than decision 85 allows. In one line each: leave works in chat, setup and WhatsApp, but has no escalation, leave types, "ask a question", or what the person owns in those days; spending has one limit and one named person above it, and finance's part (verify, code, export, mark paid) is missing; timesheets take hours in chat and get weekly approval, but are not drafted from the record; reviews fall due, start, take both views and a decision, but the person cannot correct the record and there is no manager briefing. They are four services sharing helpers, with three different approval rules, not one engine. Two bugs: an approver named for spending above the limit who is not an admin can never decide; and where an admin writes reviews, the person is still told their line manager started it.
+
+**For Hafsah:**
+- A lead in the same department who does not approve still reads the leave, spending and hours requests, including days of leave left; and a lead who does not write a review reads all of it. Keep that?
+- When someone asks for leave, the say-back names which colleagues are off ("Brian is also off then"). Keep that?
+- Reading timesheets against what was delivered may go against decision 10 (hours are for billing only). May they?
+- Nobody holds the HR, finance or budget-owner duty in Groundwork yet. Each organisation will have to say who does.
+
+Run-25 was stopped: decision 86's reversals change what the engine writes, so it runs after them.
+
+Now running: decision 86's three reversals, and the sweep for privacy restrictions Claude chose. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 

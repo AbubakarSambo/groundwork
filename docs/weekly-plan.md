@@ -59,7 +59,7 @@ From now on, every change to what the board, reports or Today page send is writt
 - A scenario run (run-25) to measure requests 117 and 118's model-written changes against the baseline. *In progress.*
 
 **d2. The suites as one request and workflow layer (decision 85, 3 October)**
-- Compare leave, spending and payments, timesheets and performance reviews with the seven layers, suite by suite, and list what exists, what is partly there and what is missing. *In progress* (`docs/suites-against-the-workflow-model.md`).
+- Compare leave, spending and payments, timesheets and performance reviews with the seven layers, suite by suite, and list what exists, what is partly there and what is missing. *Done* (`54f4d4a1`, `docs/suites-against-the-workflow-model.md`): no leaks; two bugs and a 14-step build list.
 - Then build the missing parts in this order: approvers by rule and escalation; who sees what by record, field and action, with an audit record; leave's manager view (balance, who else is away, what the person owns in those days); spending thresholds, finance verifying, exporting and marking paid; timesheets drafted from the record; the review as the record interpreted, with the person correcting it; and the conversational setup. *Not started.*
 - Decision 86 settled the counts and patterns; the payment-system connection is dropped. Calendar connections still wait.
 
