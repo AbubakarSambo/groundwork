@@ -2780,7 +2780,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             record's own internal words, printed at somebody rather than explained
                             to them. The lookup is the record type; the reader gets a sentence.
                           */}
-                          {b.family !== 'UPDATE' && whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name)) && (
+                          {/* Engine merge, 2 October: `it.itsKindIsSaid` means `it.text` already
+                              says what kind of item this is, in its own words ("You have reported
+                              progress.") - drawing this sentence too repeated it: "You have
+                              reported progress. This is progress you reported." */}
+                          {b.family !== 'UPDATE' && !it.itsKindIsSaid && whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name)) && (
                             <span className="gwui-fs-13 gwui-ink-sub">{whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name))}</span>
                           )}
                           {it.sessionNumber && <span className="gwui-fs-13 gwui-ink-muted">Said in session {it.sessionNumber}.</span>}

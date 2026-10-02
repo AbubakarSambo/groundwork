@@ -198,7 +198,14 @@ export type BoardPresent = {
     readAtSession: number | null
   } | null
   whatTheRoomIsAboutNote?: string
-  whoOwnsWhat?: { participantId: string; name: string | null; role: string | null; items: { id: string; type: string; text: string; sessionNumber: number | null }[] }[]
+  whoOwnsWhat?: { participantId: string; name: string | null; role: string | null; items: {
+    id: string; type: string; text: string; sessionNumber: number | null
+    /** Request 117 (8): `text` already says what kind of item this is in its own words (e.g. "You
+        have reported progress."), so the record-type sentence below it (`whatThisItemIs` in
+        BoardPage.tsx) would repeat it - "You have reported progress. This is progress you
+        reported." Draw that sentence only when this is not set. */
+    itsKindIsSaid?: boolean
+  }[] }[]
   dependencies?: {
     id: string; from: string | null; fromParticipantId?: string | null; what: string; on: string | null; onParticipantId?: string | null; status: 'BLOCKING' | 'WAITING' | 'CLEARED'; then: string | null
     /** REQUEST 107 (c), part 2: how often this blocker was raised, in check-ins, never a single session counted twice. */
