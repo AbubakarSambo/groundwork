@@ -25,6 +25,11 @@ async function sessionAs(userId: string, n: number, kind: 'sales' | 'review' = '
   return { r, respond };
 }
 
+/* The clock the "for 2 days" below was written against (2 October 2026, morning). Read from the real clock,
+   it turned into "3 days" at 18:00 UTC that day, three days after the wait was raised. */
+beforeAll(() => { jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] }); jest.setSystemTime(new Date('2026-10-02T09:00:00Z')); });
+afterAll(() => { jest.useRealTimers(); });
+
 describe('session 1, closed, as each reader is sent it', () => {
   it('Rukia, who runs it and checks in, reads her own note, her probe list and the inferences of session 1 only', async () => {
     const { r, respond } = await sessionAs('u-rukia', 1);
