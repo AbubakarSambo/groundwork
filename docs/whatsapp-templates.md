@@ -87,6 +87,8 @@ The code holds the same wording in `api/src/modules/whatsapp/a-message-outside-t
 
 ## Ours, proposed for Hafsah (hers do not cover these)
 
+All three are now on the list the Connections page asks an admin to submit (`theNamesToSubmit`), so "every reminder approved" there means these three as well.
+
 ### `groundwork_report_ready`
 
 - **Category:** Utility. **Language:** en.
@@ -100,7 +102,7 @@ The code holds the same wording in `api/src/modules/whatsapp/a-message-outside-t
 - **Category:** Utility. **Language:** en.
 - **Body:** Hi {{1}}, {{2}} has asked for {{3}}, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first.
 - **Examples:** {{1}} Wairimu. {{2}} Miriam. {{3}} leave from 20 to 22 October.
-- **Why:** to tell the approver a leave, hours or spending request is waiting. For a lead, this goes inside the daily summary instead, once that is built. Not wired yet: the approval by reply is the next builder's.
+- **Why:** to tell the approver a leave, hours or spending request is waiting, as soon as the person has confirmed it. {{3}} is the request in plain words: "leave from Monday 5 October to Friday 9 October", "approval of 6 hours on Atlas for Monday 5 October", or "KES 12,000 for fuel". It goes to the person's line manager when they approve, otherwise to every admin (the person named for spending over the limit gets it for that). It counts as Groundwork writing first, so if that person has already had their message for the day, it waits, and the lead's daily summary carries it the next morning. The approver replies "approve" or "decline" (for example "approve Amina's leave"), Groundwork says back what they are deciding ("You are approving Amina's leave from Monday 5 October to Friday 9 October. Is that right?"), and acts only on a yes. Wired on 2 October.
 - **Checked against WhatsApp's rules:** passes.
 
 ### `groundwork_request_decided` (decision 82, item 1: the decision told to the person)
@@ -108,7 +110,7 @@ The code holds the same wording in `api/src/modules/whatsapp/a-message-outside-t
 - **Category:** Utility. **Language:** en.
 - **Body:** Hi {{1}}, your request for {{2}} was {{3}} by {{4}}. Open Groundwork to read it.
 - **Examples:** {{1}} Miriam. {{2}} leave from 20 to 22 October. {{3}} approved. {{4}} Wairimu.
-- **Why:** to tell the person what was decided. Not wired yet: the next builder's.
+- **Why:** to tell the person what was decided, whether it was decided in the app or by a reply on WhatsApp. It is not counted as Groundwork writing first, because it answers the person's own request, the same as the report; it still never goes after STOP. Hours cannot be declined in Groundwork, so for hours {{3}} is only ever "approved". Wired on 2 October.
 - **Checked against WhatsApp's rules:** passes.
 
 ## Names no longer used

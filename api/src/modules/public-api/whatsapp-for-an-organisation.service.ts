@@ -16,6 +16,7 @@ import { validateSync } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { asATextMessage } from './a-reply-reads-as-a-text-message';
+import { aDecisionIn } from '../suites/a-request-in-words';
 import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
   AN_ASK_WORD, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
   ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, type ARequest,
@@ -334,6 +335,16 @@ export class WhatsAppForAnOrganisationService {
         await say(YES_OR_NO(pending.kind));
         return;
       }
+    } else if (who.personId && aDecisionIn(text) && (await this.aDecisionWaitsFor(organizationId, who.personId))) {
+      /*
+       * AN APPROVER'S "APPROVE" OR "DECLINE" DURING A CHECK-IN (decision 82, item 1) is not an answer
+       * in it. It goes to Ask Groundwork, which says back what they are deciding and acts only on a
+       * yes; the conversation stays there for that yes, until "back".
+       */
+      await this.rememberAsking(organizationId, from, current.id);
+      const answered = asATextMessage(await this.assistant.respond(organizationId, who.personId, text)) || 'Noted.';
+      await say(`${answered}\n\nWrite "back" to return to your check-in.`);
+      return;
     } else if (who.personId) {
       const kind = looksLikeARequest(text);
       if (kind) {
@@ -395,6 +406,11 @@ export class WhatsAppForAnOrganisationService {
       const said = e?.response?.message ?? e?.message ?? 'That could not be answered just now. Try again in a moment.';
       await say(Array.isArray(said) ? said.join(' ') : String(said));
     }
+  }
+
+  /** Whether anything waits for this person to approve or decline (decision 82, item 1). Never throws. */
+  private async aDecisionWaitsFor(organizationId: string, personId: string): Promise<boolean> {
+    try { return !!(await this.assistant.somethingWaitsForYouToDecide?.(organizationId, personId)); } catch { return false; }
   }
 
   /* --- the report, on the phone, when a session closes anywhere --- */

@@ -19,6 +19,8 @@ export function anInboundHarness(opts: {
   who?: { personId: string | null; userId: string | null; externalId?: string | null };
   completed?: { overWhatsApp?: boolean | null; scenario?: string; label?: string };
   personPhone?: string | null;
+  /** Something waits for this person to approve or decline (decision 82, item 1). */
+  decisionWaiting?: boolean;
 } = {}) {
   const said: string[] = [];
   const sent: { org: string | null; via?: string; to: string; text: string; context?: any }[] = [];
@@ -63,7 +65,10 @@ export function anInboundHarness(opts: {
     sendMessage: jest.fn(async () => ({ reply: 'Thank you. What happens next?', sessionComplete: false })),
     complete: jest.fn(async () => ({})),
   };
-  const assistant: any = { respond: jest.fn(async () => ({ blocks: [{ type: 'text', body: 'Ask Groundwork answered.' }] })) };
+  const assistant: any = {
+    respond: jest.fn(async () => ({ blocks: [{ type: 'text', body: 'Ask Groundwork answered.' }] })),
+    somethingWaitsForYouToDecide: jest.fn(async () => !!opts.decisionWaiting),
+  };
   const reports: any = { sessionReport: jest.fn(async () => ({ whereThingsStand: { saying: 'Amina met two of the three goals.' } })) };
   const anthropic: any = { extract: jest.fn(async () => ({ language: 'en' })), respond: jest.fn(async (_s: string, m: any[]) => m[0].content) };
   const service = new WhatsAppForAnOrganisationService(prisma, whatsapp, conversation, assistant, {} as any, {} as any, reports, anthropic);
