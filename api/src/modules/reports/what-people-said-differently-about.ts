@@ -26,9 +26,17 @@ const inASentence = (phrase: string): string => {
 };
 
 /** "People said different things about the price list." or "People said different things. The accounts differ on ...". */
+/*
+ * A TOPIC THAT ONLY SAYS PEOPLE DIFFER (request 118, from request 117, part 8). Rukia read "People see two things
+ * differently. People said different things." The topic the report wrote was itself only "people see two things
+ * differently", which says no more than the sentence it was put in, so the two said one fact twice. Such a topic is
+ * left out, and the sentence is said once.
+ */
+const ONLY_SAYS_PEOPLE_DIFFER = /^(?:people|they|the team|everybody|everyone)\s+(?:see|saw|said|say|describe|described|read|view)\s+(?:(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+|some|several|a few|many)\s+)?(?:things?|this|it|matters?)?\s*(?:differently|different things)$/i;
+
 export function peopleSaidDifferentThingsAbout(topic: string): string {
   const t = (topic ?? '').trim().replace(/[.!?]+$/, '');
-  if (!t) return 'People said different things.';
+  if (!t || ONLY_SAYS_PEOPLE_DIFFER.test(t)) return 'People said different things.';
   if (isAWholeSentence(t)) return `People said different things. ${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
   return `People said different things about ${inASentence(t)}.`;
 }
