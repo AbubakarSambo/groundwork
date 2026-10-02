@@ -115,7 +115,7 @@ export class WhatsAppAddOnService {
     private readonly prisma: PrismaService,
     private readonly pricing: PricingService,
     private readonly stripe: StripeService,
-    @Optional() private readonly email?: EmailService,
+    @Optional() private readonly mailer?: EmailService,
   ) {}
 
   /** Where this organisation stands with WhatsApp now. Throws only for an organisation that does not exist. */
@@ -225,13 +225,13 @@ export class WhatsAppAddOnService {
   }
 
   private async tellTheAdmins(organizationId: string, what: string): Promise<void> {
-    if (!this.email) return;
+    if (!this.mailer) return;
     const admins = await this.prisma.user.findMany({
       where: { organizationId, role: UserRole.ADMIN, deletedAt: null },
       select: { email: true, firstName: true },
     });
     for (const a of admins) {
-      await this.email.sendBillingChangeNotification(a.email, a.firstName ?? 'there', what).catch(() => undefined);
+      await this.mailer.sendBillingChangeNotification(a.email, a.firstName ?? 'there', what).catch(() => undefined);
     }
   }
 

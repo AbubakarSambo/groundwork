@@ -104,8 +104,8 @@ export async function sendTheLeadsDailySummaries(
     if (keptOffThePhone(g)) continue;
     const today = await theOpenSession(prisma, g.id, now);
     if (!today) continue;
+    /* Every check-in has a lead: `Ground.initiatorId` is required, so there is no lead-less one to skip. */
     const key = `${g.organizationId}|${g.initiatorId}`;
-    if (!g.initiatorId) continue;
     const lead = byLead.get(key) ?? { organizationId: g.organizationId as string, leadId: g.initiatorId as string, checkIns: [] as (ACheckInToday & { groundId: string })[] };
     lead.checkIns.push({ ...today, groundId: g.id, label: g.label });
     byLead.set(key, lead);
