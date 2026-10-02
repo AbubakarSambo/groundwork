@@ -51,7 +51,7 @@ export const WORKFLOWS_REFUSED = {
   notForThisSuite: 'Only spending has separate steps above the limit.',
 };
 
-function stepsFrom(v: unknown): Step[] | null {
+export function stepsFrom(v: unknown): Step[] | null {
   if (!Array.isArray(v) || v.length < 1 || v.length > MAX_STEPS) return null;
   const out: Step[] = [];
   for (const s of v) {

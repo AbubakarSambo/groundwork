@@ -86,6 +86,13 @@ class LeaveRulesDto {
   @IsOptional() @IsString() tellHr?: 'approved' | 'every' | null;
 }
 
+class SpendRulesDto {
+  @IsOptional() @IsArray() categories?: Record<string, unknown>[] | null;
+  @IsOptional() @IsString() @MaxLength(30) categoryCalled?: string | null;
+  @IsOptional() @IsObject() evidence?: Record<string, unknown> | null;
+  @IsOptional() @IsArray() thresholds?: Record<string, unknown>[] | null;
+}
+
 class AgreementsDto {
   @IsArray() agreements!: unknown[];
 }
@@ -368,6 +375,18 @@ export class SuitesController {
   @ApiOperation({ summary: 'An admin sets the approval steps or the working days for leave, time sheets or spending. A part given as null is cleared; one left out is kept.' })
   setWorkflows(@CurrentUser() user: CurrentUserData, @Body() dto: WorkflowsDto) {
     return this.suites.setWorkflows({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('spend/rules')
+  @ApiOperation({ summary: 'The spending rules: categories, the receipt or quote needed, and thresholds by amount with their own approval steps. For an admin only.' })
+  spendRules(@CurrentUser() user: CurrentUserData) {
+    return this.suites.spendRules({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Put('spend/rules')
+  @ApiOperation({ summary: 'An admin sets the spending rules. A part given as null is cleared; one left out is kept.' })
+  setSpendRules(@CurrentUser() user: CurrentUserData, @Body() dto: SpendRulesDto) {
+    return this.suites.setSpendRules({ userId: user.id, organizationId: user.organizationId }, dto);
   }
 
   @Get('spend/mine')

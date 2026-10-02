@@ -2,6 +2,7 @@ import type { PrismaService } from '../prisma/prisma.service';
 import { theirSignIn, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { readDuties, whoHolds, type Duties } from './who-holds-each-duty';
 import type { AWorkflow } from './the-approval-steps';
+import { theThresholdCrossed, type AThreshold } from './the-spending-rules';
 
 /**
  * WHO MAY DECIDE A REQUEST, BY RULE: the one approval resolver (decision 85; step 3 of the build list
@@ -195,10 +196,13 @@ export async function couldBeNamed(prisma: PrismaService, steps: ARule[], organi
  */
 export function theStepsFor(suite: 'leave' | 'time', answers?: { workflow?: AWorkflow | null } | unknown): Step[];
 export function theStepsFor(suite: 'reviews', answers: { writer: string | null }): Step[];
-export function theStepsFor(suite: 'spend', answers: { limit: number | null; above: string | null; workflow?: AWorkflow | null }, amount: number): Step[];
+export function theStepsFor(suite: 'spend', answers: { limit: number | null; above: string | null; workflow?: AWorkflow | null; thresholds?: AThreshold[] | null }, amount: number): Step[];
 export function theStepsFor(suite: 'leave' | 'time' | 'reviews' | 'spend', answers?: any, amount?: number): Step[] {
   if (suite === 'reviews') return [answers?.writer === 'Their manager' ? ['manager', 'admin'] : ['admin']];
   const workflow = (answers?.workflow ?? null) as AWorkflow | null;
+  /* The spending rules' thresholds (build step 9): above one, its own steps; above two, the higher one's. None set: as before. */
+  const crossed = suite === 'spend' ? theThresholdCrossed({ thresholds: answers?.thresholds ?? undefined }, Number(amount ?? 0)) : null;
+  if (crossed) return crossed.steps;
   if (suite === 'spend' && answers?.limit != null && Number(amount ?? 0) > answers.limit) {
     if (workflow?.stepsAbove?.length) return workflow.stepsAbove;
     return [['budgetOwner', 'finance', ...(answers.above ? [{ named: answers.above as string }] : []), 'admin']];
@@ -211,10 +215,13 @@ export function theStepsFor(suite: 'leave' | 'time' | 'reviews' | 'spend', answe
 export const everyRuleIn = (steps: Step[]): ARule[] => steps.flat();
 
 /** Every rule a suite's answers could use, whatever the amount: what a board asks `couldBeNamed`. */
-export function everyStepFor(suite: 'spend', answers: { limit: number | null; above: string | null; workflow?: AWorkflow | null }): ARule[] {
-  return answers.limit == null
-    ? everyRuleIn(theStepsFor(suite, answers, 0))
-    : [...everyRuleIn(theStepsFor(suite, answers, 0)), ...everyRuleIn(theStepsFor(suite, answers, answers.limit + 1))];
+export function everyStepFor(suite: 'spend', answers: { limit: number | null; above: string | null; workflow?: AWorkflow | null; thresholds?: AThreshold[] | null }): ARule[] {
+  const below = { ...answers, thresholds: null };
+  return [
+    ...everyRuleIn(theStepsFor(suite, below, 0)),
+    ...(answers.limit == null ? [] : everyRuleIn(theStepsFor(suite, below, answers.limit + 1))),
+    ...(answers.thresholds ?? []).flatMap((t) => everyRuleIn(t.steps)),
+  ];
 }
 
 // -------------------------------------------------------------------------------------------------

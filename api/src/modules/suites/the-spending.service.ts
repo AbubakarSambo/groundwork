@@ -9,6 +9,9 @@ import type { PassedOn } from './the-leave-board.service';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { aSpendRequest, spendInWords, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
+import {
+  readSpendRules, theCategoryCalled, theEvidenceNeeded, theEvidenceSaid, theThresholdCrossed, type ASpendCategory, type AThreshold, type SpendRules,
+} from './the-spending-rules';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const SPEND_REFUSED = {
@@ -23,6 +26,7 @@ export const SPEND_REFUSED = {
   badWhat: 'Say what the money is for.',
   badTeam: 'Choose a team from your staff directory.',
   badBudget: 'Give a budget of nothing or more.',
+  badCategory: 'Choose one of the categories your organisation has set.',
 };
 
 export interface Reader { userId: string; organizationId: string }
@@ -46,6 +50,10 @@ export interface Waiting {
   mayDecide: boolean;
   /** Where it is, in a full sentence for this reader: "Wairimu has approved it, and it is now waiting for you." */
   where: string;
+  /** The category it is for, when the spending rules have categories (build step 9); otherwise null. */
+  category: string | null;
+  /** The evidence the rules ask for, in full sentences for whoever reads the board: "Spending on Fuel needs a receipt." Empty when none. */
+  needs: string[];
 }
 
 /** The person's own requests to spend (`mine`), newest first. */
@@ -53,6 +61,8 @@ export interface MySpending {
   currency: string | null;
   requests: {
     id: string; amount: number; what: string; status: 'waiting' | 'approved' | 'declined'; askedOn: string;
+    /** The category it is for (build step 9), or null. */
+    category: string | null;
     /** Where it is, in a full sentence: "Your request to spend KES 12,000 for fuel is approved by Wairimu and is now waiting for Omar in finance." */
     where: string;
   }[];
@@ -80,8 +90,10 @@ type Row = {
   decidedById?: string | null;
   /* Where it is among the approval steps (decision 85, build step 4). Rows read before steps existed have none: step one. */
   step?: number | null; escalatedTo?: number | null; stepSince?: Date | null; approvedByIds?: string[] | null;
+  /* The spending rules (build step 9). */
+  category?: string | null; evidenceNeeded?: string[] | null;
 };
-type Answers = { currency: string | null; limit: number | null; above: string | null; workflow?: AWorkflow };
+type Answers = { currency: string | null; limit: number | null; above: string | null; workflow?: AWorkflow; thresholds?: AThreshold[]; rules?: SpendRules };
 
 /** Who approved the steps so far. A request decided before steps were kept names only who decided it. */
 const approversOf = (r: Row): string[] =>
@@ -176,6 +188,8 @@ export class SpendingService {
         approver: who.kind === 'person' ? { kind: 'person', firstName: (await this.names([who.userId])).get(who.userId)?.first ?? '' } : { kind: who.kind },
         mayDecide: decides,
         where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides, reader.userId)),
+        category: r.category ?? null,
+        needs: this.needsSaid(r, answers),
       });
     }
 
@@ -235,6 +249,7 @@ export class SpendingService {
       const now = r.status === 'waiting' ? await this.now(reader.organizationId, r, answers, byUser) : null;
       requests.push({
         id: r.id, amount: n(r.amount), what: r.what, status: r.status as 'waiting' | 'approved' | 'declined', askedOn: r.createdAt.toISOString().slice(0, 10),
+        category: r.category ?? null,
         where: whereYourRequestIs(`Your request to spend ${spendInWords(n(r.amount), answers.currency, r.what)}`, await this.whereItStands(r, now, false, reader.userId)),
       });
     }
@@ -365,7 +380,7 @@ export class SpendingService {
    * For the engine's say-back (week 22): what `check` gives, and also the most a lead may approve on
    * their own and who exactly would approve, so the person is told before the yes if it is over a rule.
    */
-  async checkForChat(organizationId: string, userId: string, amount: number, today = new Date()) {
+  async checkForChat(organizationId: string, userId: string, amount: number, today = new Date(), categoryName?: string | null) {
     const checked = await this.check(organizationId, userId, amount, today);
     const answers = await this.suiteAnswers(organizationId);
     const dir = await this.directory(organizationId);
@@ -379,28 +394,56 @@ export class SpendingService {
       const rows = await this.prisma.spendRequest.findMany({ where: { organizationId, team: checked.team, status: 'waiting', createdAt: { gte: monthOf(today) } }, select: { amount: true } });
       waiting = rows.reduce((t, r) => t + n(r.amount), 0);
     }
-    return { ...checked, waiting, limit: answers.limit, approverFirstName: first };
+    /*
+     * THE SPENDING RULES (build step 9). The highest threshold this is over, when one is, is the amount
+     * said back in place of the limit, with whoever decides each later step. The evidence needed is
+     * said to the person before the yes. With no rules set, none of this is said.
+     */
+    const rules = answers.rules ?? {};
+    const crossed = theThresholdCrossed(rules, amount);
+    const category = theCategoryCalled(categoryName, rules);
+    const thenTo: string[] = [];
+    if (crossed && crossed.steps.length > 1) {
+      for (let step = 1; step < crossed.steps.length; step++) {
+        const later = await this.now(organizationId, { userId, amount, step }, answers, byUser);
+        thenTo.push(await whoInWords(this.prisma, later.who, later.team));
+      }
+    }
+    return {
+      ...checked, waiting, limit: answers.limit, approverFirstName: first,
+      ...(crossed ? { bar: crossed.above, thenTo } : {}),
+      rules,
+      evidence: theEvidenceSaid(theEvidenceNeeded(rules, amount, category), category, answers.currency, true),
+    };
   }
 
   /** A request to spend, as the engine records it once the person has confirmed it (request 26). No route. */
-  async ask(organizationId: string, userId: string, input: { amount: number; what: string; proposalId?: string | null }) {
-    await this.suiteAnswers(organizationId);
+  async ask(organizationId: string, userId: string, input: { amount: number; what: string; proposalId?: string | null; category?: string | null }) {
+    const answers = await this.suiteAnswers(organizationId);
     const role = await this.roleOf({ userId, organizationId });
     if (!role || role === 'GUEST') throw new ForbiddenException(SPEND_REFUSED.notInIt);
     if (typeof input.amount !== 'number' || !Number.isFinite(input.amount) || input.amount <= 0 || input.amount > 1e12) throw new BadRequestException(SPEND_REFUSED.badAmount);
     const what = (input.what ?? '').trim().slice(0, 300);
     if (!what) throw new BadRequestException(SPEND_REFUSED.badWhat);
+    /* The category, when the rules have them, and the evidence they ask for (build step 9). With no rules, neither is kept. */
+    const rules = answers.rules ?? {};
+    let category: ASpendCategory | null = null;
+    if (input.category != null && input.category !== '') {
+      category = theCategoryCalled(input.category, rules);
+      if (!category) throw new BadRequestException(SPEND_REFUSED.badCategory);
+    }
+    const evidenceNeeded = [...new Set(theEvidenceNeeded(rules, input.amount, category).map((e) => e.what))];
     const person = await theirRosterEntry(this.prisma, organizationId, userId, { department: true });
     const team = person?.department?.trim() || null;
     const created = await this.prisma.spendRequest.create({
-      data: { organizationId, userId, amount: input.amount, what, team },
+      data: { organizationId, userId, amount: input.amount, what, team, ...(category ? { category: category.name } : {}), ...(evidenceNeeded.length ? { evidenceNeeded } : {}) },
       select: { id: true },
     });
     /* One record of who did what (decision 85, build step 5): asked, after the say-back and the yes when there was one. */
     if (created?.id) await recordIt(this.prisma, { organizationId, suite: 'spend', ref: created.id, kind: 'asked', byUserId: userId, basis: { row: 'spend_requests', id: created.id, ...(input.proposalId ? { proposalId: input.proposalId } : {}) } });
     /* Whoever decides the first step is told on WhatsApp too (decision 82, item 1): the lead, the person named for over the limit, or the admins. */
     if (this.told && created?.id) {
-      await this.tellWhoDecides({ id: created.id, organizationId, userId, amount: input.amount, what, team, status: 'waiting', createdAt: new Date() });
+      await this.tellWhoDecides({ id: created.id, organizationId, userId, amount: input.amount, what, team, status: 'waiting', createdAt: new Date() }, answers);
     }
     return created;
   }
@@ -462,6 +505,19 @@ export class SpendingService {
     return couldBeNamed(this.prisma, everyStepFor('spend', answers).filter((s) => s !== 'admin' && s !== 'manager'), organizationId, { userId, role });
   }
 
+  /** The evidence a request needs, said for whoever reads the board, from what was kept when it was asked. */
+  private needsSaid(r: Row, answers: Answers): string[] {
+    const kept = (r.evidenceNeeded ?? []).filter((e): e is 'receipt' | 'quote' => e === 'receipt' || e === 'quote');
+    if (!kept.length) return [];
+    const rules = answers.rules ?? {};
+    const category = theCategoryCalled(r.category, rules);
+    const needs = theEvidenceNeeded(rules, n(r.amount), category).filter((e) => kept.includes(e.what));
+    /* The rule may have changed since: what was asked for still stands, said plainly. */
+    const said = theEvidenceSaid(needs, category, answers.currency, false);
+    for (const e of kept) if (!needs.some((x) => x.what === e)) said.push(`This request needs ${e === 'receipt' ? 'a receipt' : 'a quote'}.`);
+    return said;
+  }
+
   private mayDecide(reader: Reader, role: string | null, r: { userId: string }, who: { kind: string; userId?: string }): boolean {
     if (r.userId === reader.userId) return false;
     if (who.kind === 'admin') return role === 'ADMIN';
@@ -475,7 +531,11 @@ export class SpendingService {
     });
     if (!suite?.isOn) throw new NotFoundException(SPEND_REFUSED.notOn);
     const a = (suite.answers ?? {}) as Record<string, unknown>;
+    /* The spending rules an admin set (the-spending-rules.ts). None: no category, no evidence, no thresholds. */
+    const rules = await readSpendRules(this.prisma, organizationId).catch(() => ({} as SpendRules));
     return {
+      rules,
+      ...(rules.thresholds?.length ? { thresholds: rules.thresholds } : {}),
       currency: typeof a.currency === 'string' ? a.currency : null,
       limit: typeof a.limit === 'number' ? a.limit : null,
       above: typeof a.above === 'string' ? a.above : null,

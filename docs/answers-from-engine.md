@@ -2987,3 +2987,35 @@ Tests: `api/src/modules/suites/the-leave-rules-as-each-reader-reads-them.spec.ts
 **The message that tells her of the question changed** (inside the 24 hours): it ended "Open Groundwork to answer it." and now ends "You can reply here with your answer, or answer it in Groundwork. Your request is still waiting for Wairimu to decide."
 
 Tests: `api/src/modules/whatsapp/an-answer-to-a-question-during-a-check-in.spec.ts` (Aisha on WhatsApp, on a fresh copy of the API for the yes) and `api/src/modules/suites/an-answer-sent-from-whatsapp-as-each-reader-reads-it.spec.ts` (Aisha, Wairimu who asked, Grace an admin, Miriam a colleague, through the real leave suite). Every test of the asking fails on the old code, where the reply went into the check-in. One existing test changed, only for the new last sentence of the WhatsApp message: `a-question-about-leave-as-each-reader-reads-it.spec.ts`.
+
+## The spending rules an admin sets (3 October, decision 85, build step 9)
+
+**An admin can now name categories of spending, say when a receipt or a quote is needed, and set more than one threshold by amount, each with its own approval steps. Groundwork asks only for what is missing. With nothing set, nothing anybody reads changes** (this commit).
+
+- **New routes `GET /suites/spend/rules` and `PUT /suites/spend/rules`, for an admin only** (anybody else: "Only an admin can set the spending rules."). Both answer `{ rules, said }`. `PUT` takes any of:
+  - `categories`: `[{ name, evidence?: 'receipt' | 'quote', evidenceAbove? }]`, up to 30. `evidenceAbove` unset means the evidence is always needed for that category.
+  - `categoryCalled`: what a category is called when Groundwork asks, for example "project". Unset: "category".
+  - `evidence`: `{ what: 'receipt' | 'quote', above }`, for any request above an amount.
+  - `thresholds`: `[{ above, steps }]`, up to 5, each with its own steps chosen from the same rules as `PUT /suites/workflows` (`manager`, `departmentHead`, `budgetOwner`, `finance`, `hr`, `chiefExecutive`, `admin`). A request above two follows the higher one. Below the lowest, the approval steps are what they were.
+  - Each given as null (or an empty list) is cleared; each left out is kept. Refusals are full sentences, for example "Two categories have the same name. Give each category its own name."
+- **`said`**, for the Suites page under Spending and budgets, for example: "Each request to spend is for one category: Fuel, Travel and Equipment. When somebody does not say which, Groundwork asks “Which category is this for?” before it sends anything." "Spending on Fuel needs a receipt." "Spending on Equipment over KES 50,000 needs a quote." "Any request over KES 300,000 needs a quote." "A request to spend over KES 100,000 goes first to the person’s manager, and then to whoever looks after finance." With nothing set: "There are no categories set, so a request to spend is kept in the person’s own words."
+- **`GET /suites/rules/history`** now also lists "Grace changed the spending rules on 5 October." with details such as "This was added. Spending on Fuel needs a receipt."
+- **Ask Groundwork, the person asking** (and on WhatsApp after "Shall I treat this as a spending request?"):
+  - The category is read from their words. When none is named: "Which category is this for? It can be Fuel, Travel or Equipment." (with `categoryCalled: 'project'`, "Which project is this for? It can be Atlas or Kisumu depot."). A reply naming none of them: "I could not find that among them. Which category is this for? It can be Fuel, Travel or Equipment. You can also say no, and I will not send it." A no: "I have not sent it. Nothing was kept."
+  - The say-back: "You asked to spend KES 18,000 on fuel for Kisumu deliveries. It is for the category Fuel. Operations has KES 38,000 left for October, so that fits. Spending on Fuel needs a receipt, so please keep it for finance. Shall I send it to Fatuma to approve?"
+  - Over a threshold, that amount and who decides each later step: "This is over KES 100,000, so Fatuma must approve it, and then Omar in finance." A quote: "Spending on Equipment over KES 50,000 needs a quote, so please have one ready for finance." A rule about evidence never stops a request.
+- **`GET /suites/spend/board`, each waiting request:** new `category` (the category's name, or null) and `needs: string[]`, the evidence in full sentences for whoever reads the board: "Spending on Fuel needs a receipt." Served to exactly the readers who were served the request before. Whoever holds a duty named in a threshold's steps (Joseph for the Operations budget, Omar for finance) opens the board as `approver` and reads only what waits for them, as before.
+- **`GET /suites/spend/mine`, each request:** new `category`.
+
+**Before and after, with nothing set** (no rules row, or an empty one), proven in the spec:
+
+| Reader | Before this change | After, with nothing set |
+| --- | --- | --- |
+| Kamau's say-back, KES 18,000 on fuel | "You asked to spend KES 18,000 on fuel for Kisumu deliveries. Operations has KES 38,000 left for October, so that fits. Shall I send it to Fatuma to approve?" | The same, word for word. No category is asked for. |
+| Kamau's say-back, KES 150,000 | "... This is over KES 20,000, so Joseph must approve it. Shall I still send it to Joseph to approve?" | The same, word for word. |
+| The request kept | `{ organizationId, userId, amount, what, team }` | The same, with nothing more. |
+| Fatuma's board | the row, `where: 'It is waiting for you.'` | The same, with `category: null` and `needs: []`. |
+| Kamau's own requests | "Your request to spend KES 18,000 for fuel for Kisumu deliveries is waiting for Fatuma." | The same, with `category: null`. |
+| Grace, the admin | no spending rules to read | "There are no categories set, so a request to spend is kept in the person’s own words." |
+
+Tests: `api/src/modules/suites/the-spending-rules-as-each-reader-reads-them.spec.ts` (Grace the admin; Kamau asking; Fatuma his manager; Omar in finance; Joseph who holds the budget; Miriam a colleague; a lead, a member and a guest refused the rules). The before and after rows pass on the old code too, as they should; every other test fails on it. Two existing tests changed, only to add `category: null` and `needs: []` to the exact board row they compare: `the-spending-as-each-reader-reads-it.spec.ts` and `the-person-named-for-large-spending-decides.spec.ts`.

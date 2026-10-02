@@ -2609,6 +2609,12 @@ model SpendRequest {
   stepSince      DateTime? @map("step_since")
   /// Who approved each step so far, in order, by sign-in.
   approvedByIds  String[]  @default([]) @map("approved_by_ids")
+  /// The category the admin named that it is for ("Fuel", a project), when the spending rules have
+  /// categories (decision 85, build step 9). Empty with none set, and on every request kept before.
+  category       String?   @db.VarChar(40)
+  /// The evidence the rules asked for when it was asked: "receipt", "quote", or both. Only that it is
+  /// needed; no file is kept. Empty when none was needed.
+  evidenceNeeded String[]  @default([]) @map("evidence_needed")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 

@@ -120,6 +120,8 @@ describe('Omar, a member named for anything over KES 20,000', () => {
       left: 60000, over: true, approver: { kind: 'person', firstName: 'Omar' }, mayDecide: true,
       /* Where it is, in a full sentence (decision 85, build step 4). */
       where: 'It is waiting for you.',
+      /* The spending rules (build step 9): none set, so no category and no evidence. */
+      category: null, needs: [],
     }]);
     /* Not the rest of the board: the prototype shows each team's budget to an admin only. */
     expect(b.budgets).toEqual([]);

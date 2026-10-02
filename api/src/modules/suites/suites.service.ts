@@ -6,6 +6,7 @@ import { RULES_AN_ADMIN_MAY_SET, RULE_IN_WORDS, STEP_SUITES, WORKFLOWS_REFUSED, 
 import { theStepsFor, type Step } from './who-may-decide';
 import { saidAsADate } from './a-request-is-recorded';
 import { LEAVE_RULES_REFUSED, LEAVE_RULES_ROW, changeLeaveRules, leaveRulesFrom, theLeaveRulesSaid, type LeaveRules } from './the-leave-rules';
+import { SPEND_RULES_REFUSED, SPEND_RULES_ROW, changeSpendRules, spendRulesFrom, theSpendRulesSaid, type SpendRules } from './the-spending-rules';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const REFUSED = {
@@ -87,6 +88,13 @@ export interface TheLeaveRules {
   said: string[];
   /** Who holds the HR duty, by name, or null when nobody does. */
   hr: string | null;
+}
+
+/** The spending rules (the-spending-rules.ts), as the admin who sets them reads them. */
+export interface TheSpendRules {
+  rules: SpendRules;
+  /** The rules said back in full sentences. */
+  said: string[];
 }
 
 export const RULES_HISTORY_REFUSED = 'Only an admin can read how the suites’ rules were changed.';
@@ -300,6 +308,36 @@ export class SuitesService {
     return this.leaveRules(reader);
   }
 
+  /** The spending rules, for the admin who sets them. Nobody else reads this. */
+  async spendRules(reader: Reader): Promise<TheSpendRules> {
+    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(SPEND_RULES_REFUSED.onlyAnAdmin);
+    const rows = await this.rows(reader.organizationId);
+    const rules = spendRulesFrom(rows.get(SPEND_RULES_ROW)?.answers);
+    const spend = (rows.get('spend')?.answers ?? {}) as Record<string, unknown>;
+    return { rules, said: theSpendRulesSaid(rules, typeof spend.currency === 'string' ? spend.currency : null) };
+  }
+
+  /**
+   * An admin sets the spending rules: categories, what a category is called, the receipt or quote
+   * needed, and thresholds with their own steps. A part given as null is cleared; one left out is kept.
+   */
+  async setSpendRules(reader: Reader, input: unknown): Promise<TheSpendRules> {
+    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(SPEND_RULES_REFUSED.onlyAnAdmin);
+    const org = reader.organizationId;
+    const where = { organizationId_suite: { organizationId: org, suite: SPEND_RULES_ROW } };
+    const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });
+    const changed = changeSpendRules(spendRulesFrom(row?.answers), input);
+    if ('refused' in changed) throw new BadRequestException(changed.refused);
+    const answers = changed.rules as SpendRules as never;
+    await this.prisma.organizationSuite.upsert({
+      where,
+      create: { organizationId: org, suite: SPEND_RULES_ROW, isOn: false, answers, changedById: reader.userId },
+      update: { answers, changedById: reader.userId },
+    });
+    await this.keepTheChange(reader, SPEND_RULES_ROW, row ? { isOn: false, answers: row.answers } : null, { isOn: false, answers });
+    return this.spendRules(reader);
+  }
+
   /**
    * Each change of the suites' rules, newest first, for an admin only (decision 85, build step 5):
    * who changed it, when, and from what to what, in full sentences. `OrganizationSuite` keeps only the
@@ -325,6 +363,7 @@ export class SuitesService {
         const said = r.suite === DUTIES_ROW ? `${who} changed who holds each duty on ${on}.`
           : r.suite === WORKFLOWS_ROW ? `${who} changed the approval steps on ${on}.`
           : r.suite === LEAVE_RULES_ROW ? `${who} changed the leave rules on ${on}.`
+          : r.suite === SPEND_RULES_ROW ? `${who} changed the spending rules on ${on}.`
           : !r.before?.isOn && r.after?.isOn ? `${who} switched on ${name} on ${on}.`
           : r.before?.isOn && !r.after?.isOn ? `${who} switched off ${name} on ${on}.`
           : `${who} changed the answers for ${name} on ${on}.`;
@@ -370,6 +409,12 @@ export class SuitesService {
       }
     } else if (suite === LEAVE_RULES_ROW) {
       const said = (x: unknown) => theLeaveRulesSaid(leaveRulesFrom(x), null, null).filter((l) => !/^There are no kinds|^No notice|^A rule never/.test(l));
+      const from = said(before);
+      const to = said(after);
+      for (const l of to) if (!from.includes(l)) out.push(`This was added. ${l}`);
+      for (const l of from) if (!to.includes(l)) out.push(`This was taken away. ${l}`);
+    } else if (suite === SPEND_RULES_ROW) {
+      const said = (x: unknown) => theSpendRulesSaid(spendRulesFrom(x), null).filter((l) => !/^There are no categories|^Groundwork keeps only|^A request over more than one/.test(l));
       const from = said(before);
       const to = said(after);
       for (const l of to) if (!from.includes(l)) out.push(`This was added. ${l}`);

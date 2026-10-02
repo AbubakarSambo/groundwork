@@ -35,7 +35,8 @@ import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisi
 import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
 import { LEAVE_ANSWER_KIND, LEAVE_QUESTION_KIND, LONGEST, NO_QUESTION_WAITING, QUESTION_REFUSED, aDeclineWithAReasonSaidBack, aReasonIn, anAnswerNotSent, anAnswerSaidBack, anAnswerSent, type AQuestionWaiting } from '../suites/a-question-about-a-request';
 import { HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
-import { SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
+import { SPEND_MISSING_KIND, SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
+import { theCategoryCalled, theCategoryIn, whichCategory, whichCategoryAgain, type SpendRules } from '../suites/the-spending-rules';
 import { NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
 import { howLongAgo, splitBySession } from './what-you-told-me-before';
 import { ScenariosService } from '../detectors/scenarios.service';
@@ -1731,6 +1732,14 @@ export class AssistantService {
       return this.resolveParkedLeaveQuestion(organizationId, personId, who, parked, message);
     }
 
+    /*
+     * THE ONE THING A REQUEST TO SPEND IS MISSING (build step 9): the reply is read as the category
+     * Groundwork asked for, so it is read before the yes/no reading.
+     */
+    if (parked.kind === SPEND_MISSING_KIND) {
+      return this.resolveParkedSpendMissing(organizationId, personId, who, parked, message);
+    }
+
     /* THE ROLE INTERVIEW (request 25): what is typed is an answer to its question, not a yes or a no. */
     if (parked.kind === ROLE_INTERVIEW_KIND) {
       return this.resolveParkedInterview(organizationId, personId, who, parked, message);
@@ -2918,14 +2927,71 @@ export class AssistantService {
     const read = readSpending(message, first.currency);
     if (read.kind === 'none') return null;
     if (read.kind === 'ask') return rules('ask_to_spend', text(read.say));
-    const facts = await this.spending.checkForChat(organizationId, userId, read.said.amount, today);
+    /*
+     * THE SPENDING RULES (build step 9). When the admin named categories and the words name none of
+     * them, that one thing is asked for ("Which project is this for?"), and nothing else.
+     */
+    const theRules: SpendRules = (first as any).rules ?? {};
+    if (theRules.categories?.length) {
+      const category = theCategoryIn(message, theRules);
+      if (!category) {
+        const ask = whichCategory(theRules);
+        const row = await this.prisma.assistantProposal.create({
+          data: { organizationId, personExternalId: who, kind: SPEND_MISSING_KIND, summary: ask, payload: { ...read.said } as never },
+          select: { id: true },
+        });
+        return { lane: 'ask_to_spend', composedBy: 'rules', blocks: [text(ask), { type: 'proposal', proposalId: row.id, summary: ask }] };
+      }
+      return this.saySpendingBack(organizationId, who, userId, read.said, category.name, today);
+    }
+    return this.saySpendingBack(organizationId, who, userId, read.said, null, today);
+  }
+
+  /** The say-back of a request to spend, parked for the yes. The category, when there is one, goes with it. */
+  private async saySpendingBack(organizationId: string, who: string, userId: string, said: SpendSaid, category: string | null, today = new Date()): Promise<Reply> {
+    const facts = await this.spending!.checkForChat(organizationId, userId, said.amount, today, category);
     const month = whenItWas(today, 'month', 'UTC');
-    const say = spendingSaidBack(read.said, { ...facts, approver: facts.approver }, month);
+    const theRules: SpendRules = (facts as any).rules ?? {};
+    const say = spendingSaidBack(said, { ...facts, approver: facts.approver, category: category ? { name: category, called: theRules.categoryCalled ?? 'category' } : null }, month);
     const row = await this.prisma.assistantProposal.create({
-      data: { organizationId, personExternalId: who, kind: 'spend_request', summary: say, payload: { ...read.said } as never },
+      data: { organizationId, personExternalId: who, kind: 'spend_request', summary: say, payload: { ...said, ...(category ? { category } : {}) } as never },
       select: { id: true },
     });
     return { lane: 'ask_to_spend', composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
+  }
+
+  /**
+   * THE CATEGORY GROUNDWORK ASKED FOR (build step 9). A reply that names one goes on to the say-back;
+   * a no sends nothing; a message that is plainly something else is answered as it would be; anything
+   * else is asked again.
+   */
+  private async resolveParkedSpendMissing(organizationId: string, personId: string, who: string, parked: any, message: string): Promise<Reply> {
+    const said = parked.payload as SpendSaid;
+    const me = await this.theSignInOf(organizationId, who);
+    if (!this.spending || !me.linkedUserId || !(said?.amount > 0) || !said?.what) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return this.answer(organizationId, personId, who, message, true);
+    }
+    const typed = (message ?? '').trim();
+    if (resolveConfirmation(typed) === 'decline') {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('ask_to_spend', text(SPEND_NOT_SENT));
+    }
+    let spendRules: SpendRules = {};
+    try { spendRules = ((await this.spending.checkForChat(organizationId, me.linkedUserId, said.amount)) as any).rules ?? {}; } catch {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return rules('ask_to_spend', text(SPEND_SUITE_OFF));
+    }
+    const category = theCategoryCalled(typed.replace(/[.!]+$/, ''), spendRules) ?? theCategoryIn(typed, spendRules);
+    if (category) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+      return this.saySpendingBack(organizationId, who, me.linkedUserId, said, category.name);
+    }
+    if (!typed || aDecisionIn(typed) || soundsLikeLeave(typed) || soundsLikeHours(typed) || soundsLikeSpending(typed)) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return this.answer(organizationId, personId, who, message, true);
+    }
+    return rules('ask_to_spend', text(whichCategoryAgain(spendRules)));
   }
 
   private async resolveParkedSpending(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
@@ -2943,7 +3009,8 @@ export class AssistantService {
     try {
       if (!this.spending) throw new Error(SPEND_SUITE_OFF);
       const facts = await this.spending.checkForChat(organizationId, person.linkedUserId, said.amount);
-      await this.spending.ask(organizationId, person.linkedUserId, { amount: said.amount, what: said.what, proposalId: parked.id });
+      const category = (parked.payload as { category?: string } | null)?.category ?? null;
+      await this.spending.ask(organizationId, person.linkedUserId, { amount: said.amount, what: said.what, proposalId: parked.id, ...(category ? { category } : {}) });
       reply = spendingSent(said, facts.currency, facts.approverFirstName);
     } catch (err: any) {
       reply = typeof err?.message === 'string' && err.message && err.message !== SPEND_SUITE_OFF ? `I could not send it. ${err.message}` : SPEND_SUITE_OFF;
