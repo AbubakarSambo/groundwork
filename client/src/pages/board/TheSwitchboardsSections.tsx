@@ -297,38 +297,57 @@ export function standsTone(word: string): import('@/components/gw/ui').TagTone {
 }
 
 /**
- * THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (request 108 a; board-as-lead.txt: "Will we
- * reach 25 sales by 30 September?"). Drawn above everything else on the board, in the largest
- * type, as the engine's own answer asks: the question, then the answer, then one bar per entry in
- * `bars` - `howItIsGoing.latestSummary` keeps its place straight after, unchanged.
+ * THE HEADLINE QUESTION, WITH ITS ANSWER, AND "WHERE EACH TARGET STANDS" BESIDE IT (request 108 a
+ * and b; board-as-lead.txt: "Will we reach 25 sales by 30 September?" / "Not yet. 21 freezers are
+ * sold..." beside a column of targets each with its own word - "Met", "Close", "Behind"...).
+ *
+ * BOARD REVIEW, SALES PIECE A, ITEM 2: TWO COLUMNS, NOT ONE STACKED COLUMN. The question and its
+ * answer used to sit above a single stacked list of bars, with no heading of its own for that list
+ * - so "Where each target stands", the prototype's own words for it, never appeared on the page at
+ * all. The two now sit side by side at a normal desktop width (the same `auto-fit, minmax(...)` grid
+ * every other two-up layout on this board already uses, so it stacks to one column under about
+ * 580px without a media query of its own) - the question and its answer on the left, "Where each
+ * target stands" as its own panel on the right, the way board-as-lead.jpg draws them.
+ *
+ * NO FALLBACK TO `latestSummary` IN THE ANSWER'S OWN SLOT. `headline.answer` is null until the
+ * engine can answer the question (request 111); this shows nothing in its place rather than a
+ * different sentence standing in for an answer nobody gave. `howItIsGoing.latestSummary` still
+ * keeps its own place, in `HowItIsGoing`, just below this section - unchanged.
  */
 export function HeadlineSection({ headline, objectives }: { headline: BoardPresent['headline']; objectives: BoardPresent['objectives'] }) {
   if (!headline) return null
   const names = new Map((objectives ?? []).map((o) => [o.id, o.name]))
   return (
-    <Panel>
-      <Stack gap={10}>
-        {/* The question, in the largest type on the board - `Callout tone="emphasis"` is the one
-            shared part that already draws a bold, near-black sentence at panel level, carried over
-            from "The gap" on TheJudgement rather than a new one-off size invented for this. */}
-        <Callout tone="emphasis">{headline.question}</Callout>
-        {headline.answer && <p className="gwui-panel-text">{headline.answer}</p>}
-        {headline.bars.length > 0 && (
+    <div className="gwui-gap-16" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', alignItems: 'start' }}>
+      <Panel>
+        <Stack gap={10}>
+          {/* The question, in the largest type on the board - `Callout tone="emphasis"` is the one
+              shared part that already draws a bold, near-black sentence at panel level, carried over
+              from "The gap" on TheJudgement rather than a new one-off size invented for this. */}
+          <Callout tone="emphasis">{headline.question}</Callout>
+          {headline.answer && <p className="gwui-panel-text">{headline.answer}</p>}
+        </Stack>
+      </Panel>
+      {headline.bars.length > 0 && (
+        <Panel>
           <Stack gap={10}>
-            {headline.bars.map((bar) => (
-              <div key={bar.objectiveId} className="gwui-gap-12" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-                <p className="gwui-panel-text-muted" style={{ flex: 1, minWidth: 140 }}>{names.get(bar.objectiveId) ?? ''}</p>
-                <div style={{ width: 140, height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${bar.filled}%`, background: 'var(--gw-navy)', borderRadius: 6 }} />
+            <div className="gwui-fs-15 gwui-ink-dark" style={{ fontWeight: 700 }}>Where each target stands</div>
+            <Stack gap={10}>
+              {headline.bars.map((bar) => (
+                <div key={bar.objectiveId} className="gwui-gap-12" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <p className="gwui-panel-text-muted" style={{ flex: 1, minWidth: 140 }}>{names.get(bar.objectiveId) ?? ''}</p>
+                  <div style={{ width: 140, height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${bar.filled}%`, background: 'var(--gw-navy)', borderRadius: 6 }} />
+                  </div>
+                  <p className="gwui-panel-text-muted" style={{ minWidth: 90, textAlign: 'right' }}>{bar.now} of {bar.target}</p>
+                  {bar.word && <Tag tone={standsTone(bar.word)}>{bar.word}</Tag>}
                 </div>
-                <p className="gwui-panel-text-muted" style={{ minWidth: 90, textAlign: 'right' }}>{bar.now} of {bar.target}</p>
-                {bar.word && <Tag tone={standsTone(bar.word)}>{bar.word}</Tag>}
-              </div>
-            ))}
+              ))}
+            </Stack>
           </Stack>
-        )}
-      </Stack>
-    </Panel>
+        </Panel>
+      )}
+    </div>
   )
 }
 
