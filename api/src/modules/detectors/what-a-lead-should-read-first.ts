@@ -33,8 +33,10 @@ export interface WaitingRow {
   waitingDays: number;
   /** Who it sits with. Named, because a handoff with no name is not a handoff. */
   onLabel: string | null;
-  /** Set once the other side has been told. See shouldEscalate. */
+  /** Stamped by Groundwork's overnight check once it has been open ESCALATE_AFTER_DAYS. Nobody is told directly. */
   escalatedAt: Date | null;
+  /** The day the wait began, said as a date ("since 20 May"), never as a count from the reading. */
+  since?: Date | string | null;
   /**
    * Whether the claim names who and what - `blockerHasSubstance` in board/reads.ts.
    *
@@ -103,6 +105,7 @@ export interface TheRead {
 }
 
 import { ESCALATE_AFTER_DAYS } from '../webhooks/a-handoff-that-has-sat-too-long';
+import { theDayInWords } from '../board/the-day-in-words';
 import { ConfidenceBand } from '../reports/confidence-in-the-picture';
 
 export const REFUSAL =
@@ -116,7 +119,7 @@ const isLate = (c: CommitmentRow, now: Date) => c.dueAt !== null && c.dueAt < no
 const days = (from: Date, now: Date) => Math.max(0, Math.floor((now.getTime() - from.getTime()) / 86_400_000));
 
 /**
- * A HANDOFF IS FLAGGED, ADVISED ON, AND THE OTHER SIDE IS TOLD. IT IS NOT A NOTE.
+ * A HANDOFF IS FLAGGED AND ADVISED ON. IT IS NOT A NOTE.
  *
  * The first version of this listed "the schema sign-off - 12 days, blocking." and stopped, which is
  * a lead reading that somebody is stuck and having no idea what to do about it - and the person
@@ -125,12 +128,28 @@ const days = (from: Date, now: Date) => Math.max(0, Math.floor((now.getTime() - 
  *
  * All three parts already existed and none of them were used here. `blockerHasSubstance` decides
  * whether a claim names who and what; `shouldEscalate` and ESCALATE_AFTER_DAYS decide when it stops
- * being ordinary; and BLOCKER_ESCALATED is the event that tells the other side. This says which of
- * those has happened and what to do next.
+ * being ordinary; and BLOCKER_ESCALATED posts a notice to the organisation's own connected tools (it
+ * names the check-in, never a person, so it tells nobody directly). This says which of those has
+ * happened and what the lead can do.
  */
-export function sayHandoff(w: WaitingRow, now: Date): string {
-  const who = w.onLabel?.trim() || 'somebody not named';
-  const head = `${w.what} - ${w.waitingDays} days with ${who}, ${w.status.toLowerCase()}.`;
+export function sayHandoff(w: WaitingRow, now: Date, as: { waiter?: string; on?: string } = {}): string {
+  /*
+   * PLAIN FULL SENTENCES, ONLY WHAT IS TRUE, AND DATES RATHER THAN COUNTS (3 October 2026).
+   *
+   * This read "the schema sign-off - 12 days with Tom, blocking. Tom has been told - it was raised
+   * automatically once it passed 14 days." Pieces joined with dashes, a count of days that changed every
+   * time the read was opened (request 117, part 9), and a claim that was not true: the overnight check
+   * (webhooks.cron.ts) stamps the wait and posts a notice to the organisation's own webhook and connected
+   * channel, which names the check-in and never the person. Nobody is told directly. So each branch says
+   * what actually happened, on which day, and what the lead can do.
+   */
+  const on = (as.on ?? '').trim() || w.onLabel?.trim() || null;
+  const waiter = (as.waiter ?? '').trim() || 'Somebody';
+  const day = (d: Date | string | null | undefined) => (d ? theDayInWords(new Date(d as any), now) : null);
+  const since = day(w.since);
+  const head = `${waiter} has been waiting${on ? ` on ${on}` : ''} for ${w.what}${since ? ` since ${since}` : ''}.`
+    + (String(w.status).toUpperCase() === 'BLOCKING' ? ' They have said it stops their work.' : '');
+  const notTold = on ? ` It does not tell ${on} directly.` : '';
 
   /*
    * A claim with no substance is reported as what it is. Not called a lie, and not hidden either:
@@ -138,24 +157,26 @@ export function sayHandoff(w: WaitingRow, now: Date): string {
    * here as a handoff is an excuse being laundered into protection.
    */
   if (!w.hasSubstance) {
-    return `${head} This one does not name who it sits with or what is actually needed, so it is a`
-      + ` remark rather than a handoff - and nothing has been sent to anybody. Ask what exactly is`
-      + ` needed and from whom, and it becomes real.`;
+    return `${head} It does not say who it sits with or what exactly is needed, so it is a remark rather`
+      + ' than a handoff, and Groundwork has sent nothing about it. Ask what exactly is needed and from whom,'
+      + ' and it becomes a handoff.';
   }
 
   if (w.escalatedAt) {
-    return `${head} ${who} has been told - it was raised automatically once it passed`
-      + ` ${ESCALATE_AFTER_DAYS} days. If it is still sitting there, the thing to ask is what they`
-      + ` need in order to finish it, not whether they will.`;
+    return `${head} Groundwork raised it on ${day(w.escalatedAt)}, after it had been open for ${ESCALATE_AFTER_DAYS} days.`
+      + ` That posts a notice to your organisation's own connected tools, where there are any.${notTold}`
+      + ` If it is still open, ask ${on ?? 'whoever holds it'} what they need in order to finish it, rather than whether they will.`;
   }
 
-  const left = ESCALATE_AFTER_DAYS - w.waitingDays;
-  if (left > 0) {
-    return `${head} ${who} has not been told yet - that happens on its own at`
-      + ` ${ESCALATE_AFTER_DAYS} days, so in ${left === 1 ? 'a day' : `${left} days`}. If it matters`
-      + ` sooner than that, say so to ${who} today rather than waiting for it.`;
+  if (w.waitingDays < ESCALATE_AFTER_DAYS) {
+    const raiseOn = w.since ? day(new Date(new Date(w.since as any).getTime() + ESCALATE_AFTER_DAYS * 86_400_000)) : null;
+    return `${head} Groundwork raises a wait that is still open after ${ESCALATE_AFTER_DAYS} days`
+      + `${raiseOn ? `, so it will raise this one on ${raiseOn} if it is still open` : ''}.`
+      + ` That posts a notice to your organisation's own connected tools, where there are any.${notTold}`
+      + ` If it matters sooner than that, say so to ${on ?? 'whoever holds it'} yourself today.`;
   }
-  return `${head} Past ${ESCALATE_AFTER_DAYS} days and not yet raised with ${who}. Raise it.`;
+  return `${head} It has been open for more than ${ESCALATE_AFTER_DAYS} days, and Groundwork has not raised it yet.`
+    + ` Raise it with ${on ?? 'whoever holds it'} yourself.`;
 }
 
 export interface Completeness {
@@ -275,7 +296,7 @@ export function theReadFor(m: Material): TheRead {
   if (m.othersWaiting.length) {
     sections.push({
       heading: 'What other people are waiting on them for',
-      lines: m.othersWaiting.map((w) => sayHandoff(w, m.now)),
+      lines: m.othersWaiting.map((w) => sayHandoff(w, m.now, { on: m.personLabel })),
       source: 'Handoffs both sides recorded, not one person reporting the other.',
     });
   }
@@ -288,7 +309,7 @@ export function theReadFor(m: Material): TheRead {
   if (m.waitingOnOthers.length) {
     sections.push({
       heading: 'What they are waiting on other people for',
-      lines: m.waitingOnOthers.map((w) => sayHandoff(w, m.now)),
+      lines: m.waitingOnOthers.map((w) => sayHandoff(w, m.now, { waiter: m.personLabel })),
       source: 'The same handoff records, from the other side. Nobody here is taking one person\'s word for it.',
     });
   }

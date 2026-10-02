@@ -913,6 +913,8 @@ export class GroundsByApiService {
         waitingDays: w.waitingDays,
         onLabel: w.onLabel ?? null,
         escalatedAt: w.escalatedAt ?? null,
+        /* The day it began, so the read says a date and not a count that changes on opening. */
+        since: w.createdAt ?? null,
         /* Whether the claim names who and what - the board already decides this, and a read that
            decided it again would be a second opinion on the same question. */
         hasSubstance: w.hasSubstance ?? true,

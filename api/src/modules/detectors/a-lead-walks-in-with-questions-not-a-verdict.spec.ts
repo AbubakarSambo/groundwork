@@ -139,17 +139,36 @@ describe('a lead walks in with questions, not a verdict', () => {
    * product already knew what to do about them.
    */
   describe('and it uses the engines rather than restating them', () => {
-    it('tells you the other side has been told, or exactly when they will be', () => {
-      const told = sayHandoff(handoff({ waitingDays: 20, escalatedAt: daysAgo(6) }), NOW);
-      expect(told).toContain('Tom has been told');
-      expect(told).toContain(String(ESCALATE_AFTER_DAYS));
-      /* Advice, not just a flag - and advice about the work, not about the person. */
-      expect(told).toContain('what they need in order to finish it');
+    /*
+     * EACH BRANCH, EXACTLY AS THE LEAD READS IT (3 October 2026). These pinned "Tom has been told" and
+     * "has not been told yet ... in 2 days", and the sentences were joined with dashes around a count of
+     * days that changed every time the read was opened. "Has been told" was not true: the overnight
+     * check posts a notice to the organisation's own connected tools, naming the check-in, never a
+     * person. Each branch now says what happened, on which day, and what the lead can do.
+     */
+    it('says Groundwork raised it, on which day, that nobody was told directly, and what to ask', () => {
+      expect(sayHandoff(handoff({ waitingDays: 20, since: daysAgo(20), escalatedAt: daysAgo(6) }), NOW, { waiter: 'Priya' })).toBe(
+        'Priya has been waiting on Tom for the schema sign-off since 12 May. They have said it stops their work.'
+        + ` Groundwork raised it on 26 May, after it had been open for ${ESCALATE_AFTER_DAYS} days.`
+        + " That posts a notice to your organisation's own connected tools, where there are any. It does not tell Tom directly."
+        + ' If it is still open, ask Tom what they need in order to finish it, rather than whether they will.',
+      );
+    });
 
-      const notYet = sayHandoff(handoff({ waitingDays: 12 }), NOW);
-      expect(notYet).toContain('has not been told yet');
-      expect(notYet).toContain('2 days');
-      expect(notYet).toContain('say so to Tom today');
+    it('says the day Groundwork will raise it, not a count of days from opening the read', () => {
+      expect(sayHandoff(handoff({ waitingDays: 12, since: daysAgo(12) }), NOW, { waiter: 'Priya' })).toBe(
+        'Priya has been waiting on Tom for the schema sign-off since 20 May. They have said it stops their work.'
+        + ` Groundwork raises a wait that is still open after ${ESCALATE_AFTER_DAYS} days, so it will raise this one on 3 June if it is still open.`
+        + " That posts a notice to your organisation's own connected tools, where there are any. It does not tell Tom directly."
+        + ' If it matters sooner than that, say so to Tom yourself today.',
+      );
+    });
+
+    it('says plainly when it is past the time and not raised yet', () => {
+      expect(sayHandoff(handoff({ status: 'WAITING', waitingDays: 15, since: daysAgo(15) }), NOW, { waiter: 'Priya' })).toBe(
+        'Priya has been waiting on Tom for the schema sign-off since 17 May.'
+        + ` It has been open for more than ${ESCALATE_AFTER_DAYS} days, and Groundwork has not raised it yet. Raise it with Tom yourself.`,
+      );
     });
 
     it('refuses to launder a remark into a blocker', () => {
@@ -159,10 +178,29 @@ describe('a lead walks in with questions, not a verdict', () => {
        * who and what; repeating one that does not, as though it were a handoff, is an excuse being
        * given the protection meant for people who are actually stuck.
        */
-      const thin = sayHandoff(handoff({ hasSubstance: false, onLabel: null }), NOW);
-      expect(thin).toContain('remark rather than a handoff');
-      expect(thin).toContain('nothing has been sent to anybody');
-      expect(thin).toContain('Ask what exactly is needed and from whom');
+      expect(sayHandoff(handoff({ hasSubstance: false, onLabel: null, since: daysAgo(12) }), NOW, { waiter: 'Priya' })).toBe(
+        'Priya has been waiting for the schema sign-off since 20 May. They have said it stops their work.'
+        + ' It does not say who it sits with or what exactly is needed, so it is a remark rather than a handoff,'
+        + ' and Groundwork has sent nothing about it. Ask what exactly is needed and from whom, and it becomes a handoff.',
+      );
+    });
+
+    it('in the read, says who waits on whom in each direction, with no dash, no count of days and no "has been told"', () => {
+      const read = theReadFor(material({
+        waitingOnOthers: [handoff({ waitingDays: 20, since: daysAgo(20), escalatedAt: daysAgo(6) })],
+        othersWaiting: [handoff({ what: 'the test plan for the release', status: 'WAITING', onLabel: null, waitingDays: 3, since: daysAgo(3) })],
+      }));
+      const lines = read.sections.flatMap((x) => x.lines);
+      expect(lines).toContain(
+        'Somebody has been waiting on Priya for the test plan for the release since 29 May.'
+        + ` Groundwork raises a wait that is still open after ${ESCALATE_AFTER_DAYS} days, so it will raise this one on 12 June if it is still open.`
+        + " That posts a notice to your organisation's own connected tools, where there are any. It does not tell Priya directly."
+        + ' If it matters sooner than that, say so to Priya yourself today.',
+      );
+      expect(lines.some((l) => l.startsWith('Priya has been waiting on Tom for the schema sign-off since 12 May.'))).toBe(true);
+      for (const l of lines.filter((l) => /waiting/.test(l))) {
+        expect(l).not.toMatch(/ - |\b\d+ days? (?:with|ago)\b|has been told|in \d+ days/);
+      }
     });
 
     it('knows how complete the picture is instead of disclaiming it', () => {
