@@ -111,7 +111,8 @@ describe('a wait kept in the app, alike a team wait, asked about on WhatsApp', (
     const wa = aBaridi(keptFirst);
     const onThePhone = await wa.ask('whatsapp', 'pe-wairimu', 'who is waiting on me');
     expect(keptIn(onThePhone)).toEqual([]);
-    expect(onThePhone).toContain(`- ${TEAM_WORDS} (Sales team, Q3)`);
+    /* Said as a full sentence since 3 October; this fixture has no names or rows, so Femi is "somebody in" the check-in. */
+    expect(onThePhone).toMatch(new RegExp(`^Somebody in Sales team, Q3 has been waiting on you for ${TEAM_WORDS} since \\d+ September\\.$`, 'm'));
     expect(wa.prompts.filter((p) => keptIn(p).length)).toEqual([]);
     /* The kept check-in was never selected, not read and then hidden. */
     for (const [args] of wa.prisma.groundDependency.findMany.mock.calls) expect(args.where.groundId).toEqual({ notIn: ['g-pip'] });

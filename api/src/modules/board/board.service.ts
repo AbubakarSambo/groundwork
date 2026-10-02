@@ -1,4 +1,4 @@
-import { wholeDaysTo, theDayItBegan } from './a-wait-is-dated-not-counted';
+import { wholeDaysTo, theDayItBegan, theRecordsClock } from './a-wait-is-dated-not-counted';
 import { aFindingThatDoesNotSayTheWaitAgain } from './where-each-person-is-against-their-number';
 import { eachRepeatedSentenceSaidOnce } from './each-repeated-sentence-said-once';
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
@@ -154,6 +154,7 @@ import { eachLineInTheirName, inTheirOwnWords } from './what-each-person-said-is
 import { theRecordAQuoteMayComeFromByParticipant } from '../reports/a-quote-built-at-the-read';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
+import { aNameFor, thePersonWaitingAsTheyRead, atTheStartOfASentence } from './the-person-waiting-by-name';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
 import { WHAT_EACH_MARK_SAYS } from '../reports/the-mark-on-every-line';
 
@@ -3489,19 +3490,49 @@ export class BoardService {
       select: {
         fromParticipantId: true, onParticipantId: true, onLabel: true, what: true,
         status: true, createdAt: true, groundId: true,
-        ground: { select: { label: true } },
-        fromParticipant: { select: { email: true } },
+        /* Who runs it and whether its people are named to each other, so each reader is told a name only where they may be. */
+        ground: { select: { label: true, scenario: true, initiatorId: true, peersVisibleToEachOther: true, participants: { select: { id: true, userId: true, email: true, partyType: true, managingOnly: true, createdAt: true } } } },
+        fromParticipant: { select: { email: true, userId: true, partyType: true, nameGiven: true, organisationGiven: true, user: { select: { firstName: true, lastName: true } } } },
         onParticipant: { select: { email: true } },
       },
     });
 
+    /*
+     * THE ROSTER'S NAME, for somebody who has not signed in and gave no name. Never the address: the
+     * address is only the key the two sides are matched by (the-person-waiting-by-name.ts).
+     */
+    const addresses = [...new Set(rows.map((r: any) => r.fromParticipant?.email?.toLowerCase()).filter(Boolean))] as string[];
+    const people = (this.prisma as any).person;
+    const roster: any[] = addresses.length && typeof people?.findMany === 'function'
+      ? await Promise.resolve(people.findMany({
+        where: { organizationId, email: { in: addresses, mode: 'insensitive' } },
+        select: { email: true, displayName: true, givenName: true, familyName: true },
+      })).catch(() => []) ?? []
+      : [];
+    const rosterName = new Map<string, string>();
+    for (const p of (roster ?? []) as any[]) {
+      const n = (p.displayName ?? '').trim() || [p.givenName, p.familyName].filter((x: any) => !!x?.trim()).join(' ').trim();
+      if (p.email && n) rosterName.set(String(p.email).toLowerCase(), n);
+    }
+
     const deps: OrgDependency[] = [];
-    for (const r of rows) {
+    for (const r of rows as any[]) {
       /* Nobody waits on themselves (request 117, part 6): Today and Ask Groundwork read this too. */
       if (aWaitOnOneself(r)) continue;
       const from = r.fromParticipant?.email?.toLowerCase();
       if (!from) continue;
+      const runsIt = (p: any) => p?.partyType === 'INITIATOR' || (!!r.ground?.initiatorId && p?.userId === r.ground.initiatorId);
       deps.push({
+        fromName: aNameFor(r.fromParticipant, rosterName.get(from)),
+        fromRunsIt: runsIt(r.fromParticipant),
+        naming: {
+          scenario: r.ground?.scenario,
+          peersVisibleToEachOther: r.ground?.peersVisibleToEachOther ?? null,
+          participants: ((r.ground?.participants ?? []) as any[]).map((p) => ({
+            id: p.id, partyType: p.partyType, managingOnly: p.managingOnly ?? null, createdAt: p.createdAt ?? null,
+            key: p.email?.toLowerCase() ?? null, runsIt: runsIt(p),
+          })),
+        },
         fromParticipantId: r.fromParticipantId,
         onParticipantId: r.onParticipantId,
         onLabel: r.onLabel,
@@ -3537,10 +3568,19 @@ export class BoardService {
     const key = managerKey.toLowerCase();
     const now = new Date();
     const { waiting } = await this.waitingAcrossTheOrg(organizationId, now, opts);
+    /*
+     * A WAIT IS SAID WITH THE DAY IT BEGAN (request 117, part 9), against the record's own clock, so the
+     * answer reads the same at any hour. `waitingDays` stays for the order only.
+     */
+    const clock = theRecordsClock((waiting as any[]).map((w) => w.createdAt), now);
+    const theDay = (at: any) => (at ? theDayItBegan(at, clock) : null);
 
     const needs: Need[] = [];
 
     for (const w of waiting as any[]) {
+      /* By name where this reader may read it, else "somebody in <the check-in>". Never an address. */
+      const who = thePersonWaitingAsTheyRead(w, key);
+      const day = theDay(w.createdAt);
       /*
        * THE MANAGER'S OWN QUEUE FIRST. A manager reading a list of people who need attention while
        * being the thing several of them are waiting for is the version of this that does harm.
@@ -3548,9 +3588,11 @@ export class BoardService {
       if (w.onPersonKey === key) {
         needs.push({
           kind: 'WAITING_ON_YOU',
-          who: w.fromLabel ?? w.fromPersonKey ?? 'somebody',
+          who,
           says: `waiting on you for ${w.what}`,
           waitingDays: w.waitingDays,
+          sinceSays: day ? `since ${day}` : null,
+          sentence: `${atTheStartOfASentence(who)} has been waiting on you for ${w.what}${day ? ` since ${day}` : ''}.`,
         });
         continue;
       }
@@ -3558,9 +3600,11 @@ export class BoardService {
       if (w.escalatedAt) {
         needs.push({
           kind: 'STUCK_AND_RAISED',
-          who: w.fromLabel ?? w.fromPersonKey ?? 'somebody',
+          who,
           says: `raised that they are stuck on ${w.what}${w.onLabel ? ` with ${w.onLabel}` : ''}`,
           waitingDays: w.waitingDays,
+          sinceSays: day ? `since ${day}` : null,
+          sentence: `${atTheStartOfASentence(who)} has raised that they are stuck on ${w.what}${w.onLabel ? ` with ${w.onLabel}` : ''}${day ? `, and has been waiting since ${day}` : ''}.`,
         });
       }
     }
@@ -3586,11 +3630,14 @@ export class BoardService {
       /* Never an address as a name (Hafsah, 28 Sep 2026; screens requests 56, 58, 65). */
       const who = [c.participant?.user?.firstName, c.participant?.user?.lastName].filter(Boolean).join(' ').trim()
         || (c.participant?.nameGiven ?? '').trim() || 'a colleague';
+      const day = theDay(c.completedAt ?? c.createdAt);
       needs.push({
         kind: 'ASKED_TO_BE_SHOWN',
         who,
         says: 'said themselves that they do not know how to do something they have taken on',
         waitingDays: Math.max(0, Math.floor((now.getTime() - new Date(c.completedAt ?? c.createdAt).getTime()) / 86400000)),
+        sinceSays: day ? `on ${day}` : null,
+        sentence: `${atTheStartOfASentence(who)} said in their own check-in${day ? ` on ${day}` : ''} that they do not know how to do something they have taken on.`,
       });
     }
 
