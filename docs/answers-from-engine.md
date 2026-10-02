@@ -2277,3 +2277,10 @@ This is new: before today, somebody who only took part in the check-in that feed
 - **The buttons "Decide", "Ask", "Make someone responsible" and "Open".** No route acts on them yet.
 - **Linked organisations** (the ministry and its counties, "You see summaries, never officers' own words", questions for the ministry). Nothing links two organisations, and what one may read of another is a privacy rule for Hafsah (request 17 (f), item 26.6).
 - **What new people keep asking.** Built only from questions to Ask Groundwork, which are private always (request 17 (g), item 26.1).
+
+### Decided for Hafsah to confirm
+
+1. **Who reads the company-wide picture.** An admin, a lead, and anybody who runs a check-in, the same readers as what the organisation keeps. Somebody who only takes part reads the page's name, counts, priorities and owners, and none of what the engine wrote. This is the more private option; before today a participant read how the priority their check-in feeds was moving.
+2. **A lead is asked their own questions.** Where the strategy is not reaching the work goes in full to admins; a lead, or anybody who runs a check-in, is given only the questions asked of them, as "For you". The prototype says each question "goes to the person who can answer it".
+3. **What new people keep asking (request 17 (g)) is not built.** No decision since 27 September answers item 26.1, and the rule is that questions to Ask Groundwork are private always, so the more private option is to leave it out.
+4. **Linked organisations (request 17 (f)) are not built.** No decision answers item 26.6. "What each level understood" is built within one organisation instead, from the organisation's own aims, which needs no new privacy rule.
