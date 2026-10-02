@@ -2203,3 +2203,77 @@ Hafsah decided item 64: "A person an admin hasn't let in yet is left out of both
 - With nobody held at the door: null for everybody.
 
 **For your own count.** Each row of `GET /grounds/:id` `participants` now carries `notLetInYet` (true or false); `user.awaitingOrgApproval` was already there. `whoIsInRound` in `client/src/lib/who-is-in-this-round.ts` still counts every row, so a header drawn from it would read "4 of 5" beside the engine's "4 of 4". Please leave out a row with `notLetInYet: true` that has not answered, or draw the count from the served numbers.
+
+
+## Decision 79, item 1: the Company page, section by section, and exactly what it receives (2 October)
+
+Commit `61f0840d`. The route is the same: `GET /company`, for anybody signed in to the organisation. A guest from another company is refused with 403 and "Only people in this organisation can read its company page." Everything below is written once, when something new comes in (a check-in completes, a handoff is raised, or the nightly look finds the organisation's priorities changed), and only read when the page opens. Until it is written, `reading` is null, `levels` is empty and the lists are empty: draw nothing in their place.
+
+### Who is given what
+
+| Reader | Name, counts, priorities, owners, `fedBy` | `reading`, `levels`, `namedByTeams` | `notReaching` | `saidAndShown` | `whatWeKeep` |
+| --- | --- | --- | --- | --- | --- |
+| An admin | Yes, with `measure` and `target` | Yes, each item only if they may open every check-in it rests on | All | Yes | Yes |
+| A lead (role LEAD) | Yes, without `measure` and `target` | Yes, each item only if they may open every check-in it rests on | Only the questions asked of them, with `forWhom` "For you" | No (empty) | Yes |
+| Somebody who runs a check-in (any role) | Same as a lead | Same as a lead | Same as a lead | No (empty) | Yes |
+| Somebody who only takes part in check-ins | Yes, as before | No: `reading` null, `levels` empty, `namedByTeams` empty | No (empty) | No (empty) | Absent |
+| A guest from another company | Refused | Refused | Refused | Refused | Refused |
+
+This is new: before today, somebody who only took part in the check-in that feeds a priority read that priority's `reading`. They no longer do (decided for Hafsah to confirm, below). They still read the page's name, counts, priorities and who owns them, because the prototype shows "Company" to everybody and the priorities hold nothing private.
+
+### The fields, in the prototype's order (company.txt)
+
+    GET /company
+    {
+      name: string,
+      line: string | null,
+      readsTargets: boolean,
+      priorities: [{
+        id: string, number: number, title: string,
+        owner: string | null, tag: string | null, fedBy: string | null, staleSays: string | null,
+        reading: { tag: string, says: string } | null,
+        levels: [{ id: string, depth: number, level: string, title: string, changedHere: string | null, fedBy: string | null }],
+        measure?: string | null, target?: string | null          // admins only
+      }],
+      notReaching: [{ id: string, observation: string, question: string, forWhom: string }],
+      namedByTeams: [{ id: string, title: string, touches: string,
+                       teams: [{ team: string, says: string, checkIns: [{ id: string, name: string }] }] }],
+      saidAndShown: [{ id: string, area: string, youSaid: string, checkInsShow: string }],
+      whatWeKeep?: { readBy: string, items: [{ id: string, kind: string, says: string, source: string }] }
+    }
+
+**1. The heading.** `name`: "Baridi Appliances". `line`, to an admin: "3 teams and 11 people work here, and there were 34 check-ins this week." To anybody else: "3 teams and 11 people work here." The prototype's "Strategy v2, since 1 September." is not served: nothing keeps versions of the strategy (see "Not built"). "Ask about the whole organisation", "Company context" and "Ask about the strategy" are buttons of yours; nothing new is served for them.
+
+**2. Is the strategy moving? One card per priority.** "Priority 1" is `number`. `title`: "Improve delivery". The tag at the top right is `reading.tag`, one of "Nobody owns it yet", "Nothing is moving it yet", "At risk", "Quiet for a month", "Moving, but not enough of it", "Moving". When `reading` is null, draw `tag` instead (it is "Nobody owns it yet" or null). The sentences are `reading.says`, for example "One handoff is stopping work on this priority, so delivery is not moving yet." or, written from the counts, "1 check-in feeds this priority, and 2 were finished in the last 30 days. 1 handoff is waiting on other work." or "Nobody owns this priority yet and no check-in feeds it." The line at the bottom is `fedBy`: "Fed by Sales team, Q3" or "No team feeds it" (null when what feeds it is not the reader's to open). `staleSays`: "This was last updated on 28 August."
+
+**3. What each level understood (new).** On each priority, `levels`, top down: the priority itself (`depth` 0, `level` "Priority 2"), then each objective and project under it (`level` "Objective" or "Project", `depth` 1, 2 and so on, in the order the organisation's own system gave them). For example:
+
+- `depth` 0, "Priority 2", "Improve delivery", `changedHere` null, `fedBy` null
+- `depth` 1, "Objective", "Reduce delivery delays", `changedHere` null, `fedBy` "Fed by Operations, Q3"
+- `depth` 2, "Project", "Buy 20 delivery vans", `changedHere` "The meaning changed here, from orders arriving on time to more vans.", `fedBy` null
+
+`changedHere` is said only where the model found the aim means something other than the aim above it, and its words named nobody, held no number and judged nobody. `fedBy` names only check-ins the reader may open. This is the prototype's "What each level understood" (what-each-level-understood.txt), within one organisation; it is the same on the Company page and on a board, so draw it where you prefer (under a priority card that opens, or as its own part of the page).
+
+**4. Where the strategy isn't reaching the work.** `notReaching`, in this order: a priority with no owner, a priority with an owner but nothing under it, an objective or project under no current priority, and one still open past its date. For example `observation` "Priority 3 has no owner and nothing underneath it.", `question` "Who owns priority 3, Build a stronger organisation?", `forWhom` "For you". Or "The customer portal sits under no current priority.", "Which priority does The customer portal serve?", "For Lina Ali, Product lead". Or "Sign the Nakuru distributor is still open, and its date has passed.", "Should Sign the Nakuru distributor get a new date, or be closed?", "For Wairimu Kamau, Sales lead", which Wairimu herself reads as "For you". Draw "Decide" for "For you" and "Ask" for anybody else; neither button has a route yet (see "Not built"). A customer or a decision is never listed here (that was a fault, fixed today).
+
+**5. Named by more than one team.** `namedByTeams`: `title` "No way for customers to order in bulk"; `touches` "Touches priorities 1 and 2. Nobody owns it." ("Nobody owns it." only when not one of its handoffs says who or what it waits on; "It does not sit under any priority yet." when it touches none). Each team, in alphabetical order: `team` "Operations", `says` "Bulk orders are typed in a second time by hand, which holds up delivery." or, from the counts, "Customers raised this in 1 check-in, with 1 open handoff.", and `checkIns` [{ id "g-ops", name "Operations, Q3" }], where "Read what each team said" can take the reader. Only things at least two teams raised, and only to a reader who may open every check-in behind it. Never a colleague's own words.
+
+**6. What you say, and where the time goes.** `saidAndShown`, admins only, once at least three check-ins on priorities were finished in the last 30 days: `area` "Priority 1", `youSaid` "Grow revenue 50%, enterprise first", `checkInsShow` "2 of the 3 check-ins finished in the last 30 days that belong to a priority were about this one. 1 handoff is open in them." `youSaid` is the priority as the organisation's own system wrote it, not anybody's words, so please draw it without quotation marks. The line under it, "People appear here as counts. What each person said stays with them and their own lead.", is yours and stays true.
+
+**7. What new people keep asking.** Not served (see "Decided for Hafsah to confirm"). Draw nothing.
+
+### The company board, the ministry's board and its questions
+
+- company-board.txt is the older page; it is served by the same fields (priorities with `reading`, `owner`, `fedBy`; "Observations, as questions" is `notReaching`; "The same thing, named in three places" is `namedByTeams`; "Leadership says, teams report" is `saidAndShown`). Its "Evidence" line and "Strategy history" are not served (see "Not built"). The view switch (Leadership, Sales lead, Everyone) is decided on the server by who is reading, never on screen.
+- what-each-level-understood.txt: "What each level understood" is `levels`, within one organisation. The counties, "Each county is its own organisation", and "What the visit log shows" are not served (see "Not built").
+- questions-for-the-ministry.txt: within one organisation, the nearest is `namedByTeams` (a problem several teams raise, said once, as a question). Questions from linked organisations are not served.
+
+### Not built, and what each would need
+
+- **"Strategy v2, since 1 September", the History tab and "Strategy history".** Nothing keeps versions of the priorities, and no check-in records which version was active. It needs a new table for each version of the organisation's priorities and the date it began, and a column on each check-in for the version active that day. That is a schema change, which I have not made.
+- **The figures in the prototype's sentences** ("4 of 12 qualified", "On time is 88% against 95%", "6 in 10 sales visits went to small shops", "Founders made 9 decisions this month"). The first two are a check-in's own aims; decision 73 keeps a check-in's aims and limits from an admin who only reads, so they cannot go on a page an admin reads without a decision from Hafsah. The last two need records the product does not hold (visits by kind of customer, and decisions taken by a founder that sat inside someone else's role).
+- **"One sales goal still points to last quarter's strategy."** Needs strategy versions, above.
+- **The Teams tab.** No screen shows what is in it.
+- **The buttons "Decide", "Ask", "Make someone responsible" and "Open".** No route acts on them yet.
+- **Linked organisations** (the ministry and its counties, "You see summaries, never officers' own words", questions for the ministry). Nothing links two organisations, and what one may read of another is a privacy rule for Hafsah (request 17 (f), item 26.6).
+- **What new people keep asking.** Built only from questions to Ask Groundwork, which are private always (request 17 (g), item 26.1).
