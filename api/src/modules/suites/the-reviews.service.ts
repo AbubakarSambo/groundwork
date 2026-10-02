@@ -4,6 +4,7 @@ import { inTheLeadsTeam } from './a-leads-team';
 import { mayApprove } from './who-approves';
 import { isProposedByGroundwork, theProposalSentence } from './a-review-falls-due';
 import { whatGroundworkNoticed } from './the-review-noticed-from-the-record';
+import { monthsToDrawOn, theFirstCheckInOf, theOpenDecisionsAbout, whereItStandsSaid, type Stands } from './where-a-review-stands';
 import type { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForTheLead } from '../suggestions/a-suggestion-told-like-a-signal';
 
@@ -16,6 +17,7 @@ export const REVIEW_REFUSED = {
   onlyTheWriter: 'Only the person who writes this review with them can do this.',
   onlyThePerson: 'Only the person this review is about can write their own view.',
   alreadyStarted: 'This review has already been started.',
+  notYet: 'This review cannot start yet, because a check-in that decides something about this person is still open. It can start once that check-in is decided.',
   writeSomething: 'Write something first.',
   sayWhatAndWhy: 'Say what you decided, and why, in a sentence or two.',
 };
@@ -31,7 +33,10 @@ export interface NextReview {
   name: string;
   writtenWith: string | null;
   dueOn: Day;
-  stands: 'ready' | 'started' | 'decided';
+  /** 'not-yet' while a check-in that decides something about the person is still open (where-a-review-stands.ts). */
+  stands: Stands;
+  /** Where it stands, in the prototype's words: "Ready to start. 6 months of check-ins to draw on." */
+  standsSays: string;
   reviewId: string | null;
   mayStart: boolean;
   /**
@@ -113,9 +118,14 @@ export class ReviewsService {
     const me = [...directory.values()].find((p) => p.linkedUserId === reader.userId) ?? null;
     const reviews = await this.prisma.performanceReview.findMany({
       where: { organizationId: reader.organizationId, evaluationDueId: { in: dues.map((d) => d.id) } },
-      select: { id: true, evaluationDueId: true, decidedAt: true },
+      select: { id: true, evaluationDueId: true, decidedAt: true, startedAt: true },
     });
     const byDue = new Map(reviews.map((r) => [r.evaluationDueId, r]));
+    const signIns = dues.map((d) => directory.get(d.personExternalId)?.linkedUserId).filter((u): u is string => !!u);
+    const [openDecisions, firstCheckIns] = await Promise.all([
+      theOpenDecisionsAbout(this.prisma, reader.organizationId, signIns),
+      theFirstCheckInOf(this.prisma, reader.organizationId, signIns),
+    ]);
     const next: NextReview[] = [];
     for (const d of dues) {
       const p = directory.get(d.personExternalId);
@@ -123,15 +133,22 @@ export class ReviewsService {
       if (role === 'LEAD' && !(me && inTheLeadsTeam(me, p))) continue;
       const r = byDue.get(d.id);
       const manager = p.managerExternalId ? directory.get(p.managerExternalId) : null;
+      const waitingFor = !r && p.linkedUserId ? openDecisions.get(p.linkedUserId) ?? null : null;
+      const stands: Stands = r ? (r.decidedAt ? 'decided' : 'started') : waitingFor ? 'not-yet' : 'ready';
       next.push({
         dueId: d.id,
         name: this.nameOf(p),
         writtenWith: manager ? this.nameOf(manager) : null,
         dueOn: dayOf(d.dueOn),
-        stands: !r ? 'ready' : r.decidedAt ? 'decided' : 'started',
+        stands,
+        standsSays: whereItStandsSaid({
+          stands, firstName: this.firstOf(p), readerUserId: reader.userId, waitingFor,
+          months: monthsToDrawOn(p.linkedUserId ? firstCheckIns.get(p.linkedUserId) : null, today),
+          startedAt: (r as any)?.startedAt ?? null, decidedAt: r?.decidedAt ?? null,
+        }),
         reviewId: r?.id ?? null,
-        mayStart: !r && (await this.writes(reader, role, p, answers.writer)),
-        proposal: !r && isProposedByGroundwork(d.source) ? theProposalSentence(d.source, this.firstOf(p)) : null,
+        mayStart: stands === 'ready' && (await this.writes(reader, role, p, answers.writer)),
+        proposal: stands === 'ready' && isProposedByGroundwork(d.source) ? theProposalSentence(d.source, this.firstOf(p)) : null,
       });
     }
     return { every: answers.every, next: next.filter((n) => n.name) };
@@ -147,6 +164,10 @@ export class ReviewsService {
     if (!p || !(await this.writes(reader, role, p, answers.writer))) throw new ForbiddenException(REVIEW_REFUSED.onlyTheWriter);
     const existing = await this.prisma.performanceReview.findUnique({ where: { evaluationDueId: due.id }, select: { id: true } });
     if (existing) throw new BadRequestException(REVIEW_REFUSED.alreadyStarted);
+    /* Never two decisions about one person at once (where-a-review-stands.ts). */
+    if (p.linkedUserId && (await theOpenDecisionsAbout(this.prisma, reader.organizationId, [p.linkedUserId])).has(p.linkedUserId)) {
+      throw new BadRequestException(REVIEW_REFUSED.notYet);
+    }
     /* Written once, when the writer says yes, from the record and nothing else (the-review-noticed-from-the-record.ts). */
     const noticed = await whatGroundworkNoticed(this.prisma, reader.organizationId, p.linkedUserId).catch(() => []);
     const r = await this.prisma.performanceReview.create({
