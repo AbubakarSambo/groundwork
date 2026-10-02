@@ -16,6 +16,7 @@ import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-b
 import { theShareSays, YOU_HAVE_NO_SHARE_YET } from './your-share';
 import { theirOwnAimsKeptOnlyAsPromises, AN_AIM_FROM_THEIR_PROMISE } from './an-aim-kept-only-as-their-promise';
 import { eachDealInItsGroup } from './each-deal-in-its-group';
+import { whatToDoAboutALeadAction, whatToDoAboutADecision, isAYesOrNoQuestion, theAnswerAsALine } from './what-needs-you-and-what-to-do';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
@@ -1608,6 +1609,13 @@ export class BoardService {
           },
         },
       );
+      /*
+       * WHAT THE LEAD CAN DO ABOUT EACH ONE (screens request 112 b): to the lead alone, the one person who can act on
+       * it. The ids it is built from are taken off for every reader. See what-needs-you-and-what-to-do.
+       */
+      out.decisions = ((out.decisions ?? []) as any[]).map(({ contextItemId, waitsOn, ...d }: any) => (isInitiator
+        ? { ...d, action: whatToDoAboutADecision({ ...d, contextItemId, waitsOn }, groundId, theLeadsRow, (pid) => nameOf(pid)) }
+        : d));
     }
 
     // #12: nothing ever asked the lead to set targets, so "what we are aiming
@@ -2184,7 +2192,15 @@ export class BoardService {
       /* A goal the lead has not told the person about is the lead's own note (decision 56): only the lead's list carries it. */
       const untoldGoals = isInitiator ? await this.goalsNotToldYetByParticipant(groundId) : [];
       const leadActions = theLeadActions(mine.commitments, handoffs, sessions, untoldGoals, reader);
-      if (leadActions.length) out.leadActions = leadActions;
+      /* What the lead can do about each one (request 112 b), to the lead alone. */
+      if (leadActions.length) {
+        out.leadActions = isInitiator
+          ? leadActions.map((a) => {
+            const wait = a.id.startsWith('waiting-on-the-lead-') ? handoffs.find((h: any) => `waiting-on-the-lead-${h.id}` === a.id) : null;
+            return { ...a, action: whatToDoAboutALeadAction(a, groundId, wait?.fromParticipantId ? nameOf(wait.fromParticipantId) : null) };
+          })
+          : leadActions;
+      }
       const obligations = theObligations(people, mine.commitments, handoffs, sessions, reader);
       if (obligations.length) out.obligations = obligations;
       const waits = whoWaitedOnWhom(handoffs, reader);
@@ -2505,14 +2521,14 @@ export class BoardService {
    * The open decisions the lead wrote down, and only where they chose to share the note. A private
    * note is private: the audience is the lead's choice and this reads it rather than deciding it.
    */
-  private async whatTheLeadSaysIsStillToDecide(groundId: string): Promise<string[]> {
+  private async whatTheLeadSaysIsStillToDecide(groundId: string): Promise<{ id: string | null; text: string }[]> {
     const lines = await (this.prisma.groundContextItem?.findMany?.({
       where: { groundId, kind: 'DECISION' as any, audience: 'EVERYONE' as any, closedAt: null },
-      select: { text: true },
+      select: { id: true, text: true },
       orderBy: { createdAt: 'asc' },
       take: 8,
-    }) ?? Promise.resolve([] as { text: string }[])).catch(() => [] as { text: string }[]);
-    return (lines as { text: string }[]).map((l) => (l.text ?? '').trim()).filter(Boolean);
+    }) ?? Promise.resolve([] as { id?: string; text: string }[])).catch(() => [] as { id?: string; text: string }[]);
+    return (lines as { id?: string; text: string }[]).map((l) => ({ id: l.id ?? null, text: (l.text ?? '').trim() })).filter((l) => l.text);
   }
 
   /* A topic said inside a sentence: its first word lower-cased only when it is an ordinary word, never a name. */
@@ -2520,7 +2536,7 @@ export class BoardService {
     divergences: any[],
     dependencies: { what: string; status: DependencyStatus; fromParticipantId?: string | null; onParticipantId: string | null; onLabel: string | null }[],
     nameOf: (id: string) => string | null,
-    stillToDecide: string[] = [],
+    stillToDecide: { id: string | null; text: string }[] = [],
     /** The name this reader may see for a report label, or undefined. Nothing else is printed. */
     nameForLabel: (label: string) => string | undefined = () => undefined,
     /**
@@ -2569,13 +2585,17 @@ export class BoardService {
           why: who === 'You' ? 'You cannot move until this is decided.' : `${who} cannot move until this is decided.`,
           owner,
           source: 'blocker' as const,
+          /* For what the lead can do about it (request 112 b); taken off before the board is served. */
+          waitsOn: { participantId: d.onParticipantId ?? null, outside: aPartyOutside(d) ? d.onLabel!.trim() : null, what: d.what },
         };
       });
 
     // Same decision phrased slightly differently is one decision.
     /* The lead's own, said as theirs: nobody agreed these, one person wrote them down. */
     const fromTheLead = stillToDecide.map((q) => ({
-      question: q,
+      question: q.text,
+      /* For the lead's answer (request 112 b); taken off before the board is served. */
+      contextItemId: q.id,
       why: theLeadOwns === 'You' ? 'You wrote this down as still to decide.' : `${theLeadOwns} wrote this down as still to decide.`,
       owner: theLeadOwns,
       source: 'lead' as const,
@@ -2953,6 +2973,27 @@ export class BoardService {
       data: { fields: afterTheLeadsAnswer(item.fields, yes), ...(yes ? { ownerParticipantId: claim.participantId } : {}) },
     });
     return { record: { id: updated?.id ?? itemId, ownerParticipantId: yes ? claim.participantId : null }, saidBack: theAnswerSaidBack(who, { name: item.name, kind: item.kind }, yes) };
+  }
+
+  /**
+   * THE LEAD ANSWERS A QUESTION THEY WROTE DOWN AS STILL TO DECIDE (screens request 112 b). Only a question answered
+   * yes or no, and only by the lead. The answer goes in how we work, read by everybody the question was shared with,
+   * in the lead's own words ("On whether to take the credit committee delays to the Head of Credit, the answer is
+   * yes."), and the question is closed, so it comes off the list. Nothing else is changed.
+   */
+  async answerADecision(groundId: string, itemId: string, requestingUserId: string, yes: boolean) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, initiatorId: true } as any }) as any;
+    if (!ground) throw new NotFoundException('Check-in not found');
+    if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the lead of this check-in can answer this.');
+    const line = await (this.prisma as any).groundContextItem.findFirst({ where: { id: itemId, groundId, kind: 'DECISION', closedAt: null } });
+    if (!line) throw new NotFoundException('This is not waiting for an answer any more.');
+    if (!isAYesOrNoQuestion(line.text ?? '')) throw new BadRequestException('This is not a question with a yes or a no. Write down what you decided on the Context page.');
+    const text = theAnswerAsALine(line.text, yes);
+    await (this.prisma as any).groundContextItem.create({
+      data: { groundId, kind: 'WAY_OF_WORKING', text, audience: line.audience ?? 'EVERYONE', source: 'BOARD', authorUserId: requestingUserId },
+    });
+    await (this.prisma as any).groundContextItem.update({ where: { id: itemId }, data: { closedAt: new Date() } });
+    return { answered: { id: itemId, yes }, saidBack: `This is now in how we work. It reads, "${text}"` };
   }
 
   async deleteWorkItem(groundId: string, itemId: string, requestingUserId: string) {

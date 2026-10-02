@@ -72,7 +72,7 @@ export interface Setup {
   /** The lines a record came from, read by id (RecordEntry rows with their mark's fields), where a spec reads each record's mark. */
   recordLines?: any[];
   /** What the lead wrote down on the Context page (GroundContextItem rows: kind, audience, text). */
-  contextItems?: { kind: string; audience?: string; text: string; closedAt?: Date | null }[];
+  contextItems?: { id?: string; kind: string; audience?: string; text: string; closedAt?: Date | null }[];
 }
 
 /**
@@ -140,7 +140,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
       .filter((c) => !c.closedAt)
       .filter((c) => !args?.where?.kind || c.kind === args.where.kind)
       .filter((c) => !args?.where?.audience || (c.audience ?? 'EVERYONE') === args.where.audience)
-      .map((c) => ({ text: c.text })))) }),
+      .map((c) => ({ ...(c.id ? { id: c.id } : {}), text: c.text })))) }),
     recordEntry: model({ findMany: jest.fn(async (args: any) => {
       if (args?.where?.id?.in) return clone((setup.recordLines ?? []).filter((l: any) => args.where.id.in.includes(l.id)).map((l: any) => ({ disputedAt: null, type: 'PROGRESS', ...l })));
       return clone(setup.lines ?? []);

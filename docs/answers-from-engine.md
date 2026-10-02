@@ -1898,7 +1898,7 @@ Each row of the sales deal grid (`workRecords`, section "Deal grid", kind `deal`
 - "Next quarter" is used only where the check-in ends on the last day of a quarter. Otherwise the heading is "After" and the day.
 - Should the lead set what a deal must show at each stage, and should the check-in count follow-ups with no reply? Then "Likely" could check criteria, and "Cold" could apply the stall rule.
 
-Tests: `board/request-112-a-each-deal-in-its-group.spec.ts` (13 cases, as every reader; all fail without this change), including a walk of every sentence for colons, dashes and arrows. `each-kind-of-work-has-its-records.spec.ts` compares whole rows and sections, so it now expects `lastSaidOn`, `group`, `groupSays`, `groups` and `groupsNote` as well. Nothing in it was taken out.
+Tests: `board/request-112-a-each-deal-in-its-group.spec.ts` (13 cases, as every reader; 12 fail without this change, and the 13th checks that a board not about sales has no groups), including a walk of every sentence for colons, dashes and arrows. `each-kind-of-work-has-its-records.spec.ts` compares whole rows and sections, so it now expects `lastSaidOn`, `group`, `groupSays`, `groups` and `groupsNote` as well. Nothing in it was taken out.
 
 ## Decision 76, item 4: each session's team picture is released on its own (2 October)
 
@@ -1932,3 +1932,42 @@ Please show `saying` back to the lead after they press it. Pressing it again for
 **For the board (not changed here, the board is the screens' and the other builder's).** `teamPicture.shared` is worked out at `board/board.service.ts`, the line `released: !!(ground as any).report?.releasedAt,` inside `aParticipantsOwnBoard(...)`. It should become `released: await isTheTeamPictureNowShared(this.prisma, groundId, (ground as any).report),` from `reports/each-sessions-picture-is-released-on-its-own`. The board already reads the whole report row (`report: true`), so `releasedSessions` is there. The same goes for `whatTheAnswersSay: (isInitiator || (ground as any).report?.releasedAt)`. Then "Today's team picture is not shared yet." shows on Amani's board while session 2 is not released.
 
 Tests: `reports/each-sessions-picture-is-released-on-its-own.spec.ts` (12 cases, every reader, two sessions, before and after the lead releases session 2), and new cases in `grounds/a-participant-reads-the-report-only-once-it-is-shared.spec.ts`, `grounds/the-list-gives-each-reader-only-their-part.spec.ts` and `reports/what-today-reads-from-the-record.spec.ts`.
+
+## Request 112 (b): an action for each item under "What needs you" (2 October)
+
+Each item in `leadActions` and in `decisions` now has `action`, sent to the lead alone, the one person who can act on it. Nobody else is sent it, and the ids it is built from are sent to nobody. Code: `board/what-needs-you-and-what-to-do.ts`.
+
+`action` is `{ label, says, goesTo, choices? }`:
+- `label` is what the button says. `says` is one full sentence of what to do.
+- `goesTo` is `"check-in"` (the lead's own check-in) or `"context"` (the Context page), or null where `choices` carry the action.
+- `choices` is `[{ label, route }]`. `route` is `{ method, path, body }`, the call that keeps that answer, or null where the answer changes nothing.
+
+Please draw each choice as its own button, and call its `route` when pressed. Where there are no choices, draw `label` as one button to `goesTo`, with `says` beside it, in place of "Open".
+
+**Choices only where the record holds the question and a route keeps the answer.** Nothing is offered that the product cannot do.
+- The lead's own promise nobody has said happened: "Yes, it’s done" (`PATCH /grounds/:id/commitments/:commitmentId` with `{ status: "DONE" }`, the route that already exists) and "Not yet" (no call).
+- A question the lead wrote down as still to decide, answered yes or no ("Whether to ..." with no "or", or "Should we ...?" and the like): "Yes" and "No". Each calls the new `POST /grounds/:id/board/decisions/:itemId/answer` with `{ yes }`. Only the lead may call it; anybody else is told "Only the lead of this check-in can answer this." The answer goes in how we work as one line, in the lead's own words, read by whoever the question was shared with: "On whether to take the credit committee delays to the Head of Credit, the answer is yes." The question is closed, so it comes off the list. It answers `{ answered, saidBack }`, and `saidBack` is "This is now in how we work. It reads, "On whether to take the credit committee delays to the Head of Credit, the answer is yes."" Please show it after the answer. A question already answered: "This is not waiting for an answer any more."
+- A question with two answers of the lead's own ("Whether the 120m counts what was approved or what was disbursed.") is not turned into two buttons, because splitting her sentence would put words in her mouth. It reads "Open the Context page" and "Write down what you decided on the Context page, and close this line there."
+
+**What Bisi, who runs it, reads on the sales run** (`api/journey/all-24/re-f/sales.json`). Before, each item had one "Open" to the Check-in tab. Now:
+- "In session 2, you said, "I'll follow up directly with the committee members." Nobody has said yet whether it happened." with "Say whether it has happened. Until you do, it stays open on your work plan." and the choices "Yes, it’s done" and "Not yet".
+- "You need to get back to Kwame Mensah, who is waiting on you for the approval of five applications." with "Reply in your check-in" and "Tell Groundwork in your check-in what you will do for Kwame Mensah, and by when."
+- "You need to find out who can provide the bank statements Femi Okonkwo is waiting for, because nobody has been named yet." with "Name who provides it" and "Say in your check-in who can provide it, so they can be asked."
+- A wait on a colleague, "Ngozi Eze is waiting on the signed forms for Ikeja Bakery, so it needs deciding." with "Ask Kwame" and "Tell Groundwork on the Context page what to ask Kwame Mensah, and it will ask in Kwame Mensah's next check-in." The Context page is where a question for one person is kept, confirmed by the lead and then asked word for word (decision 34). This is the prototype's "Ask him".
+- "Whether to take the credit committee delays to the Head of Credit." with "Your answer goes in how we work, and this comes off the list of things still to decide." and the choices "Yes" and "No".
+- A goal she has not told somebody about: "Open your check-in" and "Talk it through with them first. Then tell Groundwork in your check-in that you have."
+- People who said different things: "Open your check-in" and "People said different things about this. Talk it through with them, and say in your check-in what you settled."
+- A wait on her that blocks: "Reply in your check-in" and "This is waiting on you. Tell Groundwork in your check-in what you will do about it, and by when." A wait on somebody outside the check-in: "Nobody in this check-in can provide it. Say in your check-in who will ask the credit committee, and by when."
+
+**Every other reader.** Juma, an admin who only reads, and the admin who set it up read the same items as before, with no `action` and no ids. Femi, Ngozi (where people see only themselves) and Kwame (a colleague giving a view on a performance plan) are sent neither list, as before (request 105, part 3).
+
+**Not from this board.** "Today’s report shares itself at 6:30pm" with "Share now" and "Hold it" is Today's item (`needsHere`), which already carries its own action. The release route and its sentence are in the answer to decision 76, item 4. "Samuel has chased the same 5 leads for 3 check-ins" comes from a pattern, and patterns are not on this list.
+
+**Decided for Hafsah to confirm:**
+- The lead's yes or no to a question she wrote down goes in how we work, as one line in her own words, and the question is closed.
+- "Ask Kwame" sends the lead to the Context page, where a question for one person is kept and confirmed, because no route puts a question to one person from the board.
+- Choices are offered only for a question answered yes or no. A question with two answers of the lead's own is not split into buttons.
+
+Noticed, not changed: Juma, an admin who only reads, is sent `leadActions` and the lead's own decisions. The answer to request 108 (d) reads decision 58 as "not the lead's list". If `leadActions` is that list, it should not reach him either. Please say which, and I will change it.
+
+Tests: `board/request-112-b-what-needs-you-and-what-to-do.spec.ts` (17 cases, as every reader, and the answer route as the lead and as somebody else). They fail without this change. The board harness now passes a Context line's id, so a spec can read which line a decision came from.

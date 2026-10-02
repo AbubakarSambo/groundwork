@@ -174,6 +174,13 @@ export class BoardController {
     return this.board.answerAClaimOnARecord(id, itemId, userId, dto.yes);
   }
 
+  @Post('decisions/:itemId/answer')
+  @ApiOperation({ summary: 'Lead only: answer yes or no to a question the lead wrote down as still to decide. The answer goes in how we work.' })
+  async answerADecision(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string, @Body() dto: { yes?: boolean }) {
+    if (typeof dto?.yes !== 'boolean') throw new BadRequestException('Say yes or no.');
+    return this.board.answerADecision(id, itemId, userId, dto.yes);
+  }
+
   @Delete('work-items/:itemId')
   @ApiOperation({ summary: 'Lead only: remove a record of the kind of work.' })
   async deleteWorkItem(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string) {
