@@ -16,6 +16,7 @@ import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-b
 import { theShareSays, YOU_HAVE_NO_SHARE_YET } from './your-share';
 import { theirOwnAimsKeptOnlyAsPromises, AN_AIM_FROM_THEIR_PROMISE } from './an-aim-kept-only-as-their-promise';
 import { eachDealInItsGroup } from './each-deal-in-its-group';
+import { isTheTeamPictureNowShared } from '../reports/each-sessions-picture-is-released-on-its-own';
 import { whatToDoAboutALeadAction, whatToDoAboutADecision, isAYesOrNoQuestion, theAnswerAsALine } from './what-needs-you-and-what-to-do';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
@@ -654,6 +655,8 @@ export class BoardService {
     // GATE 2: whitelist. Only these report fields may cross to the board.
     /* The row is already named, for this reader, at gate 3 above - see the note there. */
     const reportSafe = ground.report ? pickBoardSafeReportFields(ground.report as any) : null;
+    /* Whether the team's picture as it stands now is shared (decision 76, item 4): the session the report holds now is released. */
+    const teamPictureShared = await isTheTeamPictureNowShared(this.prisma, groundId, (ground as any).report);
 
     /*
      * AND THE NAMES THE DIVERGENCE SECTION LOOKS UP BY HAND.
@@ -777,7 +780,8 @@ export class BoardService {
        * check-in. Everybody else once it has been released, which is the same rule the report
        * itself uses, so the board cannot show a picture the report is still withholding.
        */
-      whatTheAnswersSay: (isInitiator || (ground as any).report?.releasedAt)
+      /* Decision 76, item 4: someone who does not run it reads it only once the session the report holds now is released. */
+      whatTheAnswersSay: (isInitiator || (runsThisGround ? (ground as any).report?.releasedAt : teamPictureShared))
         ? ((ground as any).report?.networkPicture ?? null)
         : null,
       /*
@@ -2465,7 +2469,8 @@ export class BoardService {
       if (aParticipantOnly && me?.id) {
         walled = aParticipantsOwnBoard(walled, {
           meId: me.id,
-          released: !!(ground as any).report?.releasedAt,
+          /* Each session's team picture is released on its own (decision 76, item 4): shared only once the session the report holds now is. */
+          released: teamPictureShared,
           hasOwnReport: (checkIns as any[]).some((c) => c.participantId === me.id && String(c.status).toUpperCase() === 'COMPLETED'),
         });
       }

@@ -1971,3 +1971,17 @@ Please draw each choice as its own button, and call its `route` when pressed. Wh
 Noticed, not changed: Juma, an admin who only reads, is sent `leadActions` and the lead's own decisions. The answer to request 108 (d) reads decision 58 as "not the lead's list". If `leadActions` is that list, it should not reach him either. Please say which, and I will change it.
 
 Tests: `board/request-112-b-what-needs-you-and-what-to-do.spec.ts` (17 cases, as every reader, and the answer route as the lead and as somebody else). They fail without this change. The board harness now passes a Context line's id, so a spec can read which line a decision came from.
+
+## Request 112 (c) and 111 (d), on the board: the team picture is shared session by session (2 October)
+
+Decision 76, item 4 is built in the reports (see the answer above, `5e6dd623` and `f5fa0a0e`). The board now asks the same question. `teamPicture.shared` is true only once the session the report holds now is released, not once any session ever was. The same goes for `whatTheAnswersSay` for anybody who does not run the check-in, the person reviewed on an evaluation check-in included.
+
+**What each reader reads** (the sales run: Femi, Ngozi and Kwame have finished sessions 1 and 2; Bisi released session 1 and not session 2):
+- Femi and Ngozi. Before: `teamPicture: { shared: true }`, and the team's picture of session 2 (the quick read, where people differ, what the answers say, the forecast and the headline). Now: "Today's team picture is not shared yet." and "Your own report is ready now.", and none of those sections. Once Bisi releases session 2: `teamPicture: { shared: true }` and the sections, as before.
+- Femi, the person reviewed on a performance plan: what the answers say only once session 2 is released.
+- Bisi, who runs it, and Juma, an admin who only reads: as before. They read what the answers say whether or not it is released, and are sent no `teamPicture`.
+- A report released before sessions were kept apart (no list of released sessions) reads as released, as it did.
+
+So Amani now reads "Today's team picture is not shared yet." while session 2 of "Sales team, Q3" is not released. Nothing changes on the screens.
+
+Tests: `board/decision-76-4-the-team-picture-is-shared-session-by-session.spec.ts` (8 cases; 3 fail without this change). Changed, and why: `the-movement-tile-tells-the-same-story.spec.ts` failed in 3 cases once the reports kept sessions apart, because its fixture had no report, which now means nothing is released, so a participant was rightly not sent what moved. Its fixture now releases sessions 1 and 2, so its participants read the tile and the sentence, and it expects the tile they read. The board harness now says the session the report holds is the highest anybody has finished, as the database does.

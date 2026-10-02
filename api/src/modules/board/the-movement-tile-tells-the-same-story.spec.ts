@@ -29,7 +29,8 @@ const objective = (id: string, name: string, target: number, count: number, owne
   direction: null, isADecisionAboutAPerson: false, sortOrder, addedAtSession: null, assumes: [],
 });
 
-interface World { objectives: any[]; snapshots: Record<number, { objectiveId: string; count: number }[]> }
+/* `released`: the sessions whose team picture the lead has released (decision 76, item 4). None: nothing is released. */
+interface World { objectives: any[]; snapshots: Record<number, { objectiveId: string; count: number }[]>; released?: number[] }
 
 function prismaFor(w: World, role: string) {
   const ground: any = {
@@ -37,7 +38,7 @@ function prismaFor(w: World, role: string) {
     initiatorId: 'u-bisi', createdByUserId: 'u-bisi', organizationId: 'org-1',
     peopleWorkTogether: true, peersVisibleToEachOther: true, timelineDays: 90, cadence: 'FORTNIGHTLY',
     whoSeesTargets: 'THEIR_OWN', label: 'Credit sales against this quarter target', participants: PEOPLE,
-    checkIns: CHECK_INS, report: null, dependencies: [], poll: null, objectives: w.objectives, personObjectives: [],
+    checkIns: CHECK_INS, report: w.released ? { releasedAt: at('29'), releasedSessions: w.released } : null, dependencies: [], poll: null, objectives: w.objectives, personObjectives: [],
     closedAt: null, kindOfWork: null, workStages: null,
   };
   const reads = {
@@ -108,23 +109,25 @@ const KWAMES = (count: number) => objective('o-kwame', 'approved facilities', 14
 
 describe('1. the Movement tile counts only the targets this reader may read', () => {
   /* Only Kwame's own target moved, 0 to 5. The team's stayed at 31 million naira. */
+  /* Both sessions' team pictures released (decision 76, item 4), so a participant reads the tile and what moved. */
   const w: World = {
     objectives: [DISBURSED(31000000), KWAMES(5)],
     snapshots: { 1: [{ objectiveId: 'o-team', count: 31000000 }, { objectiveId: 'o-kwame', count: 0 }], 2: [{ objectiveId: 'o-team', count: 31000000 }, { objectiveId: 'o-kwame', count: 5 }] },
+    released: [1, 2],
   };
   it('Bisi, who runs it, reads that it moved by 5', async () => {
     const r = await readAs(w, 'u-bisi');
     expect(r.movement).toEqual({ value: '1 target', sub: '1 target changed this session.' });
     expect(r.sinceLast).toBe("Kwame's approved facilities went from 0 to 5, against the aim of 14.");
   });
-  it('Kwame, whose target it is, reads that it moved by 5 in his own report, and is served no tile before the team picture is shared', async () => {
+  it('Kwame, whose target it is, reads that it moved by 5 in his own report, and the tile counts it, once the team picture is shared', async () => {
     const r = await readAs(w, 'u-kwame');
-    expect(r.movement).toEqual(NO_TILE);
+    expect(r.movement).toEqual({ value: '1 target', sub: '1 target changed this session.' });
     expect(r.sinceLast).toBe('Your approved facilities went from 0 to 5.');
   });
   it('Ngozi, who may not read Kwame’s number, reads that nothing moved, and never Kwame’s target', async () => {
     const r = await readAs(w, 'u-ngozi');
-    expect(r.movement).toEqual(NO_TILE);
+    expect(r.movement).toEqual({ value: 'None', sub: 'No target changed this session.' });
     expect(r.sinceLast).toBe('');
   });
   it('an admin outside the check-in reads that nothing moved, and never Kwame’s target', async () => {
@@ -139,10 +142,12 @@ describe('2. the tile and Since the last round tell one story (re-d, sales, sess
   const w: World = {
     objectives: [DISBURSED(31000000)],
     snapshots: { 1: [{ objectiveId: 'o-team', count: 0 }], 2: [{ objectiveId: 'o-team', count: 31000000 }] },
+    released: [1, 2],
   };
   it.each([['Bisi, who runs it', 'u-bisi', 'MEMBER'], ['Ngozi, in it', 'u-ngozi', 'MEMBER'], ['an admin outside it', 'u-grace', 'ADMIN']])('%s reads the same movement on the tile and in the sentence', async (_who, userId, role) => {
     const r = await readAs(w, userId, role);
-    expect(r.movement).toEqual(takesPart(userId) ? NO_TILE : { value: '1 target', sub: '1 target changed this session.' });
+    /* Both sessions released, so Ngozi, in it, reads the same tile as everybody. */
+    expect(r.movement).toEqual({ value: '1 target', sub: '1 target changed this session.' });
     expect(r.sinceLast).toBe("The team is aiming for 120 million naira disbursed. The team's total went from 0 to 31 million naira.");
   });
 
@@ -159,13 +164,15 @@ describe('3. a number the lead accepts later goes where its round closed, so the
   const fresh = (): World => ({
     objectives: [{ ...DISBURSED(0), suggestedCount: 31000000, suggestedSaid: 'The total amount disbursed for the team this quarter is N31 million.', suggestedAtSession: 2 }],
     snapshots: { 1: [{ objectiveId: 'o-team', count: 0 }], 2: [{ objectiveId: 'o-team', count: 0 }] },
+    released: [1, 2],
   });
   it.each([['Bisi, who runs it', 'u-bisi', 'MEMBER'], ['Ngozi, in it', 'u-ngozi', 'MEMBER'], ['an admin outside it', 'u-grace', 'ADMIN']])('%s reads the same movement on the tile and in the sentence', async (_who, userId, role) => {
     const w = fresh();
     await bisiAccepts(w, 'o-team', 31000000);
     expect(w.snapshots[2]).toEqual([{ objectiveId: 'o-team', count: 31000000 }]);
     const r = await readAs(w, userId, role);
-    expect(r.movement).toEqual(takesPart(userId) ? NO_TILE : { value: '1 target', sub: '1 target changed this session.' });
+    /* Both sessions released, so Ngozi, in it, reads the same tile as everybody. */
+    expect(r.movement).toEqual({ value: '1 target', sub: '1 target changed this session.' });
     expect(r.sinceLast).toBe("The team is aiming for 120 million naira disbursed. The team's total went from 0 to 31 million naira.");
   });
   it('a number the lead types that was not the one offered leaves the closed round as it was', async () => {

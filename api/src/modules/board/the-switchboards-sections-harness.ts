@@ -125,7 +125,11 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
   const prisma = new Proxy({
     ground: model({ findUnique: jest.fn(async () => clone(ground)) }),
     user: model({ findUnique: jest.fn(async () => ({ role, organizationId: 'org-1' })) }),
-    checkIn: model({ findMany: jest.fn(async () => clone(checkIns)) }),
+    /* The session the stored report holds now is the highest anybody has finished (decision 76, item 4). */
+    checkIn: model({
+      findMany: jest.fn(async () => clone(checkIns)),
+      aggregate: jest.fn(async () => ({ _max: { sessionNumber: Math.max(1, ...checkIns.filter((c: any) => c.status === 'COMPLETED' && !c.isSetup).map((c: any) => c.sessionNumber ?? 1)) } })),
+    }),
     groundObjectiveSnapshot: model({ findMany: jest.fn(async () => clone(setup.snapshots ?? [])) }),
     /* The targets, read on their own too (what this session holds), as the database would give them. */
     groundObjective: model({ findMany: jest.fn(async () => clone(setup.objectives ?? [])) }),
