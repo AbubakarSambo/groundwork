@@ -15,6 +15,7 @@ import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
 import { theShareSays, YOU_HAVE_NO_SHARE_YET } from './your-share';
 import { theirOwnAimsKeptOnlyAsPromises, AN_AIM_FROM_THEIR_PROMISE } from './an-aim-kept-only-as-their-promise';
+import { eachDealInItsGroup } from './each-deal-in-its-group';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
@@ -1963,7 +1964,7 @@ export class BoardService {
         : [];
       const sourceIds = (items as any[]).map((i) => i.sourceEntryId).filter(Boolean);
       const sources = sourceIds.length
-        ? await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, id: { in: sourceIds } }, select: { id: true, text: true, disputedAt: true, participantId: true, type: true, ...WHAT_A_MARK_READS } }) as Promise<any[]>).catch(() => [] as any[])
+        ? await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, id: { in: sourceIds } }, select: { id: true, text: true, disputedAt: true, participantId: true, type: true, createdAt: true, ...WHAT_A_MARK_READS } }) as Promise<any[]>).catch(() => [] as any[])
         : [];
       const lineOf = new Map((sources as any[]).map((l) => [l.id, l]));
       /* How each record is known, by the same mark every line carries (request 107 c). */
@@ -2013,6 +2014,8 @@ export class BoardService {
             return { ownerClaim: { participantId: claimant.id, who: who ?? 'You', says: theClaimQuestion(who, { name: i.name, kind: i.kind }) } };
           })(),
           due: i.dueAt ? new Date(i.dueAt).toISOString().slice(0, 10) : null,
+          /* The day somebody last spoke about it: the day of the line it came from (request 112 a). Null for one added on the board. */
+          lastSaidOn: line?.createdAt ? new Date(line.createdAt).toISOString().slice(0, 10) : null,
           fields: plainFields(i.fields),
           from: i.sourceEntryId ? 'said' : 'lead',
           ...(line ? { said: cleanText(line.text) } : {}),
@@ -2456,6 +2459,8 @@ export class BoardService {
        * already read. See the-work-by-area-and-by-stage.
        */
       if (Array.isArray(walled.workRecords) && oneOfTheKinds((ground as any).kindOfWork)) {
+        /* Each deal in its group, with why, from the rows this reader is served (request 112 a). See each-deal-in-its-group. */
+        walled.workRecords = eachDealInItsGroup(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, deadlineOf(ground as any), now);
         walled.byArea = theWorkByArea(walled.workRecords);
         const atEachStage = reportedAgainstTheRules(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords);
         if (atEachStage) walled.reportedAgainstCriteria = atEachStage;

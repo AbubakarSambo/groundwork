@@ -141,6 +141,11 @@ export interface AServedRecord {
   owner: string | null;
   ownerParticipantId: string | null;
   due: string | null;
+  /** The day somebody last spoke about it in a check-in, "2026-09-30": the day of the line it came from. Null for one added on the board. */
+  lastSaidOn?: string | null;
+  /** Its group on a sales deal grid (request 112 a), and why it is there, in sentences from its own record. */
+  group?: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'won';
+  groupSays?: string;
   fields: Record<string, string>;
   /** "said" when it came from a check-in line, "lead" when the lead added it. */
   from: 'said' | 'lead';

@@ -1862,3 +1862,40 @@ The claim is kept on the record's own `fields` under a key that is never served,
 **For the engine, not done here:** reading every earlier closed check-in again, so these aims are written to the board's own table, is a change in `conversation/` and needs a scenario run.
 
 Tests: `board/request-110-your-own-aim-kept-as-your-promise.spec.ts` (14 cases; 10 fail without this change). One older case in `your-share-as-each-reader-reads-it.spec.ts` expected no `yourShare` at all for a participant whose only target is a decision about them. It now expects `[]` and the sentence, which is what request 110 (a) asks for. `a-number-with-a-name-on-it-goes-through-one-rule.spec.ts` lists the new file as one that builds rows the board then passes through `targetsFor`.
+
+## Request 112 (a): each deal in its group (2 October)
+
+Each row of the sales deal grid (`workRecords`, section "Deal grid", kind `deal`) now has `group` and `groupSays`, and the section has `groups` and `groupsNote`. Each row also has `lastSaidOn` ("2026-09-22"), the day somebody last spoke about it in a check-in, which is the day of the line it came from; it is null for a deal added on the board. Code: `board/each-deal-in-its-group.ts`.
+
+**Only from what the record holds.** For each deal, the record holds its mark, the date somebody gave for it, the day somebody last spoke about it, whether somebody said what happens next, and its stage. Each group is built from those and nothing else, in this order:
+- `won`: reported at the last stage. Heading "Won" (the stage's own name). Reason: "Somebody reported each of these at Won, the last stage."
+- `next-quarter`: the date given for it is after the day the check-in ends. Heading "Next quarter" where the check-in ends on the last day of a quarter, otherwise "After 10 October". Reason: "The date given for each of these is after 30 September, when this check-in ends."
+- `cooling`: somebody spoke about it, but not in the last 7 days, and nobody has said what happens next. Heading "Cooling". Reason: "Nobody has spoken about these in the last week, and nobody has said what happens next."
+- `likely`: proof or a colleague's confirmation, a date on or before the end, and word about it in the last 7 days. Heading "Likely by 30 September". Reason: "Each of these has proof or a colleague's confirmation, a date on or before 30 September, and word about it in the last week."
+- `possible`: every other open deal. Heading "Possible". Reason: "Each of these is still open, but is missing proof, a date on or before 30 September, or word about it in the last week."
+
+`groups` is `[{ group, heading, reason, rowIds }]`, in the prototype's order (Likely, Possible, Next quarter, Cooling, then Won), and only groups with a deal in them. Please draw each `heading` with its `reason` beside it, then the rows in `rowIds`. Please draw `groupSays` where the prototype says "Why it's here", and each sentence of `groupsNote` once under the grid.
+
+**What the record cannot support, said plainly in `groupsNote`:**
+- "Nothing on record says what a deal must show at each stage, so no group here says whether a criterion is met." The prototype's "Every criterion proven or close" needs rules for each stage, and nothing on record holds them (request 107 c, part 4).
+- "No deal is put under Cold, because nothing on record counts how many times a customer was followed up without a reply, so the stall rule cannot be applied." The stall rule is the lead's words on the Context page, and the record does not count follow-ups.
+- Where the check-in has no end date: "This check-in has no end date, so no deal can be said to be likely by the end, or to fall after it."
+- "Last contact" in the prototype is contact with the customer. The record holds only when somebody spoke about the deal in a check-in, so that is what `lastSaidOn` is, and what each sentence says.
+
+**What each reader reads** (the sales run's own lines, `api/journey/all-24/re-f/sales.json`, read on 23 September, in a check-in that ends on 30 September):
+- Bisi, who runs it, Juma, an admin who only reads, and the admin who set it up: "Likely by 30 September" with Lekki Cold Rooms; "Possible" with Head of Credit escalation and Plateau Foods; "Next quarter" with Jos Grain Traders; "Cooling" with Mama Ngozi Kitchens; "Won" with Ikeja Bakery. Before: one flat list, with no group.
+- Why each is there, for example Lekki Cold Rooms: "A colleague confirmed it. The date given for it is 28 September. It was last spoken about on 22 September. Nobody has said what happens next." Plateau Foods: "It was added on the board, not said in a check-in. No date has been given for it. Nobody has spoken about it in a check-in yet. Nobody has said what happens next."
+- Once Femi said "I will call Mama Ngozi Kitchens on Friday.", it is no longer cooling. It moves to "Possible", and its sentence ends "Somebody has said what happens next."
+- Femi reads only his own: "Likely by 30 September" with Lekki Cold Rooms, and "Cooling" with Mama Ngozi Kitchens.
+- Ngozi, where people see only themselves: only her own, "Possible" and "Won". Nothing of anybody else's.
+- Kwame, as a colleague giving a view on a performance plan: only his own, "Next quarter".
+- Each group is built from the rows that reader is already sent, after every wall, so it tells nobody anything they could not read row by row. What happens next is read as that reader may read it, so a participant who may not read the lead's promise about a deal reads "Nobody has said what happens next."
+
+**Decided for Hafsah to confirm:**
+- "Recent" means somebody spoke about it in a check-in in the last 7 days.
+- A colleague's confirmation counts like proof for "Likely".
+- Deals reported at the last stage are shown in their own group, "Won", after the others, so the grid still holds every deal.
+- "Next quarter" is used only where the check-in ends on the last day of a quarter. Otherwise the heading is "After" and the day.
+- Should the lead set what a deal must show at each stage, and should the check-in count follow-ups with no reply? Then "Likely" could check criteria, and "Cold" could apply the stall rule.
+
+Tests: `board/request-112-a-each-deal-in-its-group.spec.ts` (13 cases, as every reader; all fail without this change), including a walk of every sentence for colons, dashes and arrows. `each-kind-of-work-has-its-records.spec.ts` compares whole rows and sections, so it now expects `lastSaidOn`, `group`, `groupSays`, `groups` and `groupsNote` as well. Nothing in it was taken out.
