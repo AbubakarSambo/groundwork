@@ -30,4 +30,33 @@ describe('The aim, said, is not a count of it', () => {
     expect(theLineIsTheAim(12, target, 'Our goal is 12 shops this quarter.')).toBe(true);
     expect(theLineIsTheAim(11, target, 'I want us to sign 11 more.')).toBe(false);
   });
+
+  /*
+   * REQUESTS 109 (a) AND 111 (b), the sales board, 2 October 2026: "Rukia Otieno wants us to sign 12 shops
+   * by 20 December. 12 now, up from 0. The aim is 12. Up 12 this session.", with two shops signed (Tuskys
+   * Westgate and Karen Hardware). The lead's line, as the board quoted it back: "Twelve signed supply
+   * contracts ... and I want us to sign 12 shops." "signed" there describes the contracts.
+   */
+  const THE_LEADS_LINE = 'Twelve signed supply contracts with shops in Nairobi, and I want us to sign 12 shops.';
+  const team = { id: 'o-team', name: 'Sign 12 shops for kitchen appliances in Nairobi.', target: 12, count: 0, prevCount: 0, ownerParticipantId: null } as any;
+
+  it('"Twelve signed supply contracts ... and I want us to sign 12 shops." is the aim, not a count of 12', () => {
+    const lines = [lead(THE_LEADS_LINE)];
+    const worth = onlyWhatIsWorthOffering([{ objectiveId: 'o-team', count: 12, said: THE_LEADS_LINE } as any], [team], lines as any);
+    expect(worth).toEqual([]);
+  });
+
+  it('a line saying what success looks like is never read as where things stand', () => {
+    const line = { text: 'Success is 12 shops signed and stocking our cookers.', who: 'p-lead', saidByTheLead: true, kind: 'SUCCESS_DEFINITION' };
+    const worth = onlyWhatIsWorthOffering([{ objectiveId: 'o-team', count: 12, said: line.text } as any], [team], [line] as any);
+    expect(worth).toEqual([]);
+  });
+
+  it('what was really signed still lands: two shops', () => {
+    const lines = [lead(THE_LEADS_LINE), lead('We have signed 2 shops so far, Tuskys Westgate and Karen Hardware.')];
+    const read = { objectiveId: 'o-team', count: 2, said: 'We have signed 2 shops so far, Tuskys Westgate and Karen Hardware.' } as any;
+    expect(onlyWhatIsWorthOffering([read], [team], lines as any)).toEqual([read]);
+    expect(theLineIsTheAim(12, team, 'We have 12 signed shops now.')).toBe(false);
+  });
 });
+

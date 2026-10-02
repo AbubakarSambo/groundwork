@@ -120,7 +120,7 @@ export class BoardListener {
              only where a line reports the value - is what keeps a worry with no figure out. */
           type: { in: ['PROGRESS', 'COMMITMENT', 'SUCCESS_DEFINITION', 'WORRY', 'TENSION'] as any },
         },
-        select: { text: true, participantId: true, participant: { select: { partyType: true } } },
+        select: { text: true, type: true, participantId: true, participant: { select: { partyType: true } } },
       });
       if (!said.length) return;
 
@@ -134,7 +134,8 @@ export class BoardListener {
        * the fifth time this session that something internal has reached a page by riding inside a
        * text column. `cleanText` is the one that knows how to take it off.
        */
-      const lines = said.map((s: any) => ({ text: cleanText(s.text), who: s.participantId ?? null, saidByTheLead: s.participant?.partyType === 'INITIATOR' }));
+      /* With the kind of line, so a line saying what success looks like is never read as where things stand (request 109 a). */
+      const lines = said.map((s: any) => ({ text: cleanText(s.text), who: s.participantId ?? null, saidByTheLead: s.participant?.partyType === 'INITIATOR', kind: s.type ?? null }));
       const answer = await this.anthropic.extract<{ numbers: AReadNumber[] }>(
         WHAT_THE_RECORD_SAYS_PROMPT,
         [{ role: 'user', content: theQuestion(targets, lines) }],
