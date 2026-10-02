@@ -1,0 +1,3074 @@
+{
+ "scenario": {
+  "key": "updates",
+  "label": "The weekly update, from everybody",
+  "scenario": "TEAM_UPDATES",
+  "moment": "RESOLUTION",
+  "cadence": "WEEKLY",
+  "timelineDays": 30,
+  "sessions": 1,
+  "brief": "The normal weekly update round. What you did, what is next, what is in your way.",
+  "theDecision": "One person's \"in my way\" is another person on the same check-in, named. A right answer puts the handoff on the board with both sides of it, rather than recording two unconnected updates.",
+  "people": [
+   {
+    "key": "lead",
+    "name": "Grace Abiodun",
+    "isLead": true,
+    "remit": "Team lead.",
+    "truth": "Her own week was admin and hiring. She is unaware of the handoff between the two others.",
+    "manner": "Short answers, keeps it moving."
+   },
+   {
+    "key": "a",
+    "name": "Daniel Osei",
+    "remit": "Data analyst.",
+    "truth": "He finished the churn model. He is blocked on the production data access he asked Priti for on the 8th, chased on the 15th, no reply. He names her.",
+    "manner": "Direct. Names the person and the dates without hedging."
+   },
+   {
+    "key": "b",
+    "name": "Priti Sharma",
+    "remit": "Data engineer.",
+    "truth": "She has the access request. It needs a security review she cannot start until the InfoSec contractor returns on the 29th. She has not replied to Daniel because she has nothing to tell him yet.",
+    "manner": "Thorough, explains the dependency chain, apologetic about the silence."
+   }
+  ]
+ },
+ "groundId": "46bd6f4e-23a0-4131-a4d2-bd010866d769",
+ "orgId": "f2f7b27c-a29b-4d46-9c81-6217e8e5a32c",
+ "emails": {
+  "lead": "lead.1790902628069@updates.test",
+  "a": "a.1790902628069@updates.test",
+  "b": "b.1790902628069@updates.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "lead",
+     "name": "Grace Abiodun",
+     "isLead": true,
+     "checkInId": "21415223-83b3-486d-8f8c-d612b0b7f3b8",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "What you did, what is next?"
+      },
+      {
+       "from": "GRACE ABIODUN",
+       "text": "This week was all about admin for me, and a lot of work on hiring. Next up, more of the same with hiring, but I'm also looking to clear some backlog."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Admin and hiring. What kind of admin work, specifically, filled your week?",
+       "suggestedAnswers": [
+        "I finished a lot of hiring paperwork.",
+        "Still lots of admin work to do.",
+        "I'm not sure what I finished.",
+        "I am stuck on one key task."
+       ]
+      },
+      {
+       "from": "GRACE ABIODUN",
+       "text": "Mainly budget reviews and some performance evaluations for the team. Just the usual, but it took up a good chunk of my time."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've also mentioned a backlog you want to clear. What kind of items are in that backlog?",
+       "suggestedAnswers": [
+        "I've started sorting through them.",
+        "Still a mix of everything.",
+        "I haven't looked closely yet."
+       ]
+      },
+      {
+       "from": "GRACE ABIODUN",
+       "text": "It's mostly strategic planning that got pushed aside. And some documentation I really need to get to."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That strategic planning and documentation sounds like it's been waiting. What will you do to get to it, and by when?",
+       "suggestedAnswers": [
+        "I will make time for planning by ...",
+        "I will ask for help with this by ...",
+        "I need to figure out my next steps.",
+        "I will begin working on it next week."
+       ]
+      },
+      {
+       "from": "GRACE ABIODUN",
+       "text": "I'm blocking out dedicated time for it next week. I need to get it done by end of day Friday."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What kind of items are in that backlog, specifically?",
+       "suggestedAnswers": [
+        "I've added some urgent items.",
+        "Mostly the same items are there.",
+        "I haven't looked closely yet.",
+        "I will know next week."
+       ]
+      },
+      {
+       "from": "GRACE ABIODUN",
+       "text": "Specifically, it's about finalizing the Q3 roadmap. And the documentation is for the new project onboarding process."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You're aiming to finalize the Q3 roadmap and the new project onboarding process documentation by end of day Friday next week. What would tell you that you've successfully completed these by then?",
+       "suggestedAnswers": [
+        "Roadmap is final, and documentation is done.",
+        "Still waiting for ... on the roadmap.",
+        "Not yet, still figuring it out.",
+        "Both are fully approved."
+       ]
+      },
+      {
+       "from": "GRACE ABIODUN",
+       "text": "For the Q3 roadmap, success means it's approved by leadership. For the onboarding documentation, it will be uploaded and accessible to the team."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Approved by leadership for the Q3 roadmap, and uploaded and accessible for the onboarding documentation. What day is \"end of day Friday\" for you?",
+       "suggestedAnswers": [
+        "Friday is my end of day.",
+        "I need until ...",
+        "I am not sure yet."
+       ]
+      },
+      {
+       "from": "GRACE ABIODUN",
+       "text": "It's the 26th. That's the deadline I'm working towards."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What is that at now?",
+       "suggestedAnswers": [
+        "I made good progress today.",
+        "It's a bit stuck, I need help.",
+        "Not yet, still working on it.",
+        "I'm almost done with that part."
+       ]
+      },
+      {
+       "from": "GRACE ABIODUN",
+       "text": "The roadmap is still in draft form, and the onboarding documentation is only about halfway written."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What is your plan to get both of those to their stated completion by the 26th?",
+       "suggestedAnswers": [
+        "I'm on track for completion.",
+        "I need help with the next steps.",
+        "I'm still planning my approach.",
+        "It's taking longer than expected."
+       ]
+      },
+      {
+       "from": "GRACE ABIODUN",
+       "text": "I'll dedicate my mornings to the roadmap and my afternoons to the documentation. I've cleared my calendar of non-essential meetings to make space."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You have a clear plan for both, by the 26th. Who set that up?",
+       "suggestedAnswers": [
+        "I set that up.",
+        "Someone else did that.",
+        "I don't know yet.",
+        "It is not ready."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "a",
+     "name": "Daniel Osei",
+     "isLead": false,
+     "checkInId": "a953d674-4e5b-4aff-8a90-7508fe52f6fb",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Grace is looking for your weekly update on what you did, what is next, and what is in your way. What is that at now?"
+      },
+      {
+       "from": "DANIEL OSEI",
+       "text": "I finished the churn model. Next, I need to validate it with production data. I'm blocked waiting for Priti to grant me access; I asked on the 8th and chased on the 15th, but haven't heard back."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "So the model itself is done. What will have to exist to show the model is validated? A number or a date is enough here too."
+      },
+      {
+       "from": "DANIEL OSEI",
+       "text": "It's not a single number or date. I'll need to run it against current production data and compare its predictions to actual outcomes over a period of time."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. Priti has not yet granted access for you to validate the model against production data. Is there anything written down from the 8th or the 15th about this access request?",
+       "suggestedAnswers": [
+        "Yes, I found some notes.",
+        "I couldn't find anything.",
+        "Not yet, I'm still checking.",
+        "It's still missing."
+       ]
+      },
+      {
+       "from": "DANIEL OSEI",
+       "text": "Yes, I sent emails on both dates."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What do those emails say, and to whom were they sent?",
+       "suggestedAnswers": [
+        "I sent the ... details to the team.",
+        "I updated ... about the latest.",
+        "I still need to check those emails.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "DANIEL OSEI",
+       "text": "They were sent to Priti, requesting access to the production data environment. I outlined the specific tables and systems I needed access to for model validation."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You sent specific access requests to Priti on the 8th and 15th, outlining the data and systems you need for model validation, and you have not heard back. Before we close: what will you do about this, and by when?",
+       "suggestedAnswers": [
+        "I have the data access now.",
+        "I will follow up on the access.",
+        "Still waiting for data access.",
+        "I expect access by ..."
+       ]
+      },
+      {
+       "from": "DANIEL OSEI",
+       "text": "I will follow up with Priti again today. If I don't hear back, I'll escalate it by the end of the week."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Which day marks the end of the week for that escalation?",
+       "suggestedAnswers": [
+        "I know the day.",
+        "I haven't decided yet.",
+        "Not yet.",
+        "I am still waiting to hear back."
+       ]
+      },
+      {
+       "from": "DANIEL OSEI",
+       "text": "Friday."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You will follow up with Priti today and escalate by Friday if you do not hear back. The consolidated report goes out once everybody has answered.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    },
+    {
+     "key": "b",
+     "name": "Priti Sharma",
+     "isLead": false,
+     "checkInId": "8222850c-98da-43c5-8ea7-679906a10278",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Priti, this is our weekly update to hear about what you did, what's next, and what's in your way. What can someone else do now that they could not before?"
+      },
+      {
+       "from": "PRITI SHARMA",
+       "text": "Nobody can do anything new just yet. I'm still waiting on the security review for the access request."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood, the security review is holding things up. What is the access request for, specifically?",
+       "suggestedAnswers": [
+        "It's for access to the ... system.",
+        "I need it for the ... project.",
+        "I am still waiting for that information.",
+        "It is for a critical component of ... ."
+       ]
+      },
+      {
+       "from": "PRITI SHARMA",
+       "text": "It's for Daniel to access the customer database. He needs it for the new reporting suite."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Is there anything you can do to unblock that security review?",
+       "suggestedAnswers": [
+        "I just sent a new email.",
+        "It's still stuck, unfortunately.",
+        "Not yet.",
+        "I need to follow up again."
+       ]
+      },
+      {
+       "from": "PRITI SHARMA",
+       "text": "No, I can't start the security review process myself. I need the InfoSec contractor for that. They're back on the 29th."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "It sounds like most of your work is engineering. Is that right?",
+       "suggestedAnswers": [
+        "Yes, I'm ready for them.",
+        "No, still waiting for them.",
+        "Not yet, I need them."
+       ]
+      },
+      {
+       "from": "PRITI SHARMA",
+       "text": "Yes, that's correct. Most of my work involves data engineering tasks."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Got it. What important thing are you doing next, that can move forward while you are waiting on InfoSec?",
+       "suggestedAnswers": [
+        "I'm focusing on the ... report in the meantime.",
+        "Working on the ... feature now.",
+        "Nothing else can start until InfoSec approves.",
+        "I am still planning what to do next."
+       ]
+      },
+      {
+       "from": "PRITI SHARMA",
+       "text": "I'll be focusing on optimizing some of our existing data pipelines and improving documentation. These are things I can do independently."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What specifically will you deliver in terms of pipeline optimization by the end of this week?",
+       "suggestedAnswers": [
+        "One pipeline is much faster now.",
+        "I hit a problem with the pipeline.",
+        "I don't know yet.",
+        "I am still working on optimization."
+       ]
+      },
+      {
+       "from": "PRITI SHARMA",
+       "text": "By the end of this week, I plan to have the refactored data ingestion pipeline for the customer feedback system deployed to our staging environment."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That refactored data ingestion pipeline for the customer feedback system, deployed to staging by the end of the week. The consolidated report goes out once everybody has answered.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "3589d2a8-89e5-4329-bec7-4e041f9d6a2a",
+    "groundId": "46bd6f4e-23a0-4131-a4d2-bd010866d769",
+    "sharedPicture": "All three people have answered. Daniel Osei is blocked waiting for data access from Priti Sharma, because they disagree on what the data is for.\n\nYour goal for the quarter is for the roadmap to be approved by leadership. Your work this week was on administration, hiring, and clearing a backlog.\n\nDaniel has finished a churn model and Daniel needs to test it with production data. Daniel is blocked waiting for Priti to grant access to that data, which Daniel first requested on the 8th.\n\nPriti says the access Daniel has requested is for a new reporting suite. Most of Priti's work involves data engineering tasks.\n\nYou are focused on administrative tasks, hiring, and the Q3 roadmap. Daniel has completed a churn model and Daniel is ready for validation. Priti is working on data engineering tasks.",
+    "theOpening": "All three people have answered. Daniel Osei is blocked waiting for data access from Priti Sharma, because they disagree on what the data is for.",
+    "agreements": [
+     "Daniel Osei needs access to the production customer database to validate a newly-completed churn model.",
+     "Priti Sharma is the person who would provision the database access Daniel Osei needs."
+    ],
+    "divergences": [
+     {
+      "topic": "Daniel Osei is blocked waiting for data access, and the path to unblock is not agreed.",
+      "atStake": "If this holds, the churn model cannot be validated, which may delay the new reporting suite that depends on it.",
+      "evidence": [
+       "Daniel Osei's record describes being blocked waiting for access to the production data environment.",
+       "Priti Sharma's record describes the need for a security review which can only be started by a contractor who returns on the 29th."
+      ],
+      "positions": [
+       {
+        "view": "Daniel Osei states that the work is blocked waiting for data access, which was requested two weeks ago and has been followed up on since.",
+        "participantLabel": "Daniel Osei",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Priti Sharma states that the access request cannot be started until a security review is done by an external contractor who is unavailable until the 29th.",
+        "participantLabel": "Priti Sharma",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "settledBy": "Agree on who is responsible for engaging the security contractor and what the timeline for the review is.",
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     }
+    ],
+    "centralQuestion": "What process would ensure a cross-team dependency like this one is made visible to you as soon as it is blocked?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Grace Abiodun",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 11,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Grace Abiodun"
+      },
+      {
+       "label": "Daniel Osei",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 6,
+       "documentsAttached": 0,
+       "who": "Daniel Osei"
+      },
+      {
+       "label": "Priti Sharma",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 4,
+       "documentsAttached": 0,
+       "who": "Priti Sharma"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "concernFlags": [],
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "Daniel Osei is blocked waiting for data access, and the path to unblock is not agreed."
+     ],
+     "sessionCounts": {
+      "Daniel Osei": 6,
+      "Priti Sharma": 6,
+      "Grace Abiodun": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Grace Abiodun",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Grace Abiodun": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Grace Abiodun": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [],
+     "whatCouldBeChecked": {
+      "says": [
+       "All 4 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 4,
+      "checked": 4
+     },
+     "difficultyDisclosures": false
+    },
+    "inferences": [
+     {
+      "id": "initiator-unawareness-1",
+      "text": "Your record does not mention the data access issue that is blocking Daniel Osei.",
+      "reason": "This was concluded because your record details work on administration and roadmapping, but makes no mention of the access blocker described by both other participants.",
+      "participantLabel": "Grace Abiodun"
+     }
+    ],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": [
+     {
+      "gap": "One account describes work being blocked for two weeks waiting on a dependency from a teammate; the lead's account does not mention this delay.",
+      "note": "The records suggest that delays and blockers that exist between team members are not being surfaced to the team lead.",
+      "span": "two weeks",
+      "pattern": "SLIP_NOT_REGISTERED",
+      "periods": 1
+     }
+    ],
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "Daniel Osei believes they are waiting for a simple data access grant, but Priti Sharma believes the same request requires an external security review. This disagreement means Daniel's work on the churn model is stopped.",
+     "whatToDo": [
+      {
+       "move": "Bring Daniel Osei and Priti Sharma together to agree on the specific work needed for the data access request.",
+       "because": "Daniel Osei says the work is a simple access request, but Priti Sharma says it requires an external security review, and they need to agree on what the work is.",
+       "startWith": "Daniel Osei"
+      },
+      {
+       "move": "Decide if unblocking Daniel Osei is now the most important work for the team.",
+       "because": "Your stated priority is the roadmap, but Daniel Osei is stopped from working by a problem that may need your help to solve.",
+       "startWith": "You"
+      },
+      {
+       "move": "Ask Priti Sharma what the plan is if the external contractor is not available on the 29th.",
+       "because": "The plan for Daniel Osei's access depends entirely on one person outside the team, and there is no alternative if that person is delayed.",
+       "startWith": "Priti Sharma"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "Daniel Osei has finished a churn model and is blocked waiting for data access from Priti Sharma.",
+       "soWhat": "Daniel Osei's work cannot be completed until the disagreement about the access request is resolved.",
+       "fieldId": "Daniel Osei"
+      },
+      {
+       "says": "Priti Sharma states the access request needs an external security review from a contractor who is unavailable until the 29th.",
+       "soWhat": "From Priti Sharma's perspective, the work to grant access cannot be started for at least another week.",
+       "fieldId": "Priti Sharma"
+      },
+      {
+       "says": "Your stated priority is getting the roadmap approved by leadership, and your own work is on administration.",
+       "soWhat": "Your focus is not on the operational problem that has stopped Daniel Osei from working.",
+       "fieldId": "You"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "How Daniel Osei's request for data became a piece of work that needs an external security review.",
+       "howManyMissedIt": 2
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record shows that the two people disagree on the work required, but the record does not say how that disagreement started.",
+       "about": "Why Daniel Osei and Priti Sharma have different understandings of the same request.",
+       "toKnow": "You would need to have Daniel Osei and Priti Sharma walk through the original request and the work it implies."
+      },
+      {
+       "why": "Daniel Osei said they would 'escalate it', but the record does not show who they spoke to or what the outcome was.",
+       "about": "What happened when Daniel Osei tried to escalate the issue.",
+       "toKnow": "You would need to ask Daniel Osei who they escalated the issue to."
+      }
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Daniel Osei is down as \"Data analyst\", and nothing on record says what that role covers. Since then, the record holds 1 session, 6 lines of what was said, 2 with a name, a number or a date in them, none backed by a document and 2 commitments still open.",
+       "who": "Daniel Osei",
+       "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f"
+      },
+      {
+       "say": "Priti Sharma is down as \"Data engineer\", and nothing on record says what that role covers. Since then, the record holds 1 session, 4 lines of what was said, 1 with a name, a number or a date in it, none backed by a document and 1 thing somebody else here is waiting for.",
+       "who": "Priti Sharma",
+       "participantId": "a6db13d2-a053-4684-9654-447e81a72367"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Daniel Osei is waiting on Priti Sharma for \"access to the production data environment\", and it has been chased more than once since. This is work Priti owes Daniel, not the other way round.",
+      "Priti Sharma is waiting on the InfoSec contractor for \"the security review for the access request\", and nothing on record says anybody has chased it since.",
+      "In session 1, Daniel Osei said, \"I will follow up with Priti again today.\" The time Daniel gave for it was \"today\". Nobody has said yet whether it happened.",
+      "In session 1, Daniel Osei said, \"I'll escalate it\". The time Daniel gave for it was \"by the end of the week\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, Daniel Osei said, \"I will follow up with Priti again today.\" The time Daniel gave for it was \"today\". Nobody has said yet whether it happened.",
+       "who": "Daniel Osei",
+       "what": "I will follow up with Priti again today.",
+       "when": "today",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      },
+      {
+       "say": "In session 1, Daniel Osei said, \"I'll escalate it\". The time Daniel gave for it was \"by the end of the week\". Nobody has said yet whether it happened.",
+       "who": "Daniel Osei",
+       "what": "I'll escalate it",
+       "when": "by the end of the week",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [
+      {
+       "on": "Priti Sharma",
+       "say": "Daniel Osei is waiting on Priti Sharma for \"access to the production data environment\", and it has been chased more than once since. This is work Priti owes Daniel, not the other way round.",
+       "from": "Daniel Osei",
+       "what": "access to the production data environment",
+       "chased": true,
+       "status": "BLOCKING",
+       "onParticipantId": "a6db13d2-a053-4684-9654-447e81a72367",
+       "sessionsWaiting": 0,
+       "fromParticipantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f"
+      },
+      {
+       "on": "the InfoSec contractor",
+       "say": "Priti Sharma is waiting on the InfoSec contractor for \"the security review for the access request\", and nothing on record says anybody has chased it since.",
+       "from": "Priti Sharma",
+       "what": "the security review for the access request",
+       "chased": false,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "a6db13d2-a053-4684-9654-447e81a72367"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "One thing is waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.",
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "Your goal for the quarter is for the roadmap to be approved by leadership. Your work this week was on administration, hiring, and clearing a backlog.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "960cfe5a-ec39-4bcb-9bbb-10d734e200b5",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Daniel Osei has finished a churn model and Daniel needs to test it with production data. Daniel is blocked waiting for Priti Sharma to grant access to that data, which Daniel first requested on the 8th.",
+      "hasGap": false,
+      "headline": "Daniel Osei is blocked waiting for data access from Priti Sharma.",
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Priti Sharma says the access Daniel Osei has requested is for a new reporting suite. Most of Priti's work involves data engineering tasks.",
+      "hasGap": false,
+      "headline": "Daniel Osei and Priti Sharma have a different understanding of what the data is for.",
+      "participantId": "a6db13d2-a053-4684-9654-447e81a72367",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": "2026-10-02T01:03:04.382Z",
+    "createdAt": "2026-10-02T01:00:42.159Z",
+    "updatedAt": "2026-10-02T01:05:24.240Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Daniel Osei is blocked waiting for data access from Priti Sharma, because they disagree on what the data is for.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Your goal for the quarter is for the roadmap to be approved by leadership.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Your work this week was on administration, hiring, and clearing a backlog.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Daniel Osei has finished a churn model and Daniel needs to test it with production data.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Daniel Osei is blocked waiting for Priti Sharma to grant access to that data, which Daniel first requested on the 8th.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Priti Sharma says the access Daniel Osei has requested is for a new reporting suite.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Most of Priti Sharma's work involves data engineering tasks.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are focused on administrative tasks, hiring, and the Q3 roadmap.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Daniel Osei has completed a churn model and Daniel is ready for validation.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Priti Sharma is working on data engineering tasks.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "My focus has been on finalising the Q3 roadmap, and it sounds like I might not have a full picture of where every project stands.",
+     "toAcknowledge": "The other view is that a key project has been stopped for over a week, waiting for something from a colleague, and there was no process for making that visible.",
+     "questionToCarry": "What is the right way for someone on the team to flag a blocker when they are not getting a response?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "You are in session 1 of product work, and at this early stage, it is normal that nothing repeats yet; the value of later sessions will be in what specific, falsifiable decisions you can point to.",
+     "beforeNextTime": [
+      "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+     ],
+     "general": true,
+     "role": {
+      "label": "Product",
+      "onTrack": "Decisions actually made and owned, with the reasoning, specific enough to be falsifiable.",
+      "goingWrong": "Endlessly gathering feedback, direction stated so vaguely nobody can own or disprove it.",
+      "protectAgainst": "You are saying that because the product needs slow feedback, using a fast metric to evaluate it will misinterpret normal feedback delays as failures.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "1e7b64fa-006a-463a-8f94-99333285400a",
+      "type": "PROGRESS",
+      "text": "This week was all about admin for me, and a lot of work on hiring.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "21415223-83b3-486d-8f8c-d612b0b7f3b8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "6c0ad7c3-4afc-40ad-a683-0b4a5a59cfbe",
+      "type": "PROGRESS",
+      "text": "Mainly budget reviews and some performance evaluations for the team.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "21415223-83b3-486d-8f8c-d612b0b7f3b8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "6513249b-56b8-4b20-9071-a6ffc907efd2",
+      "type": "INTENT",
+      "text": "I'm also looking to clear some backlog.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "21415223-83b3-486d-8f8c-d612b0b7f3b8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "cfafdd7b-28ed-4e44-9f14-e7adc0bd0079",
+      "type": "COMMITMENT",
+      "text": "I'm blocking out dedicated time for it next week.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "21415223-83b3-486d-8f8c-d612b0b7f3b8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "73d5383b-b20e-48ce-ba31-a4c5eb983974",
+      "type": "COMMITMENT",
+      "text": "I need to get it done by end of day Friday.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "21415223-83b3-486d-8f8c-d612b0b7f3b8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "cbc94f87-46b8-4b0a-85e3-807d09fd0635",
+      "type": "TIMEFRAME",
+      "text": "by end of day Friday",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "21415223-83b3-486d-8f8c-d612b0b7f3b8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "5182e1e0-ef7b-489c-8005-b8d1546d3390",
+      "type": "COMMITMENT",
+      "text": "finalizing the Q3 roadmap",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "21415223-83b3-486d-8f8c-d612b0b7f3b8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "5a654372-f080-43a6-a9ab-72973dbeb0ef",
+      "type": "SUCCESS_DEFINITION",
+      "text": "For the Q3 roadmap, success means it's approved by leadership.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "21415223-83b3-486d-8f8c-d612b0b7f3b8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "6cdcc8dc-1763-4c84-bb33-a0701093ffc7",
+      "type": "SUCCESS_DEFINITION",
+      "text": "For the onboarding documentation, it will be uploaded and accessible to the team.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "21415223-83b3-486d-8f8c-d612b0b7f3b8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "5eba0507-2da3-4272-a5d5-6440a010a66f",
+      "type": "PROGRESS",
+      "text": "The roadmap is still in draft form, and the onboarding documentation is only about halfway written.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "21415223-83b3-486d-8f8c-d612b0b7f3b8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "7a99df76-f1d6-4fee-b190-fad2c4d2ebe8",
+      "type": "PROGRESS",
+      "text": "I've cleared my calendar of non-essential meetings to make space.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "21415223-83b3-486d-8f8c-d612b0b7f3b8",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": [
+     {
+      "who": "Grace Abiodun",
+      "participantId": "960cfe5a-ec39-4bcb-9bbb-10d734e200b5",
+      "probe": [],
+      "encourage": [
+       "Worth getting on record, where anyone could check it later: For the Q3 roadmap, success means it's approved by leadership and For the onboarding documentation, it will be uploaded and accessible to the team."
+      ],
+      "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+     },
+     {
+      "who": "Priti Sharma",
+      "participantId": "a6db13d2-a053-4684-9654-447e81a72367",
+      "probe": [
+       "Daniel Osei is waiting on Priti Sharma for access to the production data environment. Ask what that is waiting on.",
+       "Priti Sharma has been waiting for the security review for the access request, and nothing on record says it was raised higher. This early, that is worth showing Priti Sharma rather than asking about."
+      ],
+      "encourage": [
+       "Named a problem out loud rather than reporting everything as fine."
+      ],
+      "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+     },
+     {
+      "who": "Daniel Osei",
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "probe": [
+       "Daniel Osei has been waiting on Priti Sharma for access to the production data environment, and nothing on record says it was raised higher. This early, that is worth showing Daniel Osei rather than asking about."
+      ],
+      "encourage": [
+       "Worth getting on record, where anyone could check it later: I'll need to run it against current production data and compare its predictions to actual outcomes over a period of time."
+      ],
+      "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+     }
+    ],
+    "soloArtifact": {
+     "summary": "Here is what you shared.\n\nYou described your week as focused on administration, hiring, budget reviews, and performance evaluations for the team. You are working to finalize the Q3 roadmap and complete onboarding documentation, noting that the roadmap is a draft and the documentation is about halfway done. To make progress, you intend to clear some backlog and have blocked out dedicated time next week.",
+     "whatToCarry": "You have a firm deadline of the end of Friday for your backlog; see if the time you have blocked is enough."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    },
+    "forTheLead": [
+     {
+      "id": "handoff-18ce1d74-bb3b-4fe5-8e0d-03ce5bda5e8f",
+      "decide": "Decide what to do about access to the production data environment.",
+      "why": "Daniel cannot move until it is settled, and it is waiting on Priti.",
+      "changes": "Once it is settled, validate the model with production data."
+     },
+     {
+      "id": "handoff-85851b9e-87ad-499c-9614-423100612a6e",
+      "decide": "Decide what to do about the security review for the access request.",
+      "why": "Priti cannot move until it is settled, and it is waiting on the InfoSec contractor."
+     },
+     {
+      "id": "difference-1",
+      "decide": "Agree on who is responsible for engaging the security contractor and what the timeline for the review is.",
+      "why": "Daniel Osei is blocked waiting for data access, and the path to unblock is not agreed. Daniel Osei and Priti Sharma said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this holds, the churn model cannot be validated, which may delay the new reporting suite that depends on it."
+     }
+    ]
+   },
+   "board": {
+    "groundId": "46bd6f4e-23a0-4131-a4d2-bd010866d769",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "UPDATE",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "objectives",
+     "checkInGrid",
+     "whoOwnsWhat",
+     "divergence",
+     "decisions",
+     "patterns"
+    ],
+    "title": "The weekly update, from everybody",
+    "scenario": "TEAM_UPDATES",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. Daniel Osei is blocked waiting for data access from Priti Sharma, because they disagree on what the data is for.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 4,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 2,
+       "oldest": "access to the production data environment",
+       "daysWaiting": 0
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "Daniel Osei believes they are waiting for a simple data access grant, but Priti Sharma believes the same request requires an external security review. This disagreement means Daniel's work on the churn model is stopped.",
+     "whatToDo": [
+      {
+       "move": "Bring Daniel Osei and Priti Sharma together to agree on the specific work needed for the data access request.",
+       "because": "Daniel Osei says the work is a simple access request, but Priti Sharma says it requires an external security review, and they need to agree on what the work is.",
+       "startWith": "Daniel Osei"
+      },
+      {
+       "move": "Decide if unblocking Daniel Osei is now the most important work for the team.",
+       "because": "Your stated priority is the roadmap, but Daniel Osei is stopped from working by a problem that may need your help to solve.",
+       "startWith": "You"
+      },
+      {
+       "move": "Ask Priti Sharma what the plan is if the external contractor is not available on the 29th.",
+       "because": "The plan for Daniel Osei's access depends entirely on one person outside the team, and there is no alternative if that person is delayed.",
+       "startWith": "Priti Sharma"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "Daniel Osei has finished a churn model and is blocked waiting for data access from Priti Sharma.",
+       "soWhat": "Daniel Osei's work cannot be completed until the disagreement about the access request is resolved.",
+       "fieldId": "Daniel Osei"
+      },
+      {
+       "says": "Priti Sharma states the access request needs an external security review from a contractor who is unavailable until the 29th.",
+       "soWhat": "From Priti Sharma's perspective, the work to grant access cannot be started for at least another week.",
+       "fieldId": "Priti Sharma"
+      },
+      {
+       "says": "Your stated priority is getting the roadmap approved by leadership, and your own work is on administration.",
+       "soWhat": "Your focus is not on the operational problem that has stopped Daniel Osei from working.",
+       "fieldId": "You"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "How Daniel Osei's request for data became a piece of work that needs an external security review.",
+       "howManyMissedIt": 2
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record shows that the two people disagree on the work required, but the record does not say how that disagreement started.",
+       "about": "Why Daniel Osei and Priti Sharma have different understandings of the same request.",
+       "toKnow": "You would need to have Daniel Osei and Priti Sharma walk through the original request and the work it implies."
+      },
+      {
+       "why": "Daniel Osei said they would 'escalate it', but the record does not show who they spoke to or what the outcome was.",
+       "about": "What happened when Daniel Osei tried to escalate the issue.",
+       "toKnow": "You would need to ask Daniel Osei who they escalated the issue to."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Daniel Osei is down as \"Data analyst\", and nothing on record says what that role covers. Since then, the record holds 1 session, 6 lines of what was said, 2 with a name, a number or a date in them, none backed by a document and 2 commitments still open.",
+       "who": "Daniel Osei",
+       "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f"
+      },
+      {
+       "say": "Priti Sharma is down as \"Data engineer\", and nothing on record says what that role covers. Since then, the record holds 1 session, 4 lines of what was said, 1 with a name, a number or a date in it, none backed by a document and 1 thing somebody else here is waiting for.",
+       "who": "Priti Sharma",
+       "participantId": "a6db13d2-a053-4684-9654-447e81a72367"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Daniel Osei is waiting on Priti Sharma for \"access to the production data environment\", and it has been chased more than once since. This is work Priti owes Daniel, not the other way round.",
+      "Priti Sharma is waiting on the InfoSec contractor for \"the security review for the access request\", and nothing on record says anybody has chased it since.",
+      "In session 1, Daniel Osei said, \"I will follow up with Priti again today.\" The time Daniel Osei gave for it was \"today\". Nobody has said yet whether it happened.",
+      "In session 1, Daniel Osei said, \"I'll escalate it\". The time Daniel Osei gave for it was \"by the end of the week\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, Daniel Osei said, \"I will follow up with Priti again today.\" The time Daniel Osei gave for it was \"today\". Nobody has said yet whether it happened.",
+       "who": "Daniel Osei",
+       "what": "I will follow up with Priti again today.",
+       "when": "today",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      },
+      {
+       "say": "In session 1, Daniel Osei said, \"I'll escalate it\". The time Daniel Osei gave for it was \"by the end of the week\". Nobody has said yet whether it happened.",
+       "who": "Daniel Osei",
+       "what": "I'll escalate it",
+       "when": "by the end of the week",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [
+      {
+       "on": "Priti Sharma",
+       "say": "Daniel Osei is waiting on Priti Sharma for \"access to the production data environment\", and it has been chased more than once since. This is work Priti owes Daniel, not the other way round.",
+       "from": "Daniel Osei",
+       "what": "access to the production data environment",
+       "chased": true,
+       "status": "BLOCKING",
+       "onParticipantId": "a6db13d2-a053-4684-9654-447e81a72367",
+       "sessionsWaiting": 0,
+       "fromParticipantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f"
+      },
+      {
+       "on": "the InfoSec contractor",
+       "say": "Priti Sharma is waiting on the InfoSec contractor for \"the security review for the access request\", and nothing on record says anybody has chased it since.",
+       "from": "Priti Sharma",
+       "what": "the security review for the access request",
+       "chased": false,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "a6db13d2-a053-4684-9654-447e81a72367"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "One thing is waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.",
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "960cfe5a-ec39-4bcb-9bbb-10d734e200b5",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T01:05:24.240Z",
+    "participants": [
+     {
+      "id": "960cfe5a-ec39-4bcb-9bbb-10d734e200b5",
+      "name": "Grace Abiodun",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "a6db13d2-a053-4684-9654-447e81a72367",
+      "name": "Priti Sharma",
+      "role": "Data engineer.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "name": "Daniel Osei",
+      "role": "Data analyst.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "targetsNobodyOwns": null,
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "98c9d29d-fd43-4149-8931-f2657b3edd06",
+      "name": "Grace is aiming for the Q3 roadmap to be approved by leadership.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     },
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "38d332db-76b1-48dd-b0cf-eff1112081f4",
+      "name": "Grace is aiming for the new project onboarding documentation to be uploaded and accessible to the team.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "Daniel Osei is blocked waiting for data access, and the path to unblock is not agreed.",
+       "atStake": "If this holds, the churn model cannot be validated, which may delay the new reporting suite that depends on it.",
+       "evidence": [
+        "Daniel Osei's record describes being blocked waiting for access to the production data environment.",
+        "Priti Sharma's record describes the need for a security review which can only be started by a contractor who returns on the 29th."
+       ],
+       "positions": [
+        {
+         "view": "Daniel Osei states that the work is blocked waiting for data access, which was requested two weeks ago and has been followed up on since.",
+         "participantLabel": "Daniel Osei",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Daniel Osei"
+        },
+        {
+         "view": "Priti Sharma states that the access request cannot be started until a security review is done by an external contractor who is unavailable until the 29th.",
+         "participantLabel": "Priti Sharma",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Priti Sharma"
+        }
+       ],
+       "settledBy": "Agree on who is responsible for engaging the security contractor and what the timeline for the review is.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "Daniel Osei needs access to the production customer database to validate a newly-completed churn model.",
+      "Priti Sharma is the person who would provision the database access Daniel Osei needs."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Agree on who is responsible for engaging the security contractor and what the timeline for the review is. That is what settles daniel Osei is blocked waiting for data access, and the path to unblock is not agreed.",
+     "settled": [
+      "Daniel Osei needs access to the production customer database to validate a newly-completed churn model.",
+      "Priti Sharma is the person who would provision the database access Daniel Osei needs."
+     ],
+     "stillOpen": [
+      "Daniel Osei is blocked waiting for data access, and the path to unblock is not agreed."
+     ]
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "who": "Daniel Osei",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Daniel Osei has checked in, and still has something in the way.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Daniel Osei has finished a churn model and Daniel needs to test it with production data. Daniel is blocked waiting for Priti Sharma to grant access to that data, which Daniel first requested on the 8th.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     },
+     {
+      "participantId": "a6db13d2-a053-4684-9654-447e81a72367",
+      "who": "Priti Sharma",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Priti Sharma has checked in.",
+      "ask": "Priti Sharma is waiting on the security review for the access request, and nobody has said yet what was tried. Ask Priti Sharma to find out who owns this by name. Everything else needs that first.",
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Priti Sharma says the access Daniel Osei has requested is for a new reporting suite. Most of Priti's work involves data engineering tasks.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "960cfe5a-ec39-4bcb-9bbb-10d734e200b5",
+       "name": "Grace Abiodun",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "a6db13d2-a053-4684-9654-447e81a72367",
+       "name": "Priti Sharma",
+       "role": "Data engineer.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+       "name": "Daniel Osei",
+       "role": "Data analyst.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "whoOwnsWhat": [
+     {
+      "participantId": "960cfe5a-ec39-4bcb-9bbb-10d734e200b5",
+      "name": "Grace Abiodun",
+      "role": null,
+      "items": [
+       {
+        "id": "1e7b64fa-006a-463a-8f94-99333285400a",
+        "type": "PROGRESS",
+        "text": "You said, \"This week was all about admin for me, and a lot of work on hiring.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "6c0ad7c3-4afc-40ad-a683-0b4a5a59cfbe",
+        "type": "PROGRESS",
+        "text": "You said, \"Mainly budget reviews and some performance evaluations for the team.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "6513249b-56b8-4b20-9071-a6ffc907efd2",
+        "type": "INTENT",
+        "text": "You said, \"I'm also looking to clear some backlog.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "cfafdd7b-28ed-4e44-9f14-e7adc0bd0079",
+        "type": "COMMITMENT",
+        "text": "You said, \"I'm blocking out dedicated time for it next week.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "73d5383b-b20e-48ce-ba31-a4c5eb983974",
+        "type": "COMMITMENT",
+        "text": "You said, \"I need to get it done by end of day Friday.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "5182e1e0-ef7b-489c-8005-b8d1546d3390",
+        "type": "COMMITMENT",
+        "text": "You said, \"finalizing the Q3 roadmap.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "5a654372-f080-43a6-a9ab-72973dbeb0ef",
+        "type": "SUCCESS_DEFINITION",
+        "text": "You said, \"For the Q3 roadmap, success means it's approved by leadership.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "6cdcc8dc-1763-4c84-bb33-a0701093ffc7",
+        "type": "SUCCESS_DEFINITION",
+        "text": "You said, \"For the onboarding documentation, it will be uploaded and accessible to the team.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "5eba0507-2da3-4272-a5d5-6440a010a66f",
+        "type": "PROGRESS",
+        "text": "You said, \"The roadmap is still in draft form, and the onboarding documentation is only about halfway written.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "7a99df76-f1d6-4fee-b190-fad2c4d2ebe8",
+        "type": "PROGRESS",
+        "text": "You said, \"I've cleared my calendar of non-essential meetings to make space.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "a6db13d2-a053-4684-9654-447e81a72367",
+      "name": "Priti Sharma",
+      "role": "Data engineer.",
+      "items": [
+       {
+        "id": "975af52a-cdf3-4bc6-b91c-a5093b9ebe21",
+        "type": "INTENT",
+        "text": "Priti Sharma said, \"Most of my work involves data engineering tasks.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "name": "Daniel Osei",
+      "role": "Data analyst.",
+      "items": [
+       {
+        "id": "8c207ac6-474c-452e-a962-ae7647b9cbba",
+        "type": "PROGRESS",
+        "text": "Daniel Osei said, \"I finished the churn model.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "c869584b-76d2-485c-8b0e-9c7ee4c07354",
+        "type": "SUCCESS_DEFINITION",
+        "text": "Daniel Osei said, \"I'll need to run it against current production data and compare its predictions to actual outcomes over a period of time.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "41aa0bfb-2650-4c4d-911f-cbb6db1007c2",
+        "type": "COMMITMENT",
+        "text": "Daniel Osei said, \"I will follow up with Priti again today.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "0c057430-492a-4cc0-9e17-7f259d9a4497",
+        "type": "COMMITMENT",
+        "text": "Daniel Osei said, \"If I don't hear back, I'll escalate it by the end of the week.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     }
+    ],
+    "decisions": [
+     {
+      "question": "Daniel Osei is waiting on access to the production data environment, so it needs deciding.",
+      "why": "Daniel Osei cannot move until this is decided.",
+      "owner": "Priti Sharma",
+      "source": "blocker"
+     },
+     {
+      "question": "Priti Sharma is waiting on the security review for the access request, so it needs deciding.",
+      "why": "Priti Sharma cannot move until this is decided.",
+      "owner": "the InfoSec contractor",
+      "source": "blocker"
+     },
+     {
+      "question": "People in this check-in said different things. Daniel Osei is blocked waiting for data access, and the path to unblock is not agreed. This needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "You",
+      "source": "divergence"
+     }
+    ],
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things. Daniel Osei is blocked waiting for data access, and the path to unblock is not agreed.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "2",
+      "sub": "Work is held up by access to the production data environment. 1 more is holding work up.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "You are in session 1 of product work, and at this early stage, it is normal that nothing repeats yet; the value of later sessions will be in what specific, falsifiable decisions you can point to.",
+      "beforeNextTime": [
+       "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+      ],
+      "general": true,
+      "role": {
+       "label": "Product",
+       "onTrack": "Decisions actually made and owned, with the reasoning, specific enough to be falsifiable.",
+       "goingWrong": "Endlessly gathering feedback, direction stated so vaguely nobody can own or disprove it.",
+       "protectAgainst": "You are saying that because the product needs slow feedback, using a fast metric to evaluate it will misinterpret normal feedback delays as failures.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": [
+      {
+       "who": "Grace Abiodun",
+       "participantId": "960cfe5a-ec39-4bcb-9bbb-10d734e200b5",
+       "probe": [],
+       "encourage": [
+        "Worth getting on record, where anyone could check it later: For the Q3 roadmap, success means it's approved by leadership and For the onboarding documentation, it will be uploaded and accessible to the team."
+       ],
+       "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+      },
+      {
+       "who": "Priti Sharma",
+       "participantId": "a6db13d2-a053-4684-9654-447e81a72367",
+       "probe": [
+        "Daniel Osei is waiting on Priti Sharma for access to the production data environment. Ask what that is waiting on.",
+        "Priti Sharma has been waiting for the security review for the access request, and nothing on record says it was raised higher. This early, that is worth showing Priti Sharma rather than asking about."
+       ],
+       "encourage": [
+        "Named a problem out loud rather than reporting everything as fine."
+       ],
+       "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+      },
+      {
+       "who": "Daniel Osei",
+       "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+       "probe": [
+        "Daniel Osei has been waiting on Priti Sharma for access to the production data environment, and nothing on record says it was raised higher. This early, that is worth showing Daniel Osei rather than asking about."
+       ],
+       "encourage": [
+        "Worth getting on record, where anyone could check it later: I'll need to run it against current production data and compare its predictions to actual outcomes over a period of time."
+       ],
+       "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+      }
+     ]
+    },
+    "patterns": [],
+    "eachPersonToday": [
+     {
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "who": "Daniel Osei",
+      "line": "Daniel Osei has checked in, and still has something in the way."
+     },
+     {
+      "participantId": "a6db13d2-a053-4684-9654-447e81a72367",
+      "who": "Priti Sharma",
+      "line": "Priti Sharma has checked in."
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-18ce1d74-bb3b-4fe5-8e0d-03ce5bda5e8f",
+      "says": "Daniel Osei cannot move on access to the production data environment until it comes from Priti Sharma.",
+      "because": "It was first said on 2 October. About what has been tried, Daniel Osei said, \"I asked on the 8th and chased on the 15th\". No time has been given for it."
+     },
+     {
+      "id": "handoff-85851b9e-87ad-499c-9614-423100612a6e",
+      "says": "Priti Sharma cannot move on the security review for the access request until it comes from the InfoSec contractor.",
+      "because": "It was first said on 2 October. Nobody has said what has been tried. The time given for it was \"on the 29th\"."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "78ee3db5-ad3b-4e03-b497-41ef36a1a6ac",
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "who": "Daniel Osei",
+      "says": "In session 1, Daniel Osei said, \"I will follow up with Priti again today.\" The time Daniel Osei gave for it was \"today\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "today",
+      "state": "open",
+      "statedInSession": 1
+     },
+     {
+      "id": "d1eae31c-5922-478e-8986-194eb78b770e",
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "who": "Daniel Osei",
+      "says": "In session 1, Daniel Osei said, \"I'll escalate it\". The time Daniel Osei gave for it was \"by the end of the week\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "by the end of the week",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Daniel Osei committed to follow up with Priti again today."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Daniel Osei committed to escalate it."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Daniel Osei said the work was waiting on Priti Sharma for access to the production data environment."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Priti Sharma said the work was waiting on the InfoSec contractor for the security review for the access request."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "960cfe5a-ec39-4bcb-9bbb-10d734e200b5",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "a6db13d2-a053-4684-9654-447e81a72367",
+      "who": "Priti Sharma",
+      "says": "Priti Sharma has answered 1 session, and the record holds no commitment from Priti Sharma yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Priti Sharma named 1 thing the work was waiting on."
+       }
+      ]
+     },
+     {
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "who": "Daniel Osei",
+      "says": "Daniel Osei has answered 1 session and made 2 commitments.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Daniel Osei made 2 commitments and named 1 thing the work was waiting on."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "18ce1d74-bb3b-4fe5-8e0d-03ce5bda5e8f",
+      "who": "Daniel Osei",
+      "says": "Daniel Osei is waiting on Priti Sharma for access to the production data environment.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "Priti Sharma holds it.",
+       "About what has been tried, Daniel Osei said, \"I asked on the 8th and chased on the 15th\".",
+       "No time has been given for it."
+      ]
+     },
+     {
+      "id": "85851b9e-87ad-499c-9614-423100612a6e",
+      "who": "Priti Sharma",
+      "says": "Priti Sharma is waiting on the InfoSec contractor for the security review for the access request.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": false,
+      "timeGiven": true,
+      "checks": [
+       "The InfoSec contractor holds it.",
+       "Nobody has said what has been tried.",
+       "The time given for it was \"on the 29th\"."
+      ]
+     }
+    ],
+    "busyOrMoving": {
+     "eachPerson": [
+      {
+       "participantId": "a6db13d2-a053-4684-9654-447e81a72367",
+       "who": "Priti Sharma",
+       "says": "Priti Sharma also named 1 thing the work was waiting on."
+      },
+      {
+       "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+       "who": "Daniel Osei",
+       "says": "Daniel Osei has made 2 commitments across 1 answered session. Daniel Osei also named 1 thing the work was waiting on."
+      }
+     ],
+     "cannotTellYou": "These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that."
+    },
+    "obligations": [
+     {
+      "participantId": "a6db13d2-a053-4684-9654-447e81a72367",
+      "who": "Priti Sharma",
+      "promised": [],
+      "othersWaitFor": [
+       "Daniel Osei is waiting on Priti Sharma for access to the production data environment."
+      ]
+     },
+     {
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "who": "Daniel Osei",
+      "promised": [
+       "In session 1, Daniel Osei said, \"I will follow up with Priti again today.\" The time Daniel Osei gave for it was \"today\". It has been open for 1 session, and nobody has said whether it happened.",
+       "In session 1, Daniel Osei said, \"I'll escalate it\". The time Daniel Osei gave for it was \"by the end of the week\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": null,
+      "who": "the InfoSec contractor",
+      "promised": [],
+      "othersWaitFor": [
+       "Priti Sharma is waiting on the InfoSec contractor for the security review for the access request."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "18ce1d74-bb3b-4fe5-8e0d-03ce5bda5e8f",
+      "says": "Daniel Osei has been waiting on Priti Sharma for access to the production data environment since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     },
+     {
+      "id": "85851b9e-87ad-499c-9614-423100612a6e",
+      "says": "Priti Sharma has been waiting on the InfoSec contractor for the security review for the access request since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "18ce1d74-bb3b-4fe5-8e0d-03ce5bda5e8f",
+      "who": "Daniel Osei",
+      "name": "access to the production data environment",
+      "state": "blocking",
+      "says": "Daniel Osei is waiting on Priti Sharma for access to the production data environment.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Daniel Osei said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": "Once it is cleared, validate the model with production data."
+     },
+     {
+      "id": "85851b9e-87ad-499c-9614-423100612a6e",
+      "who": "Priti Sharma",
+      "name": "the security review for the access request",
+      "state": "blocking",
+      "says": "Priti Sharma is waiting on the InfoSec contractor for the security review for the access request.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Priti Sharma said."
+      },
+      "timeGiven": "The time given for it was \"on the 29th\".",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     }
+    ],
+    "questionsForTheLead": [
+     {
+      "id": "chased-85851b9e-87ad-499c-9614-423100612a6e",
+      "question": "What has been tried to get the security review for the access request from the InfoSec contractor, which Priti Sharma is waiting for?",
+      "because": "Nothing on record says anybody has chased it, so only you can find out what was done outside the check-in."
+     }
+    ]
+   },
+   "participantReport": {
+    "id": "3589d2a8-89e5-4329-bec7-4e041f9d6a2a",
+    "groundId": "46bd6f4e-23a0-4131-a4d2-bd010866d769",
+    "sharedPicture": "All three people have answered. You are blocked waiting for data access from Priti Sharma, because they disagree on what the data is for.\n\nGrace Abiodun's goal for the quarter is for the roadmap to be approved by leadership. Grace's work this week was on administration, hiring, and clearing a backlog.\n\nYou have finished a churn model and you need to test it with production data. You are blocked waiting for Priti to grant access to that data, which you first requested on the 8th.\n\nPriti says the access you have requested is for a new reporting suite. Most of Priti's work involves data engineering tasks.\n\nGrace is focused on administrative tasks, hiring, and the Q3 roadmap. You have completed a churn model and you are ready for validation. Priti is working on data engineering tasks.",
+    "theOpening": "All three people have answered. You are blocked waiting for data access from Priti Sharma, because they disagree on what the data is for.",
+    "agreements": [
+     "You need access to the production customer database to validate a newly-completed churn model.",
+     "Priti Sharma is the person who would provision the database access you need."
+    ],
+    "centralQuestion": "What process would ensure a cross-team dependency like this one is made visible to Grace Abiodun as soon as it is blocked?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Grace Abiodun",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 11,
+       "documentsAttached": 0,
+       "who": "Grace Abiodun"
+      },
+      {
+       "label": "Daniel Osei",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 6,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Daniel Osei"
+      },
+      {
+       "label": "Priti Sharma",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 4,
+       "documentsAttached": 0,
+       "who": "Priti Sharma"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "You are blocked waiting for data access, and the path to unblock is not agreed."
+     ],
+     "sessionCounts": {
+      "Daniel Osei": 6,
+      "Priti Sharma": 6,
+      "Grace Abiodun": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Daniel Osei",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Dependencies hinted at rather than named (session 1)",
+         "level": "directional"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Daniel Osei": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Daniel Osei": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [],
+     "whatCouldBeChecked": {
+      "says": [
+       "All 4 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 4,
+      "checked": 4
+     },
+     "difficultyDisclosures": false
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [
+      {
+       "say": "In session 1, you said, \"I will follow up with Priti again today.\" The time you gave for it was \"today\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "I will follow up with Priti again today.",
+       "when": "today",
+       "status": "UNKNOWN",
+       "leadLabel": "Grace Abiodun",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      },
+      {
+       "say": "In session 1, you said, \"I'll escalate it\". The time you gave for it was \"by the end of the week\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "I'll escalate it",
+       "when": "by the end of the week",
+       "status": "UNKNOWN",
+       "leadLabel": "Grace Abiodun",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [
+      {
+       "on": "Priti Sharma",
+       "say": "You are waiting on Priti Sharma for \"access to the production data environment\", and it has been chased more than once since. This is work Priti owes you, not the other way round.",
+       "from": "You",
+       "what": "access to the production data environment",
+       "chased": true,
+       "status": "BLOCKING",
+       "onParticipantId": "a6db13d2-a053-4684-9654-447e81a72367",
+       "sessionsWaiting": 0,
+       "fromParticipantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f"
+      }
+     ],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "You have finished a churn model and you need to test it with production data. You are blocked waiting for Priti Sharma to grant access to that data, which you first requested on the 8th.",
+      "hasGap": false,
+      "headline": "You are blocked waiting for data access from Priti Sharma.",
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "releasedAt": "2026-10-02T01:03:04.382Z",
+    "createdAt": "2026-10-02T01:00:42.159Z",
+    "updatedAt": "2026-10-02T01:05:24.240Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are blocked waiting for data access from Priti Sharma, because they disagree on what the data is for.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Grace Abiodun's goal for the quarter is for the roadmap to be approved by leadership.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Grace Abiodun's work this week was on administration, hiring, and clearing a backlog.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You have finished a churn model and you need to test it with production data.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are blocked waiting for Priti Sharma to grant access to that data, which you first requested on the 8th.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Priti Sharma says the access you have requested is for a new reporting suite.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Most of Priti Sharma's work involves data engineering tasks.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Grace Abiodun is focused on administrative tasks, hiring, and the Q3 roadmap.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You have completed a churn model and you are ready for validation.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Priti Sharma is working on data engineering tasks.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "I have finished the churn model, but this work is now blocked and I am not sure this is visible to the rest of the team.",
+     "toAcknowledge": "Take seriously that the focus for others has been on planning for the next quarter, which may be why the block on your own project is not yet visible.",
+     "questionToCarry": "What is the right way for me to make a blocker visible when the person I need help from is not responsive?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of engineering work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "Put access to the production data environment in writing to Priti Sharma, with the date you need it by."
+     ],
+     "general": true,
+     "role": {
+      "label": "Engineering",
+      "onTrack": "Shipped and stable, described so a non-engineer can see what changed, blocked stated distinctly from behind.",
+      "goingWrong": "Committed to working on rather than delivering; real foundational work nobody can read.",
+      "protectAgainst": "You want to make sure that people recognise foundational work and that being blocked is not interpreted as being behind, especially since both the invisible load-bearer and the blocked-not-slacking person might otherwise appear to be contributing little.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "8c207ac6-474c-452e-a962-ae7647b9cbba",
+      "type": "PROGRESS",
+      "text": "I finished the churn model.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a953d674-4e5b-4aff-8a90-7508fe52f6fb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "c869584b-76d2-485c-8b0e-9c7ee4c07354",
+      "type": "SUCCESS_DEFINITION",
+      "text": "I'll need to run it against current production data and compare its predictions to actual outcomes over a period of time.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a953d674-4e5b-4aff-8a90-7508fe52f6fb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "eefa39ef-f4c5-4b28-9285-18b4712bc8c9",
+      "type": "WORRY",
+      "text": "I'm blocked waiting for Priti to grant me access; I asked on the 8th and chased on the 15th, but haven't heard back.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a953d674-4e5b-4aff-8a90-7508fe52f6fb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "cce68348-d7e8-42e8-9812-c1ff982a8984",
+      "type": "ASK",
+      "text": "requesting access to the production data environment. I outlined the specific tables and systems I needed access to for model validation.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a953d674-4e5b-4aff-8a90-7508fe52f6fb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "41aa0bfb-2650-4c4d-911f-cbb6db1007c2",
+      "type": "COMMITMENT",
+      "text": "I will follow up with Priti again today.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a953d674-4e5b-4aff-8a90-7508fe52f6fb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "0c057430-492a-4cc0-9e17-7f259d9a4497",
+      "type": "COMMITMENT",
+      "text": "If I don't hear back, I'll escalate it by Friday.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a953d674-4e5b-4aff-8a90-7508fe52f6fb",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [
+     {
+      "id": "18ce1d74-bb3b-4fe5-8e0d-03ce5bda5e8f",
+      "what": "access to the production data environment",
+      "couldTry": [
+       "Find out who owns this by name. Everything else needs that first.",
+       "Ask what can move without this, so the whole thing is not waiting on one approval."
+      ]
+     }
+    ],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\n\nYou have finished the churn model. To validate it, you need to run it against production data, but you are currently blocked waiting for access to be granted. You requested this on the 8th and chased it on the 15th, outlining the specific tables and systems you need.",
+     "whatToCarry": "You will follow up again today, and if you don't hear back, you'll escalate the request by Friday."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "46bd6f4e-23a0-4131-a4d2-bd010866d769",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "UPDATE",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "objectives",
+     "checkInGrid",
+     "whoOwnsWhat",
+     "divergence",
+     "decisions",
+     "patterns"
+    ],
+    "title": "The weekly update, from everybody",
+    "scenario": "TEAM_UPDATES",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. You are blocked waiting for data access from Priti Sharma, because they disagree on what the data is for.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 4,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 2,
+       "oldest": "access to the production data environment",
+       "daysWaiting": 0
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T01:05:24.240Z",
+    "participants": [
+     {
+      "id": "960cfe5a-ec39-4bcb-9bbb-10d734e200b5",
+      "name": "Grace Abiodun",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "a6db13d2-a053-4684-9654-447e81a72367",
+      "name": "Priti Sharma",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "name": "Daniel Osei",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "98c9d29d-fd43-4149-8931-f2657b3edd06",
+      "name": "Grace is aiming for the Q3 roadmap to be approved by leadership.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     },
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "38d332db-76b1-48dd-b0cf-eff1112081f4",
+      "name": "Grace is aiming for the new project onboarding documentation to be uploaded and accessible to the team.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "You are blocked waiting for data access, and the path to unblock is not agreed.",
+       "atStake": "If this holds, the churn model cannot be validated, which may delay the new reporting suite that depends on it.",
+       "evidence": [
+        "Your record describes being blocked waiting for access to the production data environment.",
+        "Priti Sharma's record describes the need for a security review which can only be started by a contractor who returns on the 29th."
+       ],
+       "positions": [
+        {
+         "view": "You state that the work is blocked waiting for data access, which was requested two weeks ago and have been followed up on since.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Priti Sharma states that the access request cannot be started until a security review is done by an external contractor who is unavailable until the 29th.",
+         "participantLabel": "Priti Sharma",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Priti Sharma"
+        }
+       ],
+       "settledBy": "Agree on who is responsible for engaging the security contractor and what the timeline for the review is.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "You need access to the production customer database to validate a newly-completed churn model.",
+      "Priti Sharma is the person who would provision the database access you need."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Agree on who is responsible for engaging the security contractor and what the timeline for the review is. That is what settles you are blocked waiting for data access, and the path to unblock is not agreed.",
+     "settled": [
+      "You need access to the production customer database to validate a newly-completed churn model.",
+      "Priti Sharma is the person who would provision the database access you need."
+     ],
+     "stillOpen": [
+      "You are blocked waiting for data access, and the path to unblock is not agreed."
+     ]
+    },
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "960cfe5a-ec39-4bcb-9bbb-10d734e200b5",
+       "name": "Grace Abiodun",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "a6db13d2-a053-4684-9654-447e81a72367",
+       "name": "Priti Sharma",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+       "name": "Daniel Osei",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "whoOwnsWhat": [
+     {
+      "participantId": "960cfe5a-ec39-4bcb-9bbb-10d734e200b5",
+      "name": "Grace Abiodun",
+      "role": null,
+      "items": [
+       {
+        "id": "1e7b64fa-006a-463a-8f94-99333285400a",
+        "type": "PROGRESS",
+        "text": "Grace Abiodun said, \"This week was all about admin for me, and a lot of work on hiring.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "6c0ad7c3-4afc-40ad-a683-0b4a5a59cfbe",
+        "type": "PROGRESS",
+        "text": "Grace Abiodun said, \"Mainly budget reviews and some performance evaluations for the team.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "6513249b-56b8-4b20-9071-a6ffc907efd2",
+        "type": "INTENT",
+        "text": "Grace Abiodun said, \"I'm also looking to clear some backlog.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "cfafdd7b-28ed-4e44-9f14-e7adc0bd0079",
+        "type": "COMMITMENT",
+        "text": "Grace Abiodun said, \"I'm blocking out dedicated time for it next week.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "73d5383b-b20e-48ce-ba31-a4c5eb983974",
+        "type": "COMMITMENT",
+        "text": "Grace Abiodun said, \"I need to get it done by end of day Friday.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "5182e1e0-ef7b-489c-8005-b8d1546d3390",
+        "type": "COMMITMENT",
+        "text": "Grace Abiodun said, \"finalizing the Q3 roadmap.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "5a654372-f080-43a6-a9ab-72973dbeb0ef",
+        "type": "SUCCESS_DEFINITION",
+        "text": "Grace Abiodun said, \"For the Q3 roadmap, success means it's approved by leadership.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "6cdcc8dc-1763-4c84-bb33-a0701093ffc7",
+        "type": "SUCCESS_DEFINITION",
+        "text": "Grace Abiodun said, \"For the onboarding documentation, it will be uploaded and accessible to the team.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "5eba0507-2da3-4272-a5d5-6440a010a66f",
+        "type": "PROGRESS",
+        "text": "Grace Abiodun said, \"The roadmap is still in draft form, and the onboarding documentation is only about halfway written.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "7a99df76-f1d6-4fee-b190-fad2c4d2ebe8",
+        "type": "PROGRESS",
+        "text": "Grace Abiodun said, \"I've cleared my calendar of non-essential meetings to make space.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "a6db13d2-a053-4684-9654-447e81a72367",
+      "name": "Priti Sharma",
+      "role": null,
+      "items": [
+       {
+        "id": "975af52a-cdf3-4bc6-b91c-a5093b9ebe21",
+        "type": "INTENT",
+        "text": "Priti Sharma said, \"Most of my work involves data engineering tasks.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "name": "Daniel Osei",
+      "role": null,
+      "items": [
+       {
+        "id": "8c207ac6-474c-452e-a962-ae7647b9cbba",
+        "type": "PROGRESS",
+        "text": "You said, \"I finished the churn model.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "c869584b-76d2-485c-8b0e-9c7ee4c07354",
+        "type": "SUCCESS_DEFINITION",
+        "text": "You said, \"I'll need to run it against current production data and compare its predictions to actual outcomes over a period of time.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "41aa0bfb-2650-4c4d-911f-cbb6db1007c2",
+        "type": "COMMITMENT",
+        "text": "You said, \"I will follow up with Priti again today.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "0c057430-492a-4cc0-9e17-7f259d9a4497",
+        "type": "COMMITMENT",
+        "text": "You said, \"If I don't hear back, I'll escalate it by the end of the week.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     }
+    ],
+    "decisions": [
+     {
+      "question": "You are waiting on access to the production data environment, so it needs deciding.",
+      "why": "You cannot move until this is decided.",
+      "owner": "Priti Sharma",
+      "source": "blocker"
+     },
+     {
+      "question": "Priti Sharma is waiting on the security review for the access request, so it needs deciding.",
+      "why": "Priti Sharma cannot move until this is decided.",
+      "owner": "the InfoSec contractor",
+      "source": "blocker"
+     },
+     {
+      "question": "People in this check-in said different things. You are blocked waiting for data access, and the path to unblock is not agreed. This needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "Grace Abiodun",
+      "source": "divergence"
+     }
+    ],
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things. You are blocked waiting for data access, and the path to unblock is not agreed.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "2",
+      "sub": "Work is held up by access to the production data environment. 1 more is holding work up.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of engineering work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "Put access to the production data environment in writing to Priti Sharma, with the date you need it by."
+      ],
+      "general": true,
+      "role": {
+       "label": "Engineering",
+       "onTrack": "Shipped and stable, described so a non-engineer can see what changed, blocked stated distinctly from behind.",
+       "goingWrong": "Committed to working on rather than delivering; real foundational work nobody can read.",
+       "protectAgainst": "You want to make sure that people recognise foundational work and that being blocked is not interpreted as being behind, especially since both the invisible load-bearer and the blocked-not-slacking person might otherwise appear to be contributing little.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": null
+    },
+    "patterns": [],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-18ce1d74-bb3b-4fe5-8e0d-03ce5bda5e8f",
+      "says": "You cannot move on access to the production data environment until it comes from Priti Sharma.",
+      "because": "It was first said on 2 October. About what has been tried, you said, \"I asked on the 8th and chased on the 15th\". No time has been given for it."
+     },
+     {
+      "id": "handoff-85851b9e-87ad-499c-9614-423100612a6e",
+      "says": "Priti Sharma cannot move on the security review for the access request until it comes from the InfoSec contractor.",
+      "because": "It was first said on 2 October. Nobody has said what has been tried. The time given for it was \"on the 29th\"."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "78ee3db5-ad3b-4e03-b497-41ef36a1a6ac",
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "who": "You",
+      "says": "In session 1, you said, \"I will follow up with Priti again today.\" The time you gave for it was \"today\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "today",
+      "state": "open",
+      "statedInSession": 1
+     },
+     {
+      "id": "d1eae31c-5922-478e-8986-194eb78b770e",
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "who": "You",
+      "says": "In session 1, you said, \"I'll escalate it\". The time you gave for it was \"by the end of the week\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "by the end of the week",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you committed to follow up with Priti again today."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you committed to escalate it."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you said the work was waiting on Priti Sharma for access to the production data environment."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Priti Sharma said the work was waiting on the InfoSec contractor for the security review for the access request."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "who": "You",
+      "says": "You have answered 1 session and made 2 commitments. 0 are done, 0 are not done or dropped, and 2 are still open.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you made 2 commitments and named 1 thing the work was waiting on."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "18ce1d74-bb3b-4fe5-8e0d-03ce5bda5e8f",
+      "who": "You",
+      "says": "You are waiting on Priti Sharma for access to the production data environment.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "Priti Sharma holds it.",
+       "About what has been tried, you said, \"I asked on the 8th and chased on the 15th\".",
+       "No time has been given for it."
+      ]
+     },
+     {
+      "id": "85851b9e-87ad-499c-9614-423100612a6e",
+      "who": "Priti Sharma",
+      "says": "Priti Sharma is waiting on the InfoSec contractor for the security review for the access request.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": false,
+      "timeGiven": true,
+      "checks": [
+       "The InfoSec contractor holds it.",
+       "Nobody has said what has been tried.",
+       "The time given for it was \"on the 29th\"."
+      ]
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "a6db13d2-a053-4684-9654-447e81a72367",
+      "who": "Priti Sharma",
+      "promised": [],
+      "othersWaitFor": [
+       "You are waiting on Priti Sharma for access to the production data environment."
+      ]
+     },
+     {
+      "participantId": "ab61ee6a-415d-47f4-b6c8-24be7df90b6f",
+      "who": "You",
+      "promised": [
+       "In session 1, you said, \"I will follow up with Priti again today.\" The time you gave for it was \"today\". It has been open for 1 session, and nobody has said whether it happened.",
+       "In session 1, you said, \"I'll escalate it\". The time you gave for it was \"by the end of the week\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": null,
+      "who": "the InfoSec contractor",
+      "promised": [],
+      "othersWaitFor": [
+       "Priti Sharma is waiting on the InfoSec contractor for the security review for the access request."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "18ce1d74-bb3b-4fe5-8e0d-03ce5bda5e8f",
+      "says": "You have been waiting on Priti Sharma for access to the production data environment since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     },
+     {
+      "id": "85851b9e-87ad-499c-9614-423100612a6e",
+      "says": "Priti Sharma has been waiting on the InfoSec contractor for the security review for the access request since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "18ce1d74-bb3b-4fe5-8e0d-03ce5bda5e8f",
+      "who": "You",
+      "name": "access to the production data environment",
+      "state": "blocking",
+      "says": "You are waiting on Priti Sharma for access to the production data environment.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what you said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": "Once it is cleared, validate the model with production data."
+     },
+     {
+      "id": "85851b9e-87ad-499c-9614-423100612a6e",
+      "who": "Priti Sharma",
+      "name": "the security review for the access request",
+      "state": "blocking",
+      "says": "Priti Sharma is waiting on the InfoSec contractor for the security review for the access request.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Priti Sharma said."
+      },
+      "timeGiven": "The time given for it was \"on the 29th\".",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     }
+    ]
+   },
+   "participantSeen": "a",
+   "patterns": [
+    {
+     "code": "K4",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "Administrative and hiring tasks dominated the period, while strategic priorities were pushed into the next.",
+     "participant": {
+      "email": "lead.1790902628069@updates.test"
+     }
+    },
+    {
+     "code": "K3",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "An access request has been made and chased, but the issue remains unresolved and is being raised again.",
+     "participant": {
+      "email": "a.1790902628069@updates.test"
+     }
+    }
+   ],
+   "commitments": [
+    {
+     "text": "I will follow up with Priti again today.",
+     "whenSaid": "today",
+     "status": "UNKNOWN",
+     "statedInSession": 1,
+     "saidAgainIn": [],
+     "participant": {
+      "email": "a.1790902628069@updates.test"
+     }
+    },
+    {
+     "text": "I'll escalate it",
+     "whenSaid": "by the end of the week",
+     "status": "UNKNOWN",
+     "statedInSession": 1,
+     "saidAgainIn": [],
+     "participant": {
+      "email": "a.1790902628069@updates.test"
+     }
+    }
+   ]
+  }
+ ]
+}

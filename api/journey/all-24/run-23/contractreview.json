@@ -1,0 +1,1871 @@
+{
+ "scenario": {
+  "key": "contractreview",
+  "label": "What we think we signed up to",
+  "scenario": "CONTRACT_REVIEW",
+  "moment": "RESOLUTION",
+  "cadence": "ONE_TIME",
+  "timelineDays": 14,
+  "sessions": 1,
+  "brief": "Six months into the managed services contract and I want our own people to say what they think we are entitled to, before I go back to the supplier. Half the arguments we have are internal.",
+  "theDecision": "The two of them read the support clause differently - one believes four-hour response is four-hour fix - and the supplier has been meeting the contract. A right answer identifies the internal misreading before anybody complains to the supplier.",
+  "people": [
+   {
+    "key": "lead",
+    "name": "Adaeze Obi",
+    "isLead": true,
+    "remit": "IT director. Owns the supplier relationship.",
+    "truth": "She is about to send a breach letter. She believes the SLA promises resolution in four hours.",
+    "manner": "Annoyed, ready to act, listens to a direct quotation from the contract."
+   },
+   {
+    "key": "ops",
+    "name": "Frank Mbeki",
+    "remit": "Infrastructure lead. Raises the tickets.",
+    "truth": "He has read the clause. It says four-hour acknowledgement and best-endeavours resolution. The supplier has acknowledged every ticket within two hours. Three fixes took over a week, which is annoying and not a breach. He has never said this to Adaeze because she has not asked.",
+    "manner": "Precise, quotes clause numbers, unbothered by disagreement."
+   }
+  ]
+ },
+ "groundId": "f7930bd4-24cc-4506-b7c6-1abc780e1163",
+ "orgId": "13b199a2-0e9a-42f7-a28a-c7d35b8dbeda",
+ "emails": {
+  "lead": "lead.1790903516152@contractreview.test",
+  "ops": "ops.1790903516152@contractreview.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "lead",
+     "name": "Adaeze Obi",
+     "isLead": true,
+     "checkInId": "2641d8d6-69b9-46c3-941c-8f91f25a52b5",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Adaeze, this conversation is to get your understanding of what our organisation expects from the managed services contract and what we commit to. What are you trying to get out of this managed services arrangement?"
+      },
+      {
+       "from": "ADAEZE OBI",
+       "text": "I want reliable service. I want our systems to just work, and when they don't, I want it fixed fast."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What does \"fixed fast\" look like, specifically? For instance, for a critical system outage, would that be within the hour, by end of day, or something else."
+      },
+      {
+       "from": "ADAEZE OBI",
+       "text": "For a critical system outage, I expect it to be fixed within four hours. That's what they promised."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "A four-hour fix for a critical system outage is a very clear expectation, and it matters that it was a promise. What do you think we are committing to give under this contract?",
+       "suggestedAnswers": [
+        "I think we are committing to deliver by ...",
+        "I am still reviewing the fine print.",
+        "I think we are committing too much."
+       ]
+      },
+      {
+       "from": "ADAEZE OBI",
+       "text": "We commit to providing them with the access and information they need to do their job. We also commit to paying them, of course."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That is what you think we are committing to give, and what matters for the record is what your specific understanding of that is. What specific numbers, if any, do you see as our entitlement?",
+       "suggestedAnswers": [
+        "I know what our entitlement is.",
+        "I'm still figuring out the entitlement.",
+        "I don't know the entitlement yet."
+       ]
+      },
+      {
+       "from": "ADAEZE OBI",
+       "text": "The four-hour resolution time for critical incidents. That's the main number I care about right now."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What three things do you expect our side to be responsible for, and by when?",
+       "suggestedAnswers": [
+        "We will deliver the first ... by ...",
+        "I am still figuring those out.",
+        "We are stuck on ... until ..."
+       ]
+      },
+      {
+       "from": "ADAEZE OBI",
+       "text": "I expect us to clearly define the incidents, give them access to the systems, and test the fixes they put in. The timing depends on the incident, but quickly."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've named three responsibilities: defining incidents, providing system access, and testing fixes. What would it look like at the end of the first year for this contract to be working well for us?",
+       "suggestedAnswers": [
+        "The contract is fully implemented and running smoothly.",
+        "Access to systems is still a major issue.",
+        "Not yet, we are still working on the details.",
+        "We have resolved many incidents quickly and efficiently."
+       ]
+      },
+      {
+       "from": "ADAEZE OBI",
+       "text": "At the end of the first year, I'd expect to see very few critical incidents, and the ones that do happen are resolved within that four-hour window. I'd also expect our internal teams to be happy with the service."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "How would you measure that happiness?",
+       "suggestedAnswers": [
+        "I feel good about our progress.",
+        "It's still hard to measure.",
+        "I don't know how yet."
+       ]
+      },
+      {
+       "from": "ADAEZE OBI",
+       "text": "We'd see fewer complaints. And I'd probably do a survey."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Fewer complaints is a clear sign. You also mentioned a survey. What specific questions would that survey ask to gauge the happiness of your internal teams with the managed services?",
+       "suggestedAnswers": [
+        "I have some good survey questions.",
+        "I'm still thinking about the questions.",
+        "Not yet."
+       ]
+      },
+      {
+       "from": "ADAEZE OBI",
+       "text": "It would ask about their satisfaction with response times, the quality of resolutions, and how easy it is to work with the managed services team."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You have specific questions in mind for that survey, and that makes it a clear measure. What else would you want to see for this contract to be working well for us at the end of the first year?",
+       "suggestedAnswers": [
+        "I want to see more proactive support from the team.",
+        "Still concerned about response times for critical issues.",
+        "I haven't thought of new ideas yet.",
+        "Clearer communication about progress would be great."
+       ]
+      },
+      {
+       "from": "ADAEZE OBI",
+       "text": "I'd want to see a clear reduction in downtime across the board, not just critical incidents. And improved overall system performance."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What would tell you that the system performance has actually improved - a specific report, or something else that exists outside of a feeling?",
+       "suggestedAnswers": [
+        "The report shows much faster response times.",
+        "Performance is still not where it should be.",
+        "I don't have that information right now.",
+        "We need to see a drop in error rates."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "ops",
+     "name": "Frank Mbeki",
+     "isLead": false,
+     "checkInId": "803c128c-c263-4208-ab6c-0502b007e21d",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Adaeze wants to understand what we think we are entitled to under this contract. What do you understand your team is meant to do under this contract?"
+      },
+      {
+       "from": "FRANK MBEKI",
+       "text": "My team raises tickets. That is what we do."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That is what your team does. What else is clear to you about this contract?",
+       "suggestedAnswers": [
+        "The main requirements are clear.",
+        "I am still reviewing the details.",
+        "A few clauses are still confusing.",
+        "Nothing else is clear yet."
+       ]
+      },
+      {
+       "from": "FRANK MBEKI",
+       "text": "The contract is clear on the supplier's acknowledgement time. Clause 3.1 states a four-hour acknowledgement."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Beyond that specific clause, what do you expect the supplier to do, and by when?",
+       "suggestedAnswers": [
+        "I expect them to deliver by ...",
+        "They haven't done anything yet.",
+        "I don't know what to expect."
+       ]
+      },
+      {
+       "from": "FRANK MBEKI",
+       "text": "I expect the supplier to acknowledge tickets within four hours. This is in Clause 3.1. They do this."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. How would you describe what is actually happening with your work?",
+       "suggestedAnswers": [
+        "Things are moving forward.",
+        "I am stuck on something.",
+        "Not sure yet.",
+        "Waiting for an answer."
+       ]
+      },
+      {
+       "from": "FRANK MBEKI",
+       "text": "The supplier acknowledges all tickets within two hours. This is better than the contract."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "The supplier is acknowledging tickets in half the time the contract requires. What would make you uncomfortable as this arrangement unfolds?",
+       "suggestedAnswers": [
+        "Everything looks good so far.",
+        "Problems with ... would worry me.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "FRANK MBEKI",
+       "text": "Three fixes took over a week. That is annoying. It is not a breach."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What should our next step be, given how the contract is going?",
+       "suggestedAnswers": [
+        "The contract is still moving slowly.",
+        "I am not sure what is next.",
+        "We should try a different approach."
+       ]
+      },
+      {
+       "from": "FRANK MBEKI",
+       "text": "I do not know what the next step should be."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What conversation needs to happen to figure that out?",
+       "suggestedAnswers": [
+        "I've started that conversation.",
+        "I haven't had that conversation yet.",
+        "I don't know who to talk to."
+       ]
+      },
+      {
+       "from": "FRANK MBEKI",
+       "text": "That is not for me to say. I am here to discuss the contract."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. You are here to discuss the contract.\n\nWhat else should I know?",
+       "suggestedAnswers": [
+        "It went well, and I made progress.",
+        "I need to look into some issues.",
+        "Nothing else to share right now.",
+        "I am still working through it."
+       ]
+      },
+      {
+       "from": "FRANK MBEKI",
+       "text": "I have read Clause 3.1."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. Which part of the agreement does not make sense to you?",
+       "suggestedAnswers": [
+        "Everything makes sense to me.",
+        "Clause ... is still unclear.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "FRANK MBEKI",
+       "text": "The agreement makes sense to me."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Before we close: what will you do about this, and by when?",
+       "suggestedAnswers": [
+        "I will get it done by ...",
+        "I need to think about this.",
+        "I am stuck on this part."
+       ]
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "71dff347-6da8-459d-a934-47a22c9e38ca",
+    "groundId": "f7930bd4-24cc-4506-b7c6-1abc780e1163",
+    "sharedPicture": "Both people have answered. You and Frank Mbeki disagree on what the service agreement promises. You believe it is a four-hour fix for an outage, and Frank believes it is a four-hour acknowledgement of a ticket.\n\nYou are measuring success by how long it takes to fix a critical system outage. You believe the supplier promised a four-hour fix.\n\nFrank reports that the supplier is meeting the service level described in the contract. Frank says that clause 3.1 of the contract requires a four-hour acknowledgement, not a four-hour fix.\n\nBoth are reviewing the managed services contract six months into the term. Both refer to a four-hour service level as a key metric, but they describe what that metric applies to in different ways.",
+    "theOpening": "Both people have answered. You and Frank Mbeki disagree on what the service agreement promises. You believe it is a four-hour fix for an outage, and Frank believes it is a four-hour acknowledgement of a ticket.",
+    "agreements": [
+     "The managed services contract is the subject of the review.",
+     "A four-hour timeframe is a key performance metric."
+    ],
+    "divergences": [
+     {
+      "topic": "The most important service level in the contract is described in two different ways.",
+      "atStake": "If this holds, you will measure the supplier against a resolution target that is not in the contract, while Frank Mbeki sees the supplier as compliant, leading to internal conflict and a failed negotiation.",
+      "evidence": [
+       "Your record describes an expectation for critical incidents to be fixed within four hours.",
+       "Frank Mbeki's record refers to a contractual clause specifying a four-hour time to acknowledge a ticket."
+      ],
+      "positions": [
+       {
+        "view": "Describes a four-hour resolution time for critical incidents.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Describes a four-hour acknowledgement time for all tickets.",
+        "participantLabel": "Frank Mbeki",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "settledBy": "Agree whether the contract specifies a four-hour time to acknowledge or a four-hour time to resolve critical incidents.",
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     },
+     {
+      "topic": "The two people are measuring the success of the contract in different ways.",
+      "atStake": "If this holds, the team could meet every contractual obligation and still fail to deliver the reliable service the business needs.",
+      "evidence": [
+       "Your account focuses on business outcomes like overall system reliability and the happiness of the internal teams using the service.",
+       "Frank Mbeki's account focuses on a specific contractual clause about ticket acknowledgement as the measure of success."
+      ],
+      "positions": [
+       {
+        "view": "Defines success by the reliability of the systems and the satisfaction of internal users.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Defines success as the supplier meeting the explicit terms of the contract, such as ticket acknowledgement times.",
+        "participantLabel": "Frank Mbeki",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "settledBy": "Agree on a single definition of success that includes both contractual compliance and the desired business outcomes.",
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     }
+    ],
+    "centralQuestion": "When the contract specifies a four-hour service level, does it refer to the time to acknowledge an issue, or the time to resolve it?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Adaeze Obi",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 10,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Adaeze Obi"
+      },
+      {
+       "label": "Frank Mbeki",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 7,
+       "documentsAttached": 0,
+       "who": "Frank Mbeki"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "concernFlags": [],
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "The most important service level in the contract is described in two different ways.",
+      "The two people are measuring the success of the contract in different ways."
+     ],
+     "sessionCounts": {
+      "Frank Mbeki": 9,
+      "Adaeze Obi": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Adaeze Obi",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Dependencies hinted at rather than named (session 1)",
+         "level": "directional"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Adaeze Obi": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Adaeze Obi": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [],
+     "whatCouldBeChecked": {
+      "says": [
+       "The one thing described here lines up with something other than what the person said. It is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 1,
+      "checked": 1
+     },
+     "difficultyDisclosures": false
+    },
+    "inferences": [],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": null,
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "You expect a four-hour fix for a critical system outage, but Frank Mbeki says the contract only requires a four-hour acknowledgement.",
+     "whatToDo": [
+      {
+       "move": "Read clause 3.1 of the supplier contract with Frank Mbeki.",
+       "because": "You and Frank Mbeki disagree on whether it promises a four-hour fix or a four-hour acknowledgement.",
+       "startWith": "Frank Mbeki"
+      },
+      {
+       "move": "Ask Frank Mbeki what it would cost to add a four-hour fix to the service level agreement.",
+       "because": "Your standard for success is not met by the current contract, and the business requires it.",
+       "startWith": "Frank Mbeki"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You are measuring success by the time to fix a critical outage, believing this is a four-hour service level.",
+       "soWhat": "Your expectation is not what Frank Mbeki says is in the contract.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Frank Mbeki reports that the supplier is meeting the contract, which requires a four-hour acknowledgement of a ticket, not a four-hour fix.",
+       "soWhat": "Frank Mbeki's measure of success is being met, while your is not.",
+       "fieldId": "Frank Mbeki"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "Whether this difference between your expectation and the contract has been discussed before.",
+       "howManyMissedIt": 2
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record contains two different accounts of what clause 3.1 requires, from you and Frank Mbeki.",
+       "about": "What the supplier contract says.",
+       "toKnow": "Somebody must read the contract."
+      },
+      {
+       "why": "The record does not say where your belief about a four-hour fix came from.",
+       "about": "Why you expect a four-hour fix.",
+       "toKnow": "Your own account of this is not in this check-in."
+      }
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Frank Mbeki is down as \"Infrastructure lead. Raises the tickets\", and nothing on record says what that role covers. Since then, the record holds 1 session, 7 lines of what was said, 4 with a name, a number or a date in them and none backed by a document.",
+       "who": "Frank Mbeki",
+       "participantId": "110de40b-f8ce-4ad8-88c7-c0bfcaa05cb6"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [],
+     "commitments": [],
+     "dependencies": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself.",
+      "Nobody has said in a check-in what they would do next. Ask for one thing, with a date, from each person."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 2,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "You are measuring success by how long it takes to fix a critical system outage. You believe the supplier promised a four-hour fix.",
+      "hasGap": false,
+      "headline": "The contract document held by Frank Mbeki promises a four-hour acknowledgement, not a four-hour fix.",
+      "participantId": "73e04ea1-f17a-4a4a-bdc6-e467f0165aa9",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Frank Mbeki reports that the supplier is meeting the service level described in the contract. Frank says that clause 3.1 of the contract requires a four-hour acknowledgement, not a four-hour fix.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "110de40b-f8ce-4ad8-88c7-c0bfcaa05cb6",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": "2026-10-02T01:18:21.366Z",
+    "createdAt": "2026-10-02T01:15:35.844Z",
+    "updatedAt": "2026-10-02T01:18:21.366Z",
+    "sharedPictureLines": [
+     {
+      "text": "Both people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You and Frank Mbeki disagree on what the service agreement promises.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You believe it is a four-hour fix for an outage, and Frank Mbeki believes it is a four-hour acknowledgement of a ticket.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are measuring success by how long it takes to fix a critical system outage.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You believe the supplier promised a four-hour fix.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Frank Mbeki reports that the supplier is meeting the service level described in the contract.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Frank Mbeki says that clause 3.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "1 of the contract requires a four-hour acknowledgement, not a four-hour fix.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both are reviewing the managed services contract six months into the term.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both refer to a four-hour service level as a key metric, but they describe what that metric applies to in different ways.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 2,
+     "read": 2,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": null,
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "You are in session 1 of management work, and nothing repeats yet; this is normal at this stage, but the value of later sessions will be determined by what you can point to, which shows that you own the work rather than just control it.",
+     "beforeNextTime": [
+      "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+     ],
+     "general": true,
+     "role": {
+      "label": "Management",
+      "onTrack": "People author their own commitments, slips get noticed and raised, hard conversations happen on time.",
+      "goingWrong": "An account full of work the team should own (control), or commitments that slip with no follow-up (abdication).",
+      "protectAgainst": "You are describing management as a competency distinct from craft, where a strong individual contributor becoming a lead is seen as developing a new skill, rather than regressing in their previous one.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "1241fab5-04ec-4363-8ee7-fc4da5388134",
+      "type": "SUCCESS_DEFINITION",
+      "text": "I want reliable service. I want our systems to just work, and when they don't, I want it fixed fast.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "2641d8d6-69b9-46c3-941c-8f91f25a52b5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "114e47a8-aee6-4c58-a55c-6eacaa43cb0d",
+      "type": "SUCCESS_DEFINITION",
+      "text": "For a critical system outage, I expect it to be fixed within four hours.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "2641d8d6-69b9-46c3-941c-8f91f25a52b5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "ea829195-e5b9-49c2-bb49-0527e16e5492",
+      "type": "INTENT",
+      "text": "They promised a four-hour fix for a critical system outage",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "2641d8d6-69b9-46c3-941c-8f91f25a52b5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b1ca9089-ffb0-42f6-8109-756ec1c6c41a",
+      "type": "TOLERANCE",
+      "text": "The four-hour resolution time for critical incidents. That's the main number I care about right now.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "2641d8d6-69b9-46c3-941c-8f91f25a52b5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "a0550165-9699-41da-ac2b-7e6d1a959e7c",
+      "type": "SUCCESS_DEFINITION",
+      "text": "At the end of the first year, I'd expect to see very few critical incidents, and the ones that do happen are resolved within that four-hour window.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "2641d8d6-69b9-46c3-941c-8f91f25a52b5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "c913cfb8-15b4-4958-a0ef-f20f017856df",
+      "type": "SUCCESS_DEFINITION",
+      "text": "I'd also expect our internal teams to be happy with the service.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "2641d8d6-69b9-46c3-941c-8f91f25a52b5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "5bba9d46-3f85-43da-a9b7-9e2dd1d63cc6",
+      "type": "SUCCESS_DEFINITION",
+      "text": "We'd see fewer complaints.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "2641d8d6-69b9-46c3-941c-8f91f25a52b5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "cc968755-d45d-4923-b727-9beca9890ec5",
+      "type": "SUCCESS_DEFINITION",
+      "text": "It would ask about their satisfaction with response times, the quality of resolutions, and how easy it is to work with the managed services team.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "2641d8d6-69b9-46c3-941c-8f91f25a52b5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "f7d5068e-4852-4364-9ab9-f934e1bc8d22",
+      "type": "SUCCESS_DEFINITION",
+      "text": "I'd want to see a clear reduction in downtime across the board, not just critical incidents.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "2641d8d6-69b9-46c3-941c-8f91f25a52b5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "35b5c934-563f-4fe6-991d-d0036ec33899",
+      "type": "SUCCESS_DEFINITION",
+      "text": "improved overall system performance.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "2641d8d6-69b9-46c3-941c-8f91f25a52b5",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared. You want a reliable service where systems work as expected, and when they fail, you want them fixed fast. You expect a critical system outage to be fixed within four hours, which you understand was promised. Over the next year, you want to see fewer critical incidents, a general reduction in downtime, and for your internal teams to be happy with the service.",
+     "whatToCarry": "The four-hour resolution time for critical incidents. That's the main number I care about right now."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    },
+    "forTheLead": [
+     {
+      "id": "difference-1",
+      "decide": "Agree whether the contract specifies a four-hour time to acknowledge or a four-hour time to resolve critical incidents.",
+      "why": "The most important service level in the contract is described in two different ways. You and Frank Mbeki said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this holds, you will measure the supplier against a resolution target that is not in the contract, while Frank Mbeki sees the supplier as compliant, leading to internal conflict and a failed negotiation."
+     },
+     {
+      "id": "difference-2",
+      "decide": "Agree on a single definition of success that includes both contractual compliance and the desired business outcomes.",
+      "why": "The two parties are measuring the success of the contract in different ways. You and Frank Mbeki said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this holds, the team could meet every contractual obligation and still fail to deliver the reliable service the business needs."
+     }
+    ]
+   },
+   "board": {
+    "groundId": "f7930bd4-24cc-4506-b7c6-1abc780e1163",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "AGREEMENT",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "divergence",
+     "checkInGrid"
+    ],
+    "title": "What we think we signed up to",
+    "scenario": "CONTRACT_REVIEW",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "Both people have answered. You and Frank Mbeki disagree on what the service agreement promises. You believe it is a four-hour fix for an outage, and Frank believes it is a four-hour acknowledgement of a ticket.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 2,
+       "ofPeople": 2,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "AWAITING_PARTIES",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "You expect a four-hour fix for a critical system outage, but Frank Mbeki says the contract only requires a four-hour acknowledgement.",
+     "whatToDo": [
+      {
+       "move": "Read clause 3.1 of the supplier contract with Frank Mbeki.",
+       "because": "You and Frank Mbeki disagree on whether it promises a four-hour fix or a four-hour acknowledgement.",
+       "startWith": "Frank Mbeki"
+      },
+      {
+       "move": "Ask Frank Mbeki what it would cost to add a four-hour fix to the service level agreement.",
+       "because": "Your standard for success is not met by the current contract, and the business requires it.",
+       "startWith": "Frank Mbeki"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You are measuring success by the time to fix a critical outage, believing this is a four-hour service level.",
+       "soWhat": "Your expectation is not what Frank Mbeki says is in the contract.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Frank Mbeki reports that the supplier is meeting the contract, which requires a four-hour acknowledgement of a ticket, not a four-hour fix.",
+       "soWhat": "Frank Mbeki's measure of success is being met, while your is not.",
+       "fieldId": "Frank Mbeki"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "Whether this difference between your expectation and the contract has been discussed before.",
+       "howManyMissedIt": 2
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record contains two different accounts of what clause 3.1 requires, from you and Frank Mbeki.",
+       "about": "What the supplier contract says.",
+       "toKnow": "Somebody must read the contract."
+      },
+      {
+       "why": "The record does not say where your belief about a four-hour fix came from.",
+       "about": "Why you expect a four-hour fix.",
+       "toKnow": "Your own account of this is not in this check-in."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Frank Mbeki is down as \"Infrastructure lead. Raises the tickets\", and nothing on record says what that role covers. Since then, the record holds 1 session, 7 lines of what was said, 4 with a name, a number or a date in them and none backed by a document.",
+       "who": "Frank Mbeki",
+       "participantId": "110de40b-f8ce-4ad8-88c7-c0bfcaa05cb6"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [],
+     "commitments": [],
+     "dependencies": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself.",
+      "Nobody has said in a check-in what they would do next. Ask for one thing, with a date, from each person."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "73e04ea1-f17a-4a4a-bdc6-e467f0165aa9",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T01:18:21.366Z",
+    "participants": [
+     {
+      "id": "110de40b-f8ce-4ad8-88c7-c0bfcaa05cb6",
+      "name": "Frank Mbeki",
+      "role": "Infrastructure lead. Raises the tickets.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "73e04ea1-f17a-4a4a-bdc6-e467f0165aa9",
+      "name": "Adaeze Obi",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [
+      {
+       "topic": "The most important service level in the contract is described in two different ways.",
+       "atStake": "If this holds, you will measure the supplier against a resolution target that is not in the contract, while Frank Mbeki sees the supplier as compliant, leading to internal conflict and a failed negotiation.",
+       "evidence": [
+        "Your record describes an expectation for critical incidents to be fixed within four hours.",
+        "Frank Mbeki's record refers to a contractual clause specifying a four-hour time to acknowledge a ticket."
+       ],
+       "positions": [
+        {
+         "view": "Describes a four-hour resolution time for critical incidents.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Describes a four-hour acknowledgement time for all tickets.",
+         "participantLabel": "Frank Mbeki",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Frank Mbeki"
+        }
+       ],
+       "settledBy": "Agree whether the contract specifies a four-hour time to acknowledge or a four-hour time to resolve critical incidents.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      },
+      {
+       "topic": "The two people are measuring the success of the contract in different ways.",
+       "atStake": "If this holds, the team could meet every contractual obligation and still fail to deliver the reliable service the business needs.",
+       "evidence": [
+        "Your account focuses on business outcomes like overall system reliability and the happiness of the internal teams using the service.",
+        "Frank Mbeki's account focuses on a specific contractual clause about ticket acknowledgement as the measure of success."
+       ],
+       "positions": [
+        {
+         "view": "Defines success by the reliability of the systems and the satisfaction of internal users.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Defines success as the supplier meeting the explicit terms of the contract, such as ticket acknowledgement times.",
+         "participantLabel": "Frank Mbeki",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Frank Mbeki"
+        }
+       ],
+       "settledBy": "Agree on a single definition of success that includes both contractual compliance and the desired business outcomes.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "The managed services contract is the subject of the review.",
+      "A four-hour timeframe is a key performance metric."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Agree whether the contract specifies a four-hour time to acknowledge or a four-hour time to resolve critical incidents. That is what settles the most important service level in the contract is described in two different ways.",
+     "settled": [
+      "The managed services contract is the subject of the review.",
+      "A four-hour timeframe is a key performance metric."
+     ],
+     "stillOpen": [
+      "The most important service level in the contract is described in two different ways.",
+      "The two people are measuring the success of the contract in different ways."
+     ]
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "110de40b-f8ce-4ad8-88c7-c0bfcaa05cb6",
+      "who": "Frank Mbeki",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Frank Mbeki has checked in.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Frank Mbeki reports that the supplier is meeting the service level described in the contract. Frank says that clause 3.1 of the contract requires a four-hour acknowledgement, not a four-hour fix.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "110de40b-f8ce-4ad8-88c7-c0bfcaa05cb6",
+       "name": "Frank Mbeki",
+       "role": "Infrastructure lead. Raises the tickets.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "73e04ea1-f17a-4a4a-bdc6-e467f0165aa9",
+       "name": "Adaeze Obi",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "2",
+      "sub": "People said different things. The most important service level in the contract is described in two different ways. 1 more difference is still open.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "None",
+      "sub": "Nobody named anything holding work up.",
+      "tone": "good"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "You are in session 1 of management work, and nothing repeats yet; this is normal at this stage, but the value of later sessions will be determined by what you can point to, which shows that you own the work rather than just control it.",
+      "beforeNextTime": [
+       "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+      ],
+      "general": true,
+      "role": {
+       "label": "Management",
+       "onTrack": "People author their own commitments, slips get noticed and raised, hard conversations happen on time.",
+       "goingWrong": "An account full of work the team should own (control), or commitments that slip with no follow-up (abdication).",
+       "protectAgainst": "You are describing management as a competency distinct from craft, where a strong individual contributor becoming a lead is seen as developing a new skill, rather than regressing in their previous one.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": null
+    },
+    "eachPersonToday": [
+     {
+      "participantId": "110de40b-f8ce-4ad8-88c7-c0bfcaa05cb6",
+      "who": "Frank Mbeki",
+      "line": "Frank Mbeki has checked in."
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "110de40b-f8ce-4ad8-88c7-c0bfcaa05cb6",
+      "who": "Frank Mbeki",
+      "says": "Frank Mbeki has answered 1 session, and the record holds no commitment from Frank Mbeki yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Frank Mbeki answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "73e04ea1-f17a-4a4a-bdc6-e467f0165aa9",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     }
+    ]
+   },
+   "participantReport": {
+    "id": "71dff347-6da8-459d-a934-47a22c9e38ca",
+    "groundId": "f7930bd4-24cc-4506-b7c6-1abc780e1163",
+    "sharedPicture": "Both people have answered. You and Adaeze Obi disagree on what the service agreement promises. Adaeze believes it is a four-hour fix for an outage, and you believe it is a four-hour acknowledgement of a ticket.\n\nAdaeze is measuring success by how long it takes to fix a critical system outage. Adaeze believes the supplier promised a four-hour fix.\n\nYou report that the supplier is meeting the service level described in the contract. You say that clause 3.1 of the contract requires a four-hour acknowledgement, not a four-hour fix.\n\nBoth are reviewing the managed services contract six months into the term. Both refer to a four-hour service level as a key metric, but they describe what that metric applies to in different ways.",
+    "theOpening": "Both people have answered. You and Adaeze Obi disagree on what the service agreement promises. Adaeze believes it is a four-hour fix for an outage, and you believe it is a four-hour acknowledgement of a ticket.",
+    "agreements": [
+     "The managed services contract is the subject of the review.",
+     "A four-hour timeframe is a key performance metric."
+    ],
+    "centralQuestion": "When the contract specifies a four-hour service level, does it refer to the time to acknowledge an issue, or the time to resolve it?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Adaeze Obi",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 10,
+       "documentsAttached": 0,
+       "who": "Adaeze Obi"
+      },
+      {
+       "label": "Frank Mbeki",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 7,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Frank Mbeki"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "The most important service level in the contract is described in two different ways.",
+      "The two people are measuring the success of the contract in different ways."
+     ],
+     "sessionCounts": {
+      "Frank Mbeki": 9,
+      "Adaeze Obi": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Frank Mbeki",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "Parts of the work are not described yet (session 1)",
+         "level": "vague"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Frank Mbeki": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Frank Mbeki": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [],
+     "whatCouldBeChecked": {
+      "says": [
+       "The one thing described here lines up with something other than what the person said. It is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 1,
+      "checked": 1
+     },
+     "difficultyDisclosures": false
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [],
+     "dependencies": [],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 2,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "You report that the supplier is meeting the service level described in the contract. You say that clause 3.1 of the contract requires a four-hour acknowledgement, not a four-hour fix.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "110de40b-f8ce-4ad8-88c7-c0bfcaa05cb6",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "releasedAt": "2026-10-02T01:18:21.366Z",
+    "createdAt": "2026-10-02T01:15:35.844Z",
+    "updatedAt": "2026-10-02T01:18:21.366Z",
+    "sharedPictureLines": [
+     {
+      "text": "Both people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You and Adaeze Obi disagree on what the service agreement promises.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Adaeze Obi believes it is a four-hour fix for an outage, and you believe it is a four-hour acknowledgement of a ticket.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Adaeze Obi is measuring success by how long it takes to fix a critical system outage.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Adaeze Obi believes the supplier promised a four-hour fix.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You report that the supplier is meeting the service level described in the contract.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You say that clause 3.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "1 of the contract requires a four-hour acknowledgement, not a four-hour fix.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both are reviewing the managed services contract six months into the term.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both refer to a four-hour service level as a key metric, but they describe what that metric applies to in different ways.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 2,
+     "read": 2,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": null,
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "You are on session 1 of support and customer-facing work, and nothing repeats yet, which is normal this early, but what decides whether later sessions are worth anything is what you can point at, because support work is invisible when it goes well and its real contribution leaves no record unless somebody asks for it.",
+     "beforeNextTime": [
+      "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+     ],
+     "general": true,
+     "role": {
+      "label": "Support and customer-facing work",
+      "onTrack": "Named customers unblocked, the repeated problem traced to a cause somebody else can fix, and what was learned written where the team can find it.",
+      "goingWrong": "A very full week, a queue the same length as last week, and nothing anybody else could pick up.",
+      "protectAgainst": "When your support work goes well, it is invisible, and people counting outputs routinely read you as low-value because the escalations that never happened leave no record unless somebody asks for it.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "d000087e-627c-42f1-a8b5-710f1c8a0365",
+      "type": "INTENT",
+      "text": "My team raises tickets. That is what we do.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "803c128c-c263-4208-ab6c-0502b007e21d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "8b2049be-744a-4b52-9362-00112cd9515f",
+      "type": "SUCCESS_DEFINITION",
+      "text": "Clause 3.1 states a four-hour acknowledgement.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "803c128c-c263-4208-ab6c-0502b007e21d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "d5d40662-9015-4bea-8c5d-f3e00920d935",
+      "type": "PROGRESS",
+      "text": "The supplier acknowledges tickets within four hours.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "803c128c-c263-4208-ab6c-0502b007e21d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "4c5d791c-e512-47dd-b2d7-48fc05049efa",
+      "type": "PROGRESS",
+      "text": "The supplier acknowledges all tickets within two hours.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "803c128c-c263-4208-ab6c-0502b007e21d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "842175d8-7253-42ab-bcbb-7c037c4f5742",
+      "type": "TOLERANCE",
+      "text": "Three fixes took over a week. That is annoying. It is not a breach.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "803c128c-c263-4208-ab6c-0502b007e21d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "5073aaaf-efce-410f-a848-adf981e4f01a",
+      "type": "INTENT",
+      "text": "I am here to discuss the contract.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "803c128c-c263-4208-ab6c-0502b007e21d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "575c1c7d-dcc6-4765-a52d-ebae5340d48f",
+      "type": "PROGRESS",
+      "text": "I have read Clause 3.1.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "803c128c-c263-4208-ab6c-0502b007e21d",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\n\nYou are here to discuss the contract, and you pointed to Clause 3.1 which sets a four-hour acknowledgement time. You said that your team raises tickets, and you reported that the supplier meets this, acknowledging all tickets within two hours. You also noted that three fixes took over a week. You found this \"annoying\" but stated that \"It is not a breach.\"",
+     "whatToCarry": "Carry forward your intention: \"I am here to discuss the contract.\""
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "f7930bd4-24cc-4506-b7c6-1abc780e1163",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "AGREEMENT",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "divergence",
+     "checkInGrid"
+    ],
+    "title": "What we think we signed up to",
+    "scenario": "CONTRACT_REVIEW",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "Both people have answered. You and Adaeze Obi disagree on what the service agreement promises. Adaeze believes it is a four-hour fix for an outage, and you believe it is a four-hour acknowledgement of a ticket.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 2,
+       "ofPeople": 2,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "AWAITING_PARTIES",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "110de40b-f8ce-4ad8-88c7-c0bfcaa05cb6",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T01:18:21.366Z",
+    "participants": [
+     {
+      "id": "110de40b-f8ce-4ad8-88c7-c0bfcaa05cb6",
+      "name": "Frank Mbeki",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "73e04ea1-f17a-4a4a-bdc6-e467f0165aa9",
+      "name": "Adaeze Obi",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [
+      {
+       "topic": "The most important service level in the contract is described in two different ways.",
+       "atStake": "If this holds, Adaeze Obi will measure the supplier against a resolution target that is not in the contract, while you see the supplier as compliant, leading to internal conflict and a failed negotiation.",
+       "evidence": [
+        "Adaeze Obi's record describes an expectation for critical incidents to be fixed within four hours.",
+        "Your record refers to a contractual clause specifying a four-hour time to acknowledge a ticket."
+       ],
+       "positions": [
+        {
+         "view": "Describes a four-hour resolution time for critical incidents.",
+         "participantLabel": "Adaeze Obi",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Adaeze Obi"
+        },
+        {
+         "view": "Describes a four-hour acknowledgement time for all tickets.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        }
+       ],
+       "settledBy": "Agree whether the contract specifies a four-hour time to acknowledge or a four-hour time to resolve critical incidents.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      },
+      {
+       "topic": "The two people are measuring the success of the contract in different ways.",
+       "atStake": "If this holds, the team could meet every contractual obligation and still fail to deliver the reliable service the business needs.",
+       "evidence": [
+        "Adaeze Obi's account focuses on business outcomes like overall system reliability and the happiness of the internal teams using the service.",
+        "Your account focuses on a specific contractual clause about ticket acknowledgement as the measure of success."
+       ],
+       "positions": [
+        {
+         "view": "Defines success by the reliability of the systems and the satisfaction of internal users.",
+         "participantLabel": "Adaeze Obi",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Adaeze Obi"
+        },
+        {
+         "view": "Defines success as the supplier meeting the explicit terms of the contract, such as ticket acknowledgement times.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        }
+       ],
+       "settledBy": "Agree on a single definition of success that includes both contractual compliance and the desired business outcomes.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "The managed services contract is the subject of the review.",
+      "A four-hour timeframe is a key performance metric."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Agree whether the contract specifies a four-hour time to acknowledge or a four-hour time to resolve critical incidents. That is what settles the most important service level in the contract is described in two different ways.",
+     "settled": [
+      "The managed services contract is the subject of the review.",
+      "A four-hour timeframe is a key performance metric."
+     ],
+     "stillOpen": [
+      "The most important service level in the contract is described in two different ways.",
+      "The two people are measuring the success of the contract in different ways."
+     ]
+    },
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "110de40b-f8ce-4ad8-88c7-c0bfcaa05cb6",
+       "name": "Frank Mbeki",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "73e04ea1-f17a-4a4a-bdc6-e467f0165aa9",
+       "name": "Adaeze Obi",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "2",
+      "sub": "People said different things. The most important service level in the contract is described in two different ways. 1 more difference is still open.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "None",
+      "sub": "Nobody named anything holding work up.",
+      "tone": "good"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "You are on session 1 of support and customer-facing work, and nothing repeats yet, which is normal this early, but what decides whether later sessions are worth anything is what you can point at, because support work is invisible when it goes well and its real contribution leaves no record unless somebody asks for it.",
+      "beforeNextTime": [
+       "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+      ],
+      "general": true,
+      "role": {
+       "label": "Support and customer-facing work",
+       "onTrack": "Named customers unblocked, the repeated problem traced to a cause somebody else can fix, and what was learned written where the team can find it.",
+       "goingWrong": "A very full week, a queue the same length as last week, and nothing anybody else could pick up.",
+       "protectAgainst": "When your support work goes well, it is invisible, and people counting outputs routinely read you as low-value because the escalations that never happened leave no record unless somebody asks for it.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": null
+    },
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "110de40b-f8ce-4ad8-88c7-c0bfcaa05cb6",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     }
+    ]
+   },
+   "participantSeen": "ops",
+   "patterns": [
+    {
+     "code": "K5",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "Work is described as raising tickets, but the measure of success is whether they are acknowledged, not whether they are fixed.",
+     "participant": {
+      "email": "ops.1790903516152@contractreview.test"
+     }
+    }
+   ],
+   "commitments": []
+  }
+ ]
+}

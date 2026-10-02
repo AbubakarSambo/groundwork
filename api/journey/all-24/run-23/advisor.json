@@ -1,0 +1,2475 @@
+{
+ "scenario": {
+  "key": "advisor",
+  "label": "What the advisor is actually for",
+  "scenario": "NEW_ADVISOR",
+  "moment": "STARTING",
+  "cadence": "MONTHLY",
+  "timelineDays": 180,
+  "sessions": 1,
+  "brief": "We have given an advisor 0.5% for two years. I want it written down what we are asking of him and what he thinks he signed up for, because the last advisor we had produced nothing and nobody could say what we had expected.",
+  "theDecision": "The company wants warm introductions to three named banks. The advisor thinks he was brought in for strategy sessions and has no relationship at two of the three. A right answer surfaces that the expected deliverable does not exist on his side, before the equity vests, and says which of the three he can actually do.",
+  "people": [
+   {
+    "key": "ceo",
+    "name": "Grace Mutiso",
+    "isLead": true,
+    "remit": "CEO. Wants distribution through bank partnerships.",
+    "truth": "She wants introductions to Equity Bank, KCB and Co-operative Bank specifically. She has never written that list down for him. She has had two calls with him in four months, both of which were general advice. The last advisor got 1% and delivered nothing over eighteen months and she never raised it.",
+    "manner": "Direct, unsentimental, quick to give a number or a name when asked."
+   },
+   {
+    "key": "advisor",
+    "name": "Peter Kimani",
+    "remit": "Advisor, financial services. 0.5% over two years.",
+    "truth": "He was at Equity Bank until 2019 and still knows the head of SME lending there. He has never worked with KCB or Co-operative and could not open either door. He believed the arrangement was quarterly strategy conversations. He is willing to do the Equity introduction this month and says so if asked.",
+    "manner": "Courteous, slightly formal. Does not volunteer limits, but is honest about them when asked a direct question."
+   }
+  ]
+ },
+ "groundId": "b37582e5-ac94-4fc2-aeb1-e31c0fc093fe",
+ "orgId": "fa1e3cbe-deb6-4509-b417-3c58780c81b9",
+ "emails": {
+  "ceo": "ceo.1790905764406@advisor.test",
+  "advisor": "advisor.1790905764406@advisor.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "ceo",
+     "name": "Grace Mutiso",
+     "isLead": true,
+     "checkInId": "9577fcb7-c053-41ad-a211-d50ac159d68e",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "This conversation is about building a clear picture of what you expect from the new advisor. Who is joining?"
+      },
+      {
+       "from": "GRACE MUTISO",
+       "text": "We've brought on Mr. X. I want to make sure we're aligned on his role."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. You want to make sure you and Mr. X are aligned on his role. The conversations that save the most time happen before work starts, not after something goes wrong. You're here at the right moment. What do you expect from him that would make this worth the equity or retainer?",
+       "suggestedAnswers": [
+        "I expect him to deliver key results.",
+        "I'm still figuring out the specifics.",
+        "His role needs more definition.",
+        "He must bring significant value."
+       ]
+      },
+      {
+       "from": "GRACE MUTISO",
+       "text": "I expect him to get us introductions to specific banks. That's the main thing."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Introductions to specific banks. Which banks specifically?",
+       "suggestedAnswers": [
+        "I have a few names already.",
+        "No concrete names yet.",
+        "Not yet, still working on it.",
+        "I'll get back to you on that."
+       ]
+      },
+      {
+       "from": "GRACE MUTISO",
+       "text": "Equity Bank, KCB, and Co-operative Bank. Those are the key ones."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Those three banks. What makes those introductions worth the equity or retainer?",
+       "suggestedAnswers": [
+        "They open doors to significant new business.",
+        "I haven't seen the value yet.",
+        "I'm not sure yet."
+       ]
+      },
+      {
+       "from": "GRACE MUTISO",
+       "text": "They are the path to significant distribution for us. Without them, our growth is limited."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You're looking for these introductions to significantly open up your distribution and growth. Name one specific thing you expect to exist or happen in twelve months because of this relationship.\n\nWhat else should I know?",
+       "suggestedAnswers": [
+        "Things are moving forward as planned.",
+        "I need help with something.",
+        "I don't have updates yet.",
+        "I have some good news to share."
+       ]
+      },
+      {
+       "from": "GRACE MUTISO",
+       "text": "In twelve months, I expect to have active pilot programs or signed agreements with at least two of those banks. That would be a clear win."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. Who is joining?",
+       "suggestedAnswers": [
+        "I've confirmed a few people.",
+        "I'm still waiting to hear back.",
+        "No one has confirmed yet.",
+        "I need to check on that."
+       ]
+      },
+      {
+       "from": "GRACE MUTISO",
+       "text": "Mr. X is the new advisor."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "We have confirmed Mr. X is the new advisor. We still need to confirm his compensation. You said \"active pilot programs or signed agreements with at least two of those banks\" is what you expect in twelve months. What else would have to exist for you to know this is working?",
+       "suggestedAnswers": [
+        "If I see ..., I will know.",
+        "I don't know what that looks like yet.",
+        "I need to see ... for me to know.",
+        "I'm still figuring out what would confirm it."
+       ]
+      },
+      {
+       "from": "GRACE MUTISO",
+       "text": "I would expect to see clear progress towards those agreements, like introductory meetings happening and follow-up discussions underway. It's about movement."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. Who is joining?",
+       "suggestedAnswers": [
+        "I have invited ... to join.",
+        "I am talking to ... about joining.",
+        "I am still looking for people.",
+        "Not yet."
+       ]
+      },
+      {
+       "from": "GRACE MUTISO",
+       "text": "Mr. X."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "We have already noted that Mr. X is the new advisor. What is Mr. X being compensated?",
+       "suggestedAnswers": [
+        "X is being compensated.",
+        "X's compensation is stalled.",
+        "I need to check on X's compensation."
+       ]
+      },
+      {
+       "from": "GRACE MUTISO",
+       "text": "He is getting 0.5% for two years."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Figure now. You expect to have active pilot programs or signed agreements with at least two of those banks in twelve months, and you would see progress through introductory meetings and follow-up discussions. Before we close this out: what will you decide about this, and by when?",
+       "suggestedAnswers": [
+        "I decided; I will share by ...",
+        "Still thinking about it.",
+        "Not yet.",
+        "I have made my decision."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "advisor",
+     "name": "Peter Kimani",
+     "isLead": false,
+     "checkInId": "762aebcb-3be0-4fe8-b3d4-34a3540737d5",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Before anything else, so this asks you the right things: are you the person this check-in is about, or somebody working alongside them? One line is enough."
+      },
+      {
+       "from": "PETER KIMANI",
+       "text": "I am the advisor this check-in is about."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. This record is for you. What did you understand your role in this to be-in your own words, before anyone else's version?",
+       "suggestedAnswers": [
+        "My role was to offer guidance.",
+        "I found my role unclear at times.",
+        "I'm still thinking about that."
+       ]
+      },
+      {
+       "from": "PETER KIMANI",
+       "text": "I understood my role to be an advisor in the financial services sector. I am here to provide strategic guidance."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Providing strategic guidance is an outcome. What specific actions will you take in that role?",
+       "suggestedAnswers": [
+        "I will advise clients on their strategy.",
+        "My first steps are not yet clear.",
+        "I am not sure what to do yet."
+       ]
+      },
+      {
+       "from": "PETER KIMANI",
+       "text": "I understood that I would engage in quarterly strategy conversations. This is how I would provide that guidance."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Quarterly conversations is specific. What will you do in those conversations?",
+       "suggestedAnswers": [
+        "I will share my thoughts and guidance.",
+        "I need more information first.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "PETER KIMANI",
+       "text": "In those conversations, I will share insights and offer strategic advice based on my experience."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That's what you will share. What decision should that drive?",
+       "suggestedAnswers": [
+        "I know what to decide now.",
+        "I need more information first.",
+        "I am still thinking.",
+        "We can make a decision."
+       ]
+      },
+      {
+       "from": "PETER KIMANI",
+       "text": "My input should help to drive sound strategic decisions for the organisation. That is what I aim for."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What is the first thing you mean to do?",
+       "suggestedAnswers": [
+        "I will start by planning the first steps.",
+        "I still need to figure out the first step.",
+        "Not yet, I am still thinking."
+       ]
+      },
+      {
+       "from": "PETER KIMANI",
+       "text": "I am ready to facilitate an introduction to the head of SME lending at Equity Bank this month. This is a key first step."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Grace has also identified KCB and Co-operative Bank as key relationships. Which of those are you planning to engage with?",
+       "suggestedAnswers": [
+        "I have not engaged with any yet.",
+        "I am still deciding who to engage with.",
+        "I will engage with all of them eventually."
+       ]
+      },
+      {
+       "from": "PETER KIMANI",
+       "text": "I have never worked with KCB or Co-operative Bank. Therefore, I cannot open doors there. My expertise lies with Equity Bank."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. Equity Bank is where you can open doors. You said you are ready to facilitate an introduction to the head of SME lending at Equity Bank this month. What happens after that introduction?",
+       "suggestedAnswers": [
+        "The introduction went well.",
+        "Still waiting to hear back.",
+        "Nothing happened after that.",
+        "It is stuck, I need help."
+       ]
+      },
+      {
+       "from": "PETER KIMANI",
+       "text": "After the introduction, I anticipate there will be follow-up discussions. These would be between your organisation and Equity Bank, to explore potential collaborations or services."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "And what is your role in those follow-up discussions?",
+       "suggestedAnswers": [
+        "I will lead our team's part.",
+        "I am waiting for more information.",
+        "I will help coordinate discussions.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "PETER KIMANI",
+       "text": "My role would be to provide further advice if needed. I can offer insights to help navigate those discussions effectively."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You have described a situation where your contribution has not been seen. What specifically exists from that work that we could point to?",
+       "suggestedAnswers": [
+        "The initial advice is ready.",
+        "The guidance is still being drafted.",
+        "Nothing specific yet."
+       ]
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "f77cc3af-f69c-4e46-bdc6-8618cf3f5fc3",
+    "groundId": "b37582e5-ac94-4fc2-aeb1-e31c0fc093fe",
+    "sharedPicture": "Both people have answered. The two of you have different ideas of what this advisory role is for.\n\nYou want to align on Peter Kimani's role, seeing it as the path to significant distribution for the organisation. You have said that without this, the organisation's growth is limited.\n\nPeter understood the role to be advisory. Peter has said Peter's input should help to drive sound strategic decisions for the organisation.\n\nBoth you and Peter agree that Peter is serving as an advisor for 0. 5% equity over two years. Both also agree that this advisory role includes an introduction to Equity Bank.",
+    "theOpening": "Both people have answered. The two of you have different ideas of what this advisory role is for.",
+    "agreements": [
+     "Peter Kimani is an advisor to the company.",
+     "The compensation for the role is 0. 5% equity for a two-year period.",
+     "An introduction to Equity Bank is part of the work."
+    ],
+    "divergences": [
+     {
+      "topic": "The two of you have different ideas of what this advisory role is for.",
+      "atStake": "If this holds, the year could end with the advisory relationship in place but without the introductions to the banks the role was meant to secure.",
+      "evidence": [
+       "Your record defines success as getting trial projects running or contracts signed with at least two of the named banks.",
+       "Peter Kimani's record defines success as providing input that helps the company make sound strategic decisions."
+      ],
+      "positions": [
+       {
+        "view": "You described the role as being focused on securing introductions to three specific banks that result in trial projects or formal contracts within a year.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Peter Kimani described the role as providing strategic guidance and insights during quarterly conversations.",
+        "participantLabel": "Peter Kimani",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     },
+     {
+      "topic": "The two of you disagree on which banks Peter Kimani can make introductions to.",
+      "atStake": "If this continues, the work will lose the options KCB and Co-operative Bank could have provided.",
+      "evidence": [
+       "Your account names three specific banks as targets for introductions.",
+       "Peter Kimani's account states that there are no existing relationships to draw on at two of those three banks."
+      ],
+      "positions": [
+       {
+        "view": "You expect introductions to Equity Bank, KCB, and Co-operative Bank.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Peter Kimani has stated that an introduction is only possible at Equity Bank.",
+        "participantLabel": "Peter Kimani",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     }
+    ],
+    "centralQuestion": "What specific outcomes is the 0.5% equity intended to produce, and what does each of you see as the advisor's direct contribution to those outcomes?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Grace Mutiso",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 9,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Grace Mutiso"
+      },
+      {
+       "label": "Peter Kimani",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 9,
+       "documentsAttached": 0,
+       "who": "Peter Kimani"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "The two of you have different ideas of what this advisory role is for.",
+      "The two of you disagree on which banks Peter Kimani can make introductions to."
+     ],
+     "sessionCounts": {
+      "Peter Kimani": 9,
+      "Grace Mutiso": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Grace Mutiso",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Grace Mutiso": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Grace Mutiso": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "whatCouldBeChecked": {
+      "says": [
+       "All 2 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 2,
+      "checked": 2
+     },
+     "difficultyDisclosures": false
+    },
+    "inferences": [],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": null,
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "Peter Kimani believes the role is for strategic advice, while you expect Peter to secure contracts with three specific banks. Peter has said an introduction is only possible at one of these banks.",
+     "whatToDo": [
+      {
+       "move": "Decide with Peter Kimani whether the role is for strategic advice or for securing contracts.",
+       "because": "You expect contracts from three banks, and Peter Kimani expects to give advice and Peter has an introduction to one bank.",
+       "startWith": "Peter Kimani"
+      },
+      {
+       "move": "Agree with Peter Kimani on what introductions are possible.",
+       "because": "Peter Kimani has stated that an introduction is possible at Equity Bank, but not at KCB or Co-operative Bank.",
+       "startWith": "Peter Kimani"
+      },
+      {
+       "move": "Act on the offer from Peter Kimani to facilitate an introduction to the head of SME lending at Equity Bank.",
+       "because": "Peter Kimani said \"I am ready to facilitate an introduction to the head of SME lending at Equity Bank\", and the matter is not closed.",
+       "startWith": "Peter Kimani"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You expect Peter Kimani to secure introductions that lead to contracts with Equity Bank, KCB, and Co-operative Bank.",
+       "soWhat": "This is not the role that Peter Kimani believes they were taken on for.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Peter Kimani understood the role to be for strategic guidance and has offered an introduction to Equity Bank.",
+       "soWhat": "Peter Kimani cannot meet your expectation for introductions to KCB and Co-operative Bank.",
+       "fieldId": "Peter Kimani"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "What was written in the agreement with Peter Kimani.",
+       "howManyMissedIt": 2
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record does not include a contract or role description that both have agreed on.",
+       "about": "Why you and Peter Kimani have different understandings of the role.",
+       "toKnow": "Review the original agreement or contract with Peter Kimani."
+      }
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Peter Kimani is an advisor, financial services. The role description also says \"0.5% over two years.\" Since then, the record holds 1 session, 9 lines of what was said, none with a name, a number or a date in them, none backed by a document and 1 commitment still open.",
+       "who": "Peter Kimani",
+       "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "In session 1, Peter Kimani said, \"I am ready to facilitate an introduction to the head of SME lending at Equity Bank\". The time Peter gave for it was \"this month\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, Peter Kimani said, \"I am ready to facilitate an introduction to the head of SME lending at Equity Bank\". The time Peter gave for it was \"this month\". Nobody has said yet whether it happened.",
+       "who": "Peter Kimani",
+       "what": "I am ready to facilitate an introduction to the head of SME lending at Equity Bank",
+       "when": "this month",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 2,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "You want to align on Peter Kimani's role, seeing it as the path to significant distribution for the organisation. You have said that without this, the organisation's growth is limited.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Peter Kimani understood the role to be advisory. Peter has said Peter's input should help to drive sound strategic decisions for the organisation.",
+      "hasGap": false,
+      "headline": "Peter Kimani understood the role to be advisory.",
+      "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": "2026-10-02T01:54:02.928Z",
+    "createdAt": "2026-10-02T01:54:02.839Z",
+    "updatedAt": "2026-10-02T01:56:36.706Z",
+    "sharedPictureLines": [
+     {
+      "text": "Both people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The two of you have different ideas of what this advisory role is for.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You want to align on Peter Kimani's role, seeing it as the path to significant distribution for the organisation.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You have said that without this, the organisation's growth is limited.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Peter Kimani understood the role to be advisory.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Peter Kimani has said Peter's input should help to drive sound strategic decisions for the organisation.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both you and Peter Kimani agree that Peter is serving as an advisor for 0.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "5% equity over two years.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both also agree that this advisory role includes an introduction to Equity Bank.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 2,
+     "read": 2,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "I've been measuring our progress by whether we're on a path to signed agreements with the banks, and I want to make sure that's the right measure for both of us.",
+     "toAcknowledge": "Take seriously that the other person's view of success is not yet known, and so it may not be the same as your own clear picture of formal partnerships.",
+     "questionToCarry": "What specific outcomes would show you that this has been a successful partnership?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "You are in session 1 of the sales and expansion work, and nothing repeats yet, which is normal at this early stage. What decides whether later sessions have value is whether you can point at named buyers with budget and authority, real sales moving towards a close, and dated next actions.",
+     "beforeNextTime": [
+      "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+     ],
+     "general": true,
+     "role": {
+      "label": "Sales and expansion",
+      "onTrack": "Named buyers with budget and authority, real sales moving towards a close, dated next actions.",
+      "goingWrong": "Plenty of activity and warm conversations, no named buyer who can actually decide.",
+      "protectAgainst": "A rep is made to feel like a failure by a broken internal clock: the buyer-side process takes weeks and none of it is visible to them. Silence is usually a stage, not a rejection.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "ce6ae258-912d-43f9-a588-0ef8bd0e95ce",
+      "type": "INTENT",
+      "text": "I want to make sure we're aligned on his role.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "9577fcb7-c053-41ad-a211-d50ac159d68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "7de57225-272d-4954-b59e-ab4a2b7342b3",
+      "type": "ASK",
+      "text": "I expect him to get us introductions to specific banks.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "9577fcb7-c053-41ad-a211-d50ac159d68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "1f0b31f6-22b9-4e78-8174-cbc009f6a3f3",
+      "type": "ASK",
+      "text": "Equity Bank, KCB, and Co-operative Bank. Those are the key ones.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "9577fcb7-c053-41ad-a211-d50ac159d68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "fe13e0ee-0be2-4c3f-bd38-0e7cb58997ce",
+      "type": "SUCCESS_DEFINITION",
+      "text": "They are the path to significant distribution for us.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "9577fcb7-c053-41ad-a211-d50ac159d68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "9f5bc748-6a87-4385-97fd-8b20f87a79f2",
+      "type": "WORRY",
+      "text": "Without them, our growth is limited.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "9577fcb7-c053-41ad-a211-d50ac159d68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "46582cd9-42a5-4a0b-a187-f99c701152ab",
+      "type": "TIMEFRAME",
+      "text": "In twelve months",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "9577fcb7-c053-41ad-a211-d50ac159d68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "c5c46d19-11de-4425-a9ae-9e18191e9167",
+      "type": "SUCCESS_DEFINITION",
+      "text": "In twelve months, I expect to have active pilot programs or signed agreements with at least two of those banks. That would be a clear win.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "9577fcb7-c053-41ad-a211-d50ac159d68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "f1dc4db3-76fe-452d-ba9d-770fb960eabb",
+      "type": "SUCCESS_DEFINITION",
+      "text": "I would expect to see clear progress towards those agreements, like introductory meetings happening and follow-up discussions underway. It's about movement.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "9577fcb7-c053-41ad-a211-d50ac159d68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "86abd661-28f7-45b8-b96a-149dc06f6762",
+      "type": "INTENT",
+      "text": "He is getting 0.5% for two years.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "9577fcb7-c053-41ad-a211-d50ac159d68e",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": [
+     {
+      "who": "Grace Mutiso",
+      "participantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+      "probe": [],
+      "encourage": [
+       "Worth getting on record, where anyone could check it later: They are the path to significant distribution for us and In twelve months, I expect to have active pilot programs or signed agreements with at least two of those banks. That would be a clear win."
+      ],
+      "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+     },
+     {
+      "who": "Peter Kimani",
+      "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "probe": [],
+      "encourage": [
+       "Worth getting on record, where anyone could check it later: My input should help to drive sound strategic decisions for the organisation."
+      ],
+      "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+     }
+    ],
+    "soloArtifact": {
+     "summary": "Here is what you shared.\nYou want to be aligned on his role, and you expect him to get you introductions to Equity Bank, KCB, and Co-operative Bank. You see these as 'the path to significant distribution for us.' You said that within twelve months, a clear win would be 'active pilot programs or signed agreements with at least two of those banks.'",
+     "whatToCarry": "You said you would expect to see 'clear progress' and that 'It's about movement.' Watch for the introductory meetings and follow-up discussions you said would show this."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    },
+    "forTheLead": [
+     {
+      "id": "difference-1",
+      "decide": "Settle the difference between what you and Peter Kimani said.",
+      "why": "The two of you have different ideas of what this advisory role is for. You and Peter Kimani said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this holds, the year could end with the advisory relationship in place but without the introductions to the banks the role was meant to secure."
+     },
+     {
+      "id": "difference-2",
+      "decide": "Settle the difference between what you and Peter Kimani said.",
+      "why": "The two of you disagree on which banks Peter Kimani can make introductions to. You and Peter Kimani said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this continues, the work will lose the options KCB and Co-operative Bank could have provided."
+     }
+    ]
+   },
+   "board": {
+    "groundId": "b37582e5-ac94-4fc2-aeb1-e31c0fc093fe",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "ONBOARDING",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "phaseSpine",
+     "objectives",
+     "dependencies",
+     "checkInGrid",
+     "divergence",
+     "contribution"
+    ],
+    "title": "What the advisor is actually for",
+    "scenario": "NEW_ADVISOR",
+    "kindOfWork": "founder's own check-in",
+    "howItIsGoing": {
+     "latestSummary": "Both people have answered. The two of you have different ideas of what this advisory role is for.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 6,
+       "answeredThisRound": 2,
+       "ofPeople": 2,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "Peter Kimani believes the role is for strategic advice, while you expect Peter to secure contracts with three specific banks. Peter has said an introduction is only possible at one of these banks.",
+     "whatToDo": [
+      {
+       "move": "Decide with Peter Kimani whether the role is for strategic advice or for securing contracts.",
+       "because": "You expect contracts from three banks, and Peter Kimani expects to give advice and Peter has an introduction to one bank.",
+       "startWith": "Peter Kimani"
+      },
+      {
+       "move": "Agree with Peter Kimani on what introductions are possible.",
+       "because": "Peter Kimani has stated that an introduction is possible at Equity Bank, but not at KCB or Co-operative Bank.",
+       "startWith": "Peter Kimani"
+      },
+      {
+       "move": "Act on the offer from Peter Kimani to facilitate an introduction to the head of SME lending at Equity Bank.",
+       "because": "Peter Kimani said \"I am ready to facilitate an introduction to the head of SME lending at Equity Bank\", and the matter is not closed.",
+       "startWith": "Peter Kimani"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You expect Peter Kimani to secure introductions that lead to contracts with Equity Bank, KCB, and Co-operative Bank.",
+       "soWhat": "This is not the role that Peter Kimani believes they were taken on for.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Peter Kimani understood the role to be for strategic guidance and has offered an introduction to Equity Bank.",
+       "soWhat": "Peter Kimani cannot meet your expectation for introductions to KCB and Co-operative Bank.",
+       "fieldId": "Peter Kimani"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "What was written in the agreement with Peter Kimani.",
+       "howManyMissedIt": 2
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record does not include a contract or role description that both have agreed on.",
+       "about": "Why you and Peter Kimani have different understandings of the role.",
+       "toKnow": "Review the original agreement or contract with Peter Kimani."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Peter Kimani is an advisor, financial services. The role description also says \"0.5% over two years.\" Since then, the record holds 1 session, 9 lines of what was said, none with a name, a number or a date in them, none backed by a document and 1 commitment still open.",
+       "who": "Peter Kimani",
+       "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "In session 1, Peter Kimani said, \"I am ready to facilitate an introduction to the head of SME lending at Equity Bank\". The time Peter Kimani gave for it was \"this month\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, Peter Kimani said, \"I am ready to facilitate an introduction to the head of SME lending at Equity Bank\". The time Peter Kimani gave for it was \"this month\". Nobody has said yet whether it happened.",
+       "who": "Peter Kimani",
+       "what": "I am ready to facilitate an introduction to the head of SME lending at Equity Bank",
+       "when": "this month",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T01:56:36.706Z",
+    "participants": [
+     {
+      "id": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+      "name": "Grace Mutiso",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "name": "Peter Kimani",
+      "role": "Advisor, financial services. 0.5% over two years.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "phaseSpine": {
+     "startsAt": null,
+     "endsAt": null,
+     "currentSession": 1,
+     "plannedSessions": 6,
+     "sessions": [
+      {
+       "n": 1,
+       "state": "done",
+       "date": "2026-10-02T01:52:14.458Z",
+       "opensOn": null,
+       "openedOn": "2026-10-02T01:50:37.122Z",
+       "says": "Session 1 finished on 2 October."
+      },
+      {
+       "n": 2,
+       "state": "upcoming",
+       "date": null,
+       "opensOn": "2026-11-02T01:52:14.483Z",
+       "openedOn": null,
+       "says": "Session 2 opens on 2 November."
+      }
+     ]
+    },
+    "targetsNobodyOwns": null,
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "63d4169e-03d6-4e61-828c-071ba2ddec8a",
+      "name": "Grace is aiming to have active pilot programs or signed agreements with at least two of Equity Bank, KCB, and Co-operative Bank.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "The two of you have different ideas of what this advisory role is for.",
+       "atStake": "If this holds, the year could end with the advisory relationship in place but without the introductions to the banks the role was meant to secure.",
+       "evidence": [
+        "Your record defines success as getting trial projects running or contracts signed with at least two of the named banks.",
+        "Peter Kimani's record defines success as providing input that helps the company make sound strategic decisions."
+       ],
+       "positions": [
+        {
+         "view": "You described the role as being focused on securing introductions to three specific banks that result in trial projects or formal contracts within a year.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Peter Kimani described the role as providing strategic guidance and insights during quarterly conversations.",
+         "participantLabel": "Peter Kimani",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Peter Kimani"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      },
+      {
+       "topic": "The two of you disagree on which banks Peter Kimani can make introductions to.",
+       "atStake": "If this continues, the work will lose the options KCB and Co-operative Bank could have provided.",
+       "evidence": [
+        "Your account names three specific banks as targets for introductions.",
+        "Peter Kimani's account states that there are no existing relationships to draw on at two of those three banks."
+       ],
+       "positions": [
+        {
+         "view": "You expect introductions to Equity Bank, KCB, and Co-operative Bank.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Peter Kimani has stated that an introduction is only possible at Equity Bank.",
+         "participantLabel": "Peter Kimani",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Peter Kimani"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "Peter Kimani is an advisor to the company.",
+      "The compensation for the role is 0. 5% equity for a two-year period.",
+      "An introduction to Equity Bank is part of the work."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "If this holds, the year could end with the advisory relationship in place but without the introductions to the banks the role was meant to secure. That is what settles the two of you have different ideas of what this advisory role is for.",
+     "settled": [
+      "Peter Kimani is an advisor to the company.",
+      "The compensation for the role is 0. 5% equity for a two-year period.",
+      "An introduction to Equity Bank is part of the work."
+     ],
+     "stillOpen": [
+      "The two of you have different ideas of what this advisory role is for.",
+      "The two of you disagree on which banks Peter Kimani can make introductions to."
+     ]
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "who": "Peter Kimani",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Peter Kimani has checked in.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Peter Kimani understood the role to be advisory. Peter has said Peter's input should help to drive sound strategic decisions for the organisation.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+       "name": "Grace Mutiso",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+       "name": "Peter Kimani",
+       "role": "Advisor, financial services. 0.5% over two years.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "dependencies": [],
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "2",
+      "sub": "People said different things. The two of you have different ideas of what this advisory role is for. 1 more difference is still open.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "1 worry",
+      "sub": "You said, \"Without them, our growth is limited.\" It is the only worry on record, and nobody is waiting on anybody.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "contribution": [
+     {
+      "participantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+      "name": "Grace Mutiso",
+      "remit": null,
+      "remitDefined": false,
+      "position": null,
+      "reason": null,
+      "note": "No position shown, because the role was never clearly defined. Define what it is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person.",
+      "confidence": 0,
+      "evidenceCount": 0,
+      "shown": false,
+      "basis": "No role was defined, so there is nothing to read against."
+     },
+     {
+      "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "name": "Peter Kimani",
+      "remit": "Advisor, financial services. 0.5% over two years.",
+      "remitDefined": true,
+      "position": null,
+      "positionLabel": null,
+      "reason": null,
+      "nothingCheckable": false,
+      "isBlocked": false,
+      "ownVoice": null,
+      "shown": true,
+      "guard": "Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone."
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "You are in session 1 of the sales and expansion work, and nothing repeats yet, which is normal at this early stage. What decides whether later sessions have value is whether you can point at named buyers with budget and authority, real sales moving towards a close, and dated next actions.",
+      "beforeNextTime": [
+       "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+      ],
+      "general": true,
+      "role": {
+       "label": "Sales and expansion",
+       "onTrack": "Named buyers with budget and authority, real sales moving towards a close, dated next actions.",
+       "goingWrong": "Plenty of activity and warm conversations, no named buyer who can actually decide.",
+       "protectAgainst": "A rep is made to feel like a failure by a broken internal clock: the buyer-side process takes weeks and none of it is visible to them. Silence is usually a stage, not a rejection.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": [
+      {
+       "who": "Grace Mutiso",
+       "participantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+       "probe": [],
+       "encourage": [
+        "Worth getting on record, where anyone could check it later: They are the path to significant distribution for us and In twelve months, I expect to have active pilot programs or signed agreements with at least two of those banks. That would be a clear win."
+       ],
+       "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+      },
+      {
+       "who": "Peter Kimani",
+       "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+       "probe": [],
+       "encourage": [
+        "Worth getting on record, where anyone could check it later: My input should help to drive sound strategic decisions for the organisation."
+       ],
+       "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+      }
+     ]
+    },
+    "eachPersonToday": [
+     {
+      "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "who": "Peter Kimani",
+      "line": "Peter Kimani has checked in."
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Work plan",
+      "holds": "commitments and decisions",
+      "state": "filled",
+      "rows": [
+       {
+        "id": "0fcf32fb-bb85-477d-ac67-bb15d97f3434",
+        "kind": "commitment",
+        "name": "get us introductions to specific banks",
+        "stage": null,
+        "owner": "Grace Mutiso",
+        "ownerParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I expect him to get us introductions to specific banks.",
+        "saidBy": "Grace",
+        "saidByParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "ebcb0167-e11c-4a93-8214-0bca559dd695",
+        "kind": "decision",
+        "name": "Equity Bank, KCB, and Co-operative Bank. Those are the key ones.",
+        "stage": null,
+        "owner": "Grace Mutiso",
+        "ownerParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "Equity Bank, KCB, and Co-operative Bank. Those are the key ones.",
+        "saidBy": "Grace",
+        "saidByParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "a6ac5588-be6b-4c20-88ac-dcffd5f187e9",
+        "kind": "commitment",
+        "name": "have active pilot programs or signed agreements with at least two of those banks",
+        "stage": null,
+        "owner": "Grace Mutiso",
+        "ownerParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "due": null,
+        "fields": {
+         "due": "In twelve months"
+        },
+        "from": "said",
+        "said": "In twelve months, I expect to have active pilot programs or signed agreements with at least two of those banks. That would be a clear win.",
+        "saidBy": "Grace",
+        "saidByParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "687c1c68-8a84-459e-9598-2e35487866a1",
+        "kind": "commitment",
+        "name": "see clear progress towards those agreements",
+        "stage": null,
+        "owner": "Grace Mutiso",
+        "ownerParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "due": null,
+        "fields": {
+         "e.g.": "introductory meetings happening and follow-up discussions underway"
+        },
+        "from": "said",
+        "said": "I would expect to see clear progress towards those agreements, like introductory meetings happening and follow-up discussions underway. It's about movement.",
+        "saidBy": "Grace",
+        "saidByParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "f038e303-e810-4caa-8bfb-c74d84120e3f",
+        "kind": "decision",
+        "name": "He is getting 0.5% for two years",
+        "stage": null,
+        "owner": "Grace Mutiso",
+        "ownerParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "He is getting 0.5% for two years.",
+        "saidBy": "Grace",
+        "saidByParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "ce899b40-b858-4238-a5d6-95e81e21ee14",
+        "kind": "commitment",
+        "name": "engage in quarterly strategy conversations",
+        "stage": null,
+        "owner": "Peter Kimani",
+        "ownerParticipantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I understood that I would engage in quarterly strategy conversations.",
+        "saidBy": "Peter",
+        "saidByParticipantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "1ce1d02b-dce4-44bb-b406-aece6798dbea",
+        "kind": "commitment",
+        "name": "share insights and offer strategic advice",
+        "stage": null,
+        "owner": "Peter Kimani",
+        "ownerParticipantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "In those conversations, I will share insights and offer strategic advice based on my experience.",
+        "saidBy": "Peter",
+        "saidByParticipantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "4c00b903-32b9-44a0-86ab-c6ee93d0d26f",
+        "kind": "commitment",
+        "name": "facilitate an introduction to the head of SME lending at Equity Bank",
+        "stage": null,
+        "owner": "Peter Kimani",
+        "ownerParticipantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I am ready to facilitate an introduction to the head of SME lending at Equity Bank this month.",
+        "saidBy": "Peter",
+        "saidByParticipantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": "Peter Kimani made a commitment about it, which is in the record.",
+        "nextKnown": "said",
+        "nextSays": "Peter Kimani made a commitment about it, which is in the record."
+       }
+      ]
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "f1d84476-30bc-4141-9ad5-6db4712688ea",
+      "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "who": "Peter Kimani",
+      "says": "In session 1, Peter Kimani said, \"I am ready to facilitate an introduction to the head of SME lending at Equity Bank\". The time Peter Kimani gave for it was \"this month\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "this month",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Peter Kimani made a commitment, which is in the record."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "who": "Peter Kimani",
+      "says": "Peter Kimani has answered 1 session and made 1 commitment.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Peter Kimani made 1 commitment."
+       }
+      ]
+     }
+    ],
+    "busyOrMoving": {
+     "eachPerson": [
+      {
+       "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+       "who": "Peter Kimani",
+       "says": "Peter Kimani has made 1 commitment across 1 answered session."
+      }
+     ],
+     "cannotTellYou": "These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that."
+    },
+    "obligations": [
+     {
+      "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "who": "Peter Kimani",
+      "promised": [
+       "In session 1, Peter Kimani said, \"I am ready to facilitate an introduction to the head of SME lending at Equity Bank\". The time Peter Kimani gave for it was \"this month\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     }
+    ],
+    "byArea": {
+     "state": "not-known",
+     "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+    }
+   },
+   "participantReport": {
+    "id": "f77cc3af-f69c-4e46-bdc6-8618cf3f5fc3",
+    "groundId": "b37582e5-ac94-4fc2-aeb1-e31c0fc093fe",
+    "sharedPicture": "Both people have answered. The two of you have different ideas of what this advisory role is for. Grace Mutiso wants to align on your role, seeing it as the path to significant distribution for the organisation. Grace has said that without this, the organisation's growth is limited. You understood the role to be advisory. You have said your input should help to drive sound strategic decisions for the organisation. You and Grace agree both that you are serving as an advisor for 0. 5% equity over two years. Both also agree that this advisory role includes an introduction to Equity Bank.",
+    "theOpening": "Both people have answered. The two of you have different ideas of what this advisory role is for.",
+    "agreements": [
+     "You are an advisor to the company.",
+     "The compensation for the role is 0. 5% equity for a two-year period.",
+     "An introduction to Equity Bank is part of the work."
+    ],
+    "centralQuestion": "What specific outcomes is the 0.5% equity intended to produce, and what does each of you see as the advisor's direct contribution to those outcomes?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Grace Mutiso",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 9,
+       "documentsAttached": 0,
+       "who": "Grace Mutiso"
+      },
+      {
+       "label": "Peter Kimani",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 9,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Peter Kimani"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "The two of you have different ideas of what this advisory role is for.",
+      "The two of you disagree on which banks you can make introductions to."
+     ],
+     "sessionCounts": {
+      "Peter Kimani": 9,
+      "Grace Mutiso": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Peter Kimani",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Peter Kimani": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Peter Kimani": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "whatCouldBeChecked": {
+      "says": [
+       "All 2 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 2,
+      "checked": 2
+     },
+     "difficultyDisclosures": false
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [
+      {
+       "say": "In session 1, you said, \"I am ready to facilitate an introduction to the head of SME lending at Equity Bank\". The time you gave for it was \"this month\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "I am ready to facilitate an introduction to the head of SME lending at Equity Bank",
+       "when": "this month",
+       "status": "UNKNOWN",
+       "leadLabel": "Grace Mutiso",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 2,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "You understood the role to be advisory. You have said your input should help to drive sound strategic decisions for the organisation.",
+      "hasGap": false,
+      "headline": "You understood the role to be advisory.",
+      "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "releasedAt": "2026-10-02T01:54:02.928Z",
+    "createdAt": "2026-10-02T01:54:02.839Z",
+    "updatedAt": "2026-10-02T01:56:36.706Z",
+    "sharedPictureLines": [
+     {
+      "text": "Both people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The two of you have different ideas of what this advisory role is for.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Grace Mutiso wants to align on your role, seeing it as the path to significant distribution for the organisation.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Grace Mutiso has said that without this, the organisation's growth is limited.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You understood the role to be advisory.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You have said your input should help to drive sound strategic decisions for the organisation.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You and Grace Mutiso agree both that you are serving as an advisor for 0.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "5% equity over two years.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both also agree that this advisory role includes an introduction to Equity Bank.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 2,
+     "read": 2,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "My understanding is that my role is to offer strategic guidance, and it seems we may have different ideas about what specific results are expected from that.",
+     "toAcknowledge": "Take seriously the other view that this work is the main path to the company's growth, and that its success is measured by establishing new formal partnerships.",
+     "questionToCarry": "What specific outcomes would make this advisory work a success for you, and over what timeline?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+     ],
+     "general": true,
+     "role": null,
+     "whyNoRoleMap": "Your record looks like finance, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "da076853-e715-4069-bedd-f33f73d3866e",
+      "type": "INTENT",
+      "text": "I understood my role to be an advisor in the financial services sector.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "762aebcb-3be0-4fe8-b3d4-34a3540737d5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "5ce1b658-f08d-4206-bf88-7651031669b5",
+      "type": "INTENT",
+      "text": "I am here to provide strategic guidance.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "762aebcb-3be0-4fe8-b3d4-34a3540737d5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "f0acd9e2-7993-4e29-86e8-fc61a2fecb96",
+      "type": "INTENT",
+      "text": "I understood that I would engage in quarterly strategy conversations.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "762aebcb-3be0-4fe8-b3d4-34a3540737d5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "da6731d6-904d-4a0c-bf99-c5f5f996fdaa",
+      "type": "INTENT",
+      "text": "In those conversations, I will share insights and offer strategic advice based on my experience.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "762aebcb-3be0-4fe8-b3d4-34a3540737d5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "0767b382-f5e4-4ece-8ed9-97860e09a576",
+      "type": "SUCCESS_DEFINITION",
+      "text": "My input should help to drive sound strategic decisions for the organisation.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "762aebcb-3be0-4fe8-b3d4-34a3540737d5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "3fa777b8-0f89-4b43-8b29-3c7e3887c4f3",
+      "type": "COMMITMENT",
+      "text": "I am ready to facilitate an introduction to the head of SME lending at Equity Bank this month.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "762aebcb-3be0-4fe8-b3d4-34a3540737d5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "16df37c3-a9d2-4ad7-b8cf-f565dd2150b1",
+      "type": "TOLERANCE",
+      "text": "I have never worked with KCB or Co-operative Bank. Therefore, I cannot open doors there.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "762aebcb-3be0-4fe8-b3d4-34a3540737d5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "eae5f282-c761-4d74-892c-bb6d1ec938a4",
+      "type": "TOLERANCE",
+      "text": "My expertise lies with Equity Bank.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "762aebcb-3be0-4fe8-b3d4-34a3540737d5",
+      "sessionNumber": 1
+     },
+     {
+      "id": "6917fd3f-ac2b-4797-894f-398a4c95b81c",
+      "type": "INTENT",
+      "text": "My role would be to provide further advice if needed.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "762aebcb-3be0-4fe8-b3d4-34a3540737d5",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\n\nYou see your role as an advisor in the financial services sector, here to provide strategic guidance. You understood you would join quarterly strategy conversations to share insights from your experience, and provide further advice if needed. You defined success as your input helping to drive sound strategic decisions. You noted that your expertise is with Equity Bank, and that you have never worked with KCB or Co-operative Bank so cannot open doors there.",
+     "whatToCarry": "You are ready to facilitate an introduction to the head of SME lending at Equity Bank this month."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "b37582e5-ac94-4fc2-aeb1-e31c0fc093fe",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "ONBOARDING",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "phaseSpine",
+     "objectives",
+     "dependencies",
+     "checkInGrid",
+     "divergence",
+     "contribution"
+    ],
+    "title": "What the advisor is actually for",
+    "scenario": "NEW_ADVISOR",
+    "kindOfWork": "founder's own check-in",
+    "howItIsGoing": {
+     "latestSummary": "Both people have answered. The two of you have different ideas of what this advisory role is for.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 6,
+       "answeredThisRound": 2,
+       "ofPeople": 2,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T01:56:36.706Z",
+    "participants": [
+     {
+      "id": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+      "name": "Grace Mutiso",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "name": "Peter Kimani",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "phaseSpine": {
+     "startsAt": null,
+     "endsAt": null,
+     "currentSession": 1,
+     "plannedSessions": 6,
+     "sessions": [
+      {
+       "n": 1,
+       "state": "done",
+       "date": "2026-10-02T01:52:14.458Z",
+       "opensOn": null,
+       "openedOn": "2026-10-02T01:50:37.122Z",
+       "says": "Session 1 finished on 2 October."
+      },
+      {
+       "n": 2,
+       "state": "upcoming",
+       "date": null,
+       "opensOn": "2026-11-02T01:52:14.483Z",
+       "openedOn": null,
+       "says": "Session 2 opens on 2 November."
+      }
+     ]
+    },
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "63d4169e-03d6-4e61-828c-071ba2ddec8a",
+      "name": "Grace is aiming to have active pilot programs or signed agreements with at least two of Equity Bank, KCB, and Co-operative Bank.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "The two of you have different ideas of what this advisory role is for.",
+       "atStake": "If this holds, the year could end with the advisory relationship in place but without the introductions to the banks the role was meant to secure.",
+       "evidence": [
+        "Grace Mutiso's record defines success as getting trial projects running or contracts signed with at least two of the named banks.",
+        "Your record defines success as providing input that helps the company make sound strategic decisions."
+       ],
+       "positions": [
+        {
+         "view": "Grace Mutiso described the role as being focused on securing introductions to three specific banks that result in trial projects or formal contracts within a year.",
+         "participantLabel": "Grace Mutiso",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Grace Mutiso"
+        },
+        {
+         "view": "You described the role as providing strategic guidance and insights during quarterly conversations.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      },
+      {
+       "topic": "The two of you disagree on which banks you can make introductions to.",
+       "atStake": "If this continues, the work will lose the options KCB and Co-operative Bank could have provided.",
+       "evidence": [
+        "Grace Mutiso's account names three specific banks as targets for introductions.",
+        "Your account states that there are no existing relationships to draw on at two of those three banks."
+       ],
+       "positions": [
+        {
+         "view": "Grace Mutiso expects introductions to Equity Bank, KCB, and Co-operative Bank.",
+         "participantLabel": "Grace Mutiso",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Grace Mutiso"
+        },
+        {
+         "view": "You have stated that an introduction is only possible at Equity Bank.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "You are an advisor to the company.",
+      "The compensation for the role is 0. 5% equity for a two-year period.",
+      "An introduction to Equity Bank is part of the work."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "If this holds, the year could end with the advisory relationship in place but without the introductions to the banks the role was meant to secure. That is what settles the two of you have different ideas of what this advisory role is for.",
+     "settled": [
+      "You are an advisor to the company.",
+      "The compensation for the role is 0. 5% equity for a two-year period.",
+      "An introduction to Equity Bank is part of the work."
+     ],
+     "stillOpen": [
+      "The two of you have different ideas of what this advisory role is for.",
+      "The two of you disagree on which banks you can make introductions to."
+     ]
+    },
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+       "name": "Grace Mutiso",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+       "name": "Peter Kimani",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "dependencies": [],
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "2",
+      "sub": "People said different things. The two of you have different ideas of what this advisory role is for. 1 more difference is still open.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "1 worry",
+      "sub": "Grace Mutiso said, \"Without them, our growth is limited.\" It is the only worry on record, and nobody is waiting on anybody.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "contribution": [
+     {
+      "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "name": "Peter Kimani",
+      "remit": null,
+      "remitDefined": true,
+      "position": null,
+      "positionLabel": null,
+      "reason": "1 check-in on record. 9 lines taken from what they said, 3 with a name, a number or a date in them. Their work is read against what being on track means for finance, which is the implication of the number owned, uncomfortable truths surfaced early, decisions the numbers do not support challenged. This read of their function is still provisional.",
+      "fn": "FINANCE",
+      "fnLabel": "Finance",
+      "fnConfident": false,
+      "isBlocked": false,
+      "ownVoice": null,
+      "nothingCheckable": false,
+      "confidence": 0.3,
+      "evidenceCount": 3,
+      "shown": false,
+      "basis": "Based on 1 check-in, 3 checkable things named, none of it confirmed by anyone else.",
+      "guard": "Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone."
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+      ],
+      "general": true,
+      "role": null,
+      "whyNoRoleMap": "Your record looks like finance, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+     },
+     "eachPerson": null
+    },
+    "workRecords": [
+     {
+      "section": "Work plan",
+      "holds": "commitments and decisions",
+      "state": "filled",
+      "rows": [
+       {
+        "id": "0fcf32fb-bb85-477d-ac67-bb15d97f3434",
+        "kind": "commitment",
+        "name": "get us introductions to specific banks",
+        "stage": null,
+        "owner": "Grace Mutiso",
+        "ownerParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I expect him to get us introductions to specific banks.",
+        "saidBy": "Grace",
+        "saidByParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "ebcb0167-e11c-4a93-8214-0bca559dd695",
+        "kind": "decision",
+        "name": "Equity Bank, KCB, and Co-operative Bank. Those are the key ones.",
+        "stage": null,
+        "owner": "Grace Mutiso",
+        "ownerParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "Equity Bank, KCB, and Co-operative Bank. Those are the key ones.",
+        "saidBy": "Grace",
+        "saidByParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "a6ac5588-be6b-4c20-88ac-dcffd5f187e9",
+        "kind": "commitment",
+        "name": "have active pilot programs or signed agreements with at least two of those banks",
+        "stage": null,
+        "owner": "Grace Mutiso",
+        "ownerParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "due": null,
+        "fields": {
+         "due": "In twelve months"
+        },
+        "from": "said",
+        "said": "In twelve months, I expect to have active pilot programs or signed agreements with at least two of those banks. That would be a clear win.",
+        "saidBy": "Grace",
+        "saidByParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "687c1c68-8a84-459e-9598-2e35487866a1",
+        "kind": "commitment",
+        "name": "see clear progress towards those agreements",
+        "stage": null,
+        "owner": "Grace Mutiso",
+        "ownerParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "due": null,
+        "fields": {
+         "e.g.": "introductory meetings happening and follow-up discussions underway"
+        },
+        "from": "said",
+        "said": "I would expect to see clear progress towards those agreements, like introductory meetings happening and follow-up discussions underway. It's about movement.",
+        "saidBy": "Grace",
+        "saidByParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "f038e303-e810-4caa-8bfb-c74d84120e3f",
+        "kind": "decision",
+        "name": "He is getting 0.5% for two years",
+        "stage": null,
+        "owner": "Grace Mutiso",
+        "ownerParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "He is getting 0.5% for two years.",
+        "saidBy": "Grace",
+        "saidByParticipantId": "f9f3ece0-0782-4d89-b4cc-e96b89426f14",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "ce899b40-b858-4238-a5d6-95e81e21ee14",
+        "kind": "commitment",
+        "name": "engage in quarterly strategy conversations",
+        "stage": null,
+        "owner": "Peter Kimani",
+        "ownerParticipantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I understood that I would engage in quarterly strategy conversations.",
+        "saidBy": "Peter",
+        "saidByParticipantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "1ce1d02b-dce4-44bb-b406-aece6798dbea",
+        "kind": "commitment",
+        "name": "share insights and offer strategic advice",
+        "stage": null,
+        "owner": "Peter Kimani",
+        "ownerParticipantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "In those conversations, I will share insights and offer strategic advice based on my experience.",
+        "saidBy": "Peter",
+        "saidByParticipantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "4c00b903-32b9-44a0-86ab-c6ee93d0d26f",
+        "kind": "commitment",
+        "name": "facilitate an introduction to the head of SME lending at Equity Bank",
+        "stage": null,
+        "owner": "Peter Kimani",
+        "ownerParticipantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I am ready to facilitate an introduction to the head of SME lending at Equity Bank this month.",
+        "saidBy": "Peter",
+        "saidByParticipantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": "You made a commitment about it, which is in the record.",
+        "nextKnown": "said",
+        "nextSays": "You made a commitment about it, which is in the record."
+       }
+      ]
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "f1d84476-30bc-4141-9ad5-6db4712688ea",
+      "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "who": "You",
+      "says": "In session 1, you said, \"I am ready to facilitate an introduction to the head of SME lending at Equity Bank\". The time you gave for it was \"this month\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "this month",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you made a commitment, which is in the record."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "who": "You",
+      "says": "You have answered 1 session and made 1 commitment. 0 are done, 0 are not done or dropped, and 1 is still open.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you made 1 commitment."
+       }
+      ]
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "e7cee42d-630f-4a66-8fe0-4f58af8a9ddf",
+      "who": "You",
+      "promised": [
+       "In session 1, you said, \"I am ready to facilitate an introduction to the head of SME lending at Equity Bank\". The time you gave for it was \"this month\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     }
+    ],
+    "byArea": {
+     "state": "not-known",
+     "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+    }
+   },
+   "participantSeen": "advisor",
+   "patterns": [],
+   "commitments": [
+    {
+     "text": "I am ready to facilitate an introduction to the head of SME lending at Equity Bank",
+     "whenSaid": "this month",
+     "status": "UNKNOWN",
+     "statedInSession": 1,
+     "saidAgainIn": [],
+     "participant": {
+      "email": "advisor.1790905764406@advisor.test"
+     }
+    }
+   ]
+  }
+ ]
+}

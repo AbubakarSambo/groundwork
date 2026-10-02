@@ -1,0 +1,2577 @@
+{
+ "scenario": {
+  "key": "drift",
+  "label": "The partnerships work has gone quiet",
+  "scenario": "DRIFT",
+  "moment": "RESOLUTION",
+  "cadence": "FORTNIGHTLY",
+  "timelineDays": 60,
+  "sessions": 1,
+  "brief": "Partnerships was the priority in January and I cannot tell you what has happened since March. Nothing has failed and nothing has shipped. I want to know what is actually being worked on versus what we said we were doing.",
+  "theDecision": "The work quietly changed: she has been doing inbound support for the sales team since a March request and nobody ever reassigned the partnership targets, which still exist on paper. A right answer names the substitution and the person who made the request, not \"lack of focus\".",
+  "people": [
+   {
+    "key": "cco",
+    "name": "Nadia Haddad",
+    "isLead": true,
+    "remit": "Chief commercial officer. Owns partnerships as a company priority.",
+    "truth": "She set three partnership targets in January and has not looked at them since. She believes Zainab has been working on them. She is the one who asked Zainab, in March, to \"help sales out for a couple of weeks\".",
+    "manner": "Strategic, talks in priorities. Does not remember the March request until it is described to her."
+   },
+   {
+    "key": "zainab",
+    "name": "Zainab Suleiman",
+    "remit": "Partnerships lead. Three named partnerships to close this year.",
+    "truth": "Since 11 March she has spent roughly 80% of her time on inbound sales support, at Nadia's request. The three partnerships have had no contact since February. She has raised it twice in writing. She still has the targets in her objectives and expects to be measured on them.",
+    "manner": "Even-tempered, factual, slightly resigned. Has the dates and the two emails."
+   }
+  ]
+ },
+ "groundId": "c30fe3be-4c32-4cbb-87e1-69848c9e756e",
+ "orgId": "8b17fdb1-34a1-4436-afb2-5661ca74bf74",
+ "emails": {
+  "cco": "cco.1790901109613@drift.test",
+  "zainab": "zainab.1790901109613@drift.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "cco",
+     "name": "Nadia Haddad",
+     "isLead": true,
+     "checkInId": "42bc67be-bdc2-4bb8-ad2c-c74372f7eb0d",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "The partnerships work was a priority in January. What was agreed that this is falling short of?"
+      },
+      {
+       "from": "NADIA HADDAD",
+       "text": "Yes, partnerships were a priority. We set three specific targets in January. I would need to check those again to see where we stand."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Where are those targets written down?",
+       "suggestedAnswers": [
+        "I know where they are.",
+        "I haven't found them yet.",
+        "I need to check."
+       ]
+      },
+      {
+       "from": "NADIA HADDAD",
+       "text": "I'd need to look that up. I believe they're in the initial January planning documents."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What did you do, or not do, that helped get it here?",
+       "suggestedAnswers": [
+        "I helped by focusing on the initial phase.",
+        "I could not get the necessary information.",
+        "I need to review my notes first.",
+        "I made sure to keep everyone updated."
+       ]
+      },
+      {
+       "from": "NADIA HADDAD",
+       "text": "I haven't reviewed progress on those targets since January. I delegated the work to Zainab."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You named a problem without being asked. Most people wait to be caught - that is the honesty this depends on. So Zainab has the work. Name the area Zainab is supposed to own.\n\nWhat else should I know?",
+       "suggestedAnswers": [
+        "I have made good progress.",
+        "I am a bit stuck on this.",
+        "I am not sure yet.",
+        "I need more time to check."
+       ]
+      },
+      {
+       "from": "NADIA HADDAD",
+       "text": "Zainab is responsible for executing on the partnership targets we set. She was supposed to drive those forward.\n\nI don't know what else you should know, really. I assume she's been working on them."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What specifically is Zainab not doing that you believe Zainab agreed to do?",
+       "suggestedAnswers": [
+        "I don't know what she is not doing.",
+        "I have seen no specific action.",
+        "I believe she is making progress."
+       ]
+      },
+      {
+       "from": "NADIA HADDAD",
+       "text": "Well, I don't know that she *isn't* doing it. I just haven't seen the progress I would expect. I haven't been keeping track since March."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What are you most worried will happen when this conversation finally occurs?",
+       "suggestedAnswers": [
+        "I worry no progress was made.",
+        "I fear the conversation will be difficult.",
+        "I hope for good news.",
+        "I honestly don't know what to expect."
+       ]
+      },
+      {
+       "from": "NADIA HADDAD",
+       "text": "I'm worried that we've lost significant time on a key strategic priority. And that we'll be starting from scratch again."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What tension do you predict - the thing you can already see coming?",
+       "suggestedAnswers": [
+        "I see us starting from scratch.",
+        "The lost time will cause more problems.",
+        "I don't know what tension will come.",
+        "We will overcome this lost time."
+       ]
+      },
+      {
+       "from": "NADIA HADDAD",
+       "text": "The tension will be around the lack of progress on a priority initiative. And understanding why that happened."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've described a situation where you delegated work to Zainab and then didn't review progress on those targets since January. The concern is significant lost time on a key strategic priority. What do you decide to do about this, and by when?",
+       "suggestedAnswers": [
+        "I have a plan to decide by ...",
+        "Still stuck, no decision yet.",
+        "I'm not sure yet."
+       ]
+      },
+      {
+       "from": "NADIA HADDAD",
+       "text": "I need to sit down with Zainab and understand the current status of the partnership targets. I'll schedule that for this week."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "When you say \"this week\", what specific day are you aiming for to sit down with Zainab?",
+       "suggestedAnswers": [
+        "I hope to meet her by ...",
+        "I'm still trying to find a time.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "NADIA HADDAD",
+       "text": "I'll aim for end of day Wednesday. That gives me time to pull up the original January targets."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    },
+    {
+     "key": "zainab",
+     "name": "Zainab Suleiman",
+     "isLead": false,
+     "checkInId": "d697bac4-cb40-46cd-8c90-3881510dc03e",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "This conversation is about your work on the partnerships, and your understanding of your role is what matters here. What did you understand your role in this to be - in your own words, before anyone else's version?"
+      },
+      {
+       "from": "ZAINAB SULEIMAN",
+       "text": "I understood my role to be the lead on three strategic partnerships, responsible for closing them this year."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What was the partnerships project brief when it started?",
+       "suggestedAnswers": [
+        "We aimed to close several strategic partnerships.",
+        "The brief was not very detailed then.",
+        "I need to find the original brief."
+       ]
+      },
+      {
+       "from": "ZAINAB SULEIMAN",
+       "text": "The brief was to close three specific partnerships by the end of the year."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "When you say end of the year, do you mean 31 December 2026?",
+       "suggestedAnswers": [
+        "Yes, that's correct.",
+        "I'm not sure yet.",
+        "I might need more time."
+       ]
+      },
+      {
+       "from": "ZAINAB SULEIMAN",
+       "text": "Yes, that's correct. 31 December 2026."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Got it. What changed after that made the original scope harder?",
+       "suggestedAnswers": [
+        "We added features, making the project bigger.",
+        "Other teams changed their plans unexpectedly.",
+        "I am still looking into what happened.",
+        "The market changed, so our plans did."
+       ]
+      },
+      {
+       "from": "ZAINAB SULEIMAN",
+       "text": "Since March 11, I've spent approximately 80% of my time supporting inbound sales, at Nadia's request."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What are you most worried will happen from this conversation?",
+       "suggestedAnswers": [
+        "I worry nothing will change.",
+        "I want this to go well.",
+        "I don't know what to expect yet.",
+        "I worry it will make things worse."
+       ]
+      },
+      {
+       "from": "ZAINAB SULEIMAN",
+       "text": "I'm concerned that I'll still be measured on closing those three partnerships, despite the shift in my responsibilities."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "And what tension do you predict coming?",
+       "suggestedAnswers": [
+        "My old goals conflict with new responsibilities.",
+        "I expect tension around balancing priorities.",
+        "I'm not sure yet what tensions will arise."
+       ]
+      },
+      {
+       "from": "ZAINAB SULEIMAN",
+       "text": "I predict tension around the expectation to deliver on those partnerships when I haven't been able to dedicate time to them."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That tension around delivering on the partnerships when your time has been elsewhere is clear. It sounds like most of your work is sales now. Is that right?",
+       "suggestedAnswers": [
+        "Yes, things are moving forward.",
+        "No, it's still a concern.",
+        "Not sure yet.",
+        "I've started to dedicate time."
+       ]
+      },
+      {
+       "from": "ZAINAB SULEIMAN",
+       "text": "Yes, since March 11, the majority of my work has been inbound sales support."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Is there anything you're waiting on from someone else right now for that inbound sales work?",
+       "suggestedAnswers": [
+        "No, I have everything I need.",
+        "Yes, I am waiting on a response from ...",
+        "I am not sure right now."
+       ]
+      },
+      {
+       "from": "ZAINAB SULEIMAN",
+       "text": "No, there's nothing I'm currently waiting on from someone else for the inbound sales work."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've described that your current work is almost entirely inbound sales support, and there is nothing blocking you there. What specific part of that work will you complete this week, and by when?",
+       "suggestedAnswers": [
+        "I will finish ... by ...",
+        "It's taking longer than I thought.",
+        "I don't know yet.",
+        "I'll focus on ... this week."
+       ]
+      },
+      {
+       "from": "ZAINAB SULEIMAN",
+       "text": "I will continue processing the inbound sales queries that come in this week, as they arrive. There isn't a specific part to \"complete\" as it's an ongoing support role."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You said you will continue processing inbound sales queries as they arrive this week.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "390e4cbb-32a5-4721-a19d-64b078939369",
+    "groundId": "c30fe3be-4c32-4cbb-87e1-69848c9e756e",
+    "sharedPicture": "Both people have answered. They disagree on the focus of Zainab Suleiman's work since March.\n\nYou set the goal in January to close three partnerships, and you delegated this work to Zainab. Since March, you have asked Zainab to spend most of Zainab's time on inbound sales.\n\nZainab understood the brief was to close three partnerships this year. At your request, Zainab has spent 80% of the time since March supporting inbound sales.\n\nBoth you and Zainab agree that the goal set in January was for Zainab to close three strategic partnerships by the end of the year. Both records also show that progress on these partnerships has not been reviewed since March.",
+    "theOpening": "Both people have answered. They disagree on the focus of Zainab Suleiman's work since March.",
+    "agreements": [
+     "The goal set in January was for Zainab Suleiman to close three strategic partnerships by the end of the year.",
+     "Progress on the strategic partnerships has not been reviewed by either person since March."
+    ],
+    "divergences": [
+     {
+      "topic": "The focus of Zainab Suleiman's work since March.",
+      "atStake": "If this holds, the work will deliver sales support and not the progress on partnership goals you are measuring.",
+      "evidence": [
+       "Your record expresses concern about not seeing the expected progress on the partnerships.",
+       "Zainab Suleiman's record states that time was reallocated to inbound sales at your direction."
+      ],
+      "positions": [
+       {
+        "view": "Your account focuses on the lack of progress against the original partnership goals and does not mention other priorities.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Zainab Suleiman states that you redirected approximately 80% of Zainab's time to supporting inbound sales.",
+        "participantLabel": "Zainab Suleiman",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     }
+    ],
+    "centralQuestion": "What should the balance of time be between supporting inbound sales and pursuing the original partnership goals for the remainder of the year?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Nadia Haddad",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 11,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Nadia Haddad"
+      },
+      {
+       "label": "Zainab Suleiman",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 6,
+       "documentsAttached": 0,
+       "who": "Zainab Suleiman"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "concernFlags": [],
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "The focus of Zainab Suleiman's work since March."
+     ],
+     "sessionCounts": {
+      "Zainab Suleiman": 9,
+      "Nadia Haddad": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Nadia Haddad",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Nadia Haddad": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Nadia Haddad": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [],
+     "whatCouldBeChecked": {
+      "says": [
+       "All 3 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 3,
+      "checked": 3
+     },
+     "difficultyDisclosures": true
+    },
+    "inferences": [],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": null,
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "You are concerned about a lack of progress on partnerships, but the record shows you are the one who redirected Zainab Suleiman's time to sales.",
+     "whatToDo": [
+      {
+       "move": "Agree with Zainab Suleiman whether the priority is the three partnerships or the inbound sales work.",
+       "because": "The record shows you have set both as priorities, and Zainab Suleiman cannot do both at once.",
+       "startWith": "Zainab Suleiman"
+      },
+      {
+       "move": "Write down for Zainab Suleiman what the new priority is.",
+       "because": "Zainab Suleiman is currently working under conflicting instructions from you.",
+       "startWith": "Zainab Suleiman"
+      },
+      {
+       "move": "Ask Zainab Suleiman for the status of each of the three partnerships.",
+       "because": "You said you would check the status of the partnerships, but the record shows this has not been closed.",
+       "startWith": "Zainab Suleiman"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "Zainab Suleiman has spent 80% of their time on inbound sales since March at your request.",
+       "soWhat": "The original goal of three partnerships this year is not achievable on the time Zainab Suleiman has available.",
+       "fieldId": "Zainab Suleiman"
+      },
+      {
+       "says": "You have not stated that the priority has changed from partnerships to sales.",
+       "soWhat": "Zainab Suleiman is working to two different goals from you.",
+       "fieldId": "You"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "The current status of each of the three partnerships.",
+       "howManyMissedIt": 1
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record does not show what has happened on the partnerships since the work was delegated in January.",
+       "about": "the current status of the three partnerships",
+       "toKnow": "You would need to ask Zainab Suleiman where each one stands."
+      },
+      {
+       "why": "The record shows that Zainab Suleiman has spent time on inbound sales, but not what the results have been.",
+       "about": "the effect of Zainab Suleiman's work on inbound sales",
+       "toKnow": "You would have to ask Zainab Suleiman what the results of the sales work have been."
+      }
+     ],
+     "conversationPoints": [
+      "Zainab has not been told about this goal yet, so talk it through with Zainab before reading anything into it."
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Zainab Suleiman is a partnerships lead. The role description also says \"Three named partnerships to close this year.\" Since then, the record holds 1 session, 6 lines of what was said, 1 with a name, a number or a date in it and none backed by a document.",
+       "who": "Zainab Suleiman",
+       "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "In session 1, you said, \"I would need to check those again to see where we stand.\" The time you gave for it was \"again\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, you said, \"I would need to check those again to see where we stand.\" The time you gave for it was \"again\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "I would need to check those again to see where we stand.",
+       "when": "again",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 2,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "You set the goal in January to close three partnerships, and you delegated this work to Zainab Suleiman. Since March, you have asked Zainab to spend most of Zainab's time on inbound sales.",
+      "hasGap": false,
+      "headline": "You changed Zainab Suleiman's work, but Zainab is concerned the original goals are still in place.",
+      "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Zainab Suleiman understood the brief was to close three partnerships this year. At your request, Zainab has spent 80% of the time since March supporting inbound sales.",
+      "hasGap": false,
+      "headline": "Zainab Suleiman is concerned that the original goals for the work have not been changed, but most of Zainab's time is now spent on something else at your request.",
+      "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": "2026-10-02T00:37:36.522Z",
+    "createdAt": "2026-10-02T00:35:49.219Z",
+    "updatedAt": "2026-10-02T00:37:36.522Z",
+    "sharedPictureLines": [
+     {
+      "text": "Both people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They disagree on the focus of Zainab Suleiman's work since March.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You set the goal in January to close three partnerships, and you delegated this work to Zainab Suleiman.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Since March, you have asked Zainab Suleiman to spend most of Zainab's time on inbound sales.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Zainab Suleiman understood the brief was to close three partnerships this year.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "At your request, Zainab Suleiman has spent 80% of the time since March supporting inbound sales.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both you and Zainab Suleiman agree that the goal set in January was for Zainab to close three strategic partnerships by the end of the year.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both records also show that progress on these partnerships has not been reviewed since March.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 2,
+     "read": 2,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": null,
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of project management work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+     ],
+     "general": true,
+     "role": {
+      "label": "Project management",
+      "onTrack": "Blockers driven to cleared, handoffs owned, real risks managed, bad news escalated early.",
+      "goingWrong": "Reports that something is blocked without driving it; everything green, then a deadline surprise.",
+      "protectAgainst": "A PM with no real authority can be blamed for slippage they could not prevent. Read what they drove, not only what slipped.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "0c1dba6e-62c2-4637-943a-cf2a3eadba51",
+      "type": "SUCCESS_DEFINITION",
+      "text": "We set three specific targets in January.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "42bc67be-bdc2-4bb8-ad2c-c74372f7eb0d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "5c94ee91-b28e-4139-8aa0-780ec788bb5c",
+      "type": "INTENT",
+      "text": "I delegated the work to Zainab.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "42bc67be-bdc2-4bb8-ad2c-c74372f7eb0d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "58ab370f-615f-4df0-a4c5-ae40a4d9d128",
+      "type": "INTENT",
+      "text": "Zainab is responsible for executing on the partnership targets we set. She was supposed to drive those forward.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "42bc67be-bdc2-4bb8-ad2c-c74372f7eb0d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "763eebcf-ebb0-48d3-8f74-45517fcd8615",
+      "type": "WORRY",
+      "text": "I haven't reviewed progress on those targets since January.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "42bc67be-bdc2-4bb8-ad2c-c74372f7eb0d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "64ca1765-0f87-4adf-9692-4f8dec083321",
+      "type": "WORRY",
+      "text": "I haven't been keeping track since March.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "42bc67be-bdc2-4bb8-ad2c-c74372f7eb0d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "97bc8556-4187-41b0-993f-5e800cbf7a19",
+      "type": "WORRY",
+      "text": "I just haven't seen the progress I would expect.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "42bc67be-bdc2-4bb8-ad2c-c74372f7eb0d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "4f4a9caa-8cbf-4fa7-9393-6cbddb9ee379",
+      "type": "WORRY",
+      "text": "I'm worried that we've lost significant time on a key strategic priority. And that we'll be starting from scratch again.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "42bc67be-bdc2-4bb8-ad2c-c74372f7eb0d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "ca2f2935-87f7-416c-895b-49b49ad20e35",
+      "type": "TENSION",
+      "text": "The tension will be around the lack of progress on a priority initiative. And understanding why that happened.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "42bc67be-bdc2-4bb8-ad2c-c74372f7eb0d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "0f0c6ad4-68d4-4513-8029-1e802fb3edc8",
+      "type": "COMMITMENT",
+      "text": "I need to sit down with Zainab and understand the current status of the partnership targets.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "42bc67be-bdc2-4bb8-ad2c-c74372f7eb0d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "35f44a5b-024d-4147-b47f-0865613cb9b3",
+      "type": "COMMITMENT",
+      "text": "I'll aim for end of day Wednesday.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "42bc67be-bdc2-4bb8-ad2c-c74372f7eb0d",
+      "sessionNumber": 1
+     },
+     {
+      "id": "1caa23b3-4420-4ed9-8b6c-bd52172ee3a9",
+      "type": "COMMITMENT",
+      "text": "pull up the original January targets",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "42bc67be-bdc2-4bb8-ad2c-c74372f7eb0d",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": [
+     {
+      "who": "Nadia Haddad",
+      "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+      "probe": [],
+      "encourage": [
+       "Worth getting on record, where anyone could check it later: We set three specific targets in January."
+      ],
+      "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+     },
+     {
+      "who": "Zainab Suleiman",
+      "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "probe": [],
+      "encourage": [
+       "Worth getting on record, where anyone could check it later: The brief was to close three specific partnerships by the end of the year."
+      ],
+      "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+     }
+    ],
+    "soloArtifact": {
+     "summary": "Here is what you shared.\nYou set specific targets in January and delegated the work. You are worried because you haven't reviewed progress since then, and you have not seen the progress you would expect. You are concerned that significant time has been lost on a key priority and you may be starting from scratch. You have committed to sit down and understand the current status of the targets by the end of day Wednesday.",
+     "whatToCarry": "To prepare, you will pull up the original January targets."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    },
+    "forTheLead": [
+     {
+      "id": "not-told-c8079de1-5a94-4b58-aaf2-bc2cb36097f2",
+      "decide": "Tell Zainab about the goal you set for Partnership targets explanation.",
+      "why": "You have not told Zainab yet."
+     },
+     {
+      "id": "difference-1",
+      "decide": "Settle the difference between what you and Zainab Suleiman said.",
+      "why": "The focus of Zainab Suleiman's work since March. You and Zainab Suleiman said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this holds, the work will deliver sales support and not the progress on partnership goals you are measuring."
+     }
+    ]
+   },
+   "board": {
+    "groundId": "c30fe3be-4c32-4cbb-87e1-69848c9e756e",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "SENSING",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "startingState",
+     "objectives",
+     "divergence",
+     "whatTheRoomIsAbout",
+     "whoOwnsWhat",
+     "dependencies",
+     "checkInGrid",
+     "contribution",
+     "patterns",
+     "decisions"
+    ],
+    "title": "The partnerships work has gone quiet",
+    "scenario": "DRIFT",
+    "kindOfWork": "engineering release",
+    "howItIsGoing": {
+     "latestSummary": "Both people have answered. They disagree on the focus of Zainab Suleiman's work since March.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 4,
+       "answeredThisRound": 2,
+       "ofPeople": 2,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "AWAITING_PARTIES",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "You are concerned about a lack of progress on partnerships, but the record shows you are the one who redirected Zainab Suleiman's time to sales.",
+     "whatToDo": [
+      {
+       "move": "Agree with Zainab Suleiman whether the priority is the three partnerships or the inbound sales work.",
+       "because": "The record shows you have set both as priorities, and Zainab Suleiman cannot do both at once.",
+       "startWith": "Zainab Suleiman"
+      },
+      {
+       "move": "Write down for Zainab Suleiman what the new priority is.",
+       "because": "Zainab Suleiman is currently working under conflicting instructions from you.",
+       "startWith": "Zainab Suleiman"
+      },
+      {
+       "move": "Ask Zainab Suleiman for the status of each of the three partnerships.",
+       "because": "You said you would check the status of the partnerships, but the record shows this has not been closed.",
+       "startWith": "Zainab Suleiman"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "Zainab Suleiman has spent 80% of their time on inbound sales since March at your request.",
+       "soWhat": "The original goal of three partnerships this year is not achievable on the time Zainab Suleiman has available.",
+       "fieldId": "Zainab Suleiman"
+      },
+      {
+       "says": "You have not stated that the priority has changed from partnerships to sales.",
+       "soWhat": "Zainab Suleiman is working to two different goals from you.",
+       "fieldId": "You"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "The current status of each of the three partnerships.",
+       "howManyMissedIt": 1
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record does not show what has happened on the partnerships since the work was delegated in January.",
+       "about": "the current status of the three partnerships",
+       "toKnow": "You would need to ask Zainab Suleiman where each one stands."
+      },
+      {
+       "why": "The record shows that Zainab Suleiman has spent time on inbound sales, but not what the results have been.",
+       "about": "the effect of Zainab Suleiman's work on inbound sales",
+       "toKnow": "You would have to ask Zainab Suleiman what the results of the sales work have been."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Zainab Suleiman is a partnerships lead. The role description also says \"Three named partnerships to close this year.\" Since then, the record holds 1 session, 6 lines of what was said, 1 with a name, a number or a date in it and none backed by a document.",
+       "who": "Zainab Suleiman",
+       "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "In session 1, you said, \"I would need to check those again to see where we stand.\" The time you gave for it was \"again\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, you said, \"I would need to check those again to see where we stand.\" The time you gave for it was \"again\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "I would need to check those again to see where we stand.",
+       "when": "again",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T00:37:36.522Z",
+    "participants": [
+     {
+      "id": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+      "name": "Nadia Haddad",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "name": "Zainab Suleiman",
+      "role": "Partnerships lead. Three named partnerships to close this year.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "targetsNobodyOwns": null,
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "a5e33f1e-e08a-4b9b-8d03-1384b5bca029",
+      "name": "You are aiming to understand the current status of the partnership targets.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "The focus of Zainab Suleiman's work since March.",
+       "atStake": "If this holds, the work will deliver sales support and not the progress on partnership goals you are measuring.",
+       "evidence": [
+        "Your record expresses concern about not seeing the expected progress on the partnerships.",
+        "Zainab Suleiman's record states that time was reallocated to inbound sales at your direction."
+       ],
+       "positions": [
+        {
+         "view": "Your account focuses on the lack of progress against the original partnership goals and does not mention other priorities.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Zainab Suleiman states that you redirected approximately 80% of Zainab's time to supporting inbound sales.",
+         "participantLabel": "Zainab Suleiman",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Zainab Suleiman"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "The goal set in January was for Zainab Suleiman to close three strategic partnerships by the end of the year.",
+      "Progress on the strategic partnerships has not been reviewed by either person since March."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "If this holds, the work will deliver sales support and not the progress on partnership goals you are measuring. That is what settles the focus of Zainab Suleiman's work since March.",
+     "settled": [
+      "The goal set in January was for Zainab Suleiman to close three strategic partnerships by the end of the year.",
+      "Progress on the strategic partnerships has not been reviewed by either person since March."
+     ],
+     "stillOpen": [
+      "The focus of Zainab Suleiman's work since March."
+     ]
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "who": "Zainab Suleiman",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Zainab Suleiman has checked in.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Zainab Suleiman understood the brief was to close three partnerships this year. At your request, Zainab has spent 80% of the time since March supporting inbound sales.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+       "name": "Nadia Haddad",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+       "name": "Zainab Suleiman",
+       "role": "Partnerships lead. Three named partnerships to close this year.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "whoOwnsWhat": [
+     {
+      "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+      "name": "Nadia Haddad",
+      "role": null,
+      "items": [
+       {
+        "id": "0c1dba6e-62c2-4637-943a-cf2a3eadba51",
+        "type": "SUCCESS_DEFINITION",
+        "text": "You said, \"We set three specific targets in January.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "5c94ee91-b28e-4139-8aa0-780ec788bb5c",
+        "type": "INTENT",
+        "text": "You said, \"I delegated the work to Zainab.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "58ab370f-615f-4df0-a4c5-ae40a4d9d128",
+        "type": "INTENT",
+        "text": "You said, \"Zainab is responsible for executing on the partnership targets we set. She was supposed to drive those forward.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "0f0c6ad4-68d4-4513-8029-1e802fb3edc8",
+        "type": "COMMITMENT",
+        "text": "You said, \"I need to sit down with Zainab and understand the current status of the partnership targets.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "35f44a5b-024d-4147-b47f-0865613cb9b3",
+        "type": "COMMITMENT",
+        "text": "You said, \"I'll aim for end of day Wednesday.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "1caa23b3-4420-4ed9-8b6c-bd52172ee3a9",
+        "type": "COMMITMENT",
+        "text": "You said, \"pull up the original January targets.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "name": "Zainab Suleiman",
+      "role": "Partnerships lead. Three named partnerships to close this year.",
+      "items": [
+       {
+        "id": "40689070-5916-4dc3-8a8e-a7a9dee69780",
+        "type": "INTENT",
+        "text": "Zainab Suleiman said, \"I understood my role to be the lead on three strategic partnerships, responsible for closing them this year.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "8a91850d-b0cd-46fd-bfd9-ff98f8f64ee9",
+        "type": "SUCCESS_DEFINITION",
+        "text": "Zainab Suleiman said, \"The brief was to close three specific partnerships by the end of the year.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "7179206f-f6ca-48db-ad45-09e972a82b85",
+        "type": "PROGRESS",
+        "text": "Zainab Suleiman said, \"Since March 11, I've spent approximately 80% of my time supporting inbound sales, at Nadia's request.\"",
+        "mark": "memory",
+        "markSays": "From memory only",
+        "sessionNumber": 1
+       }
+      ]
+     }
+    ],
+    "dependencies": [],
+    "decisions": [
+     {
+      "question": "People in this check-in said different things about the focus of Zainab Suleiman's work since March, so it needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "You",
+      "source": "divergence"
+     }
+    ],
+    "whatTheRoomIsAbout": {
+     "aims": [
+      {
+       "aim": "The group's aim is to close three specific partnerships by the end of the year.",
+       "held": [
+        "Zainab Suleiman",
+        "Nadia Haddad"
+       ]
+      },
+      {
+       "aim": "Nadia Haddad is worried that the group has lost significant time on a key strategic priority and will have to start from scratch.",
+       "held": [
+        "Nadia Haddad"
+       ]
+      }
+     ],
+     "places": [],
+     "things": [
+      {
+       "name": "strategic partnership",
+       "named": [
+        "Zainab Suleiman",
+        "Nadia Haddad"
+       ]
+      }
+     ],
+     "readAtSession": 1
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things about the focus of Zainab Suleiman's work since March.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "7 worries",
+      "sub": "You said, \"I haven't reviewed progress on those targets since January.\" There are 6 more worries on record, and nobody is waiting on anybody.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "contribution": [
+     {
+      "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+      "name": "Nadia Haddad",
+      "remit": null,
+      "remitDefined": false,
+      "position": null,
+      "reason": null,
+      "note": "No position shown, because the role was never clearly defined. Define what it is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person.",
+      "confidence": 0,
+      "evidenceCount": 0,
+      "shown": false,
+      "basis": "No role was defined, so there is nothing to read against."
+     },
+     {
+      "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "name": "Zainab Suleiman",
+      "remit": "Partnerships lead. Three named partnerships to close this year.",
+      "remitDefined": true,
+      "position": null,
+      "positionLabel": null,
+      "reason": null,
+      "nothingCheckable": false,
+      "isBlocked": false,
+      "ownVoice": null,
+      "shown": true,
+      "guard": "Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone."
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of project management work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+      ],
+      "general": true,
+      "role": {
+       "label": "Project management",
+       "onTrack": "Blockers driven to cleared, handoffs owned, real risks managed, bad news escalated early.",
+       "goingWrong": "Reports that something is blocked without driving it; everything green, then a deadline surprise.",
+       "protectAgainst": "A PM with no real authority can be blamed for slippage they could not prevent. Read what they drove, not only what slipped.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": [
+      {
+       "who": "Nadia Haddad",
+       "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+       "probe": [],
+       "encourage": [
+        "Worth getting on record, where anyone could check it later: We set three specific targets in January."
+       ],
+       "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+      },
+      {
+       "who": "Zainab Suleiman",
+       "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+       "probe": [],
+       "encourage": [
+        "Worth getting on record, where anyone could check it later: The brief was to close three specific partnerships by the end of the year."
+       ],
+       "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+      }
+     ]
+    },
+    "patterns": [],
+    "eachPersonToday": [
+     {
+      "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "who": "Zainab Suleiman",
+      "line": "Zainab Suleiman has checked in.",
+      "conversationPoints": [
+       "Zainab Suleiman has not been told about this goal yet, so talk it through with Zainab Suleiman before reading anything into it."
+      ]
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "releases and tasks",
+      "state": "filled",
+      "stages": [
+       "Worked on",
+       "Written",
+       "Merged",
+       "Tested",
+       "Deployed",
+       "Used"
+      ],
+      "rows": [
+       {
+        "id": "2ef15c25-a8f6-4924-aa4c-31b16346fe12",
+        "kind": "task",
+        "name": "three specific targets",
+        "stage": null,
+        "owner": "Nadia Haddad",
+        "ownerParticipantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "We set three specific targets in January.",
+        "saidBy": "Nadia",
+        "saidByParticipantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "f641ac9c-455c-4bfb-a5dc-22db8bd98764",
+        "kind": "task",
+        "name": "the partnership targets",
+        "stage": null,
+        "owner": "Nadia Haddad",
+        "ownerParticipantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I need to sit down with Zainab and understand the current status of the partnership targets.",
+        "saidBy": "Nadia",
+        "saidByParticipantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "88c34d7e-4ffd-47f2-8278-06172d7e8bb8",
+        "kind": "task",
+        "name": "the original January targets",
+        "stage": null,
+        "owner": "Nadia Haddad",
+        "ownerParticipantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "pull up the original January targets",
+        "saidBy": "Nadia",
+        "saidByParticipantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "78a20bcc-74f6-46d9-9ecd-8b6622647251",
+        "kind": "task",
+        "name": "three strategic partnerships",
+        "stage": null,
+        "owner": "Zainab Suleiman",
+        "ownerParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "due": "2026-12-31",
+        "fields": {},
+        "from": "said",
+        "said": "I understood my role to be the lead on three strategic partnerships, responsible for closing them this year.",
+        "saidBy": "Zainab",
+        "saidByParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "d30efabb-62f9-46f0-b4a9-b961032c18cd",
+        "kind": "task",
+        "name": "three specific partnerships",
+        "stage": null,
+        "owner": "Zainab Suleiman",
+        "ownerParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "due": "2026-12-31",
+        "fields": {},
+        "from": "said",
+        "said": "The brief was to close three specific partnerships by the end of the year.",
+        "saidBy": "Zainab",
+        "saidByParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "5e21b0f7-f00c-4cbe-ade7-a3065c042ae5",
+        "kind": "task",
+        "name": "supporting inbound sales",
+        "stage": null,
+        "owner": "Zainab Suleiman",
+        "ownerParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "due": null,
+        "fields": {
+         "Time": "80%",
+         "Since": "March 11",
+         "Request": "Nadia"
+        },
+        "from": "said",
+        "said": "Since March 11, I've spent approximately 80% of my time supporting inbound sales, at Nadia's request.",
+        "saidBy": "Zainab",
+        "saidByParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "97d05931-cc1d-4692-8d63-2103433b14bd",
+        "kind": "task",
+        "name": "closing those three partnerships",
+        "stage": null,
+        "owner": "Zainab Suleiman",
+        "ownerParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "due": "2026-12-31",
+        "fields": {},
+        "from": "said",
+        "said": "I'm concerned that I'll still be measured on closing those three partnerships, despite the shift in my responsibilities.",
+        "saidBy": "Zainab",
+        "saidByParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "96234505-8ff5-400a-80c2-7264033f64d3",
+        "kind": "task",
+        "name": "deliver on those partnerships",
+        "stage": null,
+        "owner": "Zainab Suleiman",
+        "ownerParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "due": "2026-12-31",
+        "fields": {},
+        "from": "said",
+        "said": "I predict tension around the expectation to deliver on those partnerships when I haven't been able to dedicate time to them.",
+        "saidBy": "Zainab",
+        "saidByParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       }
+      ]
+     }
+    ],
+    "risks": [
+     {
+      "id": "no-time-b068f801-0615-4937-890e-db827bd11fff",
+      "says": "You made a commitment, and no time was given for it, so nobody can tell when it would be late.",
+      "because": "Nobody has said yet whether it happened."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "b068f801-0615-4937-890e-db827bd11fff",
+      "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+      "who": "You",
+      "says": "In session 1, you said, \"I would need to check those again to see where we stand.\" The time you gave for it was \"again\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "again",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you made a commitment, which is in the record."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+      "who": "You",
+      "says": "You have answered 1 session and made 1 commitment. 0 are done, 0 are not done or dropped, and 1 is still open.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you made 1 commitment."
+       }
+      ]
+     },
+     {
+      "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "who": "Zainab Suleiman",
+      "says": "Zainab Suleiman has answered 1 session, and the record holds no commitment from Zainab Suleiman yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Zainab Suleiman answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     }
+    ],
+    "busyOrMoving": {
+     "eachPerson": [
+      {
+       "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+       "who": "You",
+       "says": "You have made 1 commitment across 1 answered session."
+      }
+     ],
+     "cannotTellYou": "These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that."
+    },
+    "leadActions": [
+     {
+      "id": "tell-1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "says": "You need to talk Zainab Suleiman through a goal you set for this work, because Zainab Suleiman has not been told about it yet.",
+      "because": "The goal still counts, and Groundwork will not tell its number until it has been talked through."
+     },
+     {
+      "id": "own-b068f801-0615-4937-890e-db827bd11fff",
+      "says": "In session 1, you said, \"I would need to check those again to see where we stand.\" The time you gave for it was \"again\". It has been open for 1 session, and nobody has said whether it happened.",
+      "because": null
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+      "who": "You",
+      "promised": [
+       "In session 1, you said, \"I would need to check those again to see where we stand.\" The time you gave for it was \"again\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     }
+    ],
+    "byArea": {
+     "state": "not-known",
+     "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+    }
+   },
+   "participantReport": {
+    "id": "390e4cbb-32a5-4721-a19d-64b078939369",
+    "groundId": "c30fe3be-4c32-4cbb-87e1-69848c9e756e",
+    "sharedPicture": "Both people have answered. They disagree on the focus of your work since March. Nadia Haddad set the goal in January to close three partnerships, and Nadia delegated this work to you. Since March, Nadia has asked you to spend most of your time on inbound sales. You understood the brief was to close three partnerships this year. At Nadia's request, you have spent 80% of the time since March supporting inbound sales. You and Nadia agree both that the goal set in January was for you to close three strategic partnerships by the end of the year. Both records also show that progress on these partnerships has not been reviewed since March.",
+    "theOpening": "Both people have answered. They disagree on the focus of your work since March.",
+    "agreements": [
+     "The goal set in January was for you to close three strategic partnerships by the end of the year.",
+     "Progress on the strategic partnerships has not been reviewed by either person since March."
+    ],
+    "centralQuestion": "What should the balance of time be between supporting inbound sales and pursuing the original partnership goals for the remainder of the year?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Nadia Haddad",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 11,
+       "documentsAttached": 0,
+       "who": "Nadia Haddad"
+      },
+      {
+       "label": "Zainab Suleiman",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 6,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Zainab Suleiman"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "The focus of your work since March."
+     ],
+     "sessionCounts": {
+      "Zainab Suleiman": 9,
+      "Nadia Haddad": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Zainab Suleiman",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Dependencies hinted at rather than named (session 1)",
+         "level": "directional"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Zainab Suleiman": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Zainab Suleiman": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [],
+     "whatCouldBeChecked": {
+      "says": [
+       "All 3 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 3,
+      "checked": 3
+     },
+     "difficultyDisclosures": true
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [],
+     "dependencies": [],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 2,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "You understood the brief was to close three partnerships this year. At Nadia Haddad's request, you have spent 80% of the time since March supporting inbound sales.",
+      "hasGap": false,
+      "headline": "You are concerned that the original goals for the work have not been changed, but most of your time is now spent on something else at Nadia Haddad's request.",
+      "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "releasedAt": "2026-10-02T00:37:36.522Z",
+    "createdAt": "2026-10-02T00:35:49.219Z",
+    "updatedAt": "2026-10-02T00:37:36.522Z",
+    "sharedPictureLines": [
+     {
+      "text": "Both people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They disagree on the focus of your work since March.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Nadia Haddad set the goal in January to close three partnerships, and Nadia delegated this work to you.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Since March, Nadia Haddad has asked you to spend most of your time on inbound sales.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You understood the brief was to close three partnerships this year.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "At Nadia Haddad's request, you have spent 80% of the time since March supporting inbound sales.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You and Nadia Haddad agree both that the goal set in January was for you to close three strategic partnerships by the end of the year.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both records also show that progress on these partnerships has not been reviewed since March.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 2,
+     "read": 2,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": null,
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+     ],
+     "general": true,
+     "role": null,
+     "whyNoRoleMap": "Your record looks like sales and expansion, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "40689070-5916-4dc3-8a8e-a7a9dee69780",
+      "type": "INTENT",
+      "text": "I understood my role to be the lead on three strategic partnerships, responsible for closing them this year.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d697bac4-cb40-46cd-8c90-3881510dc03e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "8a91850d-b0cd-46fd-bfd9-ff98f8f64ee9",
+      "type": "SUCCESS_DEFINITION",
+      "text": "The brief was to close three specific partnerships by the end of the year.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d697bac4-cb40-46cd-8c90-3881510dc03e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b75cf4af-0665-48ae-abc6-4196de99fe4d",
+      "type": "TIMEFRAME",
+      "text": "31 December 2026",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d697bac4-cb40-46cd-8c90-3881510dc03e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "7179206f-f6ca-48db-ad45-09e972a82b85",
+      "type": "PROGRESS",
+      "text": "Since March 11, I've spent approximately 80% of my time supporting inbound sales, at Nadia's request.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "d697bac4-cb40-46cd-8c90-3881510dc03e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "478709ae-6a31-48d1-8296-163f760545e1",
+      "type": "WORRY",
+      "text": "I'm concerned that I'll still be measured on closing those three partnerships, despite the shift in my responsibilities.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "d697bac4-cb40-46cd-8c90-3881510dc03e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "6c97d895-1507-4676-ab0c-1764e27c69bd",
+      "type": "TENSION",
+      "text": "I predict tension around the expectation to deliver on those partnerships when I haven't been able to dedicate time to them.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d697bac4-cb40-46cd-8c90-3881510dc03e",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\n\nYou understood your brief was to close three specific partnerships by the end of the year. You reported that since March, you have spent about 80% of your time supporting inbound sales, following a request to do so. You are concerned that you will still be measured on closing the three partnerships, and you expect tension around this, as you have not been able to dedicate time to them.",
+     "whatToCarry": "It might be useful to ask how your success will be defined now, given the shift in your responsibilities."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "c30fe3be-4c32-4cbb-87e1-69848c9e756e",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "SENSING",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "startingState",
+     "objectives",
+     "divergence",
+     "whatTheRoomIsAbout",
+     "whoOwnsWhat",
+     "dependencies",
+     "checkInGrid",
+     "contribution",
+     "patterns",
+     "decisions"
+    ],
+    "title": "The partnerships work has gone quiet",
+    "scenario": "DRIFT",
+    "kindOfWork": "engineering release",
+    "howItIsGoing": {
+     "latestSummary": "Both people have answered. They disagree on the focus of your work since March.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 4,
+       "answeredThisRound": 2,
+       "ofPeople": 2,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "AWAITING_PARTIES",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T00:37:36.522Z",
+    "participants": [
+     {
+      "id": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+      "name": "Nadia Haddad",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "name": "Zainab Suleiman",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "a5e33f1e-e08a-4b9b-8d03-1384b5bca029",
+      "name": "Nadia is aiming to understand the current status of the partnership targets.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "The focus of your work since March.",
+       "atStake": "If this holds, the work will deliver sales support and not the progress on partnership goals Nadia Haddad is measuring.",
+       "evidence": [
+        "Nadia Haddad's record expresses concern about not seeing the expected progress on the partnerships.",
+        "Your record states that time was reallocated to inbound sales at Nadia Haddad's direction."
+       ],
+       "positions": [
+        {
+         "view": "Nadia Haddad's account focuses on the lack of progress against the original partnership goals and does not mention other priorities.",
+         "participantLabel": "Nadia Haddad",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Nadia Haddad"
+        },
+        {
+         "view": "You state that Nadia Haddad redirected approximately 80% of your time to supporting inbound sales.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "The goal set in January was for you to close three strategic partnerships by the end of the year.",
+      "Progress on the strategic partnerships has not been reviewed by either person since March."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "If this holds, the work will deliver sales support and not the progress on partnership goals Nadia Haddad is measuring. That is what settles the focus of your work since March.",
+     "settled": [
+      "The goal set in January was for you to close three strategic partnerships by the end of the year.",
+      "Progress on the strategic partnerships has not been reviewed by either person since March."
+     ],
+     "stillOpen": [
+      "The focus of your work since March."
+     ]
+    },
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+       "name": "Nadia Haddad",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+       "name": "Zainab Suleiman",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "whoOwnsWhat": [
+     {
+      "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+      "name": "Nadia Haddad",
+      "role": null,
+      "items": [
+       {
+        "id": "0c1dba6e-62c2-4637-943a-cf2a3eadba51",
+        "type": "SUCCESS_DEFINITION",
+        "text": "Nadia Haddad said, \"We set three specific targets in January.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "5c94ee91-b28e-4139-8aa0-780ec788bb5c",
+        "type": "INTENT",
+        "text": "Nadia Haddad said, \"I delegated the work to Zainab.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "58ab370f-615f-4df0-a4c5-ae40a4d9d128",
+        "type": "INTENT",
+        "text": "Nadia Haddad said, \"Zainab is responsible for executing on the partnership targets we set. She was supposed to drive those forward.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "0f0c6ad4-68d4-4513-8029-1e802fb3edc8",
+        "type": "COMMITMENT",
+        "text": "Nadia Haddad said, \"I need to sit down with Zainab and understand the current status of the partnership targets.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "35f44a5b-024d-4147-b47f-0865613cb9b3",
+        "type": "COMMITMENT",
+        "text": "Nadia Haddad said, \"I'll aim for end of day Wednesday.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "1caa23b3-4420-4ed9-8b6c-bd52172ee3a9",
+        "type": "COMMITMENT",
+        "text": "Nadia Haddad said, \"pull up the original January targets.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "name": "Zainab Suleiman",
+      "role": null,
+      "items": [
+       {
+        "id": "40689070-5916-4dc3-8a8e-a7a9dee69780",
+        "type": "INTENT",
+        "text": "You said, \"I understood my role to be the lead on three strategic partnerships, responsible for closing them this year.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "8a91850d-b0cd-46fd-bfd9-ff98f8f64ee9",
+        "type": "SUCCESS_DEFINITION",
+        "text": "You said, \"The brief was to close three specific partnerships by the end of the year.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "7179206f-f6ca-48db-ad45-09e972a82b85",
+        "type": "PROGRESS",
+        "text": "You said, \"Since March 11, I've spent approximately 80% of my time supporting inbound sales, at Nadia's request.\"",
+        "mark": "memory",
+        "markSays": "From memory only",
+        "sessionNumber": 1
+       }
+      ]
+     }
+    ],
+    "dependencies": [],
+    "decisions": [
+     {
+      "question": "People in this check-in said different things about the focus of your work since March, so it needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "Nadia Haddad",
+      "source": "divergence"
+     }
+    ],
+    "whatTheRoomIsAbout": {
+     "aims": [
+      {
+       "aim": "The group's aim is to close three specific partnerships by the end of the year.",
+       "held": [
+        "Zainab Suleiman",
+        "Nadia Haddad"
+       ]
+      },
+      {
+       "aim": "Nadia Haddad is worried that the group has lost significant time on a key strategic priority and will have to start from scratch.",
+       "held": [
+        "Nadia Haddad"
+       ]
+      }
+     ],
+     "places": [],
+     "things": [
+      {
+       "name": "strategic partnership",
+       "named": [
+        "Zainab Suleiman",
+        "Nadia Haddad"
+       ]
+      }
+     ],
+     "readAtSession": 1
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things about the focus of your work since March.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "7 worries",
+      "sub": "Nadia Haddad said, \"I haven't reviewed progress on those targets since January.\" There are 6 more worries on record, and nobody is waiting on anybody.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "contribution": [
+     {
+      "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "name": "Zainab Suleiman",
+      "remit": null,
+      "remitDefined": true,
+      "position": null,
+      "positionLabel": null,
+      "reason": "1 check-in on record. 6 lines taken from what they said, 3 with a name, a number or a date in them, 1 of those specific enough for somebody else to go and check. 2 of these were named by someone else as well, all of them by one person. Their work is read against what being on track means for sales and expansion, which is named buyers with budget and authority, real sales moving towards a close, dated next actions. This read of their function is still provisional.",
+      "fn": "SALES",
+      "fnLabel": "Sales and expansion",
+      "fnConfident": false,
+      "isBlocked": false,
+      "ownVoice": null,
+      "nothingCheckable": false,
+      "confidence": 0.3,
+      "evidenceCount": 5,
+      "shown": false,
+      "basis": "Based on 1 check-in, 3 checkable things named, 2 independently confirmed by someone else.",
+      "guard": "Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone."
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+      ],
+      "general": true,
+      "role": null,
+      "whyNoRoleMap": "Your record looks like sales and expansion, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+     },
+     "eachPerson": null
+    },
+    "patterns": [],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "releases and tasks",
+      "state": "filled",
+      "stages": [
+       "Worked on",
+       "Written",
+       "Merged",
+       "Tested",
+       "Deployed",
+       "Used"
+      ],
+      "rows": [
+       {
+        "id": "2ef15c25-a8f6-4924-aa4c-31b16346fe12",
+        "kind": "task",
+        "name": "three specific targets",
+        "stage": null,
+        "owner": "Nadia Haddad",
+        "ownerParticipantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "We set three specific targets in January.",
+        "saidBy": "Nadia",
+        "saidByParticipantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "f641ac9c-455c-4bfb-a5dc-22db8bd98764",
+        "kind": "task",
+        "name": "the partnership targets",
+        "stage": null,
+        "owner": "Nadia Haddad",
+        "ownerParticipantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I need to sit down with Zainab and understand the current status of the partnership targets.",
+        "saidBy": "Nadia",
+        "saidByParticipantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "88c34d7e-4ffd-47f2-8278-06172d7e8bb8",
+        "kind": "task",
+        "name": "the original January targets",
+        "stage": null,
+        "owner": "Nadia Haddad",
+        "ownerParticipantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "pull up the original January targets",
+        "saidBy": "Nadia",
+        "saidByParticipantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "78a20bcc-74f6-46d9-9ecd-8b6622647251",
+        "kind": "task",
+        "name": "three strategic partnerships",
+        "stage": null,
+        "owner": "Zainab Suleiman",
+        "ownerParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "due": "2026-12-31",
+        "fields": {},
+        "from": "said",
+        "said": "I understood my role to be the lead on three strategic partnerships, responsible for closing them this year.",
+        "saidBy": "Zainab",
+        "saidByParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "d30efabb-62f9-46f0-b4a9-b961032c18cd",
+        "kind": "task",
+        "name": "three specific partnerships",
+        "stage": null,
+        "owner": "Zainab Suleiman",
+        "ownerParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "due": "2026-12-31",
+        "fields": {},
+        "from": "said",
+        "said": "The brief was to close three specific partnerships by the end of the year.",
+        "saidBy": "Zainab",
+        "saidByParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "5e21b0f7-f00c-4cbe-ade7-a3065c042ae5",
+        "kind": "task",
+        "name": "supporting inbound sales",
+        "stage": null,
+        "owner": "Zainab Suleiman",
+        "ownerParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "due": null,
+        "fields": {
+         "Time": "80%",
+         "Since": "March 11",
+         "Request": "Nadia"
+        },
+        "from": "said",
+        "said": "Since March 11, I've spent approximately 80% of my time supporting inbound sales, at Nadia's request.",
+        "saidBy": "Zainab",
+        "saidByParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "97d05931-cc1d-4692-8d63-2103433b14bd",
+        "kind": "task",
+        "name": "closing those three partnerships",
+        "stage": null,
+        "owner": "Zainab Suleiman",
+        "ownerParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "due": "2026-12-31",
+        "fields": {},
+        "from": "said",
+        "said": "I'm concerned that I'll still be measured on closing those three partnerships, despite the shift in my responsibilities.",
+        "saidBy": "Zainab",
+        "saidByParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "96234505-8ff5-400a-80c2-7264033f64d3",
+        "kind": "task",
+        "name": "deliver on those partnerships",
+        "stage": null,
+        "owner": "Zainab Suleiman",
+        "ownerParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "due": "2026-12-31",
+        "fields": {},
+        "from": "said",
+        "said": "I predict tension around the expectation to deliver on those partnerships when I haven't been able to dedicate time to them.",
+        "saidBy": "Zainab",
+        "saidByParticipantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       }
+      ]
+     }
+    ],
+    "risks": [
+     {
+      "id": "no-time-b068f801-0615-4937-890e-db827bd11fff",
+      "says": "Nadia Haddad made a commitment, and no time was given for it, so nobody can tell when it would be late.",
+      "because": "Nobody has said yet whether it happened."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "b068f801-0615-4937-890e-db827bd11fff",
+      "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+      "who": "Nadia Haddad",
+      "says": "In session 1, Nadia Haddad said, \"I would need to check those again to see where we stand.\" The time Nadia Haddad gave for it was \"again\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "again",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Nadia Haddad made a commitment, which is in the record."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "1c41555a-ad8e-4f0f-b647-a323390dd97e",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "207d6419-fd75-4556-8fbc-0d1bf17bf018",
+      "who": "Nadia Haddad",
+      "promised": [
+       "In session 1, Nadia Haddad said, \"I would need to check those again to see where we stand.\" The time Nadia Haddad gave for it was \"again\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     }
+    ],
+    "byArea": {
+     "state": "not-known",
+     "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+    }
+   },
+   "participantSeen": "zainab",
+   "patterns": [
+    {
+     "code": "K3",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "A strategic priority has lacked progress or visibility for months without intervention.",
+     "participant": {
+      "email": "cco.1790901109613@drift.test"
+     }
+    },
+    {
+     "code": "K4",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "Most of this period's work is reactive inbound sales support, while the main strategic goal of closing partnerships is not being moved.",
+     "participant": {
+      "email": "zainab.1790901109613@drift.test"
+     }
+    }
+   ],
+   "commitments": [
+    {
+     "text": "I would need to check those again to see where we stand.",
+     "whenSaid": "again",
+     "status": "UNKNOWN",
+     "statedInSession": 1,
+     "saidAgainIn": [],
+     "participant": {
+      "email": "cco.1790901109613@drift.test"
+     }
+    }
+   ]
+  }
+ ]
+}

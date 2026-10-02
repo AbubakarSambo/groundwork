@@ -1,0 +1,2701 @@
+{
+ "scenario": {
+  "key": "pulse",
+  "label": "How the team is actually doing this month",
+  "scenario": "PULSE_CHECK",
+  "moment": "RESOLUTION",
+  "cadence": "MONTHLY",
+  "timelineDays": 30,
+  "sessions": 1,
+  "brief": "A straightforward monthly read on the team. What is going well, what is in the way, what I should know that I do not.",
+  "theDecision": "Two of the three name the same blocker - approvals sitting with one person who is on leave with no cover - and the third does not because it does not affect him. A right answer treats two independent mentions as a real blocker with a named owner, not as a mood.",
+  "people": [
+   {
+    "key": "lead",
+    "name": "Ahmed Farouk",
+    "isLead": true,
+    "remit": "Team lead. Runs the monthly pulse.",
+    "truth": "He thinks things are steady. He approved the leave and did not arrange cover for the approvals.",
+    "manner": "Relaxed, brief answers, will expand if asked something specific."
+   },
+   {
+    "key": "a",
+    "name": "Fatima Sow",
+    "remit": "Operations analyst.",
+    "truth": "Four purchase approvals have been sitting since the 9th waiting for Ahmed's manager, who is on leave until the 28th. Two suppliers have chased. She has not escalated because she assumes it is known.",
+    "manner": "Concise, factual, gives dates."
+   },
+   {
+    "key": "b",
+    "name": "Luis Herrera",
+    "remit": "Implementation specialist.",
+    "truth": "His own work is fine. He is also waiting on the same approvals for a laptop order placed on the 11th, which he thinks of as a minor annoyance rather than a blocker.",
+    "manner": "Cheerful, understates problems, mentions the laptop only in passing."
+   }
+  ]
+ },
+ "groundId": "ced90440-ca19-4499-ae2f-a9838619843a",
+ "orgId": "63cc3e24-dacb-4005-b3cb-24ea06f9aa11",
+ "emails": {
+  "lead": "lead.1790902526783@pulse.test",
+  "a": "a.1790902526783@pulse.test",
+  "b": "b.1790902526783@pulse.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "lead",
+     "name": "Ahmed Farouk",
+     "isLead": true,
+     "checkInId": "7ce33b95-3f49-4103-80ba-57e90393e68e",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Ahmed, this is a regular read on your live work this month. What are the one or two things you would be judged on this period?"
+      },
+      {
+       "from": "AHMED FAROUK",
+       "text": "Just the usual, making sure we hit our deadlines, keep things moving. Also, the team's overall well-being, that's always important."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What specific outcomes would show \"things moving\" and deadlines being hit?",
+       "suggestedAnswers": [
+        "We hit our deadline for ...",
+        "Things are blocked until ...",
+        "I don't know yet.",
+        "All tasks are progressing well."
+       ]
+      },
+      {
+       "from": "AHMED FAROUK",
+       "text": "Meeting the sprint goals, getting our features out on time. Keeping the bug count low, that sort of thing."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What percentage of those sprint goals do you expect to meet, and by when?",
+       "suggestedAnswers": [
+        "I think we'll meet all goals.",
+        "A few goals are stuck.",
+        "I don't know yet.",
+        "We're on track for most."
+       ]
+      },
+      {
+       "from": "AHMED FAROUK",
+       "text": "I expect us to meet all of them, as usual. By the end of the sprint."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What are the specific features you are planning to ship, and what does \"on time\" mean for each of them?",
+       "suggestedAnswers": [
+        "All features are on track.",
+        "Some features are stuck.",
+        "I don't know yet.",
+        "We are shipping ... on time."
+       ]
+      },
+      {
+       "from": "AHMED FAROUK",
+       "text": "I don't have the exact feature list in front of me right now. \"On time\" means by the committed date in the sprint plan."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "The committed date in the sprint plan defines \"on time.\" What are the specific features you expect to ship this sprint?",
+       "suggestedAnswers": [
+        "I expect to ship all features on time.",
+        "I am still confirming the specific list.",
+        "Some features are blocked right now."
+       ]
+      },
+      {
+       "from": "AHMED FAROUK",
+       "text": "I don't have that detail readily available."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You have now said you do not have the specific feature list for this sprint. What is currently getting in the way of getting that list?",
+       "suggestedAnswers": [
+        "I'm waiting for someone else to provide it.",
+        "I don't know where to find the information.",
+        "I need to check our records for it."
+       ]
+      },
+      {
+       "from": "AHMED FAROUK",
+       "text": "Nothing is getting in the way of getting the list. I just don't have it memorized for this check-in. It's in our usual planning documents."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "If I were to ask the team what they are shipping this sprint, what specific features would they name?",
+       "suggestedAnswers": [
+        "We are shipping the ... feature.",
+        "The ... feature is not moving forward.",
+        "I need to check the planning document first."
+       ]
+      },
+      {
+       "from": "AHMED FAROUK",
+       "text": "They would name the features assigned to them, as per the sprint board. They know their tasks."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What are the one or two things you would be judged on this period?",
+       "suggestedAnswers": [
+        "I will be judged on completing my tasks.",
+        "I am blocked on a few things.",
+        "I am not sure yet."
+       ]
+      },
+      {
+       "from": "AHMED FAROUK",
+       "text": "I think we've covered that. Meeting sprint goals and keeping the team happy."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Meeting the sprint goals, getting our features out on time. Keeping the bug count low, that sort of thing.\n\nWhat else should I know?",
+       "suggestedAnswers": [
+        "Everything is moving forward.",
+        "We're a bit stuck on ...",
+        "Not yet."
+       ]
+      },
+      {
+       "from": "AHMED FAROUK",
+       "text": "I don't think there's anything else critical you need to know. Things are pretty steady."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You said you expect to meet all sprint goals by the end of the sprint, and that specific features are assigned as per the sprint board.\n\nI have one more question before we finish. From everything you have said, what have you decided?",
+       "suggestedAnswers": [
+        "I have decided on the next steps.",
+        "I am still thinking about it.",
+        "I need more time to decide."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "a",
+     "name": "Fatima Sow",
+     "isLead": false,
+     "checkInId": "8c03a2c9-3a56-4833-9d99-512787f47ae2",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "What are you working to right now? The one or two things you would be judged on this period."
+      },
+      {
+       "from": "FATIMA SOW",
+       "text": "I am processing purchase approvals. The current focus is on the four approvals sitting since the 9th."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Which parts of those do you own, versus depend on someone else for?",
+       "suggestedAnswers": [
+        "I own some, and I moved them forward.",
+        "I depend on others for some parts.",
+        "I am still figuring out who owns what."
+       ]
+      },
+      {
+       "from": "FATIMA SOW",
+       "text": "I have completed my part of the process. I am waiting on Ahmed's manager for approval."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You have completed your part, and it is waiting on Ahmed's manager. What exists to show your part is done and passed on? For instance, an email, a system notification, a shared document."
+      },
+      {
+       "from": "FATIMA SOW",
+       "text": "The purchase approvals are in the system. They are sitting in the queue awaiting Ahmed's manager's approval."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Waiting on an approval since the 9th is a long time for things to just sit. What makes it easy for those approvals to wait that long in the queue?",
+       "suggestedAnswers": [
+        "The system holds them easily.",
+        "Too many steps slow them down.",
+        "I am not sure why.",
+        "Many are ahead in the queue."
+       ]
+      },
+      {
+       "from": "FATIMA SOW",
+       "text": "Ahmed's manager is on leave until the 28th. That is why they are waiting."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What happens to approvals when a manager is on leave - is there a backup?",
+       "suggestedAnswers": [
+        "Approvals are on hold until the manager is back.",
+        "I am not sure if there is a backup.",
+        "A different manager is handling approvals."
+       ]
+      },
+      {
+       "from": "FATIMA SOW",
+       "text": "I do not know if there is a backup for this type of approval."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That means the process can stall for weeks when a manager is out. Is it your read that most of your work is ops?",
+       "suggestedAnswers": [
+        "Most of my work feels like ops.",
+        "No, I do other important work too.",
+        "I'm not sure yet."
+       ]
+      },
+      {
+       "from": "FATIMA SOW",
+       "text": "Yes, my read is that most of my work is operations."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What held or ran this period that nobody would have noticed?",
+       "suggestedAnswers": [
+        "I kept the usual operations running.",
+        "A small snag held things back.",
+        "I'm still looking for unnoticed items."
+       ]
+      },
+      {
+       "from": "FATIMA SOW",
+       "text": "The four purchase approvals have been sitting since the 9th, waiting for Ahmed's manager. Two suppliers have chased."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Two suppliers chasing means the delay is now visible outside the team. Which conversation is still waiting to be had?",
+       "suggestedAnswers": [
+        "I'm scheduling that conversation.",
+        "I haven't had it yet.",
+        "I need to find out."
+       ]
+      },
+      {
+       "from": "FATIMA SOW",
+       "text": "I have not escalated the issue with the delayed approvals. I assume it is known."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What will you do about this, and by when?",
+       "suggestedAnswers": [
+        "I will escalate this by ...",
+        "Not yet.",
+        "I am still figuring it out."
+       ]
+      },
+      {
+       "from": "FATIMA SOW",
+       "text": "I will continue to monitor the approvals. Ahmed's manager returns on the 28th."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You will continue to monitor the approvals until Ahmed's manager returns on the 28th.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    },
+    {
+     "key": "b",
+     "name": "Luis Herrera",
+     "isLead": false,
+     "checkInId": "b239e025-19d9-4c80-8dd7-96043baa7324",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "This conversation is about your work, so we can establish what you are focused on this month. What are the one or two things you are working to right now?"
+      },
+      {
+       "from": "LUIS HERRERA",
+       "text": "Right now, I'm working on getting the new client onboarded smoothly and finalizing the integration for the project we just launched."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What specific parts of those do you directly own, as opposed to depending on someone else for?",
+       "suggestedAnswers": [
+        "I handle all client onboarding steps myself.",
+        "Integration depends on ... before I can finish.",
+        "I'm still defining what I directly own."
+       ]
+      },
+      {
+       "from": "LUIS HERRERA",
+       "text": "I own the direct client communication and making sure their system is configured correctly. I also handle the initial setup of the integration."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "And what is the current status of that work?",
+       "suggestedAnswers": [
+        "Good news, it's almost ready.",
+        "It's a bit stuck right now.",
+        "Not yet."
+       ]
+      },
+      {
+       "from": "LUIS HERRERA",
+       "text": "The client communication is going well, and their system is almost fully configured. The initial integration setup is mostly done, just a few more steps to go."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What specifically is still needed to consider the initial integration setup done?",
+       "suggestedAnswers": [
+        "Almost done, just need final step.",
+        "Still waiting for their final input.",
+        "Not yet, still checking everything.",
+        "Just need to connect the last piece."
+       ]
+      },
+      {
+       "from": "LUIS HERRERA",
+       "text": "We're just waiting on a final security clearance from the client's end, and then I can push it live."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That security clearance is a key dependency. Is there anything you need that's blocked on someone else right now?",
+       "suggestedAnswers": [
+        "No, I have everything I need.",
+        "Still waiting for client's security clearance.",
+        "Not yet, still following up on that."
+       ]
+      },
+      {
+       "from": "LUIS HERRERA",
+       "text": "Not really. My own work is proceeding just fine. I am waiting on a laptop, but that's just a minor annoyance, nothing that blocks anything."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "A laptop is something concrete. Which one are you waiting for?",
+       "suggestedAnswers": [
+        "I am not waiting for anything important.",
+        "It is still stuck.",
+        "I don't know.",
+        "I am waiting for their input."
+       ]
+      },
+      {
+       "from": "LUIS HERRERA",
+       "text": "It's just a standard issue work laptop."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Okay. That standard issue work laptop has been pending for a while, it seems. Is there anything you'll do to get that moving?",
+       "suggestedAnswers": [
+        "I have a new plan for it.",
+        "I'm not sure what to try.",
+        "Not yet.",
+        "I'll ask ... for help."
+       ]
+      },
+      {
+       "from": "LUIS HERRERA",
+       "text": "No, not really. It was ordered on the 11th, so I imagine it's just in the queue for approvals. It'll get here when it gets here."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You're waiting on a standard issue work laptop that was ordered on the 11th and you expect it will arrive when it is ready.\n\nI have one more question before we finish. What will you do about this, and by when?",
+       "suggestedAnswers": [
+        "I will check on its status today.",
+        "I am waiting for approval from ...",
+        "I don't know yet, I will find out.",
+        "I will follow up by ..."
+       ]
+      },
+      {
+       "from": "LUIS HERRERA",
+       "text": "I won't be doing anything about it. I'm not worried; I'm sure it's being handled."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You won't be doing anything about the laptop.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "8a8ce90f-1e3d-437d-8463-cc2df7851851",
+    "groundId": "ced90440-ca19-4499-ae2f-a9838619843a",
+    "sharedPicture": "All three people have answered. The participants have different ideas about what is blocking the work, which suggests that the obstacles the team is facing are not visible to you.\n\nYour goal is to meet all deadlines and keep the work moving. You have not named anything that is in the way.\n\nFatima Sow reports that Fatima has completed Fatima's part of the process. Fatima is waiting on four approvals that have been sitting since the 9th of the month.\n\nLuis Herrera is onboarding a new client and Luis is waiting for a security clearance from the client. Once the clearance is received, Luis can push the work live.\n\nYour attention is on high-level sprint goals and team well-being. Fatima is focused on operational tasks and Fatima is blocked by an internal approval process. Luis is focused on client onboarding, Luis is blocked by an external dependency, and Luis is waiting for equipment. The records show three parallel streams of work, rather than a single, shared view of the team's priorities and obstacles.",
+    "theOpening": "All three people have answered. The participants have different ideas about what is blocking the work, which suggests that the obstacles the team is facing are not visible to you.",
+    "agreements": [],
+    "divergences": [
+     {
+      "topic": "They have different pictures of what is blocking the work, suggesting that obstacles faced by the team are not visible to you.",
+      "atStake": "If this holds, work that is currently stuck will risk sprint deadlines, because the person who can help unblock it is not aware of the problems.",
+      "evidence": [
+       "Your record states an expectation to meet all of [the sprint goals] and does not name any blockers.",
+       "Fatima Sow's record notes they are waiting on approvals 'sitting since the 9th' and have not escalated because 'I assume it is known.'"
+      ],
+      "positions": [
+       {
+        "view": "Describes the sprint in terms of meeting goals and does not name any obstacles.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Is blocked waiting for four approvals from your manager, who is on leave.",
+        "participantLabel": "Fatima Sow",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Is blocked on a project by a client's security clearance and is also waiting for a new laptop.",
+        "participantLabel": "Luis Herrera",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "settledBy": "Agreeing on a way to make sure blockers are visible to you, and confirming who is responsible for resolving them.",
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     }
+    ],
+    "centralQuestion": "What process for surfacing and resolving blockers would give everyone confidence that a problem, like the current approval delay, is both visible and being addressed?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Ahmed Farouk",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 9,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Ahmed Farouk"
+      },
+      {
+       "label": "Fatima Sow",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 8,
+       "documentsAttached": 0,
+       "who": "Fatima Sow"
+      },
+      {
+       "label": "Luis Herrera",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 9,
+       "documentsAttached": 0,
+       "who": "Luis Herrera"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "concernFlags": [],
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "They have different pictures of what is blocking the work, suggesting that obstacles faced by the team are not visible to you."
+     ],
+     "sessionCounts": {
+      "Fatima Sow": 9,
+      "Luis Herrera": 8,
+      "Ahmed Farouk": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Ahmed Farouk",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Ahmed Farouk": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Ahmed Farouk": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [
+      {
+       "label": "Fatima Sow",
+       "evidence": "Fatima Sow's work is blocked waiting for an approval from your manager."
+      }
+     ],
+     "whatCouldBeChecked": {
+      "says": [
+       "All 2 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 2,
+      "checked": 2
+     },
+     "difficultyDisclosures": true
+    },
+    "inferences": [],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": null,
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "You believe work is proceeding, but both Fatima Sow and Luis Herrera are stopped by obstacles you have not seen.",
+     "whatToDo": [
+      {
+       "move": "Find out who can grant the four approvals for Fatima Sow while your manager is on leave.",
+       "because": "Fatima Sow is blocked until these approvals are granted.",
+       "startWith": "Fatima Sow"
+      },
+      {
+       "move": "Find out what it takes to get Luis Herrera the new laptop.",
+       "because": "Luis Herrera is waiting for this to push their work live.",
+       "startWith": "Luis Herrera"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You report that the sprint is meeting its goals and you have not named any obstacles.",
+       "soWhat": "Your own account of the work does not include the problems the team faces.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Fatima Sow is waiting for four approvals from your manager, who is on leave.",
+       "soWhat": "Fatima Sow's work is stopped.",
+       "fieldId": "Fatima Sow"
+      },
+      {
+       "says": "Luis Herrera is waiting for a client's security clearance and a new laptop.",
+       "soWhat": "Luis Herrera's work is stopped.",
+       "fieldId": "Luis Herrera"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "What is stopping you?",
+       "howManyMissedIt": 3
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record does not say who can give approval when your manager is on leave.",
+       "about": "The approvals for Fatima Sow.",
+       "toKnow": "Ask Fatima Sow who else has been involved in approvals."
+      },
+      {
+       "why": "The record does not say what the client's process is or how long it takes.",
+       "about": "The client security clearance for Luis Herrera.",
+       "toKnow": "Ask Luis Herrera if the client has given a timeline."
+      }
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Fatima Sow is down as \"Operations analyst\", and nothing on record says what that role covers. Since then, the record holds 1 session, 8 lines of what was said, 3 with a name, a number or a date in them, none backed by a document and 1 commitment still open.",
+       "who": "Fatima Sow",
+       "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03"
+      },
+      {
+       "say": "Luis Herrera is down as \"Implementation specialist\", and nothing on record says what that role covers. Since then, the record holds 1 session, 9 lines of what was said, 3 with a name, a number or a date in them and none backed by a document.",
+       "who": "Luis Herrera",
+       "participantId": "b3bebb30-16ff-479a-a105-efc2d00aacff"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Fatima Sow is waiting on your manager for approval for the four purchases, and nothing on record says anybody has chased it since.",
+      "Luis Herrera is waiting on the client's end for \"a final security clearance\", and nothing on record says anybody has chased it since.",
+      "Luis Herrera is waiting on the queue for approvals for a standard issue work laptop, and nothing on record says anybody has chased it since.",
+      "In session 1, Fatima Sow said, \"I will continue to monitor the approvals.\" The time Fatima gave for it was \"Ahmed's manager returns on the 28th.\" Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, Fatima Sow said, \"I will continue to monitor the approvals.\" The time Fatima gave for it was \"Ahmed's manager returns on the 28th.\" Nobody has said yet whether it happened.",
+       "who": "Fatima Sow",
+       "what": "I will continue to monitor the approvals.",
+       "when": "Your manager returns on the 28th.",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [
+      {
+       "on": "Your manager",
+       "say": "Fatima Sow is waiting on your manager for approval for the four purchases, and nothing on record says anybody has chased it since.",
+       "from": "Fatima Sow",
+       "what": "approval for the four purchases",
+       "chased": false,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03"
+      },
+      {
+       "on": "the client's end",
+       "say": "Luis Herrera is waiting on the client's end for \"a final security clearance\", and nothing on record says anybody has chased it since.",
+       "from": "Luis Herrera",
+       "what": "a final security clearance",
+       "chased": false,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "b3bebb30-16ff-479a-a105-efc2d00aacff"
+      },
+      {
+       "on": "the queue for approvals",
+       "say": "Luis Herrera is waiting on the queue for approvals for a standard issue work laptop, and nothing on record says anybody has chased it since.",
+       "from": "Luis Herrera",
+       "what": "a standard issue work laptop",
+       "chased": false,
+       "status": "WAITING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "b3bebb30-16ff-479a-a105-efc2d00aacff"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "3 things are waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.",
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "Your goal is to meet all deadlines and keep the work moving. You have not named anything that is in the way.",
+      "hasGap": false,
+      "headline": "Your account does not name any obstacles.",
+      "participantId": "cbf98dd6-67a5-4a86-8b4e-2e0ecd71a451",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Fatima Sow reports that Fatima has completed Fatima's part of the process. Fatima is waiting on four approvals that have been sitting since the 9th of the month.",
+      "hasGap": false,
+      "headline": "Four of Fatima Sow's approvals have been stuck since the 9th.",
+      "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Luis Herrera is onboarding a new client and Luis is waiting for a security clearance from the client. Once the clearance is received, Luis can push the work live.",
+      "hasGap": false,
+      "headline": "Luis Herrera is waiting for a security clearance from the client.",
+      "participantId": "b3bebb30-16ff-479a-a105-efc2d00aacff",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": "2026-10-02T01:01:27.656Z",
+    "createdAt": "2026-10-02T00:58:59.944Z",
+    "updatedAt": "2026-10-02T01:03:51.281Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The participants have different ideas about what is blocking the work, which suggests that the obstacles the team is facing are not visible to you.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Your goal is to meet all deadlines and keep the work moving.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You have not named anything that is in the way.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Fatima Sow reports that Fatima has completed Fatima's part of the process.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Fatima Sow is waiting on four approvals that have been sitting since the 9th of the month.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Luis Herrera is onboarding a new client and Luis is waiting for a security clearance from the client.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Once the clearance is received, Luis Herrera can push the work live.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Your attention is on high-level sprint goals and team well-being.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Fatima Sow is focused on operational tasks and Fatima is blocked by an internal approval process.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Luis Herrera is focused on client onboarding, Luis is blocked by an external dependency, and Luis is waiting for equipment.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The records show three parallel streams of work, rather than a single, shared view of the team's priorities and obstacles.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "My working assumption has been that we need to meet the deadlines in the sprint plan, but it sounds like there is an urgent problem that is not in the plan at all.",
+     "toAcknowledge": "The other view is that with four approvals stalled for a while, the problem is not just a delay but that people outside the team are now chasing for a response.",
+     "questionToCarry": "What happens to our commitments if we pause the planned work to deal with this, and what happens to our relationships with others if we do not?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "You are in session 1 of management work, and nothing repeats yet; this is normal at this stage, but the value of later sessions will be determined by what you can point to, which shows that you own the work rather than just control it.",
+     "beforeNextTime": [
+      "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+     ],
+     "general": true,
+     "role": {
+      "label": "Management",
+      "onTrack": "People author their own commitments, slips get noticed and raised, hard conversations happen on time.",
+      "goingWrong": "An account full of work the team should own (control), or commitments that slip with no follow-up (abdication).",
+      "protectAgainst": "You are describing management as a competency distinct from craft, where a strong individual contributor becoming a lead is seen as developing a new skill, rather than regressing in their previous one.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "9c0955b1-7594-48cd-a239-de010df850a6",
+      "type": "SUCCESS_DEFINITION",
+      "text": "making sure we hit our deadlines, keep things moving.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7ce33b95-3f49-4103-80ba-57e90393e68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "ed5cbdd2-1279-400f-aab6-40a566369e92",
+      "type": "SUCCESS_DEFINITION",
+      "text": "the team's overall well-being, that's always important.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7ce33b95-3f49-4103-80ba-57e90393e68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "9d3f8395-f02d-45af-b84d-a90fa86cddcf",
+      "type": "SUCCESS_DEFINITION",
+      "text": "Meeting the sprint goals, getting our features out on time.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7ce33b95-3f49-4103-80ba-57e90393e68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "e1c4401f-6214-4f68-a50c-d6348e7ce786",
+      "type": "SUCCESS_DEFINITION",
+      "text": "Keeping the bug count low, that sort of thing.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7ce33b95-3f49-4103-80ba-57e90393e68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "39ff3639-4547-4a7c-a1a2-f0cf5f40d282",
+      "type": "INTENT",
+      "text": "I expect us to meet all of, as usual.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7ce33b95-3f49-4103-80ba-57e90393e68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "312c4097-e94c-42f8-a3bb-f5f91e15ebad",
+      "type": "SUCCESS_DEFINITION",
+      "text": "\"On time\" means by the committed date in the sprint plan.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7ce33b95-3f49-4103-80ba-57e90393e68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "32601f45-0eb4-4ed8-9696-47a81044136f",
+      "type": "INTENT",
+      "text": "The team would name the features assigned to them, as per the sprint board.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7ce33b95-3f49-4103-80ba-57e90393e68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "9d0a0552-12ef-42b5-afd8-d6e3c705a7e9",
+      "type": "INTENT",
+      "text": "The team know their tasks.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7ce33b95-3f49-4103-80ba-57e90393e68e",
+      "sessionNumber": 1
+     },
+     {
+      "id": "1abd6511-f3bd-4444-811f-512d73373eb0",
+      "type": "SUCCESS_DEFINITION",
+      "text": "Meeting sprint goals and keeping the team happy.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7ce33b95-3f49-4103-80ba-57e90393e68e",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": [
+     {
+      "who": "Ahmed Farouk",
+      "participantId": "cbf98dd6-67a5-4a86-8b4e-2e0ecd71a451",
+      "probe": [],
+      "encourage": [
+       "Worth getting on record, where anyone could check it later: making sure we hit our deadlines, keep things moving and the team's overall well-being, that's always important."
+      ],
+      "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+     },
+     {
+      "who": "Luis Herrera",
+      "participantId": "b3bebb30-16ff-479a-a105-efc2d00aacff",
+      "probe": [
+       "Luis Herrera has been waiting for a final security clearance and a standard issue work laptop, and nothing on record says it was raised higher. This early, that is worth showing Luis Herrera rather than asking about."
+      ],
+      "encourage": [
+       "Named a problem out loud rather than reporting everything as fine."
+      ],
+      "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+     },
+     {
+      "who": "Fatima Sow",
+      "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+      "probe": [
+       "Fatima Sow has been waiting for approval for the four purchases, and nothing on record says it was raised higher. This early, that is worth showing Fatima Sow rather than asking about."
+      ],
+      "encourage": [
+       "Named a problem out loud rather than reporting everything as fine."
+      ],
+      "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+     }
+    ],
+    "soloArtifact": {
+     "summary": "Here is what you shared.\nYou said that success is about meeting sprint goals, keeping the bug count low, and hitting deadlines. You also said that the team's overall well-being is an important part of success. You expect to meet all sprint goals, and that the team knows their tasks.",
+     "whatToCarry": "You mentioned both sprint goals and the team's happiness. You could make a point of describing how you see the connection between those two things."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    },
+    "forTheLead": [
+     {
+      "id": "handoff-89a6f702-b720-40e0-a73c-fd9ee5433bee",
+      "decide": "Decide what to do about approval for the four purchases.",
+      "why": "Fatima cannot move until it is settled, and it is waiting on Ahmed's manager."
+     },
+     {
+      "id": "handoff-70c3fa74-f873-4568-91b0-f19db22c9f76",
+      "decide": "Decide what to do about a final security clearance.",
+      "why": "Luis cannot move until it is settled, and it is waiting on the client's end.",
+      "changes": "Once it is settled, I can push it live."
+     },
+     {
+      "id": "difference-1",
+      "decide": "Agreeing on a way to make sure blockers are visible to you, and confirming who is responsible for resolving them.",
+      "why": "The parties have different pictures of what is blocking the work, suggesting that obstacles faced by the team are not visible to you. You, Fatima Sow and Luis Herrera said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this holds, work that is currently stuck will risk sprint deadlines, because the person who can help unblock it is not aware of the problems."
+     }
+    ]
+   },
+   "board": {
+    "groundId": "ced90440-ca19-4499-ae2f-a9838619843a",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "RECURRING",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "checkInGrid",
+     "divergence"
+    ],
+    "title": "How the team is actually doing this month",
+    "scenario": "PULSE_CHECK",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. The participants have different ideas about what is blocking the work, which suggests that the obstacles the team is facing are not visible to you.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 3,
+       "oldest": "approval for the four purchases",
+       "daysWaiting": 0
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "You believe work is proceeding, but both Fatima Sow and Luis Herrera are stopped by obstacles you have not seen.",
+     "whatToDo": [
+      {
+       "move": "Find out who can grant the four approvals for Fatima Sow while your manager is on leave.",
+       "because": "Fatima Sow is blocked until these approvals are granted.",
+       "startWith": "Fatima Sow"
+      },
+      {
+       "move": "Find out what it takes to get Luis Herrera the new laptop.",
+       "because": "Luis Herrera is waiting for this to push their work live.",
+       "startWith": "Luis Herrera"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You report that the sprint is meeting its goals and you have not named any obstacles.",
+       "soWhat": "Your own account of the work does not include the problems the team faces.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Fatima Sow is waiting for four approvals from your manager, who is on leave.",
+       "soWhat": "Fatima Sow's work is stopped.",
+       "fieldId": "Fatima Sow"
+      },
+      {
+       "says": "Luis Herrera is waiting for a client's security clearance and a new laptop.",
+       "soWhat": "Luis Herrera's work is stopped.",
+       "fieldId": "Luis Herrera"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "What is stopping you?",
+       "howManyMissedIt": 3
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record does not say who can give approval when your manager is on leave.",
+       "about": "The approvals for Fatima Sow.",
+       "toKnow": "Ask Fatima Sow who else has been involved in approvals."
+      },
+      {
+       "why": "The record does not say what the client's process is or how long it takes.",
+       "about": "The client security clearance for Luis Herrera.",
+       "toKnow": "Ask Luis Herrera if the client has given a timeline."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Fatima Sow is down as \"Operations analyst\", and nothing on record says what that role covers. Since then, the record holds 1 session, 8 lines of what was said, 3 with a name, a number or a date in them, none backed by a document and 1 commitment still open.",
+       "who": "Fatima Sow",
+       "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03"
+      },
+      {
+       "say": "Luis Herrera is down as \"Implementation specialist\", and nothing on record says what that role covers. Since then, the record holds 1 session, 9 lines of what was said, 3 with a name, a number or a date in them and none backed by a document.",
+       "who": "Luis Herrera",
+       "participantId": "b3bebb30-16ff-479a-a105-efc2d00aacff"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Fatima Sow is waiting on your manager for approval for the four purchases, and nothing on record says anybody has chased it since.",
+      "Luis Herrera is waiting on the client's end for \"a final security clearance\", and nothing on record says anybody has chased it since.",
+      "Luis Herrera is waiting on the queue for approvals for a standard issue work laptop, and nothing on record says anybody has chased it since.",
+      "In session 1, Fatima Sow said, \"I will continue to monitor the approvals.\" The time Fatima Sow gave for it was \"Your manager returns on the 28th.\" Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, Fatima Sow said, \"I will continue to monitor the approvals.\" The time Fatima Sow gave for it was \"Your manager returns on the 28th.\" Nobody has said yet whether it happened.",
+       "who": "Fatima Sow",
+       "what": "I will continue to monitor the approvals.",
+       "when": "Your manager returns on the 28th.",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [
+      {
+       "on": "Your manager",
+       "say": "Fatima Sow is waiting on your manager for approval for the four purchases, and nothing on record says anybody has chased it since.",
+       "from": "Fatima Sow",
+       "what": "approval for the four purchases",
+       "chased": false,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03"
+      },
+      {
+       "on": "the client's end",
+       "say": "Luis Herrera is waiting on the client's end for \"a final security clearance\", and nothing on record says anybody has chased it since.",
+       "from": "Luis Herrera",
+       "what": "a final security clearance",
+       "chased": false,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "b3bebb30-16ff-479a-a105-efc2d00aacff"
+      },
+      {
+       "on": "the queue for approvals",
+       "say": "Luis Herrera is waiting on the queue for approvals for a standard issue work laptop, and nothing on record says anybody has chased it since.",
+       "from": "Luis Herrera",
+       "what": "a standard issue work laptop",
+       "chased": false,
+       "status": "WAITING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "b3bebb30-16ff-479a-a105-efc2d00aacff"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "3 things are waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.",
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "cbf98dd6-67a5-4a86-8b4e-2e0ecd71a451",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T01:03:51.281Z",
+    "participants": [
+     {
+      "id": "cbf98dd6-67a5-4a86-8b4e-2e0ecd71a451",
+      "name": "Ahmed Farouk",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "b3bebb30-16ff-479a-a105-efc2d00aacff",
+      "name": "Luis Herrera",
+      "role": "Implementation specialist.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+      "name": "Fatima Sow",
+      "role": "Operations analyst.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [
+      {
+       "topic": "They have different pictures of what is blocking the work, suggesting that obstacles faced by the team are not visible to you.",
+       "atStake": "If this holds, work that is currently stuck will risk sprint deadlines, because the person who can help unblock it is not aware of the problems.",
+       "evidence": [
+        "Your record states an expectation to meet all of [the sprint goals] and does not name any blockers.",
+        "Fatima Sow's record notes they are waiting on approvals 'sitting since the 9th' and have not escalated because 'I assume it is known.'"
+       ],
+       "positions": [
+        {
+         "view": "Describes the sprint in terms of meeting goals and does not name any obstacles.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Is blocked waiting for four approvals from your manager, who is on leave.",
+         "participantLabel": "Fatima Sow",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Fatima Sow"
+        },
+        {
+         "view": "Is blocked on a project by a client's security clearance and is also waiting for a new laptop.",
+         "participantLabel": "Luis Herrera",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Luis Herrera"
+        }
+       ],
+       "settledBy": "Agreeing on a way to make sure blockers are visible to you, and confirming who is responsible for resolving them.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [],
+     "agreementMarks": [],
+     "centralQuestion": "Agreeing on a way to make sure blockers are visible to you, and confirming who is responsible for resolving them. That is what settles they have different pictures of what is blocking the work, suggesting that obstacles faced by the team are not visible to you.",
+     "settled": [],
+     "stillOpen": [
+      "They have different pictures of what is blocking the work, suggesting that obstacles faced by the team are not visible to you."
+     ]
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+      "who": "Fatima Sow",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Fatima Sow has checked in.",
+      "ask": "Fatima Sow is waiting on approval for the four purchases, and nobody has said yet what was tried. Ask Fatima Sow to find out who owns this by name. Everything else needs that first.",
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Fatima Sow reports that Fatima has completed Fatima's part of the process. Fatima is waiting on four approvals that have been sitting since the 9th of the month.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     },
+     {
+      "participantId": "b3bebb30-16ff-479a-a105-efc2d00aacff",
+      "who": "Luis Herrera",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Luis Herrera has checked in.",
+      "ask": "Luis Herrera is waiting on a final security clearance, and nobody has said yet what was tried. Ask Luis Herrera to speak to the client's end rather than write to them.",
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Luis Herrera is onboarding a new client and Luis is waiting for a security clearance from the client. Once the clearance is received, Luis can push the work live.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "cbf98dd6-67a5-4a86-8b4e-2e0ecd71a451",
+       "name": "Ahmed Farouk",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "b3bebb30-16ff-479a-a105-efc2d00aacff",
+       "name": "Luis Herrera",
+       "role": "Implementation specialist.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+       "name": "Fatima Sow",
+       "role": "Operations analyst.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things. They have different pictures of what is blocking the work, suggesting that obstacles faced by the team are not visible to you.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "No target set",
+      "sub": "Nobody has set anything to measure this against.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "2",
+      "sub": "Work is held up by approval for the four purchases. 1 more is holding work up.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "You are in session 1 of management work, and nothing repeats yet; this is normal at this stage, but the value of later sessions will be determined by what you can point to, which shows that you own the work rather than just control it.",
+      "beforeNextTime": [
+       "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+      ],
+      "general": true,
+      "role": {
+       "label": "Management",
+       "onTrack": "People author their own commitments, slips get noticed and raised, hard conversations happen on time.",
+       "goingWrong": "An account full of work the team should own (control), or commitments that slip with no follow-up (abdication).",
+       "protectAgainst": "You are describing management as a competency distinct from craft, where a strong individual contributor becoming a lead is seen as developing a new skill, rather than regressing in their previous one.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": [
+      {
+       "who": "Ahmed Farouk",
+       "participantId": "cbf98dd6-67a5-4a86-8b4e-2e0ecd71a451",
+       "probe": [],
+       "encourage": [
+        "Worth getting on record, where anyone could check it later: making sure we hit our deadlines, keep things moving and the team's overall well-being, that's always important."
+       ],
+       "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+      },
+      {
+       "who": "Luis Herrera",
+       "participantId": "b3bebb30-16ff-479a-a105-efc2d00aacff",
+       "probe": [
+        "Luis Herrera has been waiting for a final security clearance and a standard issue work laptop, and nothing on record says it was raised higher. This early, that is worth showing Luis Herrera rather than asking about."
+       ],
+       "encourage": [
+        "Named a problem out loud rather than reporting everything as fine."
+       ],
+       "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+      },
+      {
+       "who": "Fatima Sow",
+       "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+       "probe": [
+        "Fatima Sow has been waiting for approval for the four purchases, and nothing on record says it was raised higher. This early, that is worth showing Fatima Sow rather than asking about."
+       ],
+       "encourage": [
+        "Named a problem out loud rather than reporting everything as fine."
+       ],
+       "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+      }
+     ]
+    },
+    "eachPersonToday": [
+     {
+      "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+      "who": "Fatima Sow",
+      "line": "Fatima Sow has checked in."
+     },
+     {
+      "participantId": "b3bebb30-16ff-479a-a105-efc2d00aacff",
+      "who": "Luis Herrera",
+      "line": "Luis Herrera has checked in."
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-89a6f702-b720-40e0-a73c-fd9ee5433bee",
+      "says": "Fatima Sow cannot move on approval for the four purchases until it comes from Ahmed's manager.",
+      "because": "It was first said on 2 October. Nobody has said what has been tried. The time given for it was \"until the 28th\"."
+     },
+     {
+      "id": "handoff-70c3fa74-f873-4568-91b0-f19db22c9f76",
+      "says": "Luis Herrera cannot move on a final security clearance until it comes from the client's end.",
+      "because": "It was first said on 2 October. Nobody has said what has been tried. No time has been given for it."
+     },
+     {
+      "id": "handoff-df50079d-6a00-4a29-b900-d00865ca9ecc",
+      "says": "Luis Herrera is waiting on the queue for approvals for a standard issue work laptop.",
+      "because": "It was first said on 2 October. Nobody has said what has been tried. No time has been given for it."
+     },
+     {
+      "id": "no-time-330c2c0d-0dd3-4fbe-93c5-c47551b2d740",
+      "says": "Fatima Sow committed to continue to monitor the approvals, and no time was given for it, so nobody can tell when it would be late.",
+      "because": "Nobody has said yet whether it happened."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "330c2c0d-0dd3-4fbe-93c5-c47551b2d740",
+      "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+      "who": "Fatima Sow",
+      "says": "In session 1, Fatima Sow said, \"I will continue to monitor the approvals.\" The time Fatima Sow gave for it was \"Ahmed's manager returns on the 28th.\" Nobody has said yet whether it happened.",
+      "when": "Ahmed's manager returns on the 28th.",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Fatima Sow committed to continue to monitor the approvals."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Fatima Sow said the work was waiting on Ahmed's manager for approval for the four purchases."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Luis Herrera said the work was waiting on the client's end for a final security clearance."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Luis Herrera said the work was waiting on the queue for approvals for a standard issue work laptop."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "cbf98dd6-67a5-4a86-8b4e-2e0ecd71a451",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "b3bebb30-16ff-479a-a105-efc2d00aacff",
+      "who": "Luis Herrera",
+      "says": "Luis Herrera has answered 1 session, and the record holds no commitment from Luis Herrera yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Luis Herrera named 2 things the work was waiting on."
+       }
+      ]
+     },
+     {
+      "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+      "who": "Fatima Sow",
+      "says": "Fatima Sow has answered 1 session and made 1 commitment.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Fatima Sow made 1 commitment and named 1 thing the work was waiting on."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "89a6f702-b720-40e0-a73c-fd9ee5433bee",
+      "who": "Fatima Sow",
+      "says": "Fatima Sow is waiting on Ahmed's manager for approval for the four purchases.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": false,
+      "timeGiven": true,
+      "checks": [
+       "Ahmed's manager holds it.",
+       "Nobody has said what has been tried.",
+       "The time given for it was \"until the 28th\"."
+      ]
+     },
+     {
+      "id": "70c3fa74-f873-4568-91b0-f19db22c9f76",
+      "who": "Luis Herrera",
+      "says": "Luis Herrera is waiting on the client's end for a final security clearance.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": false,
+      "timeGiven": false,
+      "checks": [
+       "The client's end holds it.",
+       "Nobody has said what has been tried.",
+       "No time has been given for it."
+      ]
+     },
+     {
+      "id": "df50079d-6a00-4a29-b900-d00865ca9ecc",
+      "who": "Luis Herrera",
+      "says": "Luis Herrera is waiting on the queue for approvals for a standard issue work laptop.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": false,
+      "timeGiven": false,
+      "checks": [
+       "The queue for approvals holds it.",
+       "Nobody has said what has been tried.",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "busyOrMoving": {
+     "eachPerson": [
+      {
+       "participantId": "b3bebb30-16ff-479a-a105-efc2d00aacff",
+       "who": "Luis Herrera",
+       "says": "Luis Herrera also named 2 things the work was waiting on."
+      },
+      {
+       "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+       "who": "Fatima Sow",
+       "says": "Fatima Sow has made 1 commitment across 1 answered session. Fatima Sow also named 1 thing the work was waiting on."
+      }
+     ],
+     "cannotTellYou": "These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that."
+    },
+    "obligations": [
+     {
+      "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+      "who": "Fatima Sow",
+      "promised": [
+       "In session 1, Fatima Sow said, \"I will continue to monitor the approvals.\" The time Fatima Sow gave for it was \"Ahmed's manager returns on the 28th.\" Nobody has said yet whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": null,
+      "who": "Ahmed's manager",
+      "promised": [],
+      "othersWaitFor": [
+       "Fatima Sow is waiting on Ahmed's manager for approval for the four purchases."
+      ]
+     },
+     {
+      "participantId": null,
+      "who": "the client's end",
+      "promised": [],
+      "othersWaitFor": [
+       "Luis Herrera is waiting on the client's end for a final security clearance."
+      ]
+     },
+     {
+      "participantId": null,
+      "who": "the queue for approvals",
+      "promised": [],
+      "othersWaitFor": [
+       "Luis Herrera is waiting on the queue for approvals for a standard issue work laptop."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "89a6f702-b720-40e0-a73c-fd9ee5433bee",
+      "says": "Fatima Sow has been waiting on Ahmed's manager for approval for the four purchases since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     },
+     {
+      "id": "70c3fa74-f873-4568-91b0-f19db22c9f76",
+      "says": "Luis Herrera has been waiting on the client's end for a final security clearance since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     },
+     {
+      "id": "df50079d-6a00-4a29-b900-d00865ca9ecc",
+      "says": "Luis Herrera has been waiting on the queue for approvals for a standard issue work laptop since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "89a6f702-b720-40e0-a73c-fd9ee5433bee",
+      "who": "Fatima Sow",
+      "name": "approval for the four purchases",
+      "state": "blocking",
+      "says": "Fatima Sow is waiting on Ahmed's manager for approval for the four purchases.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Fatima Sow said."
+      },
+      "timeGiven": "The time given for it was \"until the 28th\".",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     },
+     {
+      "id": "70c3fa74-f873-4568-91b0-f19db22c9f76",
+      "who": "Luis Herrera",
+      "name": "a final security clearance",
+      "state": "blocking",
+      "says": "Luis Herrera is waiting on the client's end for a final security clearance.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Luis Herrera said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": "Once it is cleared, I can push it live."
+     },
+     {
+      "id": "df50079d-6a00-4a29-b900-d00865ca9ecc",
+      "who": "Luis Herrera",
+      "name": "a standard issue work laptop",
+      "state": "waiting",
+      "says": "Luis Herrera is waiting on the queue for approvals for a standard issue work laptop.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Luis Herrera said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     }
+    ],
+    "questionsForTheLead": [
+     {
+      "id": "chased-89a6f702-b720-40e0-a73c-fd9ee5433bee",
+      "question": "What has been tried to get approval for the four purchases from Ahmed's manager, which Fatima Sow is waiting for?",
+      "because": "Nothing on record says anybody has chased it, so only you can find out what was done outside the check-in."
+     },
+     {
+      "id": "chased-70c3fa74-f873-4568-91b0-f19db22c9f76",
+      "question": "What has been tried to get a final security clearance from the client's end, which Luis Herrera is waiting for?",
+      "because": "Nothing on record says anybody has chased it, so only you can find out what was done outside the check-in."
+     },
+     {
+      "id": "chased-df50079d-6a00-4a29-b900-d00865ca9ecc",
+      "question": "What has been tried to get a standard issue work laptop from the queue for approvals, which Luis Herrera is waiting for?",
+      "because": "Nothing on record says anybody has chased it, so only you can find out what was done outside the check-in."
+     }
+    ]
+   },
+   "participantReport": {
+    "id": "8a8ce90f-1e3d-437d-8463-cc2df7851851",
+    "groundId": "ced90440-ca19-4499-ae2f-a9838619843a",
+    "sharedPicture": "All three people have answered. The participants have different ideas about what is blocking the work, which suggests that the obstacles the team is facing are not visible to Ahmed Farouk.\n\nAhmed's goal is to meet all deadlines and keep the work moving. Ahmed has not named anything that is in the way.\n\nYou report that you have completed your part of the process. You are waiting on four approvals that have been sitting since the 9th of the month.\n\nLuis Herrera is onboarding a new client and Luis is waiting for a security clearance from the client. Once the clearance is received, Luis can push the work live.\n\nAhmed's attention is on high-level sprint goals and team well-being. You are focused on operational tasks and you are blocked by an internal approval process. Luis is focused on client onboarding, Luis is blocked by an external dependency, and Luis is waiting for equipment. The records show three parallel streams of work, rather than a single, shared view of the team's priorities and obstacles.",
+    "theOpening": "All three people have answered. The participants have different ideas about what is blocking the work, which suggests that the obstacles the team is facing are not visible to Ahmed Farouk.",
+    "agreements": [],
+    "centralQuestion": "What process for surfacing and resolving blockers would give everyone confidence that a problem, like the current approval delay, is both visible and being addressed?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Ahmed Farouk",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 9,
+       "documentsAttached": 0,
+       "who": "Ahmed Farouk"
+      },
+      {
+       "label": "Fatima Sow",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 8,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Fatima Sow"
+      },
+      {
+       "label": "Luis Herrera",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 9,
+       "documentsAttached": 0,
+       "who": "Luis Herrera"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "They have different pictures of what is blocking the work, suggesting that obstacles faced by the team are not visible to Ahmed Farouk."
+     ],
+     "sessionCounts": {
+      "Fatima Sow": 9,
+      "Luis Herrera": 8,
+      "Ahmed Farouk": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Fatima Sow",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Dependencies hinted at rather than named (session 1)",
+         "level": "directional"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Fatima Sow": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Fatima Sow": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [
+      {
+       "label": "Fatima Sow",
+       "evidence": "Your work is blocked waiting for an approval from Ahmed Farouk's manager."
+      }
+     ],
+     "whatCouldBeChecked": {
+      "says": [
+       "All 2 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 2,
+      "checked": 2
+     },
+     "difficultyDisclosures": true
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [
+      {
+       "say": "In session 1, you said, \"I will continue to monitor the approvals.\" The time you gave for it was \"Ahmed's manager returns on the 28th.\" Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "I will continue to monitor the approvals.",
+       "when": "Ahmed's manager returns on the 28th.",
+       "status": "UNKNOWN",
+       "leadLabel": "Ahmed Farouk",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [
+      {
+       "on": "Ahmed's manager",
+       "say": "You are waiting on Ahmed's manager for approval for the four purchases, and nothing on record says anybody has chased it since.",
+       "from": "You",
+       "what": "approval for the four purchases",
+       "chased": false,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03"
+      }
+     ],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "You report that you have completed your part of the process. You are waiting on four approvals that have been sitting since the 9th of the month.",
+      "hasGap": false,
+      "headline": "Four of your approvals have been stuck since the 9th.",
+      "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "releasedAt": "2026-10-02T01:01:27.656Z",
+    "createdAt": "2026-10-02T00:58:59.944Z",
+    "updatedAt": "2026-10-02T01:03:51.281Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The participants have different ideas about what is blocking the work, which suggests that the obstacles the team is facing are not visible to Ahmed Farouk.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Ahmed Farouk's goal is to meet all deadlines and keep the work moving.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Ahmed Farouk has not named anything that is in the way.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You report that you have completed your part of the process.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are waiting on four approvals that have been sitting since the 9th of the month.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Luis Herrera is onboarding a new client and Luis is waiting for a security clearance from the client.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Once the clearance is received, Luis Herrera can push the work live.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Ahmed Farouk's attention is on high-level sprint goals and team well-being.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are focused on operational tasks and you are blocked by an internal approval process.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Luis Herrera is focused on client onboarding, Luis is blocked by an external dependency, and Luis is waiting for equipment.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The records show three parallel streams of work, rather than a single, shared view of the team's priorities and obstacles.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "My main concern has been the supplier approvals that are waiting, and I think we may have different views of what is most urgent right now.",
+     "toAcknowledge": "The other view is that the team is on track when it is meeting its deadlines for planned work. Take seriously that this is how success is being measured, even if it does not account for your own urgent work.",
+     "questionToCarry": "What is the right way to get an urgent operational issue onto the team's plan when it wasn't foreseen?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "Put approval for the four purchases in writing, with the date you need it by."
+     ],
+     "general": true,
+     "role": null,
+     "whyNoRoleMap": "Your record looks like operations and people, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "8bb765ff-369c-4dc8-9a2d-0305786c0e20",
+      "type": "INTENT",
+      "text": "my read is that most of my work is operations.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8c03a2c9-3a56-4833-9d99-512787f47ae2",
+      "sessionNumber": 1
+     },
+     {
+      "id": "fae34a42-c044-4b29-adb1-19e815b63f12",
+      "type": "PROGRESS",
+      "text": "I have completed my part of the process.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8c03a2c9-3a56-4833-9d99-512787f47ae2",
+      "sessionNumber": 1
+     },
+     {
+      "id": "015c54f2-f9ae-4eb8-9403-bd7df39856b4",
+      "type": "WORRY",
+      "text": "The current focus is on the four approvals sitting since the 9th.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "8c03a2c9-3a56-4833-9d99-512787f47ae2",
+      "sessionNumber": 1
+     },
+     {
+      "id": "7bdd0c1b-273b-49b2-a2ef-4dfe2a0042d3",
+      "type": "WORRY",
+      "text": "I am waiting on Ahmed's manager for approval.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8c03a2c9-3a56-4833-9d99-512787f47ae2",
+      "sessionNumber": 1
+     },
+     {
+      "id": "cd4de737-0ef0-4a84-bc4d-2be60e2c6298",
+      "type": "WORRY",
+      "text": "Ahmed's manager is on leave until the 28th.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8c03a2c9-3a56-4833-9d99-512787f47ae2",
+      "sessionNumber": 1
+     },
+     {
+      "id": "39323e98-2de8-45fe-ba53-31aa787adfc9",
+      "type": "WORRY",
+      "text": "Two suppliers have chased.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "8c03a2c9-3a56-4833-9d99-512787f47ae2",
+      "sessionNumber": 1
+     },
+     {
+      "id": "cfd36bad-4283-4770-8efa-44fb81de6e3b",
+      "type": "WORRY",
+      "text": "I do not know if there is a backup for this type of approval.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8c03a2c9-3a56-4833-9d99-512787f47ae2",
+      "sessionNumber": 1
+     },
+     {
+      "id": "59d68cd3-1d19-4e6f-a249-dbcae4b6d0bc",
+      "type": "WORRY",
+      "text": "I have not escalated the issue with the delayed approvals. I assume it is known.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8c03a2c9-3a56-4833-9d99-512787f47ae2",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [
+     {
+      "id": "89a6f702-b720-40e0-a73c-fd9ee5433bee",
+      "what": "approval for the four purchases",
+      "couldTry": [
+       "Speak to Ahmed's manager rather than write to them.",
+       "Put a date on it in writing: what you need, by when, and what happens if it slips.",
+       "Ask what can move without this, so the whole thing is not waiting on one approval."
+      ]
+     }
+    ],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\n\nYou see your work as being mostly operations, and you have completed your part of the process. Your main concern is four approvals that have been waiting since the 9th. These are waiting for a manager who is on leave until the 28th, and two suppliers have now chased for an update. You do not know if there is a backup for this type of approval, and have not raised this because you assume it is a known issue.",
+     "whatToCarry": "You could ask whether there is a backup for approvals when a manager is on leave."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "ced90440-ca19-4499-ae2f-a9838619843a",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "RECURRING",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "checkInGrid",
+     "divergence"
+    ],
+    "title": "How the team is actually doing this month",
+    "scenario": "PULSE_CHECK",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. The participants have different ideas about what is blocking the work, which suggests that the obstacles the team is facing are not visible to Ahmed Farouk.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 3,
+       "oldest": "approval for the four purchases",
+       "daysWaiting": 0
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T01:03:51.281Z",
+    "participants": [
+     {
+      "id": "cbf98dd6-67a5-4a86-8b4e-2e0ecd71a451",
+      "name": "Ahmed Farouk",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "b3bebb30-16ff-479a-a105-efc2d00aacff",
+      "name": "Luis Herrera",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+      "name": "Fatima Sow",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [
+      {
+       "topic": "They have different pictures of what is blocking the work, suggesting that obstacles faced by the team are not visible to Ahmed Farouk.",
+       "atStake": "If this holds, work that is currently stuck will risk sprint deadlines, because the person who can help unblock it is not aware of the problems.",
+       "evidence": [
+        "Ahmed Farouk's record states an expectation to meet all of [the sprint goals] and does not name any blockers.",
+        "Your record notes they are waiting on approvals 'sitting since the 9th' and have not escalated because 'I assume it is known.'"
+       ],
+       "positions": [
+        {
+         "view": "Describes the sprint in terms of meeting goals and does not name any obstacles.",
+         "participantLabel": "Ahmed Farouk",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Ahmed Farouk"
+        },
+        {
+         "view": "Is blocked waiting for four approvals from Ahmed Farouk's manager, who is on leave.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Is blocked on a project by a client's security clearance and is also waiting for a new laptop.",
+         "participantLabel": "Luis Herrera",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Luis Herrera"
+        }
+       ],
+       "settledBy": "Agreeing on a way to make sure blockers are visible to Ahmed Farouk, and confirming who is responsible for resolving them.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [],
+     "agreementMarks": [],
+     "centralQuestion": "Agreeing on a way to make sure blockers are visible to Ahmed Farouk, and confirming who is responsible for resolving them. That is what settles they have different pictures of what is blocking the work, suggesting that obstacles faced by the team are not visible to Ahmed Farouk.",
+     "settled": [],
+     "stillOpen": [
+      "They have different pictures of what is blocking the work, suggesting that obstacles faced by the team are not visible to Ahmed Farouk."
+     ]
+    },
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "cbf98dd6-67a5-4a86-8b4e-2e0ecd71a451",
+       "name": "Ahmed Farouk",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "b3bebb30-16ff-479a-a105-efc2d00aacff",
+       "name": "Luis Herrera",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+       "name": "Fatima Sow",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things. They have different pictures of what is blocking the work, suggesting that obstacles faced by the team are not visible to Ahmed Farouk.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "No target set",
+      "sub": "Nobody has set anything to measure this against.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "2",
+      "sub": "Work is held up by approval for the four purchases. 1 more is holding work up.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "Put approval for the four purchases in writing, with the date you need it by."
+      ],
+      "general": true,
+      "role": null,
+      "whyNoRoleMap": "Your record looks like operations and people, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+     },
+     "eachPerson": null
+    },
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-89a6f702-b720-40e0-a73c-fd9ee5433bee",
+      "says": "You cannot move on approval for the four purchases until it comes from Ahmed's manager.",
+      "because": "It was first said on 2 October. Nobody has said what has been tried. The time given for it was \"until the 28th\"."
+     },
+     {
+      "id": "handoff-70c3fa74-f873-4568-91b0-f19db22c9f76",
+      "says": "Luis Herrera cannot move on a final security clearance until it comes from the client's end.",
+      "because": "It was first said on 2 October. Nobody has said what has been tried. No time has been given for it."
+     },
+     {
+      "id": "handoff-df50079d-6a00-4a29-b900-d00865ca9ecc",
+      "says": "Luis Herrera is waiting on the queue for approvals for a standard issue work laptop.",
+      "because": "It was first said on 2 October. Nobody has said what has been tried. No time has been given for it."
+     },
+     {
+      "id": "no-time-330c2c0d-0dd3-4fbe-93c5-c47551b2d740",
+      "says": "You committed to continue to monitor the approvals, and no time was given for it, so nobody can tell when it would be late.",
+      "because": "Nobody has said yet whether it happened."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "330c2c0d-0dd3-4fbe-93c5-c47551b2d740",
+      "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+      "who": "You",
+      "says": "In session 1, you said, \"I will continue to monitor the approvals.\" The time you gave for it was \"Ahmed's manager returns on the 28th.\" Nobody has said yet whether it happened.",
+      "when": "Ahmed's manager returns on the 28th.",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you committed to continue to monitor the approvals."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you said the work was waiting on Ahmed's manager for approval for the four purchases."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Luis Herrera said the work was waiting on the client's end for a final security clearance."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Luis Herrera said the work was waiting on the queue for approvals for a standard issue work laptop."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+      "who": "You",
+      "says": "You have answered 1 session and made 1 commitment. 0 are done, 0 are not done or dropped, and 1 is still open.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you made 1 commitment and named 1 thing the work was waiting on."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "89a6f702-b720-40e0-a73c-fd9ee5433bee",
+      "who": "You",
+      "says": "You are waiting on Ahmed's manager for approval for the four purchases.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": false,
+      "timeGiven": true,
+      "checks": [
+       "Ahmed's manager holds it.",
+       "Nobody has said what has been tried.",
+       "The time given for it was \"until the 28th\"."
+      ]
+     },
+     {
+      "id": "70c3fa74-f873-4568-91b0-f19db22c9f76",
+      "who": "Luis Herrera",
+      "says": "Luis Herrera is waiting on the client's end for a final security clearance.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": false,
+      "timeGiven": false,
+      "checks": [
+       "The client's end holds it.",
+       "Nobody has said what has been tried.",
+       "No time has been given for it."
+      ]
+     },
+     {
+      "id": "df50079d-6a00-4a29-b900-d00865ca9ecc",
+      "who": "Luis Herrera",
+      "says": "Luis Herrera is waiting on the queue for approvals for a standard issue work laptop.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": false,
+      "timeGiven": false,
+      "checks": [
+       "The queue for approvals holds it.",
+       "Nobody has said what has been tried.",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "8e5c6f12-f1b0-4001-b8e3-357e9172ae03",
+      "who": "You",
+      "promised": [
+       "In session 1, you said, \"I will continue to monitor the approvals.\" The time you gave for it was \"Ahmed's manager returns on the 28th.\" Nobody has said yet whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": null,
+      "who": "Ahmed's manager",
+      "promised": [],
+      "othersWaitFor": [
+       "You are waiting on Ahmed's manager for approval for the four purchases."
+      ]
+     },
+     {
+      "participantId": null,
+      "who": "the client's end",
+      "promised": [],
+      "othersWaitFor": [
+       "Luis Herrera is waiting on the client's end for a final security clearance."
+      ]
+     },
+     {
+      "participantId": null,
+      "who": "the queue for approvals",
+      "promised": [],
+      "othersWaitFor": [
+       "Luis Herrera is waiting on the queue for approvals for a standard issue work laptop."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "89a6f702-b720-40e0-a73c-fd9ee5433bee",
+      "says": "You have been waiting on Ahmed's manager for approval for the four purchases since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     },
+     {
+      "id": "70c3fa74-f873-4568-91b0-f19db22c9f76",
+      "says": "Luis Herrera has been waiting on the client's end for a final security clearance since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     },
+     {
+      "id": "df50079d-6a00-4a29-b900-d00865ca9ecc",
+      "says": "Luis Herrera has been waiting on the queue for approvals for a standard issue work laptop since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "89a6f702-b720-40e0-a73c-fd9ee5433bee",
+      "who": "You",
+      "name": "approval for the four purchases",
+      "state": "blocking",
+      "says": "You are waiting on Ahmed's manager for approval for the four purchases.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what you said."
+      },
+      "timeGiven": "The time given for it was \"until the 28th\".",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     },
+     {
+      "id": "70c3fa74-f873-4568-91b0-f19db22c9f76",
+      "who": "Luis Herrera",
+      "name": "a final security clearance",
+      "state": "blocking",
+      "says": "Luis Herrera is waiting on the client's end for a final security clearance.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Luis Herrera said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": "Once it is cleared, I can push it live."
+     },
+     {
+      "id": "df50079d-6a00-4a29-b900-d00865ca9ecc",
+      "who": "Luis Herrera",
+      "name": "a standard issue work laptop",
+      "state": "waiting",
+      "says": "Luis Herrera is waiting on the queue for approvals for a standard issue work laptop.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Luis Herrera said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     }
+    ]
+   },
+   "participantSeen": "a",
+   "patterns": [
+    {
+     "code": "D4",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "Planning and discussion are described, but without specific workplans or outputs that can be pointed to.",
+     "participant": {
+      "email": "lead.1790902526783@pulse.test"
+     }
+    },
+    {
+     "code": "K5",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "Goals are described in general terms, but with no description of the specific work being done to achieve them.",
+     "participant": {
+      "email": "lead.1790902526783@pulse.test"
+     }
+    }
+   ],
+   "commitments": [
+    {
+     "text": "I will continue to monitor the approvals.",
+     "whenSaid": "Ahmed's manager returns on the 28th.",
+     "status": "UNKNOWN",
+     "statedInSession": 1,
+     "saidAgainIn": [],
+     "participant": {
+      "email": "a.1790902526783@pulse.test"
+     }
+    }
+   ]
+  }
+ ]
+}

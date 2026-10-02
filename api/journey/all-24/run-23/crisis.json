@@ -1,0 +1,2211 @@
+{
+ "scenario": {
+  "key": "crisis",
+  "label": "The outage, and what we each thought was happening",
+  "scenario": "CRISIS_ALIGNMENT",
+  "moment": "RESOLUTION",
+  "cadence": "ONE_TIME",
+  "timelineDays": 7,
+  "sessions": 1,
+  "brief": "We were down for eleven hours on Tuesday. Before the post-mortem meeting I want each person's own account of what they knew and when, written down separately, because in the room the loudest version becomes the history.",
+  "theDecision": "The alert fired at 02:14 and went to a rota that had not been updated since someone left in June, so nobody was paged until a customer emailed at 08:40. Three people each assumed a different person was on call. A right answer lands on the stale rota, not on the engineer who did not wake up.",
+  "people": [
+   {
+    "key": "cto",
+    "name": "Elena Rossi",
+    "isLead": true,
+    "remit": "CTO. Running the post-mortem.",
+    "truth": "She believes the engineer on call missed the page. She does not know the rota was not updated when Marcus left in June. She approved the rota tool purchase and never checked it after.",
+    "manner": "Controlled, wants facts and a timeline. Accepts a correction when given evidence."
+   },
+   {
+    "key": "eng",
+    "name": "Priya Raman",
+    "remit": "Backend engineer. Believed to have been on call.",
+    "truth": "She was not on the rota that week and got no page. She has the rota screenshot showing Marcus, who left in June. She found out about the outage from Slack at 08:55. She has been quietly assumed to be at fault all week.",
+    "manner": "Precise and a little tense. Has the screenshot. Answers exactly what is asked and no more."
+   },
+   {
+    "key": "sup",
+    "name": "Ben Carter",
+    "remit": "Support lead. Took the customer calls.",
+    "truth": "First customer email at 08:40. He escalated at 08:47. He had no idea who was on call and tried three people. He has asked for an up-to-date escalation list twice this year.",
+    "manner": "Direct, slightly exasperated, good with times."
+   }
+  ]
+ },
+ "groundId": "dd37452a-679a-45a8-a570-b601521ad94d",
+ "orgId": "4bc149bb-f8c3-4650-b866-646974fdcb6b",
+ "emails": {
+  "cto": "cto.1790901460511@crisis.test",
+  "eng": "eng.1790901460511@crisis.test",
+  "sup": "sup.1790901460511@crisis.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "cto",
+     "name": "Elena Rossi",
+     "isLead": true,
+     "checkInId": "77c1f5ad-58e9-47d4-bd9a-d8c1f83df7c4",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "This session is for your own account of what happened and what you knew during the outage on Tuesday. What did you understand your role was during the outage?"
+      },
+      {
+       "from": "ELENA ROSSI",
+       "text": "My role is to ensure the team has the resources and information to restore service. I also need to understand the root cause to prevent recurrence."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You are naming two distinct parts of the role: immediate restoration and understanding the root cause. For the immediate restoration, what resources and information did you understand yourself to be responsible for providing to the team?",
+       "suggestedAnswers": [
+        "I provided all the necessary resources and information.",
+        "I am still gathering some information.",
+        "I am not yet sure what is needed."
+       ]
+      },
+      {
+       "from": "ELENA ROSSI",
+       "text": "I am responsible for providing access to any necessary personnel, external vendors, or tools. I also ensure communication channels are open and clear."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What specifically did you understand to be your direct responsibility for communicating to the team during the outage?",
+       "suggestedAnswers": [
+        "I kept everyone updated on access and tools.",
+        "I ensured communication channels were open.",
+        "Communication about access was delayed.",
+        "I'm not sure what I understood."
+       ]
+      },
+      {
+       "from": "ELENA ROSSI",
+       "text": "My direct responsibility is to communicate updates from leadership and to clear any obstacles for the team. I also ensure they have the necessary context."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What was the first thing you did on Tuesday that was related to communicating updates from leadership or clearing obstacles for the team?",
+       "suggestedAnswers": [
+        "I shared the new leadership message.",
+        "I ran into a blocker immediately.",
+        "I haven't started on that yet.",
+        "I clarified a team obstacle."
+       ]
+      },
+      {
+       "from": "ELENA ROSSI",
+       "text": "The first thing I did was try to contact the on-call engineer for an update on the situation."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "And what happened when you tried to contact the on-call engineer?",
+       "suggestedAnswers": [
+        "I reached them and got an update.",
+        "I haven't heard back yet.",
+        "I am still trying to reach them."
+       ]
+      },
+      {
+       "from": "ELENA ROSSI",
+       "text": "I was unable to reach them. There was no response."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That is an immediate block for a role focused on clearing obstacles. Who else did you try to contact when the on-call engineer did not respond?",
+       "suggestedAnswers": [
+        "I tried ... and then also ...",
+        "No one else has responded either.",
+        "I haven't had a chance to try."
+       ]
+      },
+      {
+       "from": "ELENA ROSSI",
+       "text": "I then contacted the engineering lead, Raj."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You went to the engineering lead, Raj, when the on-call engineer was unreachable. What did you say to Raj?",
+       "suggestedAnswers": [
+        "I told him everything is on track.",
+        "I explained the roadblock we hit.",
+        "I haven't spoken to him yet.",
+        "I just said hello."
+       ]
+      },
+      {
+       "from": "ELENA ROSSI",
+       "text": "I asked Raj if he knew the status of the incident and if he could reach the on-call engineer. I also asked him to take over incident command if he could."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That would shift a significant responsibility. Did Raj confirm Raj would?",
+       "suggestedAnswers": [
+        "Yes, Raj confirmed he would.",
+        "Raj has not confirmed anything yet.",
+        "I don't know if Raj confirmed."
+       ]
+      },
+      {
+       "from": "ELENA ROSSI",
+       "text": "Yes, he confirmed he would take over."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That did not come out right. Say that again and I will pick it up.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    },
+    {
+     "key": "eng",
+     "name": "Priya Raman",
+     "isLead": false,
+     "checkInId": "49faa210-b5c9-4e44-85a8-3d490ce73906",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Priya, this conversation is to get your own account of the outage and what you understood your role in it to be, separate from anyone else's version. What did you understand your role in this to be-in your own words, before anyone else's version?"
+      },
+      {
+       "from": "PRIYA RAMAN",
+       "text": "I was not on call. My role was to support the team when I became aware of the outage."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What was the first thing you yourself saw that told you something was wrong?",
+       "suggestedAnswers": [
+        "My screen showed an error.",
+        "Things just stopped working.",
+        "I don't quite remember.",
+        "I saw a message from a colleague."
+       ]
+      },
+      {
+       "from": "PRIYA RAMAN",
+       "text": "I saw a message in Slack."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "A Slack message was the first sign. What was the content of that message?",
+       "suggestedAnswers": [
+        "It confirmed our next steps.",
+        "It brought up a new problem.",
+        "I haven't opened it yet.",
+        "It was about the ... report."
+       ]
+      },
+      {
+       "from": "PRIYA RAMAN",
+       "text": "It was a general message about an ongoing incident."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What was the first thing you did after seeing that message?",
+       "suggestedAnswers": [
+        "I checked the incident's status.",
+        "I waited for more information.",
+        "Nothing, I'm still figuring it out."
+       ]
+      },
+      {
+       "from": "PRIYA RAMAN",
+       "text": "I checked the on-call rota."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Checking the on-call rota is a specific action. What happened once you saw who was on call?",
+       "suggestedAnswers": [
+        "I talked to them right away.",
+        "Still waiting for their answer.",
+        "Not yet.",
+        "They were busy then."
+       ]
+      },
+      {
+       "from": "PRIYA RAMAN",
+       "text": "I saw that Marcus was listed."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What was the date and time when you saw that message about the ongoing incident?",
+       "suggestedAnswers": [
+        "I saw it at ... on ...",
+        "I haven't seen that message.",
+        "I don't remember right now."
+       ]
+      },
+      {
+       "from": "PRIYA RAMAN",
+       "text": "It was 08:55. On Tuesday."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What did you know about the outage, and when?",
+       "suggestedAnswers": [
+        "I knew about it this morning.",
+        "I only heard about it at ...",
+        "I don't know yet.",
+        "I am still waiting for an update."
+       ]
+      },
+      {
+       "from": "PRIYA RAMAN",
+       "text": "I knew there was an ongoing incident at 08:55 on Tuesday from Slack. I knew Marcus was on call at that time, from the rota."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You have given me a clear timeline of what you knew and when. Your role as you understood it was to support the team once you were aware. What are you most worried will happen if this is not resolved in the period you are working to?",
+       "suggestedAnswers": [
+        "I believe we can fix this in time.",
+        "I worry about losing customer trust.",
+        "I don't know the exact impact.",
+        "It might delay other important work."
+       ]
+      },
+      {
+       "from": "PRIYA RAMAN",
+       "text": "I am not worried about that."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You're not worried about the resolution timeframe, which means you either see a clear path to closure or you don't feel it's your primary concern. Is that right?",
+       "suggestedAnswers": [
+        "Yes, that's right.",
+        "No, that is not right.",
+        "I am not sure yet."
+       ]
+      },
+      {
+       "from": "PRIYA RAMAN",
+       "text": "I do not know about a resolution timeframe. I was not involved in the incident response."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What you knew was an ongoing incident and who was on call. Is that right?",
+       "suggestedAnswers": [
+        "Yes, that is right.",
+        "No, that is not right.",
+        "I am not sure.",
+        "I need to check first."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "sup",
+     "name": "Ben Carter",
+     "isLead": false,
+     "checkInId": "52e4266c-e29b-4802-9f33-667a316e9eae",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "We are building your version of what happened during the outage on Tuesday. What did you understand your role in this to be-in your own words, before anyone else's version?"
+      },
+      {
+       "from": "BEN CARTER",
+       "text": "My role is to help customers. And that's what I was doing, or trying to do, when the first email came in."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You understood your role as helping customers, and you were doing that when the first email about the outage arrived. What was the first thing you, yourself, saw that told you something was wrong?",
+       "suggestedAnswers": [
+        "The first email looked very unusual.",
+        "My computer just stopped responding.",
+        "I still can't pinpoint it.",
+        "The chat queue kept growing fast."
+       ]
+      },
+      {
+       "from": "BEN CARTER",
+       "text": "The first thing I saw was an email from a customer at 8:40 AM."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What did that email say, specifically?",
+       "suggestedAnswers": [
+        "I haven't read it yet.",
+        "It was good news about the new order.",
+        "They want more time to decide."
+       ]
+      },
+      {
+       "from": "BEN CARTER",
+       "text": "It was a report of an issue. He was having trouble accessing the service."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. And what was the very first thing you did after seeing that report?",
+       "suggestedAnswers": [
+        "I immediately started looking into it.",
+        "I forwarded it to the right person.",
+        "I'm still figuring out the next steps.",
+        "Not yet."
+       ]
+      },
+      {
+       "from": "BEN CARTER",
+       "text": "I checked our internal dashboards. Everything looked normal on my end at that point."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Checking your dashboards showed normal status, even with that first report of an access issue. What was the next thing you did then?",
+       "suggestedAnswers": [
+        "I moved on to the next task.",
+        "I had to wait for more information.",
+        "Not yet, still deciding.",
+        "I started looking into ... ."
+       ]
+      },
+      {
+       "from": "BEN CARTER",
+       "text": "I replied to the customer, asking for more details."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Did you tell anyone that happened?",
+       "suggestedAnswers": [
+        "Yes, I already told them.",
+        "No, I haven't told anyone yet.",
+        "I haven't had a chance.",
+        "The team knows."
+       ]
+      },
+      {
+       "from": "BEN CARTER",
+       "text": "No, not at that exact moment. It seemed like an isolated issue at first."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "It seemed like an isolated issue at first, so you didn't tell anyone about the customer's email or your initial checks. What did you observe happening during the outage?",
+       "suggestedAnswers": [
+        "I saw some systems recover.",
+        "Nothing came back online for me.",
+        "I am still checking what happened.",
+        "I did not notice anything specific."
+       ]
+      },
+      {
+       "from": "BEN CARTER",
+       "text": "I saw the customer escalate at 8:47. He said he'd tried three people already."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What decisions did you make?",
+       "suggestedAnswers": [
+        "I decided to escalate it.",
+        "I haven't made a decision yet.",
+        "I need more information first."
+       ]
+      },
+      {
+       "from": "BEN CARTER",
+       "text": "My main decision was to try and get him to the right person, but I didn't know who was on call for this kind of issue."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What was the next decision you made after that?",
+       "suggestedAnswers": [
+        "I asked ... for help, and it worked.",
+        "I'm still trying to find the right person.",
+        "I haven't decided anything new yet."
+       ]
+      },
+      {
+       "from": "BEN CARTER",
+       "text": "I started looking for an up-to-date escalation list."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "It sounds like most of your work is support. Is that right?",
+       "suggestedAnswers": [
+        "Yes, I found what I needed.",
+        "No, I am still searching.",
+        "Still looking, not quite yet.",
+        "I need a bit more time."
+       ]
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "e4f8e819-8a16-4523-831b-cab73a531059",
+    "groundId": "dd37452a-679a-45a8-a570-b601521ad94d",
+    "sharedPicture": "All three people have answered. The process for what to do in an outage is not clear or consistently understood across roles.\n\nYou tried to contact the on-call engineer for an update but could not reach the on-call engineer.\n\nPriya Raman knew there was an incident at 08:55 on Tuesday from a message on Slack. Priya's role is to support the team.\n\nBen Carter learned about the outage from a customer's email at 8:40 AM. Ben did not know who was on call for the issue.\n\nThe first alert was a customer email to Ben at 8:40 AM. Believing it was an isolated issue, Ben did not immediately escalate it internally. By 8:55 AM, an incident was visible on Slack, where Priya became aware of it. Your first action was to contact the designated on-call engineer, but the engineer was unreachable. You then asked another engineering lead to take command of the incident.",
+    "theOpening": "All three people have answered. The process for what to do in an outage is not clear or consistently understood across roles.",
+    "agreements": [],
+    "divergences": [
+     {
+      "topic": "The process for what to do in an outage is not clear or consistently understood across roles.",
+      "atStake": "If this gap is not closed, the work to restore service during an outage may be delayed while the team determines who is responsible for the fix.",
+      "evidence": [
+       "The customer-facing team member stated they did not know who was on call for the issue.",
+       "You reported being unable to reach the on-call engineer."
+      ],
+      "positions": [
+       {
+        "view": "Ben Carter, who received the first customer report, did not know who was on the escalation path.",
+        "participantLabel": "Ben Carter",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Your first move was to contact the on-call engineer, but that person could not be reached.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Priya Raman, an engineer aware of the incident, understood the role as not requiring involvement since Priya was not on call.",
+        "participantLabel": "Priya Raman",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     }
+    ],
+    "centralQuestion": "For an incident like this one, what is the agreed-upon process from the first customer report to a confirmed incident commander, including the plan for when the first person is unavailable?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Elena Rossi",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 11,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Elena Rossi"
+      },
+      {
+       "label": "Priya Raman",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 6,
+       "documentsAttached": 0,
+       "who": "Priya Raman"
+      },
+      {
+       "label": "Ben Carter",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 11,
+       "documentsAttached": 0,
+       "who": "Ben Carter"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "concernFlags": [],
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "The process for what to do in an outage is not clear or consistently understood across roles."
+     ],
+     "sessionCounts": {
+      "Priya Raman": 9,
+      "Ben Carter": 9,
+      "Elena Rossi": 8
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Elena Rossi",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Elena Rossi": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Elena Rossi": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [],
+     "whatCouldBeChecked": {
+      "says": [],
+      "total": 0,
+      "checked": 0
+     },
+     "difficultyDisclosures": true
+    },
+    "inferences": [
+     {
+      "id": "initial-agreement-inference",
+      "text": "The team was expected to have a functioning on-call system to handle service outages.",
+      "reason": "This is inferred from your attempt to contact an on-call engineer and Ben Carter's search for an escalation list, as neither would have happened if a process were not assumed to exist.",
+      "participantLabel": "Elena Rossi"
+     },
+     {
+      "id": "gap-resilience-inference",
+      "text": "The process for escalating an incident was not clear to all team members, and it had no backup for when the primary on-call person was unavailable.",
+      "reason": "This is concluded from combining two separate facts: Ben Carter did not know the process, and you found the primary contact to be a single point of failure.",
+      "participantLabel": "Elena Rossi"
+     }
+    ],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": null,
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "Nobody knew who was on call during the outage. Ben Carter could not escalate the customer's report, and you could not reach the person you believed was on call.",
+     "whatToDo": [
+      {
+       "move": "Agree with Ben Carter and you who is responsible for publishing the on-call rota and where it will be.",
+       "because": "Ben Carter did not know who was on call, and you could not reach the engineer you believed was on call.",
+       "startWith": "Ben Carter"
+      },
+      {
+       "move": "Clarify with Priya Raman what an engineer's role is during an incident when they are not the one on call.",
+       "because": "Priya Raman knew there was an incident but Priya understood their role as not requiring involvement.",
+       "startWith": "Priya Raman"
+      },
+      {
+       "move": "Review with you why the attempt to contact the on-call engineer failed.",
+       "because": "You tried to contact the on-call engineer but you could not reach them.",
+       "startWith": "You"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "Ben Carter learned of the outage from a customer at 8:40 AM but did not know who to contact.",
+       "soWhat": "The process for escalating an issue from a customer is not working.",
+       "fieldId": "Ben Carter"
+      },
+      {
+       "says": "Priya Raman saw the incident on Slack but understood the role as not requiring action because Priya was not on call.",
+       "soWhat": "An engineer knew about the incident but the process did not lead Priya Raman to act on it.",
+       "fieldId": "Priya Raman"
+      },
+      {
+       "says": "You tried to contact the on-call engineer but you could not reach them.",
+       "soWhat": "You do not have a working way to contact the person responsible for an outage.",
+       "fieldId": "You"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "Who was scheduled to be on call at the time of the incident.",
+       "howManyMissedIt": 3
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record does not contain the on-call rota, and the accounts from you and Priya Raman conflict.",
+       "about": "Who was the rostered on-call engineer during the incident.",
+       "toKnow": "Check the on-call rota system or the document that holds the rota for that day."
+      },
+      {
+       "why": "The record only shows that your attempt to make contact failed.",
+       "about": "Why the on-call engineer could not be reached by you.",
+       "toKnow": "Your own account of this is not in this check-in."
+      }
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Priya Raman is a backend engineer. Priya is believed to have been on call. Since then, the record holds 1 session, 6 lines of what was said, 2 with a name, a number or a date in them and none backed by a document.",
+       "who": "Priya Raman",
+       "participantId": "7849d0d7-4128-4f8f-9f48-5c286ae7c91d"
+      },
+      {
+       "say": "Ben Carter is a support lead. Ben took the customer calls. Since then, the record holds 1 session, 11 lines of what was said, 3 with a name, a number or a date in them and none backed by a document.",
+       "who": "Ben Carter",
+       "participantId": "db6aef36-9566-4a41-a555-f8c9ba07f763"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Ben Carter is waiting on somebody outside this check-in for \"an up-to-date escalation list\", and it has been taken above the person it was with."
+     ],
+     "commitments": [],
+     "dependencies": [
+      {
+       "on": null,
+       "say": "Ben Carter is waiting on somebody outside this check-in for \"an up-to-date escalation list\", and it has been taken above the person it was with.",
+       "from": "Ben Carter",
+       "what": "an up-to-date escalation list",
+       "chased": true,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "db6aef36-9566-4a41-a555-f8c9ba07f763"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself.",
+      "Nobody has said in a check-in what they would do next. Ask for one thing, with a date, from each person."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "You tried to contact the on-call engineer for an update but could not reach the on-call engineer.",
+      "hasGap": false,
+      "headline": "You could not reach the on-call engineer.",
+      "participantId": "1162dcf8-5ec5-41db-b976-d6904d86ec38",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Priya Raman knew there was an incident at 08:55 on Tuesday from a message on Slack. Priya's role is to support the team.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "7849d0d7-4128-4f8f-9f48-5c286ae7c91d",
+      "mark": "memory",
+      "figureIs": "from memory",
+      "markSays": "From memory only"
+     },
+     {
+      "text": "Ben Carter learned about the outage from a customer's email at 8:40 AM. Ben did not know who was on call for the issue.",
+      "hasGap": false,
+      "headline": "Ben Carter did not know who was on call.",
+      "participantId": "db6aef36-9566-4a41-a555-f8c9ba07f763",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": "2026-10-02T00:45:40.294Z",
+    "createdAt": "2026-10-02T00:41:11.998Z",
+    "updatedAt": "2026-10-02T00:45:40.295Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The process for what to do in an outage is not clear or consistently understood across roles.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You tried to contact the on-call engineer for an update but could not reach the on-call engineer.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Priya Raman knew there was an incident at 08:55 on Tuesday from a message on Slack.",
+      "mark": "memory",
+      "figureIs": "from memory",
+      "markSays": "From memory only"
+     },
+     {
+      "text": "Priya Raman's role is to support the team.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Ben Carter learned about the outage from a customer's email at 8:40 AM.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Ben Carter did not know who was on call for the issue.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The first alert was a customer email to Ben Carter at 8:40 AM.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Believing it was an isolated issue, Ben Carter did not immediately escalate it internally.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "By 8:55 AM, an incident was visible on Slack, where Priya Raman became aware of it.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Your first action was to contact the designated on-call engineer, but the engineer was unreachable.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You then asked another engineering lead to take command of the incident.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": null,
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "You have started session 1 of the operations and people work, and as expected for this early stage, nothing repeats yet; the value of later sessions will depend on what you can show.",
+     "beforeNextTime": [
+      "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+     ],
+     "general": true,
+     "role": {
+      "label": "Operations and people",
+      "onTrack": "Handoffs held and owned, the hard conversation had on time, preventive work visible.",
+      "goingWrong": "No issues that turns out to be suppression; handoffs dropped and owned by nobody.",
+      "protectAgainst": "You are only noticed when something breaks, and a good period looks like an empty account, so preventive work has to be actively credited or your role reads as low contribution for doing its job well.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "1babb820-a357-47d3-b448-78ca4e57457f",
+      "type": "INTENT",
+      "text": "My role is to ensure the team has the resources and information to restore service.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "77c1f5ad-58e9-47d4-bd9a-d8c1f83df7c4",
+      "sessionNumber": 1
+     },
+     {
+      "id": "1c666a05-a11a-4d26-9366-d4bca4c154d3",
+      "type": "INTENT",
+      "text": "I also need to understand the root cause to prevent recurrence.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "77c1f5ad-58e9-47d4-bd9a-d8c1f83df7c4",
+      "sessionNumber": 1
+     },
+     {
+      "id": "6877ff28-54fe-4650-8315-a8383f267c95",
+      "type": "INTENT",
+      "text": "I am responsible for providing access to any necessary personnel, external vendors, or tools.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "77c1f5ad-58e9-47d4-bd9a-d8c1f83df7c4",
+      "sessionNumber": 1
+     },
+     {
+      "id": "8f657b82-d604-46bf-a90b-4c0faf5699e3",
+      "type": "INTENT",
+      "text": "I also ensure communication channels are open and clear.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "77c1f5ad-58e9-47d4-bd9a-d8c1f83df7c4",
+      "sessionNumber": 1
+     },
+     {
+      "id": "91e322d1-eb8d-4ceb-9824-681d03ec7fd1",
+      "type": "INTENT",
+      "text": "My direct responsibility is to communicate updates from leadership and to clear any obstacles for the team.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "77c1f5ad-58e9-47d4-bd9a-d8c1f83df7c4",
+      "sessionNumber": 1
+     },
+     {
+      "id": "27e8a1d9-3628-4539-b66c-6860c7e0704b",
+      "type": "INTENT",
+      "text": "I also ensure they have the necessary context.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "77c1f5ad-58e9-47d4-bd9a-d8c1f83df7c4",
+      "sessionNumber": 1
+     },
+     {
+      "id": "6b7a28f9-df82-4d2a-979f-d9a5549cb826",
+      "type": "PROGRESS",
+      "text": "The first thing I did was try to contact the on-call engineer for an update on the situation.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "77c1f5ad-58e9-47d4-bd9a-d8c1f83df7c4",
+      "sessionNumber": 1
+     },
+     {
+      "id": "7cc89817-2e7b-4c46-9d9d-3ff0410b5e13",
+      "type": "WORRY",
+      "text": "I was unable to reach them. There was no response.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "77c1f5ad-58e9-47d4-bd9a-d8c1f83df7c4",
+      "sessionNumber": 1
+     },
+     {
+      "id": "1026a85d-b800-4b68-9d18-b566ef76b9a2",
+      "type": "PROGRESS",
+      "text": "I then contacted the engineering lead, Raj.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "77c1f5ad-58e9-47d4-bd9a-d8c1f83df7c4",
+      "sessionNumber": 1
+     },
+     {
+      "id": "0dc7ce34-22b5-4321-8383-bef8352e0af5",
+      "type": "ASK",
+      "text": "I asked Raj if he knew the status of the incident and if he could reach the on-call engineer. I also asked him to take over incident command if he could.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "77c1f5ad-58e9-47d4-bd9a-d8c1f83df7c4",
+      "sessionNumber": 1
+     },
+     {
+      "id": "946c0dc2-ccce-4145-8a26-8cb5e1ed551c",
+      "type": "PROGRESS",
+      "text": "Raj confirmed he would take over.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "77c1f5ad-58e9-47d4-bd9a-d8c1f83df7c4",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\nYou see your role as ensuring the team has the resources and information to restore service, understanding the root cause, and keeping communication channels open. When the incident began, you tried to contact the on-call engineer but they were unresponsive. You then asked the engineering lead to take over incident command, and they confirmed they would.",
+     "whatToCarry": "You asked the engineering lead to take over incident command."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    },
+    "forTheLead": [
+     {
+      "id": "handoff-91068f02-3dc1-452c-989e-7ac817f66854",
+      "decide": "Decide what to do about an up-to-date escalation list.",
+      "why": "Ben cannot move until it is settled.",
+      "changes": "Once it is settled, get him to the right person."
+     },
+     {
+      "id": "difference-1",
+      "decide": "Settle the difference between what Ben Carter, you and Priya Raman said.",
+      "why": "The process for what to do in an outage is not clear or consistently understood across roles. Ben Carter, you and Priya Raman said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this gap is not closed, the work to restore service during an outage may be delayed while the team determines who is responsible for the fix."
+     }
+    ]
+   },
+   "board": {
+    "groundId": "dd37452a-679a-45a8-a570-b601521ad94d",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "SENSING",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "divergence",
+     "checkInGrid"
+    ],
+    "title": "The outage, and what we each thought was happening",
+    "scenario": "CRISIS_ALIGNMENT",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. The process for what to do in an outage is not clear or consistently understood across roles.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "AWAITING_PARTIES",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "Nobody knew who was on call during the outage. Ben Carter could not escalate the customer's report, and you could not reach the person you believed was on call.",
+     "whatToDo": [
+      {
+       "move": "Agree with Ben Carter and you who is responsible for publishing the on-call rota and where it will be.",
+       "because": "Ben Carter did not know who was on call, and you could not reach the engineer you believed was on call.",
+       "startWith": "Ben Carter"
+      },
+      {
+       "move": "Clarify with Priya Raman what an engineer's role is during an incident when they are not the one on call.",
+       "because": "Priya Raman knew there was an incident but Priya understood their role as not requiring involvement.",
+       "startWith": "Priya Raman"
+      },
+      {
+       "move": "Review with you why the attempt to contact the on-call engineer failed.",
+       "because": "You tried to contact the on-call engineer but you could not reach them.",
+       "startWith": "You"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "Ben Carter learned of the outage from a customer at 8:40 AM but did not know who to contact.",
+       "soWhat": "The process for escalating an issue from a customer is not working.",
+       "fieldId": "Ben Carter"
+      },
+      {
+       "says": "Priya Raman saw the incident on Slack but understood the role as not requiring action because Priya was not on call.",
+       "soWhat": "An engineer knew about the incident but the process did not lead Priya Raman to act on it.",
+       "fieldId": "Priya Raman"
+      },
+      {
+       "says": "You tried to contact the on-call engineer but you could not reach them.",
+       "soWhat": "You do not have a working way to contact the person responsible for an outage.",
+       "fieldId": "You"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "Who was scheduled to be on call at the time of the incident.",
+       "howManyMissedIt": 3
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record does not contain the on-call rota, and the accounts from you and Priya Raman conflict.",
+       "about": "Who was the rostered on-call engineer during the incident.",
+       "toKnow": "Check the on-call rota system or the document that holds the rota for that day."
+      },
+      {
+       "why": "The record only shows that your attempt to make contact failed.",
+       "about": "Why the on-call engineer could not be reached by you.",
+       "toKnow": "Your own account of this is not in this check-in."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Priya Raman is a backend engineer. Priya is believed to have been on call. Since then, the record holds 1 session, 6 lines of what was said, 2 with a name, a number or a date in them and none backed by a document.",
+       "who": "Priya Raman",
+       "participantId": "7849d0d7-4128-4f8f-9f48-5c286ae7c91d"
+      },
+      {
+       "say": "Ben Carter is a support lead. Ben took the customer calls. Since then, the record holds 1 session, 11 lines of what was said, 3 with a name, a number or a date in them and none backed by a document.",
+       "who": "Ben Carter",
+       "participantId": "db6aef36-9566-4a41-a555-f8c9ba07f763"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Ben Carter is waiting on somebody outside this check-in for \"an up-to-date escalation list\", and it has been taken above the person it was with."
+     ],
+     "commitments": [],
+     "dependencies": [
+      {
+       "on": null,
+       "say": "Ben Carter is waiting on somebody outside this check-in for \"an up-to-date escalation list\", and it has been taken above the person it was with.",
+       "from": "Ben Carter",
+       "what": "an up-to-date escalation list",
+       "chased": true,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "db6aef36-9566-4a41-a555-f8c9ba07f763"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself.",
+      "Nobody has said in a check-in what they would do next. Ask for one thing, with a date, from each person."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "1162dcf8-5ec5-41db-b976-d6904d86ec38",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T00:45:40.295Z",
+    "participants": [
+     {
+      "id": "1162dcf8-5ec5-41db-b976-d6904d86ec38",
+      "name": "Elena Rossi",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "7849d0d7-4128-4f8f-9f48-5c286ae7c91d",
+      "name": "Priya Raman",
+      "role": "Backend engineer. Believed to have been on call.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "db6aef36-9566-4a41-a555-f8c9ba07f763",
+      "name": "Ben Carter",
+      "role": "Support lead. Took the customer calls.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [
+      {
+       "topic": "The process for what to do in an outage is not clear or consistently understood across roles.",
+       "atStake": "If this gap is not closed, the work to restore service during an outage may be delayed while the team determines who is responsible for the fix.",
+       "evidence": [
+        "The customer-facing team member stated they did not know who was on call for the issue.",
+        "You reported being unable to reach the on-call engineer."
+       ],
+       "positions": [
+        {
+         "view": "Ben Carter, who received the first customer report, did not know who was on the escalation path.",
+         "participantLabel": "Ben Carter",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Ben Carter"
+        },
+        {
+         "view": "Your first move was to contact the on-call engineer, but that person could not be reached.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Priya Raman, an engineer aware of the incident, understood the role as not requiring involvement since Priya was not on call.",
+         "participantLabel": "Priya Raman",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Priya Raman"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [],
+     "agreementMarks": [],
+     "centralQuestion": "If this gap is not closed, the work to restore service during an outage may be delayed while the team determines who is responsible for the fix. That is what settles the process for what to do in an outage is not clear or consistently understood across roles.",
+     "settled": [],
+     "stillOpen": [
+      "The process for what to do in an outage is not clear or consistently understood across roles."
+     ]
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "db6aef36-9566-4a41-a555-f8c9ba07f763",
+      "who": "Ben Carter",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Ben Carter has checked in, and still has something in the way.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Ben Carter learned about the outage from a customer's email at 8:40 AM. Ben did not know who was on call for the issue.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     },
+     {
+      "participantId": "7849d0d7-4128-4f8f-9f48-5c286ae7c91d",
+      "who": "Priya Raman",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Priya Raman has checked in.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Priya Raman knew there was an incident at 08:55 on Tuesday from a message on Slack. Priya's role is to support the team.",
+      "hasGap": false,
+      "findingMark": "memory",
+      "findingMarkSays": "From memory only"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "1162dcf8-5ec5-41db-b976-d6904d86ec38",
+       "name": "Elena Rossi",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "7849d0d7-4128-4f8f-9f48-5c286ae7c91d",
+       "name": "Priya Raman",
+       "role": "Backend engineer. Believed to have been on call.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "db6aef36-9566-4a41-a555-f8c9ba07f763",
+       "name": "Ben Carter",
+       "role": "Support lead. Took the customer calls.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things. The process for what to do in an outage is not clear or consistently understood across roles.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "No target set",
+      "sub": "Nobody has set anything to measure this against.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "1",
+      "sub": "Work is held up by an up-to-date escalation list.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "You have started session 1 of the operations and people work, and as expected for this early stage, nothing repeats yet; the value of later sessions will depend on what you can show.",
+      "beforeNextTime": [
+       "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+      ],
+      "general": true,
+      "role": {
+       "label": "Operations and people",
+       "onTrack": "Handoffs held and owned, the hard conversation had on time, preventive work visible.",
+       "goingWrong": "No issues that turns out to be suppression; handoffs dropped and owned by nobody.",
+       "protectAgainst": "You are only noticed when something breaks, and a good period looks like an empty account, so preventive work has to be actively credited or your role reads as low contribution for doing its job well.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": null
+    },
+    "eachPersonToday": [
+     {
+      "participantId": "db6aef36-9566-4a41-a555-f8c9ba07f763",
+      "who": "Ben Carter",
+      "line": "Ben Carter has checked in, and still has something in the way."
+     },
+     {
+      "participantId": "7849d0d7-4128-4f8f-9f48-5c286ae7c91d",
+      "who": "Priya Raman",
+      "line": "Priya Raman has checked in."
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-91068f02-3dc1-452c-989e-7ac817f66854",
+      "says": "Ben Carter cannot move on an up-to-date escalation list, and nobody has been named to provide it.",
+      "because": "It was first said on 2 October. About what has been tried, Ben Carter said, \"I started looking for an up-to-date escalation list\". No time has been given for it."
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you said the work was waiting on the on-call engineer for a response."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the wait for a response was cleared."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Ben Carter said the work was waiting for an up-to-date escalation list."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "1162dcf8-5ec5-41db-b976-d6904d86ec38",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you named 1 thing the work was waiting on."
+       }
+      ]
+     },
+     {
+      "participantId": "7849d0d7-4128-4f8f-9f48-5c286ae7c91d",
+      "who": "Priya Raman",
+      "says": "Priya Raman has answered 1 session, and the record holds no commitment from Priya Raman yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Priya Raman answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "db6aef36-9566-4a41-a555-f8c9ba07f763",
+      "who": "Ben Carter",
+      "says": "Ben Carter has answered 1 session, and the record holds no commitment from Ben Carter yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Ben Carter named 1 thing the work was waiting on."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "91068f02-3dc1-452c-989e-7ac817f66854",
+      "who": "Ben Carter",
+      "says": "Ben Carter is waiting for an up-to-date escalation list.",
+      "namesWhoHoldsIt": false,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "Nobody has been named as holding it.",
+       "About what has been tried, Ben Carter said, \"I started looking for an up-to-date escalation list\".",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "busyOrMoving": {
+     "eachPerson": [
+      {
+       "participantId": "1162dcf8-5ec5-41db-b976-d6904d86ec38",
+       "who": "You",
+       "says": "You also named 1 thing the work was waiting on."
+      },
+      {
+       "participantId": "db6aef36-9566-4a41-a555-f8c9ba07f763",
+       "who": "Ben Carter",
+       "says": "Ben Carter also named 1 thing the work was waiting on."
+      }
+     ],
+     "cannotTellYou": "These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that."
+    },
+    "leadActions": [
+     {
+      "id": "nobody-named-91068f02-3dc1-452c-989e-7ac817f66854",
+      "says": "You need to find out who can provide an up-to-date escalation list Ben Carter is waiting for, because nobody has been named yet.",
+      "because": "It was first said on 2 October. About what has been tried, Ben Carter said, \"I started looking for an up-to-date escalation list\". No time has been given for it."
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "921426b3-8d99-4c4c-be15-faaf5776fbc1",
+      "says": "You waited on the on-call engineer for a response from 2 October until it was cleared on 2 October, 0 days in all.",
+      "startedAt": "2026-10-02",
+      "clearedAt": "2026-10-02",
+      "days": 0
+     },
+     {
+      "id": "91068f02-3dc1-452c-989e-7ac817f66854",
+      "says": "Ben Carter has been waiting for an up-to-date escalation list since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "91068f02-3dc1-452c-989e-7ac817f66854",
+      "who": "Ben Carter",
+      "name": "an up-to-date escalation list",
+      "state": "blocking",
+      "says": "Ben Carter is waiting for an up-to-date escalation list.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Ben Carter said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it, and nobody has been named as holding it.",
+      "holdingUp": "Once it is cleared, get him to the right person."
+     }
+    ]
+   },
+   "participantReport": {
+    "id": "e4f8e819-8a16-4523-831b-cab73a531059",
+    "groundId": "dd37452a-679a-45a8-a570-b601521ad94d",
+    "sharedPicture": "All three people have answered. The process for what to do in an outage is not clear or consistently understood across roles. Elena Rossi tried to contact the on-call engineer for an update but could not reach the on-call engineer. You knew there was an incident at 08:55 on Tuesday from a message on Slack. Your role is to support the team. Ben Carter learned about the outage from a customer's email at 8:40 AM. Ben did not know who was on call for the issue. The first alert was a customer email to Ben at 8:40 AM. Believing it was an isolated issue, Ben did not immediately escalate it internally. By 8:55 AM, an incident was visible on Slack, where you became aware of it. Elena's first action was to contact the designated on-call engineer, but the engineer was unreachable. Elena then asked another engineering lead to take command of the incident.",
+    "theOpening": "All three people have answered. The process for what to do in an outage is not clear or consistently understood across roles.",
+    "agreements": [],
+    "centralQuestion": "For an incident like this one, what is the agreed-upon process from the first customer report to a confirmed incident commander, including the plan for when the first person is unavailable?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Elena Rossi",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 11,
+       "documentsAttached": 0,
+       "who": "Elena Rossi"
+      },
+      {
+       "label": "Priya Raman",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 6,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Priya Raman"
+      },
+      {
+       "label": "Ben Carter",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 11,
+       "documentsAttached": 0,
+       "who": "Ben Carter"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "The process for what to do in an outage is not clear or consistently understood across roles."
+     ],
+     "sessionCounts": {
+      "Priya Raman": 9,
+      "Ben Carter": 9,
+      "Elena Rossi": 8
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Priya Raman",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Priya Raman": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Priya Raman": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [],
+     "whatCouldBeChecked": {
+      "says": [],
+      "total": 0,
+      "checked": 0
+     },
+     "difficultyDisclosures": true
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [],
+     "dependencies": [],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "You knew there was an incident at 08:55 on Tuesday from a message on Slack. Your role is to support the team.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "7849d0d7-4128-4f8f-9f48-5c286ae7c91d",
+      "mark": "memory",
+      "figureIs": "from memory",
+      "markSays": "From memory only"
+     }
+    ],
+    "releasedAt": "2026-10-02T00:45:40.294Z",
+    "createdAt": "2026-10-02T00:41:11.998Z",
+    "updatedAt": "2026-10-02T00:45:40.295Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The process for what to do in an outage is not clear or consistently understood across roles.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Elena Rossi tried to contact the on-call engineer for an update but could not reach the on-call engineer.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You knew there was an incident at 08:55 on Tuesday from a message on Slack.",
+      "mark": "memory",
+      "figureIs": "from memory",
+      "markSays": "From memory only"
+     },
+     {
+      "text": "Your role is to support the team.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Ben Carter learned about the outage from a customer's email at 8:40 AM.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Ben Carter did not know who was on call for the issue.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The first alert was a customer email to Ben Carter at 8:40 AM.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Believing it was an isolated issue, Ben Carter did not immediately escalate it internally.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "By 8:55 AM, an incident was visible on Slack, where you became aware of it.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Elena Rossi's first action was to contact the designated on-call engineer, but the engineer was unreachable.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Elena Rossi then asked another engineering lead to take command of the incident.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": null,
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+     ],
+     "general": true,
+     "role": null,
+     "whyNoRoleMap": "Your record looks like engineering, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "a7c79f30-1353-481d-b9b5-d92da8275b8f",
+      "type": "INTENT",
+      "text": "My role was to support the team when I became aware of the outage.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "49faa210-b5c9-4e44-85a8-3d490ce73906",
+      "sessionNumber": 1
+     },
+     {
+      "id": "edc50990-3750-49e7-a270-8abe3588d03b",
+      "type": "TOLERANCE",
+      "text": "I was not on call.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "49faa210-b5c9-4e44-85a8-3d490ce73906",
+      "sessionNumber": 1
+     },
+     {
+      "id": "a80500e9-611f-4678-937c-90c7f79fb0c3",
+      "type": "INTENT",
+      "text": "I was not involved in the incident response.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "49faa210-b5c9-4e44-85a8-3d490ce73906",
+      "sessionNumber": 1
+     },
+     {
+      "id": "e029ccf2-6e76-48e7-a6cf-eef8ca339ec9",
+      "type": "PROGRESS",
+      "text": "I knew there was an ongoing incident at 08:55 on Tuesday from Slack.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "49faa210-b5c9-4e44-85a8-3d490ce73906",
+      "sessionNumber": 1
+     },
+     {
+      "id": "2d5111cf-356b-42e9-adce-9195136a5399",
+      "type": "PROGRESS",
+      "text": "I knew Marcus was on call at that time, from the rota.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "49faa210-b5c9-4e44-85a8-3d490ce73906",
+      "sessionNumber": 1
+     },
+     {
+      "id": "40a5dd55-3917-4e4e-af72-22e437107c23",
+      "type": "WORRY",
+      "text": "I am not worried about that.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "49faa210-b5c9-4e44-85a8-3d490ce73906",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared. You saw from Slack that there was an incident on Tuesday morning. You understood that you were not on call and that your role was to support the team, but that you were not part of the incident response. You knew who was on call from the rota, and you are not worried about what happened.",
+     "whatToCarry": "You mentioned that your role was to support the team. Carry forward the question of what that support looks like when you are not the one on call."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "dd37452a-679a-45a8-a570-b601521ad94d",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "SENSING",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "divergence",
+     "checkInGrid"
+    ],
+    "title": "The outage, and what we each thought was happening",
+    "scenario": "CRISIS_ALIGNMENT",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. The process for what to do in an outage is not clear or consistently understood across roles.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "AWAITING_PARTIES",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "7849d0d7-4128-4f8f-9f48-5c286ae7c91d",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T00:45:40.295Z",
+    "participants": [
+     {
+      "id": "1162dcf8-5ec5-41db-b976-d6904d86ec38",
+      "name": "Elena Rossi",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "7849d0d7-4128-4f8f-9f48-5c286ae7c91d",
+      "name": "Priya Raman",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "db6aef36-9566-4a41-a555-f8c9ba07f763",
+      "name": "Ben Carter",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [
+      {
+       "topic": "The process for what to do in an outage is not clear or consistently understood across roles.",
+       "atStake": "If this gap is not closed, the work to restore service during an outage may be delayed while the team determines who is responsible for the fix.",
+       "evidence": [
+        "The customer-facing team member stated they did not know who was on call for the issue.",
+        "Elena Rossi reported being unable to reach the on-call engineer."
+       ],
+       "positions": [
+        {
+         "view": "Ben Carter, who received the first customer report, did not know who was on the escalation path.",
+         "participantLabel": "Ben Carter",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Ben Carter"
+        },
+        {
+         "view": "Elena Rossi's first move was to contact the on-call engineer, but that person could not be reached.",
+         "participantLabel": "Elena Rossi",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Elena Rossi"
+        },
+        {
+         "view": "You, an engineer aware of the incident, understood the role as not requiring involvement since you were not on call.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [],
+     "agreementMarks": [],
+     "centralQuestion": "If this gap is not closed, the work to restore service during an outage may be delayed while the team determines who is responsible for the fix. That is what settles the process for what to do in an outage is not clear or consistently understood across roles.",
+     "settled": [],
+     "stillOpen": [
+      "The process for what to do in an outage is not clear or consistently understood across roles."
+     ]
+    },
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "1162dcf8-5ec5-41db-b976-d6904d86ec38",
+       "name": "Elena Rossi",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "7849d0d7-4128-4f8f-9f48-5c286ae7c91d",
+       "name": "Priya Raman",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "db6aef36-9566-4a41-a555-f8c9ba07f763",
+       "name": "Ben Carter",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things. The process for what to do in an outage is not clear or consistently understood across roles.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "No target set",
+      "sub": "Nobody has set anything to measure this against.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "1",
+      "sub": "Work is held up by an up-to-date escalation list.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+      ],
+      "general": true,
+      "role": null,
+      "whyNoRoleMap": "Your record looks like engineering, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+     },
+     "eachPerson": null
+    },
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-91068f02-3dc1-452c-989e-7ac817f66854",
+      "says": "Ben Carter cannot move on an up-to-date escalation list, and nobody has been named to provide it.",
+      "because": "It was first said on 2 October. About what has been tried, Ben Carter said, \"I started looking for an up-to-date escalation list\". No time has been given for it."
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Elena Rossi said the work was waiting on the on-call engineer for a response."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the wait for a response was cleared."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Ben Carter said the work was waiting for an up-to-date escalation list."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "7849d0d7-4128-4f8f-9f48-5c286ae7c91d",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "91068f02-3dc1-452c-989e-7ac817f66854",
+      "who": "Ben Carter",
+      "says": "Ben Carter is waiting for an up-to-date escalation list.",
+      "namesWhoHoldsIt": false,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "Nobody has been named as holding it.",
+       "About what has been tried, Ben Carter said, \"I started looking for an up-to-date escalation list\".",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "921426b3-8d99-4c4c-be15-faaf5776fbc1",
+      "says": "Elena Rossi waited on the on-call engineer for a response from 2 October until it was cleared on 2 October, 0 days in all.",
+      "startedAt": "2026-10-02",
+      "clearedAt": "2026-10-02",
+      "days": 0
+     },
+     {
+      "id": "91068f02-3dc1-452c-989e-7ac817f66854",
+      "says": "Ben Carter has been waiting for an up-to-date escalation list since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "91068f02-3dc1-452c-989e-7ac817f66854",
+      "who": "Ben Carter",
+      "name": "an up-to-date escalation list",
+      "state": "blocking",
+      "says": "Ben Carter is waiting for an up-to-date escalation list.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Ben Carter said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it, and nobody has been named as holding it.",
+      "holdingUp": "Once it is cleared, get him to the right person."
+     }
+    ]
+   },
+   "participantSeen": "eng",
+   "patterns": [
+    {
+     "code": "A2",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "Stepped in to find an incident commander when the on-call engineer was unreachable.",
+     "participant": {
+      "email": "cto.1790901460511@crisis.test"
+     }
+    },
+    {
+     "code": "A2",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "Stepped in to handle an escalated customer issue during an outage when the correct on-call person was not clear.",
+     "participant": {
+      "email": "sup.1790901460511@crisis.test"
+     }
+    }
+   ],
+   "commitments": []
+  }
+ ]
+}

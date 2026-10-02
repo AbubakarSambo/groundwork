@@ -1,0 +1,3439 @@
+{
+ "scenario": {
+  "key": "implementation",
+  "label": "The rollout across four branches",
+  "scenario": "IMPLEMENTATION_TRACKING",
+  "moment": "RESOLUTION",
+  "cadence": "FORTNIGHTLY",
+  "timelineDays": 90,
+  "sessions": 1,
+  "brief": "We are rolling the new system out to four branches. I get a green status every fortnight and I want each branch lead to tell me directly what is actually live, what people are actually using, and what they have gone back to doing the old way.",
+  "theDecision": "Two branches are green and real. One is green on paper and the staff have reverted to the paper process because the printer integration does not work. A right answer separates \"deployed\" from \"in use\" and names the printer.",
+  "people": [
+   {
+    "key": "lead",
+    "name": "Stephen Nwachukwu",
+    "isLead": true,
+    "remit": "Programme director for the rollout.",
+    "truth": "He has had green from all branches for six weeks. His measure is \"system deployed\", which all four are.",
+    "manner": "Process-minded, asks about milestones, adjusts when given a usage number."
+   },
+   {
+    "key": "a",
+    "name": "Ngozi Duru",
+    "remit": "Branch manager, Enugu.",
+    "truth": "Genuinely live. 90% of transactions on the new system. Two small issues, both logged.",
+    "manner": "Positive and specific."
+   },
+   {
+    "key": "b",
+    "name": "Musa Ibrahim",
+    "remit": "Branch manager, Kano.",
+    "truth": "The system is installed and nobody uses it for receipts because it will not talk to the branch printer. Staff print the old duplicate book and key it in at the end of the day, which takes an extra hour. He reported green because the system is installed, which is what he was asked. He raised the printer in week two with the vendor.",
+    "manner": "Loyal, does not complain, entirely honest when asked what people actually do each day."
+   }
+  ]
+ },
+ "groundId": "927dc43a-17e4-40a5-a4c8-0cbac28ce549",
+ "orgId": "2389347a-eb2e-4a39-b5c7-6bb2fe65d9bf",
+ "emails": {
+  "lead": "lead.1790903904530@implementation.test",
+  "a": "a.1790903904530@implementation.test",
+  "b": "b.1790903904530@implementation.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "lead",
+     "name": "Stephen Nwachukwu",
+     "isLead": true,
+     "checkInId": "93293f9a-20d4-412e-b700-29a699a8255b",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "We're here to understand how the new system rollout is progressing across the four branches. From your perspective, what happened in your branch this period that the project team would want to know about?"
+      },
+      {
+       "from": "STEPHEN NWACHUKWU",
+       "text": "Well, as you know, all four branches have been \"system deployed\" for six weeks now. We're still showing green across the board."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That \"still showing green across the board\" is something the project team will want to hear. From your perspective, which parts of the new system are live and being used in your branch?",
+       "suggestedAnswers": [
+        "Most parts are live and in use.",
+        "A few parts are not yet fully live.",
+        "I am not sure about all of them."
+       ]
+      },
+      {
+       "from": "STEPHEN NWACHUKWU",
+       "text": "The core functionalities are definitely live. Everyone has access and can log in. That's the main thing."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "From your perspective, have you noticed any areas where things have drifted back to the old way of doing things?",
+       "suggestedAnswers": [
+        "Not yet.",
+        "No, I haven't seen that happen.",
+        "Yes, some things feel like before.",
+        "I'm still checking carefully for that."
+       ]
+      },
+      {
+       "from": "STEPHEN NWACHUKWU",
+       "text": "I'm not seeing any regressions to the old system. My team reports everything is being done through the new system."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "It sounds like your team is fully engaged with the new system, and there are no regressions to the old one. From your view, what about the rollout is clear, and what is not?",
+       "suggestedAnswers": [
+        "Things are moving along.",
+        "Some things are still not clear.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "STEPHEN NWACHUKWU",
+       "text": "What's clear is that the system is deployed and available. What's not clear is the actual usage data, the specific numbers of how many people are consistently using which modules."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That the system is deployed and available is clear. The actual usage data and specific numbers of how many people are consistently using which modules is what is not. Can you describe what kind of usage data would be useful?",
+       "suggestedAnswers": [
+        "I want to see specific user numbers per module.",
+        "I'm not yet sure what data is most useful.",
+        "I need some time to decide that.",
+        "Tell me what data you have, and I will choose."
+       ]
+      },
+      {
+       "from": "STEPHEN NWACHUKWU",
+       "text": "I'd find it useful to see a breakdown by module, perhaps by user group, showing activity levels. That would give us a clearer picture of adoption beyond just login numbers."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "This is the first time you're giving me a picture of what you understand your responsibilities to be for this system rollout. What did you understand your specific responsibilities to be for the system rollout?",
+       "suggestedAnswers": [
+        "My role was to manage user accounts.",
+        "I had trouble understanding my responsibilities.",
+        "I am not sure what my responsibilities are.",
+        "I was in charge of communication."
+       ]
+      },
+      {
+       "from": "STEPHEN NWACHUKWU",
+       "text": "My responsibility is to ensure the system is deployed and available for use in my branch, and that my team reports full utilization."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood.\n\nI have one more question before we finish. From everything you have said, what have you decided?",
+       "suggestedAnswers": [
+        "I have made a decision.",
+        "Not yet.",
+        "I still need more information.",
+        "I am ready to act."
+       ]
+      },
+      {
+       "from": "STEPHEN NWACHUKWU",
+       "text": "I've decided to dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've decided to dig deeper into usage numbers yourself to get a better sense of actual adoption within your branch.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    },
+    {
+     "key": "a",
+     "name": "Ngozi Duru",
+     "isLead": false,
+     "checkInId": "1052832c-a6c2-4a5c-b3bc-95089a494335",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Ngozi, Stephen wants to hear directly from each branch lead about the new system. What happened in your branch this period that would be important for us to know about its rollout?"
+      },
+      {
+       "from": "NGOZI DURU",
+       "text": "Yes, Stephen. I'm happy to report that we are genuinely live with the new system. We are seeing 90% of our transactions going through it now."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What parts of the new system are handling those transactions?",
+       "suggestedAnswers": [
+        "The main modules are now processing them.",
+        "Some parts are still not fully active.",
+        "I am still finding that out.",
+        "The new ... module is working well."
+       ]
+      },
+      {
+       "from": "NGOZI DURU",
+       "text": "The main customer-facing modules are all live and handling transactions. This includes account creation, deposits, and withdrawals."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You mentioned 90% of transactions are going through the new system. What are the remaining 10% of transactions?",
+       "suggestedAnswers": [
+        "I am categorizing them now.",
+        "They are still being reviewed.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "NGOZI DURU",
+       "text": "The remaining 10% are those affected by the two small issues we've logged. We're still processing those manually for now."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What are the two small issues you've logged? It helps to know whether they are internal system issues, or a bug that affects customers directly."
+      },
+      {
+       "from": "NGOZI DURU",
+       "text": "One issue is with a specific type of complex corporate transfer. The other is a minor reporting discrepancy in the end-of-day reconciliation. Both are internal system issues."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "So the issues are internal, rather than customer-facing. For the complex corporate transfer, what makes it complex? For instance, the volume, the data involved, or something else."
+      },
+      {
+       "from": "NGOZI DURU",
+       "text": "It's the data involved. There are some unique data fields for these transfers that the new system isn't currently capturing correctly."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That means it is not a volume problem or a transaction type problem. What happens when those data fields are not captured correctly?",
+       "suggestedAnswers": [
+        "It stops the transfers completely.",
+        "We have to fix them manually.",
+        "I'm still figuring that out.",
+        "It causes some delays."
+       ]
+      },
+      {
+       "from": "NGOZI DURU",
+       "text": "It means we have to manually input that specific data into the old system to complete the transaction."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What is actually live and being used by your team in the branch?",
+       "suggestedAnswers": [
+        "It is live and working now.",
+        "Nothing is live yet.",
+        "I am not sure.",
+        "We are testing ... with the team."
+       ]
+      },
+      {
+       "from": "NGOZI DURU",
+       "text": "My team is actively using the new system for all standard customer interactions. This includes opening new accounts, processing deposits and withdrawals, and managing customer inquiries."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You manually input that specific data into the old system to complete the transaction. Whose records are those?",
+       "suggestedAnswers": [
+        "They are our customer records.",
+        "I'm still checking whose records those are.",
+        "I haven't identified those records yet."
+       ]
+      },
+      {
+       "from": "NGOZI DURU",
+       "text": "Those are our internal branch records. The customer's transaction is completed, but we need to ensure our internal logging is accurate."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What will you do about this, and by when?",
+       "suggestedAnswers": [
+        "I will fix it today.",
+        "I need help with this.",
+        "Not yet.",
+        "I will start on it by ..."
+       ]
+      },
+      {
+       "from": "NGOZI DURU",
+       "text": "We've already logged the issue with support. We're waiting for an update from them on a fix."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You have logged the issue with support and are waiting for an update from them on a fix.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    },
+    {
+     "key": "b",
+     "name": "Musa Ibrahim",
+     "isLead": false,
+     "checkInId": "31e57556-ce48-49ce-8aed-693fd6cceeee",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "The rollout across four branches is important to get right, and this record helps confirm what is actually happening on the check-in. What happened in your branch with the new system rollout that Stephen would want to know about?"
+      },
+      {
+       "from": "MUSA IBRAHIM",
+       "text": "The new system is installed. My team is using it for most things."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What specifically is installed and live in your branch right now?",
+       "suggestedAnswers": [
+        "Most of it is live.",
+        "Still testing a few parts.",
+        "I need to check the details.",
+        "One part is not yet live."
+       ]
+      },
+      {
+       "from": "MUSA IBRAHIM",
+       "text": "The system is installed and working. We can access it and input data."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. And what specifically is your team using the new system for right now?",
+       "suggestedAnswers": [
+        "We are inputting all new data.",
+        "My team is still learning the system.",
+        "Not yet, we are still preparing.",
+        "I am not sure yet."
+       ]
+      },
+      {
+       "from": "MUSA IBRAHIM",
+       "text": "They're using it for most of their daily tasks. Things like customer information and processing transactions."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What parts of the new system has your team gone back to doing the old way?",
+       "suggestedAnswers": [
+        "We haven't gone back to old ways.",
+        "Certain tasks are still done the old way.",
+        "I need to check with the team.",
+        "We handle ... the old way."
+       ]
+      },
+      {
+       "from": "MUSA IBRAHIM",
+       "text": "My team is still using the old method for printing receipts."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What did you understand your role would be in rolling out the new system?",
+       "suggestedAnswers": [
+        "I'd train my team on the new system.",
+        "My role wasn't clear in the rollout.",
+        "I don't know my role yet."
+       ]
+      },
+      {
+       "from": "MUSA IBRAHIM",
+       "text": "I understood my role was to ensure the system was installed and that my team was using it."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You said your team is still using the old method for printing receipts. What feels unclear about that, or about the rollout at your branch more generally?",
+       "suggestedAnswers": [
+        "Everything feels clear on my end.",
+        "My team still has questions about using it.",
+        "I need to check on a few things.",
+        "I am unsure about the general rollout plan."
+       ]
+      },
+      {
+       "from": "MUSA IBRAHIM",
+       "text": "The new system doesn't connect to our branch printer for receipts. So, we're still using the duplicate books."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What will you do about this, and by when?",
+       "suggestedAnswers": [
+        "I will connect the printer by ...",
+        "The printer is still not connecting.",
+        "Not yet.",
+        "I am looking into solutions now."
+       ]
+      },
+      {
+       "from": "MUSA IBRAHIM",
+       "text": "I raised the printer issue with the vendor in week two. I will follow up with them again."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You raised the printer issue with the vendor in week two, and you will follow up with them again.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "01484cd6-058d-414a-8cc8-1738e49d4d5f",
+    "groundId": "927dc43a-17e4-40a5-a4c8-0cbac28ce549",
+    "sharedPicture": "All three people have answered. They disagree on one thing: your reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.\n\nYou report that the new system has been deployed for six weeks and the new system is fully used. You are now seeking specific data on system usage and which modules are being used.\n\nNgozi Duru says that 90% of transactions are processed through the new system. The other 10% are waiting on fixes for two issues that Ngozi has already logged.\n\nMusa Ibrahim says the new system is installed but it does not connect to the printer at the branch. Musa's team still uses the old system to create receipts.\n\nAll three of you agree that the new system is deployed, accessible, and live. Branch teams are using it for most of their daily work. The disagreement is about how complete the rollout is, with workarounds still in use.",
+    "theOpening": "All three people have answered. They disagree on one thing: your reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.",
+    "agreements": [
+     "The new system is installed and technically live in all branches.",
+     "All teams can access the system and are using it for the majority of their daily tasks.",
+     "There are known issues and workarounds in place in at least two branches."
+    ],
+    "divergences": [
+     {
+      "topic": "Your reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.",
+      "atStake": "If this holds, the project may be reported as fully complete while branches are still depending on manual workarounds, which creates risk and inefficiency.",
+      "evidence": [
+       "Your account states that their team's reporting shows everything is being done in the new system.",
+       "Ngozi Duru's account specifies that certain data must be entered into the old system to finish a transaction.",
+       "Musa Ibrahim's account notes that the new system's inability to connect to a printer means they still use the old duplicate books."
+      ],
+      "positions": [
+       {
+        "view": "Describes the new system as being used for everything, with no one reverting to the old ways.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "States that 90% of transactions are on the new system, but the other 10% are processed on the old system because of specific technical problems.",
+        "participantLabel": "Ngozi Duru",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "States that the team uses the new system for most tasks, but still uses duplicate books from the old system to print receipts.",
+        "participantLabel": "Musa Ibrahim",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "settledBy": "Agree on a clear, measurable definition of what fully adopted means, including a threshold for any remaining manual tasks.",
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     }
+    ],
+    "centralQuestion": "For a branch to be considered fully adopted, what is the maximum percentage of transactions or tasks that can acceptably be handled with a manual workaround?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Stephen Nwachukwu",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 10,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Stephen Nwachukwu"
+      },
+      {
+       "label": "Ngozi Duru",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 10,
+       "documentsAttached": 0,
+       "who": "Ngozi Duru"
+      },
+      {
+       "label": "Musa Ibrahim",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 6,
+       "documentsAttached": 0,
+       "who": "Musa Ibrahim"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "concernFlags": [],
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "Your reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks."
+     ],
+     "sessionCounts": {
+      "Ngozi Duru": 9,
+      "Musa Ibrahim": 7,
+      "Stephen Nwachukwu": 7
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Stephen Nwachukwu",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Stephen Nwachukwu": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [
+      {
+       "note": "Your view is based on high-level team reports, which lack the specific details on workarounds that the other participants provided.",
+       "cause": "misunderstanding",
+       "label": "Stephen Nwachukwu"
+      }
+     ],
+     "specificitySignal": {
+      "Stephen Nwachukwu": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [
+      {
+       "label": "Musa Ibrahim",
+       "evidence": "Musa Ibrahim's record references raising a printer issue with the vendor."
+      },
+      {
+       "label": "Ngozi Duru",
+       "evidence": "Ngozi Duru's record references logging an issue with the support team."
+      }
+     ],
+     "whatCouldBeChecked": {
+      "says": [
+       "All 2 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 2,
+      "checked": 2
+     },
+     "difficultyDisclosures": false
+    },
+    "inferences": [
+     {
+      "id": "definition-of-adoption-1",
+      "text": "The disagreement is about how complete the rollout is, with workarounds still in use.",
+      "reason": "Your brief asked for what is 'actually live' and where people have gone back to the old way, but their own report describes 'full utilization' while both participants describe specific instances of going back to the old way.",
+      "participantLabel": "Stephen Nwachukwu"
+     }
+    ],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": null,
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "You believe the new system is fully adopted, but Ngozi Duru reports that the team of Ngozi still uses the old system for essential tasks and Musa Ibrahim reports that the team of Musa still uses the old system for essential tasks.",
+     "whatToDo": [
+      {
+       "move": "Review the two logged issues that are blocking 10% of transactions at the Enugu branch.",
+       "because": "Ngozi Duru has logged these issues and is waiting for fixes to be able to use the system fully.",
+       "startWith": "Ngozi Duru"
+      },
+      {
+       "move": "Fix the printer connection at the Kano branch.",
+       "because": "Musa Ibrahim's team cannot print receipts, a core part of their work, until this is resolved.",
+       "startWith": "Musa Ibrahim"
+      },
+      {
+       "move": "Agree on what fully used means.",
+       "because": "Your current definition does not match what is happening at the branches, and this needs to be corrected.",
+       "startWith": "You"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You report the system is fully used, but the accounts from both branches show this is not the case.",
+       "soWhat": "You are making decisions from an inaccurate picture of how the system is being used.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Ngozi Duru's branch processes 90% of transactions on the new system and has logged the two issues blocking the other 10%.",
+       "soWhat": "Ngozi Duru has done what is expected and is now waiting on others to resolve the problems.",
+       "fieldId": "Ngozi Duru"
+      },
+      {
+       "says": "Musa Ibrahim's branch cannot print receipts from the new system and so the branch still uses the old one.",
+       "soWhat": "Musa Ibrahim's branch cannot complete its work using only the new system.",
+       "fieldId": "Musa Ibrahim"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "what the specific technical problems are",
+       "howManyMissedIt": 2
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record says they are logged, but not what they are or who is working on them.",
+       "about": "the two issues Ngozi Duru has logged",
+       "toKnow": "Check the issue-tracking system, or ask the team responsible for system support."
+      },
+      {
+       "why": "The record says the printer does not connect, but not why or what has been tried.",
+       "about": "the printer problem at Musa Ibrahim's branch",
+       "toKnow": "Speak with Musa Ibrahim and the technical support team about the problem."
+      }
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Ngozi Duru is down as \"Branch manager, Enugu\", and nothing on record says what that role covers. Since then, the record holds 1 session, 10 lines of what was said, 1 with a name, a number or a date in it and none backed by a document.",
+       "who": "Ngozi Duru",
+       "participantId": "34545a4b-e94e-4008-87c4-114088417a9f"
+      },
+      {
+       "say": "Musa Ibrahim is down as \"Branch manager, Kano\", and nothing on record says what that role covers. Since then, the record holds 1 session, 6 lines of what was said, 2 with a name, a number or a date in them, none backed by a document and 1 commitment still open.",
+       "who": "Musa Ibrahim",
+       "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Ngozi Duru is waiting on support for an update on a fix, and nothing on record says anybody has chased it since.",
+      "Musa Ibrahim is waiting on the vendor for a fix for the printer connection, and nothing on record says anybody has chased it since.",
+      "In session 1, you said, \"dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch\". Nobody has said yet whether it happened.",
+      "In session 1, Musa Ibrahim said, \"I will follow up with them again.\" The time Musa gave for it was \"in week two\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, you said, \"dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch",
+       "when": null,
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": false
+      },
+      {
+       "say": "In session 1, Musa Ibrahim said, \"I will follow up with them again.\" The time Musa gave for it was \"in week two\". Nobody has said yet whether it happened.",
+       "who": "Musa Ibrahim",
+       "what": "I will follow up with them again.",
+       "when": "in week two",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [
+      {
+       "on": "support",
+       "say": "Ngozi Duru is waiting on support for an update on a fix, and nothing on record says anybody has chased it since.",
+       "from": "Ngozi Duru",
+       "what": "an update on a fix",
+       "chased": false,
+       "status": "WAITING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "34545a4b-e94e-4008-87c4-114088417a9f"
+      },
+      {
+       "on": "the vendor",
+       "say": "Musa Ibrahim is waiting on the vendor for a fix for the printer connection, and nothing on record says anybody has chased it since.",
+       "from": "Musa Ibrahim",
+       "what": "a fix for the printer connection",
+       "chased": false,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "45a06352-4a23-467f-b83d-dae210b36c4d"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "2 things are waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.",
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "You report that the new system has been deployed for six weeks and the new system is fully used. You are now seeking specific data on system usage and which modules are being used.",
+      "hasGap": false,
+      "headline": "Your report of full system utilization is contradicted by the branch leads' accounts.",
+      "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Ngozi Duru says that 90% of transactions are processed through the new system. The other 10% are waiting on fixes for two issues that Ngozi has already logged.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Musa Ibrahim says the new system is installed but it does not connect to the printer at the branch. Musa's team still uses the old system to create receipts.",
+      "hasGap": false,
+      "headline": "Musa Ibrahim's team still uses the old system for receipts.",
+      "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": "2026-10-02T01:23:35.304Z",
+    "createdAt": "2026-10-02T01:21:26.542Z",
+    "updatedAt": "2026-10-02T01:25:34.897Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They disagree on one thing: your reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You report that the new system has been deployed for six weeks and the new system is fully used.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are now seeking specific data on system usage and which modules are being used.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Ngozi Duru says that 90% of transactions are processed through the new system.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The other 10% are waiting on fixes for two issues that Ngozi Duru has already logged.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Musa Ibrahim says the new system is installed but it does not connect to the printer at the branch.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Musa Ibrahim's team still uses the old system to create receipts.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "All three of you agree that the new system is deployed, accessible, and live.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Branch teams are using it for most of their daily work.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The disagreement is about how complete the rollout is, with workarounds still in use.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "I've been measuring our progress by the reports I get that the new system is being fully used, and it sounds like some work is still happening on the old system.",
+     "toAcknowledge": "The other view is not just a different impression of overall use, but a specific report that certain transactions cannot be processed by the new system because of its design.",
+     "questionToCarry": "What would it take for us to see the specific transactions that still rely on the old system?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "You are in session 1 of management work, and nothing repeats yet; this is normal at this stage, but the value of later sessions will be determined by what you can point to, which shows that you own the work rather than just control it.",
+     "beforeNextTime": [
+      "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+     ],
+     "general": true,
+     "role": {
+      "label": "Management",
+      "onTrack": "People author their own commitments, slips get noticed and raised, hard conversations happen on time.",
+      "goingWrong": "An account full of work the team should own (control), or commitments that slip with no follow-up (abdication).",
+      "protectAgainst": "You are describing management as a competency distinct from craft, where a strong individual contributor becoming a lead is seen as developing a new skill, rather than regressing in their previous one.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "13236dda-6965-427a-a6dd-36d40d4288ea",
+      "type": "PROGRESS",
+      "text": "All four branches have been \"system deployed\" for six weeks now.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "93293f9a-20d4-412e-b700-29a699a8255b",
+      "sessionNumber": 1
+     },
+     {
+      "id": "6405ea09-f4e7-4584-af8c-693031bc7a49",
+      "type": "PROGRESS",
+      "text": "We're still showing green across the board.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "93293f9a-20d4-412e-b700-29a699a8255b",
+      "sessionNumber": 1
+     },
+     {
+      "id": "3d5267f7-52fc-427a-aa17-37e7102e97ef",
+      "type": "PROGRESS",
+      "text": "The core functionalities are definitely live.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "93293f9a-20d4-412e-b700-29a699a8255b",
+      "sessionNumber": 1
+     },
+     {
+      "id": "e0a4dd6b-260c-406b-a004-9a7ed43d1a0c",
+      "type": "PROGRESS",
+      "text": "Everyone has access and can log in.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "93293f9a-20d4-412e-b700-29a699a8255b",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b7bc9338-d75c-4b16-a814-286d3fb2ae9a",
+      "type": "PROGRESS",
+      "text": "My team reports everything is being done through the new system.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "93293f9a-20d4-412e-b700-29a699a8255b",
+      "sessionNumber": 1
+     },
+     {
+      "id": "d717ed82-22b2-4b59-9a01-c0da68284937",
+      "type": "PROGRESS",
+      "text": "I'm not seeing any regressions to the old system.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "93293f9a-20d4-412e-b700-29a699a8255b",
+      "sessionNumber": 1
+     },
+     {
+      "id": "a37a8918-02c7-484f-8603-0aed1dc6a879",
+      "type": "WORRY",
+      "text": "What's not clear is the actual usage data, the specific numbers of how many people are consistently using which modules.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "93293f9a-20d4-412e-b700-29a699a8255b",
+      "sessionNumber": 1
+     },
+     {
+      "id": "342bb060-30d4-4407-9393-d1a2026e4a06",
+      "type": "ASK",
+      "text": "I'd find it useful to see a breakdown by module, perhaps by user group, showing activity levels. That would give us a clearer picture of adoption beyond just login numbers.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "93293f9a-20d4-412e-b700-29a699a8255b",
+      "sessionNumber": 1
+     },
+     {
+      "id": "ce6062c5-cae5-41aa-b579-d9cce295cc5b",
+      "type": "INTENT",
+      "text": "My responsibility is to ensure the system is deployed and available for use in my branch, and that my team reports full utilization.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "93293f9a-20d4-412e-b700-29a699a8255b",
+      "sessionNumber": 1
+     },
+     {
+      "id": "4687b6db-377b-43f6-bc5c-6b02f35fbeec",
+      "type": "COMMITMENT",
+      "text": "I've decided to dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "93293f9a-20d4-412e-b700-29a699a8255b",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": [
+     {
+      "who": "Stephen Nwachukwu",
+      "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+      "probe": [],
+      "encourage": [],
+      "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+     },
+     {
+      "who": "Musa Ibrahim",
+      "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "probe": [
+       "Musa Ibrahim has been waiting for a fix for the printer connection, and nothing on record says it was raised higher. This early, that is worth showing Musa Ibrahim rather than asking about."
+      ],
+      "encourage": [
+       "Named a problem out loud rather than reporting everything as fine."
+      ],
+      "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+     },
+     {
+      "who": "Ngozi Duru",
+      "participantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+      "probe": [
+       "Ngozi Duru has been waiting for an update on a fix, and nothing on record says it was raised higher. This early, that is worth showing Ngozi Duru rather than asking about."
+      ],
+      "encourage": [
+       "Named a problem out loud rather than reporting everything as fine."
+      ],
+      "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+     }
+    ],
+    "soloArtifact": {
+     "summary": "Here is what you shared.\nYou reported that the new system has been deployed for six weeks, are showing green, and your team is doing all their work on it. While you see that the core functionalities are live and people can log in, you also shared a concern. What's not clear is the actual usage data, the specific numbers of how many people are consistently using which modules. You said you want a clearer picture of adoption beyond just login numbers.",
+     "whatToCarry": "You decided to dig a little deeper into usage numbers yourself to get a better sense of actual adoption within your branch."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    },
+    "forTheLead": [
+     {
+      "id": "handoff-77a2561b-6181-423f-a611-b8e783d4bc38",
+      "decide": "Decide what to do about a fix for the printer connection.",
+      "why": "Musa cannot move until it is settled, and it is waiting on the vendor."
+     },
+     {
+      "id": "difference-1",
+      "decide": "Agree on a clear, measurable definition of what fully adopted means, including a threshold for any remaining manual tasks.",
+      "why": "Your reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks. You, Ngozi Duru and Musa Ibrahim said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this holds, the project may be reported as fully complete while branches are still depending on manual workarounds, which creates risk and inefficiency."
+     }
+    ]
+   },
+   "board": {
+    "groundId": "927dc43a-17e4-40a5-a4c8-0cbac28ce549",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "AGREEMENT",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "objectives",
+     "startingState",
+     "divergence",
+     "whatTheRoomIsAbout",
+     "whoOwnsWhat",
+     "dependencies",
+     "checkInGrid",
+     "decisions"
+    ],
+    "title": "The rollout across four branches",
+    "scenario": "IMPLEMENTATION_TRACKING",
+    "kindOfWork": "a government programme",
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. They disagree on one thing: your reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 6,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 2,
+       "oldest": "an update on a fix",
+       "daysWaiting": 0
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "You believe the new system is fully adopted, but Ngozi Duru reports that the team of Ngozi still uses the old system for essential tasks and Musa Ibrahim reports that the team of Musa still uses the old system for essential tasks.",
+     "whatToDo": [
+      {
+       "move": "Review the two logged issues that are blocking 10% of transactions at the Enugu branch.",
+       "because": "Ngozi Duru has logged these issues and is waiting for fixes to be able to use the system fully.",
+       "startWith": "Ngozi Duru"
+      },
+      {
+       "move": "Fix the printer connection at the Kano branch.",
+       "because": "Musa Ibrahim's team cannot print receipts, a core part of their work, until this is resolved.",
+       "startWith": "Musa Ibrahim"
+      },
+      {
+       "move": "Agree on what fully used means.",
+       "because": "Your current definition does not match what is happening at the branches, and this needs to be corrected.",
+       "startWith": "You"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You report the system is fully used, but the accounts from both branches show this is not the case.",
+       "soWhat": "You are making decisions from an inaccurate picture of how the system is being used.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Ngozi Duru's branch processes 90% of transactions on the new system and has logged the two issues blocking the other 10%.",
+       "soWhat": "Ngozi Duru has done what is expected and is now waiting on others to resolve the problems.",
+       "fieldId": "Ngozi Duru"
+      },
+      {
+       "says": "Musa Ibrahim's branch cannot print receipts from the new system and so the branch still uses the old one.",
+       "soWhat": "Musa Ibrahim's branch cannot complete its work using only the new system.",
+       "fieldId": "Musa Ibrahim"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "what the specific technical problems are",
+       "howManyMissedIt": 2
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record says they are logged, but not what they are or who is working on them.",
+       "about": "the two issues Ngozi Duru has logged",
+       "toKnow": "Check the issue-tracking system, or ask the team responsible for system support."
+      },
+      {
+       "why": "The record says the printer does not connect, but not why or what has been tried.",
+       "about": "the printer problem at Musa Ibrahim's branch",
+       "toKnow": "Speak with Musa Ibrahim and the technical support team about the problem."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Ngozi Duru is down as \"Branch manager, Enugu\", and nothing on record says what that role covers. Since then, the record holds 1 session, 10 lines of what was said, 1 with a name, a number or a date in it and none backed by a document.",
+       "who": "Ngozi Duru",
+       "participantId": "34545a4b-e94e-4008-87c4-114088417a9f"
+      },
+      {
+       "say": "Musa Ibrahim is down as \"Branch manager, Kano\", and nothing on record says what that role covers. Since then, the record holds 1 session, 6 lines of what was said, 2 with a name, a number or a date in them, none backed by a document and 1 commitment still open.",
+       "who": "Musa Ibrahim",
+       "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Ngozi Duru is waiting on support for an update on a fix, and nothing on record says anybody has chased it since.",
+      "Musa Ibrahim is waiting on the vendor for a fix for the printer connection, and nothing on record says anybody has chased it since.",
+      "In session 1, you said, \"dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch\". Nobody has said yet whether it happened.",
+      "In session 1, Musa Ibrahim said, \"I will follow up with them again.\" The time Musa Ibrahim gave for it was \"in week two\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, you said, \"dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch",
+       "when": null,
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": false
+      },
+      {
+       "say": "In session 1, Musa Ibrahim said, \"I will follow up with them again.\" The time Musa Ibrahim gave for it was \"in week two\". Nobody has said yet whether it happened.",
+       "who": "Musa Ibrahim",
+       "what": "I will follow up with them again.",
+       "when": "in week two",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [
+      {
+       "on": "support",
+       "say": "Ngozi Duru is waiting on support for an update on a fix, and nothing on record says anybody has chased it since.",
+       "from": "Ngozi Duru",
+       "what": "an update on a fix",
+       "chased": false,
+       "status": "WAITING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "34545a4b-e94e-4008-87c4-114088417a9f"
+      },
+      {
+       "on": "the vendor",
+       "say": "Musa Ibrahim is waiting on the vendor for a fix for the printer connection, and nothing on record says anybody has chased it since.",
+       "from": "Musa Ibrahim",
+       "what": "a fix for the printer connection",
+       "chased": false,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "45a06352-4a23-467f-b83d-dae210b36c4d"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "2 things are waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.",
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T01:25:34.897Z",
+    "participants": [
+     {
+      "id": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+      "name": "Stephen Nwachukwu",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "name": "Musa Ibrahim",
+      "role": "Branch manager, Kano.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "34545a4b-e94e-4008-87c4-114088417a9f",
+      "name": "Ngozi Duru",
+      "role": "Branch manager, Enugu.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "targetsNobodyOwns": null,
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 4,
+       "now": 4,
+       "target": null,
+       "say": "It is 4 so far.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "98244f42-fc6c-46d4-9027-b8138e27e353",
+      "name": "The team is aiming to understand how the new system rollout is progressing across the four branches.",
+      "count": 4,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 4,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     },
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "cc0b9177-9416-44a5-8b3f-795e63767a55",
+      "name": "You are aiming to dig deeper into usage numbers to get a better sense of actual adoption within your branch.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": 90,
+      "suggestedSaid": "We are seeing 90% of our transactions going through it now.",
+      "askedOf": null
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "Your reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.",
+       "atStake": "If this holds, the project may be reported as fully complete while branches are still depending on manual workarounds, which creates risk and inefficiency.",
+       "evidence": [
+        "Your account states that their team's reporting shows everything is being done in the new system.",
+        "Ngozi Duru's account specifies that certain data must be entered into the old system to finish a transaction.",
+        "Musa Ibrahim's account notes that the new system's inability to connect to a printer means they still use the old duplicate books."
+       ],
+       "positions": [
+        {
+         "view": "Describes the new system as being used for everything, with no one reverting to the old ways.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "States that 90% of transactions are on the new system, but the other 10% are processed on the old system because of specific technical problems.",
+         "participantLabel": "Ngozi Duru",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Ngozi Duru"
+        },
+        {
+         "view": "States that the team uses the new system for most tasks, but still uses duplicate books from the old system to print receipts.",
+         "participantLabel": "Musa Ibrahim",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Musa Ibrahim"
+        }
+       ],
+       "settledBy": "Agree on a clear, measurable definition of what fully adopted means, including a threshold for any remaining manual tasks.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "The new system is installed and technically live in all branches.",
+      "All teams can access the system and are using it for the majority of their daily tasks.",
+      "There are known issues and workarounds in place in at least two branches."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Agree on a clear, measurable definition of what fully adopted means, including a threshold for any remaining manual tasks. That is what settles your reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.",
+     "settled": [
+      "The new system is installed and technically live in all branches.",
+      "All teams can access the system and are using it for the majority of their daily tasks.",
+      "There are known issues and workarounds in place in at least two branches."
+     ],
+     "stillOpen": [
+      "Your reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks."
+     ]
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "who": "Musa Ibrahim",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Musa Ibrahim has checked in.",
+      "ask": "Musa Ibrahim is waiting on a fix for the printer connection, and nobody has said yet what was tried. Ask Musa Ibrahim to find out who owns this by name. Everything else needs that first.",
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Musa Ibrahim says the new system is installed but it does not connect to the printer at the branch. Musa's team still uses the old system to create receipts.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     },
+     {
+      "participantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+      "who": "Ngozi Duru",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Ngozi Duru has checked in.",
+      "ask": "Ngozi Duru is waiting on an update on a fix, and nobody has said yet what was tried. Ask Ngozi Duru to find out who owns this by name. Everything else needs that first.",
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Ngozi Duru says that 90% of transactions are processed through the new system. The other 10% are waiting on fixes for two issues that Ngozi has already logged.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+       "name": "Stephen Nwachukwu",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+       "name": "Musa Ibrahim",
+       "role": "Branch manager, Kano.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+       "name": "Ngozi Duru",
+       "role": "Branch manager, Enugu.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "whoOwnsWhat": [
+     {
+      "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+      "name": "Stephen Nwachukwu",
+      "role": null,
+      "items": [
+       {
+        "id": "13236dda-6965-427a-a6dd-36d40d4288ea",
+        "type": "PROGRESS",
+        "text": "You said, \"All four branches have been 'system deployed' for six weeks now.\"",
+        "mark": "memory",
+        "markSays": "From memory only",
+        "sessionNumber": 1
+       },
+       {
+        "id": "6405ea09-f4e7-4584-af8c-693031bc7a49",
+        "type": "PROGRESS",
+        "text": "You said, \"We're still showing green across the board.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "3d5267f7-52fc-427a-aa17-37e7102e97ef",
+        "type": "PROGRESS",
+        "text": "You said, \"The core functionalities are definitely live.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "e0a4dd6b-260c-406b-a004-9a7ed43d1a0c",
+        "type": "PROGRESS",
+        "text": "You said, \"Everyone has access and can log in.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "b7bc9338-d75c-4b16-a814-286d3fb2ae9a",
+        "type": "PROGRESS",
+        "text": "You said, \"My team reports everything is being done through the new system.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "d717ed82-22b2-4b59-9a01-c0da68284937",
+        "type": "PROGRESS",
+        "text": "You said, \"I'm not seeing any regressions to the old system.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "ce6062c5-cae5-41aa-b579-d9cce295cc5b",
+        "type": "INTENT",
+        "text": "You said, \"My responsibility is to ensure the system is deployed and available for use in my branch, and that my team reports full utilization.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "4687b6db-377b-43f6-bc5c-6b02f35fbeec",
+        "type": "COMMITMENT",
+        "text": "You said, \"I've decided to dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "name": "Musa Ibrahim",
+      "role": "Branch manager, Kano.",
+      "items": [
+       {
+        "id": "ba1b40a0-f104-4c55-8603-8fff710f783f",
+        "type": "PROGRESS",
+        "text": "Musa Ibrahim said, \"The new system is installed. The system is installed and working.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "65a33a06-5887-4925-9fff-c61823fc4673",
+        "type": "PROGRESS",
+        "text": "Musa Ibrahim said, \"We can access it and input data.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "5c824918-6d9c-441a-8f76-8bf64cde837f",
+        "type": "PROGRESS",
+        "text": "Musa Ibrahim said, \"My team is using it for most things. They're using it for most of their daily tasks. Things like customer information and processing transactions.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "0f1d3d66-34fa-4c40-9551-33bedf161268",
+        "type": "INTENT",
+        "text": "Musa Ibrahim said, \"I understood my role was to ensure the system was installed and that my team was using it.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+      "name": "Ngozi Duru",
+      "role": "Branch manager, Enugu.",
+      "items": [
+       {
+        "id": "c67d8842-7bfc-43e5-bd21-883bebe86fa0",
+        "type": "PROGRESS",
+        "text": "Ngozi Duru said, \"My team is actively using the new system for all standard customer interactions. This includes opening new accounts, processing deposits and withdrawals, and managing customer inquiries.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "ff069ed0-ae10-454c-b9a0-2633e5eb7edc",
+        "type": "PROGRESS",
+        "text": "Ngozi Duru said, \"we are genuinely live with the new system.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "573af7e4-c063-4668-b7c6-a61a7ae55df5",
+        "type": "PROGRESS",
+        "text": "Ngozi Duru said, \"We are seeing 90% of our transactions going through it now.\"",
+        "mark": "memory",
+        "markSays": "From memory only",
+        "sessionNumber": 1
+       },
+       {
+        "id": "b75a716f-e62e-4e4f-9de3-db1d29877440",
+        "type": "PROGRESS",
+        "text": "Ngozi Duru said, \"The main customer-facing modules are all live and handling transactions. This includes account creation, deposits, and withdrawals.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     }
+    ],
+    "dependencies": [
+     {
+      "id": "a82c40f0-022e-41dd-9788-9f9e3b723b74",
+      "from": "Ngozi Duru",
+      "fromParticipantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+      "what": "an update on a fix",
+      "on": "support",
+      "onParticipantId": null,
+      "status": "WAITING",
+      "then": null,
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October."
+      }
+     },
+     {
+      "id": "77a2561b-6181-423f-a611-b8e783d4bc38",
+      "from": "Musa Ibrahim",
+      "fromParticipantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "what": "a fix for the printer connection",
+      "on": "the vendor",
+      "onParticipantId": null,
+      "status": "BLOCKING",
+      "then": null,
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October."
+      }
+     }
+    ],
+    "decisions": [
+     {
+      "question": "Musa Ibrahim is waiting on a fix for the printer connection, so it needs deciding.",
+      "why": "Musa Ibrahim cannot move until this is decided.",
+      "owner": "the vendor",
+      "source": "blocker"
+     },
+     {
+      "question": "People in this check-in said different things about Your reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks, so it needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "You",
+      "source": "divergence"
+     }
+    ],
+    "whatTheRoomIsAbout": {
+     "aims": [
+      {
+       "aim": "People are trying to fix problems with the new system that mean they are still using old ways of working.",
+       "held": [
+        "Ngozi Duru",
+        "Musa Ibrahim"
+       ]
+      },
+      {
+       "aim": "People said their job is to ensure the new system is installed and their teams are using it.",
+       "held": [
+        "Stephen Nwachukwu",
+        "Musa Ibrahim"
+       ]
+      },
+      {
+       "aim": "Stephen Nwachukwu said he wants to see the actual usage data to get a clearer picture of adoption.",
+       "held": [
+        "Stephen Nwachukwu"
+       ]
+      }
+     ],
+     "places": [],
+     "things": [
+      {
+       "name": "corporate transfer",
+       "named": [
+        "Ngozi Duru"
+       ]
+      },
+      {
+       "name": "duplicate book",
+       "named": [
+        "Musa Ibrahim"
+       ]
+      },
+      {
+       "name": "module",
+       "named": [
+        "Stephen Nwachukwu"
+       ]
+      },
+      {
+       "name": "printer",
+       "named": [
+        "Musa Ibrahim"
+       ]
+      },
+      {
+       "name": "receipt",
+       "named": [
+        "Musa Ibrahim"
+       ]
+      },
+      {
+       "name": "reconciliation",
+       "named": [
+        "Ngozi Duru"
+       ]
+      },
+      {
+       "name": "reporting",
+       "named": [
+        "Ngozi Duru"
+       ]
+      }
+     ],
+     "readAtSession": 1
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things about Your reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "No target set",
+      "sub": "Nobody has set anything to measure this against.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "1",
+      "sub": "Work is held up by an update on a fix.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "You are in session 1 of management work, and nothing repeats yet; this is normal at this stage, but the value of later sessions will be determined by what you can point to, which shows that you own the work rather than just control it.",
+      "beforeNextTime": [
+       "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+      ],
+      "general": true,
+      "role": {
+       "label": "Management",
+       "onTrack": "People author their own commitments, slips get noticed and raised, hard conversations happen on time.",
+       "goingWrong": "An account full of work the team should own (control), or commitments that slip with no follow-up (abdication).",
+       "protectAgainst": "You are describing management as a competency distinct from craft, where a strong individual contributor becoming a lead is seen as developing a new skill, rather than regressing in their previous one.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": [
+      {
+       "who": "Stephen Nwachukwu",
+       "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+       "probe": [],
+       "encourage": [],
+       "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+      },
+      {
+       "who": "Musa Ibrahim",
+       "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+       "probe": [
+        "Musa Ibrahim has been waiting for a fix for the printer connection, and nothing on record says it was raised higher. This early, that is worth showing Musa Ibrahim rather than asking about."
+       ],
+       "encourage": [
+        "Named a problem out loud rather than reporting everything as fine."
+       ],
+       "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+      },
+      {
+       "who": "Ngozi Duru",
+       "participantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+       "probe": [
+        "Ngozi Duru has been waiting for an update on a fix, and nothing on record says it was raised higher. This early, that is worth showing Ngozi Duru rather than asking about."
+       ],
+       "encourage": [
+        "Named a problem out loud rather than reporting everything as fine."
+       ],
+       "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+      }
+     ]
+    },
+    "eachPersonToday": [
+     {
+      "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "who": "Musa Ibrahim",
+      "line": "Musa Ibrahim has checked in."
+     },
+     {
+      "participantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+      "who": "Ngozi Duru",
+      "line": "Ngozi Duru has checked in."
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "counties and their projects",
+      "state": "filled",
+      "rows": [
+       {
+        "id": "6afbe853-e7b3-4fc8-a048-448eb4e72fa6",
+        "kind": "project",
+        "name": "The new system",
+        "stage": null,
+        "owner": "Musa Ibrahim",
+        "ownerParticipantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "The new system doesn't connect to our branch printer for receipts. So, we're still using the duplicate books.",
+        "saidBy": "Musa",
+        "saidByParticipantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "c9e758b6-ba55-42b7-a735-8d4243ebd447",
+        "kind": "project",
+        "name": "the system",
+        "stage": null,
+        "owner": "Musa Ibrahim",
+        "ownerParticipantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I understood my role was to ensure the system was installed and that my team was using it.",
+        "saidBy": "Musa",
+        "saidByParticipantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       }
+      ]
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-a82c40f0-022e-41dd-9788-9f9e3b723b74",
+      "says": "Ngozi Duru is waiting on support for an update on a fix.",
+      "because": "It was first said on 2 October. About what has been tried, Ngozi Duru said, \"logged the issue with support\". No time has been given for it."
+     },
+     {
+      "id": "handoff-77a2561b-6181-423f-a611-b8e783d4bc38",
+      "says": "Musa Ibrahim cannot move on a fix for the printer connection until it comes from the vendor.",
+      "because": "It was first said on 2 October. About what has been tried, Musa Ibrahim said, \"I raised the printer issue with the vendor in week two\". No time has been given for it."
+     },
+     {
+      "id": "no-time-4cb84e1f-74d5-48a9-9f15-91004804fa72",
+      "says": "You made a commitment, and no time was given for it, so nobody can tell when it would be late.",
+      "because": "Nobody has said yet whether it happened."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "4cb84e1f-74d5-48a9-9f15-91004804fa72",
+      "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+      "who": "You",
+      "says": "In session 1, you said, \"dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": null,
+      "state": "open",
+      "statedInSession": 1
+     },
+     {
+      "id": "e04ac569-7f09-4d4b-ae0d-9e6486cb348b",
+      "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "who": "Musa Ibrahim",
+      "says": "In session 1, Musa Ibrahim said, \"I will follow up with them again.\" The time Musa Ibrahim gave for it was \"in week two\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "in week two",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you made a commitment, which is in the record."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Musa Ibrahim committed to follow up with them again."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Ngozi Duru said the work was waiting on support for an update on a fix."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Musa Ibrahim said the work was waiting on the vendor for a fix for the printer connection."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+      "who": "You",
+      "says": "You have answered 1 session and made 1 commitment. 0 are done, 0 are not done or dropped, and 1 is still open.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you made 1 commitment."
+       }
+      ]
+     },
+     {
+      "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "who": "Musa Ibrahim",
+      "says": "Musa Ibrahim has answered 1 session and made 1 commitment.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Musa Ibrahim made 1 commitment and named 1 thing the work was waiting on."
+       }
+      ]
+     },
+     {
+      "participantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+      "who": "Ngozi Duru",
+      "says": "Ngozi Duru has answered 1 session, and the record holds no commitment from Ngozi Duru yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Ngozi Duru named 1 thing the work was waiting on."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "a82c40f0-022e-41dd-9788-9f9e3b723b74",
+      "who": "Ngozi Duru",
+      "says": "Ngozi Duru is waiting on support for an update on a fix.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "Support holds it.",
+       "About what has been tried, Ngozi Duru said, \"logged the issue with support\".",
+       "No time has been given for it."
+      ]
+     },
+     {
+      "id": "77a2561b-6181-423f-a611-b8e783d4bc38",
+      "who": "Musa Ibrahim",
+      "says": "Musa Ibrahim is waiting on the vendor for a fix for the printer connection.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "The vendor holds it.",
+       "About what has been tried, Musa Ibrahim said, \"I raised the printer issue with the vendor in week two\".",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "busyOrMoving": {
+     "eachPerson": [
+      {
+       "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+       "who": "You",
+       "says": "You have made 1 commitment across 1 answered session."
+      },
+      {
+       "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+       "who": "Musa Ibrahim",
+       "says": "Musa Ibrahim has made 1 commitment across 1 answered session. Musa Ibrahim also named 1 thing the work was waiting on."
+      },
+      {
+       "participantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+       "who": "Ngozi Duru",
+       "says": "Ngozi Duru also named 1 thing the work was waiting on."
+      }
+     ],
+     "cannotTellYou": "These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that."
+    },
+    "leadActions": [
+     {
+      "id": "own-4cb84e1f-74d5-48a9-9f15-91004804fa72",
+      "says": "In session 1, you said, \"dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch\". It has been open for 1 session, and nobody has said whether it happened.",
+      "because": null
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+      "who": "You",
+      "promised": [
+       "In session 1, you said, \"dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "who": "Musa Ibrahim",
+      "promised": [
+       "In session 1, Musa Ibrahim said, \"I will follow up with them again.\" The time Musa Ibrahim gave for it was \"in week two\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": null,
+      "who": "support",
+      "promised": [],
+      "othersWaitFor": [
+       "Ngozi Duru is waiting on support for an update on a fix."
+      ]
+     },
+     {
+      "participantId": null,
+      "who": "the vendor",
+      "promised": [],
+      "othersWaitFor": [
+       "Musa Ibrahim is waiting on the vendor for a fix for the printer connection."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "a82c40f0-022e-41dd-9788-9f9e3b723b74",
+      "says": "Ngozi Duru has been waiting on support for an update on a fix since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     },
+     {
+      "id": "77a2561b-6181-423f-a611-b8e783d4bc38",
+      "says": "Musa Ibrahim has been waiting on the vendor for a fix for the printer connection since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "a82c40f0-022e-41dd-9788-9f9e3b723b74",
+      "who": "Ngozi Duru",
+      "name": "an update on a fix",
+      "state": "waiting",
+      "says": "Ngozi Duru is waiting on support for an update on a fix.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Ngozi Duru said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     },
+     {
+      "id": "77a2561b-6181-423f-a611-b8e783d4bc38",
+      "who": "Musa Ibrahim",
+      "name": "a fix for the printer connection",
+      "state": "blocking",
+      "says": "Musa Ibrahim is waiting on the vendor for a fix for the printer connection.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Musa Ibrahim said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     }
+    ],
+    "byArea": {
+     "state": "not-known",
+     "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+    }
+   },
+   "participantReport": {
+    "id": "01484cd6-058d-414a-8cc8-1738e49d4d5f",
+    "groundId": "927dc43a-17e4-40a5-a4c8-0cbac28ce549",
+    "sharedPicture": "All three people have answered. They disagree on one thing: Stephen Nwachukwu's reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.\n\nStephen reports that the new system has been deployed for six weeks and the new system is fully used. Stephen is now seeking specific data on system usage and which modules are being used.\n\nYou say that 90% of transactions are processed through the new system. The other 10% are waiting on fixes for two issues that you have already logged.\n\nMusa Ibrahim says the new system is installed but it does not connect to the printer at the branch. Musa's team still uses the old system to create receipts.\n\nAll three of you agree that the new system is deployed, accessible, and live. Branch teams are using it for most of their daily work. The disagreement is about how complete the rollout is, with workarounds still in use.",
+    "theOpening": "All three people have answered. They disagree on one thing: Stephen Nwachukwu's reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.",
+    "agreements": [
+     "The new system is installed and technically live in all branches.",
+     "All teams can access the system and are using it for the majority of their daily tasks.",
+     "There are known issues and workarounds in place in at least two branches."
+    ],
+    "centralQuestion": "For a branch to be considered fully adopted, what is the maximum percentage of transactions or tasks that can acceptably be handled with a manual workaround?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Stephen Nwachukwu",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 10,
+       "documentsAttached": 0,
+       "who": "Stephen Nwachukwu"
+      },
+      {
+       "label": "Ngozi Duru",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 10,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Ngozi Duru"
+      },
+      {
+       "label": "Musa Ibrahim",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 6,
+       "documentsAttached": 0,
+       "who": "Musa Ibrahim"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "Stephen Nwachukwu's reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks."
+     ],
+     "sessionCounts": {
+      "Ngozi Duru": 9,
+      "Musa Ibrahim": 7,
+      "Stephen Nwachukwu": 7
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Ngozi Duru",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Dependencies hinted at rather than named (session 1)",
+         "level": "directional"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Ngozi Duru": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Ngozi Duru": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [
+      {
+       "label": "Musa Ibrahim",
+       "evidence": "Musa Ibrahim's record references raising a printer issue with the vendor."
+      },
+      {
+       "label": "Ngozi Duru",
+       "evidence": "Your record references logging an issue with the support team."
+      }
+     ],
+     "whatCouldBeChecked": {
+      "says": [
+       "All 2 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 2,
+      "checked": 2
+     },
+     "difficultyDisclosures": false
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [],
+     "dependencies": [
+      {
+       "on": "support",
+       "say": "You are waiting on support for an update on a fix, and nothing on record says anybody has chased it since.",
+       "from": "You",
+       "what": "an update on a fix",
+       "chased": false,
+       "status": "WAITING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "34545a4b-e94e-4008-87c4-114088417a9f"
+      }
+     ],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "You say that 90% of transactions are processed through the new system. The other 10% are waiting on fixes for two issues that you have already logged.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "releasedAt": "2026-10-02T01:23:35.304Z",
+    "createdAt": "2026-10-02T01:21:26.542Z",
+    "updatedAt": "2026-10-02T01:25:34.897Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They disagree on one thing: Stephen Nwachukwu's reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Stephen Nwachukwu reports that the new system has been deployed for six weeks and the new system is fully used.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Stephen Nwachukwu is now seeking specific data on system usage and which modules are being used.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You say that 90% of transactions are processed through the new system.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The other 10% are waiting on fixes for two issues that you have already logged.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Musa Ibrahim says the new system is installed but it does not connect to the printer at the branch.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Musa Ibrahim's team still uses the old system to create receipts.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "All three of you agree that the new system is deployed, accessible, and live.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Branch teams are using it for most of their daily work.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The disagreement is about how complete the rollout is, with workarounds still in use.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "My understanding is that we're at 90% use of the new system, and I think it's important we talk about what it will take to close the last 10%.",
+     "toAcknowledge": "Take seriously the other view that the system is fully adopted. This view is based on reports from their team that they are not using the old system at all.",
+     "questionToCarry": "What specific usage data would be enough to prove that the new system is handling all the transaction types it was intended to replace?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "Put an update on a fix in writing, with the date you need it by."
+     ],
+     "general": true,
+     "role": null,
+     "whyNoRoleMap": "Your record looks like management, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "ff069ed0-ae10-454c-b9a0-2633e5eb7edc",
+      "type": "PROGRESS",
+      "text": "we are genuinely live with the new system.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "1052832c-a6c2-4a5c-b3bc-95089a494335",
+      "sessionNumber": 1
+     },
+     {
+      "id": "573af7e4-c063-4668-b7c6-a61a7ae55df5",
+      "type": "PROGRESS",
+      "text": "We are seeing 90% of our transactions going through it now.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "1052832c-a6c2-4a5c-b3bc-95089a494335",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b75a716f-e62e-4e4f-9de3-db1d29877440",
+      "type": "PROGRESS",
+      "text": "The main customer-facing modules are all live and handling transactions. This includes account creation, deposits, and withdrawals.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "1052832c-a6c2-4a5c-b3bc-95089a494335",
+      "sessionNumber": 1
+     },
+     {
+      "id": "c67d8842-7bfc-43e5-bd21-883bebe86fa0",
+      "type": "PROGRESS",
+      "text": "My team is actively using the new system for all standard customer interactions. This includes opening new accounts, processing deposits and withdrawals, and managing customer inquiries.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "1052832c-a6c2-4a5c-b3bc-95089a494335",
+      "sessionNumber": 1
+     },
+     {
+      "id": "c8ebc302-fe86-4ee6-b530-728416487091",
+      "type": "WORRY",
+      "text": "The remaining 10% are those affected by the two small issues we've logged.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "1052832c-a6c2-4a5c-b3bc-95089a494335",
+      "sessionNumber": 1
+     },
+     {
+      "id": "a8803943-298e-46d0-aa1b-719ac0320482",
+      "type": "WORRY",
+      "text": "We're still processing those manually for now.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "1052832c-a6c2-4a5c-b3bc-95089a494335",
+      "sessionNumber": 1
+     },
+     {
+      "id": "18c3fab5-86b9-4105-a20f-027425e6eb4b",
+      "type": "WORRY",
+      "text": "One issue is with a specific type of complex corporate transfer. The other is a minor reporting discrepancy in the end-of-day reconciliation. Both are internal system issues.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "1052832c-a6c2-4a5c-b3bc-95089a494335",
+      "sessionNumber": 1
+     },
+     {
+      "id": "95f08af3-3dea-4861-9e3d-45964aa3174d",
+      "type": "WORRY",
+      "text": "There are some unique data fields for these transfers that the new system isn't currently capturing correctly.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "1052832c-a6c2-4a5c-b3bc-95089a494335",
+      "sessionNumber": 1
+     },
+     {
+      "id": "ec08b4f4-e50f-4634-825a-e43376a8b205",
+      "type": "WORRY",
+      "text": "we have to manually input that specific data into the old system to complete the transaction.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "1052832c-a6c2-4a5c-b3bc-95089a494335",
+      "sessionNumber": 1
+     },
+     {
+      "id": "6a343fd0-28d9-4a98-b1a4-9e6490aa4eab",
+      "type": "WORRY",
+      "text": "We've already logged the issue with support. We're waiting for an update from them on a fix.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "1052832c-a6c2-4a5c-b3bc-95089a494335",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [
+     {
+      "id": "a82c40f0-022e-41dd-9788-9f9e3b723b74",
+      "what": "an update on a fix",
+      "couldTry": [
+       "Ask what can move without this, so the whole thing is not waiting on one approval."
+      ]
+     }
+    ],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\n\nYou reported that the new system is live and handling 90% of transactions, including the main customer-facing modules for account creation, deposits, and withdrawals. Your team is actively using it for all standard customer interactions. The remaining 10% of transactions are being processed manually in the old system because of two issues you have logged: one with complex corporate transfers and another with a minor reporting discrepancy. This is because the new system is not capturing certain data fields correctly. You have logged the issue with support and are waiting for an update on a fix.",
+     "whatToCarry": "When you next speak to support, you could ask for their expected timeline for the fix."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "927dc43a-17e4-40a5-a4c8-0cbac28ce549",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "AGREEMENT",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "objectives",
+     "startingState",
+     "divergence",
+     "whatTheRoomIsAbout",
+     "whoOwnsWhat",
+     "dependencies",
+     "checkInGrid",
+     "decisions"
+    ],
+    "title": "The rollout across four branches",
+    "scenario": "IMPLEMENTATION_TRACKING",
+    "kindOfWork": "a government programme",
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. They disagree on one thing: Stephen Nwachukwu's reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 6,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 2,
+       "oldest": "an update on a fix",
+       "daysWaiting": 0
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T01:25:34.897Z",
+    "participants": [
+     {
+      "id": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+      "name": "Stephen Nwachukwu",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "name": "Musa Ibrahim",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "34545a4b-e94e-4008-87c4-114088417a9f",
+      "name": "Ngozi Duru",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 4,
+       "now": 4,
+       "target": null,
+       "say": "It is 4 so far.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "98244f42-fc6c-46d4-9027-b8138e27e353",
+      "name": "The team is aiming to understand how the new system rollout is progressing across the four branches.",
+      "count": 4,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 4,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     },
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "cc0b9177-9416-44a5-8b3f-795e63767a55",
+      "name": "Stephen is aiming to dig deeper into usage numbers to get a better sense of actual adoption within his branch.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": 90,
+      "suggestedSaid": "We are seeing 90% of our transactions going through it now.",
+      "askedOf": null
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "Stephen Nwachukwu's reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.",
+       "atStake": "If this holds, the project may be reported as fully complete while branches are still depending on manual workarounds, which creates risk and inefficiency.",
+       "evidence": [
+        "Stephen Nwachukwu's account states that their team's reporting shows everything is being done in the new system.",
+        "Your account specifies that certain data must be entered into the old system to finish a transaction.",
+        "Musa Ibrahim's account notes that the new system's inability to connect to a printer means they still use the old duplicate books."
+       ],
+       "positions": [
+        {
+         "view": "Describes the new system as being used for everything, with no one reverting to the old ways.",
+         "participantLabel": "Stephen Nwachukwu",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Stephen Nwachukwu"
+        },
+        {
+         "view": "States that 90% of transactions are on the new system, but the other 10% are processed on the old system because of specific technical problems.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "States that the team uses the new system for most tasks, but still uses duplicate books from the old system to print receipts.",
+         "participantLabel": "Musa Ibrahim",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Musa Ibrahim"
+        }
+       ],
+       "settledBy": "Agree on a clear, measurable definition of what fully adopted means, including a threshold for any remaining manual tasks.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "The new system is installed and technically live in all branches.",
+      "All teams can access the system and are using it for the majority of their daily tasks.",
+      "There are known issues and workarounds in place in at least two branches."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Agree on a clear, measurable definition of what fully adopted means, including a threshold for any remaining manual tasks. That is what settles stephen Nwachukwu's reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.",
+     "settled": [
+      "The new system is installed and technically live in all branches.",
+      "All teams can access the system and are using it for the majority of their daily tasks.",
+      "There are known issues and workarounds in place in at least two branches."
+     ],
+     "stillOpen": [
+      "Stephen Nwachukwu's reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks."
+     ]
+    },
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+       "name": "Stephen Nwachukwu",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+       "name": "Musa Ibrahim",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+       "name": "Ngozi Duru",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "whoOwnsWhat": [
+     {
+      "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+      "name": "Stephen Nwachukwu",
+      "role": null,
+      "items": [
+       {
+        "id": "13236dda-6965-427a-a6dd-36d40d4288ea",
+        "type": "PROGRESS",
+        "text": "Stephen Nwachukwu said, \"All four branches have been 'system deployed' for six weeks now.\"",
+        "mark": "memory",
+        "markSays": "From memory only",
+        "sessionNumber": 1
+       },
+       {
+        "id": "6405ea09-f4e7-4584-af8c-693031bc7a49",
+        "type": "PROGRESS",
+        "text": "Stephen Nwachukwu said, \"We're still showing green across the board.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "3d5267f7-52fc-427a-aa17-37e7102e97ef",
+        "type": "PROGRESS",
+        "text": "Stephen Nwachukwu said, \"The core functionalities are definitely live.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "e0a4dd6b-260c-406b-a004-9a7ed43d1a0c",
+        "type": "PROGRESS",
+        "text": "Stephen Nwachukwu said, \"Everyone has access and can log in.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "b7bc9338-d75c-4b16-a814-286d3fb2ae9a",
+        "type": "PROGRESS",
+        "text": "Stephen Nwachukwu said, \"My team reports everything is being done through the new system.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "d717ed82-22b2-4b59-9a01-c0da68284937",
+        "type": "PROGRESS",
+        "text": "Stephen Nwachukwu said, \"I'm not seeing any regressions to the old system.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "ce6062c5-cae5-41aa-b579-d9cce295cc5b",
+        "type": "INTENT",
+        "text": "Stephen Nwachukwu said, \"My responsibility is to ensure the system is deployed and available for use in my branch, and that my team reports full utilization.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "4687b6db-377b-43f6-bc5c-6b02f35fbeec",
+        "type": "COMMITMENT",
+        "text": "Stephen Nwachukwu said, \"I've decided to dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "name": "Musa Ibrahim",
+      "role": null,
+      "items": [
+       {
+        "id": "ba1b40a0-f104-4c55-8603-8fff710f783f",
+        "type": "PROGRESS",
+        "text": "Musa Ibrahim said, \"The new system is installed. The system is installed and working.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "65a33a06-5887-4925-9fff-c61823fc4673",
+        "type": "PROGRESS",
+        "text": "Musa Ibrahim said, \"We can access it and input data.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "5c824918-6d9c-441a-8f76-8bf64cde837f",
+        "type": "PROGRESS",
+        "text": "Musa Ibrahim said, \"My team is using it for most things. They're using it for most of their daily tasks. Things like customer information and processing transactions.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "0f1d3d66-34fa-4c40-9551-33bedf161268",
+        "type": "INTENT",
+        "text": "Musa Ibrahim said, \"I understood my role was to ensure the system was installed and that my team was using it.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+      "name": "Ngozi Duru",
+      "role": null,
+      "items": [
+       {
+        "id": "c67d8842-7bfc-43e5-bd21-883bebe86fa0",
+        "type": "PROGRESS",
+        "text": "You said, \"My team is actively using the new system for all standard customer interactions. This includes opening new accounts, processing deposits and withdrawals, and managing customer inquiries.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "ff069ed0-ae10-454c-b9a0-2633e5eb7edc",
+        "type": "PROGRESS",
+        "text": "You said, \"we are genuinely live with the new system.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "573af7e4-c063-4668-b7c6-a61a7ae55df5",
+        "type": "PROGRESS",
+        "text": "You said, \"We are seeing 90% of our transactions going through it now.\"",
+        "mark": "memory",
+        "markSays": "From memory only",
+        "sessionNumber": 1
+       },
+       {
+        "id": "b75a716f-e62e-4e4f-9de3-db1d29877440",
+        "type": "PROGRESS",
+        "text": "You said, \"The main customer-facing modules are all live and handling transactions. This includes account creation, deposits, and withdrawals.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     }
+    ],
+    "dependencies": [
+     {
+      "id": "a82c40f0-022e-41dd-9788-9f9e3b723b74",
+      "from": "Ngozi Duru",
+      "fromParticipantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+      "what": "an update on a fix",
+      "on": "support",
+      "onParticipantId": null,
+      "status": "WAITING",
+      "then": null,
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October."
+      }
+     },
+     {
+      "id": "77a2561b-6181-423f-a611-b8e783d4bc38",
+      "from": "Musa Ibrahim",
+      "fromParticipantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "what": "a fix for the printer connection",
+      "on": "the vendor",
+      "onParticipantId": null,
+      "status": "BLOCKING",
+      "then": null,
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October."
+      }
+     }
+    ],
+    "decisions": [
+     {
+      "question": "Musa Ibrahim is waiting on a fix for the printer connection, so it needs deciding.",
+      "why": "Musa Ibrahim cannot move until this is decided.",
+      "owner": "the vendor",
+      "source": "blocker"
+     },
+     {
+      "question": "People in this check-in said different things about Stephen Nwachukwu's reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks, so it needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "Stephen Nwachukwu",
+      "source": "divergence"
+     }
+    ],
+    "whatTheRoomIsAbout": {
+     "aims": [
+      {
+       "aim": "People are trying to fix problems with the new system that mean they are still using old ways of working.",
+       "held": [
+        "Ngozi Duru",
+        "Musa Ibrahim"
+       ]
+      },
+      {
+       "aim": "People said their job is to ensure the new system is installed and their teams are using it.",
+       "held": [
+        "Stephen Nwachukwu",
+        "Musa Ibrahim"
+       ]
+      },
+      {
+       "aim": "Stephen Nwachukwu said he wants to see the actual usage data to get a clearer picture of adoption.",
+       "held": [
+        "Stephen Nwachukwu"
+       ]
+      }
+     ],
+     "places": [],
+     "things": [
+      {
+       "name": "corporate transfer",
+       "named": [
+        "Ngozi Duru"
+       ]
+      },
+      {
+       "name": "duplicate book",
+       "named": [
+        "Musa Ibrahim"
+       ]
+      },
+      {
+       "name": "module",
+       "named": [
+        "Stephen Nwachukwu"
+       ]
+      },
+      {
+       "name": "printer",
+       "named": [
+        "Musa Ibrahim"
+       ]
+      },
+      {
+       "name": "receipt",
+       "named": [
+        "Musa Ibrahim"
+       ]
+      },
+      {
+       "name": "reconciliation",
+       "named": [
+        "Ngozi Duru"
+       ]
+      },
+      {
+       "name": "reporting",
+       "named": [
+        "Ngozi Duru"
+       ]
+      }
+     ],
+     "readAtSession": 1
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things about Stephen Nwachukwu's reporting shows full system adoption, but both branch leads describe that their teams still rely on the old system for certain tasks.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "No target set",
+      "sub": "Nobody has set anything to measure this against.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "1",
+      "sub": "Work is held up by an update on a fix.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "Put an update on a fix in writing, with the date you need it by."
+      ],
+      "general": true,
+      "role": null,
+      "whyNoRoleMap": "Your record looks like management, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+     },
+     "eachPerson": null
+    },
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "counties and their projects",
+      "state": "filled",
+      "rows": [
+       {
+        "id": "6afbe853-e7b3-4fc8-a048-448eb4e72fa6",
+        "kind": "project",
+        "name": "The new system",
+        "stage": null,
+        "owner": "Musa Ibrahim",
+        "ownerParticipantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "The new system doesn't connect to our branch printer for receipts. So, we're still using the duplicate books.",
+        "saidBy": "Musa",
+        "saidByParticipantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "c9e758b6-ba55-42b7-a735-8d4243ebd447",
+        "kind": "project",
+        "name": "the system",
+        "stage": null,
+        "owner": "Musa Ibrahim",
+        "ownerParticipantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I understood my role was to ensure the system was installed and that my team was using it.",
+        "saidBy": "Musa",
+        "saidByParticipantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       }
+      ]
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-a82c40f0-022e-41dd-9788-9f9e3b723b74",
+      "says": "You are waiting on support for an update on a fix.",
+      "because": "It was first said on 2 October. About what has been tried, you said, \"logged the issue with support\". No time has been given for it."
+     },
+     {
+      "id": "handoff-77a2561b-6181-423f-a611-b8e783d4bc38",
+      "says": "Musa Ibrahim cannot move on a fix for the printer connection until it comes from the vendor.",
+      "because": "It was first said on 2 October. About what has been tried, Musa Ibrahim said, \"I raised the printer issue with the vendor in week two\". No time has been given for it."
+     },
+     {
+      "id": "no-time-4cb84e1f-74d5-48a9-9f15-91004804fa72",
+      "says": "Stephen Nwachukwu made a commitment, and no time was given for it, so nobody can tell when it would be late.",
+      "because": "Nobody has said yet whether it happened."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "4cb84e1f-74d5-48a9-9f15-91004804fa72",
+      "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+      "who": "Stephen Nwachukwu",
+      "says": "In session 1, Stephen Nwachukwu said, \"dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": null,
+      "state": "open",
+      "statedInSession": 1
+     },
+     {
+      "id": "e04ac569-7f09-4d4b-ae0d-9e6486cb348b",
+      "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "who": "Musa Ibrahim",
+      "says": "In session 1, Musa Ibrahim said, \"I will follow up with them again.\" The time Musa Ibrahim gave for it was \"in week two\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "in week two",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Stephen Nwachukwu made a commitment, which is in the record."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Musa Ibrahim committed to follow up with them again."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you said the work was waiting on support for an update on a fix."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Musa Ibrahim said the work was waiting on the vendor for a fix for the printer connection."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "34545a4b-e94e-4008-87c4-114088417a9f",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you named 1 thing the work was waiting on."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "a82c40f0-022e-41dd-9788-9f9e3b723b74",
+      "who": "You",
+      "says": "You are waiting on support for an update on a fix.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "Support holds it.",
+       "About what has been tried, you said, \"logged the issue with support\".",
+       "No time has been given for it."
+      ]
+     },
+     {
+      "id": "77a2561b-6181-423f-a611-b8e783d4bc38",
+      "who": "Musa Ibrahim",
+      "says": "Musa Ibrahim is waiting on the vendor for a fix for the printer connection.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "The vendor holds it.",
+       "About what has been tried, Musa Ibrahim said, \"I raised the printer issue with the vendor in week two\".",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "7abc0ad4-da11-41b8-84e7-3c66ab8eedab",
+      "who": "Stephen Nwachukwu",
+      "promised": [
+       "In session 1, Stephen Nwachukwu said, \"dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": "45a06352-4a23-467f-b83d-dae210b36c4d",
+      "who": "Musa Ibrahim",
+      "promised": [
+       "In session 1, Musa Ibrahim said, \"I will follow up with them again.\" The time Musa Ibrahim gave for it was \"in week two\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": null,
+      "who": "support",
+      "promised": [],
+      "othersWaitFor": [
+       "You are waiting on support for an update on a fix."
+      ]
+     },
+     {
+      "participantId": null,
+      "who": "the vendor",
+      "promised": [],
+      "othersWaitFor": [
+       "Musa Ibrahim is waiting on the vendor for a fix for the printer connection."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "a82c40f0-022e-41dd-9788-9f9e3b723b74",
+      "says": "You have been waiting on support for an update on a fix since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     },
+     {
+      "id": "77a2561b-6181-423f-a611-b8e783d4bc38",
+      "says": "Musa Ibrahim has been waiting on the vendor for a fix for the printer connection since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "a82c40f0-022e-41dd-9788-9f9e3b723b74",
+      "who": "You",
+      "name": "an update on a fix",
+      "state": "waiting",
+      "says": "You are waiting on support for an update on a fix.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what you said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     },
+     {
+      "id": "77a2561b-6181-423f-a611-b8e783d4bc38",
+      "who": "Musa Ibrahim",
+      "name": "a fix for the printer connection",
+      "state": "blocking",
+      "says": "Musa Ibrahim is waiting on the vendor for a fix for the printer connection.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Musa Ibrahim said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     }
+    ],
+    "byArea": {
+     "state": "not-known",
+     "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+    }
+   },
+   "participantSeen": "a",
+   "patterns": [
+    {
+     "code": "B1",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "Optimistic 'green' reporting is based on the system being available, but is disconnected from the reality that there is no data on actual usage.",
+     "participant": {
+      "email": "lead.1790903904530@implementation.test"
+     }
+    },
+    {
+     "code": "D5",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "Customer-facing modules are live, but a key transaction workflow is incomplete and requires manual use of the old system.",
+     "participant": {
+      "email": "a.1790903904530@implementation.test"
+     }
+    },
+    {
+     "code": "B1",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "Initial optimistic reporting of a system being 'installed and working' sits beside a core function being unusable.",
+     "participant": {
+      "email": "b.1790903904530@implementation.test"
+     }
+    },
+    {
+     "code": "K3",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "An issue with a vendor was raised previously and is still unresolved.",
+     "participant": {
+      "email": "b.1790903904530@implementation.test"
+     }
+    },
+    {
+     "code": "D2",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "The new system is in use, but fails on the real-world task of printing receipts.",
+     "participant": {
+      "email": "b.1790903904530@implementation.test"
+     }
+    }
+   ],
+   "commitments": [
+    {
+     "text": "dig a little deeper into usage numbers myself to get a better sense of actual adoption within my branch",
+     "whenSaid": null,
+     "status": "UNKNOWN",
+     "statedInSession": 1,
+     "saidAgainIn": [],
+     "participant": {
+      "email": "lead.1790903904530@implementation.test"
+     }
+    },
+    {
+     "text": "I will follow up with them again.",
+     "whenSaid": "in week two",
+     "status": "UNKNOWN",
+     "statedInSession": 1,
+     "saidAgainIn": [],
+     "participant": {
+      "email": "b.1790903904530@implementation.test"
+     }
+    }
+   ]
+  }
+ ]
+}

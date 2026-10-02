@@ -1,0 +1,4022 @@
+{
+ "scenario": {
+  "key": "project",
+  "label": "Rebuilding the payments integration",
+  "scenario": "NEW_PROJECT",
+  "moment": "STARTING",
+  "cadence": "WEEKLY",
+  "timelineDays": 60,
+  "sessions": 1,
+  "brief": "We are replacing the payments integration in eight weeks. Before anybody writes code I want each person to say what they think the scope is, what they are waiting on, and what they think will go wrong. I have been burned by a project where everybody agreed at the start and nobody had the same thing in their head.",
+  "theDecision": "The engineer and the ops lead have different scopes: one is replacing the gateway only, the other assumes reconciliation is included, which is three extra weeks. Nobody has priced the reconciliation work. A right answer names the scope difference as the first thing to settle, not the timeline.",
+  "people": [
+   {
+    "key": "lead",
+    "name": "Ifeoma Chukwu",
+    "isLead": true,
+    "remit": "Head of engineering. Owns the eight-week deadline.",
+    "truth": "She promised the board eight weeks. She believes the job is swapping the gateway and nothing else. She has not read the reconciliation requirement that finance sent in July. She has one engineer on it and no buffer.",
+    "manner": "Crisp, deadline-focused. Gives dates readily. Slightly defensive about the eight weeks."
+   },
+   {
+    "key": "eng",
+    "name": "Samuel Otieno",
+    "remit": "Senior engineer, doing the build.",
+    "truth": "He has scoped the gateway swap at five weeks and is confident. He has seen the finance reconciliation document and assumed somebody else was handling it. He is waiting on sandbox credentials from the provider, requested eleven days ago, no reply. He has not told Ifeoma about the credentials because he thinks it will resolve itself.",
+    "manner": "Understated. Gives precise technical detail. Does not escalate. Says \"should be fine\" until pressed."
+   },
+   {
+    "key": "ops",
+    "name": "Rita Adeleke",
+    "remit": "Finance operations. Owns daily reconciliation.",
+    "truth": "She sent the reconciliation requirement in July and got no reply. Her team reconciles 400 transactions by hand every morning and the whole point of the rebuild, for her, is that this stops. If it is not in scope the project is worthless to her. She assumes it is in scope because nobody told her otherwise.",
+    "manner": "Practical, a bit weary, very specific about volumes and time taken."
+   }
+  ]
+ },
+ "groundId": "aa09c25f-f722-4221-b1a0-bb561818e4fc",
+ "orgId": "a5199ae4-0c3c-45be-823a-991273e3c777",
+ "emails": {
+  "lead": "lead.1790906200925@project.test",
+  "eng": "eng.1790906200925@project.test",
+  "ops": "ops.1790906200925@project.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "lead",
+     "name": "Ifeoma Chukwu",
+     "isLead": true,
+     "checkInId": "3cd9b5b5-19ae-4be0-b8ba-2b6670ea70eb",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "This conversation is about getting everyone clear on the payments integration project, which you kicked off. What do you see as the core objective that needs to exist at the end of this payments integration project?"
+      },
+      {
+       "from": "IFEOMA CHUKWU",
+       "text": "The core objective is to replace our current payments gateway. We need to be fully switched over."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "To make sure that's clear, what specific capabilities will this new gateway need to have that the old one didn't, or that it improves upon?",
+       "suggestedAnswers": [
+        "We know the key new capabilities.",
+        "We are still figuring that out.",
+        "Not yet.",
+        "That is next on our list."
+       ]
+      },
+      {
+       "from": "IFEOMA CHUKWU",
+       "text": "This project is about swapping out the gateway. It's a like-for-like replacement. We are not adding new capabilities in this phase."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. A like, for-like replacement means the focus is on a seamless transition, rather than new features. What do you see as the biggest challenge in making that switch seamless?",
+       "suggestedAnswers": [
+        "I think it will be seamless.",
+        "The biggest challenge is the ... migration.",
+        "I haven't thought about it yet."
+       ]
+      },
+      {
+       "from": "IFEOMA CHUKWU",
+       "text": "The biggest challenge will be ensuring the cutover happens smoothly on the technical side. We need to minimize any disruption to transactions."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Minimizing disruption on the technical side during cutover is key. Is there anything you need that's blocked on someone else right now for this to happen?",
+       "suggestedAnswers": [
+        "No, everything is on track.",
+        "I am waiting on technical support.",
+        "Not yet.",
+        "I need a decision from ..."
+       ]
+      },
+      {
+       "from": "IFEOMA CHUKWU",
+       "text": "No, not right now. We have an engineer assigned to it. I'm not waiting on anything specific to get started."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "For this payments integration, what is your planned approach for getting it off the check-in?",
+       "suggestedAnswers": [
+        "Engineer started. We have a plan.",
+        "Still need a clear path forward.",
+        "I don't know the approach yet.",
+        "Our approach is coming together."
+       ]
+      },
+      {
+       "from": "IFEOMA CHUKWU",
+       "text": "We'll define the technical requirements, develop the integration, and then thoroughly test it. The deadline is eight weeks from now."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Eight weeks from now. What aspects of this project are currently clear to you?",
+       "suggestedAnswers": [
+        "I understand the basic requirements.",
+        "Some parts are still confusing.",
+        "Not yet, I'm still learning.",
+        "I need more details on ..."
+       ]
+      },
+      {
+       "from": "IFEOMA CHUKWU",
+       "text": "The scope is clear: replace the payment gateway. The deadline is clear: eight weeks. We have an engineer ready to go."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You also said the focus is a seamless transition. What would you need to see, specifically, to know the cutover had been seamless?",
+       "suggestedAnswers": [
+        "I'd see payments processing without issues.",
+        "I'm still figuring out what to watch.",
+        "Customers calling about failed transactions."
+       ]
+      },
+      {
+       "from": "IFEOMA CHUKWU",
+       "text": "I'd need to see zero downtime for payments and all transactions processing correctly through the new gateway. No customer impact, basically."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Beyond the immediate project team, who has a stake in this, and what do you understand they expect?",
+       "suggestedAnswers": [
+        "I know who the stakeholders are.",
+        "I haven't talked to them yet.",
+        "I'm still looking into it.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "IFEOMA CHUKWU",
+       "text": "The board has a stake; they expect it done in eight weeks. Finance will be using the new system, of course, but their main concern is usually just that it works."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've named the board and Finance as key stakeholders. You also mentioned \"no customer impact\" as a measure of a seamless cutover. Whose records would show whether there was customer impact, or whether all transactions processed correctly?",
+       "suggestedAnswers": [
+        "Everything looks good so far.",
+        "We're finding some issues.",
+        "I don't know yet.",
+        "Still waiting on records from ..."
+       ]
+      },
+      {
+       "from": "IFEOMA CHUKWU",
+       "text": "Our internal transaction logs and customer support feedback would show customer impact. Finance would verify if all transactions processed correctly."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That gives us clear sources for verifying the customer impact and transaction processing. Now, you set up this check-in to get everyone clear on the project's scope, dependencies, and risks. This is the first session, so what have you decided to do about this payments integration, and by when?",
+       "suggestedAnswers": [
+        "I have a plan for the integration by ...",
+        "I am still stuck on a few things.",
+        "I have not decided what to do yet."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "eng",
+     "name": "Samuel Otieno",
+     "isLead": false,
+     "checkInId": "a72cfda6-f1c2-47b9-85b8-7ff20da7b3c8",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Before anything else, so this asks you the right things: are you the person this check-in is about, or somebody working alongside them? One line is enough."
+      },
+      {
+       "from": "SAMUEL OTIENO",
+       "text": "I am Samuel Otieno, the senior engineer. I'm doing the build for this integration."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What did you understand your role in this project to be, in your own words?",
+       "suggestedAnswers": [
+        "My role is to build the integration.",
+        "I did not fully understand my role.",
+        "I am still clarifying my understanding of my role."
+       ]
+      },
+      {
+       "from": "SAMUEL OTIENO",
+       "text": "I'm leading the technical implementation of the new payments integration. My role is to make sure the swap happens smoothly."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "It sounds like most of your work is engineering. Is that right?",
+       "suggestedAnswers": [
+        "Yes, we are on track.",
+        "No, we have a problem.",
+        "Not yet, still checking."
+       ]
+      },
+      {
+       "from": "SAMUEL OTIENO",
+       "text": "Yes, that's correct. It's an engineering task."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You are leading the technical implementation to make sure the swap happens smoothly. What do you mean to do first?",
+       "suggestedAnswers": [
+        "I will start by reviewing the requirements.",
+        "I need to understand the problem better first.",
+        "I haven't decided yet."
+       ]
+      },
+      {
+       "from": "SAMUEL OTIENO",
+       "text": "First, I need to get access to the sandbox environment. I can't start coding until I have that."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What specifically is holding up getting that access?",
+       "suggestedAnswers": [
+        "I just got it.",
+        "Still waiting for approval.",
+        "I don't know yet.",
+        "IT is very busy."
+       ]
+      },
+      {
+       "from": "SAMUEL OTIENO",
+       "text": "I'm waiting on the sandbox credentials from the provider. I requested them eleven days ago."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Is there anything written down about that request - an email, a ticket, anything you could point to?",
+       "suggestedAnswers": [
+        "Yes, I sent an email about it.",
+        "No, there is nothing in writing yet.",
+        "I don't know, I need to check."
+       ]
+      },
+      {
+       "from": "SAMUEL OTIENO",
+       "text": "Yes, I have the email I sent requesting the credentials."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That email is useful. What do you think could go wrong with your part of this work?",
+       "suggestedAnswers": [
+        "I might get stuck waiting for access.",
+        "I don't see any problems yet.",
+        "The system could be down when I start.",
+        "The credentials could be wrong."
+       ]
+      },
+      {
+       "from": "SAMUEL OTIENO",
+       "text": "The main thing that could go wrong is if the new integration introduces unforeseen issues during testing. Otherwise, it should be fine."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "I have one more question before we finish. What is still not clear to you?",
+       "suggestedAnswers": [
+        "Still unsure about ... .",
+        "Not yet fully clear.",
+        "Everything is clear to me.",
+        "I need more information."
+       ]
+      },
+      {
+       "from": "SAMUEL OTIENO",
+       "text": "I'm unclear on the specifics of the finance reconciliation document. I saw it but assumed someone else was handling it."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What will you do about getting clarity on the finance reconciliation document, and by when?",
+       "suggestedAnswers": [
+        "I will look at it today.",
+        "I will ask for clarity by ...",
+        "I am still unclear on the document.",
+        "I have not started on it yet."
+       ]
+      },
+      {
+       "from": "SAMUEL OTIENO",
+       "text": "I'll ask about it at the next meeting to understand who is responsible for it."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What meeting is that?",
+       "suggestedAnswers": [
+        "I found out it's the ... meeting.",
+        "I don't know yet.",
+        "Still waiting to hear back."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "ops",
+     "name": "Rita Adeleke",
+     "isLead": false,
+     "checkInId": "96a10ad2-bf7e-41e0-b7bd-f2a7d116df8a",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Before anything else, so this asks you the right things: are you the person this check-in is about, or somebody working alongside them? One line is enough."
+      },
+      {
+       "from": "RITA ADELEKE",
+       "text": "I'm the person this check-in is about."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Got it. So, to start, what did you understand your role in this payments integration project to be-in your own words, before anyone else's version?",
+       "suggestedAnswers": [
+        "My role was to make the payments work.",
+        "I'm not clear on my exact role yet.",
+        "I understood my role, but it changed."
+       ]
+      },
+      {
+       "from": "RITA ADELEKE",
+       "text": "My role is to make sure the new integration handles the daily reconciliation process correctly."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What specifically exists as a definition for \"correctly\" here?",
+       "suggestedAnswers": [
+        "I understand 'correctly' better now.",
+        "The definition of 'correctly' is unclear.",
+        "Not yet."
+       ]
+      },
+      {
+       "from": "RITA ADELEKE",
+       "text": "\"Correctly\" means it automates the reconciliation of the 400 transactions my team currently does by hand every morning."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Four hundred transactions currently done by hand each morning. What would success look like for that automation, what would exist that doesn't exist today if that is genuinely delivered? For instance, a daily report from the new system, or a notification that confirms all 400 transactions have been reconciled without manual intervention."
+      },
+      {
+       "from": "RITA ADELEKE",
+       "text": "Success would be a daily automated report that confirms the 400 transactions are reconciled. No manual work."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That daily report confirming all 400 transactions are reconciled without manual work sounds like a clear outcome. What do you think is most likely to go wrong with getting that built and running?",
+       "suggestedAnswers": [
+        "The data might not reconcile easily.",
+        "Integrating all systems could be hard.",
+        "I'm still thinking it through."
+       ]
+      },
+      {
+       "from": "RITA ADELEKE",
+       "text": "I think the biggest risk is that the reconciliation requirement gets overlooked, or assumed to be out of scope."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You think the biggest risk is that the reconciliation requirement gets overlooked, or assumed to be out of scope. That is the kind of thing that stalls a project in the middle. What is the single most important thing you need to get or to know to make sure it is not overlooked or assumed out of scope?",
+       "suggestedAnswers": [
+        "I know what we need.",
+        "I still need to know ...",
+        "It's still not clear."
+       ]
+      },
+      {
+       "from": "RITA ADELEKE",
+       "text": "I need confirmation that automated daily reconciliation for all 400 transactions is definitely in scope for this project."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That confirmation has to come from somewhere. Who do you need to hear that from specifically?",
+       "suggestedAnswers": [
+        "I'm still figuring that out.",
+        "No one has confirmed that yet.",
+        "I need to ask the right person.",
+        "I don't know who yet."
+       ]
+      },
+      {
+       "from": "RITA ADELEKE",
+       "text": "I need to hear that from the project lead."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What do you think is most likely to go wrong with getting that built and running?",
+       "suggestedAnswers": [
+        "I think it will go smoothly.",
+        "The ... part might be difficult.",
+        "I don't know yet.",
+        "We could get stuck on ... ."
+       ]
+      },
+      {
+       "from": "RITA ADELEKE",
+       "text": "I think the biggest risk is that the reconciliation requirement gets overlooked, or assumed to be out of scope."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What will you do about this, and by when?",
+       "suggestedAnswers": [
+        "I will handle this by ...",
+        "I'm still figuring out the best way.",
+        "Not yet, still thinking.",
+        "I have a plan by ..."
+       ]
+      },
+      {
+       "from": "RITA ADELEKE",
+       "text": "I sent the reconciliation requirement in July. I need to follow up with the project lead to get that confirmation. I'll do that today."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You sent the reconciliation requirement in July and you will follow up with the project lead today to get confirmation that automated daily reconciliation for all 400 transactions is in scope.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "a0985770-c612-4682-989b-d91e438e8ecd",
+    "groundId": "aa09c25f-f722-4221-b1a0-bb561818e4fc",
+    "sharedPicture": "All three people have answered. They disagree on the scope of the project, and on its status.\n\nYou say this project is a like, for-like replacement of the payments gateway and that no new capabilities are being added in this phase. You have assigned an engineer to the project.\n\nSamuel Otieno is leading the technical implementation for the new gateway. Samuel cannot start work until Samuel has access to the sandbox environment.\n\nRita Adeleke needs the new gateway to automate the reconciliation of 400 daily transactions. Rita sent this requirement in July and Rita says the biggest risk is that it will be overlooked.\n\nAll share the goal of a smooth transition with minimal disruption to business operations and customers.",
+    "theOpening": "All three people have answered. They disagree on the scope of the project, and on its status.",
+    "agreements": [
+     "The project is to replace the current payments gateway.",
+     "The timeline for completion is eight weeks.",
+     "A primary objective is a smooth cutover with minimal disruption."
+    ],
+    "divergences": [
+     {
+      "topic": "They have a different understanding of the project's scope, particularly whether new automation is included.",
+      "atStake": "If the project is delivered as a 'like, for-like' replacement, the 400 daily transactions one person expects to be automated will continue to be done by hand.",
+      "evidence": [
+       "You described the project as a straightforward swap of the existing gateway, with no new features.",
+       "Rita Adeleke defined success as the creation of a new automated report that would eliminate the team's manual reconciliation work."
+      ],
+      "positions": [
+       {
+        "view": "Described the project strictly as a 'like, for-like' replacement of the existing system, with no new capabilities to be added.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Described the project as including a new capability to automate the reconciliation of 400 daily transactions.",
+        "participantLabel": "Rita Adeleke",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     },
+     {
+      "topic": "They describe the current project status differently, with one seeing it as blocked and another as progressing.",
+      "atStake": "If the project is believed to be progressing, it could consume engineering time without the technical work itself ever beginning.",
+      "evidence": [
+       "Samuel Otieno reported being unable to start coding without sandbox access, which was requested eleven days ago.",
+       "Your account notes that an engineer has been assigned, implying work can proceed."
+      ],
+      "positions": [
+       {
+        "view": "Stated that the project is underway because an engineer is assigned to it.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Stated that the project is blocked because the technical work cannot begin without the necessary sandbox credentials.",
+        "participantLabel": "Samuel Otieno",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     }
+    ],
+    "centralQuestion": "For this eight-week project to be successful, does 'like-for-like replacement' mean the new system must automate the 400 manual reconciliations, or does it mean the existing gateway is replaced without adding that function?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Ifeoma Chukwu",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 9,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Ifeoma Chukwu"
+      },
+      {
+       "label": "Samuel Otieno",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 5,
+       "documentsAttached": 0,
+       "who": "Samuel Otieno"
+      },
+      {
+       "label": "Rita Adeleke",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 6,
+       "documentsAttached": 0,
+       "who": "Rita Adeleke"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "They have a different understanding of the project's scope, particularly whether new automation is included.",
+      "They describe the current project status differently, with one seeing it as blocked and another as progressing."
+     ],
+     "sessionCounts": {
+      "Samuel Otieno": 9,
+      "Rita Adeleke": 9,
+      "Ifeoma Chukwu": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Ifeoma Chukwu",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Dependencies hinted at rather than named (session 1)",
+         "level": "directional"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Ifeoma Chukwu": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Ifeoma Chukwu": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "whatCouldBeChecked": {
+      "says": [
+       "All 3 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 3,
+      "checked": 3
+     },
+     "difficultyDisclosures": true
+    },
+    "inferences": [],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": null,
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "You believe this is a like, for-like replacement, but Rita Adeleke expects it to automate 400 daily transactions. You also believe work is underway, but Samuel Otieno is blocked waiting for system access.",
+     "whatToDo": [
+      {
+       "move": "Decide with Rita Adeleke whether the automation of 400 daily transactions is in or out of scope.",
+       "because": "Rita Adeleke needs this automation to do their job, and your current plan for a 'like, for-like' replacement excludes it.",
+       "startWith": "Rita Adeleke"
+      },
+      {
+       "move": "Get Samuel Otieno the sandbox access needed to start the build.",
+       "because": "The project is blocked until Samuel Otieno has this access.",
+       "startWith": "Samuel Otieno"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You say the project is underway and the project is a 'like, for-like' replacement, which the other accounts show is not the full picture.",
+       "soWhat": "Your understanding of the project's scope and status does not match the people doing the work.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Samuel Otieno is blocked and cannot start the build until Samuel has access to the sandbox environment.",
+       "soWhat": "No technical work can begin until this is resolved.",
+       "fieldId": "Samuel Otieno"
+      },
+      {
+       "says": "Rita Adeleke needs this project to automate 400 daily transactions, and is concerned this requirement will be overlooked.",
+       "soWhat": "The project, as understood by you, will not meet Rita Adeleke's operational needs.",
+       "fieldId": "Rita Adeleke"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "Rita Adeleke's July requirement for automation.",
+       "howManyMissedIt": 1
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record does not show what happened to the requirement Rita Adeleke sent in July, or if you saw it.",
+       "about": "Rita Adeleke's requirement for automation",
+       "toKnow": "Your own account of this is not in this check-in."
+      },
+      {
+       "why": "The record does not say why Samuel Otieno's access is blocked or who can grant it.",
+       "about": "The sandbox environment",
+       "toKnow": "Ask Samuel Otieno what they have tried so far and who is responsible for the sandbox."
+      }
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Samuel Otieno is down as \"Senior engineer, doing the build\", and nothing on record says what that role covers. Since then, the record holds 1 session, 5 lines of what was said, 1 with a name, a number or a date in it, none backed by a document and 1 commitment still open.",
+       "who": "Samuel Otieno",
+       "participantId": "6c975394-af78-4005-9941-212cf0bbc248"
+      },
+      {
+       "say": "Rita Adeleke is down as \"Finance operations. Owns daily reconciliation\", and nothing on record says what that role covers. Since then, the record holds 1 session, 6 lines of what was said, 1 with a name, a number or a date in it, none backed by a document and 1 commitment still open.",
+       "who": "Rita Adeleke",
+       "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Samuel Otieno is waiting on the provider for \"the sandbox credentials\", and nothing on record says anybody has chased it since.",
+      "Rita Adeleke is waiting on the project lead for confirmation that automated daily reconciliation is in scope, and it has been asked about once since.",
+      "In session 1, Samuel Otieno said, \"I'll ask about it at the next meeting\". Nobody has said yet whether it happened.",
+      "In session 1, Rita Adeleke said, \"follow up with the project lead to get that confirmation\". The time Rita gave for it was \"today\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, Samuel Otieno said, \"I'll ask about it at the next meeting\". Nobody has said yet whether it happened.",
+       "who": "Samuel Otieno",
+       "what": "I'll ask about it at the next meeting",
+       "when": null,
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": false
+      },
+      {
+       "say": "In session 1, Rita Adeleke said, \"follow up with the project lead to get that confirmation\". The time Rita gave for it was \"today\". Nobody has said yet whether it happened.",
+       "who": "Rita Adeleke",
+       "what": "follow up with the project lead to get that confirmation",
+       "when": "today",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [
+      {
+       "on": "the provider",
+       "say": "Samuel Otieno is waiting on the provider for \"the sandbox credentials\", and nothing on record says anybody has chased it since.",
+       "from": "Samuel Otieno",
+       "what": "the sandbox credentials",
+       "chased": false,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "6c975394-af78-4005-9941-212cf0bbc248"
+      },
+      {
+       "on": "the project lead",
+       "say": "Rita Adeleke is waiting on the project lead for confirmation that automated daily reconciliation is in scope, and it has been asked about once since.",
+       "from": "Rita Adeleke",
+       "what": "confirmation that automated daily reconciliation is in scope",
+       "chased": true,
+       "status": "WAITING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "One thing is waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "You say this project is a like, for-like replacement of the payments gateway and that no new capabilities are being added in this phase. You have assigned an engineer to the project.",
+      "hasGap": false,
+      "headline": "Your definition of the project does not include the automation Rita Adeleke is expecting.",
+      "participantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Samuel Otieno is leading the technical implementation for the new gateway. Samuel cannot start work until Samuel has access to the sandbox environment.",
+      "hasGap": false,
+      "headline": "Samuel Otieno is blocked from starting the technical work.",
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Rita Adeleke needs the new gateway to automate the reconciliation of 400 daily transactions. Rita sent this requirement in July and Rita says the biggest risk is that it will be overlooked.",
+      "hasGap": false,
+      "headline": "Rita Adeleke's requirement for automation is not in your plan.",
+      "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": "2026-10-02T02:05:17.848Z",
+    "createdAt": "2026-10-02T02:01:07.820Z",
+    "updatedAt": "2026-10-02T02:05:17.849Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They disagree on the scope of the project, and on its status.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You say this project is a like, for-like replacement of the payments gateway and that no new capabilities are being added in this phase.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You have assigned an engineer to the project.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Samuel Otieno is leading the technical implementation for the new gateway.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Samuel Otieno cannot start work until Samuel has access to the sandbox environment.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Rita Adeleke needs the new gateway to automate the reconciliation of 400 daily transactions.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Rita Adeleke sent this requirement in July and Rita says the biggest risk is that it will be overlooked.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "All share the goal of a smooth transition with minimal disruption to business operations and customers.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": null,
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of project management work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+     ],
+     "general": true,
+     "role": {
+      "label": "Project management",
+      "onTrack": "Blockers driven to cleared, handoffs owned, real risks managed, bad news escalated early.",
+      "goingWrong": "Reports that something is blocked without driving it; everything green, then a deadline surprise.",
+      "protectAgainst": "A PM with no real authority can be blamed for slippage they could not prevent. Read what they drove, not only what slipped.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "96e46fec-a640-4662-8a40-c196591c7dbe",
+      "type": "SUCCESS_DEFINITION",
+      "text": "The core objective is to replace our current payments gateway. We need to be fully switched over.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3cd9b5b5-19ae-4be0-b8ba-2b6670ea70eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "99d68add-86b5-48fe-b570-e275ab22b823",
+      "type": "INTENT",
+      "text": "This project is about swapping out the gateway. It's a like-for-like replacement. We are not adding new capabilities in this phase.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3cd9b5b5-19ae-4be0-b8ba-2b6670ea70eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "a0d02410-6156-45bc-8473-64a208b74b5c",
+      "type": "WORRY",
+      "text": "The biggest challenge will be ensuring the cutover happens smoothly on the technical side. We need to minimize any disruption to transactions.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3cd9b5b5-19ae-4be0-b8ba-2b6670ea70eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "d3569ace-6204-4579-aeb4-6e71781a912b",
+      "type": "PROGRESS",
+      "text": "We have an engineer assigned to it.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3cd9b5b5-19ae-4be0-b8ba-2b6670ea70eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "afc15ce9-54cf-4479-a0e9-5ff9a47efaa5",
+      "type": "TIMEFRAME",
+      "text": "The deadline is eight weeks from now.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3cd9b5b5-19ae-4be0-b8ba-2b6670ea70eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b765cd9c-2735-45de-a295-ed0d057a541b",
+      "type": "SUCCESS_DEFINITION",
+      "text": "I'd need to see zero downtime for payments and all transactions processing correctly through the new gateway. No customer impact, basically.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3cd9b5b5-19ae-4be0-b8ba-2b6670ea70eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "331e5d54-1fbb-4647-86fc-e6d913b987da",
+      "type": "INTENT",
+      "text": "The board has a stake; they expect it done in eight weeks.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3cd9b5b5-19ae-4be0-b8ba-2b6670ea70eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "5e46b3fd-fd5b-416b-a8bc-54c4b924ce3f",
+      "type": "INTENT",
+      "text": "Finance... their main concern is usually just that it works.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3cd9b5b5-19ae-4be0-b8ba-2b6670ea70eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "95ba51a4-b117-41b5-b4b1-1b993170069c",
+      "type": "INTENT",
+      "text": "Our internal transaction logs and customer support feedback would show customer impact. Finance would verify if all transactions processed correctly.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3cd9b5b5-19ae-4be0-b8ba-2b6670ea70eb",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": [
+     {
+      "who": "Samuel Otieno",
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "probe": [
+       "Samuel Otieno has been waiting for the sandbox credentials, and nothing on record says it was raised higher. This early, that is worth showing Samuel Otieno rather than asking about."
+      ],
+      "encourage": [
+       "Named a problem out loud rather than reporting everything as fine."
+      ],
+      "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+     },
+     {
+      "who": "Ifeoma Chukwu",
+      "participantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+      "probe": [],
+      "encourage": [
+       "Worth getting on record, where anyone could check it later: The core objective is to replace our current payments gateway. We need to be fully switched over and I'd need to see zero downtime for payments and all transactions processing correctly through the new gateway. No customer impact, basically."
+      ],
+      "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+     },
+     {
+      "who": "Rita Adeleke",
+      "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "probe": [
+       "Rita Adeleke has been waiting for confirmation that automated daily reconciliation is in scope, and nothing on record says it was raised higher. This early, that is worth showing Rita Adeleke rather than asking about."
+      ],
+      "encourage": [
+       "Worth getting on record, where anyone could check it later: \"correctly\" means it automates the reconciliation of the 400 transactions my team currently does by hand every morning and Success would be a daily automated report that confirms the 400 transactions are reconciled. No manual work."
+      ],
+      "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+     }
+    ],
+    "soloArtifact": {
+     "summary": "Here is what you shared.\nYou are replacing your current payments gateway, with a firm deadline of eight weeks from now. You described this as a like-for-like replacement, not a project for adding new capabilities. Success for you would be a full switch-over with zero downtime and no customer impact. You noted that an engineer is assigned, and that your biggest challenge will be ensuring a smooth technical cutover to minimise any disruption to transactions.",
+     "whatToCarry": "Your biggest challenge will be ensuring the cutover happens smoothly on the technical side."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    },
+    "forTheLead": [
+     {
+      "id": "handoff-feee6c8d-7bb9-430d-b2ee-59fb904b339f",
+      "decide": "Decide what to do about the sandbox credentials.",
+      "why": "Samuel cannot move until it is settled, and it is waiting on the provider.",
+      "changes": "Once it is settled, start coding."
+     },
+     {
+      "id": "difference-1",
+      "decide": "Settle the difference between what you and Rita Adeleke said.",
+      "why": "The parties have a different understanding of the project's scope, particularly whether new automation is included. You and Rita Adeleke said different things about this, so nobody can assume it is agreed.",
+      "changes": "If the project is delivered as a 'like-for-like' replacement, the 400 daily transactions one party expects to be automated will continue to be done by hand."
+     },
+     {
+      "id": "difference-2",
+      "decide": "Settle the difference between what you and Samuel Otieno said.",
+      "why": "The parties describe the current project status differently, with one seeing it as blocked and another as progressing. You and Samuel Otieno said different things about this, so nobody can assume it is agreed.",
+      "changes": "If the project is believed to be progressing, it could consume engineering time without the technical work itself ever beginning."
+     }
+    ]
+   },
+   "board": {
+    "groundId": "aa09c25f-f722-4221-b1a0-bb561818e4fc",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "DELIVERY",
+    "peopleWorkTogether": true,
+    "sections": [
+     "phaseSpine",
+     "quickRead",
+     "objectives",
+     "startingState",
+     "divergence",
+     "whatTheRoomIsAbout",
+     "whoOwnsWhat",
+     "dependencies",
+     "checkInGrid",
+     "contribution",
+     "coverage",
+     "cascade",
+     "hiddenContributors",
+     "patterns",
+     "decisions",
+     "poll"
+    ],
+    "title": "Rebuilding the payments integration",
+    "scenario": "NEW_PROJECT",
+    "kindOfWork": "engineering release",
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. They disagree on the scope of the project, and on its status.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 8,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 2,
+       "oldest": "the sandbox credentials",
+       "daysWaiting": 0
+      }
+     }
+    },
+    "groundStatus": "AWAITING_PARTIES",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "You believe this is a like, for-like replacement, but Rita Adeleke expects it to automate 400 daily transactions. You also believe work is underway, but Samuel Otieno is blocked waiting for system access.",
+     "whatToDo": [
+      {
+       "move": "Decide with Rita Adeleke whether the automation of 400 daily transactions is in or out of scope.",
+       "because": "Rita Adeleke needs this automation to do their job, and your current plan for a 'like, for-like' replacement excludes it.",
+       "startWith": "Rita Adeleke"
+      },
+      {
+       "move": "Get Samuel Otieno the sandbox access needed to start the build.",
+       "because": "The project is blocked until Samuel Otieno has this access.",
+       "startWith": "Samuel Otieno"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You say the project is underway and the project is a 'like, for-like' replacement, which the other accounts show is not the full picture.",
+       "soWhat": "Your understanding of the project's scope and status does not match the people doing the work.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Samuel Otieno is blocked and cannot start the build until Samuel has access to the sandbox environment.",
+       "soWhat": "No technical work can begin until this is resolved.",
+       "fieldId": "Samuel Otieno"
+      },
+      {
+       "says": "Rita Adeleke needs this project to automate 400 daily transactions, and is concerned this requirement will be overlooked.",
+       "soWhat": "The project, as understood by you, will not meet Rita Adeleke's operational needs.",
+       "fieldId": "Rita Adeleke"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "Rita Adeleke's July requirement for automation.",
+       "howManyMissedIt": 1
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record does not show what happened to the requirement Rita Adeleke sent in July, or if you saw it.",
+       "about": "Rita Adeleke's requirement for automation",
+       "toKnow": "Your own account of this is not in this check-in."
+      },
+      {
+       "why": "The record does not say why Samuel Otieno's access is blocked or who can grant it.",
+       "about": "The sandbox environment",
+       "toKnow": "Ask Samuel Otieno what they have tried so far and who is responsible for the sandbox."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Samuel Otieno is down as \"Senior engineer, doing the build\", and nothing on record says what that role covers. Since then, the record holds 1 session, 5 lines of what was said, 1 with a name, a number or a date in it, none backed by a document and 1 commitment still open.",
+       "who": "Samuel Otieno",
+       "participantId": "6c975394-af78-4005-9941-212cf0bbc248"
+      },
+      {
+       "say": "Rita Adeleke is down as \"Finance operations. Owns daily reconciliation\", and nothing on record says what that role covers. Since then, the record holds 1 session, 6 lines of what was said, 1 with a name, a number or a date in it, none backed by a document and 1 commitment still open.",
+       "who": "Rita Adeleke",
+       "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Samuel Otieno is waiting on the provider for \"the sandbox credentials\", and nothing on record says anybody has chased it since.",
+      "Rita Adeleke is waiting on the project lead for confirmation that automated daily reconciliation is in scope, and it has been asked about once since.",
+      "In session 1, Samuel Otieno said, \"I'll ask about it at the next meeting\". Nobody has said yet whether it happened.",
+      "In session 1, Rita Adeleke said, \"follow up with the project lead to get that confirmation\". The time Rita Adeleke gave for it was \"today\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, Samuel Otieno said, \"I'll ask about it at the next meeting\". Nobody has said yet whether it happened.",
+       "who": "Samuel Otieno",
+       "what": "I'll ask about it at the next meeting",
+       "when": null,
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": false
+      },
+      {
+       "say": "In session 1, Rita Adeleke said, \"follow up with the project lead to get that confirmation\". The time Rita Adeleke gave for it was \"today\". Nobody has said yet whether it happened.",
+       "who": "Rita Adeleke",
+       "what": "follow up with the project lead to get that confirmation",
+       "when": "today",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [
+      {
+       "on": "the provider",
+       "say": "Samuel Otieno is waiting on the provider for \"the sandbox credentials\", and nothing on record says anybody has chased it since.",
+       "from": "Samuel Otieno",
+       "what": "the sandbox credentials",
+       "chased": false,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "6c975394-af78-4005-9941-212cf0bbc248"
+      },
+      {
+       "on": "the project lead",
+       "say": "Rita Adeleke is waiting on the project lead for confirmation that automated daily reconciliation is in scope, and it has been asked about once since.",
+       "from": "Rita Adeleke",
+       "what": "confirmation that automated daily reconciliation is in scope",
+       "chased": true,
+       "status": "WAITING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "One thing is waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T02:05:17.849Z",
+    "participants": [
+     {
+      "id": "6c975394-af78-4005-9941-212cf0bbc248",
+      "name": "Samuel Otieno",
+      "role": "Senior engineer, doing the build.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+      "name": "Ifeoma Chukwu",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "name": "Rita Adeleke",
+      "role": "Finance operations. Owns daily reconciliation.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "phaseSpine": {
+     "startsAt": null,
+     "endsAt": null,
+     "currentSession": 1,
+     "plannedSessions": 8,
+     "sessions": [
+      {
+       "n": 1,
+       "state": "done",
+       "date": "2026-10-02T01:59:45.373Z",
+       "opensOn": null,
+       "openedOn": "2026-10-02T01:58:03.908Z",
+       "says": "Session 1 finished on 2 October."
+      },
+      {
+       "n": 2,
+       "state": "upcoming",
+       "date": null,
+       "opensOn": "2026-10-09T01:59:45.391Z",
+       "openedOn": null,
+       "says": "Session 2 opens on 9 October."
+      }
+     ]
+    },
+    "targetsNobodyOwns": null,
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "f83523a9-ed4d-4904-a89e-326ad05b8213",
+      "name": "The team is aiming to be fully switched over to the new payments gateway.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     },
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "82de0d51-6ed9-4279-a91b-031c68479e16",
+      "name": "You are aiming for zero downtime for payments during the switchover.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "They have a different understanding of the project's scope, particularly whether new automation is included.",
+       "atStake": "If the project is delivered as a like, for-like replacement, the 400 daily transactions one person expects to be automated will continue to be done by hand.",
+       "evidence": [
+        "You described the project as a straightforward swap of the existing gateway, with no new features.",
+        "Rita Adeleke defined success as the creation of a new automated report that would eliminate the team's manual reconciliation work."
+       ],
+       "positions": [
+        {
+         "view": "Described the project strictly as a like, for-like replacement of the existing system, with no new capabilities to be added.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Described the project as including a new capability to automate the reconciliation of 400 daily transactions.",
+         "participantLabel": "Rita Adeleke",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Rita Adeleke"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      },
+      {
+       "topic": "They describe the current project status differently, with one seeing it as blocked and another as progressing.",
+       "atStake": "If the project is believed to be progressing, it could consume engineering time without the technical work itself ever beginning.",
+       "evidence": [
+        "Samuel Otieno reported being unable to start coding without sandbox access, which was requested eleven days ago.",
+        "Your account notes that an engineer has been assigned, implying work can proceed."
+       ],
+       "positions": [
+        {
+         "view": "Stated that the project is underway because an engineer is assigned to it.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Stated that the project is blocked because the technical work cannot begin without the necessary sandbox credentials.",
+         "participantLabel": "Samuel Otieno",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Samuel Otieno"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "The project is to replace the current payments gateway.",
+      "The timeline for completion is eight weeks.",
+      "A primary objective is a smooth cutover with minimal disruption."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "If the project is delivered as a like, for-like replacement, the 400 daily transactions one person expects to be automated will continue to be done by hand. That is what settles they have a different understanding of the project's scope, particularly whether new automation is included.",
+     "settled": [
+      "The project is to replace the current payments gateway.",
+      "The timeline for completion is eight weeks.",
+      "A primary objective is a smooth cutover with minimal disruption."
+     ],
+     "stillOpen": [
+      "They have a different understanding of the project's scope, particularly whether new automation is included.",
+      "They describe the current project status differently, with one seeing it as blocked and another as progressing."
+     ]
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "who": "Rita Adeleke",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Rita Adeleke has checked in, and still has something in the way.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Rita Adeleke needs the new gateway to automate the reconciliation of 400 daily transactions. Rita sent this requirement in July and Rita says the biggest risk is that it will be overlooked.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     },
+     {
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "who": "Samuel Otieno",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Samuel Otieno has checked in.",
+      "ask": "Samuel Otieno is waiting on the sandbox credentials, and nobody has said yet what was tried. Ask Samuel Otieno to find out who owns this by name. Everything else needs that first.",
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Samuel Otieno is leading the technical implementation for the new gateway. Samuel cannot start work until Samuel has access to the sandbox environment.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+       "name": "Samuel Otieno",
+       "role": "Senior engineer, doing the build.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+       "name": "Ifeoma Chukwu",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+       "name": "Rita Adeleke",
+       "role": "Finance operations. Owns daily reconciliation.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "whoOwnsWhat": [
+     {
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "name": "Samuel Otieno",
+      "role": "Senior engineer, doing the build.",
+      "items": [
+       {
+        "id": "f895909b-cf74-432d-a457-1102b3cde16d",
+        "type": "INTENT",
+        "text": "Samuel Otieno said, \"I'm leading the technical implementation of the new payments integration. My role is to make sure the swap happens smoothly.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+      "name": "Ifeoma Chukwu",
+      "role": null,
+      "items": [
+       {
+        "id": "95ba51a4-b117-41b5-b4b1-1b993170069c",
+        "type": "INTENT",
+        "text": "You said, \"Our internal transaction logs and customer support feedback would show customer impact. Finance would verify if all transactions processed correctly.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "96e46fec-a640-4662-8a40-c196591c7dbe",
+        "type": "SUCCESS_DEFINITION",
+        "text": "You said, \"The core objective is to replace our current payments gateway. We need to be fully switched over.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "99d68add-86b5-48fe-b570-e275ab22b823",
+        "type": "INTENT",
+        "text": "You said, \"This project is about swapping out the gateway. It's a like-for-like replacement. We are not adding new capabilities in this phase.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "d3569ace-6204-4579-aeb4-6e71781a912b",
+        "type": "PROGRESS",
+        "text": "You said, \"We have an engineer assigned to it.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "b765cd9c-2735-45de-a295-ed0d057a541b",
+        "type": "SUCCESS_DEFINITION",
+        "text": "You said, \"I'd need to see zero downtime for payments and all transactions processing correctly through the new gateway. No customer impact, basically.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "331e5d54-1fbb-4647-86fc-e6d913b987da",
+        "type": "INTENT",
+        "text": "You said, \"The board has a stake; they expect it done in eight weeks.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "5e46b3fd-fd5b-416b-a8bc-54c4b924ce3f",
+        "type": "INTENT",
+        "text": "You said, \"Finance will be using the new system, of course, but their main concern is usually just that it works.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "name": "Rita Adeleke",
+      "role": "Finance operations. Owns daily reconciliation.",
+      "items": [
+       {
+        "id": "8aa9b1f6-bd00-4d82-80e8-27f0e513a54d",
+        "type": "INTENT",
+        "text": "Rita Adeleke said, \"My role is to make sure the new integration handles the daily reconciliation process correctly.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "eefc36c0-a891-4cf0-a4b5-90601981a7e1",
+        "type": "SUCCESS_DEFINITION",
+        "text": "Rita Adeleke said, \"Correctly' means it automates the reconciliation of the 400 transactions my team currently does by hand every morning.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "0f8e8c88-d547-4db4-9709-3628e96202cc",
+        "type": "SUCCESS_DEFINITION",
+        "text": "Rita Adeleke said, \"Success would be a daily automated report that confirms the 400 transactions are reconciled. No manual work.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "8d12c861-b191-4abd-a4a6-f65ed0816f58",
+        "type": "PROGRESS",
+        "text": "Rita Adeleke said, \"I sent the reconciliation requirement in July.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     }
+    ],
+    "dependencies": [
+     {
+      "id": "feee6c8d-7bb9-430d-b2ee-59fb904b339f",
+      "from": "Samuel Otieno",
+      "fromParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "what": "the sandbox credentials",
+      "on": "the provider",
+      "onParticipantId": null,
+      "status": "BLOCKING",
+      "then": "start coding",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October."
+      }
+     },
+     {
+      "id": "e3beb485-63ad-4c5e-bd1e-a557de419e9a",
+      "from": "Rita Adeleke",
+      "fromParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "what": "confirmation that automated daily reconciliation is in scope",
+      "on": "the project lead",
+      "onParticipantId": null,
+      "status": "WAITING",
+      "then": null,
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October."
+      }
+     }
+    ],
+    "decisions": [
+     {
+      "question": "Samuel Otieno is waiting on the sandbox credentials, so it needs deciding.",
+      "why": "Samuel Otieno cannot move until this is decided.",
+      "owner": "the provider",
+      "source": "blocker"
+     },
+     {
+      "question": "People in this check-in said different things. They have a different understanding of the project's scope, particularly whether new automation is included. This needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "You",
+      "source": "divergence"
+     },
+     {
+      "question": "People in this check-in said different things about They describe the current project status differently, with one seeing it as blocked and another as progressing, so it needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "You",
+      "source": "divergence"
+     }
+    ],
+    "whatTheRoomIsAbout": {
+     "aims": [
+      {
+       "aim": "The switch to the new gateway must happen smoothly, with no disruption to transactions or customers.",
+       "held": [
+        "Samuel Otieno",
+        "Ifeoma Chukwu"
+       ]
+      },
+      {
+       "aim": "The project's goal is to replace the current payments gateway with a new one.",
+       "held": [
+        "Ifeoma Chukwu"
+       ]
+      },
+      {
+       "aim": "The team must automate the daily reconciliation of 400 transactions that are now done by hand.",
+       "held": [
+        "Rita Adeleke"
+       ]
+      }
+     ],
+     "places": [],
+     "things": [
+      {
+       "name": "transactions",
+       "named": [
+        "Rita Adeleke",
+        "Samuel Otieno",
+        "Ifeoma Chukwu"
+       ]
+      },
+      {
+       "name": "customer support feedback",
+       "named": [
+        "Ifeoma Chukwu"
+       ]
+      },
+      {
+       "name": "payments gateway",
+       "named": [
+        "Ifeoma Chukwu"
+       ]
+      },
+      {
+       "name": "payments integration",
+       "named": [
+        "Samuel Otieno"
+       ]
+      },
+      {
+       "name": "reconciliation",
+       "named": [
+        "Rita Adeleke"
+       ]
+      },
+      {
+       "name": "report",
+       "named": [
+        "Rita Adeleke"
+       ]
+      },
+      {
+       "name": "sandbox environment",
+       "named": [
+        "Samuel Otieno"
+       ]
+      },
+      {
+       "name": "transaction logs",
+       "named": [
+        "Ifeoma Chukwu"
+       ]
+      }
+     ],
+     "readAtSession": 1
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "2",
+      "sub": "People said different things. They have a different understanding of the project's scope, particularly whether new automation is included. 1 more difference is still open.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "1",
+      "sub": "Work is held up by the sandbox credentials.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "contribution": [
+     {
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "name": "Samuel Otieno",
+      "remit": "Senior engineer, doing the build.",
+      "remitDefined": true,
+      "position": null,
+      "positionLabel": null,
+      "reason": null,
+      "nothingCheckable": false,
+      "isBlocked": true,
+      "ownVoice": null,
+      "shown": true,
+      "guard": "Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone."
+     },
+     {
+      "participantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+      "name": "Ifeoma Chukwu",
+      "remit": null,
+      "remitDefined": false,
+      "position": null,
+      "reason": null,
+      "note": "No position shown, because the role was never clearly defined. Define what it is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person.",
+      "confidence": 0,
+      "evidenceCount": 0,
+      "shown": false,
+      "basis": "No role was defined, so there is nothing to read against."
+     },
+     {
+      "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "name": "Rita Adeleke",
+      "remit": "Finance operations. Owns daily reconciliation.",
+      "remitDefined": true,
+      "position": null,
+      "positionLabel": null,
+      "reason": null,
+      "nothingCheckable": false,
+      "isBlocked": true,
+      "ownVoice": null,
+      "shown": true,
+      "guard": "Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone."
+     }
+    ],
+    "coverage": {
+     "scope": "role",
+     "reads": [
+      {
+       "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+       "name": "Samuel Otieno",
+       "scope": "role",
+       "pct": 0,
+       "kind": "STABLE",
+       "trend": "stable",
+       "what": "Nobody has said anything about this person's work moving elsewhere.",
+       "reason": "SHARED_BY_DESIGN",
+       "reasonText": "Your responsibilities are staying with you.",
+       "ownVoice": null,
+       "coupledToBlocker": true,
+       "remitDefined": true,
+       "confidence": 0.15,
+       "evidenceCount": 0,
+       "shown": true,
+       "basis": "Based on 1 check-in, 0 checkable things named, none of it confirmed by anyone else."
+      },
+      {
+       "participantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+       "name": "Ifeoma Chukwu",
+       "scope": "role",
+       "pct": 0,
+       "kind": "STABLE",
+       "trend": "stable",
+       "what": "The role was never defined, so there is no boundary to measure against.",
+       "reason": "CANNOT_DETERMINE",
+       "reasonText": "The role was never clearly defined, so there is no boundary to measure work against.",
+       "ownVoice": null,
+       "coupledToBlocker": false,
+       "remitDefined": false,
+       "confidence": 0.15,
+       "evidenceCount": 0,
+       "shown": true,
+       "basis": "Based on 1 check-in, 0 checkable things named, none of it confirmed by anyone else."
+      },
+      {
+       "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+       "name": "Rita Adeleke",
+       "scope": "role",
+       "pct": 0,
+       "kind": "STABLE",
+       "trend": "stable",
+       "what": "Nobody has said anything about this person's work moving elsewhere.",
+       "reason": "SHARED_BY_DESIGN",
+       "reasonText": "Your responsibilities are staying with you.",
+       "ownVoice": null,
+       "coupledToBlocker": true,
+       "remitDefined": true,
+       "confidence": 0.15,
+       "evidenceCount": 0,
+       "shown": true,
+       "basis": "Based on 1 check-in, 0 checkable things named, none of it confirmed by anyone else."
+      }
+     ]
+    },
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of project management work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+      ],
+      "general": true,
+      "role": {
+       "label": "Project management",
+       "onTrack": "Blockers driven to cleared, handoffs owned, real risks managed, bad news escalated early.",
+       "goingWrong": "Reports that something is blocked without driving it; everything green, then a deadline surprise.",
+       "protectAgainst": "A PM with no real authority can be blamed for slippage they could not prevent. Read what they drove, not only what slipped.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": [
+      {
+       "who": "Samuel Otieno",
+       "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+       "probe": [
+        "Samuel Otieno has been waiting for the sandbox credentials, and nothing on record says it was raised higher. This early, that is worth showing Samuel Otieno rather than asking about."
+       ],
+       "encourage": [
+        "Named a problem out loud rather than reporting everything as fine."
+       ],
+       "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+      },
+      {
+       "who": "Ifeoma Chukwu",
+       "participantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+       "probe": [],
+       "encourage": [
+        "Worth getting on record, where anyone could check it later: The core objective is to replace our current payments gateway. We need to be fully switched over and I'd need to see zero downtime for payments and all transactions processing correctly through the new gateway. No customer impact, basically."
+       ],
+       "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+      },
+      {
+       "who": "Rita Adeleke",
+       "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+       "probe": [
+        "Rita Adeleke has been waiting for confirmation that automated daily reconciliation is in scope, and nothing on record says it was raised higher. This early, that is worth showing Rita Adeleke rather than asking about."
+       ],
+       "encourage": [
+        "Worth getting on record, where anyone could check it later: \"correctly\" means it automates the reconciliation of the 400 transactions my team currently does by hand every morning and Success would be a daily automated report that confirms the 400 transactions are reconciled. No manual work."
+       ],
+       "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+      }
+     ]
+    },
+    "patterns": [],
+    "poll": null,
+    "eachPersonToday": [
+     {
+      "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "who": "Rita Adeleke",
+      "line": "Rita Adeleke has checked in, and still has something in the way."
+     },
+     {
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "who": "Samuel Otieno",
+      "line": "Samuel Otieno has checked in."
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "releases and tasks",
+      "state": "filled",
+      "stages": [
+       "Worked on",
+       "Written",
+       "Merged",
+       "Tested",
+       "Deployed",
+       "Used"
+      ],
+      "rows": [
+       {
+        "id": "5dbce174-153f-4494-b346-e836f1528c1f",
+        "kind": "task",
+        "name": "replace our current payments gateway",
+        "stage": null,
+        "owner": "Ifeoma Chukwu",
+        "ownerParticipantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "The core objective is to replace our current payments gateway. We need to be fully switched over.",
+        "saidBy": "Ifeoma",
+        "saidByParticipantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "394654af-421a-4e4e-8f37-ae6026bf6c13",
+        "kind": "task",
+        "name": "swapping out the gateway",
+        "stage": null,
+        "owner": "Ifeoma Chukwu",
+        "ownerParticipantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+        "due": null,
+        "fields": {
+         "kind": "like-for-like replacement",
+         "capabilities": "not adding new capabilities in this phase"
+        },
+        "from": "said",
+        "said": "This project is about swapping out the gateway. It's a like-for-like replacement. We are not adding new capabilities in this phase.",
+        "saidBy": "Ifeoma",
+        "saidByParticipantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "f9417d9a-609d-4517-99a3-bb49a3b880b5",
+        "kind": "task",
+        "name": "the cutover",
+        "stage": null,
+        "owner": "Ifeoma Chukwu",
+        "ownerParticipantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "The biggest challenge will be ensuring the cutover happens smoothly on the technical side. We need to minimize any disruption to transactions.",
+        "saidBy": "Ifeoma",
+        "saidByParticipantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "f9dcc50b-4059-456d-a20c-d21f014317aa",
+        "kind": "release",
+        "name": "the new payments integration",
+        "stage": null,
+        "owner": "Samuel Otieno",
+        "ownerParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I'm leading the technical implementation of the new payments integration. My role is to make sure the swap happens smoothly.",
+        "saidBy": "Samuel",
+        "saidByParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "2aa1c98b-441c-446f-b5c2-24324d54326e",
+        "kind": "task",
+        "name": "coding",
+        "stage": null,
+        "owner": "Samuel Otieno",
+        "ownerParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I can't start coding until I have access to the sandbox environment.",
+        "saidBy": "Samuel",
+        "saidByParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "32e3df22-fb3f-4e5b-99f2-3f7ae452b08a",
+        "kind": "task",
+        "name": "the sandbox credentials",
+        "stage": null,
+        "owner": "Samuel Otieno",
+        "ownerParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "due": null,
+        "fields": {
+         "From": "the provider",
+         "Requested": "eleven days ago"
+        },
+        "from": "said",
+        "said": "I'm waiting on the sandbox credentials from the provider. I requested them eleven days ago.",
+        "saidBy": "Samuel",
+        "saidByParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "0f58904e-8f79-472c-a8d9-8e0cb2b94081",
+        "kind": "release",
+        "name": "the new integration",
+        "stage": "Tested",
+        "owner": "Samuel Otieno",
+        "ownerParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "My role is to make sure the new integration handles the daily reconciliation process correctly.",
+        "saidBy": "Rita",
+        "saidByParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "f80fbed8-14c9-4068-bea5-30422fb8cca9",
+        "kind": "task",
+        "name": "the finance reconciliation document",
+        "stage": null,
+        "owner": "Samuel Otieno",
+        "ownerParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I'm unclear on the specifics of the finance reconciliation document.",
+        "saidBy": "Samuel",
+        "saidByParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "0442259d-0de9-49a7-b5e0-89943ca7605e",
+        "kind": "task",
+        "name": "the daily reconciliation process",
+        "stage": null,
+        "owner": "Rita Adeleke",
+        "ownerParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "My role is to make sure the new integration handles the daily reconciliation process correctly.",
+        "saidBy": "Rita",
+        "saidByParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "aabb1554-d1d0-423f-9df6-f4c3f6a34a40",
+        "kind": "task",
+        "name": "the reconciliation of the 400 transactions",
+        "stage": null,
+        "owner": "Rita Adeleke",
+        "ownerParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "\"Correctly\" means it automates the reconciliation of the 400 transactions my team currently does by hand every morning.",
+        "saidBy": "Rita",
+        "saidByParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "b4490319-14cd-4406-8917-a01b37617881",
+        "kind": "task",
+        "name": "a daily automated report",
+        "stage": null,
+        "owner": "Rita Adeleke",
+        "ownerParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "Success would be a daily automated report that confirms the 400 transactions are reconciled. No manual work.",
+        "saidBy": "Rita",
+        "saidByParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "35deda93-0993-4405-9f90-bc3f053ae839",
+        "kind": "task",
+        "name": "the reconciliation requirement",
+        "stage": "Written",
+        "owner": "Rita Adeleke",
+        "ownerParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I sent the reconciliation requirement in July.",
+        "saidBy": "Rita",
+        "saidByParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "18bc4606-e965-4d53-8084-f96812caaadb",
+        "kind": "task",
+        "name": "automated daily reconciliation for all 400 transactions",
+        "stage": null,
+        "owner": "Rita Adeleke",
+        "ownerParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I need confirmation from the project lead that automated daily reconciliation for all 400 transactions is definitely in scope for this project.",
+        "saidBy": "Rita",
+        "saidByParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       }
+      ]
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-feee6c8d-7bb9-430d-b2ee-59fb904b339f",
+      "says": "Samuel Otieno cannot move on the sandbox credentials until it comes from the provider.",
+      "because": "It was first said on 2 October. About what has been tried, Samuel Otieno said, \"I requested them eleven days ago\". No time has been given for it."
+     },
+     {
+      "id": "handoff-e3beb485-63ad-4c5e-bd1e-a557de419e9a",
+      "says": "Rita Adeleke is waiting on the project lead for confirmation that automated daily reconciliation is in scope.",
+      "because": "It was first said on 2 October. About what has been tried, Rita Adeleke said, \"I sent the reconciliation requirement in July\". No time has been given for it."
+     },
+     {
+      "id": "no-time-31b26534-7b35-429c-9ce3-940dbdbc608c",
+      "says": "Samuel Otieno committed to ask about it at the next meeting, and no time was given for it, so nobody can tell when it would be late.",
+      "because": "Nobody has said yet whether it happened."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "31b26534-7b35-429c-9ce3-940dbdbc608c",
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "who": "Samuel Otieno",
+      "says": "In session 1, Samuel Otieno said, \"I'll ask about it at the next meeting\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": null,
+      "state": "open",
+      "statedInSession": 1
+     },
+     {
+      "id": "7cbe1d2b-96b8-4312-b9ba-4616fec43819",
+      "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "who": "Rita Adeleke",
+      "says": "In session 1, Rita Adeleke said, \"follow up with the project lead to get that confirmation\". The time Rita Adeleke gave for it was \"today\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "today",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Samuel Otieno committed to ask about it at the next meeting."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Rita Adeleke committed to follow up with the project lead to get that confirmation."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Samuel Otieno said the work was waiting on the provider for the sandbox credentials."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Rita Adeleke said the work was waiting on the project lead for confirmation that automated daily reconciliation is in scope."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "who": "Samuel Otieno",
+      "says": "Samuel Otieno has answered 1 session and made 1 commitment.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Samuel Otieno made 1 commitment and named 1 thing the work was waiting on."
+       }
+      ]
+     },
+     {
+      "participantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "who": "Rita Adeleke",
+      "says": "Rita Adeleke has answered 1 session and made 1 commitment.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Rita Adeleke made 1 commitment and named 1 thing the work was waiting on."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "feee6c8d-7bb9-430d-b2ee-59fb904b339f",
+      "who": "Samuel Otieno",
+      "says": "Samuel Otieno is waiting on the provider for the sandbox credentials.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "The provider holds it.",
+       "About what has been tried, Samuel Otieno said, \"I requested them eleven days ago\".",
+       "No time has been given for it."
+      ]
+     },
+     {
+      "id": "e3beb485-63ad-4c5e-bd1e-a557de419e9a",
+      "who": "Rita Adeleke",
+      "says": "Rita Adeleke is waiting on the project lead for confirmation that automated daily reconciliation is in scope.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "The project lead holds it.",
+       "About what has been tried, Rita Adeleke said, \"I sent the reconciliation requirement in July\".",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "busyOrMoving": {
+     "eachPerson": [
+      {
+       "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+       "who": "Samuel Otieno",
+       "says": "Samuel Otieno has made 1 commitment across 1 answered session. Samuel Otieno also named 1 thing the work was waiting on."
+      },
+      {
+       "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+       "who": "Rita Adeleke",
+       "says": "Rita Adeleke has made 1 commitment across 1 answered session. Rita Adeleke also named 1 thing the work was waiting on."
+      }
+     ],
+     "cannotTellYou": "These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that."
+    },
+    "obligations": [
+     {
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "who": "Samuel Otieno",
+      "promised": [
+       "In session 1, Samuel Otieno said, \"I'll ask about it at the next meeting\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "who": "Rita Adeleke",
+      "promised": [
+       "In session 1, Rita Adeleke said, \"follow up with the project lead to get that confirmation\". The time Rita Adeleke gave for it was \"today\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": null,
+      "who": "the provider",
+      "promised": [],
+      "othersWaitFor": [
+       "Samuel Otieno is waiting on the provider for the sandbox credentials."
+      ]
+     },
+     {
+      "participantId": null,
+      "who": "the project lead",
+      "promised": [],
+      "othersWaitFor": [
+       "Rita Adeleke is waiting on the project lead for confirmation that automated daily reconciliation is in scope."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "feee6c8d-7bb9-430d-b2ee-59fb904b339f",
+      "says": "Samuel Otieno has been waiting on the provider for the sandbox credentials since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     },
+     {
+      "id": "e3beb485-63ad-4c5e-bd1e-a557de419e9a",
+      "says": "Rita Adeleke has been waiting on the project lead for confirmation that automated daily reconciliation is in scope since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "feee6c8d-7bb9-430d-b2ee-59fb904b339f",
+      "who": "Samuel Otieno",
+      "name": "the sandbox credentials",
+      "state": "blocking",
+      "says": "Samuel Otieno is waiting on the provider for the sandbox credentials.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Samuel Otieno said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": "Once it is cleared, start coding."
+     },
+     {
+      "id": "e3beb485-63ad-4c5e-bd1e-a557de419e9a",
+      "who": "Rita Adeleke",
+      "name": "confirmation that automated daily reconciliation is in scope",
+      "state": "waiting",
+      "says": "Rita Adeleke is waiting on the project lead for confirmation that automated daily reconciliation is in scope.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Rita Adeleke said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     }
+    ],
+    "byArea": {
+     "state": "not-known",
+     "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+    }
+   },
+   "participantReport": {
+    "id": "a0985770-c612-4682-989b-d91e438e8ecd",
+    "groundId": "aa09c25f-f722-4221-b1a0-bb561818e4fc",
+    "sharedPicture": "All three people have answered. They disagree on the scope of the project, and on its status.\n\nIfeoma Chukwu says this project is a like, for-like replacement of the payments gateway and that no new capabilities are being added in this phase. Ifeoma has assigned an engineer to the project.\n\nYou are leading the technical implementation for the new gateway. You cannot start work until you have access to the sandbox environment.\n\nRita Adeleke needs the new gateway to automate the reconciliation of 400 daily transactions. Rita sent this requirement in July and Rita says the biggest risk is that it will be overlooked.\n\nAll share the goal of a smooth transition with minimal disruption to business operations and customers.",
+    "theOpening": "All three people have answered. They disagree on the scope of the project, and on its status.",
+    "agreements": [
+     "The project is to replace the current payments gateway.",
+     "The timeline for completion is eight weeks.",
+     "A primary objective is a smooth cutover with minimal disruption."
+    ],
+    "centralQuestion": "For this eight-week project to be successful, does 'like-for-like replacement' mean the new system must automate the 400 manual reconciliations, or does it mean the existing gateway is replaced without adding that function?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Ifeoma Chukwu",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 9,
+       "documentsAttached": 0,
+       "who": "Ifeoma Chukwu"
+      },
+      {
+       "label": "Samuel Otieno",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 5,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Samuel Otieno"
+      },
+      {
+       "label": "Rita Adeleke",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 6,
+       "documentsAttached": 0,
+       "who": "Rita Adeleke"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "They have a different understanding of the project's scope, particularly whether new automation is included.",
+      "They describe the current project status differently, with one seeing it as blocked and another as progressing."
+     ],
+     "sessionCounts": {
+      "Samuel Otieno": 9,
+      "Rita Adeleke": 9,
+      "Ifeoma Chukwu": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Samuel Otieno",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Dependencies hinted at rather than named (session 1)",
+         "level": "directional"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Samuel Otieno": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Samuel Otieno": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "whatCouldBeChecked": {
+      "says": [
+       "All 3 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 3,
+      "checked": 3
+     },
+     "difficultyDisclosures": true
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [
+      {
+       "say": "In session 1, you said, \"I'll ask about it at the next meeting\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "I'll ask about it at the next meeting",
+       "when": null,
+       "status": "UNKNOWN",
+       "leadLabel": "Ifeoma Chukwu",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": false
+      }
+     ],
+     "dependencies": [
+      {
+       "on": "the provider",
+       "say": "You are waiting on the provider for \"the sandbox credentials\", and nothing on record says anybody has chased it since.",
+       "from": "You",
+       "what": "the sandbox credentials",
+       "chased": false,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "6c975394-af78-4005-9941-212cf0bbc248"
+      }
+     ],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "You are leading the technical implementation for the new gateway. You cannot start work until you have access to the sandbox environment.",
+      "hasGap": false,
+      "headline": "You are blocked from starting the technical work.",
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "releasedAt": "2026-10-02T02:05:17.848Z",
+    "createdAt": "2026-10-02T02:01:07.820Z",
+    "updatedAt": "2026-10-02T02:05:17.849Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They disagree on the scope of the project, and on its status.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Ifeoma Chukwu says this project is a like, for-like replacement of the payments gateway and that no new capabilities are being added in this phase.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Ifeoma Chukwu has assigned an engineer to the project.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are leading the technical implementation for the new gateway.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You cannot start work until you have access to the sandbox environment.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Rita Adeleke needs the new gateway to automate the reconciliation of 400 daily transactions.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Rita Adeleke sent this requirement in July and Rita says the biggest risk is that it will be overlooked.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "All share the goal of a smooth transition with minimal disruption to business operations and customers.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": null,
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "Put the sandbox credentials in writing, with the date you need it by."
+     ],
+     "general": true,
+     "role": null,
+     "whyNoRoleMap": "Your record looks like engineering, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "f895909b-cf74-432d-a457-1102b3cde16d",
+      "type": "INTENT",
+      "text": "I'm leading the technical implementation of the new payments integration. My role is to make sure the swap happens smoothly.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a72cfda6-f1c2-47b9-85b8-7ff20da7b3c8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "96aed0eb-9fb2-4a7a-8e3e-50fc7de2208a",
+      "type": "WORRY",
+      "text": "I can't start coding until I have access to the sandbox environment.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a72cfda6-f1c2-47b9-85b8-7ff20da7b3c8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "e3eefa65-c6d2-4241-991b-b59c924cffb5",
+      "type": "WORRY",
+      "text": "I'm waiting on the sandbox credentials from the provider. I requested them eleven days ago.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "a72cfda6-f1c2-47b9-85b8-7ff20da7b3c8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "0754fc7f-5f63-4c7a-9ff1-3c3b8af026c7",
+      "type": "WORRY",
+      "text": "The main thing that could go wrong is if the new integration introduces unforeseen issues during testing.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a72cfda6-f1c2-47b9-85b8-7ff20da7b3c8",
+      "sessionNumber": 1
+     },
+     {
+      "id": "1edf9c82-13ad-4a88-bce0-e4e6edc63b97",
+      "type": "ASK",
+      "text": "I'm unclear on the specifics of the finance reconciliation document.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a72cfda6-f1c2-47b9-85b8-7ff20da7b3c8",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [
+     {
+      "id": "feee6c8d-7bb9-430d-b2ee-59fb904b339f",
+      "what": "the sandbox credentials",
+      "couldTry": [
+       "Ask what can move without this, so the whole thing is not waiting on one approval."
+      ]
+     }
+    ],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\nYou are leading the technical side of the new payments integration, to make sure the swap happens smoothly. You are waiting for sandbox credentials from the provider, which you requested eleven days ago. You said you cannot start coding until you have this access. You are also watching for any unforeseen issues that testing the new integration might show up, and you are unclear on the specifics of the finance reconciliation document.",
+     "whatToCarry": "You are waiting on the sandbox credentials from the provider, which you requested eleven days ago."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "aa09c25f-f722-4221-b1a0-bb561818e4fc",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "DELIVERY",
+    "peopleWorkTogether": true,
+    "sections": [
+     "phaseSpine",
+     "quickRead",
+     "objectives",
+     "startingState",
+     "divergence",
+     "whatTheRoomIsAbout",
+     "whoOwnsWhat",
+     "dependencies",
+     "checkInGrid",
+     "contribution",
+     "coverage",
+     "cascade",
+     "hiddenContributors",
+     "patterns",
+     "decisions",
+     "poll"
+    ],
+    "title": "Rebuilding the payments integration",
+    "scenario": "NEW_PROJECT",
+    "kindOfWork": "engineering release",
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. They disagree on the scope of the project, and on its status.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 8,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 2,
+       "oldest": "the sandbox credentials",
+       "daysWaiting": 0
+      }
+     }
+    },
+    "groundStatus": "AWAITING_PARTIES",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T02:05:17.849Z",
+    "participants": [
+     {
+      "id": "6c975394-af78-4005-9941-212cf0bbc248",
+      "name": "Samuel Otieno",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+      "name": "Ifeoma Chukwu",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "name": "Rita Adeleke",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "phaseSpine": {
+     "startsAt": null,
+     "endsAt": null,
+     "currentSession": 1,
+     "plannedSessions": 8,
+     "sessions": [
+      {
+       "n": 1,
+       "state": "done",
+       "date": "2026-10-02T01:59:45.373Z",
+       "opensOn": null,
+       "openedOn": "2026-10-02T01:58:03.908Z",
+       "says": "Session 1 finished on 2 October."
+      },
+      {
+       "n": 2,
+       "state": "upcoming",
+       "date": null,
+       "opensOn": "2026-10-09T01:59:45.391Z",
+       "openedOn": null,
+       "says": "Session 2 opens on 9 October."
+      }
+     ]
+    },
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "f83523a9-ed4d-4904-a89e-326ad05b8213",
+      "name": "The team is aiming to be fully switched over to the new payments gateway.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     },
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "82de0d51-6ed9-4279-a91b-031c68479e16",
+      "name": "Ifeoma is aiming for zero downtime for payments during the switchover.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "They have a different understanding of the project's scope, particularly whether new automation is included.",
+       "atStake": "If the project is delivered as a like, for-like replacement, the 400 daily transactions one person expects to be automated will continue to be done by hand.",
+       "evidence": [
+        "Ifeoma Chukwu described the project as a straightforward swap of the existing gateway, with no new features.",
+        "Rita Adeleke defined success as the creation of a new automated report that would eliminate the team's manual reconciliation work."
+       ],
+       "positions": [
+        {
+         "view": "Described the project strictly as a like, for-like replacement of the existing system, with no new capabilities to be added.",
+         "participantLabel": "Ifeoma Chukwu",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Ifeoma Chukwu"
+        },
+        {
+         "view": "Described the project as including a new capability to automate the reconciliation of 400 daily transactions.",
+         "participantLabel": "Rita Adeleke",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Rita Adeleke"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      },
+      {
+       "topic": "They describe the current project status differently, with one seeing it as blocked and another as progressing.",
+       "atStake": "If the project is believed to be progressing, it could consume engineering time without the technical work itself ever beginning.",
+       "evidence": [
+        "You reported being unable to start coding without sandbox access, which was requested eleven days ago.",
+        "Ifeoma Chukwu's account notes that an engineer has been assigned, implying work can proceed."
+       ],
+       "positions": [
+        {
+         "view": "Stated that the project is underway because an engineer is assigned to it.",
+         "participantLabel": "Ifeoma Chukwu",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Ifeoma Chukwu"
+        },
+        {
+         "view": "Stated that the project is blocked because the technical work cannot begin without the necessary sandbox credentials.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "The project is to replace the current payments gateway.",
+      "The timeline for completion is eight weeks.",
+      "A primary objective is a smooth cutover with minimal disruption."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "If the project is delivered as a like, for-like replacement, the 400 daily transactions one person expects to be automated will continue to be done by hand. That is what settles they have a different understanding of the project's scope, particularly whether new automation is included.",
+     "settled": [
+      "The project is to replace the current payments gateway.",
+      "The timeline for completion is eight weeks.",
+      "A primary objective is a smooth cutover with minimal disruption."
+     ],
+     "stillOpen": [
+      "They have a different understanding of the project's scope, particularly whether new automation is included.",
+      "They describe the current project status differently, with one seeing it as blocked and another as progressing."
+     ]
+    },
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+       "name": "Samuel Otieno",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+       "name": "Ifeoma Chukwu",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+       "name": "Rita Adeleke",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "whoOwnsWhat": [
+     {
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "name": "Samuel Otieno",
+      "role": null,
+      "items": [
+       {
+        "id": "f895909b-cf74-432d-a457-1102b3cde16d",
+        "type": "INTENT",
+        "text": "You said, \"I'm leading the technical implementation of the new payments integration. My role is to make sure the swap happens smoothly.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+      "name": "Ifeoma Chukwu",
+      "role": null,
+      "items": [
+       {
+        "id": "95ba51a4-b117-41b5-b4b1-1b993170069c",
+        "type": "INTENT",
+        "text": "Ifeoma Chukwu said, \"Our internal transaction logs and customer support feedback would show customer impact. Finance would verify if all transactions processed correctly.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "96e46fec-a640-4662-8a40-c196591c7dbe",
+        "type": "SUCCESS_DEFINITION",
+        "text": "Ifeoma Chukwu said, \"The core objective is to replace our current payments gateway. We need to be fully switched over.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "99d68add-86b5-48fe-b570-e275ab22b823",
+        "type": "INTENT",
+        "text": "Ifeoma Chukwu said, \"This project is about swapping out the gateway. It's a like-for-like replacement. We are not adding new capabilities in this phase.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "d3569ace-6204-4579-aeb4-6e71781a912b",
+        "type": "PROGRESS",
+        "text": "Ifeoma Chukwu said, \"We have an engineer assigned to it.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "b765cd9c-2735-45de-a295-ed0d057a541b",
+        "type": "SUCCESS_DEFINITION",
+        "text": "Ifeoma Chukwu said, \"I'd need to see zero downtime for payments and all transactions processing correctly through the new gateway. No customer impact, basically.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "331e5d54-1fbb-4647-86fc-e6d913b987da",
+        "type": "INTENT",
+        "text": "Ifeoma Chukwu said, \"The board has a stake; they expect it done in eight weeks.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "5e46b3fd-fd5b-416b-a8bc-54c4b924ce3f",
+        "type": "INTENT",
+        "text": "Ifeoma Chukwu said, \"Finance will be using the new system, of course, but their main concern is usually just that it works.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "name": "Rita Adeleke",
+      "role": null,
+      "items": [
+       {
+        "id": "8aa9b1f6-bd00-4d82-80e8-27f0e513a54d",
+        "type": "INTENT",
+        "text": "Rita Adeleke said, \"My role is to make sure the new integration handles the daily reconciliation process correctly.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "eefc36c0-a891-4cf0-a4b5-90601981a7e1",
+        "type": "SUCCESS_DEFINITION",
+        "text": "Rita Adeleke said, \"Correctly' means it automates the reconciliation of the 400 transactions my team currently does by hand every morning.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "0f8e8c88-d547-4db4-9709-3628e96202cc",
+        "type": "SUCCESS_DEFINITION",
+        "text": "Rita Adeleke said, \"Success would be a daily automated report that confirms the 400 transactions are reconciled. No manual work.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "8d12c861-b191-4abd-a4a6-f65ed0816f58",
+        "type": "PROGRESS",
+        "text": "Rita Adeleke said, \"I sent the reconciliation requirement in July.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     }
+    ],
+    "dependencies": [
+     {
+      "id": "feee6c8d-7bb9-430d-b2ee-59fb904b339f",
+      "from": "Samuel Otieno",
+      "fromParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "what": "the sandbox credentials",
+      "on": "the provider",
+      "onParticipantId": null,
+      "status": "BLOCKING",
+      "then": "start coding",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October."
+      }
+     },
+     {
+      "id": "e3beb485-63ad-4c5e-bd1e-a557de419e9a",
+      "from": "Rita Adeleke",
+      "fromParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "what": "confirmation that automated daily reconciliation is in scope",
+      "on": "the project lead",
+      "onParticipantId": null,
+      "status": "WAITING",
+      "then": null,
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October."
+      }
+     }
+    ],
+    "decisions": [
+     {
+      "question": "You are waiting on the sandbox credentials, so it needs deciding.",
+      "why": "You cannot move until this is decided.",
+      "owner": "the provider",
+      "source": "blocker"
+     },
+     {
+      "question": "People in this check-in said different things. They have a different understanding of the project's scope, particularly whether new automation is included. This needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "Ifeoma Chukwu",
+      "source": "divergence"
+     },
+     {
+      "question": "People in this check-in said different things about They describe the current project status differently, with one seeing it as blocked and another as progressing, so it needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "Ifeoma Chukwu",
+      "source": "divergence"
+     }
+    ],
+    "whatTheRoomIsAbout": {
+     "aims": [
+      {
+       "aim": "The switch to the new gateway must happen smoothly, with no disruption to transactions or customers.",
+       "held": [
+        "Samuel Otieno",
+        "Ifeoma Chukwu"
+       ]
+      },
+      {
+       "aim": "The project's goal is to replace the current payments gateway with a new one.",
+       "held": [
+        "Ifeoma Chukwu"
+       ]
+      },
+      {
+       "aim": "The team must automate the daily reconciliation of 400 transactions that are now done by hand.",
+       "held": [
+        "Rita Adeleke"
+       ]
+      }
+     ],
+     "places": [],
+     "things": [
+      {
+       "name": "transactions",
+       "named": [
+        "Rita Adeleke",
+        "Samuel Otieno",
+        "Ifeoma Chukwu"
+       ]
+      },
+      {
+       "name": "customer support feedback",
+       "named": [
+        "Ifeoma Chukwu"
+       ]
+      },
+      {
+       "name": "payments gateway",
+       "named": [
+        "Ifeoma Chukwu"
+       ]
+      },
+      {
+       "name": "payments integration",
+       "named": [
+        "Samuel Otieno"
+       ]
+      },
+      {
+       "name": "reconciliation",
+       "named": [
+        "Rita Adeleke"
+       ]
+      },
+      {
+       "name": "report",
+       "named": [
+        "Rita Adeleke"
+       ]
+      },
+      {
+       "name": "sandbox environment",
+       "named": [
+        "Samuel Otieno"
+       ]
+      },
+      {
+       "name": "transaction logs",
+       "named": [
+        "Ifeoma Chukwu"
+       ]
+      }
+     ],
+     "readAtSession": 1
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "2",
+      "sub": "People said different things. They have a different understanding of the project's scope, particularly whether new automation is included. 1 more difference is still open.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "1",
+      "sub": "Work is held up by the sandbox credentials.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "contribution": [
+     {
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "name": "Samuel Otieno",
+      "remit": null,
+      "remitDefined": true,
+      "position": null,
+      "positionLabel": null,
+      "reason": "1 check-in on record. 5 lines taken from what they said, 1 with a name, a number or a date in it, 1 of those specific enough for somebody else to go and check. What they say is in the way sits outside this check-in, with the provider, and nothing on record says anybody has chased it. That is a thing to ask about, not a reason to read this as blocked. Their work is read against what being on track means for engineering, which is shipped and stable, described so a non-engineer can see what changed, blocked stated distinctly from behind. This read of their function is still provisional.",
+      "fn": "ENGINEERING",
+      "fnLabel": "Engineering",
+      "fnConfident": false,
+      "isBlocked": true,
+      "ownVoice": null,
+      "nothingCheckable": false,
+      "confidence": 0.23,
+      "evidenceCount": 1,
+      "shown": false,
+      "basis": "Based on 1 check-in, 1 checkable thing named, none of it confirmed by anyone else.",
+      "guard": "Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone."
+     }
+    ],
+    "coverage": {
+     "scope": "role",
+     "reads": [
+      {
+       "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+       "name": "Samuel Otieno",
+       "scope": "role",
+       "pct": 0,
+       "kind": "STABLE",
+       "trend": "stable",
+       "what": "Nobody has said anything about this person's work moving elsewhere.",
+       "reason": "SHARED_BY_DESIGN",
+       "reasonText": "Their responsibilities are staying with them. Nothing is leaking out or piling in, so there is nothing here to read into.",
+       "ownVoice": null,
+       "coupledToBlocker": true,
+       "remitDefined": true,
+       "confidence": 0.15,
+       "evidenceCount": 0,
+       "shown": true,
+       "basis": "Based on 1 check-in, 0 checkable things named, none of it confirmed by anyone else."
+      }
+     ]
+    },
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "Put the sandbox credentials in writing, with the date you need it by."
+      ],
+      "general": true,
+      "role": null,
+      "whyNoRoleMap": "Your record looks like engineering, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+     },
+     "eachPerson": null
+    },
+    "patterns": [],
+    "poll": null,
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "releases and tasks",
+      "state": "filled",
+      "stages": [
+       "Worked on",
+       "Written",
+       "Merged",
+       "Tested",
+       "Deployed",
+       "Used"
+      ],
+      "rows": [
+       {
+        "id": "5dbce174-153f-4494-b346-e836f1528c1f",
+        "kind": "task",
+        "name": "replace our current payments gateway",
+        "stage": null,
+        "owner": "Ifeoma Chukwu",
+        "ownerParticipantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "The core objective is to replace our current payments gateway. We need to be fully switched over.",
+        "saidBy": "Ifeoma",
+        "saidByParticipantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "394654af-421a-4e4e-8f37-ae6026bf6c13",
+        "kind": "task",
+        "name": "swapping out the gateway",
+        "stage": null,
+        "owner": "Ifeoma Chukwu",
+        "ownerParticipantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+        "due": null,
+        "fields": {
+         "kind": "like-for-like replacement",
+         "capabilities": "not adding new capabilities in this phase"
+        },
+        "from": "said",
+        "said": "This project is about swapping out the gateway. It's a like-for-like replacement. We are not adding new capabilities in this phase.",
+        "saidBy": "Ifeoma",
+        "saidByParticipantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "f9417d9a-609d-4517-99a3-bb49a3b880b5",
+        "kind": "task",
+        "name": "the cutover",
+        "stage": null,
+        "owner": "Ifeoma Chukwu",
+        "ownerParticipantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "The biggest challenge will be ensuring the cutover happens smoothly on the technical side. We need to minimize any disruption to transactions.",
+        "saidBy": "Ifeoma",
+        "saidByParticipantId": "6410e84a-fa88-45da-a3af-7ccaa7e3830b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "f9dcc50b-4059-456d-a20c-d21f014317aa",
+        "kind": "release",
+        "name": "the new payments integration",
+        "stage": null,
+        "owner": "Samuel Otieno",
+        "ownerParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I'm leading the technical implementation of the new payments integration. My role is to make sure the swap happens smoothly.",
+        "saidBy": "Samuel",
+        "saidByParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "2aa1c98b-441c-446f-b5c2-24324d54326e",
+        "kind": "task",
+        "name": "coding",
+        "stage": null,
+        "owner": "Samuel Otieno",
+        "ownerParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I can't start coding until I have access to the sandbox environment.",
+        "saidBy": "Samuel",
+        "saidByParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "32e3df22-fb3f-4e5b-99f2-3f7ae452b08a",
+        "kind": "task",
+        "name": "the sandbox credentials",
+        "stage": null,
+        "owner": "Samuel Otieno",
+        "ownerParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "due": null,
+        "fields": {
+         "From": "the provider",
+         "Requested": "eleven days ago"
+        },
+        "from": "said",
+        "said": "I'm waiting on the sandbox credentials from the provider. I requested them eleven days ago.",
+        "saidBy": "Samuel",
+        "saidByParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "0f58904e-8f79-472c-a8d9-8e0cb2b94081",
+        "kind": "release",
+        "name": "the new integration",
+        "stage": "Tested",
+        "owner": "Samuel Otieno",
+        "ownerParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "My role is to make sure the new integration handles the daily reconciliation process correctly.",
+        "saidBy": "Rita",
+        "saidByParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "f80fbed8-14c9-4068-bea5-30422fb8cca9",
+        "kind": "task",
+        "name": "the finance reconciliation document",
+        "stage": null,
+        "owner": "Samuel Otieno",
+        "ownerParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I'm unclear on the specifics of the finance reconciliation document.",
+        "saidBy": "Samuel",
+        "saidByParticipantId": "6c975394-af78-4005-9941-212cf0bbc248",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "0442259d-0de9-49a7-b5e0-89943ca7605e",
+        "kind": "task",
+        "name": "the daily reconciliation process",
+        "stage": null,
+        "owner": "Rita Adeleke",
+        "ownerParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "My role is to make sure the new integration handles the daily reconciliation process correctly.",
+        "saidBy": "Rita",
+        "saidByParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "aabb1554-d1d0-423f-9df6-f4c3f6a34a40",
+        "kind": "task",
+        "name": "the reconciliation of the 400 transactions",
+        "stage": null,
+        "owner": "Rita Adeleke",
+        "ownerParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "\"Correctly\" means it automates the reconciliation of the 400 transactions my team currently does by hand every morning.",
+        "saidBy": "Rita",
+        "saidByParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "b4490319-14cd-4406-8917-a01b37617881",
+        "kind": "task",
+        "name": "a daily automated report",
+        "stage": null,
+        "owner": "Rita Adeleke",
+        "ownerParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "Success would be a daily automated report that confirms the 400 transactions are reconciled. No manual work.",
+        "saidBy": "Rita",
+        "saidByParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "35deda93-0993-4405-9f90-bc3f053ae839",
+        "kind": "task",
+        "name": "the reconciliation requirement",
+        "stage": "Written",
+        "owner": "Rita Adeleke",
+        "ownerParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I sent the reconciliation requirement in July.",
+        "saidBy": "Rita",
+        "saidByParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "18bc4606-e965-4d53-8084-f96812caaadb",
+        "kind": "task",
+        "name": "automated daily reconciliation for all 400 transactions",
+        "stage": null,
+        "owner": "Rita Adeleke",
+        "ownerParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I need confirmation from the project lead that automated daily reconciliation for all 400 transactions is definitely in scope for this project.",
+        "saidBy": "Rita",
+        "saidByParticipantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       }
+      ]
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-feee6c8d-7bb9-430d-b2ee-59fb904b339f",
+      "says": "You cannot move on the sandbox credentials until it comes from the provider.",
+      "because": "It was first said on 2 October. About what has been tried, you said, \"I requested them eleven days ago\". No time has been given for it."
+     },
+     {
+      "id": "handoff-e3beb485-63ad-4c5e-bd1e-a557de419e9a",
+      "says": "Rita Adeleke is waiting on the project lead for confirmation that automated daily reconciliation is in scope.",
+      "because": "It was first said on 2 October. About what has been tried, Rita Adeleke said, \"I sent the reconciliation requirement in July\". No time has been given for it."
+     },
+     {
+      "id": "no-time-31b26534-7b35-429c-9ce3-940dbdbc608c",
+      "says": "You committed to ask about it at the next meeting, and no time was given for it, so nobody can tell when it would be late.",
+      "because": "Nobody has said yet whether it happened."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "31b26534-7b35-429c-9ce3-940dbdbc608c",
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "who": "You",
+      "says": "In session 1, you said, \"I'll ask about it at the next meeting\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": null,
+      "state": "open",
+      "statedInSession": 1
+     },
+     {
+      "id": "7cbe1d2b-96b8-4312-b9ba-4616fec43819",
+      "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "who": "Rita Adeleke",
+      "says": "In session 1, Rita Adeleke said, \"follow up with the project lead to get that confirmation\". The time Rita Adeleke gave for it was \"today\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "today",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you committed to ask about it at the next meeting."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Rita Adeleke committed to follow up with the project lead to get that confirmation."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you said the work was waiting on the provider for the sandbox credentials."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Rita Adeleke said the work was waiting on the project lead for confirmation that automated daily reconciliation is in scope."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "who": "You",
+      "says": "You have answered 1 session and made 1 commitment. 0 are done, 0 are not done or dropped, and 1 is still open.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you made 1 commitment and named 1 thing the work was waiting on."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "feee6c8d-7bb9-430d-b2ee-59fb904b339f",
+      "who": "You",
+      "says": "You are waiting on the provider for the sandbox credentials.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "The provider holds it.",
+       "About what has been tried, you said, \"I requested them eleven days ago\".",
+       "No time has been given for it."
+      ]
+     },
+     {
+      "id": "e3beb485-63ad-4c5e-bd1e-a557de419e9a",
+      "who": "Rita Adeleke",
+      "says": "Rita Adeleke is waiting on the project lead for confirmation that automated daily reconciliation is in scope.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "The project lead holds it.",
+       "About what has been tried, Rita Adeleke said, \"I sent the reconciliation requirement in July\".",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "6c975394-af78-4005-9941-212cf0bbc248",
+      "who": "You",
+      "promised": [
+       "In session 1, you said, \"I'll ask about it at the next meeting\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": "55df3645-58c8-4d6f-867b-b25028083a4b",
+      "who": "Rita Adeleke",
+      "promised": [
+       "In session 1, Rita Adeleke said, \"follow up with the project lead to get that confirmation\". The time Rita Adeleke gave for it was \"today\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": null,
+      "who": "the provider",
+      "promised": [],
+      "othersWaitFor": [
+       "You are waiting on the provider for the sandbox credentials."
+      ]
+     },
+     {
+      "participantId": null,
+      "who": "the project lead",
+      "promised": [],
+      "othersWaitFor": [
+       "Rita Adeleke is waiting on the project lead for confirmation that automated daily reconciliation is in scope."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "feee6c8d-7bb9-430d-b2ee-59fb904b339f",
+      "says": "You have been waiting on the provider for the sandbox credentials since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     },
+     {
+      "id": "e3beb485-63ad-4c5e-bd1e-a557de419e9a",
+      "says": "Rita Adeleke has been waiting on the project lead for confirmation that automated daily reconciliation is in scope since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "feee6c8d-7bb9-430d-b2ee-59fb904b339f",
+      "who": "You",
+      "name": "the sandbox credentials",
+      "state": "blocking",
+      "says": "You are waiting on the provider for the sandbox credentials.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what you said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": "Once it is cleared, start coding."
+     },
+     {
+      "id": "e3beb485-63ad-4c5e-bd1e-a557de419e9a",
+      "who": "Rita Adeleke",
+      "name": "confirmation that automated daily reconciliation is in scope",
+      "state": "waiting",
+      "says": "Rita Adeleke is waiting on the project lead for confirmation that automated daily reconciliation is in scope.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Rita Adeleke said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     }
+    ],
+    "byArea": {
+     "state": "not-known",
+     "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+    }
+   },
+   "participantSeen": "eng",
+   "patterns": [
+    {
+     "code": "K3",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "A key requirement submitted in July has remained unconfirmed, requiring follow-up.",
+     "participant": {
+      "email": "ops.1790906200925@project.test"
+     }
+    }
+   ],
+   "commitments": [
+    {
+     "text": "I'll ask about it at the next meeting",
+     "whenSaid": null,
+     "status": "UNKNOWN",
+     "statedInSession": 1,
+     "saidAgainIn": [],
+     "participant": {
+      "email": "eng.1790906200925@project.test"
+     }
+    },
+    {
+     "text": "follow up with the project lead to get that confirmation",
+     "whenSaid": "today",
+     "status": "UNKNOWN",
+     "statedInSession": 1,
+     "saidAgainIn": [],
+     "participant": {
+      "email": "ops.1790906200925@project.test"
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,2132 @@
+{
+ "scenario": {
+  "key": "snapshot",
+  "label": "Where everything stands, today",
+  "scenario": "SNAPSHOT",
+  "moment": "RESOLUTION",
+  "cadence": "ONE_TIME",
+  "timelineDays": 7,
+  "sessions": 1,
+  "brief": "I am back from four weeks away and I need a straight picture of where everything stands as of today. Not what happened, what is true now.",
+  "theDecision": "One of the two reports a project as \"on track\" that is in fact waiting on a decision the lead themselves has to make and does not know about. A right answer puts that decision in front of the lead as the thing only they can move.",
+  "people": [
+   {
+    "key": "lead",
+    "name": "Ravi Menon",
+    "isLead": true,
+    "remit": "Managing director, back from leave.",
+    "truth": "He has read no email for four weeks. He does not know a decision is waiting on him.",
+    "manner": "Brisk, wants status, asks short questions."
+   },
+   {
+    "key": "a",
+    "name": "Anna Kowalski",
+    "remit": "Programme manager.",
+    "truth": "The office move is on track except that the lease variant - 5 year versus 3 year - needs Ravi's signature and has been waiting since the 2nd. The landlord's offer expires on the 30th. She emailed once while he was away.",
+    "manner": "Efficient, front-loads the good news, mentions the lease when asked what is waiting on anybody."
+   },
+   {
+    "key": "b",
+    "name": "Tomás Rivera",
+    "remit": "Delivery lead.",
+    "truth": "Two of his three workstreams are fine. The third slipped two weeks because of a supplier and will land late; he has a plan and does not need help.",
+    "manner": "Plain and complete. Says the bad thing first."
+   }
+  ]
+ },
+ "groundId": "ba07d69a-97b6-4ec4-bb07-1e9f68802e89",
+ "orgId": "1a5bd9fa-2744-401a-a9d2-49877e8ce143",
+ "emails": {
+  "lead": "lead.1790902166521@snapshot.test",
+  "a": "a.1790902166521@snapshot.test",
+  "b": "b.1790902166521@snapshot.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "lead",
+     "name": "Ravi Menon",
+     "isLead": true,
+     "checkInId": "3495e88f-af33-4dc4-8a42-8797a9261f02",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "This conversation is to get a straight picture of where everything stands as of today. What is going well right now? One thing is enough."
+      },
+      {
+       "from": "RAVI MENON",
+       "text": "Our Q3 sales figures are looking strong."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What is stuck, or harder than it should be? One thing is enough."
+      },
+      {
+       "from": "RAVI MENON",
+       "text": "The integration with the new payment gateway is proving more complex than anticipated."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What specifically about it is harder than it should be?",
+       "suggestedAnswers": [
+        "I'm still figuring that out.",
+        "Connecting with the old system is tough.",
+        "Initial setup was easier than expected."
+       ]
+      },
+      {
+       "from": "RAVI MENON",
+       "text": "The data migration is encountering unexpected compatibility issues."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What has changed recently that the people you work with might not know about?",
+       "suggestedAnswers": [
+        "We found a way around the issues.",
+        "The data migration is still stuck.",
+        "Nothing new to report yet."
+       ]
+      },
+      {
+       "from": "RAVI MENON",
+       "text": "I wouldn't know. I've been away for four weeks."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "This is a one-off read, and there is no follow-up scheduled.\n\nWhat else should I know?",
+       "suggestedAnswers": [
+        "Things are moving forward.",
+        "I'm still catching up.",
+        "We have a problem with ...",
+        "Nothing new for me."
+       ]
+      },
+      {
+       "from": "RAVI MENON",
+       "text": "I don't know if there's anything else I should know, as I've been away. I need to catch up on everything."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. That is a lot to catch up on. What do you actually do?",
+       "suggestedAnswers": [
+        "I'm working on the new project.",
+        "I'm stuck on a problem.",
+        "Not sure yet.",
+        "Just getting started."
+       ]
+      },
+      {
+       "from": "RAVI MENON",
+       "text": "I am the managing director."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You are the managing director. What will you decide, or put in front of Anna Kowalski or Tomás Rivera, by name?",
+       "suggestedAnswers": [
+        "My decision is ready for them.",
+        "The decision is still pending.",
+        "I need more time to decide."
+       ]
+      },
+      {
+       "from": "RAVI MENON",
+       "text": "I will need to review everything before making any decisions or putting anything in front of anyone. I have read no email."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "No decisions will be made until you have reviewed everything.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    },
+    {
+     "key": "a",
+     "name": "Anna Kowalski",
+     "isLead": false,
+     "checkInId": "a96921a2-3375-4992-b611-74eeb4580ddb",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "This is a quick conversation to get a clear picture of where things stand today. What is going well right now? One thing is enough."
+      },
+      {
+       "from": "ANNA KOWALSKI",
+       "text": "The office move is going well. We're on track with the schedule."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What is stuck, or harder than it should be? One thing is enough."
+      },
+      {
+       "from": "ANNA KOWALSKI",
+       "text": "The office lease variant needs Ravi's signature to be finalised."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What has changed recently that the people you work with might not know about?",
+       "suggestedAnswers": [
+        "The plan has changed.",
+        "Nothing has changed yet.",
+        "We faced a new challenge.",
+        "I am waiting for a decision."
+       ]
+      },
+      {
+       "from": "ANNA KOWALSKI",
+       "text": "I don't know of anything that has changed that people wouldn't already know about."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've mentioned the office move is on track, and the lease variant is waiting on Ravi's signature. It sounds like most of your work is project management. Is that right?",
+       "suggestedAnswers": [
+        "Yes, that is correct.",
+        "No, I found a problem.",
+        "I'm not sure yet."
+       ]
+      },
+      {
+       "from": "ANNA KOWALSKI",
+       "text": "Yes, I'm focused on project management."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What are you doing to clear the lease variant?",
+       "suggestedAnswers": [
+        "I'm actively working on it.",
+        "I'm waiting on more information to proceed.",
+        "I will start on it today.",
+        "I am not sure yet."
+       ]
+      },
+      {
+       "from": "ANNA KOWALSKI",
+       "text": "I've emailed Ravi about it already."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What did you understand you were meant to do?",
+       "suggestedAnswers": [
+        "I understood the next steps.",
+        "I'm not clear on that yet.",
+        "Not quite, I need to check."
+       ]
+      },
+      {
+       "from": "ANNA KOWALSKI",
+       "text": "My understanding was to get the lease variant signed by Ravi."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "And by when were you hoping to get the lease variant signed by Ravi?",
+       "suggestedAnswers": [
+        "I sent it to him for signing.",
+        "It is still awaiting his signature.",
+        "I don't have an update yet.",
+        "I am hoping to get it by ..."
+       ]
+      },
+      {
+       "from": "ANNA KOWALSKI",
+       "text": "The landlord's offer for the lease expires on the 30th, so ideally before then."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've named what you are working to get done and by when.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    },
+    {
+     "key": "b",
+     "name": "Tomás Rivera",
+     "isLead": false,
+     "checkInId": "16881376-2bc5-48b5-9bd0-b7bf718a9e9d",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Ravi is looking for a straight picture of where everything stands as of today. What is going well right now? One thing is enough."
+      },
+      {
+       "from": "TOMÁS RIVERA",
+       "text": "Workstream one is going well. We are on track."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Workstream one is on track. What is stuck, or harder than it should be? One thing is enough."
+      },
+      {
+       "from": "TOMÁS RIVERA",
+       "text": "Workstream three has slipped. It will be two weeks late."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What has changed recently that the people you work with might not know about?",
+       "suggestedAnswers": [
+        "I got some good news.",
+        "Things are stuck right now.",
+        "Nothing new to share."
+       ]
+      },
+      {
+       "from": "TOMÁS RIVERA",
+       "text": "Workstream three's supplier caused the two-week slip."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What are you doing to clear that?",
+       "suggestedAnswers": [
+        "I'm working with the supplier to clear it.",
+        "It's still stuck, no progress yet.",
+        "I don't know yet, still investigating."
+       ]
+      },
+      {
+       "from": "TOMÁS RIVERA",
+       "text": "I've put a plan in place. We will absorb the delay."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What kind of plan is it? It helps to know whether it's something written down, or something you've decided to do."
+      },
+      {
+       "from": "TOMÁS RIVERA",
+       "text": "It's something I've decided to do. I've adjusted the schedule."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've adjusted the schedule to absorb the two-week delay caused by Workstream three's supplier. When will Workstream three now be delivered?",
+       "suggestedAnswers": [
+        "I expect it by ...",
+        "It's taking longer than I thought.",
+        "I need to check that."
+       ]
+      },
+      {
+       "from": "TOMÁS RIVERA",
+       "text": "It will land two weeks late."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You expect Workstream three to land two weeks late. Does most of your work involve project management?",
+       "suggestedAnswers": [
+        "Most of my time is spent managing projects.",
+        "It involves less project management than I expected.",
+        "I'm not sure yet, it varies."
+       ]
+      },
+      {
+       "from": "TOMÁS RIVERA",
+       "text": "No. My work doesn't mostly involve project management."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. Can you describe your role, then, in your own words?",
+       "suggestedAnswers": [
+        "I make sure ... runs smoothly.",
+        "Still learning my exact role.",
+        "I am confused about my main tasks."
+       ]
+      },
+      {
+       "from": "TOMÁS RIVERA",
+       "text": "I'm a delivery lead. I lead three workstreams."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You lead three workstreams, and Workstream three's supplier caused a two-week slip that you've absorbed by adjusting the schedule. What is now due by when?",
+       "suggestedAnswers": [
+        "I finished ...; it's due by ...",
+        "Still waiting for ... No due date yet.",
+        "Not yet decided.",
+        "We are on track for ... by ..."
+       ]
+      },
+      {
+       "from": "TOMÁS RIVERA",
+       "text": "Workstream one and two are on schedule. Workstream three will be two weeks late."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What did you understand you were meant to do?",
+       "suggestedAnswers": [
+        "I understood I would work on the main task.",
+        "I am still not clear on what to do.",
+        "I need more information to understand fully."
+       ]
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "80bcb16f-b9bd-456a-aa64-69238b38dc33",
+    "groundId": "ba07d69a-97b6-4ec4-bb07-1e9f68802e89",
+    "sharedPicture": "All three people have answered. They do not have a shared priority, and each is working on something different.\n\nYou say that Q3 sales figures are strong. You say that integrating with a new payment gateway is more complex than you had anticipated.\n\nAnna Kowalski says the office move is on schedule. Anna is working to a deadline, because the landlord's offer for the lease expires on the 30th.\n\nTomás Rivera says that workstream three has slipped by two weeks. Tomás says the slip was caused by a supplier to that workstream.\n\nThe records describe progress on an office move and in two of three delivery workstreams. They also identify specific challenges, including a two-week delay in one workstream caused by a supplier, complexity with a new payment gateway integration, and data migration issues.",
+    "theOpening": "All three people have answered. They do not have a shared priority, and each is working on something different.",
+    "agreements": [
+     "You have returned after four weeks away and you are catching up on the state of the work.",
+     "The office move is on schedule, but a lease variant is waiting for a signature.",
+     "One delivery workstream has slipped by two weeks due to a supplier, and a recovery plan is in place.",
+     "The integration of a new payment gateway and a data migration are more complex than first thought."
+    ],
+    "divergences": [
+     {
+      "topic": "The immediate priority for you is not aligned with an urgent need from the team.",
+      "atStake": "If this holds, the deadline for the landlord's offer on the office lease could be missed while you conduct a broader review of other issues.",
+      "evidence": [
+       "Anna Kowalski's record states the lease variant needs a signature as the landlord's offer 'expires on the 30th'.",
+       "Your record describes a plan to examine all workstreams before authorizing any next steps."
+      ],
+      "positions": [
+       {
+        "view": "You intend to conduct a full review of all work before approving any actions, with a particular focus on technical complexity and data migration issues.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Anna Kowalski needs a signature for an office lease variant to meet a landlord's offer that expires on the 30th.",
+        "participantLabel": "Anna Kowalski",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "settledBy": "Agree on a process that allows urgent, time-bound decisions to be made while the larger review is in progress.",
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     }
+    ],
+    "centralQuestion": "What is the process for getting urgent, time-sensitive items like the office lease signed by the 30th, while also allowing you the time needed for a broader review of the technical work?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Ravi Menon",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 6,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Ravi Menon"
+      },
+      {
+       "label": "Anna Kowalski",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 6,
+       "documentsAttached": 0,
+       "who": "Anna Kowalski"
+      },
+      {
+       "label": "Tomás Rivera",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 10,
+       "documentsAttached": 0,
+       "who": "Tomás Rivera"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "concernFlags": [],
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "The immediate priority for you is not aligned with an urgent need from the team."
+     ],
+     "sessionCounts": {
+      "Anna Kowalski": 7,
+      "Tomás Rivera": 9,
+      "Ravi Menon": 7
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Ravi Menon",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Ravi Menon": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Ravi Menon": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [
+      {
+       "label": "Anna Kowalski",
+       "evidence": "Anna Kowalski's record notes that the 'landlord's offer' for the office lease has a deadline."
+      }
+     ],
+     "whatCouldBeChecked": {
+      "says": [
+       "The one thing described here lines up with something other than what the person said. It is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 1,
+      "checked": 1
+     },
+     "difficultyDisclosures": false
+    },
+    "inferences": [],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": [
+     {
+      "gap": "One account describes an urgent task to secure an office lease, while another account focuses on sales and technical projects.",
+      "note": "You have just returned from a four-week absence and asked for a general update, so the different points of focus reflect what each person holds as most important.",
+      "span": "This is the first check-in.",
+      "pattern": "SETUP_NEVER_SAID",
+      "periods": 1
+     }
+    ],
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "You intend to conduct a full review of all work, and this will prevent Anna Kowalski from getting the signature needed to meet the landlord's offer for the office lease.",
+     "whatToDo": [
+      {
+       "move": "Sign the office lease variant for Anna Kowalski.",
+       "because": "Anna Kowalski needs the signature to meet a landlord's offer that expires on the 30th.",
+       "startWith": "Anna Kowalski"
+      },
+      {
+       "move": "Agree with Tomás Rivera a plan to recover the two-week slip in workstream three.",
+       "because": "Tomás Rivera has reported that workstream three has slipped by two weeks and has identified the supplier as the cause.",
+       "startWith": "Tomás Rivera"
+      },
+      {
+       "move": "Decide with you how to handle urgent approvals that cannot wait for a full review.",
+       "because": "Your current plan to review all work would have caused Anna Kowalski to miss an urgent deadline.",
+       "startWith": "You"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "Anna Kowalski is working to a deadline for an office lease that expires on the 30th.",
+       "soWhat": "Anna Kowalski needs a signature from you this week.",
+       "fieldId": "Anna Kowalski"
+      },
+      {
+       "says": "Tomás Rivera reports that workstream three has slipped by two weeks because of a supplier.",
+       "soWhat": "Tomás Rivera needs a decision on how to recover the two weeks.",
+       "fieldId": "Tomás Rivera"
+      },
+      {
+       "says": "You intend to conduct a full review of all work before approving any actions.",
+       "soWhat": "Your plan means that Anna Kowalski cannot get the signature needed for the lease before the landlord's offer expires.",
+       "fieldId": "You"
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record says the workstream has slipped and a supplier is the cause, but the record does not say what the effects of the slip are.",
+       "about": "The consequences of the two-week slip in workstream three.",
+       "toKnow": "Ask Tomás Rivera to describe the effects of the two-week slip."
+      },
+      {
+       "why": "You have said the work is more complex, but you have not said what this changes.",
+       "about": "The consequences of the payment gateway integration being more complex than anticipated.",
+       "toKnow": "Your own account of this is not in this check-in."
+      }
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Anna Kowalski is down as \"Programme manager\", and nothing on record says what that role covers. Since then, the record holds 1 session, 6 lines of what was said, 3 with a name, a number or a date in them and none backed by a document.",
+       "who": "Anna Kowalski",
+       "participantId": "b10af5ad-152f-45be-8eca-d17401849dc4"
+      },
+      {
+       "say": "Tomás Rivera is down as \"delivery lead\", and nothing on record says what that role covers. Since then, the record holds 1 session, 10 lines of what was said, 2 with a name, a number or a date in them and none backed by a document.",
+       "who": "Tomás Rivera",
+       "participantId": "0060d845-3e68-436c-8297-ea5e4ee4a73a"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Anna Kowalski is waiting on you for \"Ravi's signature\", and it has been asked about once since. This is work you owe Anna, not the other way round."
+     ],
+     "commitments": [],
+     "dependencies": [
+      {
+       "on": "You",
+       "say": "Anna Kowalski is waiting on you for \"Ravi's signature\", and it has been asked about once since. This is work you owe Anna, not the other way round.",
+       "from": "Anna Kowalski",
+       "what": "Your signature",
+       "chased": true,
+       "status": "WAITING",
+       "onParticipantId": "97557300-2bb3-4dba-8e88-73b19dcd9c2f",
+       "sessionsWaiting": 0,
+       "fromParticipantId": "b10af5ad-152f-45be-8eca-d17401849dc4"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself.",
+      "Nobody has said in a check-in what they would do next. Ask for one thing, with a date, from each person."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "You say that Q3 sales figures are strong. You say that integrating with a new payment gateway is more complex than you had anticipated.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "97557300-2bb3-4dba-8e88-73b19dcd9c2f",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Anna Kowalski says the office move is on schedule. Anna is working to a deadline, because the landlord's offer for the lease expires on the 30th.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "b10af5ad-152f-45be-8eca-d17401849dc4",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Tomás Rivera says that workstream three has slipped by two weeks. Tomás says the slip was caused by a supplier to that workstream.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "0060d845-3e68-436c-8297-ea5e4ee4a73a",
+      "mark": "memory",
+      "figureIs": "from memory",
+      "markSays": "From memory only"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": "2026-10-02T00:53:58.145Z",
+    "createdAt": "2026-10-02T00:52:11.778Z",
+    "updatedAt": "2026-10-02T00:57:06.622Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They do not have a shared priority, and each is working on something different.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You say that Q3 sales figures are strong.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You say that integrating with a new payment gateway is more complex than you had anticipated.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Anna Kowalski says the office move is on schedule.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Anna Kowalski is working to a deadline, because the landlord's offer for the lease expires on the 30th.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Tomás Rivera says that workstream three has slipped by two weeks.",
+      "mark": "memory",
+      "figureIs": "from memory",
+      "markSays": "From memory only"
+     },
+     {
+      "text": "Tomás Rivera says the slip was caused by a supplier to that workstream.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The records describe progress on an office move and in two of three delivery workstreams.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They also identify specific challenges, including a two-week delay in one workstream caused by a supplier, complexity with a new payment gateway integration, and data migration issues.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "I am coming back from my time away needing to review everything before I make a decision, and I can see that one of those decisions is more urgent than I had realised.",
+     "toAcknowledge": "Take seriously the point that there is a hard deadline on the office move. Someone else reported that the current offer expires at the end of the month, so a decision is needed before then.",
+     "questionToCarry": "What is the minimum I need to know to make a sound decision on the office lease before the deadline?"
+    },
+    "coaching": {
+     "aboutYou": [],
+     "showingUp": null,
+     "whyItMatters": "You have completed session 1 of founder or CEO work, and at this early stage, nothing repeats yet, which is normal for this kind of work, where some decisions cannot be made immediately because of genuine ambiguity. What decides whether later sessions are worth anything is what you can point at, which shows that you are doing the unique work that only you can do.",
+     "beforeNextTime": [
+      "Anna Kowalski is waiting on you for Ravi's signature. Either do it, or give a date you can do it by."
+     ],
+     "general": true,
+     "role": {
+      "label": "Founder or CEO",
+      "onTrack": "Doing the work only they can do, the hard strategy calls made and owned, leadership authoring their own commitments.",
+      "goingWrong": "Busy in the weeds on comfortable work; strategy perpetually exploring; misses framed as the team's.",
+      "protectAgainst": "You are carrying genuine ambiguity nobody else can resolve, and reading unresolved as avoidance misses that some calls honestly cannot be made yet.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "30539750-c962-4c28-8b63-ff878fd2c9c6",
+      "type": "PROGRESS",
+      "text": "Our Q3 sales figures are looking strong.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3495e88f-af33-4dc4-8a42-8797a9261f02",
+      "sessionNumber": 1
+     },
+     {
+      "id": "10119523-8510-465c-b7f6-769ce1ce3371",
+      "type": "WORRY",
+      "text": "The integration with the new payment gateway is proving more complex than anticipated.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3495e88f-af33-4dc4-8a42-8797a9261f02",
+      "sessionNumber": 1
+     },
+     {
+      "id": "e931b338-5aa4-499f-9f84-2e185a2beb16",
+      "type": "WORRY",
+      "text": "The data migration is encountering unexpected compatibility issues.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3495e88f-af33-4dc4-8a42-8797a9261f02",
+      "sessionNumber": 1
+     },
+     {
+      "id": "00c045b4-d367-40b3-a16e-fb873744a844",
+      "type": "INTENT",
+      "text": "I am the managing director.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3495e88f-af33-4dc4-8a42-8797a9261f02",
+      "sessionNumber": 1
+     },
+     {
+      "id": "ebf67b54-1070-4767-ac09-f83c21f9dde8",
+      "type": "ASK",
+      "text": "I need to catch up on everything.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3495e88f-af33-4dc4-8a42-8797a9261f02",
+      "sessionNumber": 1
+     },
+     {
+      "id": "9a85db27-1627-414a-9a1a-395cd459c58f",
+      "type": "TOLERANCE",
+      "text": "I will need to review everything before making any decisions or putting anything in front of anyone.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "3495e88f-af33-4dc4-8a42-8797a9261f02",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\nYou reported that Q3 sales figures are looking strong. You also raised worries that the integration with the new payment gateway is more complex than you anticipated, and that the data migration is running into unexpected compatibility issues. You plan to review everything before making any decisions or putting anything in front of anyone else.",
+     "whatToCarry": "You can carry forward your plan to review everything, perhaps starting with the complex payment gateway integration and the data migration issues that you flagged."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    },
+    "forTheLead": [
+     {
+      "id": "handoff-53434f42-f24e-4abb-ae89-90647a038903",
+      "decide": "Sort out Ravi's signature.",
+      "why": "Anna is waiting on you for it.",
+      "changes": "Once it is settled, the lease variant will be finalised."
+     },
+     {
+      "id": "difference-1",
+      "decide": "Agree on a process that allows urgent, time-bound decisions to be made while the larger review is in progress.",
+      "why": "The immediate priority for you is not aligned with an urgent need from the team. You and Anna Kowalski said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this holds, the deadline for the landlord's offer on the office lease could be missed while you conduct a broader review of other issues."
+     }
+    ]
+   },
+   "board": {
+    "groundId": "ba07d69a-97b6-4ec4-bb07-1e9f68802e89",
+    "renders": true,
+    "mode": "PRIVATE",
+    "family": "SNAPSHOT",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "divergence",
+     "checkInGrid"
+    ],
+    "title": "Where everything stands, today",
+    "scenario": "SNAPSHOT",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. They do not have a shared priority, and each is working on something different.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "You intend to conduct a full review of all work, and this will prevent Anna Kowalski from getting the signature needed to meet the landlord's offer for the office lease.",
+     "whatToDo": [
+      {
+       "move": "Sign the office lease variant for Anna Kowalski.",
+       "because": "Anna Kowalski needs the signature to meet a landlord's offer that expires on the 30th.",
+       "startWith": "Anna Kowalski"
+      },
+      {
+       "move": "Agree with Tomás Rivera a plan to recover the two-week slip in workstream three.",
+       "because": "Tomás Rivera has reported that workstream three has slipped by two weeks and has identified the supplier as the cause.",
+       "startWith": "Tomás Rivera"
+      },
+      {
+       "move": "Decide with you how to handle urgent approvals that cannot wait for a full review.",
+       "because": "Your current plan to review all work would have caused Anna Kowalski to miss an urgent deadline.",
+       "startWith": "You"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "Anna Kowalski is working to a deadline for an office lease that expires on the 30th.",
+       "soWhat": "Anna Kowalski needs a signature from you this week.",
+       "fieldId": "Anna Kowalski"
+      },
+      {
+       "says": "Tomás Rivera reports that workstream three has slipped by two weeks because of a supplier.",
+       "soWhat": "Tomás Rivera needs a decision on how to recover the two weeks.",
+       "fieldId": "Tomás Rivera"
+      },
+      {
+       "says": "You intend to conduct a full review of all work before approving any actions.",
+       "soWhat": "Your plan means that Anna Kowalski cannot get the signature needed for the lease before the landlord's offer expires.",
+       "fieldId": "You"
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record says the workstream has slipped and a supplier is the cause, but the record does not say what the effects of the slip are.",
+       "about": "The consequences of the two-week slip in workstream three.",
+       "toKnow": "Ask Tomás Rivera to describe the effects of the two-week slip."
+      },
+      {
+       "why": "You have said the work is more complex, but you have not said what this changes.",
+       "about": "The consequences of the payment gateway integration being more complex than anticipated.",
+       "toKnow": "Your own account of this is not in this check-in."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Anna Kowalski is down as \"Programme manager\", and nothing on record says what that role covers. Since then, the record holds 1 session, 6 lines of what was said, 3 with a name, a number or a date in them and none backed by a document.",
+       "who": "Anna Kowalski",
+       "participantId": "b10af5ad-152f-45be-8eca-d17401849dc4"
+      },
+      {
+       "say": "Tomás Rivera is down as \"delivery lead\", and nothing on record says what that role covers. Since then, the record holds 1 session, 10 lines of what was said, 2 with a name, a number or a date in them and none backed by a document.",
+       "who": "Tomás Rivera",
+       "participantId": "0060d845-3e68-436c-8297-ea5e4ee4a73a"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Anna Kowalski is waiting on you for \"Ravi's signature\", and it has been asked about once since. This is work you owe Anna, not the other way round."
+     ],
+     "commitments": [],
+     "dependencies": [
+      {
+       "on": "You",
+       "say": "Anna Kowalski is waiting on you for \"Ravi's signature\", and it has been asked about once since. This is work you owe Anna, not the other way round.",
+       "from": "Anna Kowalski",
+       "what": "Your signature",
+       "chased": true,
+       "status": "WAITING",
+       "onParticipantId": "97557300-2bb3-4dba-8e88-73b19dcd9c2f",
+       "sessionsWaiting": 0,
+       "fromParticipantId": "b10af5ad-152f-45be-8eca-d17401849dc4"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself.",
+      "Nobody has said in a check-in what they would do next. Ask for one thing, with a date, from each person."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "97557300-2bb3-4dba-8e88-73b19dcd9c2f",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T00:57:06.622Z",
+    "participants": [
+     {
+      "id": "0060d845-3e68-436c-8297-ea5e4ee4a73a",
+      "name": "Tomás Rivera",
+      "role": "Delivery lead.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "97557300-2bb3-4dba-8e88-73b19dcd9c2f",
+      "name": "Ravi Menon",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "b10af5ad-152f-45be-8eca-d17401849dc4",
+      "name": "Anna Kowalski",
+      "role": "Programme manager.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [
+      {
+       "topic": "The immediate priority for you is not aligned with an urgent need from the team.",
+       "atStake": "If this holds, the deadline for the landlord's offer on the office lease could be missed while you conduct a broader review of other issues.",
+       "evidence": [
+        "Anna Kowalski's record states the lease variant needs a signature as the landlord's offer 'expires on the 30th'.",
+        "Your record describes a plan to examine all workstreams before authorizing any next steps."
+       ],
+       "positions": [
+        {
+         "view": "You intend to conduct a full review of all work before approving any actions, with a particular focus on technical complexity and data migration issues.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Anna Kowalski needs a signature for an office lease variant to meet a landlord's offer that expires on the 30th.",
+         "participantLabel": "Anna Kowalski",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Anna Kowalski"
+        }
+       ],
+       "settledBy": "Agree on a process that allows urgent, time-bound decisions to be made while the larger review is in progress.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "You have returned after four weeks away and you are catching up on the state of the work.",
+      "The office move is on schedule, but a lease variant is waiting for a signature.",
+      "One delivery workstream has slipped by two weeks due to a supplier, and a recovery plan is in place.",
+      "The integration of a new payment gateway and a data migration are more complex than first thought."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Agree on a process that allows urgent, time-bound decisions to be made while the larger review is in progress. That is what settles the immediate priority for you is not aligned with an urgent need from the team.",
+     "settled": [
+      "You have returned after four weeks away and you are catching up on the state of the work.",
+      "The office move is on schedule, but a lease variant is waiting for a signature.",
+      "One delivery workstream has slipped by two weeks due to a supplier, and a recovery plan is in place.",
+      "The integration of a new payment gateway and a data migration are more complex than first thought."
+     ],
+     "stillOpen": [
+      "The immediate priority for you is not aligned with an urgent need from the team."
+     ]
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "b10af5ad-152f-45be-8eca-d17401849dc4",
+      "who": "Anna Kowalski",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Anna Kowalski has checked in, and is waiting on you for Ravi's signature.",
+      "ask": "Anna Kowalski is waiting on you for Ravi's signature. Give Anna Kowalski an answer, or say when you will.",
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Anna Kowalski says the office move is on schedule. Anna is working to a deadline, because the landlord's offer for the lease expires on the 30th.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     },
+     {
+      "participantId": "0060d845-3e68-436c-8297-ea5e4ee4a73a",
+      "who": "Tomás Rivera",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Tomás Rivera has checked in, and nothing here needs you this week.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Tomás Rivera says that workstream three has slipped by two weeks. Tomás says the slip was caused by a supplier to that workstream.",
+      "hasGap": false,
+      "findingMark": "memory",
+      "findingMarkSays": "From memory only"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "0060d845-3e68-436c-8297-ea5e4ee4a73a",
+       "name": "Tomás Rivera",
+       "role": "Delivery lead.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "97557300-2bb3-4dba-8e88-73b19dcd9c2f",
+       "name": "Ravi Menon",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "b10af5ad-152f-45be-8eca-d17401849dc4",
+       "name": "Anna Kowalski",
+       "role": "Programme manager.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things. The immediate priority for you is not aligned with an urgent need from the team.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "1 waiting",
+      "sub": "Work is held up by Ravi's signature. Nothing is hard-blocked.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [],
+      "showingUp": null,
+      "whyItMatters": "You have completed session 1 of founder or CEO work, and at this early stage, nothing repeats yet, which is normal for this kind of work, where some decisions cannot be made immediately because of genuine ambiguity. What decides whether later sessions are worth anything is what you can point at, which shows that you are doing the unique work that only you can do.",
+      "beforeNextTime": [
+       "Anna Kowalski is waiting on you for Ravi's signature. Either do it, or give a date you can do it by."
+      ],
+      "general": true,
+      "role": {
+       "label": "Founder or CEO",
+       "onTrack": "Doing the work only they can do, the hard strategy calls made and owned, leadership authoring their own commitments.",
+       "goingWrong": "Busy in the weeds on comfortable work; strategy perpetually exploring; misses framed as the team's.",
+       "protectAgainst": "You are carrying genuine ambiguity nobody else can resolve, and reading unresolved as avoidance misses that some calls honestly cannot be made yet.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": null
+    },
+    "eachPersonToday": [
+     {
+      "participantId": "b10af5ad-152f-45be-8eca-d17401849dc4",
+      "who": "Anna Kowalski",
+      "line": "Anna Kowalski has checked in, and is waiting on you for Ravi's signature."
+     },
+     {
+      "participantId": "0060d845-3e68-436c-8297-ea5e4ee4a73a",
+      "who": "Tomás Rivera",
+      "line": "Tomás Rivera has checked in, and nothing here needs you this week."
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-53434f42-f24e-4abb-ae89-90647a038903",
+      "says": "Anna Kowalski is waiting on you for Ravi's signature.",
+      "because": "It was first said on 2 October. About what has been tried, Anna Kowalski said, \"I've emailed Ravi about it already\". No time has been given for it."
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Anna Kowalski said the work was waiting on you for Ravi's signature."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "0060d845-3e68-436c-8297-ea5e4ee4a73a",
+      "who": "Tomás Rivera",
+      "says": "Tomás Rivera has answered 1 session, and the record holds no commitment from Tomás Rivera yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Tomás Rivera answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "97557300-2bb3-4dba-8e88-73b19dcd9c2f",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "b10af5ad-152f-45be-8eca-d17401849dc4",
+      "who": "Anna Kowalski",
+      "says": "Anna Kowalski has answered 1 session, and the record holds no commitment from Anna Kowalski yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Anna Kowalski named 1 thing the work was waiting on."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "53434f42-f24e-4abb-ae89-90647a038903",
+      "who": "Anna Kowalski",
+      "says": "Anna Kowalski is waiting on you for Ravi's signature.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "You hold it.",
+       "About what has been tried, Anna Kowalski said, \"I've emailed Ravi about it already\".",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "busyOrMoving": {
+     "eachPerson": [
+      {
+       "participantId": "b10af5ad-152f-45be-8eca-d17401849dc4",
+       "who": "Anna Kowalski",
+       "says": "Anna Kowalski also named 1 thing the work was waiting on."
+      }
+     ],
+     "cannotTellYou": "These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that."
+    },
+    "leadActions": [
+     {
+      "id": "waiting-on-the-lead-53434f42-f24e-4abb-ae89-90647a038903",
+      "says": "You need to get back to Anna Kowalski, who is waiting on you for Ravi's signature.",
+      "because": "It was first said on 2 October. About what has been tried, Anna Kowalski said, \"I've emailed Ravi about it already\". No time has been given for it."
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "97557300-2bb3-4dba-8e88-73b19dcd9c2f",
+      "who": "You",
+      "promised": [],
+      "othersWaitFor": [
+       "Anna Kowalski is waiting on you for Ravi's signature."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "53434f42-f24e-4abb-ae89-90647a038903",
+      "says": "Anna Kowalski has been waiting on you for Ravi's signature since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "53434f42-f24e-4abb-ae89-90647a038903",
+      "who": "Anna Kowalski",
+      "name": "Ravi's signature",
+      "state": "waiting",
+      "says": "Anna Kowalski is waiting on you for Ravi's signature.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Anna Kowalski said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": "Once it is cleared, the lease variant will be finalised."
+     }
+    ]
+   },
+   "participantReport": {
+    "id": "80bcb16f-b9bd-456a-aa64-69238b38dc33",
+    "groundId": "ba07d69a-97b6-4ec4-bb07-1e9f68802e89",
+    "sharedPicture": "All three people have answered. They do not have a shared priority, and each is working on something different.\n\nRavi Menon says that Q3 sales figures are strong. Ravi says that integrating with a new payment gateway is more complex than Ravi had anticipated.\n\nYou say the office move is on schedule. You are working to a deadline, because the landlord's offer for the lease expires on the 30th.\n\nTomás Rivera says that workstream three has slipped by two weeks. Tomás says the slip was caused by a supplier to that workstream.\n\nThe records describe progress on an office move and in two of three delivery workstreams. They also identify specific challenges, including a two-week delay in one workstream caused by a supplier, complexity with a new payment gateway integration, and data migration issues.",
+    "theOpening": "All three people have answered. They do not have a shared priority, and each is working on something different.",
+    "agreements": [
+     "Ravi Menon has returned after four weeks away and Ravi is catching up on the state of the work.",
+     "The office move is on schedule, but a lease variant is waiting for a signature.",
+     "One delivery workstream has slipped by two weeks due to a supplier, and a recovery plan is in place.",
+     "The integration of a new payment gateway and a data migration are more complex than first thought."
+    ],
+    "centralQuestion": "What is the process for getting urgent, time-sensitive items like the office lease signed by the 30th, while also allowing Ravi Menon the time needed for a broader review of the technical work?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Ravi Menon",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 6,
+       "documentsAttached": 0,
+       "who": "Ravi Menon"
+      },
+      {
+       "label": "Anna Kowalski",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 6,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Anna Kowalski"
+      },
+      {
+       "label": "Tomás Rivera",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 10,
+       "documentsAttached": 0,
+       "who": "Tomás Rivera"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "The immediate priority for Ravi Menon is not aligned with an urgent need from the team."
+     ],
+     "sessionCounts": {
+      "Anna Kowalski": 7,
+      "Tomás Rivera": 9,
+      "Ravi Menon": 7
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Anna Kowalski",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Anna Kowalski": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Anna Kowalski": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [
+      {
+       "label": "Anna Kowalski",
+       "evidence": "Your record notes that the 'landlord's offer' for the office lease has a deadline."
+      }
+     ],
+     "whatCouldBeChecked": {
+      "says": [
+       "The one thing described here lines up with something other than what the person said. It is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 1,
+      "checked": 1
+     },
+     "difficultyDisclosures": false
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [],
+     "dependencies": [
+      {
+       "on": "Ravi Menon",
+       "say": "You are waiting on Ravi Menon for \"Ravi's signature\", and it has been asked about once since. This is work Ravi owes you, not the other way round.",
+       "from": "You",
+       "what": "Ravi's signature",
+       "chased": true,
+       "status": "WAITING",
+       "onParticipantId": "97557300-2bb3-4dba-8e88-73b19dcd9c2f",
+       "sessionsWaiting": 0,
+       "fromParticipantId": "b10af5ad-152f-45be-8eca-d17401849dc4"
+      }
+     ],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "You say the office move is on schedule. You are working to a deadline, because the landlord's offer for the lease expires on the 30th.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "b10af5ad-152f-45be-8eca-d17401849dc4",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "releasedAt": "2026-10-02T00:53:58.145Z",
+    "createdAt": "2026-10-02T00:52:11.778Z",
+    "updatedAt": "2026-10-02T00:57:06.622Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They do not have a shared priority, and each is working on something different.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Ravi Menon says that Q3 sales figures are strong.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Ravi Menon says that integrating with a new payment gateway is more complex than Ravi had anticipated.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You say the office move is on schedule.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are working to a deadline, because the landlord's offer for the lease expires on the 30th.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Tomás Rivera says that workstream three has slipped by two weeks.",
+      "mark": "memory",
+      "figureIs": "from memory",
+      "markSays": "From memory only"
+     },
+     {
+      "text": "Tomás Rivera says the slip was caused by a supplier to that workstream.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The records describe progress on an office move and in two of three delivery workstreams.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They also identify specific challenges, including a two-week delay in one workstream caused by a supplier, complexity with a new payment gateway integration, and data migration issues.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "I'm working to the landlord's deadline on the office lease, and I am not sure that has landed with you yet while you are catching up on other things.",
+     "toAcknowledge": "The other view is not about your deadline, but about returning after a month away to find sales figures to review and a technical project that has become unexpectedly complex.",
+     "questionToCarry": "What do you need to see from me to be able to make a decision on the lease?"
+    },
+    "coaching": {
+     "aboutYou": [],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "Put Ravi's signature in writing to Ravi Menon, with the date you need it by."
+     ],
+     "general": true,
+     "role": null,
+     "whyNoRoleMap": "Your record looks like project management, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "032f95fe-02f3-4b1d-9afa-8251a956316f",
+      "type": "PROGRESS",
+      "text": "The office move is going well. We're on track with the schedule.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a96921a2-3375-4992-b611-74eeb4580ddb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "15444561-5361-4042-9f11-c2fd759602fa",
+      "type": "WORRY",
+      "text": "The office lease variant needs Ravi's signature to be finalised.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a96921a2-3375-4992-b611-74eeb4580ddb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "d3477467-de9b-454f-913d-473a6b0f729e",
+      "type": "INTENT",
+      "text": "I'm focused on project management.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a96921a2-3375-4992-b611-74eeb4580ddb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "ce7ac175-2314-447b-852e-35d5bfb754ee",
+      "type": "WORRY",
+      "text": "I've emailed Ravi about it already.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a96921a2-3375-4992-b611-74eeb4580ddb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "6273b4a2-97ca-4e30-8264-b08092d7f82c",
+      "type": "INTENT",
+      "text": "My understanding was to get the lease variant signed by Ravi.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a96921a2-3375-4992-b611-74eeb4580ddb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "3a0bd3b0-33f9-46ff-8180-5499dcf43255",
+      "type": "WORRY",
+      "text": "The landlord's offer for the lease expires on the 30th, so ideally before then.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a96921a2-3375-4992-b611-74eeb4580ddb",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [
+     {
+      "id": "53434f42-f24e-4abb-ae89-90647a038903",
+      "what": "Ravi's signature",
+      "couldTry": [
+       "Find out who owns this by name. Everything else needs that first.",
+       "Ask what can move without this, so the whole thing is not waiting on one approval."
+      ]
+     }
+    ],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\nYou reported that the office move is going well and are on track with the schedule. Your focus is on getting the office lease variant finalised, which needs a signature. You are concerned because the landlord's offer expires on the 30th, and you have already sent an email about it.",
+     "whatToCarry": "Your understanding was to get the lease variant signed, and the offer expires on the 30th."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "ba07d69a-97b6-4ec4-bb07-1e9f68802e89",
+    "renders": true,
+    "mode": "PRIVATE",
+    "family": "SNAPSHOT",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "divergence",
+     "checkInGrid"
+    ],
+    "title": "Where everything stands, today",
+    "scenario": "SNAPSHOT",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. They do not have a shared priority, and each is working on something different.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "b10af5ad-152f-45be-8eca-d17401849dc4",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T00:57:06.622Z",
+    "participants": [
+     {
+      "id": "0060d845-3e68-436c-8297-ea5e4ee4a73a",
+      "name": "Tomás Rivera",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "97557300-2bb3-4dba-8e88-73b19dcd9c2f",
+      "name": "Ravi Menon",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "b10af5ad-152f-45be-8eca-d17401849dc4",
+      "name": "Anna Kowalski",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [
+      {
+       "topic": "The immediate priority for Ravi Menon is not aligned with an urgent need from the team.",
+       "atStake": "If this holds, the deadline for the landlord's offer on the office lease could be missed while Ravi Menon conducts a broader review of other issues.",
+       "evidence": [
+        "Your record states the lease variant needs a signature as the landlord's offer 'expires on the 30th'.",
+        "Ravi Menon's record describes a plan to examine all workstreams before authorizing any next steps."
+       ],
+       "positions": [
+        {
+         "view": "Ravi Menon intends to conduct a full review of all work before approving any actions, with a particular focus on technical complexity and data migration issues.",
+         "participantLabel": "Ravi Menon",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Ravi Menon"
+        },
+        {
+         "view": "You need a signature for an office lease variant to meet a landlord's offer that expires on the 30th.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        }
+       ],
+       "settledBy": "Agree on a process that allows urgent, time-bound decisions to be made while the larger review is in progress.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "Ravi Menon has returned after four weeks away and Ravi is catching up on the state of the work.",
+      "The office move is on schedule, but a lease variant is waiting for a signature.",
+      "One delivery workstream has slipped by two weeks due to a supplier, and a recovery plan is in place.",
+      "The integration of a new payment gateway and a data migration are more complex than first thought."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Agree on a process that allows urgent, time-bound decisions to be made while the larger review is in progress. That is what settles the immediate priority for Ravi Menon is not aligned with an urgent need from the team.",
+     "settled": [
+      "Ravi Menon has returned after four weeks away and Ravi is catching up on the state of the work.",
+      "The office move is on schedule, but a lease variant is waiting for a signature.",
+      "One delivery workstream has slipped by two weeks due to a supplier, and a recovery plan is in place.",
+      "The integration of a new payment gateway and a data migration are more complex than first thought."
+     ],
+     "stillOpen": [
+      "The immediate priority for Ravi Menon is not aligned with an urgent need from the team."
+     ]
+    },
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "0060d845-3e68-436c-8297-ea5e4ee4a73a",
+       "name": "Tomás Rivera",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "97557300-2bb3-4dba-8e88-73b19dcd9c2f",
+       "name": "Ravi Menon",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "b10af5ad-152f-45be-8eca-d17401849dc4",
+       "name": "Anna Kowalski",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things. The immediate priority for Ravi Menon is not aligned with an urgent need from the team.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "1 waiting",
+      "sub": "Work is held up by Ravi's signature. Nothing is hard-blocked.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "Put Ravi's signature in writing to Ravi Menon, with the date you need it by."
+      ],
+      "general": true,
+      "role": null,
+      "whyNoRoleMap": "Your record looks like project management, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+     },
+     "eachPerson": null
+    },
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-53434f42-f24e-4abb-ae89-90647a038903",
+      "says": "You are waiting on Ravi Menon for Ravi's signature.",
+      "because": "It was first said on 2 October. About what has been tried, you said, \"I've emailed Ravi about it already\". No time has been given for it."
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you said the work was waiting on Ravi Menon for Ravi's signature."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "b10af5ad-152f-45be-8eca-d17401849dc4",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you named 1 thing the work was waiting on."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "53434f42-f24e-4abb-ae89-90647a038903",
+      "who": "You",
+      "says": "You are waiting on Ravi Menon for Ravi's signature.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "Ravi Menon holds it.",
+       "About what has been tried, you said, \"I've emailed Ravi about it already\".",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "97557300-2bb3-4dba-8e88-73b19dcd9c2f",
+      "who": "Ravi Menon",
+      "promised": [],
+      "othersWaitFor": [
+       "You are waiting on Ravi Menon for Ravi's signature."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "53434f42-f24e-4abb-ae89-90647a038903",
+      "says": "You have been waiting on Ravi Menon for Ravi's signature since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "53434f42-f24e-4abb-ae89-90647a038903",
+      "who": "You",
+      "name": "Ravi's signature",
+      "state": "waiting",
+      "says": "You are waiting on Ravi Menon for Ravi's signature.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what you said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": "Once it is cleared, the lease variant will be finalised."
+     }
+    ]
+   },
+   "participantSeen": "a",
+   "patterns": [
+    {
+     "code": "B11",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "A two-week delay was attributed entirely to an external supplier, with no mention of any contributing factors within the person's control.",
+     "participant": {
+      "email": "b.1790902166521@snapshot.test"
+     }
+    }
+   ],
+   "commitments": []
+  }
+ ]
+}

@@ -1,0 +1,1955 @@
+{
+ "scenario": {
+  "key": "openread",
+  "label": "What is it like to work here right now",
+  "scenario": "OPEN_READ",
+  "moment": "RESOLUTION",
+  "cadence": "ONE_TIME",
+  "timelineDays": 14,
+  "sessions": 1,
+  "brief": "No agenda. I want to know what it is actually like here at the moment, in people's own words, with nothing I have framed in advance. Whatever comes up is the point.",
+  "theDecision": "Two unrelated people raise the same thing unprompted - the Friday deploy freeze that was meant to be temporary in May and is still in place - from completely different angles. A right answer notices the convergence in an open read where nothing was asked about it.",
+  "people": [
+   {
+    "key": "lead",
+    "name": "Sofia Marchetti",
+    "isLead": true,
+    "remit": "Engineering director. Asked for the open read.",
+    "truth": "She introduced the Friday freeze in May after a bad release, as a two-week measure. She has forgotten it is still on.",
+    "manner": "Open, listens, does not steer."
+   },
+   {
+    "key": "a",
+    "name": "Kofi Boateng",
+    "remit": "Platform engineer.",
+    "truth": "What is on his mind is that everything lands on Thursday now, so Thursdays are chaos and Fridays are empty. He thinks it is a scheduling problem, not a freeze problem.",
+    "manner": "Chatty, tells it as a story about his week rather than as a complaint."
+   },
+   {
+    "key": "b",
+    "name": "Mei Ling Tan",
+    "remit": "Product engineer.",
+    "truth": "What is on her mind is that her small fixes wait four days to ship, so she batches them, so they are riskier when they go. She traces it to the freeze explicitly.",
+    "manner": "Analytical, connects cause and effect, gives an example."
+   }
+  ]
+ },
+ "groundId": "9f83aec9-87c2-4c1e-b8cd-13525d1af6cd",
+ "orgId": "d4badcf2-0bae-4ee5-8855-8cc7f3fedc89",
+ "emails": {
+  "lead": "lead.1790901656136@openread.test",
+  "a": "a.1790901656136@openread.test",
+  "b": "b.1790901656136@openread.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "lead",
+     "name": "Sofia Marchetti",
+     "isLead": true,
+     "checkInId": "aabaa932-2457-4fbd-9f45-e45acf3326eb",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "This check-in is for you to describe, in your own words, what it feels like to work here right now. What is this about, from where you sit?"
+      },
+      {
+       "from": "SOFIA MARCHETTI",
+       "text": "From my perspective, it's about making sure we're building great products. It's about empowering our teams to do their best work."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You are looking to build great products and empower your teams. What does \"great products\" mean for you in this context, specifically?",
+       "suggestedAnswers": [
+        "It means happy customers and good feedback.",
+        "I am still defining it for myself.",
+        "Not yet, but I'm working on it."
+       ]
+      },
+      {
+       "from": "SOFIA MARCHETTI",
+       "text": "Great products, to me, are those that truly solve user problems. They're intuitive, reliable, and delightful to use. And they're something the team is proud of."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You have given me four qualities there. What is specifically happening that makes you ask whether the product is meeting those, with an example?",
+       "suggestedAnswers": [
+        "Users are solving their problems with it.",
+        "Some users are still confused.",
+        "It is too early to know for sure.",
+        "We are still working through some issues."
+       ]
+      },
+      {
+       "from": "SOFIA MARCHETTI",
+       "text": "I wouldn't say I'm *asking* if we're meeting them. I'm always looking for ways to improve, to push us further. For example, ensuring our recent features are truly intuitive, not just functional."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You are pushing the team to make features truly intuitive rather than just functional. What made you look at that specifically, with an example from a recent feature?",
+       "suggestedAnswers": [
+        "I found a clear way to improve it.",
+        "The ... feature had user confusion.",
+        "I am still looking into that."
+       ]
+      },
+      {
+       "from": "SOFIA MARCHETTI",
+       "text": "It's more about general observation, keeping an eye on user feedback and team discussions. I don't have a specific example of a recent feature that sparked this thought, it's just a continuous goal."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What specifically is your role here, in making sure the team keeps improving?",
+       "suggestedAnswers": [
+        "I look for ways to help us improve.",
+        "I watch for areas we can develop.",
+        "I am still defining my specific role.",
+        "I see some areas where we are stuck."
+       ]
+      },
+      {
+       "from": "SOFIA MARCHETTI",
+       "text": "My role is about providing direction and removing roadblocks. It's about fostering a culture where continuous improvement is natural, and where teams feel supported in their efforts."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You are providing direction and removing roadblocks, fostering a culture where continuous improvement is natural and teams feel supported. That's a lot of things. What is most on your mind at the moment, work-wise?",
+       "suggestedAnswers": [
+        "Things are moving forward.",
+        "We are stuck on the next step.",
+        "Still figuring out the best way.",
+        "The team needs more support with ..."
+       ]
+      },
+      {
+       "from": "SOFIA MARCHETTI",
+       "text": "Right now, I'm really focused on ensuring our development processes are efficient and effective. I want to make sure we're getting the most out of our talent and resources."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What, if anything, is going unexpectedly well right now?",
+       "suggestedAnswers": [
+        "The new process is working better than expected.",
+        "Team collaboration is surprisingly smooth.",
+        "Nothing is going unexpectedly well right now.",
+        "Too early to tell."
+       ]
+      },
+      {
+       "from": "SOFIA MARCHETTI",
+       "text": "Our collaboration across different engineering teams has been particularly strong lately. It's great to see everyone pulling in the same direction."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Who, in your part of the world, seems to be thriving at the moment?",
+       "suggestedAnswers": [
+        "I see a few teams doing really well.",
+        "Things feel a bit slow for everyone.",
+        "I'm not sure yet, honestly.",
+        "Some groups are making good progress."
+       ]
+      },
+      {
+       "from": "SOFIA MARCHETTI",
+       "text": "I've noticed a few of our newer tech leads really stepping up. They're embracing their responsibilities and making a significant impact."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Who, specifically, has been thriving?",
+       "suggestedAnswers": [
+        "I see ... really thriving.",
+        "I haven't noticed anyone specific.",
+        "I'm not sure who is thriving yet.",
+        "The newer tech leads are thriving."
+       ]
+      },
+      {
+       "from": "SOFIA MARCHETTI",
+       "text": "I don't have specific names that come to mind right now. It's more a general sense from observing the teams."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You don't have specific names at hand, but you have a general sense of newer tech leads thriving. What will you do to get specific names for the record?",
+       "suggestedAnswers": [
+        "I will ask team leads directly.",
+        "I need more time to find names.",
+        "I don't know yet how to do this."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "a",
+     "name": "Kofi Boateng",
+     "isLead": false,
+     "checkInId": "65195916-3bd2-41e3-9ad0-c3d593e916b7",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Sofia wants to understand what it's actually like to work here right now. What's most on your mind at the moment, work-wise?"
+      },
+      {
+       "from": "KOFI BOATENG",
+       "text": "Well, it's a bit of a strange rhythm we've got into. Thursdays are just... a lot."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Thursdays are a lot. What makes Thursdays stand out?",
+       "suggestedAnswers": [
+        "Thursdays are finally looking good.",
+        "Thursdays are still feeling like a lot.",
+        "I don't know what to say yet."
+       ]
+      },
+      {
+       "from": "KOFI BOATENG",
+       "text": "Everything just seems to land then. Like, all the releases, all the big tasks, they all converge on Thursday."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That is a lot to have land at once. Who decided that rhythm?",
+       "suggestedAnswers": [
+        "I'm asking around about that.",
+        "It's harder to find than I thought.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "KOFI BOATENG",
+       "text": "I don't actually know who decided it. It just sort of evolved, I think."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That it just sort of evolved says a lot about how things run. You mentioned everything converges on Thursday. Who, in your part of the world, seems to be thriving at the moment?",
+       "suggestedAnswers": [
+        "My team seems to be doing well.",
+        "Many people are struggling right now.",
+        "I don't know who is thriving yet."
+       ]
+      },
+      {
+       "from": "KOFI BOATENG",
+       "text": "Hmm, thriving... I'm not sure anyone's really *thriving* on Thursdays, to be honest. It's more about survival."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That really puts the situation in perspective. Is there anything you're waiting on, or anything blocked by someone else, that would make your Thursdays less about survival and more manageable?",
+       "suggestedAnswers": [
+        "I'm still waiting on ... to proceed.",
+        "The blocker with ... got resolved this week.",
+        "Not yet, but I'm checking on a few things."
+       ]
+      },
+      {
+       "from": "KOFI BOATENG",
+       "text": "Not really blocked, no. It's more about when things are scheduled to happen."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "So it's less about a specific blocker and more about the schedule itself. You're saying the cadence of work is the core challenge. What would have to change in that scheduling for Thursdays to feel less like survival?",
+       "suggestedAnswers": [
+        "Moving some tasks would help a lot.",
+        "Thursdays are always too packed for me.",
+        "I need to think about specific changes.",
+        "Spreading out my meetings would help."
+       ]
+      },
+      {
+       "from": "KOFI BOATENG",
+       "text": "If we could just spread things out a bit more evenly across the week, you know? Not cram everything into one day."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. If you could change one thing about how this works here - one thing outside your direct control - what would it be?",
+       "suggestedAnswers": [
+        "I would make communication easier for everyone.",
+        "I haven't thought about it yet.",
+        "It is hard to choose just one thing.",
+        "I would give us more time to get work done."
+       ]
+      },
+      {
+       "from": "KOFI BOATENG",
+       "text": "Just the scheduling of when things need to go out. It's not a freeze problem, it's a schedule problem."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That distinction between a freeze problem and a schedule problem is important. It sounds like you're identifying a systemic issue rather than a delivery one. Your work is primarily engineering. Is that right?",
+       "suggestedAnswers": [
+        "Yes, the schedule is sorted.",
+        "No, it's still a problem.",
+        "Not yet, I'm still checking."
+       ]
+      },
+      {
+       "from": "KOFI BOATENG",
+       "text": "Yes, that's right. I'm a platform engineer."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "As a platform engineer, you see where things really slow down. What tasks or releases, specifically, are bottlenecking on Thursdays that could be spread out?",
+       "suggestedAnswers": [
+        "I'm spreading out some tasks.",
+        "Tasks are still bottlenecked on Thursdays.",
+        "Still looking into it."
+       ]
+      },
+      {
+       "from": "KOFI BOATENG",
+       "text": "It's not really specific tasks, it's just the sheer volume of deployments and final checks that all get pushed to Thursday."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What are the tasks and releases, by name, that figure into that volume?",
+       "suggestedAnswers": [
+        "I started listing the tasks and releases.",
+        "Still hard to name all tasks and releases.",
+        "I don't have all the names yet."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "b",
+     "name": "Mei Ling Tan",
+     "isLead": false,
+     "checkInId": "a3c7d93c-e3d9-45ac-abfb-73b963c1e0dc",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "This is about what it's like to work here right now. If somebody asked you over coffee, what would you say is happening?"
+      },
+      {
+       "from": "MEI LING TAN",
+       "text": "Hmm. Well, I'd say things are a bit slow right now, mainly because of the freeze."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What kind of freeze is it?",
+       "suggestedAnswers": [
+        "The freeze is holding us back.",
+        "I don't know yet.",
+        "It is starting to thaw.",
+        "This freeze is hard to break."
+       ]
+      },
+      {
+       "from": "MEI LING TAN",
+       "text": "It's a code freeze. No new features, just bug fixes and essential maintenance."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That kind of freeze stops a lot of movement. What specifically is happening because of it?",
+       "suggestedAnswers": [
+        "I am fixing bugs and doing maintenance.",
+        "New features are on hold.",
+        "I don't know yet, I'm checking."
+       ]
+      },
+      {
+       "from": "MEI LING TAN",
+       "text": "For me, it means my small fixes are waiting. I used to ship them quickly. Now, I batch them up for the end of the freeze."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "batch them up means they are not going out as fast as they used to. Even a quick check-in helps - what do you see as the point of all this?",
+       "suggestedAnswers": [
+        "I understand the bigger picture now.",
+        "I'm still figuring that out.",
+        "It feels like a waste of time."
+       ]
+      },
+      {
+       "from": "MEI LING TAN",
+       "text": "The point of the freeze? I guess it's to stabilize things. But for me, it just means I'm holding onto changes that could go out sooner. Then when they do go out, they're bigger and riskier."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Holding onto changes that could go out sooner means you are doing more work to manage the freeze than to ship. What part of this is yours to do?",
+       "suggestedAnswers": [
+        "My work on this is moving along.",
+        "My part is blocked right now.",
+        "I am not sure yet."
+       ]
+      },
+      {
+       "from": "MEI LING TAN",
+       "text": "My part is dealing with the impact of the freeze on my work. I have to manage the fact that my small fixes wait four days to ship, and because of that, I batch them."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You are batching those fixes, and that makes them bigger and riskier. Who, in your part of the world, seems to be thriving at the moment?",
+       "suggestedAnswers": [
+        "Some teams are really thriving.",
+        "It's tough for most people.",
+        "I'm not sure, honestly."
+       ]
+      },
+      {
+       "from": "MEI LING TAN",
+       "text": "I don't really know. I haven't noticed anyone in particular thriving because of this."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What would have to be true for this to feel like it went well?",
+       "suggestedAnswers": [
+        "It went well, we made progress.",
+        "We are still stuck on this.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "MEI LING TAN",
+       "text": "If the freeze ends and the system is significantly more stable, then maybe it will have been worth it."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You think it went out. It sounds like most of your work is product. Is that right?",
+       "suggestedAnswers": [
+        "Yes, it's looking much better.",
+        "No, still dealing with problems.",
+        "Too early to tell, honestly."
+       ]
+      },
+      {
+       "from": "MEI LING TAN",
+       "text": "Yes, I'm a product engineer."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That stability would be a concrete outcome. Is that right?",
+       "suggestedAnswers": [
+        "Yes, it's all correct.",
+        "Looks good to me.",
+        "No, that's not quite right.",
+        "I need to check it first."
+       ]
+      },
+      {
+       "from": "MEI LING TAN",
+       "text": "Yes, a more stable system would be a concrete outcome."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You still have not named what you will do about any of this.\n\nWhat else should I know?",
+       "suggestedAnswers": [
+        "We made good progress.",
+        "It's still blocked.",
+        "Nothing new right now."
+       ]
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "ea2caf6b-121f-4f8e-bc07-1fc82fa8959c",
+    "groundId": "9f83aec9-87c2-4c1e-b8cd-13525d1af6cd",
+    "sharedPicture": "All three people have answered. People disagree on 1: There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.\n\nYou believe that collaboration between engineering teams is strong. Your goal is to build great products by empowering the teams.\n\nKofi Boateng is a platform engineer. Kofi says that all the major releases and tasks are crammed into Thursdays, and Kofi would prefer to see the work spread more evenly across the week.\n\nMei Ling Tan is a product engineer. Mei says that work is slow at the moment because of a development freeze, and Mei hopes the freeze will lead to a more stable system.\n\nAll accounts describe aspects of the current engineering process, but from different levels of abstraction.",
+    "theOpening": "All three people have answered. People disagree on 1: There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.",
+    "agreements": [],
+    "divergences": [
+     {
+      "topic": "There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.",
+      "atStake": "If this holds, leadership may believe the process is working well while the engineering team experiences recurring friction, which undermines the goal of having an empowered and efficient team.",
+      "evidence": [
+       "Your record states that collaboration across engineering teams has been particularly strong.",
+       "Kofi Boateng's record describes Thursdays as a day when the sheer volume of deployments makes it hard to thrive.",
+       "Mei Ling Tan's record describes small fixes waiting four days to ship because of a freeze, making them bigger and riskier when they do go out."
+      ],
+      "positions": [
+       {
+        "view": "You describe collaboration between teams as strong and you are focused on making the development process efficient.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Kofi Boateng describes the process as concentrating all deployments and final checks into Thursdays, making it a difficult day of 'survival'.",
+        "participantLabel": "Kofi Boateng",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Mei Ling Tan describes a deployment freeze that delays small fixes for days, forcing them to be batched into larger, riskier releases.",
+        "participantLabel": "Mei Ling Tan",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "settledBy": "Agree on what a 'good' release day looks like, and what the right trade-off is between shipping speed and system stability.",
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     }
+    ],
+    "centralQuestion": "What is one specific change to the release process that would make it feel more effective to the engineers, while still supporting the goal of building a reliable product?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Sofia Marchetti",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 8,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Sofia Marchetti"
+      },
+      {
+       "label": "Kofi Boateng",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 7,
+       "documentsAttached": 0,
+       "who": "Kofi Boateng"
+      },
+      {
+       "label": "Mei Ling Tan",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 5,
+       "documentsAttached": 0,
+       "who": "Mei Ling Tan"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "concernFlags": [],
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day."
+     ],
+     "sessionCounts": {
+      "Kofi Boateng": 9,
+      "Mei Ling Tan": 9,
+      "Sofia Marchetti": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Sofia Marchetti",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Most of this can be checked (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Sofia Marchetti": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Sofia Marchetti": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [],
+     "whatCouldBeChecked": {
+      "says": [
+       "The one thing described here lines up with something other than what the person said. It is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 1,
+      "checked": 1
+     },
+     "difficultyDisclosures": false
+    },
+    "inferences": [],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": null,
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "You believe collaboration is strong, but the engineers on the receiving end of the development process describe a system that slows the engineers down and concentrates risk into one day of the week.",
+     "whatToDo": [
+      {
+       "move": "Speak with Kofi Boateng and Mei Ling Tan together about why deployments are concentrated on Thursdays.",
+       "because": "Their accounts of the development process contradict your belief that collaboration is strong.",
+       "startWith": "Kofi Boateng"
+      },
+      {
+       "move": "Ask Mei Ling Tan what the criteria for the development freeze are.",
+       "because": "Mei Ling Tan is currently blocked by the freeze and can explain its direct impact on product engineering work.",
+       "startWith": "Mei Ling Tan"
+      },
+      {
+       "move": "Ask Kofi Boateng what a better distribution of work across the week would look like.",
+       "because": "Kofi Boateng has described the current process as a 'survival' day and knows what would need to change.",
+       "startWith": "Kofi Boateng"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You believe that collaboration between engineering teams is strong and that the goal is to build great products by empowering the teams.",
+       "soWhat": "This belief is not shared by the engineers, who describe a process that hinders their work.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Kofi Boateng says that all the major releases and tasks are crammed into Thursdays, making it a difficult day of 'survival'.",
+       "soWhat": "This concentration of work on one day is a source of stress and a potential single point of failure in the weekly schedule.",
+       "fieldId": "Kofi Boateng"
+      },
+      {
+       "says": "Mei Ling Tan says that a development freeze is delaying small fixes for days, forcing them to be batched into larger, riskier releases.",
+       "soWhat": "A measure intended to create stability is instead increasing the risk of each release and slowing down work.",
+       "fieldId": "Mei Ling Tan"
+      }
+     ],
+     "whatWeFailedToAsk": [],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record does not say who created the Thursday release schedule or the development freeze, or what problem they were meant to solve.",
+       "about": "The history of the development process.",
+       "toKnow": "A review of how the development and release process is managed."
+      }
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Kofi Boateng is down as \"platform engineer\", and nothing on record says what that role covers. Since then, the record holds 1 session, 7 lines of what was said, 1 with a name, a number or a date in it and none backed by a document.",
+       "who": "Kofi Boateng",
+       "participantId": "62da3065-2ae0-4802-ba45-eae9b3403de6"
+      },
+      {
+       "say": "Mei Ling Tan is down as \"product engineer\", and nothing on record says what that role covers. Since then, the record holds 1 session, 5 lines of what was said, 2 with a name, a number or a date in them and none backed by a document.",
+       "who": "Mei Ling Tan",
+       "participantId": "8c07ba4f-bdec-4ee7-b833-62cbc53d7831"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [],
+     "commitments": [],
+     "dependencies": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself.",
+      "Nobody has said in a check-in what they would do next. Ask for one thing, with a date, from each person."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "You believe that collaboration between engineering teams is strong. Your goal is to build great products by empowering the teams.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "06acc2f7-634b-4dad-8efe-9dae0040a3c8",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Kofi Boateng is a platform engineer. Kofi says that all the major releases and tasks are crammed into Thursdays, and Kofi would prefer to see the work spread more evenly across the week.",
+      "hasGap": false,
+      "headline": "Kofi Boateng says all releases and big tasks are scheduled for the same day.",
+      "participantId": "62da3065-2ae0-4802-ba45-eae9b3403de6",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Mei Ling Tan is a product engineer. Mei says that work is slow at the moment because of a development freeze, and Mei hopes the freeze will lead to a more stable system.",
+      "hasGap": false,
+      "headline": "Mei Ling Tan says a development freeze is currently slowing down the work.",
+      "participantId": "8c07ba4f-bdec-4ee7-b833-62cbc53d7831",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": "2026-10-02T00:47:51.876Z",
+    "createdAt": "2026-10-02T00:45:14.919Z",
+    "updatedAt": "2026-10-02T00:49:25.044Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "People disagree on 1: There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You believe that collaboration between engineering teams is strong.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Your goal is to build great products by empowering the teams.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Kofi Boateng is a platform engineer.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Kofi Boateng says that all the major releases and tasks are crammed into Thursdays, and Kofi would prefer to see the work spread more evenly across the week.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Mei Ling Tan is a product engineer.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Mei Ling Tan says that work is slow at the moment because of a development freeze, and Mei hopes the freeze will lead to a more stable system.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "All accounts describe aspects of the current engineering process, but from different levels of abstraction.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "I have been looking at our process in terms of overall efficiency, and it sounds like I have missed how that is creating a recurring, weekly bottleneck.",
+     "toAcknowledge": "The other view is that high-level improvements are not being felt on the ground, where the practical experience is that all major work converges on a single day of the week.",
+     "questionToCarry": "What would it take to make our weekly rhythm feel more sustainable?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "You are in session 1 of management work, and nothing repeats yet; this is normal at this stage, but the value of later sessions will be determined by what you can point to, which shows that you own the work rather than just control it.",
+     "beforeNextTime": [
+      "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+     ],
+     "general": true,
+     "role": {
+      "label": "Management",
+      "onTrack": "People author their own commitments, slips get noticed and raised, hard conversations happen on time.",
+      "goingWrong": "An account full of work the team should own (control), or commitments that slip with no follow-up (abdication).",
+      "protectAgainst": "You are describing management as a competency distinct from craft, where a strong individual contributor becoming a lead is seen as developing a new skill, rather than regressing in their previous one.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "36ca95ec-941a-40f6-8178-309e448288d6",
+      "type": "INTENT",
+      "text": "From my perspective, it's about making sure we're building great products. It's about empowering our teams to do their best work.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "aabaa932-2457-4fbd-9f45-e45acf3326eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "eb22464c-5696-4a9b-9842-2fc8b222e68c",
+      "type": "SUCCESS_DEFINITION",
+      "text": "Great products, to me, are those that truly solve user problems. They're intuitive, reliable, and delightful to use. And they're something the team is proud of.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "aabaa932-2457-4fbd-9f45-e45acf3326eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "4a21edd1-ef5d-4db9-b3d5-4704e574d6c0",
+      "type": "INTENT",
+      "text": "I'm always looking for ways to improve, to push us further.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "aabaa932-2457-4fbd-9f45-e45acf3326eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "420f66c5-a6aa-417a-bbc6-bab2fe489ebe",
+      "type": "SUCCESS_DEFINITION",
+      "text": "ensuring our recent features are truly intuitive, not just functional.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "aabaa932-2457-4fbd-9f45-e45acf3326eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "1d8f6d34-1031-43be-9d59-fe79bb757ebe",
+      "type": "INTENT",
+      "text": "My role is about providing direction and removing roadblocks. It's about fostering a culture where continuous improvement is natural, and where teams feel supported in their efforts.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "aabaa932-2457-4fbd-9f45-e45acf3326eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b0518b80-ebf8-48d7-843e-6f846e1bf535",
+      "type": "INTENT",
+      "text": "Right now, I'm really focused on ensuring our development processes are efficient and effective. I want to make sure we're getting the most out of our talent and resources.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "aabaa932-2457-4fbd-9f45-e45acf3326eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "aa1c0b4a-20b4-48d3-b4cd-8378c0070e19",
+      "type": "PROGRESS",
+      "text": "Our collaboration across different engineering teams has been particularly strong lately.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "aabaa932-2457-4fbd-9f45-e45acf3326eb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "4b7bd47a-776b-4b0f-8e42-8a324345bdcb",
+      "type": "PROGRESS",
+      "text": "I've noticed a few of our newer tech leads really stepping up. They're embracing their responsibilities and making a significant impact.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "aabaa932-2457-4fbd-9f45-e45acf3326eb",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\nYou described your role as providing direction, removing roadblocks, and fostering a culture of continuous improvement so your teams can do their best work. You defined great products as those that solve user problems and are intuitive, reliable, and delightful to use. You are focused on making sure your development processes are efficient, and you noted that collaboration across engineering teams has been strong and that newer tech leads are stepping up.",
+     "whatToCarry": "You are looking at your recent features and asking how to ensure they are 'truly intuitive, not just functional.'"
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    },
+    "forTheLead": [
+     {
+      "id": "difference-1",
+      "decide": "Agree on what a 'good' release day looks like, and what the right trade-off is between shipping speed and system stability.",
+      "why": "There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day. You, Kofi Boateng and Mei Ling Tan said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this holds, leadership may believe the process is working well while the engineering team experiences recurring friction, which undermines the goal of having an empowered and efficient team."
+     }
+    ]
+   },
+   "board": {
+    "groundId": "9f83aec9-87c2-4c1e-b8cd-13525d1af6cd",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "SENSING",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "divergence",
+     "checkInGrid"
+    ],
+    "title": "What is it like to work here right now",
+    "scenario": "OPEN_READ",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. People disagree on 1: There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "You believe collaboration is strong, but the engineers on the receiving end of the development process describe a system that slows the engineers down and concentrates risk into one day of the week.",
+     "whatToDo": [
+      {
+       "move": "Speak with Kofi Boateng and Mei Ling Tan together about why deployments are concentrated on Thursdays.",
+       "because": "Their accounts of the development process contradict your belief that collaboration is strong.",
+       "startWith": "Kofi Boateng"
+      },
+      {
+       "move": "Ask Mei Ling Tan what the criteria for the development freeze are.",
+       "because": "Mei Ling Tan is currently blocked by the freeze and can explain its direct impact on product engineering work.",
+       "startWith": "Mei Ling Tan"
+      },
+      {
+       "move": "Ask Kofi Boateng what a better distribution of work across the week would look like.",
+       "because": "Kofi Boateng has described the current process as a 'survival' day and knows what would need to change.",
+       "startWith": "Kofi Boateng"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You believe that collaboration between engineering teams is strong and that the goal is to build great products by empowering the teams.",
+       "soWhat": "This belief is not shared by the engineers, who describe a process that hinders their work.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Kofi Boateng says that all the major releases and tasks are crammed into Thursdays, making it a difficult day of 'survival'.",
+       "soWhat": "This concentration of work on one day is a source of stress and a potential single point of failure in the weekly schedule.",
+       "fieldId": "Kofi Boateng"
+      },
+      {
+       "says": "Mei Ling Tan says that a development freeze is delaying small fixes for days, forcing them to be batched into larger, riskier releases.",
+       "soWhat": "A measure intended to create stability is instead increasing the risk of each release and slowing down work.",
+       "fieldId": "Mei Ling Tan"
+      }
+     ],
+     "whatWeFailedToAsk": [],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record does not say who created the Thursday release schedule or the development freeze, or what problem they were meant to solve.",
+       "about": "The history of the development process.",
+       "toKnow": "A review of how the development and release process is managed."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Kofi Boateng is down as \"platform engineer\", and nothing on record says what that role covers. Since then, the record holds 1 session, 7 lines of what was said, 1 with a name, a number or a date in it and none backed by a document.",
+       "who": "Kofi Boateng",
+       "participantId": "62da3065-2ae0-4802-ba45-eae9b3403de6"
+      },
+      {
+       "say": "Mei Ling Tan is down as \"product engineer\", and nothing on record says what that role covers. Since then, the record holds 1 session, 5 lines of what was said, 2 with a name, a number or a date in them and none backed by a document.",
+       "who": "Mei Ling Tan",
+       "participantId": "8c07ba4f-bdec-4ee7-b833-62cbc53d7831"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [],
+     "commitments": [],
+     "dependencies": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself.",
+      "Nobody has said in a check-in what they would do next. Ask for one thing, with a date, from each person."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "06acc2f7-634b-4dad-8efe-9dae0040a3c8",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T00:49:25.044Z",
+    "participants": [
+     {
+      "id": "62da3065-2ae0-4802-ba45-eae9b3403de6",
+      "name": "Kofi Boateng",
+      "role": "Platform engineer.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "06acc2f7-634b-4dad-8efe-9dae0040a3c8",
+      "name": "Sofia Marchetti",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "8c07ba4f-bdec-4ee7-b833-62cbc53d7831",
+      "name": "Mei Ling Tan",
+      "role": "Product engineer.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [
+      {
+       "topic": "There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.",
+       "atStake": "If this holds, leadership may believe the process is working well while the engineering team experiences recurring friction, which undermines the goal of having an empowered and efficient team.",
+       "evidence": [
+        "Your record states that collaboration across engineering teams has been particularly strong.",
+        "Kofi Boateng's record describes Thursdays as a day when the sheer volume of deployments makes it hard to thrive.",
+        "Mei Ling Tan's record describes small fixes waiting four days to ship because of a freeze, making them bigger and riskier when they do go out."
+       ],
+       "positions": [
+        {
+         "view": "You describe collaboration between teams as strong and you are focused on making the development process efficient.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Kofi Boateng describes the process as concentrating all deployments and final checks into Thursdays, making it a difficult day of 'survival'.",
+         "participantLabel": "Kofi Boateng",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Kofi Boateng"
+        },
+        {
+         "view": "Mei Ling Tan describes a deployment freeze that delays small fixes for days, forcing them to be batched into larger, riskier releases.",
+         "participantLabel": "Mei Ling Tan",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Mei Ling Tan"
+        }
+       ],
+       "settledBy": "Agree on what a 'good' release day looks like, and what the right trade-off is between shipping speed and system stability.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [],
+     "agreementMarks": [],
+     "centralQuestion": "Agree on what a 'good' release day looks like, and what the right trade-off is between shipping speed and system stability. That is what settles there is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.",
+     "settled": [],
+     "stillOpen": [
+      "There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day."
+     ]
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "62da3065-2ae0-4802-ba45-eae9b3403de6",
+      "who": "Kofi Boateng",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Kofi Boateng has checked in.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Kofi Boateng is a platform engineer. Kofi says that all the major releases and tasks are crammed into Thursdays, and Kofi would prefer to see the work spread more evenly across the week.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     },
+     {
+      "participantId": "8c07ba4f-bdec-4ee7-b833-62cbc53d7831",
+      "who": "Mei Ling Tan",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Mei Ling Tan has checked in.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Mei Ling Tan is a product engineer. Mei says that work is slow at the moment because of a development freeze, and Mei hopes the freeze will lead to a more stable system.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "62da3065-2ae0-4802-ba45-eae9b3403de6",
+       "name": "Kofi Boateng",
+       "role": "Platform engineer.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "06acc2f7-634b-4dad-8efe-9dae0040a3c8",
+       "name": "Sofia Marchetti",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "8c07ba4f-bdec-4ee7-b833-62cbc53d7831",
+       "name": "Mei Ling Tan",
+       "role": "Product engineer.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things. There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "7 worries",
+      "sub": "Kofi Boateng said, \"Thursdays are just...\" There are 6 more worries on record, and nobody is waiting on anybody.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "You are in session 1 of management work, and nothing repeats yet; this is normal at this stage, but the value of later sessions will be determined by what you can point to, which shows that you own the work rather than just control it.",
+      "beforeNextTime": [
+       "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+      ],
+      "general": true,
+      "role": {
+       "label": "Management",
+       "onTrack": "People author their own commitments, slips get noticed and raised, hard conversations happen on time.",
+       "goingWrong": "An account full of work the team should own (control), or commitments that slip with no follow-up (abdication).",
+       "protectAgainst": "You are describing management as a competency distinct from craft, where a strong individual contributor becoming a lead is seen as developing a new skill, rather than regressing in their previous one.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": null
+    },
+    "eachPersonToday": [
+     {
+      "participantId": "62da3065-2ae0-4802-ba45-eae9b3403de6",
+      "who": "Kofi Boateng",
+      "line": "Kofi Boateng has checked in."
+     },
+     {
+      "participantId": "8c07ba4f-bdec-4ee7-b833-62cbc53d7831",
+      "who": "Mei Ling Tan",
+      "line": "Mei Ling Tan has checked in."
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "62da3065-2ae0-4802-ba45-eae9b3403de6",
+      "who": "Kofi Boateng",
+      "says": "Kofi Boateng has answered 1 session, and the record holds no commitment from Kofi Boateng yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Kofi Boateng answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "06acc2f7-634b-4dad-8efe-9dae0040a3c8",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "8c07ba4f-bdec-4ee7-b833-62cbc53d7831",
+      "who": "Mei Ling Tan",
+      "says": "Mei Ling Tan has answered 1 session, and the record holds no commitment from Mei Ling Tan yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Mei Ling Tan answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     }
+    ]
+   },
+   "participantReport": {
+    "id": "ea2caf6b-121f-4f8e-bc07-1fc82fa8959c",
+    "groundId": "9f83aec9-87c2-4c1e-b8cd-13525d1af6cd",
+    "sharedPicture": "All three people have answered. People disagree on 1: There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.\n\nSofia Marchetti believes that collaboration between engineering teams is strong. Sofia's goal is to build great products by empowering the teams.\n\nYou are a platform engineer. You say that all the major releases and tasks are crammed into Thursdays, and you would prefer to see the work spread more evenly across the week.\n\nMei Ling Tan is a product engineer. Mei says that work is slow at the moment because of a development freeze, and Mei hopes the freeze will lead to a more stable system.\n\nAll accounts describe aspects of the current engineering process, but from different levels of abstraction.",
+    "theOpening": "All three people have answered. People disagree on 1: There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.",
+    "agreements": [],
+    "centralQuestion": "What is one specific change to the release process that would make it feel more effective to the engineers, while still supporting the goal of building a reliable product?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Sofia Marchetti",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 8,
+       "documentsAttached": 0,
+       "who": "Sofia Marchetti"
+      },
+      {
+       "label": "Kofi Boateng",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 7,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Kofi Boateng"
+      },
+      {
+       "label": "Mei Ling Tan",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 5,
+       "documentsAttached": 0,
+       "who": "Mei Ling Tan"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day."
+     ],
+     "sessionCounts": {
+      "Kofi Boateng": 9,
+      "Mei Ling Tan": 9,
+      "Sofia Marchetti": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Kofi Boateng",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Kofi Boateng": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Kofi Boateng": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [],
+     "whatCouldBeChecked": {
+      "says": [
+       "The one thing described here lines up with something other than what the person said. It is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 1,
+      "checked": 1
+     },
+     "difficultyDisclosures": false
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [],
+     "dependencies": [],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "You are a platform engineer. You say that all the major releases and tasks are crammed into Thursdays, and you would prefer to see the work spread more evenly across the week.",
+      "hasGap": false,
+      "headline": "You say all releases and big tasks are scheduled for the same day.",
+      "participantId": "62da3065-2ae0-4802-ba45-eae9b3403de6",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "releasedAt": "2026-10-02T00:47:51.876Z",
+    "createdAt": "2026-10-02T00:45:14.919Z",
+    "updatedAt": "2026-10-02T00:49:25.044Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "People disagree on 1: There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Sofia Marchetti believes that collaboration between engineering teams is strong.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Sofia Marchetti's goal is to build great products by empowering the teams.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are a platform engineer.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You say that all the major releases and tasks are crammed into Thursdays, and you would prefer to see the work spread more evenly across the week.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Mei Ling Tan is a product engineer.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Mei Ling Tan says that work is slow at the moment because of a development freeze, and Mei hopes the freeze will lead to a more stable system.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "All accounts describe aspects of the current engineering process, but from different levels of abstraction.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "My experience of the week is that it builds to a difficult Thursday, and I get the sense that pressure is not visible from every perspective.",
+     "toAcknowledge": "The other view is that collaboration is strong and teams are being empowered. Even though that does not describe your own experience of the week, it is a real part of how the work is seen from a different level.",
+     "questionToCarry": "What would need to be true for us to spread releases and other big tasks more evenly across the week?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+     ],
+     "general": true,
+     "role": null,
+     "whyNoRoleMap": "Your record looks like engineering, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "b672a060-8bab-40e2-bf00-4a08d6d22c23",
+      "type": "INTENT",
+      "text": "I'm a platform engineer.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "65195916-3bd2-41e3-9ad0-c3d593e916b7",
+      "sessionNumber": 1
+     },
+     {
+      "id": "233532f9-1396-4b72-9662-bd1e973b2bda",
+      "type": "TENSION",
+      "text": "Thursdays are just... a lot.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "65195916-3bd2-41e3-9ad0-c3d593e916b7",
+      "sessionNumber": 1
+     },
+     {
+      "id": "fac878c1-ba1a-49ca-a61b-a638404f80ff",
+      "type": "TENSION",
+      "text": "all the releases, all the big tasks, they all converge on Thursday.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "65195916-3bd2-41e3-9ad0-c3d593e916b7",
+      "sessionNumber": 1
+     },
+     {
+      "id": "27a061e9-5d7a-465e-b522-013df63100a2",
+      "type": "TENSION",
+      "text": "it's just the sheer volume of deployments and final checks that all get pushed to Thursday.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "65195916-3bd2-41e3-9ad0-c3d593e916b7",
+      "sessionNumber": 1
+     },
+     {
+      "id": "405bade8-2d01-4bb8-affc-8ea38b3764bd",
+      "type": "TENSION",
+      "text": "I'm not sure anyone's really *thriving* on Thursdays, to be honest. It's more about survival.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "65195916-3bd2-41e3-9ad0-c3d593e916b7",
+      "sessionNumber": 1
+     },
+     {
+      "id": "95f0985e-2ed0-470a-ad4f-dc85c029b346",
+      "type": "SUCCESS_DEFINITION",
+      "text": "If we could just spread things out a bit more evenly across the week... Not cram everything into one day.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "65195916-3bd2-41e3-9ad0-c3d593e916b7",
+      "sessionNumber": 1
+     },
+     {
+      "id": "25bb99d7-7a45-4d66-8eb7-85a7cc10a6c6",
+      "type": "ASK",
+      "text": "Just the scheduling of when things need to go out.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "65195916-3bd2-41e3-9ad0-c3d593e916b7",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared. You said that for you as a platform engineer, Thursdays are 'just... a lot' because releases and big tasks converge on that day. You pointed to the 'sheer volume of deployments and final checks' and said that on Thursdays, it feels less like thriving and 'more about survival'.",
+     "whatToCarry": "The one thing you would change is the scheduling of when things need to go out."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "9f83aec9-87c2-4c1e-b8cd-13525d1af6cd",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "SENSING",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "divergence",
+     "checkInGrid"
+    ],
+    "title": "What is it like to work here right now",
+    "scenario": "OPEN_READ",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. People disagree on 1: There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "62da3065-2ae0-4802-ba45-eae9b3403de6",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T00:49:25.044Z",
+    "participants": [
+     {
+      "id": "62da3065-2ae0-4802-ba45-eae9b3403de6",
+      "name": "Kofi Boateng",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "06acc2f7-634b-4dad-8efe-9dae0040a3c8",
+      "name": "Sofia Marchetti",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "8c07ba4f-bdec-4ee7-b833-62cbc53d7831",
+      "name": "Mei Ling Tan",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [
+      {
+       "topic": "There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.",
+       "atStake": "If this holds, leadership may believe the process is working well while the engineering team experiences recurring friction, which undermines the goal of having an empowered and efficient team.",
+       "evidence": [
+        "Sofia Marchetti's record states that collaboration across engineering teams has been particularly strong.",
+        "Your record describes Thursdays as a day when the sheer volume of deployments makes it hard to thrive.",
+        "Mei Ling Tan's record describes small fixes waiting four days to ship because of a freeze, making them bigger and riskier when they do go out."
+       ],
+       "positions": [
+        {
+         "view": "Sofia Marchetti describes collaboration between teams as strong and Sofia is focused on making the development process efficient.",
+         "participantLabel": "Sofia Marchetti",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Sofia Marchetti"
+        },
+        {
+         "view": "You describe the process as concentrating all deployments and final checks into Thursdays, making it a difficult day of 'survival'.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Mei Ling Tan describes a deployment freeze that delays small fixes for days, forcing them to be batched into larger, riskier releases.",
+         "participantLabel": "Mei Ling Tan",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Mei Ling Tan"
+        }
+       ],
+       "settledBy": "Agree on what a 'good' release day looks like, and what the right trade-off is between shipping speed and system stability.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [],
+     "agreementMarks": [],
+     "centralQuestion": "Agree on what a 'good' release day looks like, and what the right trade-off is between shipping speed and system stability. That is what settles there is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.",
+     "settled": [],
+     "stillOpen": [
+      "There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day."
+     ]
+    },
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "62da3065-2ae0-4802-ba45-eae9b3403de6",
+       "name": "Kofi Boateng",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "06acc2f7-634b-4dad-8efe-9dae0040a3c8",
+       "name": "Sofia Marchetti",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "8c07ba4f-bdec-4ee7-b833-62cbc53d7831",
+       "name": "Mei Ling Tan",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things. There is a significant difference between how the development process is seen at a high level and how it is experienced day-to-day.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "7 worries",
+      "sub": "You said, \"Thursdays are just...\" There are 6 more worries on record, and nobody is waiting on anybody.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+      ],
+      "general": true,
+      "role": null,
+      "whyNoRoleMap": "Your record looks like engineering, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+     },
+     "eachPerson": null
+    },
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "62da3065-2ae0-4802-ba45-eae9b3403de6",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     }
+    ]
+   },
+   "participantSeen": "a",
+   "patterns": [
+    {
+     "code": "A1",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "Absorbing the friction of a code freeze by taking on the work of batching fixes that would normally ship faster.",
+     "participant": {
+      "email": "b.1790901656136@openread.test"
+     }
+    },
+    {
+     "code": "A3",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "A contributor who previously shipped fixes quickly is now held to batching them because of a code freeze.",
+     "participant": {
+      "email": "b.1790901656136@openread.test"
+     }
+    }
+   ],
+   "commitments": []
+  }
+ ]
+}

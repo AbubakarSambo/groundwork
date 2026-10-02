@@ -1,0 +1,1829 @@
+{
+ "scenario": {
+  "key": "discovery",
+  "label": "What the prospect actually needs",
+  "scenario": "DISCOVERY",
+  "moment": "STARTING",
+  "cadence": "ONE_TIME",
+  "timelineDays": 14,
+  "sessions": 1,
+  "brief": "We are in discovery with a prospect and I want our own side's read written down separately before we build the proposal, because we have twice now proposed the thing we wanted to sell rather than the thing they asked for.",
+  "theDecision": "The two people in the room heard different problems: one heard a reporting problem, one heard a headcount problem. The buyer said the word \"audit\" three times and neither wrote it down. A right answer names the disagreement about what the customer actually said before any proposal is written.",
+  "people": [
+   {
+    "key": "sales",
+    "name": "Julia Fernandes",
+    "isLead": true,
+    "remit": "Enterprise sales. Owns the deal.",
+    "truth": "She heard a reporting problem and has already sketched a dashboard proposal. She remembers the word audit but thought it was context. The deal is worth 90k.",
+    "manner": "Confident, moves to solution quickly, will slow down when asked exactly what the customer said."
+   },
+   {
+    "key": "se",
+    "name": "Martin Vogel",
+    "remit": "Solutions engineer. Was in the same meeting.",
+    "truth": "He heard a staffing problem: they cannot hire enough analysts. He also noted the buyer said \"our auditors asked us for this\" three times, which he thinks is the actual driver and the real deadline.",
+    "manner": "Quiet, literal, quotes what people said rather than summarising it."
+   }
+  ]
+ },
+ "groundId": "4bc8245c-f293-4054-8dd8-081fe4bfe4e3",
+ "orgId": "2ba1dcbb-f19c-4427-871a-1f3df1bd3e5c",
+ "emails": {
+  "sales": "sales.1790903125318@discovery.test",
+  "se": "se.1790903125318@discovery.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "sales",
+     "name": "Julia Fernandes",
+     "isLead": true,
+     "checkInId": "d1c03bf5-ed0e-4507-8e0c-e4bac8444cfb",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Julia, this conversation is about how we can best support your decision-making process for the prospect, to ensure our eventual proposal directly addresses what you need. What is the specific decision this session has to feed, and who makes it?"
+      },
+      {
+       "from": "JULIA FERNANDES",
+       "text": "This session needs to feed into building the right proposal. I make the decision on the final proposal content."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What is the specific decision this session has to feed into, rather than the broader objective?",
+       "suggestedAnswers": [
+        "This helps me decide the final proposal.",
+        "Still unsure about the final proposal content.",
+        "Not yet, I still need more information."
+       ]
+      },
+      {
+       "from": "JULIA FERNANDES",
+       "text": "The specific decision is what will be in the proposal."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You make the decision about what goes into the final proposal. What do you already believe the answer is for what should be in that proposal?",
+       "suggestedAnswers": [
+        "I know what should be in the proposal.",
+        "I still need to work out the details.",
+        "I don't have an answer yet."
+       ]
+      },
+      {
+       "from": "JULIA FERNANDES",
+       "text": "I think we should propose a dashboard. I've actually sketched out a pretty good concept already."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What came out of the last time you asked people this?",
+       "suggestedAnswers": [
+        "I got some useful feedback.",
+        "Not much, it's still ongoing.",
+        "Nothing concrete came out of it.",
+        "I'm still waiting to hear back."
+       ]
+      },
+      {
+       "from": "JULIA FERNANDES",
+       "text": "I'm not sure what you mean. This is the first time I'm asking people about this deal specifically in this forum."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What would the picture have to contain for it to be usable for your decision?",
+       "suggestedAnswers": [
+        "It needs a clear view of the whole thing.",
+        "I'm still not sure what it needs.",
+        "I haven't decided what I need.",
+        "I need to see the ... clearly."
+       ]
+      },
+      {
+       "from": "JULIA FERNANDES",
+       "text": "I need a clear understanding of what the client truly wants. That's why I'm here. We've proposed the wrong thing before."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What happens to the answer once it comes back: who sees it, and by when does it have to be in front of them?",
+       "suggestedAnswers": [
+        "I understand who sees the answer and its deadline.",
+        "I still do not know who sees the answer.",
+        "The timeline for the answer is unclear to me.",
+        "I don't know yet, I need more clarity."
+       ]
+      },
+      {
+       "from": "JULIA FERNANDES",
+       "text": "I'll see it. It needs to be with me before I finalise the proposal."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What did you understand you were meant to do?",
+       "suggestedAnswers": [
+        "I know I must finalize the proposal.",
+        "I understood I needed to wait for ...",
+        "I still don't fully understand it.",
+        "I'm still figuring out what to do."
+       ]
+      },
+      {
+       "from": "JULIA FERNANDES",
+       "text": "I understood I was meant to answer questions to help build a proposal that directly addresses what the prospect asked for."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What you said is that you'll decide what goes into the proposal, and it needs to be with you before you finalize that.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    },
+    {
+     "key": "se",
+     "name": "Martin Vogel",
+     "isLead": false,
+     "checkInId": "8bc0e1e5-804e-4017-b97e-ed076e89d7cc",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Martin, this conversation is to understand where to focus by hearing your knowledge of your market and its constraints. What are you trying to expand or grow over the next two to three years?"
+      },
+      {
+       "from": "MARTIN VOGEL",
+       "text": "I don't know the answer to that. I'm a solutions engineer."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. The question is aimed at understanding the overall direction, not your specific role in it. Is your work primarily focused on engineering solutions for these expansions?",
+       "suggestedAnswers": [
+        "Yes, I am primarily focused on engineering solutions.",
+        "I'm not sure what the primary focus is.",
+        "No, my work is focused elsewhere right now."
+       ]
+      },
+      {
+       "from": "MARTIN VOGEL",
+       "text": "My work is focused on engineering solutions. I apply our products to customer problems."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That clarifies your role. Given that focus, what specific customer problems are you seeing most often right now where your solutions could drive expansion?",
+       "suggestedAnswers": [
+        "I see common problems with specific features.",
+        "I am still identifying the main problems.",
+        "Not yet clear which problems are most common."
+       ]
+      },
+      {
+       "from": "MARTIN VOGEL",
+       "text": "The problem I heard today was staffing. They can't hire enough analysts."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Is there a specific solution of yours that speaks directly to that analyst staffing challenge?",
+       "suggestedAnswers": [
+        "Yes, I have a solution for that challenge.",
+        "I am still exploring possible solutions.",
+        "No, I haven't found a solution yet."
+       ]
+      },
+      {
+       "from": "MARTIN VOGEL",
+       "text": "Yes. We have a product that automates some of the work an analyst would do."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What have we been wanting to sell them, rather than what they asked for about that problem?",
+       "suggestedAnswers": [
+        "I showed them our automated product.",
+        "They still only want what they asked for.",
+        "Not yet."
+       ]
+      },
+      {
+       "from": "MARTIN VOGEL",
+       "text": "We want to sell them our full platform. They have only asked for the parts that help with the analyst problem."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've described a clear gap: you want to sell the full platform, but they've specifically asked for solutions to their analyst staffing problem. That focus is important. Before we close: what specific information do you not have today that would help you expand the reach of that product that helps with the analyst problem?",
+       "suggestedAnswers": [
+        "I have a clearer picture of their needs.",
+        "Still need to understand their full scope.",
+        "I need more time to find out.",
+        "Their other problems are not clear to me."
+       ]
+      },
+      {
+       "from": "MARTIN VOGEL",
+       "text": "I don't know the exact budget they have for a solution. I also don't know who else is involved in the buying decision."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've named two specific gaps: the budget, and the other people involved in the buying decision. Those are concrete unknowns.\n\nWhat else should I know?",
+       "suggestedAnswers": [
+        "I found out some new information.",
+        "Things are still a bit unclear.",
+        "I don't have new details yet."
+       ]
+      },
+      {
+       "from": "MARTIN VOGEL",
+       "text": "They said \"our auditors asked us for this\" three times. I think that's the real driver. And the deadline."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "The fact that their auditors asked three times, and the deadline, are signals about their internal pressure. Who on their side would be able to give you more specifics on those audit requirements?",
+       "suggestedAnswers": [
+        "I'll ask ... on their team for details.",
+        "They haven't shared that contact yet.",
+        "I'm not sure right now."
+       ]
+      },
+      {
+       "from": "MARTIN VOGEL",
+       "text": "I don't know. The person we met with today was a Director."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Who arranged the meeting with the Director?",
+       "suggestedAnswers": [
+        "I arranged the meeting.",
+        "I don't know who did.",
+        "Still finding out who."
+       ]
+      },
+      {
+       "from": "MARTIN VOGEL",
+       "text": "Our account executive."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What you said executive would know more about the audit requirements then. You mentioned the budget and the other people involved in the buying decision as unknowns. Do you also need to know more about the specific requirements their auditors are asking for?",
+       "suggestedAnswers": [
+        "I already have the requirements.",
+        "I haven't got the requirements yet.",
+        "Not yet.",
+        "I am working on getting the requirements."
+       ]
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "65ef923b-de08-43f7-a26a-812b53340903",
+    "groundId": "4bc8245c-f293-4054-8dd8-081fe4bfe4e3",
+    "sharedPicture": "Both people have answered. They have different ideas about what the prospect's problem is.\n\nYou have sketched out a concept for a dashboard. You are concerned that the team has 'proposed the wrong thing before', and you say your role is to 'help build a proposal that directly addresses what the prospect asked for'.\n\nMartin Vogel is a solutions engineer, and Martin says the problem Martin heard from the customer today was 'staffing'. The customer said, 'They can't hire enough analysts'.\n\nBoth are working to understand a prospect's needs before building a proposal. This is based on a shared awareness of having previously proposed the wrong solution.",
+    "theOpening": "Both people have answered. They have different ideas about what the prospect's problem is.",
+    "agreements": [
+     "Both agree the goal is to build a proposal that accurately reflects what the prospect has asked for.",
+     "Both state that you are the final decision-maker on the content of the proposal."
+    ],
+    "divergences": [],
+    "centralQuestion": "Is the client's staffing shortage, driven by their auditors, best solved with a dashboard, or is there a different solution that would address the problem more directly?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Julia Fernandes",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 5,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Julia Fernandes"
+      },
+      {
+       "label": "Martin Vogel",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 10,
+       "documentsAttached": 0,
+       "who": "Martin Vogel"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [],
+     "sessionCounts": {
+      "Martin Vogel": 9,
+      "Julia Fernandes": 7
+     },
+     "documentBacked": false,
+     "tooEarlyToRead": "It is too early to read who has been carrying work quietly. That needs more than one round to mean anything, and this is the first.",
+     "specificityNotes": [
+      {
+       "label": "Julia Fernandes",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Julia Fernandes": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Julia Fernandes": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "whatCouldBeChecked": {
+      "says": [],
+      "total": 0,
+      "checked": 0
+     },
+     "difficultyDisclosures": false
+    },
+    "inferences": [],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": [
+     {
+      "gap": "One account describes the path forward as building out a dashboard concept; another account describes the client's problem as a staffing shortage driven by auditors.",
+      "note": "The initial brief was set up to avoid proposing the wrong thing, but it did not specify how to reconcile two different interpretations of what the client is asking for.",
+      "pattern": "SETUP_NEVER_SAID",
+      "periods": 1
+     }
+    ],
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "You are designing a dashboard, while Martin Vogel reports the customer's problem is that they 'can't hire enough analysts'.",
+     "whatToDo": [
+      {
+       "move": "Speak with Martin Vogel about what the customer meant by 'staffing'.",
+       "because": "Martin Vogel says the customer's problem is that 'They can't hire enough analysts', while you have designed a dashboard.",
+       "startWith": "Martin Vogel"
+      },
+      {
+       "move": "Go back to the customer with Martin Vogel to confirm whether the problem is about information or about hiring.",
+       "because": "You are working on a dashboard, but Martin Vogel heard the customer say 'They can't hire enough analysts'.",
+       "startWith": "Martin Vogel"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "Martin Vogel says the problem heard from the customer was 'staffing', and that the customer said, 'They can't hire enough analysts'.",
+       "soWhat": "Martin Vogel's account of the customer's problem does not call for a dashboard.",
+       "fieldId": "Martin Vogel"
+      },
+      {
+       "says": "You have sketched out a concept for a dashboard to address what you believe the prospect asked for.",
+       "soWhat": "Your dashboard concept does not address the hiring problem Martin Vogel described.",
+       "fieldId": "You"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "This check-in did not ask what the agreed-upon problem is that the team is solving for the customer.",
+       "howManyMissedIt": 2
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "You and Martin Vogel have different accounts of the same conversation with the customer.",
+       "about": "This record does not say what problem the customer wants solved.",
+       "toKnow": "To know what the customer wants, you must ask the customer directly."
+      }
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Martin Vogel is a solutions engineer. Martin was in the same meeting. Since then, the record holds 1 session, 10 lines of what was said, none with a name, a number or a date in them and none backed by a document.",
+       "who": "Martin Vogel",
+       "participantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Martin Vogel is waiting on the customer for \"the exact budget they have for a solution\", and nothing on record says anybody has chased it since.",
+      "Martin Vogel is waiting on the customer for the other people involved in the buying decision, and nothing on record says anybody has chased it since."
+     ],
+     "commitments": [],
+     "dependencies": [
+      {
+       "on": "the customer",
+       "say": "Martin Vogel is waiting on the customer for \"the exact budget they have for a solution\", and nothing on record says anybody has chased it since.",
+       "from": "Martin Vogel",
+       "what": "the exact budget they have for a solution",
+       "chased": false,
+       "status": "WAITING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842"
+      },
+      {
+       "on": "the customer",
+       "say": "Martin Vogel is waiting on the customer for the other people involved in the buying decision, and nothing on record says anybody has chased it since.",
+       "from": "Martin Vogel",
+       "what": "the other people involved in the buying decision",
+       "chased": false,
+       "status": "WAITING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "2 things are waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.",
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself.",
+      "Nobody has said in a check-in what they would do next. Ask for one thing, with a date, from each person."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 2,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "You have sketched out a concept for a dashboard. You are concerned that the team has 'proposed the wrong thing before', and you say your role is to 'help build a proposal that directly addresses what the prospect asked for'.",
+      "hasGap": false,
+      "headline": "You are proposing a dashboard, while Martin Vogel says the customer's problem is staffing.",
+      "participantId": "38b6ae4e-3a1a-4f39-b249-3fa55542d756",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Martin Vogel is a solutions engineer, and Martin says the problem Martin heard from the customer today was 'staffing'. The customer said, 'They can't hire enough analysts'.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": null,
+    "createdAt": "2026-10-02T01:09:14.865Z",
+    "updatedAt": "2026-10-02T01:11:53.052Z",
+    "sharedPictureLines": [
+     {
+      "text": "Both people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They have different ideas about what the prospect's problem is.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You have sketched out a concept for a dashboard.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are concerned that the team has 'proposed the wrong thing before', and you say your role is to 'help build a proposal that directly addresses what the prospect asked for'.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Martin Vogel is a solutions engineer, and Martin says the problem Martin heard from the customer today was 'staffing'.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The customer said, 'They can't hire enough analysts'.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both are working to understand a prospect's needs before building a proposal.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "This is based on a shared awareness of having previously proposed the wrong solution.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "forming": true,
+    "behindTheAnswers": {
+     "answered": 2,
+     "read": 2,
+     "behindBy": 0,
+     "say": null
+    },
+    "nextStep": "release",
+    "soloArtifact": {
+     "summary": "Here is what you shared. You see your role as making the final decision on the content of the proposal. You think a dashboard would be the right thing to propose, and have sketched a concept for one. You are concerned because you have proposed the wrong thing in the past. You said that to move forward you need a clear understanding of what the client truly wants.",
+     "whatToCarry": "A clear understanding of what the client truly wants."
+    },
+    "myRows": [
+     {
+      "id": "c7d64b67-b7ee-4a52-9bb2-3f5518920dee",
+      "type": "INTENT",
+      "text": "I make the decision on the final proposal content.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d1c03bf5-ed0e-4507-8e0c-e4bac8444cfb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "1a7e7dfa-f737-4d8a-b917-7d9679568d7a",
+      "type": "PROGRESS",
+      "text": "I think we should propose a dashboard. I've actually sketched out a pretty good concept already.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d1c03bf5-ed0e-4507-8e0c-e4bac8444cfb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "a468cf66-321b-4a5c-810e-7a3c576af79c",
+      "type": "ASK",
+      "text": "I need a clear understanding of what the client truly wants.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d1c03bf5-ed0e-4507-8e0c-e4bac8444cfb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "c8626e40-5799-41dd-b8e7-31596ab15bd5",
+      "type": "WORRY",
+      "text": "We've proposed the wrong thing before.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d1c03bf5-ed0e-4507-8e0c-e4bac8444cfb",
+      "sessionNumber": 1
+     },
+     {
+      "id": "6b8fab77-d64c-4e7a-a1bd-65e8138348e4",
+      "type": "INTENT",
+      "text": "I understood I was meant to answer questions to help build a proposal that directly addresses what the prospect asked for.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d1c03bf5-ed0e-4507-8e0c-e4bac8444cfb",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "sessionProgress": {
+     "sessionNumber": 1,
+     "total": 2,
+     "completed": 2,
+     "missingParticipantIds": [],
+     "declinedParticipantIds": [],
+     "awayUntil": {},
+     "requestingUserIsMissing": false
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "board": {
+    "groundId": "4bc8245c-f293-4054-8dd8-081fe4bfe4e3",
+    "renders": true,
+    "mode": "PRIVATE",
+    "family": "SNAPSHOT",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "divergence",
+     "checkInGrid"
+    ],
+    "title": "What the prospect actually needs",
+    "scenario": "DISCOVERY",
+    "kindOfWork": "sales org",
+    "howItIsGoing": {
+     "latestSummary": "Both people have answered. They have different ideas about what the prospect's problem is.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 2,
+       "ofPeople": 2,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 2,
+       "oldest": "the exact budget they have for a solution",
+       "daysWaiting": 0
+      }
+     }
+    },
+    "groundStatus": "AWAITING_PARTIES",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "You are designing a dashboard, while Martin Vogel reports the customer's problem is that they 'can't hire enough analysts'.",
+     "whatToDo": [
+      {
+       "move": "Speak with Martin Vogel about what the customer meant by 'staffing'.",
+       "because": "Martin Vogel says the customer's problem is that 'They can't hire enough analysts', while you have designed a dashboard.",
+       "startWith": "Martin Vogel"
+      },
+      {
+       "move": "Go back to the customer with Martin Vogel to confirm whether the problem is about information or about hiring.",
+       "because": "You are working on a dashboard, but Martin Vogel heard the customer say 'They can't hire enough analysts'.",
+       "startWith": "Martin Vogel"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "Martin Vogel says the problem heard from the customer was 'staffing', and that the customer said, 'They can't hire enough analysts'.",
+       "soWhat": "Martin Vogel's account of the customer's problem does not call for a dashboard.",
+       "fieldId": "Martin Vogel"
+      },
+      {
+       "says": "You have sketched out a concept for a dashboard to address what you believe the prospect asked for.",
+       "soWhat": "Your dashboard concept does not address the hiring problem Martin Vogel described.",
+       "fieldId": "You"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "This check-in did not ask what the agreed-upon problem is that the team is solving for the customer.",
+       "howManyMissedIt": 2
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "You and Martin Vogel have different accounts of the same conversation with the customer.",
+       "about": "This record does not say what problem the customer wants solved.",
+       "toKnow": "To know what the customer wants, you must ask the customer directly."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Martin Vogel is a solutions engineer. Martin was in the same meeting. Since then, the record holds 1 session, 10 lines of what was said, none with a name, a number or a date in them and none backed by a document.",
+       "who": "Martin Vogel",
+       "participantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "Martin Vogel is waiting on the customer for \"the exact budget they have for a solution\", and nothing on record says anybody has chased it since.",
+      "Martin Vogel is waiting on the customer for the other people involved in the buying decision, and nothing on record says anybody has chased it since."
+     ],
+     "commitments": [],
+     "dependencies": [
+      {
+       "on": "the customer",
+       "say": "Martin Vogel is waiting on the customer for \"the exact budget they have for a solution\", and nothing on record says anybody has chased it since.",
+       "from": "Martin Vogel",
+       "what": "the exact budget they have for a solution",
+       "chased": false,
+       "status": "WAITING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842"
+      },
+      {
+       "on": "the customer",
+       "say": "Martin Vogel is waiting on the customer for the other people involved in the buying decision, and nothing on record says anybody has chased it since.",
+       "from": "Martin Vogel",
+       "what": "the other people involved in the buying decision",
+       "chased": false,
+       "status": "WAITING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "2 things are waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.",
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself.",
+      "Nobody has said in a check-in what they would do next. Ask for one thing, with a date, from each person."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "38b6ae4e-3a1a-4f39-b249-3fa55542d756",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T01:11:53.052Z",
+    "participants": [
+     {
+      "id": "38b6ae4e-3a1a-4f39-b249-3fa55542d756",
+      "name": "Julia Fernandes",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "08b65ee2-ce88-47ba-a7ca-68dbe71db842",
+      "name": "Martin Vogel",
+      "role": "Solutions engineer. Was in the same meeting.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [],
+     "agreements": [
+      "Both agree the goal is to build a proposal that accurately reflects what the prospect has asked for.",
+      "Both state that you are the final decision-maker on the content of the proposal."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Which of those conversations was with someone who can actually decide, with the budget and the authority?",
+     "settled": [
+      "Both agree the goal is to build a proposal that accurately reflects what the prospect has asked for.",
+      "Both state that you are the final decision-maker on the content of the proposal."
+     ],
+     "stillOpen": []
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842",
+      "who": "Martin Vogel",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Martin Vogel has checked in.",
+      "ask": "Martin Vogel is waiting on the exact budget they have for a solution, and nobody has said yet what was tried. Ask Martin Vogel to speak to the customer rather than write to them.",
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Martin Vogel is a solutions engineer, and Martin says the problem Martin heard from the customer today was 'staffing'. The customer said, 'They can't hire enough analysts'.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "38b6ae4e-3a1a-4f39-b249-3fa55542d756",
+       "name": "Julia Fernandes",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842",
+       "name": "Martin Vogel",
+       "role": "Solutions engineer. Was in the same meeting.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "None",
+      "sub": "The written report finds no disagreement.",
+      "tone": "good"
+     },
+     {
+      "label": "Movement",
+      "value": "No target set",
+      "sub": "Nobody has set anything to measure this against.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "2 waiting",
+      "sub": "The exact budget they have for a solution. Nothing is hard-blocked.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "eachPersonToday": [
+     {
+      "participantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842",
+      "who": "Martin Vogel",
+      "line": "Martin Vogel has checked in."
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "deals",
+      "state": "none-yet",
+      "stages": [
+       "Contacted",
+       "Need established",
+       "Pitched",
+       "Qualified",
+       "Quoted",
+       "Won"
+      ],
+      "rows": []
+     },
+     {
+      "section": "Forecast",
+      "holds": "where the sales numbers are likely to end up",
+      "state": "not-known",
+      "why": "Groundwork does not keep this yet. It needs numbers from another system, such as payment records."
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-7be5d5b9-fb83-4d40-9c26-e8ac2d1d924e",
+      "says": "Martin Vogel is waiting on the customer for the exact budget they have for a solution.",
+      "because": "It was first said on 2 October. Nobody has said what has been tried. No time has been given for it."
+     },
+     {
+      "id": "handoff-2e384c2f-4a65-42db-9d5b-bdad43fa4f00",
+      "says": "Martin Vogel is waiting on the customer for the other people involved in the buying decision.",
+      "because": "It was first said on 2 October. Nobody has said what has been tried. No time has been given for it."
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Martin Vogel said the work was waiting on the customer for the exact budget they have for a solution."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Martin Vogel said the work was waiting on the customer for the other people involved in the buying decision."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "38b6ae4e-3a1a-4f39-b249-3fa55542d756",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842",
+      "who": "Martin Vogel",
+      "says": "Martin Vogel has answered 1 session, and the record holds no commitment from Martin Vogel yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Martin Vogel named 2 things the work was waiting on."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "7be5d5b9-fb83-4d40-9c26-e8ac2d1d924e",
+      "who": "Martin Vogel",
+      "says": "Martin Vogel is waiting on the customer for the exact budget they have for a solution.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": false,
+      "timeGiven": false,
+      "checks": [
+       "The customer holds it.",
+       "Nobody has said what has been tried.",
+       "No time has been given for it."
+      ]
+     },
+     {
+      "id": "2e384c2f-4a65-42db-9d5b-bdad43fa4f00",
+      "who": "Martin Vogel",
+      "says": "Martin Vogel is waiting on the customer for the other people involved in the buying decision.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": false,
+      "timeGiven": false,
+      "checks": [
+       "The customer holds it.",
+       "Nobody has said what has been tried.",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "busyOrMoving": {
+     "eachPerson": [
+      {
+       "participantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842",
+       "who": "Martin Vogel",
+       "says": "Martin Vogel also named 2 things the work was waiting on."
+      }
+     ],
+     "cannotTellYou": "These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that."
+    },
+    "obligations": [
+     {
+      "participantId": null,
+      "who": "the customer",
+      "promised": [],
+      "othersWaitFor": [
+       "Martin Vogel is waiting on the customer for the exact budget they have for a solution.",
+       "Martin Vogel is waiting on the customer for the other people involved in the buying decision."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "7be5d5b9-fb83-4d40-9c26-e8ac2d1d924e",
+      "says": "Martin Vogel has been waiting on the customer for the exact budget they have for a solution since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     },
+     {
+      "id": "2e384c2f-4a65-42db-9d5b-bdad43fa4f00",
+      "says": "Martin Vogel has been waiting on the customer for the other people involved in the buying decision since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "7be5d5b9-fb83-4d40-9c26-e8ac2d1d924e",
+      "who": "Martin Vogel",
+      "name": "the exact budget they have for a solution",
+      "state": "waiting",
+      "says": "Martin Vogel is waiting on the customer for the exact budget they have for a solution.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Martin Vogel said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     },
+     {
+      "id": "2e384c2f-4a65-42db-9d5b-bdad43fa4f00",
+      "who": "Martin Vogel",
+      "name": "the other people involved in the buying decision",
+      "state": "waiting",
+      "says": "Martin Vogel is waiting on the customer for the other people involved in the buying decision.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Martin Vogel said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     }
+    ],
+    "questionsForTheLead": [
+     {
+      "id": "chased-7be5d5b9-fb83-4d40-9c26-e8ac2d1d924e",
+      "question": "What has been tried to get the exact budget they have for a solution from the customer, which Martin Vogel is waiting for?",
+      "because": "Nothing on record says anybody has chased it, so only you can find out what was done outside the check-in."
+     },
+     {
+      "id": "chased-2e384c2f-4a65-42db-9d5b-bdad43fa4f00",
+      "question": "What has been tried to get the other people involved in the buying decision from the customer, which Martin Vogel is waiting for?",
+      "because": "Nothing on record says anybody has chased it, so only you can find out what was done outside the check-in."
+     }
+    ],
+    "byArea": {
+     "state": "not-known",
+     "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+    },
+    "reportedAgainstCriteria": {
+     "state": "not-known",
+     "why": "Nothing on record says what a deal must show to be at each stage, so the board counts what people reported and how much of it has a document behind it, but not how many meet the rules.",
+     "stages": []
+    }
+   },
+   "participantReport": {
+    "id": "65ef923b-de08-43f7-a26a-812b53340903",
+    "groundId": "4bc8245c-f293-4054-8dd8-081fe4bfe4e3",
+    "sharedPicture": "Both people have answered. They have different ideas about what the prospect's problem is.\n\nJulia Fernandes has sketched out a concept for a dashboard. Julia is concerned that the team has 'proposed the wrong thing before', and Julia says Julia's role is to 'help build a proposal that directly addresses what the prospect asked for'.\n\nYou are a solutions engineer, and you say the problem you heard from the customer today was 'staffing'. The customer said, 'They can't hire enough analysts'.\n\nBoth are working to understand a prospect's needs before building a proposal. This is based on a shared awareness of having previously proposed the wrong solution.",
+    "theOpening": "Both people have answered. They have different ideas about what the prospect's problem is.",
+    "agreements": [
+     "Both agree the goal is to build a proposal that accurately reflects what the prospect has asked for.",
+     "Both state that Julia Fernandes is the final decision-maker on the content of the proposal."
+    ],
+    "centralQuestion": "Is the client's staffing shortage, driven by their auditors, best solved with a dashboard, or is there a different solution that would address the problem more directly?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Julia Fernandes",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 5,
+       "documentsAttached": 0,
+       "who": "Julia Fernandes"
+      },
+      {
+       "label": "Martin Vogel",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 10,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Martin Vogel"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [],
+     "sessionCounts": {
+      "Martin Vogel": 9,
+      "Julia Fernandes": 7
+     },
+     "documentBacked": false,
+     "tooEarlyToRead": "It is too early to read who has been carrying work quietly. That needs more than one round to mean anything, and this is the first.",
+     "specificityNotes": [
+      {
+       "label": "Martin Vogel",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Martin Vogel": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Martin Vogel": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "whatCouldBeChecked": {
+      "says": [],
+      "total": 0,
+      "checked": 0
+     },
+     "difficultyDisclosures": false
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [],
+     "dependencies": [
+      {
+       "on": "the customer",
+       "say": "You are waiting on the customer for \"the exact budget they have for a solution\", and nothing on record says anybody has chased it since.",
+       "from": "You",
+       "what": "the exact budget they have for a solution",
+       "chased": false,
+       "status": "WAITING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842"
+      },
+      {
+       "on": "the customer",
+       "say": "You are waiting on the customer for the other people involved in the buying decision, and nothing on record says anybody has chased it since.",
+       "from": "You",
+       "what": "the other people involved in the buying decision",
+       "chased": false,
+       "status": "WAITING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842"
+      }
+     ],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 2,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "You are a solutions engineer, and you say the problem you heard from the customer today was 'staffing'. The customer said, 'They can't hire enough analysts'.",
+      "hasGap": false,
+      "headline": null,
+      "participantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "releasedAt": null,
+    "createdAt": "2026-10-02T01:09:14.865Z",
+    "updatedAt": "2026-10-02T01:11:53.052Z",
+    "sharedPictureLines": [
+     {
+      "text": "Both people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They have different ideas about what the prospect's problem is.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Julia Fernandes has sketched out a concept for a dashboard.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Julia Fernandes is concerned that the team has 'proposed the wrong thing before', and Julia says Julia's role is to 'help build a proposal that directly addresses what the prospect asked for'.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are a solutions engineer, and you say the problem you heard from the customer today was 'staffing'.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The customer said, 'They can't hire enough analysts'.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both are working to understand a prospect's needs before building a proposal.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "This is based on a shared awareness of having previously proposed the wrong solution.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "forming": true,
+    "behindTheAnswers": {
+     "answered": 2,
+     "read": 2,
+     "behindBy": 0,
+     "say": null
+    },
+    "soloArtifact": {
+     "summary": "Here is what you shared. You are a solutions engineer who applies your products to customer problems. You heard that a customer is struggling to hire enough analysts, and while you want to sell them your full platform, they have only asked for the parts that solve that specific problem. You noted that they said \"our auditors asked us for this\" three times, and you think this and a deadline are the real drivers. You also mentioned that you do not know their budget or who else is involved in the buying decision.",
+     "whatToCarry": "You mentioned not knowing who else is involved in the buying decision. As you prepare for the next conversation, you could focus on finding out who, other than the auditors, needs to be satisfied."
+    },
+    "myRows": [
+     {
+      "id": "5b2712fe-c06a-47c1-bbf8-329c08a3a23f",
+      "type": "INTENT",
+      "text": "I'm a solutions engineer.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8bc0e1e5-804e-4017-b97e-ed076e89d7cc",
+      "sessionNumber": 1
+     },
+     {
+      "id": "49b4ce6b-7847-490f-88b5-11bf8d742da9",
+      "type": "INTENT",
+      "text": "My work is focused on engineering solutions. I apply our products to customer problems.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8bc0e1e5-804e-4017-b97e-ed076e89d7cc",
+      "sessionNumber": 1
+     },
+     {
+      "id": "28e1eba6-cdc5-4b46-ad6c-18e4b8b7752f",
+      "type": "TENSION",
+      "text": "The problem I heard today was staffing. They can't hire enough analysts.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8bc0e1e5-804e-4017-b97e-ed076e89d7cc",
+      "sessionNumber": 1
+     },
+     {
+      "id": "c174e1cb-cdba-4252-9c34-29ac8b292f39",
+      "type": "TENSION",
+      "text": "We want to sell them our full platform.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8bc0e1e5-804e-4017-b97e-ed076e89d7cc",
+      "sessionNumber": 1
+     },
+     {
+      "id": "12a4d72a-80d9-4f67-91c7-f5ab68df4b44",
+      "type": "TENSION",
+      "text": "They have only asked for the parts that help with the analyst problem.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8bc0e1e5-804e-4017-b97e-ed076e89d7cc",
+      "sessionNumber": 1
+     },
+     {
+      "id": "bddb668f-981d-4156-a968-7de5c28c53cb",
+      "type": "WORRY",
+      "text": "I don't know the exact budget they have for a solution.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8bc0e1e5-804e-4017-b97e-ed076e89d7cc",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b93ef1ed-4d11-4dcd-acc4-afa45e74a2fc",
+      "type": "WORRY",
+      "text": "I also don't know who else is involved in the buying decision.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8bc0e1e5-804e-4017-b97e-ed076e89d7cc",
+      "sessionNumber": 1
+     },
+     {
+      "id": "288f71fb-abfa-4897-993b-649967ba9581",
+      "type": "TENSION",
+      "text": "They said \"our auditors asked us for this\" three times.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "8bc0e1e5-804e-4017-b97e-ed076e89d7cc",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b983c37c-b52c-4e26-8c1b-2b6e1333faf8",
+      "type": "TENSION",
+      "text": "The real driver is that their auditors asked for this",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8bc0e1e5-804e-4017-b97e-ed076e89d7cc",
+      "sessionNumber": 1
+     },
+     {
+      "id": "ca889996-55bd-4c09-b5cd-47ec622be2f2",
+      "type": "TENSION",
+      "text": "The deadline",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "8bc0e1e5-804e-4017-b97e-ed076e89d7cc",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [
+     {
+      "id": "7be5d5b9-fb83-4d40-9c26-e8ac2d1d924e",
+      "what": "the exact budget they have for a solution",
+      "couldTry": [
+       "Speak to the customer rather than write to them.",
+       "Put a date on it in writing: what you need, by when, and what happens if it slips.",
+       "Ask what can move without this, so the whole thing is not waiting on one approval."
+      ]
+     },
+     {
+      "id": "2e384c2f-4a65-42db-9d5b-bdad43fa4f00",
+      "what": "the other people involved in the buying decision",
+      "couldTry": [
+       "Speak to the customer rather than write to them.",
+       "Put a date on it in writing: what you need, by when, and what happens if it slips.",
+       "Ask what can move without this, so the whole thing is not waiting on one approval."
+      ]
+     }
+    ],
+    "sessionProgress": {
+     "sessionNumber": 1,
+     "total": 2,
+     "completed": 2,
+     "missingParticipantIds": [],
+     "declinedParticipantIds": [],
+     "awayUntil": {},
+     "requestingUserIsMissing": false
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "4bc8245c-f293-4054-8dd8-081fe4bfe4e3",
+    "renders": true,
+    "mode": "PRIVATE",
+    "family": "SNAPSHOT",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "divergence",
+     "checkInGrid"
+    ],
+    "title": "What the prospect actually needs",
+    "scenario": "DISCOVERY",
+    "kindOfWork": "sales org",
+    "howItIsGoing": {
+     "latestSummary": "Both people have answered. They have different ideas about what the prospect's problem is.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 2,
+       "ofPeople": 2,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 2,
+       "oldest": "the exact budget they have for a solution",
+       "daysWaiting": 0
+      }
+     }
+    },
+    "groundStatus": "AWAITING_PARTIES",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T01:11:53.052Z",
+    "participants": [
+     {
+      "id": "38b6ae4e-3a1a-4f39-b249-3fa55542d756",
+      "name": "Julia Fernandes",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "08b65ee2-ce88-47ba-a7ca-68dbe71db842",
+      "name": "Martin Vogel",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [],
+     "agreements": [
+      "Both agree the goal is to build a proposal that accurately reflects what the prospect has asked for.",
+      "Both state that Julia Fernandes is the final decision-maker on the content of the proposal."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Which of those conversations was with someone who can actually decide, with the budget and the authority?",
+     "settled": [
+      "Both agree the goal is to build a proposal that accurately reflects what the prospect has asked for.",
+      "Both state that Julia Fernandes is the final decision-maker on the content of the proposal."
+     ],
+     "stillOpen": []
+    },
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "38b6ae4e-3a1a-4f39-b249-3fa55542d756",
+       "name": "Julia Fernandes",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842",
+       "name": "Martin Vogel",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "None",
+      "sub": "The written report finds no disagreement.",
+      "tone": "good"
+     },
+     {
+      "label": "Movement",
+      "value": "No target set",
+      "sub": "Nobody has set anything to measure this against.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "2 waiting",
+      "sub": "The exact budget they have for a solution. Nothing is hard-blocked.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "deals",
+      "state": "none-yet",
+      "stages": [
+       "Contacted",
+       "Need established",
+       "Pitched",
+       "Qualified",
+       "Quoted",
+       "Won"
+      ],
+      "rows": []
+     },
+     {
+      "section": "Forecast",
+      "holds": "where the sales numbers are likely to end up",
+      "state": "not-known",
+      "why": "Groundwork does not keep this yet. It needs numbers from another system, such as payment records."
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-7be5d5b9-fb83-4d40-9c26-e8ac2d1d924e",
+      "says": "You are waiting on the customer for the exact budget they have for a solution.",
+      "because": "It was first said on 2 October. Nobody has said what has been tried. No time has been given for it."
+     },
+     {
+      "id": "handoff-2e384c2f-4a65-42db-9d5b-bdad43fa4f00",
+      "says": "You are waiting on the customer for the other people involved in the buying decision.",
+      "because": "It was first said on 2 October. Nobody has said what has been tried. No time has been given for it."
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you said the work was waiting on the customer for the exact budget they have for a solution."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you said the work was waiting on the customer for the other people involved in the buying decision."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "08b65ee2-ce88-47ba-a7ca-68dbe71db842",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you named 2 things the work was waiting on."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "7be5d5b9-fb83-4d40-9c26-e8ac2d1d924e",
+      "who": "You",
+      "says": "You are waiting on the customer for the exact budget they have for a solution.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": false,
+      "timeGiven": false,
+      "checks": [
+       "The customer holds it.",
+       "Nobody has said what has been tried.",
+       "No time has been given for it."
+      ]
+     },
+     {
+      "id": "2e384c2f-4a65-42db-9d5b-bdad43fa4f00",
+      "who": "You",
+      "says": "You are waiting on the customer for the other people involved in the buying decision.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": false,
+      "timeGiven": false,
+      "checks": [
+       "The customer holds it.",
+       "Nobody has said what has been tried.",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": null,
+      "who": "the customer",
+      "promised": [],
+      "othersWaitFor": [
+       "You are waiting on the customer for the exact budget they have for a solution.",
+       "You are waiting on the customer for the other people involved in the buying decision."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "7be5d5b9-fb83-4d40-9c26-e8ac2d1d924e",
+      "says": "You have been waiting on the customer for the exact budget they have for a solution since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     },
+     {
+      "id": "2e384c2f-4a65-42db-9d5b-bdad43fa4f00",
+      "says": "You have been waiting on the customer for the other people involved in the buying decision since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "7be5d5b9-fb83-4d40-9c26-e8ac2d1d924e",
+      "who": "You",
+      "name": "the exact budget they have for a solution",
+      "state": "waiting",
+      "says": "You are waiting on the customer for the exact budget they have for a solution.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what you said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     },
+     {
+      "id": "2e384c2f-4a65-42db-9d5b-bdad43fa4f00",
+      "who": "You",
+      "name": "the other people involved in the buying decision",
+      "state": "waiting",
+      "says": "You are waiting on the customer for the other people involved in the buying decision.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what you said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": null
+     }
+    ],
+    "byArea": {
+     "state": "not-known",
+     "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+    },
+    "reportedAgainstCriteria": {
+     "state": "not-known",
+     "why": "Nothing on record says what a deal must show to be at each stage, so the board counts what people reported and how much of it has a document behind it, but not how many meet the rules.",
+     "stages": []
+    }
+   },
+   "participantSeen": "se",
+   "patterns": [
+    {
+     "code": "K1",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "The proposal is treated as the output, rather than the decision it is meant to support.",
+     "participant": {
+      "email": "sales.1790903125318@discovery.test"
+     }
+    }
+   ],
+   "commitments": []
+  }
+ ]
+}

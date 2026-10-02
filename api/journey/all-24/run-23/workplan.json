@@ -1,0 +1,3754 @@
+{
+ "scenario": {
+  "key": "workplan",
+  "label": "The quarter workplan and what it costs",
+  "scenario": "WORKPLAN_BUDGET",
+  "moment": "STARTING",
+  "cadence": "MONTHLY",
+  "timelineDays": 90,
+  "sessions": 1,
+  "brief": "We are setting the quarter plan and the budget together for once. I want each lead to say what they are committing to and what it actually costs, so we stop agreeing plans that the budget was never going to cover.",
+  "theDecision": "The plan totals 141% of the available budget because two leads have both budgeted the same contractor. Neither knows. A right answer catches the double-count from the two accounts rather than trimming both plans by a fifth.",
+  "people": [
+   {
+    "key": "cfo",
+    "name": "Helen Oyelaran",
+    "isLead": true,
+    "remit": "CFO. Holds the quarter budget of 180k.",
+    "truth": "She has 180k. She has received two plans totalling 254k and assumes both are padded. She does not know the same contractor appears in both.",
+    "manner": "Numerate, sceptical, asks for the line items."
+   },
+   {
+    "key": "mkt",
+    "name": "Chidi Eze",
+    "remit": "Head of marketing. Quarter plan: brand refresh and three campaigns.",
+    "truth": "His plan is 96k, of which 34k is a design contractor called Studio Lune for the brand work, booked for eight weeks from October.",
+    "manner": "Enthusiastic, talks in outcomes, has the numbers if asked for them line by line."
+   },
+   {
+    "key": "prod",
+    "name": "Sara Lindqvist",
+    "remit": "Head of product. Quarter plan: the new dashboard.",
+    "truth": "Her plan is 158k, of which 40k is Studio Lune, booked for the same eight weeks from October, for the dashboard design. She spoke to them directly. She has no idea marketing has also booked them.",
+    "manner": "Organised, gives detail readily, names suppliers."
+   }
+  ]
+ },
+ "groundId": "af1e2f6b-7be2-4a67-a9a5-7f834484bbf8",
+ "orgId": "d01858b8-c7b3-46c3-a408-011c2d5adaa8",
+ "emails": {
+  "cfo": "cfo.1790901943370@workplan.test",
+  "mkt": "mkt.1790901943370@workplan.test",
+  "prod": "prod.1790901943370@workplan.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "cfo",
+     "name": "Helen Oyelaran",
+     "isLead": true,
+     "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "This is about your quarter workplan and the costs associated with it. What are the first three specific items on your quarter workplan?"
+      },
+      {
+       "from": "HELEN OYELARAN",
+       "text": "My priority for this quarter is to focus on optimising our cash flow. So, the first item is a deep dive into our accounts payable processes. Second, we need to complete the forecasting model for the next fiscal year. And third, I'm looking at renegotiating terms with our key suppliers."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "For those three items - the accounts payable deep dive, the forecasting model, and supplier renegotiations - what resources in terms of time, money, and people do they each require?",
+       "suggestedAnswers": [
+        "I have the resources we need.",
+        "Still working on resource allocation.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "HELEN OYELARAN",
+       "text": "For the accounts payable deep dive, I'll need a dedicated analyst for about four weeks. The forecasting model requires me to block out significant time, probably two weeks, plus an intern to help with data collation. Supplier renegotiations will take up some of my time, but I expect it to be largely me and legal, so internal resources primarily. I don't anticipate significant direct costs for any of these, beyond staff time."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've outlined the staffing for each: a dedicated analyst for four weeks for the accounts payable deep dive, two weeks of your time plus an intern for the forecasting model, and primarily your time and legal for supplier renegotiations. How do those resource requirements align with your allocated budget?",
+       "suggestedAnswers": [
+        "It all fits our budget.",
+        "I am still checking the numbers.",
+        "Our budget is not enough.",
+        "We have a budget problem."
+       ]
+      },
+      {
+       "from": "HELEN OYELARAN",
+       "text": "Well, the budget I have for this quarter is 180k. My current plan for these three items doesn't directly consume that budget as I'm using existing internal resources. My concern is more about the plans I've received from other departments. They total 254k, and that's already over my budget. I need to see their line items."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What, if anything, is not yet in place for you to execute your own items?",
+       "suggestedAnswers": [
+        "Not yet, still need more information.",
+        "Still waiting for other departments' details.",
+        "I'm working to get all the details."
+       ]
+      },
+      {
+       "from": "HELEN OYELARAN",
+       "text": "I need to confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model. Other than that, everything is in place for my own items."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What else do you need to be able to execute your plan?",
+       "suggestedAnswers": [
+        "Everything is ready, just need the team.",
+        "Still waiting for team member confirmation.",
+        "Not yet, I'm still checking."
+       ]
+      },
+      {
+       "from": "HELEN OYELARAN",
+       "text": "I need to see the detailed breakdowns of the other plans that total 254k. I can't sign off on anything until I understand what those costs are for and how they align with our overall priorities."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You need the detailed breakdowns of the other plans before you can sign off. There is probably something in writing that captures this. A brief, a plan, an email exchange. What specifically have you asked for from those departments?",
+       "suggestedAnswers": [
+        "I asked for detailed cost breakdowns.",
+        "Still waiting for their detailed breakdowns.",
+        "I haven't asked them yet.",
+        "The departments are gathering the information."
+       ]
+      },
+      {
+       "from": "HELEN OYELARAN",
+       "text": "I've asked for their detailed quarter plans, with specific line items for all proposed expenditures. I need to understand what each cost is for, not just a lump sum. I haven't received them yet."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What steps have you taken to follow up on those requests?",
+       "suggestedAnswers": [
+        "I sent a reminder this morning.",
+        "I am still waiting for their response.",
+        "Not yet, I will follow up again."
+       ]
+      },
+      {
+       "from": "HELEN OYELARAN",
+       "text": "I sent a reminder email last week. I'll follow up with individual calls if I don't get the information by the end of today."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What will you do if you still don't have the detailed breakdowns after making those calls?",
+       "suggestedAnswers": [
+        "I will try a different approach.",
+        "I will be stuck without that information.",
+        "I do not know what I will do."
+       ]
+      },
+      {
+       "from": "HELEN OYELARAN",
+       "text": "I will not approve their plans or release any budget until I have a clear understanding of what they are asking for. My budget is 180k, and I need to ensure it's spent wisely."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What exists now that would tell you those plans have been updated to reflect your concerns, or that their costs have been justified?",
+       "suggestedAnswers": [
+        "The updated plans address my concerns.",
+        "Costs are still not justified.",
+        "Not yet.",
+        "I am reviewing new details."
+       ]
+      },
+      {
+       "from": "HELEN OYELARAN",
+       "text": "Nothing. I haven't received any revised plans or justifications since my initial request. I'm assuming both plans are padded."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You are working to understand what the other departments are asking for in their plans. What decision should that 254k figure drive?",
+       "suggestedAnswers": [
+        "I have not decided yet.",
+        "I need more information to decide.",
+        "I am still reviewing the options.",
+        "I used it to plan my next steps."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "mkt",
+     "name": "Chidi Eze",
+     "isLead": false,
+     "checkInId": "a33b19c9-ac86-48c7-8318-9a5c7d1a49cf",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Tell me the first three things you have planned."
+      },
+      {
+       "from": "CHIDI EZE",
+       "text": "Okay, so my big focus this quarter is really going to be around revitalizing our brand. The first thing is the brand refresh itself. Then, I have three key campaigns I want to roll out to leverage that new brand."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What will those campaigns be?",
+       "suggestedAnswers": [
+        "The first one is almost ready.",
+        "Still figuring out the best approach.",
+        "They are proving difficult to define."
+       ]
+      },
+      {
+       "from": "CHIDI EZE",
+       "text": "The first campaign will be focused on awareness, really shouting about our updated identity. The second will drive engagement with our refreshed messaging. And the third is all about conversion, bringing in those new leads with our polished look."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You are focusing on revitalizing the brand, with a brand refresh and three campaigns: awareness, engagement, and conversion. What specific pieces of work are planned within each of those campaigns?",
+       "suggestedAnswers": [
+        "I have a good plan for each campaign.",
+        "I am still working on the campaign plans.",
+        "I do not have those details yet."
+       ]
+      },
+      {
+       "from": "CHIDI EZE",
+       "text": "For the awareness campaign, we're planning a big push on social media, some key digital ads, and a targeted PR outreach. Engagement will involve interactive content, a webinar series, and community building initiatives. And for conversion, we'll have focused landing pages, email nurture sequences, and some compelling customer testimonials."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "For each of those, what will that work cost in time, money, or people?",
+       "suggestedAnswers": [
+        "I've started calculating costs for the campaign.",
+        "I don't know yet; still waiting on details.",
+        "Budget approvals are slowing things down.",
+        "I have some estimates for time and people."
+       ]
+      },
+      {
+       "from": "CHIDI EZE",
+       "text": "I don't have those specific breakdowns yet for each individual piece of work within the campaigns. My immediate focus has been securing the brand refresh, which is the foundation for everything else."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You have laid out a clear plan with a brand refresh, social media, digital ads, PR, interactive content, webinars, community building, landing pages, email sequences, and customer testimonials. What committed work is in place for those, beyond your own effort?",
+       "suggestedAnswers": [
+        "We're making good progress on some things.",
+        "Other teams are still reviewing their parts.",
+        "I'm still collecting that information."
+       ]
+      },
+      {
+       "from": "CHIDI EZE",
+       "text": "The biggest committed piece right now is the brand refresh itself. We've booked Studio Lune, a design contractor, for eight weeks starting in October for that. That's a huge step forward."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What does that eight weeks with Studio Lune cost?",
+       "suggestedAnswers": [
+        "I have the quote.",
+        "Still waiting for their quote.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "CHIDI EZE",
+       "text": "Studio Lune for the brand work costs 34 thousand."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That £34,000 for eight weeks with Studio Lune is a solid piece of committed work. Is there anything you need that is blocked on someone else right now?",
+       "suggestedAnswers": [
+        "The block was cleared; I can proceed now.",
+        "No, I am not blocked right now.",
+        "Yes, I am waiting for ... from ...",
+        "I need to check on that."
+       ]
+      },
+      {
+       "from": "CHIDI EZE",
+       "text": "Not right now, no. Studio Lune is confirmed, and I'm just eager to get started with them."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. Is that plan achievable within the time and resources available?",
+       "suggestedAnswers": [
+        "Yes, I think it is achievable.",
+        "No, we're stuck for now.",
+        "Not yet, I'm still figuring that out.",
+        "We're making good progress."
+       ]
+      },
+      {
+       "from": "CHIDI EZE",
+       "text": "Absolutely, yes. I'm very confident we can deliver. With Studio Lune locked in for the brand refresh, that's a huge win. We'll leverage that momentum."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You are very confident that the plan is achievable. Given that the brand refresh with Studio Lune starts in October, and you have those other campaigns planned, what will you do about this, and by when?",
+       "suggestedAnswers": [
+        "I've started planning everything for this.",
+        "Still figuring out the best approach.",
+        "I don't know what to do yet.",
+        "Got a clear plan to move forward."
+       ]
+      },
+      {
+       "from": "CHIDI EZE",
+       "text": "I'll be finalizing the detailed plans and budget allocations for each campaign over the next few weeks. The goal is to have those ready to go as soon as the brand refresh assets are delivered by Studio Lune."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What is the latest date by which you will have those ready?",
+       "suggestedAnswers": [
+        "I will have them ready by ...",
+        "I don't have a firm date yet."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "prod",
+     "name": "Sara Lindqvist",
+     "isLead": false,
+     "checkInId": "ddc3cc21-e0ed-4550-90f3-0a838c735b1c",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Helen wants each lead to commit to what they are delivering and what it costs. What are the first three things on your workplan for this period?"
+      },
+      {
+       "from": "SARA LINDQVIST",
+       "text": "My first priority is the new dashboard. So the design with Studio Lune, then frontend development, and then backend integration."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What will those three things cost in time, money, and people?",
+       "suggestedAnswers": [
+        "I have good estimates for everything.",
+        "I need more time to estimate those costs.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "SARA LINDQVIST",
+       "text": "The design phase with Studio Lune is set for eight weeks, starting in October. For the development, I'm allocating two frontend engineers and two backend engineers for the entire quarter. The total cost for these three items is 158,000."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. That is 158,000 of Helen's 180,000 budget for the quarter. Which parts of that are approved, and which are assumed?",
+       "suggestedAnswers": [
+        "The design phase is approved.",
+        "Nothing is approved yet.",
+        "I don't know yet.",
+        "Most parts are still assumed."
+       ]
+      },
+      {
+       "from": "SARA LINDQVIST",
+       "text": "The entire 158,000 has been committed to. 40,000 is for Studio Lune, which I've already booked for the design work. The remaining 118,000 covers the engineering team's time for the quarter."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Is that plan achievable within the time and resources available?",
+       "suggestedAnswers": [
+        "It looks achievable with current resources.",
+        "We need more time or resources.",
+        "I am still assessing the plan."
+       ]
+      },
+      {
+       "from": "SARA LINDQVIST",
+       "text": "Yes, I'm confident it is. I've already spoken directly with Studio Lune to secure their time for October."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "It sounds like most of your work is product. Is that right?",
+       "suggestedAnswers": [
+        "Actually, there's a small problem.",
+        "Not yet, I'm still checking."
+       ]
+      },
+      {
+       "from": "SARA LINDQVIST",
+       "text": "Yes, my focus for this quarter is primarily on the product itself, specifically the new dashboard."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You have named the design and development of the new dashboard, committed 158,000 for it, and secured Studio Lune for October. Before we close: what will you do about this, and by when?",
+       "suggestedAnswers": [
+        "I will have a plan for the dashboard by ...",
+        "I am currently blocked on the dashboard.",
+        "I need more time to think about it.",
+        "I will share my next steps by ..."
+       ]
+      },
+      {
+       "from": "SARA LINDQVIST",
+       "text": "I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track for the quarter. This will be an ongoing effort throughout the quarter, with regular check-ins and progress reports."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track for the quarter, with regular check-ins and progress reports.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "cc3c888d-32e2-4bd8-8a6f-6ab7a5691130",
+    "groundId": "af1e2f6b-7be2-4a67-a9a5-7f834484bbf8",
+    "sharedPicture": "All three people have answered. You have a budget of 180,000 for the quarter, but you have received plans that total 254,000. It also appears that two participants believe they have booked the same design contractor for the same period.\n\nYour budget for this quarter is 180,000. You have asked for detailed plans from other departments and the plans you have received so far total 254,000.\n\nChidi Eze's focus this quarter is on revitalizing the brand. Chidi has booked a design contractor, Studio Lune, for eight weeks starting in October for the brand refresh itself.\n\nSara Lindqvist's focus for this quarter is the new product dashboard. Sara reports having already booked the design work for this.\n\nAll three are planning work for the next quarter. You are focused on managing the overall budget, while Chidi and Sara have each planned significant projects in their areas. Both Chidi and Sara have independently made plans to use the same design firm, Studio Lune, beginning in October.",
+    "theOpening": "All three people have answered. You have a budget of 180,000 for the quarter, but you have received plans that total 254,000. It also appears that two participants believe they have booked the same design contractor for the same period.",
+    "agreements": [
+     "All three are planning work for the next quarter.",
+     "Both Chidi Eze and Sara Lindqvist have identified Studio Lune as a necessary external design firm.",
+     "The project with the design firm is scheduled to start in October."
+    ],
+    "divergences": [
+     {
+      "topic": "Your stated budget of 180,000 does not cover the 254,000 objective, and the participants' plans are described in different terms that cannot be added up to check against either number.",
+      "atStake": "If this holds, the quarter will proceed with teams working on plans that are not funded and do not fit into the overall budget.",
+      "evidence": [
+       "You stated a budget of 180,000 and noted the plans received add up to 254,000.",
+       "The participants' plans are for brand and product work, which are not directly comparable without a shared way of counting."
+      ],
+      "positions": [
+       {
+        "view": "Has a budget of 180,000 and has received plans that add up to 254,000.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Is planning brand work with a contractor cost of 34,000.",
+        "participantLabel": "Chidi Eze",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Is planning dashboard work with a total cost of 158,000.",
+        "participantLabel": "Sara Lindqvist",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "settledBy": "Agree on one way of counting costs and reconcile the proposed plans with the available budget.",
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     },
+     {
+      "topic": "Both Chidi Eze and Sara Lindqvist believe they have secured the same external designer for a two-month period beginning in October, but for different projects and at different costs.",
+      "atStake": "If this holds, the design contractor is double-booked, which will delay at least one of the projects and means the true budget is unknown.",
+      "evidence": [
+       "Chidi Eze reported securing Studio Lune for a two-month project on a brand refresh.",
+       "Sara Lindqvist reported securing the same firm for the same timeframe to work on a new dashboard."
+      ],
+      "positions": [
+       {
+        "view": "Booked Studio Lune for a brand refresh at a cost of 34,000.",
+        "participantLabel": "Chidi Eze",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Booked Studio Lune for a new dashboard at a cost of 40,000.",
+        "participantLabel": "Sara Lindqvist",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "settledBy": "Clarify with the contractor which project is confirmed and for what cost.",
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     }
+    ],
+    "centralQuestion": "What is the single priority for the quarter that the 180,000 budget must deliver, and how do the existing plans need to change to meet it?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Helen Oyelaran",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 16,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Helen Oyelaran"
+      },
+      {
+       "label": "Chidi Eze",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 4,
+       "documentsAttached": 0,
+       "who": "Chidi Eze"
+      },
+      {
+       "label": "Sara Lindqvist",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 11,
+       "documentsAttached": 0,
+       "who": "Sara Lindqvist"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "Your stated budget of 180,000 does not cover the 254,000 objective, and the participants' plans are described in different terms that cannot be added up to check against either number.",
+      "Both Chidi Eze and Sara Lindqvist believe they have secured the same external designer for a two-month period beginning in October, but for different projects and at different costs."
+     ],
+     "sessionCounts": {
+      "Chidi Eze": 9,
+      "Sara Lindqvist": 6,
+      "Helen Oyelaran": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Helen Oyelaran",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Helen Oyelaran": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Helen Oyelaran": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "whatCouldBeChecked": {
+      "says": [
+       "All 6 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 6,
+      "checked": 6
+     },
+     "difficultyDisclosures": false
+    },
+    "inferences": [],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": [
+     {
+      "gap": "One account describes a goal of aligning plans and budget, while other accounts describe plans in terms that cannot be summed up or aligned.",
+      "note": "The setup asked for costed plans but did not specify a common way of counting, leading to submissions that cannot be compared.",
+      "pattern": "SETUP_NEVER_SAID",
+      "periods": 1
+     }
+    ],
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "Chidi Eze and Sara Lindqvist have both booked the same design contractor, Studio Lune, for the same period. The work cannot happen as planned because the contractor cannot be in two places at once.",
+     "whatToDo": [
+      {
+       "move": "Speak with Chidi Eze and Sara Lindqvist together about the Studio Lune booking.",
+       "because": "The record shows Chidi Eze and Sara Lindqvist have both booked the same contractor for the same period, but for different projects and at different prices.",
+       "startWith": "Chidi Eze"
+      },
+      {
+       "move": "Show Chidi Eze and Sara Lindqvist that their combined plans for Studio Lune and other work already add up to more than the budget.",
+       "because": "Your budget is 180,000, and the plans from Chidi Eze and Sara Lindqvist add up to 192,000.",
+       "startWith": "Sara Lindqvist"
+      },
+      {
+       "move": "Follow up with individual calls with Chidi Eze and Sara Lindqvist.",
+       "because": "You said you would \"follow up with individual calls\", and these conversations are needed to resolve the differences in the plans.",
+       "startWith": "Chidi Eze"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You hold a budget of 180,000, but you have received plans that total 254,000.",
+       "soWhat": "You must either find more money or ask the teams to cut their plans.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Chidi Eze's record shows a plan to hire Studio Lune for a brand refresh at a cost of 34,000.",
+       "soWhat": "This plan conflicts directly with what Sara Lindqvist has arranged with the same contractor.",
+       "fieldId": "Chidi Eze"
+      },
+      {
+       "says": "Sara Lindqvist's record shows a plan to hire Studio Lune for a new dashboard at a cost of 40,000.",
+       "soWhat": "This plan conflicts directly with what Chidi Eze has arranged with the same contractor.",
+       "fieldId": "Sara Lindqvist"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "Whether anyone else was planning to use the same external contractor.",
+       "howManyMissedIt": 2
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record only contains what Chidi Eze and Sara Lindqvist each believe they have booked, not what Studio Lune has agreed to.",
+       "about": "The actual agreement with Studio Lune.",
+       "toKnow": "Contact Studio Lune to confirm what work has been agreed, by whom, and at what cost."
+      },
+      {
+       "why": "The record shows the contractor cost for Chidi Eze's brand refresh, but not the cost for the campaigns.",
+       "about": "The full cost of Chidi Eze's three campaigns.",
+       "toKnow": "Ask Chidi Eze for the full costed plan for the three campaigns."
+      }
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Chidi Eze is head of marketing. The role description also says \"Quarter plan: brand refresh and three campaigns.\" Since then, the record holds 1 session, 4 lines of what was said, 2 with a name, a number or a date in them and none backed by a document.",
+       "who": "Chidi Eze",
+       "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8"
+      },
+      {
+       "say": "Sara Lindqvist is head of product. The role description also says \"Quarter plan: the new dashboard.\" Since then, the record holds 1 session, 11 lines of what was said, 7 with a name, a number or a date in them, none backed by a document and 1 commitment still open.",
+       "who": "Sara Lindqvist",
+       "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "You are waiting on other departments for \"their detailed quarter plans, with specific line items for all proposed expenditures\", and it has been asked about once since.",
+      "In session 1, you said, \"confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model\". Nobody has said yet whether it happened.",
+      "In session 1, you said, \"follow up with individual calls\". The time you gave for it was \"if I don't get the information by the end of today\". Nobody has said yet whether it happened.",
+      "In session 1, Sara Lindqvist said, \"I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track\". The time Sara gave for it was \"throughout the quarter\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, you said, \"confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model",
+       "when": null,
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": false
+      },
+      {
+       "say": "In session 1, you said, \"follow up with individual calls\". The time you gave for it was \"if I don't get the information by the end of today\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "follow up with individual calls",
+       "when": "if I don't get the information by the end of today",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      },
+      {
+       "say": "In session 1, Sara Lindqvist said, \"I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track\". The time Sara gave for it was \"throughout the quarter\". Nobody has said yet whether it happened.",
+       "who": "Sara Lindqvist",
+       "what": "I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track",
+       "when": "throughout the quarter",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [
+      {
+       "on": "other departments",
+       "say": "You are waiting on other departments for \"their detailed quarter plans, with specific line items for all proposed expenditures\", and it has been asked about once since.",
+       "from": "You",
+       "what": "their detailed quarter plans, with specific line items for all proposed expenditures",
+       "chased": true,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "Your budget for this quarter is 180,000. You have asked for detailed plans from other departments and the plans you have received so far total 254,000.",
+      "hasGap": false,
+      "headline": "Your budget of 180,000 is already exceeded by the 254,000 in plans you have received.",
+      "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Chidi Eze's focus this quarter is on revitalizing the brand. Chidi has booked a design contractor, Studio Lune, for eight weeks starting in October for the brand refresh itself.",
+      "hasGap": false,
+      "headline": "Chidi Eze believes Chidi has booked a designer who Sara Lindqvist also believes Sara has booked.",
+      "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "mark": "memory",
+      "figureIs": "from memory",
+      "markSays": "From memory only"
+     },
+     {
+      "text": "Sara Lindqvist's focus for this quarter is the new product dashboard. Sara reports having already booked the design work for this.",
+      "hasGap": false,
+      "headline": "Sara Lindqvist believes Sara has booked a designer who Chidi Eze also believes Chidi has booked.",
+      "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": "2026-10-02T00:52:22.883Z",
+    "createdAt": "2026-10-02T00:52:22.788Z",
+    "updatedAt": "2026-10-02T00:55:23.999Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You have a budget of 180,000 for the quarter, but you have received plans that total 254,000.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "It also appears that two participants believe they have booked the same design contractor for the same period.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Your budget for this quarter is 180,000.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You have asked for detailed plans from other departments and the plans you have received so far total 254,000.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Chidi Eze's focus this quarter is on revitalizing the brand.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Chidi Eze has booked a design contractor, Studio Lune, for eight weeks starting in October for the brand refresh itself.",
+      "mark": "memory",
+      "figureIs": "from memory",
+      "markNote": "This line rests on more than one thing people said, and they are not all known in the same way. It carries the mark of the one that is known least well.",
+      "markSays": "From memory only",
+      "marksBehind": [
+       "said",
+       "memory"
+      ]
+     },
+     {
+      "text": "Sara Lindqvist's focus for this quarter is the new product dashboard.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Sara Lindqvist reports having already booked the design work for this.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "All three are planning work for the next quarter.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are focused on managing the overall budget, while Chidi Eze and Sara Lindqvist have each planned significant projects in their areas.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both Chidi Eze and Sara Lindqvist have independently made plans to use the same design firm, Studio Lune, beginning in October.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "My main goal is to fit the work into the 180,000 budget, and the plans submitted so far are coming in significantly higher than that.",
+     "toAcknowledge": "Acknowledge the scale of the work reflected in the other spending plans. Even if the total is too high, it represents what others see as being required to succeed.",
+     "questionToCarry": "What are the most critical outcomes your plans are designed to achieve this quarter?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of finance work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "Put their detailed quarter plans, with specific line items for all proposed expenditures in writing, with the date you need it by."
+     ],
+     "general": true,
+     "role": {
+      "label": "Finance",
+      "onTrack": "The implication of the number owned, uncomfortable truths surfaced early, decisions the numbers do not support challenged.",
+      "goingWrong": "Reports figures without the implication; over-models to avoid an owned call; lets a known problem sit.",
+      "protectAgainst": "You should not mistake Finance delivering unwelcome information for negativity, as this punishes the necessary function of the role.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "7a4a1983-690a-47c3-a02d-4499e3645709",
+      "type": "SUCCESS_DEFINITION",
+      "text": "focus on optimising our cash flow",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "1c376bf5-126c-4682-9309-683f41d6e6ba",
+      "type": "ASK",
+      "text": "I'll need a dedicated analyst for about four weeks.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "bd1793b0-0fcc-4c9d-9115-32845c229919",
+      "type": "ASK",
+      "text": "an intern to help with data collation",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "f1462914-b109-40fc-9236-56ff675f2cef",
+      "type": "COMMITMENT",
+      "text": "I block out significant time, probably two weeks",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "fd3a9f36-89cf-4a8b-ab1b-cb23400f785d",
+      "type": "INTENT",
+      "text": "The budget I have for this quarter is 180k.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "78935e66-4395-44cd-ae5a-42ae0dada582",
+      "type": "WORRY",
+      "text": "The plans I've received from other departments. They total 254k, and that's already over my budget.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "ef8c7c12-fc61-4bb3-befb-fd5b226def11",
+      "type": "ASK",
+      "text": "I need to see their line items.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "3c09d423-2561-49ca-b895-cfeb3d8bb16a",
+      "type": "WORRY",
+      "text": "I need to confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "f8072c8f-865b-4991-ab9c-1161237f447e",
+      "type": "ASK",
+      "text": "I need to see the detailed breakdowns of the other plans that total 254k.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "7d80915c-edfb-4d07-834d-1890b00cc37c",
+      "type": "TOLERANCE",
+      "text": "I can't sign off on anything until I understand what those costs are for and how they align with our overall priorities.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "c33c9a31-7103-45eb-979b-99fce88ac1b4",
+      "type": "PROGRESS",
+      "text": "I've asked for their detailed quarter plans, with specific line items for all proposed expenditures.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b57c2e7d-0f38-49c1-80dc-7bcb4aa0ad45",
+      "type": "WORRY",
+      "text": "I haven't received them yet.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "2d5223ea-6c91-4891-abd9-f0e366035785",
+      "type": "PROGRESS",
+      "text": "I sent a reminder email last week.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "843aa129-babf-4841-9915-78f7aca6ddc6",
+      "type": "TOLERANCE",
+      "text": "I will not approve their plans or release any budget until I have a clear understanding of what they are asking for.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "ab6d0107-c809-4f5b-8ad4-f50d6093289a",
+      "type": "WORRY",
+      "text": "I haven't received any revised plans or justifications since my initial request.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     },
+     {
+      "id": "4f6b1d76-3727-42f5-845d-9cc5bd9f9e9d",
+      "type": "WORRY",
+      "text": "I'm assuming both plans are padded.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "038ac823-54d9-4749-a2d8-21aec0246ae9",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [
+     {
+      "id": "ceac93d4-f104-4eb3-9849-9c928ddc4937",
+      "what": "their detailed quarter plans, with specific line items for all proposed expenditures",
+      "couldTry": [
+       "Ask what can move without this, so the whole thing is not waiting on one approval."
+      ]
+     }
+    ],
+    "mySoftSpots": [],
+    "probes": [
+     {
+      "who": "Helen Oyelaran",
+      "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "probe": [
+       "You have been waiting for their detailed quarter plans, with specific line items for all proposed expenditures, and nothing on record says it was raised higher. This early, that is worth showing you rather than asking about."
+      ],
+      "encourage": [
+       "Worth getting on record, where anyone could check it later: focus on optimising our cash flow."
+      ],
+      "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+     },
+     {
+      "who": "Chidi Eze",
+      "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "probe": [],
+      "encourage": [],
+      "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+     },
+     {
+      "who": "Sara Lindqvist",
+      "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "probe": [],
+      "encourage": [],
+      "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+     }
+    ],
+    "soloArtifact": {
+     "summary": "Here is what you shared.\nYou are focused on optimising cash flow with a budget of 180k for the quarter. The plans you have received from other departments total 254k, and you have noted that you assume these plans are padded. You have asked for their detailed breakdowns with specific line items, but have not yet received them. You will not approve plans or release budget until you have a clear understanding of what is being asked for. To do this work, you need a dedicated analyst for about four weeks and an intern to help with data collation.",
+     "whatToCarry": "You need to confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    },
+    "forTheLead": [
+     {
+      "id": "difference-1",
+      "decide": "Agree on one way of counting costs and reconcile the proposed plans with the available budget.",
+      "why": "Your stated budget of 180,000 does not cover the 254,000 objective, and the participants' plans are described in different terms that cannot be added up to check against either number. You, Chidi Eze and Sara Lindqvist said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this holds, the quarter will proceed with teams working on plans that are not funded and do not fit into the overall budget."
+     },
+     {
+      "id": "difference-2",
+      "decide": "Clarify with the contractor which project is confirmed and for what cost.",
+      "why": "Both Chidi Eze and Sara Lindqvist believe they have secured the same external designer for a two-month period beginning in October, but for different projects and at different costs. Chidi Eze and Sara Lindqvist said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this holds, the design contractor is double-booked, which will delay at least one of the projects and means the true budget is unknown."
+     }
+    ]
+   },
+   "board": {
+    "groundId": "af1e2f6b-7be2-4a67-a9a5-7f834484bbf8",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "DELIVERY",
+    "peopleWorkTogether": true,
+    "sections": [
+     "phaseSpine",
+     "quickRead",
+     "objectives",
+     "startingState",
+     "divergence",
+     "whatTheRoomIsAbout",
+     "whoOwnsWhat",
+     "dependencies",
+     "checkInGrid",
+     "contribution",
+     "coverage",
+     "cascade",
+     "hiddenContributors",
+     "patterns",
+     "decisions",
+     "poll"
+    ],
+    "title": "The quarter workplan and what it costs",
+    "scenario": "WORKPLAN_BUDGET",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. You have a budget of 180,000 for the quarter, but you have received plans that total 254,000. It also appears that two participants believe they have booked the same design contractor for the same period.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 3,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 1,
+       "oldest": "A colleague's detailed quarter plans, with specific line items for all proposed expenditures",
+       "daysWaiting": 0
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "Chidi Eze and Sara Lindqvist have both booked the same design contractor, Studio Lune, for the same period. The work cannot happen as planned because the contractor cannot be in two places at once.",
+     "whatToDo": [
+      {
+       "move": "Speak with Chidi Eze and Sara Lindqvist together about the Studio Lune booking.",
+       "because": "The record shows Chidi Eze and Sara Lindqvist have both booked the same contractor for the same period, but for different projects and at different prices.",
+       "startWith": "Chidi Eze"
+      },
+      {
+       "move": "Show Chidi Eze and Sara Lindqvist that their combined plans for Studio Lune and other work already add up to more than the budget.",
+       "because": "Your budget is 180,000, and the plans from Chidi Eze and Sara Lindqvist add up to 192,000.",
+       "startWith": "Sara Lindqvist"
+      },
+      {
+       "move": "Follow up with individual calls with Chidi Eze and Sara Lindqvist.",
+       "because": "You said you would \"follow up with individual calls\", and these conversations are needed to resolve the differences in the plans.",
+       "startWith": "Chidi Eze"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You hold a budget of 180,000, but you have received plans that total 254,000.",
+       "soWhat": "You must either find more money or ask the teams to cut their plans.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Chidi Eze's record shows a plan to hire Studio Lune for a brand refresh at a cost of 34,000.",
+       "soWhat": "This plan conflicts directly with what Sara Lindqvist has arranged with the same contractor.",
+       "fieldId": "Chidi Eze"
+      },
+      {
+       "says": "Sara Lindqvist's record shows a plan to hire Studio Lune for a new dashboard at a cost of 40,000.",
+       "soWhat": "This plan conflicts directly with what Chidi Eze has arranged with the same contractor.",
+       "fieldId": "Sara Lindqvist"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "Whether anyone else was planning to use the same external contractor.",
+       "howManyMissedIt": 2
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record only contains what Chidi Eze and Sara Lindqvist each believe they have booked, not what Studio Lune has agreed to.",
+       "about": "The actual agreement with Studio Lune.",
+       "toKnow": "Contact Studio Lune to confirm what work has been agreed, by whom, and at what cost."
+      },
+      {
+       "why": "The record shows the contractor cost for Chidi Eze's brand refresh, but not the cost for the campaigns.",
+       "about": "The full cost of Chidi Eze's three campaigns.",
+       "toKnow": "Ask Chidi Eze for the full costed plan for the three campaigns."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Chidi Eze is head of marketing. The role description also says \"Quarter plan: brand refresh and three campaigns.\" Since then, the record holds 1 session, 4 lines of what was said, 2 with a name, a number or a date in them and none backed by a document.",
+       "who": "Chidi Eze",
+       "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8"
+      },
+      {
+       "say": "Sara Lindqvist is head of product. The role description also says \"Quarter plan: the new dashboard.\" Since then, the record holds 1 session, 11 lines of what was said, 7 with a name, a number or a date in them, none backed by a document and 1 commitment still open.",
+       "who": "Sara Lindqvist",
+       "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "You are waiting on other departments for \"their detailed quarter plans, with specific line items for all proposed expenditures\", and it has been asked about once since.",
+      "In session 1, you said, \"confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model\". Nobody has said yet whether it happened.",
+      "In session 1, you said, \"follow up with individual calls\". The time you gave for it was \"if I don't get the information by the end of today\". Nobody has said yet whether it happened.",
+      "In session 1, Sara Lindqvist said, \"I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track\". The time Sara Lindqvist gave for it was \"throughout the quarter\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, you said, \"confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model",
+       "when": null,
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": false
+      },
+      {
+       "say": "In session 1, you said, \"follow up with individual calls\". The time you gave for it was \"if I don't get the information by the end of today\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "follow up with individual calls",
+       "when": "if I don't get the information by the end of today",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      },
+      {
+       "say": "In session 1, Sara Lindqvist said, \"I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track\". The time Sara Lindqvist gave for it was \"throughout the quarter\". Nobody has said yet whether it happened.",
+       "who": "Sara Lindqvist",
+       "what": "I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track",
+       "when": "throughout the quarter",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [
+      {
+       "on": "other departments",
+       "say": "You are waiting on other departments for \"their detailed quarter plans, with specific line items for all proposed expenditures\", and it has been asked about once since.",
+       "from": "You",
+       "what": "their detailed quarter plans, with specific line items for all proposed expenditures",
+       "chased": true,
+       "status": "BLOCKING",
+       "onParticipantId": null,
+       "sessionsWaiting": 0,
+       "fromParticipantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0"
+      }
+     ],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T00:55:23.999Z",
+    "participants": [
+     {
+      "id": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "name": "Helen Oyelaran",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "name": "Chidi Eze",
+      "role": "Head of marketing. Quarter plan: brand refresh and three campaigns.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "name": "Sara Lindqvist",
+      "role": "Head of product. Quarter plan: the new dashboard.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "phaseSpine": {
+     "startsAt": null,
+     "endsAt": null,
+     "currentSession": 1,
+     "plannedSessions": 3,
+     "sessions": [
+      {
+       "n": 1,
+       "state": "done",
+       "date": "2026-10-02T00:48:09.330Z",
+       "opensOn": null,
+       "openedOn": "2026-10-02T00:46:29.609Z",
+       "says": "Session 1 finished on 2 October."
+      },
+      {
+       "n": 2,
+       "state": "upcoming",
+       "date": null,
+       "opensOn": "2026-11-02T00:48:09.339Z",
+       "openedOn": null,
+       "says": "Session 2 opens on 2 November."
+      }
+     ]
+    },
+    "targetsNobodyOwns": "2 targets have nobody's name on them, so everybody on this check-in can see them. Set whose they are to keep each person's number to them.",
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "e13b8bfd-f824-437c-beff-5e7f28c69baf",
+      "name": "You are focused on optimising the team's cash flow this quarter.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     },
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 254000,
+       "now": 254000,
+       "target": 254000,
+       "say": "It was 254,000 at the start and is 254,000 now, so the aim of 254,000 has been reached.",
+       "covered": 0
+      },
+      "direction": null,
+      "directionSuggested": "AIM",
+      "directionQuestion": "Is 254,000 something to reach, or a limit not to go over?",
+      "notSettled": null,
+      "id": "5c64c685-7655-4f06-94d2-35c604dd0fc9",
+      "name": "You need to see the detailed breakdowns of the other departments' plans that total 254,000.",
+      "count": 254000,
+      "prevCount": 0,
+      "target": 254000,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 254000,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     },
+     {
+      "journey": {
+       "direction": "down",
+       "start": 0,
+       "now": 0,
+       "target": 180000,
+       "covered": null,
+       "say": "It was 0 at the start and is 0 now, within the limit of 180,000."
+      },
+      "direction": null,
+      "directionSuggested": "LIMIT",
+      "directionQuestion": "Is 180,000 something to reach, or a limit not to go over?",
+      "notSettled": null,
+      "id": "79496d86-9d36-4042-9dac-013288ccba9d",
+      "name": "Your budget for the quarter is 180,000.",
+      "count": 0,
+      "prevCount": 0,
+      "target": 180000,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": 158000,
+      "suggestedSaid": "The total cost for these three items is 158,000.",
+      "askedOf": null
+     },
+     {
+      "journey": {
+       "direction": "up",
+       "start": 0,
+       "now": 0,
+       "target": 3,
+       "say": "It was 0 at the start and is 0 now, and the aim is 3.",
+       "covered": 0
+      },
+      "direction": null,
+      "directionSuggested": "AIM",
+      "directionQuestion": "Is 3 something to reach, or a limit not to go over?",
+      "notSettled": null,
+      "id": "53b10e21-cf24-40cd-bb6d-f1af2ac3bcce",
+      "name": "Chidi Eze has three key campaigns Chidi Eze wants to roll out to leverage that new brand.",
+      "count": 0,
+      "prevCount": 0,
+      "target": 3,
+      "assumes": [],
+      "ownerParticipantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "owner": "Chidi Eze",
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "Your stated budget of 180,000 does not cover the 254,000 objective, and the participants' plans are described in different terms that cannot be added up to check against either number.",
+       "atStake": "If this holds, the quarter will proceed with teams working on plans that are not funded and do not fit into the overall budget.",
+       "evidence": [
+        "You stated a budget of 180,000 and noted the plans received add up to 254,000.",
+        "The participants' plans are for brand and product work, which are not directly comparable without a shared way of counting."
+       ],
+       "positions": [
+        {
+         "view": "Has a budget of 180,000 and has received plans that add up to 254,000.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Is planning brand work with a contractor cost of 34,000.",
+         "participantLabel": "Chidi Eze",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Chidi Eze"
+        },
+        {
+         "view": "Is planning dashboard work with a total cost of 158,000.",
+         "participantLabel": "Sara Lindqvist",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Sara Lindqvist"
+        }
+       ],
+       "settledBy": "Agree on one way of counting costs and reconcile the proposed plans with the available budget.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      },
+      {
+       "topic": "Both Chidi Eze and Sara Lindqvist believe they have secured the same external designer for a two-month period beginning in October, but for different projects and at different costs.",
+       "atStake": "If this holds, the design contractor is double-booked, which will delay at least one of the projects and means the true budget is unknown.",
+       "evidence": [
+        "Chidi Eze reported securing Studio Lune for a two-month project on a brand refresh.",
+        "Sara Lindqvist reported securing the same firm for the same timeframe to work on a new dashboard."
+       ],
+       "positions": [
+        {
+         "view": "Booked Studio Lune for a brand refresh at a cost of 34,000.",
+         "participantLabel": "Chidi Eze",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Chidi Eze"
+        },
+        {
+         "view": "Booked Studio Lune for a new dashboard at a cost of 40,000.",
+         "participantLabel": "Sara Lindqvist",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Sara Lindqvist"
+        }
+       ],
+       "settledBy": "Clarify with the contractor which project is confirmed and for what cost.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "All three are planning work for the next quarter.",
+      "Both Chidi Eze and Sara Lindqvist have identified Studio Lune as a necessary external design firm.",
+      "The project with the design firm is scheduled to start in October."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Agree on one way of counting costs and reconcile the proposed plans with the available budget. That is what settles your stated budget of 180,000 does not cover the 254,000 objective, and the participants' plans are described in different terms that cannot be added up to check against either number.",
+     "settled": [
+      "All three are planning work for the next quarter.",
+      "Both Chidi Eze and Sara Lindqvist have identified Studio Lune as a necessary external design firm.",
+      "The project with the design firm is scheduled to start in October."
+     ],
+     "stillOpen": [
+      "Your stated budget of 180,000 does not cover the 254,000 objective, and the participants' plans are described in different terms that cannot be added up to check against either number.",
+      "Both Chidi Eze and Sara Lindqvist believe they have secured the same external designer for a two-month period beginning in October, but for different projects and at different costs."
+     ]
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "who": "Chidi Eze",
+      "nameIsTheirRole": false,
+      "target": 3,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Chidi Eze has checked in.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Chidi Eze's focus this quarter is on revitalizing the brand. Chidi has booked a design contractor, Studio Lune, for eight weeks starting in October for the brand refresh itself.",
+      "hasGap": false,
+      "findingMark": "memory",
+      "findingMarkSays": "From memory only"
+     },
+     {
+      "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "who": "Sara Lindqvist",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Sara Lindqvist has checked in.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Sara Lindqvist's focus for this quarter is the new product dashboard. Sara reports having already booked the design work for this.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+       "name": "Helen Oyelaran",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+       "name": "Chidi Eze",
+       "role": "Head of marketing. Quarter plan: brand refresh and three campaigns.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+       "name": "Sara Lindqvist",
+       "role": "Head of product. Quarter plan: the new dashboard.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "whoOwnsWhat": [
+     {
+      "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "name": "Helen Oyelaran",
+      "role": null,
+      "items": [
+       {
+        "id": "7a4a1983-690a-47c3-a02d-4499e3645709",
+        "type": "SUCCESS_DEFINITION",
+        "text": "You said success would be \"focus on optimising our cash flow\".",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "f1462914-b109-40fc-9236-56ff675f2cef",
+        "type": "COMMITMENT",
+        "text": "You have made a commitment here.",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "fd3a9f36-89cf-4a8b-ab1b-cb23400f785d",
+        "type": "INTENT",
+        "text": "You said, \"The budget I have for this quarter is 180k.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "c33c9a31-7103-45eb-979b-99fce88ac1b4",
+        "type": "PROGRESS",
+        "text": "You said, \"I've asked for their detailed quarter plans, with specific line items for all proposed expenditures.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "2d5223ea-6c91-4891-abd9-f0e366035785",
+        "type": "PROGRESS",
+        "text": "You said, \"I sent a reminder email last week.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "name": "Chidi Eze",
+      "role": "Head of marketing. Quarter plan: brand refresh and three campaigns.",
+      "items": [
+       {
+        "id": "4c9fa82b-9b30-4fa8-b43c-a79011156541",
+        "type": "INTENT",
+        "text": "Chidi Eze said, \"my big focus this quarter is really going to be around revitalizing our brand.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "7bd98775-3f70-4b6e-8f84-efbfa05ff68e",
+        "type": "COMMITMENT",
+        "text": "Chidi Eze said, \"three key campaigns I want to roll out to leverage that new brand.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "de04372a-e574-4114-9ac8-a24161311e75",
+        "type": "PROGRESS",
+        "text": "Chidi Eze has reported progress.",
+        "mark": "memory",
+        "markSays": "From memory only",
+        "sessionNumber": 1
+       },
+       {
+        "id": "b937415f-6d80-48d8-84d8-24829bfb7f57",
+        "type": "PROGRESS",
+        "text": "Chidi Eze said, \"Studio Lune for the brand work costs 34 thousand.\"",
+        "mark": "memory",
+        "markSays": "From memory only",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "name": "Sara Lindqvist",
+      "role": "Head of product. Quarter plan: the new dashboard.",
+      "items": [
+       {
+        "id": "dd45ae7c-df9e-4ab7-85b4-ccee940c2816",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"My first priority is the new dashboard. So the design with Studio Lune, then frontend development, and then backend integration.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "22d4b389-6364-459b-8fec-fca9b1339f9d",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"I'm allocating two frontend engineers and two backend engineers for the entire quarter.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "678abfa6-b13a-4215-a9bd-ba8b682048b1",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"The total cost for these three items is 158,000.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "52f85b2e-e61b-45be-89e8-eddc15ae5db5",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"The entire 158,000 has been committed to.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "9adce11d-9676-47c8-8a12-549abcc8aa60",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"40,000 is for Studio Lune.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "44bc22c1-9ceb-4055-b22e-a53ef1154139",
+        "type": "PROGRESS",
+        "text": "Sara Lindqvist said, \"I've already booked for the design work.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "c5984eff-fc22-40ab-8f72-fa326d5b844d",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"The remaining 118,000 covers the engineering team's time for the quarter.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "073176fd-5a56-4cf1-893a-522189571978",
+        "type": "PROGRESS",
+        "text": "Sara Lindqvist said, \"I've already spoken directly with Studio Lune to secure their time for October.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "8feaddf7-5ac1-44b8-b834-0edf27ff01a8",
+        "type": "INTENT",
+        "text": "Sara Lindqvist said, \"my focus for this quarter is primarily on the product itself, specifically the new dashboard.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "49bec50c-77d2-4d16-8269-2719c072d43e",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track for the quarter.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     }
+    ],
+    "dependencies": [
+     {
+      "id": "ceac93d4-f104-4eb3-9849-9c928ddc4937",
+      "from": "Helen Oyelaran",
+      "fromParticipantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "what": "their detailed quarter plans, with specific line items for all proposed expenditures",
+      "on": "other departments",
+      "onParticipantId": null,
+      "status": "BLOCKING",
+      "then": "I can sign off on their plans",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October."
+      }
+     }
+    ],
+    "decisions": [
+     {
+      "question": "You are waiting on their detailed quarter plans, with specific line items for all proposed expenditures, so it needs deciding.",
+      "why": "You cannot move until this is decided.",
+      "owner": "other departments",
+      "source": "blocker"
+     },
+     {
+      "question": "People in this check-in said different things. Your stated budget of 180,000 does not cover the 254,000 objective, and the participants' plans are described in different terms that cannot be added up to check against either number. This needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "You",
+      "source": "divergence"
+     },
+     {
+      "question": "People in this check-in said different things. Both Chidi Eze and Sara Lindqvist believe they have secured the same external designer for a two-month period beginning in October, but for different projects and at different costs. This needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "You",
+      "source": "divergence"
+     }
+    ],
+    "whatTheRoomIsAbout": {
+     "aims": [
+      {
+       "aim": "One person is trying to deliver the new product dashboard.",
+       "held": [
+        "Sara Lindqvist"
+       ]
+      },
+      {
+       "aim": "One person is trying to optimise the company's cash flow.",
+       "held": [
+        "Helen Oyelaran"
+       ]
+      },
+      {
+       "aim": "One person is trying to revitalise the company's brand.",
+       "held": [
+        "Chidi Eze"
+       ]
+      }
+     ],
+     "places": [],
+     "things": [
+      {
+       "name": "analyst",
+       "named": [
+        "Helen Oyelaran"
+       ]
+      },
+      {
+       "name": "brand",
+       "named": [
+        "Chidi Eze"
+       ]
+      },
+      {
+       "name": "dashboard",
+       "named": [
+        "Sara Lindqvist"
+       ]
+      },
+      {
+       "name": "forecasting model",
+       "named": [
+        "Helen Oyelaran"
+       ]
+      },
+      {
+       "name": "intern",
+       "named": [
+        "Helen Oyelaran"
+       ]
+      }
+     ],
+     "readAtSession": 1
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "2",
+      "sub": "The written report reads this as still open.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Nothing yet",
+      "sub": "3 targets are set, and no round has closed to measure from.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "1",
+      "sub": "Work is held up by a colleague's detailed quarter plans, with specific line items for all proposed expenditures.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "contribution": [
+     {
+      "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "name": "Helen Oyelaran",
+      "remit": null,
+      "remitDefined": false,
+      "position": null,
+      "reason": null,
+      "note": "No position shown, because the role was never clearly defined. Define what it is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person.",
+      "confidence": 0,
+      "evidenceCount": 0,
+      "shown": false,
+      "basis": "No role was defined, so there is nothing to read against."
+     },
+     {
+      "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "name": "Chidi Eze",
+      "remit": "Head of marketing. Quarter plan: brand refresh and three campaigns.",
+      "remitDefined": true,
+      "position": null,
+      "positionLabel": null,
+      "reason": null,
+      "nothingCheckable": false,
+      "isBlocked": false,
+      "ownVoice": null,
+      "shown": true,
+      "guard": "Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone."
+     },
+     {
+      "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "name": "Sara Lindqvist",
+      "remit": "Head of product. Quarter plan: the new dashboard.",
+      "remitDefined": true,
+      "position": null,
+      "positionLabel": null,
+      "reason": null,
+      "nothingCheckable": false,
+      "isBlocked": false,
+      "ownVoice": null,
+      "shown": true,
+      "guard": "Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone."
+     }
+    ],
+    "coverage": {
+     "scope": "role",
+     "reads": [
+      {
+       "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+       "name": "Helen Oyelaran",
+       "scope": "role",
+       "pct": 0,
+       "kind": "STABLE",
+       "trend": "stable",
+       "what": "The role was never defined, so there is no boundary to measure against.",
+       "reason": "CANNOT_DETERMINE",
+       "reasonText": "You have not defined the role, so you cannot measure the work against a boundary.",
+       "ownVoice": null,
+       "coupledToBlocker": true,
+       "remitDefined": false,
+       "confidence": 0.15,
+       "evidenceCount": 0,
+       "shown": true,
+       "basis": "Based on 1 check-in, 0 checkable things named, none of it confirmed by anyone else."
+      },
+      {
+       "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+       "name": "Chidi Eze",
+       "scope": "role",
+       "pct": 0,
+       "kind": "STABLE",
+       "trend": "stable",
+       "what": "Nobody has said anything about this person's work moving elsewhere.",
+       "reason": "SHARED_BY_DESIGN",
+       "reasonText": "Their responsibilities remain with them.",
+       "ownVoice": null,
+       "coupledToBlocker": false,
+       "remitDefined": true,
+       "confidence": 0.15,
+       "evidenceCount": 0,
+       "shown": true,
+       "basis": "Based on 1 check-in, 0 checkable things named, none of it confirmed by anyone else."
+      },
+      {
+       "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+       "name": "Sara Lindqvist",
+       "scope": "role",
+       "pct": 0,
+       "kind": "STABLE",
+       "trend": "stable",
+       "what": "Nobody has said anything about this person's work moving elsewhere.",
+       "reason": "SHARED_BY_DESIGN",
+       "reasonText": "Their responsibilities remain with them.",
+       "ownVoice": null,
+       "coupledToBlocker": false,
+       "remitDefined": true,
+       "confidence": 0.15,
+       "evidenceCount": 0,
+       "shown": true,
+       "basis": "Based on 1 check-in, 0 checkable things named, none of it confirmed by anyone else."
+      }
+     ]
+    },
+    "managerAlignment": [
+     {
+      "managerParticipantId": "",
+      "managerName": null,
+      "pattern": "SETUP_NEVER_SAID",
+      "pole": "NEITHER",
+      "label": "What people were asked to check in against was never pinned down",
+      "gap": "One account describes a goal of aligning plans and budget, while other accounts describe plans in terms that cannot be summed up or aligned.",
+      "note": "The setup asked for costed plans but did not specify a common way of counting, leading to submissions that cannot be compared.",
+      "periods": 1
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of finance work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "Put their detailed quarter plans, with specific line items for all proposed expenditures in writing, with the date you need it by."
+      ],
+      "general": true,
+      "role": {
+       "label": "Finance",
+       "onTrack": "The implication of the number owned, uncomfortable truths surfaced early, decisions the numbers do not support challenged.",
+       "goingWrong": "Reports figures without the implication; over-models to avoid an owned call; lets a known problem sit.",
+       "protectAgainst": "You should not mistake Finance delivering unwelcome information for negativity, as this punishes the necessary function of the role.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": [
+      {
+       "who": "Helen Oyelaran",
+       "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+       "probe": [
+        "You have been waiting for their detailed quarter plans, with specific line items for all proposed expenditures, and nothing on record says it was raised higher. This early, that is worth showing you rather than asking about."
+       ],
+       "encourage": [
+        "Worth getting on record, where anyone could check it later: focus on optimising our cash flow."
+       ],
+       "triedToUnblock": "Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins."
+      },
+      {
+       "who": "Chidi Eze",
+       "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+       "probe": [],
+       "encourage": [],
+       "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+      },
+      {
+       "who": "Sara Lindqvist",
+       "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+       "probe": [],
+       "encourage": [],
+       "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+      }
+     ]
+    },
+    "patterns": [],
+    "poll": null,
+    "eachPersonToday": [
+     {
+      "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "who": "Chidi Eze",
+      "line": "Chidi Eze has checked in."
+     },
+     {
+      "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "who": "Sara Lindqvist",
+      "line": "Sara Lindqvist has checked in."
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-ceac93d4-f104-4eb3-9849-9c928ddc4937",
+      "says": "You cannot move on their detailed quarter plans, with specific line items for all proposed expenditures until it comes from other departments.",
+      "because": "It was first said on 2 October. About what has been tried, you said, \"I sent a reminder email last week\". No time has been given for it."
+     },
+     {
+      "id": "no-time-52e97b60-1829-458f-968e-21dbf562dfe8",
+      "says": "You committed to confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model, and no time was given for it, so nobody can tell when it would be late.",
+      "because": "Nobody has said yet whether it happened."
+     },
+     {
+      "id": "no-time-9030cf84-cb34-4a17-92a3-af4472f708ad",
+      "says": "You committed to follow up with individual calls, and no time was given for it, so nobody can tell when it would be late.",
+      "because": "Nobody has said yet whether it happened."
+     },
+     {
+      "id": "targets-nobody-owns",
+      "says": "2 targets have nobody's name on them, so everybody on this check-in can see them. Set whose they are to keep each person's number to them.",
+      "because": "It comes from the targets this check-in holds."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "52e97b60-1829-458f-968e-21dbf562dfe8",
+      "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "who": "You",
+      "says": "In session 1, you said, \"confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": null,
+      "state": "open",
+      "statedInSession": 1
+     },
+     {
+      "id": "9030cf84-cb34-4a17-92a3-af4472f708ad",
+      "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "who": "You",
+      "says": "In session 1, you said, \"follow up with individual calls\". The time you gave for it was \"if I don't get the information by the end of today\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "if I don't get the information by the end of today",
+      "state": "open",
+      "statedInSession": 1
+     },
+     {
+      "id": "f6f68506-b6ab-4714-a4b7-ccbdeb7f0d62",
+      "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "who": "Sara Lindqvist",
+      "says": "In session 1, Sara Lindqvist said, \"I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track\". The time Sara Lindqvist gave for it was \"throughout the quarter\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "throughout the quarter",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you committed to confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you committed to follow up with individual calls."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Sara Lindqvist committed to be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you said the work was waiting on other departments for their detailed quarter plans, with specific line items for all proposed expenditures."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "who": "You",
+      "says": "You have answered 1 session and made 2 commitments. 0 are done, 0 are not done or dropped, and 2 are still open.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you made 2 commitments and named 1 thing the work was waiting on."
+       }
+      ]
+     },
+     {
+      "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "who": "Chidi Eze",
+      "says": "Chidi Eze has answered 1 session, and the record holds no commitment from Chidi Eze yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Chidi Eze answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "who": "Sara Lindqvist",
+      "says": "Sara Lindqvist has answered 1 session and made 1 commitment.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Sara Lindqvist made 1 commitment."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "ceac93d4-f104-4eb3-9849-9c928ddc4937",
+      "who": "You",
+      "says": "You are waiting on other departments for their detailed quarter plans, with specific line items for all proposed expenditures.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "Other departments holds it.",
+       "About what has been tried, you said, \"I sent a reminder email last week\".",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "busyOrMoving": {
+     "eachPerson": [
+      {
+       "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+       "who": "You",
+       "says": "You have made 2 commitments across 1 answered session. You also named 1 thing the work was waiting on."
+      },
+      {
+       "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+       "who": "Sara Lindqvist",
+       "says": "Sara Lindqvist has made 1 commitment across 1 answered session."
+      }
+     ],
+     "cannotTellYou": "These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that."
+    },
+    "leadActions": [
+     {
+      "id": "own-52e97b60-1829-458f-968e-21dbf562dfe8",
+      "says": "In session 1, you said, \"confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model\". It has been open for 1 session, and nobody has said whether it happened.",
+      "because": null
+     },
+     {
+      "id": "own-9030cf84-cb34-4a17-92a3-af4472f708ad",
+      "says": "In session 1, you said, \"follow up with individual calls\". The time you gave for it was \"if I don't get the information by the end of today\". It has been open for 1 session, and nobody has said whether it happened.",
+      "because": null
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "who": "You",
+      "promised": [
+       "In session 1, you said, \"confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model\". It has been open for 1 session, and nobody has said whether it happened.",
+       "In session 1, you said, \"follow up with individual calls\". The time you gave for it was \"if I don't get the information by the end of today\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "who": "Sara Lindqvist",
+      "promised": [
+       "In session 1, Sara Lindqvist said, \"I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track\". The time Sara Lindqvist gave for it was \"throughout the quarter\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": null,
+      "who": "other departments",
+      "promised": [],
+      "othersWaitFor": [
+       "You are waiting on other departments for their detailed quarter plans, with specific line items for all proposed expenditures."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "ceac93d4-f104-4eb3-9849-9c928ddc4937",
+      "says": "You have been waiting on other departments for their detailed quarter plans, with specific line items for all proposed expenditures since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "ceac93d4-f104-4eb3-9849-9c928ddc4937",
+      "who": "You",
+      "name": "their detailed quarter plans, with specific line items for all proposed expenditures",
+      "state": "blocking",
+      "says": "You are waiting on other departments for their detailed quarter plans, with specific line items for all proposed expenditures.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what you said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": "Once it is cleared, I can sign off on their plans."
+     }
+    ]
+   },
+   "participantReport": {
+    "id": "cc3c888d-32e2-4bd8-8a6f-6ab7a5691130",
+    "groundId": "af1e2f6b-7be2-4a67-a9a5-7f834484bbf8",
+    "sharedPicture": "All three people have answered. Helen Oyelaran has a budget of 180,000 for the quarter, but Helen has received plans that total 254,000. It also appears that two participants believe they have booked the same design contractor for the same period. Helen's budget for this quarter is 180,000. Helen has asked for detailed plans from other departments and the plans Helen has received so far total 254,000. Your focus this quarter is on revitalizing the brand. You have booked a design contractor, Studio Lune, for eight weeks starting in October for the brand refresh itself. Sara Lindqvist's focus for this quarter is the new product dashboard. Sara reports having already booked the design work for this. All three are planning work for the next quarter. Helen is focused on managing the overall budget, while you and Sara have each planned significant projects in their areas. Both you and Sara have independently made plans to use the same design firm, Studio Lune, beginning in October.",
+    "theOpening": "All three people have answered. Helen Oyelaran has a budget of 180,000 for the quarter, but Helen has received plans that total 254,000. It also appears that two participants believe they have booked the same design contractor for the same period.",
+    "agreements": [
+     "All three are planning work for the next quarter.",
+     "Both you and Sara Lindqvist have identified Studio Lune as a necessary external design firm.",
+     "The project with the design firm is scheduled to start in October."
+    ],
+    "centralQuestion": "What is the single priority for the quarter that the 180,000 budget must deliver, and how do the existing plans need to change to meet it?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Helen Oyelaran",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 16,
+       "documentsAttached": 0,
+       "who": "Helen Oyelaran"
+      },
+      {
+       "label": "Chidi Eze",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 4,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Chidi Eze"
+      },
+      {
+       "label": "Sara Lindqvist",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 11,
+       "documentsAttached": 0,
+       "who": "Sara Lindqvist"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "Helen Oyelaran's stated budget of 180,000 does not cover the 254,000 objective, and the participants' plans are described in different terms that cannot be added up to check against either number.",
+      "Both you and Sara Lindqvist believe they have secured the same external designer for a two-month period beginning in October, but for different projects and at different costs."
+     ],
+     "sessionCounts": {
+      "Chidi Eze": 9,
+      "Sara Lindqvist": 6,
+      "Helen Oyelaran": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Chidi Eze",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Chidi Eze": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Chidi Eze": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "whatCouldBeChecked": {
+      "says": [
+       "All 6 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 6,
+      "checked": 6
+     },
+     "difficultyDisclosures": false
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [],
+     "dependencies": [],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "Your focus this quarter is on revitalizing the brand. You have booked a design contractor, Studio Lune, for eight weeks starting in October for the brand refresh itself.",
+      "hasGap": false,
+      "headline": "You believe you have booked a designer who Sara Lindqvist also believes Sara has booked.",
+      "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "mark": "memory",
+      "figureIs": "from memory",
+      "markSays": "From memory only"
+     }
+    ],
+    "releasedAt": "2026-10-02T00:52:22.883Z",
+    "createdAt": "2026-10-02T00:52:22.788Z",
+    "updatedAt": "2026-10-02T00:55:23.999Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Helen Oyelaran has a budget of 180,000 for the quarter, but Helen has received plans that total 254,000.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "It also appears that two participants believe they have booked the same design contractor for the same period.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Helen Oyelaran's budget for this quarter is 180,000.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Helen Oyelaran has asked for detailed plans from other departments and the plans Helen has received so far total 254,000.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Your focus this quarter is on revitalizing the brand.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You have booked a design contractor, Studio Lune, for eight weeks starting in October for the brand refresh itself.",
+      "mark": "memory",
+      "figureIs": "from memory",
+      "markNote": "This line rests on more than one thing people said, and they are not all known in the same way. It carries the mark of the one that is known least well.",
+      "markSays": "From memory only",
+      "marksBehind": [
+       "said",
+       "memory"
+      ]
+     },
+     {
+      "text": "Sara Lindqvist's focus for this quarter is the new product dashboard.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Sara Lindqvist reports having already booked the design work for this.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "All three are planning work for the next quarter.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Helen Oyelaran is focused on managing the overall budget, while you and Sara Lindqvist have each planned significant projects in their areas.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Both you and Sara Lindqvist have independently made plans to use the same design firm, Studio Lune, beginning in October.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "I have the brand work underway, and I can see that the total cost of everyone's plans is more than the budget available.",
+     "toAcknowledge": "Acknowledge that the total budget is a firm limit, and all plans now need to be justified in detail to fit inside it.",
+     "questionToCarry": "What are the most important things for us to accomplish this quarter, given the budget we have?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "You are carrying 3 of a 254,000 objective that has not been divided up, so nothing here can say whether 3 is your fair share of it.",
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of marketing and growth work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+     ],
+     "general": true,
+     "role": {
+      "label": "Marketing and growth",
+      "onTrack": "Activity tied to a named outcome, channel bets made and learned from, dead channels killed.",
+      "goingWrong": "Reach and impressions reported with no revenue line; busy producing with no owned number.",
+      "protectAgainst": "You are saying that brand and positioning work delivers its returns slowly and indirectly, and that demanding an immediate revenue line for every activity punishes this compounding work.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "4c9fa82b-9b30-4fa8-b43c-a79011156541",
+      "type": "INTENT",
+      "text": "my big focus this quarter is really going to be around revitalizing our brand",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a33b19c9-ac86-48c7-8318-9a5c7d1a49cf",
+      "sessionNumber": 1
+     },
+     {
+      "id": "7bd98775-3f70-4b6e-8f84-efbfa05ff68e",
+      "type": "COMMITMENT",
+      "text": "three key campaigns I want to roll out to leverage that new brand",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "a33b19c9-ac86-48c7-8318-9a5c7d1a49cf",
+      "sessionNumber": 1
+     },
+     {
+      "id": "de04372a-e574-4114-9ac8-a24161311e75",
+      "type": "PROGRESS",
+      "text": "We've booked Studio Lune, a design contractor, for eight weeks starting in October for the brand refresh itself.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "a33b19c9-ac86-48c7-8318-9a5c7d1a49cf",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b937415f-6d80-48d8-84d8-24829bfb7f57",
+      "type": "PROGRESS",
+      "text": "Studio Lune for the brand work costs 34 thousand.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "a33b19c9-ac86-48c7-8318-9a5c7d1a49cf",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared. Your focus this quarter is on revitalizing the brand. You have planned three key campaigns to leverage the new brand, and you have booked the design contractor Studio Lune for eight weeks from October to carry out the brand refresh at a cost of 34 thousand.",
+     "whatToCarry": "The three key campaigns you want to roll out to leverage the new brand."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "af1e2f6b-7be2-4a67-a9a5-7f834484bbf8",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "DELIVERY",
+    "peopleWorkTogether": true,
+    "sections": [
+     "phaseSpine",
+     "quickRead",
+     "objectives",
+     "startingState",
+     "divergence",
+     "whatTheRoomIsAbout",
+     "whoOwnsWhat",
+     "dependencies",
+     "checkInGrid",
+     "contribution",
+     "coverage",
+     "cascade",
+     "hiddenContributors",
+     "patterns",
+     "decisions",
+     "poll"
+    ],
+    "title": "The quarter workplan and what it costs",
+    "scenario": "WORKPLAN_BUDGET",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. Helen Oyelaran has a budget of 180,000 for the quarter, but Helen has received plans that total 254,000. It also appears that two participants believe they have booked the same design contractor for the same period.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 3,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 1,
+       "oldest": "A colleague's detailed quarter plans, with specific line items for all proposed expenditures",
+       "daysWaiting": 0
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T00:55:23.999Z",
+    "participants": [
+     {
+      "id": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "name": "Helen Oyelaran",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "name": "Chidi Eze",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "name": "Sara Lindqvist",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "phaseSpine": {
+     "startsAt": null,
+     "endsAt": null,
+     "currentSession": 1,
+     "plannedSessions": 3,
+     "sessions": [
+      {
+       "n": 1,
+       "state": "done",
+       "date": "2026-10-02T00:48:09.330Z",
+       "opensOn": null,
+       "openedOn": "2026-10-02T00:46:29.609Z",
+       "says": "Session 1 finished on 2 October."
+      },
+      {
+       "n": 2,
+       "state": "upcoming",
+       "date": null,
+       "opensOn": "2026-11-02T00:48:09.339Z",
+       "openedOn": null,
+       "says": "Session 2 opens on 2 November."
+      }
+     ]
+    },
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "e13b8bfd-f824-437c-beff-5e7f28c69baf",
+      "name": "Helen is focused on optimising the team's cash flow this quarter.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     },
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 254000,
+       "now": 254000,
+       "target": 254000,
+       "say": "It was 254,000 at the start and is 254,000 now, so the aim of 254,000 has been reached.",
+       "covered": 0
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "5c64c685-7655-4f06-94d2-35c604dd0fc9",
+      "name": "Helen needs to see the detailed breakdowns of the other departments' plans that total 254,000.",
+      "count": 254000,
+      "prevCount": 0,
+      "target": 254000,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 254000,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     },
+     {
+      "journey": {
+       "direction": "down",
+       "start": 0,
+       "now": 0,
+       "target": 180000,
+       "covered": null,
+       "say": "It was 0 at the start and is 0 now, within the limit of 180,000."
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "79496d86-9d36-4042-9dac-013288ccba9d",
+      "name": "Helen's budget for the quarter is 180,000.",
+      "count": 0,
+      "prevCount": 0,
+      "target": 180000,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": 158000,
+      "suggestedSaid": "The total cost for these three items is 158,000.",
+      "askedOf": null
+     },
+     {
+      "journey": {
+       "direction": "up",
+       "start": 0,
+       "now": 0,
+       "target": 3,
+       "say": "It was 0 at the start and is 0 now, and the aim is 3.",
+       "covered": 0
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "53b10e21-cf24-40cd-bb6d-f1af2ac3bcce",
+      "name": "You have three key campaigns you want to roll out to leverage that new brand.",
+      "count": 0,
+      "prevCount": 0,
+      "target": 3,
+      "assumes": [],
+      "ownerParticipantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "owner": "Chidi Eze",
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     }
+    ],
+    "yourShare": [
+     {
+      "objectiveId": "53b10e21-cf24-40cd-bb6d-f1af2ac3bcce",
+      "says": "You have three key campaigns you want to roll out to leverage that new brand. Nothing has been counted against it yet.",
+      "whoSees": "Only you and Helen Oyelaran see your share."
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "Helen Oyelaran's stated budget of 180,000 does not cover the 254,000 objective, and the participants' plans are described in different terms that cannot be added up to check against either number.",
+       "atStake": "If this holds, the quarter will proceed with teams working on plans that are not funded and do not fit into the overall budget.",
+       "evidence": [
+        "Helen Oyelaran stated a budget of 180,000 and noted the plans received add up to 254,000.",
+        "The participants' plans are for brand and product work, which are not directly comparable without a shared way of counting."
+       ],
+       "positions": [
+        {
+         "view": "Has a budget of 180,000 and has received plans that add up to 254,000.",
+         "participantLabel": "Helen Oyelaran",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Helen Oyelaran"
+        },
+        {
+         "view": "Is planning brand work with a contractor cost of 34,000.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Is planning dashboard work with a total cost of 158,000.",
+         "participantLabel": "Sara Lindqvist",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Sara Lindqvist"
+        }
+       ],
+       "settledBy": "Agree on one way of counting costs and reconcile the proposed plans with the available budget.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      },
+      {
+       "topic": "Both you and Sara Lindqvist believe they have secured the same external designer for a two-month period beginning in October, but for different projects and at different costs.",
+       "atStake": "If this holds, the design contractor is double-booked, which will delay at least one of the projects and means the true budget is unknown.",
+       "evidence": [
+        "You reported securing Studio Lune for a two-month project on a brand refresh.",
+        "Sara Lindqvist reported securing the same firm for the same timeframe to work on a new dashboard."
+       ],
+       "positions": [
+        {
+         "view": "Booked Studio Lune for a brand refresh at a cost of 34,000.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Booked Studio Lune for a new dashboard at a cost of 40,000.",
+         "participantLabel": "Sara Lindqvist",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Sara Lindqvist"
+        }
+       ],
+       "settledBy": "Clarify with the contractor which project is confirmed and for what cost.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "All three are planning work for the next quarter.",
+      "Both you and Sara Lindqvist have identified Studio Lune as a necessary external design firm.",
+      "The project with the design firm is scheduled to start in October."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Agree on one way of counting costs and reconcile the proposed plans with the available budget. That is what settles helen Oyelaran's stated budget of 180,000 does not cover the 254,000 objective, and the participants' plans are described in different terms that cannot be added up to check against either number.",
+     "settled": [
+      "All three are planning work for the next quarter.",
+      "Both you and Sara Lindqvist have identified Studio Lune as a necessary external design firm.",
+      "The project with the design firm is scheduled to start in October."
+     ],
+     "stillOpen": [
+      "Helen Oyelaran's stated budget of 180,000 does not cover the 254,000 objective, and the participants' plans are described in different terms that cannot be added up to check against either number.",
+      "Both you and Sara Lindqvist believe they have secured the same external designer for a two-month period beginning in October, but for different projects and at different costs."
+     ]
+    },
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+       "name": "Helen Oyelaran",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+       "name": "Chidi Eze",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+       "name": "Sara Lindqvist",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "whoOwnsWhat": [
+     {
+      "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "name": "Helen Oyelaran",
+      "role": null,
+      "items": [
+       {
+        "id": "7a4a1983-690a-47c3-a02d-4499e3645709",
+        "type": "SUCCESS_DEFINITION",
+        "text": "Helen Oyelaran said success would be \"focus on optimising our cash flow\".",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "f1462914-b109-40fc-9236-56ff675f2cef",
+        "type": "COMMITMENT",
+        "text": "Helen Oyelaran has made a commitment here.",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "fd3a9f36-89cf-4a8b-ab1b-cb23400f785d",
+        "type": "INTENT",
+        "text": "Helen Oyelaran said, \"The budget I have for this quarter is 180k.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "c33c9a31-7103-45eb-979b-99fce88ac1b4",
+        "type": "PROGRESS",
+        "text": "Helen Oyelaran said, \"I've asked for their detailed quarter plans, with specific line items for all proposed expenditures.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "2d5223ea-6c91-4891-abd9-f0e366035785",
+        "type": "PROGRESS",
+        "text": "Helen Oyelaran said, \"I sent a reminder email last week.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "name": "Chidi Eze",
+      "role": null,
+      "items": [
+       {
+        "id": "4c9fa82b-9b30-4fa8-b43c-a79011156541",
+        "type": "INTENT",
+        "text": "You said, \"my big focus this quarter is really going to be around revitalizing our brand.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "7bd98775-3f70-4b6e-8f84-efbfa05ff68e",
+        "type": "COMMITMENT",
+        "text": "You said, \"three key campaigns I want to roll out to leverage that new brand.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "de04372a-e574-4114-9ac8-a24161311e75",
+        "type": "PROGRESS",
+        "text": "You have reported progress.",
+        "mark": "memory",
+        "markSays": "From memory only",
+        "sessionNumber": 1
+       },
+       {
+        "id": "b937415f-6d80-48d8-84d8-24829bfb7f57",
+        "type": "PROGRESS",
+        "text": "You said, \"Studio Lune for the brand work costs 34 thousand.\"",
+        "mark": "memory",
+        "markSays": "From memory only",
+        "sessionNumber": 1
+       }
+      ]
+     },
+     {
+      "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "name": "Sara Lindqvist",
+      "role": null,
+      "items": [
+       {
+        "id": "dd45ae7c-df9e-4ab7-85b4-ccee940c2816",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"My first priority is the new dashboard. So the design with Studio Lune, then frontend development, and then backend integration.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "22d4b389-6364-459b-8fec-fca9b1339f9d",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"I'm allocating two frontend engineers and two backend engineers for the entire quarter.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "678abfa6-b13a-4215-a9bd-ba8b682048b1",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"The total cost for these three items is 158,000.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "52f85b2e-e61b-45be-89e8-eddc15ae5db5",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"The entire 158,000 has been committed to.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "9adce11d-9676-47c8-8a12-549abcc8aa60",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"40,000 is for Studio Lune.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "44bc22c1-9ceb-4055-b22e-a53ef1154139",
+        "type": "PROGRESS",
+        "text": "Sara Lindqvist said, \"I've already booked for the design work.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "c5984eff-fc22-40ab-8f72-fa326d5b844d",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"The remaining 118,000 covers the engineering team's time for the quarter.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "073176fd-5a56-4cf1-893a-522189571978",
+        "type": "PROGRESS",
+        "text": "Sara Lindqvist said, \"I've already spoken directly with Studio Lune to secure their time for October.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "8feaddf7-5ac1-44b8-b834-0edf27ff01a8",
+        "type": "INTENT",
+        "text": "Sara Lindqvist said, \"my focus for this quarter is primarily on the product itself, specifically the new dashboard.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       },
+       {
+        "id": "49bec50c-77d2-4d16-8269-2719c072d43e",
+        "type": "COMMITMENT",
+        "text": "Sara Lindqvist said, \"I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track for the quarter.\"",
+        "mark": "said",
+        "markSays": "Only someone’s word",
+        "sessionNumber": 1
+       }
+      ]
+     }
+    ],
+    "dependencies": [
+     {
+      "id": "ceac93d4-f104-4eb3-9849-9c928ddc4937",
+      "from": "Helen Oyelaran",
+      "fromParticipantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "what": "their detailed quarter plans, with specific line items for all proposed expenditures",
+      "on": "other departments",
+      "onParticipantId": null,
+      "status": "BLOCKING",
+      "then": "I can sign off on their plans",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October."
+      }
+     }
+    ],
+    "decisions": [
+     {
+      "question": "Helen Oyelaran is waiting on their detailed quarter plans, with specific line items for all proposed expenditures, so it needs deciding.",
+      "why": "Helen Oyelaran cannot move until this is decided.",
+      "owner": "other departments",
+      "source": "blocker"
+     },
+     {
+      "question": "People in this check-in said different things. Helen Oyelaran's stated budget of 180,000 does not cover the 254,000 objective, and the participants' plans are described in different terms that cannot be added up to check against either number. This needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "Helen Oyelaran",
+      "source": "divergence"
+     },
+     {
+      "question": "People in this check-in said different things. Both you and Sara Lindqvist believe they have secured the same external designer for a two-month period beginning in October, but for different projects and at different costs. This needs settling.",
+      "why": "What people said about this does not match, so nobody can assume it is agreed.",
+      "owner": "Helen Oyelaran",
+      "source": "divergence"
+     }
+    ],
+    "whatTheRoomIsAbout": {
+     "aims": [
+      {
+       "aim": "One person is trying to deliver the new product dashboard.",
+       "held": [
+        "Sara Lindqvist"
+       ]
+      },
+      {
+       "aim": "One person is trying to optimise the company's cash flow.",
+       "held": [
+        "Helen Oyelaran"
+       ]
+      },
+      {
+       "aim": "One person is trying to revitalise the company's brand.",
+       "held": [
+        "Chidi Eze"
+       ]
+      }
+     ],
+     "places": [],
+     "things": [
+      {
+       "name": "analyst",
+       "named": [
+        "Helen Oyelaran"
+       ]
+      },
+      {
+       "name": "brand",
+       "named": [
+        "Chidi Eze"
+       ]
+      },
+      {
+       "name": "dashboard",
+       "named": [
+        "Sara Lindqvist"
+       ]
+      },
+      {
+       "name": "forecasting model",
+       "named": [
+        "Helen Oyelaran"
+       ]
+      },
+      {
+       "name": "intern",
+       "named": [
+        "Helen Oyelaran"
+       ]
+      }
+     ],
+     "readAtSession": 1
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "2",
+      "sub": "The written report reads this as still open.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Nothing yet",
+      "sub": "3 targets are set, and no round has closed to measure from.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "1",
+      "sub": "Work is held up by a colleague's detailed quarter plans, with specific line items for all proposed expenditures.",
+      "tone": "bad"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "contribution": [
+     {
+      "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "name": "Chidi Eze",
+      "remit": null,
+      "remitDefined": true,
+      "position": null,
+      "positionLabel": null,
+      "reason": "1 check-in on record. 4 lines taken from what they said, 3 with a name, a number or a date in them, 2 of those specific enough for somebody else to go and check. Their work is read against what being on track means for marketing and growth, which is activity tied to a named outcome, channel bets made and learned from, dead channels killed.",
+      "fn": "MARKETING",
+      "fnLabel": "Marketing and growth",
+      "fnConfident": true,
+      "isBlocked": false,
+      "ownVoice": null,
+      "nothingCheckable": false,
+      "confidence": 0.3,
+      "evidenceCount": 3,
+      "shown": false,
+      "basis": "Based on 1 check-in, 3 checkable things named, none of it confirmed by anyone else.",
+      "guard": "Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone."
+     }
+    ],
+    "coverage": {
+     "scope": "role",
+     "reads": [
+      {
+       "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+       "name": "Chidi Eze",
+       "scope": "role",
+       "pct": 0,
+       "kind": "STABLE",
+       "trend": "stable",
+       "what": "Nobody has said anything about this person's work moving elsewhere.",
+       "reason": "SHARED_BY_DESIGN",
+       "reasonText": "Their responsibilities are staying with them. Nothing is leaking out or piling in, so there is nothing here to read into.",
+       "ownVoice": null,
+       "coupledToBlocker": false,
+       "remitDefined": true,
+       "confidence": 0.15,
+       "evidenceCount": 0,
+       "shown": true,
+       "basis": "Based on 1 check-in, 0 checkable things named, none of it confirmed by anyone else."
+      }
+     ]
+    },
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "You are carrying 3 of a 254,000 objective that has not been divided up, so nothing here can say whether 3 is your fair share of it.",
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of marketing and growth work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+      ],
+      "general": true,
+      "role": {
+       "label": "Marketing and growth",
+       "onTrack": "Activity tied to a named outcome, channel bets made and learned from, dead channels killed.",
+       "goingWrong": "Reach and impressions reported with no revenue line; busy producing with no owned number.",
+       "protectAgainst": "You are saying that brand and positioning work delivers its returns slowly and indirectly, and that demanding an immediate revenue line for every activity punishes this compounding work.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": null
+    },
+    "patterns": [],
+    "poll": null,
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "risks": [
+     {
+      "id": "handoff-ceac93d4-f104-4eb3-9849-9c928ddc4937",
+      "says": "Helen Oyelaran cannot move on their detailed quarter plans, with specific line items for all proposed expenditures until it comes from other departments.",
+      "because": "It was first said on 2 October. About what has been tried, Helen Oyelaran said, \"I sent a reminder email last week\". No time has been given for it."
+     },
+     {
+      "id": "no-time-52e97b60-1829-458f-968e-21dbf562dfe8",
+      "says": "Helen Oyelaran committed to confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model, and no time was given for it, so nobody can tell when it would be late.",
+      "because": "Nobody has said yet whether it happened."
+     },
+     {
+      "id": "no-time-9030cf84-cb34-4a17-92a3-af4472f708ad",
+      "says": "Helen Oyelaran committed to follow up with individual calls, and no time was given for it, so nobody can tell when it would be late.",
+      "because": "Nobody has said yet whether it happened."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "52e97b60-1829-458f-968e-21dbf562dfe8",
+      "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "who": "Helen Oyelaran",
+      "says": "In session 1, Helen Oyelaran said, \"confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": null,
+      "state": "open",
+      "statedInSession": 1
+     },
+     {
+      "id": "9030cf84-cb34-4a17-92a3-af4472f708ad",
+      "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "who": "Helen Oyelaran",
+      "says": "In session 1, Helen Oyelaran said, \"follow up with individual calls\". The time Helen Oyelaran gave for it was \"if I don't get the information by the end of today\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "if I don't get the information by the end of today",
+      "state": "open",
+      "statedInSession": 1
+     },
+     {
+      "id": "f6f68506-b6ab-4714-a4b7-ccbdeb7f0d62",
+      "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "who": "Sara Lindqvist",
+      "says": "In session 1, Sara Lindqvist said, \"I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track\". The time Sara Lindqvist gave for it was \"throughout the quarter\". It has been open for 1 session, and nobody has said whether it happened.",
+      "when": "throughout the quarter",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Helen Oyelaran committed to confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Helen Oyelaran committed to follow up with individual calls."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Sara Lindqvist committed to be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Helen Oyelaran said the work was waiting on other departments for their detailed quarter plans, with specific line items for all proposed expenditures."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "e9d8af19-020d-4b41-a461-b94627709bc8",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     }
+    ],
+    "blockerCheck": [
+     {
+      "id": "ceac93d4-f104-4eb3-9849-9c928ddc4937",
+      "who": "Helen Oyelaran",
+      "says": "Helen Oyelaran is waiting on other departments for their detailed quarter plans, with specific line items for all proposed expenditures.",
+      "namesWhoHoldsIt": true,
+      "saidWhatWasTried": true,
+      "timeGiven": false,
+      "checks": [
+       "Other departments holds it.",
+       "About what has been tried, Helen Oyelaran said, \"I sent a reminder email last week\".",
+       "No time has been given for it."
+      ]
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "cc030dc7-ed98-45ce-a6d2-0058c0bbb3a0",
+      "who": "Helen Oyelaran",
+      "promised": [
+       "In session 1, Helen Oyelaran said, \"confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model\". It has been open for 1 session, and nobody has said whether it happened.",
+       "In session 1, Helen Oyelaran said, \"follow up with individual calls\". The time Helen Oyelaran gave for it was \"if I don't get the information by the end of today\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": "8a309a79-5bcf-4f64-8195-21cf6832000d",
+      "who": "Sara Lindqvist",
+      "promised": [
+       "In session 1, Sara Lindqvist said, \"I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track\". The time Sara Lindqvist gave for it was \"throughout the quarter\". It has been open for 1 session, and nobody has said whether it happened."
+      ],
+      "othersWaitFor": []
+     },
+     {
+      "participantId": null,
+      "who": "other departments",
+      "promised": [],
+      "othersWaitFor": [
+       "Helen Oyelaran is waiting on other departments for their detailed quarter plans, with specific line items for all proposed expenditures."
+      ]
+     }
+    ],
+    "whoWaitedOnWhom": [
+     {
+      "id": "ceac93d4-f104-4eb3-9849-9c928ddc4937",
+      "says": "Helen Oyelaran has been waiting on other departments for their detailed quarter plans, with specific line items for all proposed expenditures since 2 October, and it has not been cleared.",
+      "startedAt": "2026-10-02",
+      "clearedAt": null,
+      "days": null
+     }
+    ],
+    "blockers": [
+     {
+      "id": "ceac93d4-f104-4eb3-9849-9c928ddc4937",
+      "who": "Helen Oyelaran",
+      "name": "their detailed quarter plans, with specific line items for all proposed expenditures",
+      "state": "blocking",
+      "says": "Helen Oyelaran is waiting on other departments for their detailed quarter plans, with specific line items for all proposed expenditures.",
+      "raised": {
+       "times": 1,
+       "firstRaisedAt": "2026-10-02",
+       "lastRaisedAt": "2026-10-02",
+       "says": "This was raised once, on 2 October.",
+       "sessions": [
+        1
+       ],
+       "inSessions": "It was raised in session 1."
+      },
+      "proof": {
+       "state": "none",
+       "says": "Nothing on record proves it yet. It rests on what Helen Oyelaran said."
+      },
+      "timeGiven": "No time has been given for it.",
+      "wouldClearIt": null,
+      "wouldClearItSays": "Nobody has said what would clear it yet.",
+      "holdingUp": "Once it is cleared, I can sign off on their plans."
+     }
+    ]
+   },
+   "participantSeen": "mkt",
+   "patterns": [],
+   "commitments": [
+    {
+     "text": "confirm the availability of an analyst for the AP deep dive and an intern for the forecasting model",
+     "whenSaid": null,
+     "status": "UNKNOWN",
+     "statedInSession": 1,
+     "saidAgainIn": [],
+     "participant": {
+      "email": "cfo.1790901943370@workplan.test"
+     }
+    },
+    {
+     "text": "follow up with individual calls",
+     "whenSaid": "if I don't get the information by the end of today",
+     "status": "UNKNOWN",
+     "statedInSession": 1,
+     "saidAgainIn": [],
+     "participant": {
+      "email": "cfo.1790901943370@workplan.test"
+     }
+    },
+    {
+     "text": "I will be overseeing the design process with Studio Lune, coordinating the development teams, and ensuring the project stays on track",
+     "whenSaid": "throughout the quarter",
+     "status": "UNKNOWN",
+     "statedInSession": 1,
+     "saidAgainIn": [],
+     "participant": {
+      "email": "prod.1790901943370@workplan.test"
+     }
+    }
+   ]
+  }
+ ]
+}

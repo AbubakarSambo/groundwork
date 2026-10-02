@@ -1,0 +1,2515 @@
+{
+ "scenario": {
+  "key": "newmanager",
+  "label": "First ninety days managing the team he was on",
+  "scenario": "NEW_MANAGER",
+  "moment": "STARTING",
+  "cadence": "FORTNIGHTLY",
+  "timelineDays": 90,
+  "sessions": 1,
+  "brief": "Daniel has just been promoted to manage the support team he was a member of last month. I want to know from him and from two of the team what has actually changed, what has not, and where this is going to go wrong. Promotions from within fail here and I have never known why until afterwards.",
+  "theDecision": "Daniel is still doing the individual work rather than managing, because he is faster at it, and the team has noticed and reads it as not trusting them. He thinks he is helping. A right answer names the specific behaviour and its effect, and does not describe it as a confidence problem.",
+  "people": [
+   {
+    "key": "head",
+    "name": "Maria Santos",
+    "isLead": true,
+    "remit": "Head of customer operations. Promoted Daniel.",
+    "truth": "She promoted him because he had the best resolution numbers. She has given him no manager training and two fifteen-minute check-ins in six weeks. She has heard nothing bad and assumes it is going well.",
+    "manner": "Brisk, positive, assumes the best. Gives specifics when asked for them."
+   },
+   {
+    "key": "daniel",
+    "name": "Daniel Park",
+    "remit": "Support team manager, six weeks in. Six direct reports.",
+    "truth": "He is still personally clearing the hardest tickets - about 30 a week - because he is faster and it keeps the queue down. He has done no one-to-ones. He thinks the team is doing fine. He is working until 9pm most nights and has not told anyone. He believes managing means the numbers stay good.",
+    "manner": "Keen, a little anxious to be seen doing well. Gives numbers about tickets, not about people."
+   },
+   {
+    "key": "tomi",
+    "name": "Tomi Balogun",
+    "remit": "Support specialist. On Daniel's team; was his peer.",
+    "truth": "The hard tickets stopped coming to her the day he was promoted. She used to get them and she liked them. She thinks he does not trust her now. She has not said anything to him. Two others on the team have said the same to her privately. She is looking at another job, quietly.",
+    "manner": "Guarded at first, careful not to be seen complaining. Opens up if asked what has changed for her specifically."
+   }
+  ]
+ },
+ "groundId": "e10a57b7-bc00-4c65-91a6-ae181ce6f691",
+ "orgId": "9239bf29-3b6c-4db0-b074-e4433451b3c9",
+ "emails": {
+  "head": "head.1790906721170@newmanager.test",
+  "daniel": "daniel.1790906721170@newmanager.test",
+  "tomi": "tomi.1790906721170@newmanager.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "head",
+     "name": "Maria Santos",
+     "isLead": true,
+     "checkInId": "7d1250b9-4421-4c42-b729-6f36852dbb2a",
+     "naturalClose": true,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "This conversation is about how you are setting up Daniel in his new role. What are you bringing Daniel in to do, and for how long?"
+      },
+      {
+       "from": "MARIA SANTOS",
+       "text": "I'm bringing Daniel in to manage the support team. I expect him to be in this role for the foreseeable future."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "\"For the foreseeable future\" is clear enough. What does Daniel's scope include?",
+       "suggestedAnswers": [
+        "He will manage the support team.",
+        "I am still defining his exact duties.",
+        "I do not know yet."
+       ]
+      },
+      {
+       "from": "MARIA SANTOS",
+       "text": "He's responsible for the day-to-day operations of the support team, making sure our customers are looked after."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That's what Daniel is responsible for. What does that scope explicitly not include?",
+       "suggestedAnswers": [
+        "The boundaries are much clearer.",
+        "We haven't defined the exclusions yet.",
+        "I don't know yet.",
+        "Still working on that."
+       ]
+      },
+      {
+       "from": "MARIA SANTOS",
+       "text": "It doesn't include anything outside of the support team's operations. Things like product development or marketing are not in his remit."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "It clearly defines his operational boundaries. What is the most important part of his old job for Daniel to let go of now Daniel's manager?",
+       "suggestedAnswers": [
+        "We identified his key responsibilities to delegate.",
+        "He still struggles with delegating some tasks.",
+        "We haven't discussed it in detail yet.",
+        "I am helping him transition away from operations."
+       ]
+      },
+      {
+       "from": "MARIA SANTOS",
+       "text": "He needs to let go of doing the day-to-day support tickets himself. His focus should be on leading the team now."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What would have to exist for you to know this is working?",
+       "suggestedAnswers": [
+        "My team handles all support tickets.",
+        "I am still doing support tickets.",
+        "I don't know what that looks like yet.",
+        "I only work on leading the team."
+       ]
+      },
+      {
+       "from": "MARIA SANTOS",
+       "text": "I'd know it's working if I don't hear about any major issues from the team or from customers. And if Daniel is managing well."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "\"Managing well\" is what we need to get to. What specific things would exist for you to know Daniel is managing well?",
+       "suggestedAnswers": [
+        "I'd hear fewer complaints from his team.",
+        "His team's projects would still be stuck.",
+        "I don't know yet.",
+        "His team would be working independently."
+       ]
+      },
+      {
+       "from": "MARIA SANTOS",
+       "text": "I'd see the team continuing to hit their resolution numbers, and that Daniel is delegating effectively. I also expect to see a smooth operation, really."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What would a smooth operation look like specifically?",
+       "suggestedAnswers": [
+        "The team would consistently hit our resolution numbers.",
+        "Daniel would delegate effectively to everyone.",
+        "I am still figuring that out.",
+        "We would be stuck on one complex task."
+       ]
+      },
+      {
+       "from": "MARIA SANTOS",
+       "text": "It would look like consistent performance, no drop in customer satisfaction, and the team seems to be working together effectively. I wouldn't be hearing any complaints or seeing any performance dips."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That's a picture of how you would know things are going well. What about where it's most likely to go wrong?",
+       "suggestedAnswers": [
+        "I am not sure yet.",
+        "I am still looking into it.",
+        "I am worried about customer satisfaction.",
+        "We have identified some risks."
+       ]
+      },
+      {
+       "from": "MARIA SANTOS",
+       "text": "Promotions from within can sometimes be tricky. People can find it hard to transition from peer to manager."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That is the pattern you have seen before. What have you decided to do about that, and by when?",
+       "suggestedAnswers": [
+        "I will do ... by ...",
+        "Not yet, I am still figuring it out.",
+        "I haven't decided anything yet."
+       ]
+      },
+      {
+       "from": "MARIA SANTOS",
+       "text": "I've been checking in with Daniel. We've had two fifteen-minute check-ins in the last six weeks. Everything seems fine."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've been checking in with Daniel. Two fifteen-minute check-ins in six weeks. Everything seems fine.\n\nThat’s all for today. Below is what I wrote down from your answers. Is anything wrong?"
+      }
+     ]
+    },
+    {
+     "key": "daniel",
+     "name": "Daniel Park",
+     "isLead": false,
+     "checkInId": "d7cec442-67f4-406a-a430-2b54834d6427",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Before anything else, so this asks you the right things: are you the person this check-in is about, or somebody working alongside them? One line is enough."
+      },
+      {
+       "from": "DANIEL PARK",
+       "text": "Yes, this check-in is about me."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. This check-in is a space for you to build an honest record of your work in this new role, in your own words. What did you understand your role in this to be-in your own words, before anyone else's version?",
+       "suggestedAnswers": [
+        "I was there to make things happen.",
+        "My role wasn't clear, so I waited.",
+        "I'm still figuring out my exact role.",
+        "I saw myself as the one helping."
+       ]
+      },
+      {
+       "from": "DANIEL PARK",
+       "text": "I understood my role to be making sure the team keeps hitting our targets and that the queues stay clear."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That covers the outcome. What about the role itself - what does \"making sure\" look like in practice for you?",
+       "suggestedAnswers": [
+        "I ensure the team is on track.",
+        "I am having trouble making sure of that.",
+        "I'm still figuring out what that looks like."
+       ]
+      },
+      {
+       "from": "DANIEL PARK",
+       "text": "It means I'm responsible for the numbers. If the ticket queue gets too high, that reflects on me."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "The numbers are a clear measure of your success, and a high ticket queue reflects directly on you. What about the role itself - what does \"making sure\" look like in practice for you?",
+       "suggestedAnswers": [
+        "I am keeping the numbers low.",
+        "I am still waiting for ... input.",
+        "Not yet, I am still figuring it out.",
+        "I am actively monitoring the queue."
+       ]
+      },
+      {
+       "from": "DANIEL PARK",
+       "text": "It means jumping in and clearing tickets myself to keep the queue down. And making sure everyone else is doing their part too."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "So \"making sure\" involves both directly clearing tickets when needed and ensuring the team is performing. What do you see the team doing now?",
+       "suggestedAnswers": [
+        "We are making good progress.",
+        "Some of us are a bit stuck.",
+        "I don't know yet.",
+        "They are working on different things."
+       ]
+      },
+      {
+       "from": "DANIEL PARK",
+       "text": "They are doing fine. Our ticket numbers are good, and the queue is manageable."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Which of those came back a second time?",
+       "suggestedAnswers": [
+        "I found one that came back.",
+        "None of them came back a second time.",
+        "I am still checking for those."
+       ]
+      },
+      {
+       "from": "DANIEL PARK",
+       "text": "I don't understand the question."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "My apologies, that was unclear. I am trying to understand the current situation with the team. When you said the team is doing fine, and that ticket numbers are good and the queue is manageable, I was trying to understand if there are any specific issues or types of tickets that consistently re-emerge, even when overall numbers are good. Do you see any particular issues or types of tickets that consistently re-emerge for the team?",
+       "suggestedAnswers": [
+        "Yes, I see a few recurring issues.",
+        "The same problems keep appearing.",
+        "I haven't noticed any patterns yet."
+       ]
+      },
+      {
+       "from": "DANIEL PARK",
+       "text": "No, not really. The overall numbers are good."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "No particular issues or types of tickets re-emerge for the team. What has actually changed for the team since you moved into this manager role?",
+       "suggestedAnswers": [
+        "Team communication has really improved.",
+        "Some things are still stuck.",
+        "Not yet, still figuring things out.",
+        "We are working better together now."
+       ]
+      },
+      {
+       "from": "DANIEL PARK",
+       "text": "I'm now managing them instead of being one of them. I'm focused on the overall performance."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You have transitioned from being a team member to managing them, and your focus has shifted to overall performance. What do you mean to do first?",
+       "suggestedAnswers": [
+        "I will connect with the whole team.",
+        "Not yet, I'm still making the plan.",
+        "I need to understand team priorities first."
+       ]
+      },
+      {
+       "from": "DANIEL PARK",
+       "text": "My priority is to keep the ticket queue under control and maintain our response times."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What specifically will you do to ensure those are met?",
+       "suggestedAnswers": [
+        "I will prioritize urgent tickets.",
+        "I am waiting for some key information.",
+        "I am still figuring out the best approach."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "tomi",
+     "name": "Tomi Balogun",
+     "isLead": false,
+     "checkInId": "3be1355f-9be7-4de2-bbdb-5e34373f6375",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Before anything else, so this asks you the right things: are you the person this check-in is about, or somebody working alongside them? One line is enough."
+      },
+      {
+       "from": "TOMI BALOGUN",
+       "text": "I'm someone working alongside Daniel."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Got it. So this check-in is about what has changed for you and the team since Daniel became manager, and what the team needs to succeed. What did you understand your role in this to be-in your own words, before anyone else's version?",
+       "suggestedAnswers": [
+        "I thought I would help move it forward.",
+        "I didn't quite understand my place.",
+        "I'm still figuring out what my role is."
+       ]
+      },
+      {
+       "from": "TOMI BALOGUN",
+       "text": "I thought this was a check-in about how things are going with Daniel as manager. Just getting my perspective on the team."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "It is about your perspective on the team. What you think is happening here is what we are building into the record. So, what did you understand your role in this situation to be?",
+       "suggestedAnswers": [
+        "I helped move the project along.",
+        "I felt my role was unclear.",
+        "I'm still trying to understand it."
+       ]
+      },
+      {
+       "from": "TOMI BALOGUN",
+       "text": "I'm here to share what I've seen and experienced since Daniel took over as manager."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. What has changed for you or the team since Daniel became manager?",
+       "suggestedAnswers": [
+        "We have a clearer direction.",
+        "Not much has changed for me.",
+        "I'm still figuring things out."
+       ]
+      },
+      {
+       "from": "TOMI BALOGUN",
+       "text": "Well, things are a bit different. Some processes have shifted, and there's a new dynamic."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "To get a clear picture: can you give me one specific example of a process that has shifted, or one specific thing that feels different in the team dynamic?",
+       "suggestedAnswers": [
+        "Our team meetings are more structured now.",
+        "The decision-making process feels slower.",
+        "I haven't noticed one specific example yet."
+       ]
+      },
+      {
+       "from": "TOMI BALOGUN",
+       "text": "The hard tickets used to come to me. Now they don't."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What has taken their place in your work?",
+       "suggestedAnswers": [
+        "I'm focusing on different projects.",
+        "Nothing has replaced that work yet.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "TOMI BALOGUN",
+       "text": "I'm getting different kinds of tickets now, more routine ones."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "So Daniel is redistributing some of the workload. What you are describing is that the complex issues are no longer landing with you, and routine ones have taken their place. This check-in is also for understanding whether the team's situation is better, worse, or about the same now. What would you say?",
+       "suggestedAnswers": [
+        "I'm handling the new tickets well.",
+        "Some tickets are blocked.",
+        "Not yet.",
+        "Progress is slower than expected."
+       ]
+      },
+      {
+       "from": "TOMI BALOGUN",
+       "text": "For me personally, it's not better. I liked solving the hard problems."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You preferred the hard problems, and now you are getting the routine ones. That shift in your own work is clear. What about for the team?",
+       "suggestedAnswers": [
+        "The team made good progress on ...",
+        "We are stuck on ...",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "TOMI BALOGUN",
+       "text": "It's hard to say for the whole team. Everyone has their own work."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You are not alone in having a clearer picture of your own work than everyone else's. That is normal. What I do not have yet is where you see this new setup going wrong. What is the biggest challenge for the team with Daniel now managing it?",
+       "suggestedAnswers": [
+        "We are adjusting well to Daniel's style.",
+        "It's hard to get used to Daniel's changes.",
+        "I don't know yet.",
+        "No real challenges right now."
+       ]
+      },
+      {
+       "from": "TOMI BALOGUN",
+       "text": "I think the biggest challenge might be trust."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Trust. What makes you say that?",
+       "suggestedAnswers": [
+        "My past experiences tell me so.",
+        "I've seen it stop progress before.",
+        "It's just a feeling I have.",
+        "Many people struggle with this issue."
+       ]
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "b8b15f01-c856-480b-b287-f36b8cdfb149",
+    "groundId": "e10a57b7-bc00-4c65-91a6-ae181ce6f691",
+    "sharedPicture": "All three people have answered. They disagree on what the new manager should be doing day-to-day.\n\nYou are bringing Daniel Park in to manage the support team. Your goal is for Daniel to let go of doing day-to-day support tickets.\n\nDaniel understood the role to be making sure the team keeps hitting its targets and that the queues stay clear. Daniel reports that ticket numbers are good and the queue is manageable.\n\nTomi Balogun reports that the hard tickets that used to come to Tomi are no longer being assigned to Tomi. Tomi now receives more routine tickets.",
+    "theOpening": "All three people have answered. They disagree on what the new manager should be doing day-to-day.",
+    "agreements": [
+     "All state that Daniel Park is the new manager.",
+     "Both you and Daniel Park describe the manager role as being responsible for the team hitting its performance numbers."
+    ],
+    "divergences": [
+     {
+      "topic": "There is a fundamental disagreement about what the new manager should be doing day-to-day.",
+      "atStake": "If the new manager keeps working on support tickets, the team's capacity for the most challenging work will depend on one person.",
+      "evidence": [
+       "Your account describes success as Daniel Park stepping back from hands-on work.",
+       "Daniel Park's account describes personally working on tickets as a necessary part of the job.",
+       "Tomi Balogun's account notes that the most difficult tickets are now being handled by someone else."
+      ],
+      "positions": [
+       {
+        "view": "You expect Daniel Park to lead the team by delegating tasks and to stop working on support tickets directly.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Daniel Park believes the role includes personally clearing tickets to keep the queue manageable and ensure performance targets are met.",
+        "participantLabel": "Daniel Park",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Tomi Balogun reports that the more challenging tickets are no longer being assigned to Tomi, which is a change from before the promotion.",
+        "participantLabel": "Tomi Balogun",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     }
+    ],
+    "centralQuestion": "When you picture Daniel Park succeeding in this role six months from now, what is the single most important difference in what Daniel is doing day-to-day compared to what Daniel does now?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Maria Santos",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 12,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Maria Santos"
+      },
+      {
+       "label": "Daniel Park",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 7,
+       "documentsAttached": 0,
+       "who": "Daniel Park"
+      },
+      {
+       "label": "Tomi Balogun",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 6,
+       "documentsAttached": 0,
+       "who": "Tomi Balogun"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "There is a fundamental disagreement about what the new manager should be doing day-to-day."
+     ],
+     "sessionCounts": {
+      "Daniel Park": 9,
+      "Tomi Balogun": 9,
+      "Maria Santos": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Maria Santos",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Maria Santos": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Maria Santos": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "whatCouldBeChecked": {
+      "says": [
+       "The one thing described here lines up with something other than what the person said. It is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 1,
+      "checked": 1
+     },
+     "difficultyDisclosures": true
+    },
+    "inferences": [],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": null,
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "Daniel Park is doing a different job from the one you hired them for, and this is now taking challenging work away from Tomi Balogun.",
+     "whatToDo": [
+      {
+       "move": "Give Daniel Park a clear, written description of what managing the support team means, including delegating tickets.",
+       "because": "Daniel Park understood the role to be making sure the team keeps hitting its targets and that the queues stay clear.",
+       "startWith": "Daniel Park"
+      },
+      {
+       "move": "Tell Daniel Park to assign the hard tickets to Tomi Balogun.",
+       "because": "Tomi Balogun reports that the hard tickets that used to come to Tomi are no longer being assigned to Tomi.",
+       "startWith": "Tomi Balogun"
+      },
+      {
+       "move": "Ask Daniel Park what support they need to delegate work instead of doing it themselves.",
+       "because": "Your goal is for Daniel Park to let go of doing day-to-day support tickets, but the record does not show that this was ever agreed with Daniel.",
+       "startWith": "Daniel Park"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You expect Daniel Park to lead the team by delegating tasks and to stop working on support tickets directly.",
+       "soWhat": "This expectation has not been met, because Daniel Park has a different understanding of the role.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Daniel Park believes the role includes personally clearing tickets to keep the queue manageable and reports that ticket numbers are good.",
+       "soWhat": "Daniel Park is succeeding at the job they think they have, not the job you want them to do.",
+       "fieldId": "Daniel Park"
+      },
+      {
+       "says": "Tomi Balogun reports that the hard tickets that used to come to them are no longer being assigned to them.",
+       "soWhat": "You are now using a manager to do work that an experienced specialist on the team could be doing.",
+       "fieldId": "Tomi Balogun"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "This check-in did not ask the other five members of the support team about their work under the new manager.",
+       "howManyMissedIt": 5
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record only shows that Daniel Park understood the role differently, not that they are unwilling or unable to change.",
+       "about": "This cannot tell you whether Daniel Park is able to manage the team without working on tickets themselves.",
+       "toKnow": "You would need to agree on the new expectations with Daniel Park and then see what happens."
+      }
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Daniel Park is a support team manager, six weeks in. The role description also says \"Six direct reports.\" Since then, the record holds 1 session, 7 lines of what was said, none with a name, a number or a date in them and none backed by a document.",
+       "who": "Daniel Park",
+       "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2"
+      },
+      {
+       "say": "Tomi Balogun is a support specialist. Tomi is on Daniel's team. Tomi was his peer. Since then, the record holds 1 session, 6 lines of what was said, 6 with a name, a number or a date in them and none backed by a document.",
+       "who": "Tomi Balogun",
+       "participantId": "53bae0de-e340-4d54-9d09-935e4f68741d"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [],
+     "commitments": [],
+     "dependencies": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself.",
+      "Nobody has said in a check-in what they would do next. Ask for one thing, with a date, from each person."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "You are bringing Daniel Park in to manage the support team. Your goal is for Daniel to let go of doing day-to-day support tickets.",
+      "hasGap": false,
+      "headline": "Your stated goal for the new manager is not what the new manager believes the job to be.",
+      "participantId": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Daniel Park understood the role to be making sure the team keeps hitting its targets and that the queues stay clear. Daniel reports that ticket numbers are good and the queue is manageable.",
+      "hasGap": false,
+      "headline": "Daniel Park's account of this role is about hitting ticket targets, not managing a team.",
+      "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Tomi Balogun reports that the hard tickets that used to come to Tomi are no longer being assigned to Tomi. Tomi now receives more routine tickets.",
+      "hasGap": true,
+      "headline": "A senior team member reports that the difficult tickets are no longer being assigned to them.",
+      "participantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": "2026-10-02T02:11:34.787Z",
+    "createdAt": "2026-10-02T02:09:11.578Z",
+    "updatedAt": "2026-10-02T02:13:27.710Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They disagree on what the new manager should be doing day-to-day.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You are bringing Daniel Park in to manage the support team.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Your goal is for Daniel Park to let go of doing day-to-day support tickets.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Daniel Park understood the role to be making sure the team keeps hitting its targets and that the queues stay clear.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Daniel Park reports that ticket numbers are good and the queue is manageable.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Tomi Balogun reports that the hard tickets that used to come to Tomi are no longer being assigned to Tomi.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Tomi Balogun now receives more routine tickets.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "I have been measuring your success by your move into leading the team and delegating the tickets, and I get the sense that is not the measure you have been using.",
+     "toAcknowledge": "The other view is that keeping the ticket queue clear is the most direct way to ensure the team's performance stays high. That concern for the numbers is real, even if you see a different way to secure them.",
+     "questionToCarry": "If you were to stop handling support tickets yourself, what would you need to see to be confident that the team's performance would hold up?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+     ],
+     "general": true,
+     "role": null,
+     "whyNoRoleMap": "What kind of work this is has not been read from the record yet, so this is about where you are rather than about the role."
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "2774cb51-4b84-4bdd-9ece-9a1ba2bd55e2",
+      "type": "INTENT",
+      "text": "I'm bringing Daniel in to manage the support team.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7d1250b9-4421-4c42-b729-6f36852dbb2a",
+      "sessionNumber": 1
+     },
+     {
+      "id": "e24475fd-40cd-46c6-967e-13291e20ecf0",
+      "type": "INTENT",
+      "text": "He's responsible for the day-to-day operations of the support team, making sure our customers are looked after.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7d1250b9-4421-4c42-b729-6f36852dbb2a",
+      "sessionNumber": 1
+     },
+     {
+      "id": "49ce6732-b7f5-4c88-be14-025fde60ac25",
+      "type": "INTENT",
+      "text": "It doesn't include anything outside of the support team's operations. Things like product development or marketing are not in his remit.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7d1250b9-4421-4c42-b729-6f36852dbb2a",
+      "sessionNumber": 1
+     },
+     {
+      "id": "73141bd7-6c43-4070-9652-174bb2cfb7bc",
+      "type": "SUCCESS_DEFINITION",
+      "text": "He needs to let go of doing the day-to-day support tickets himself.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7d1250b9-4421-4c42-b729-6f36852dbb2a",
+      "sessionNumber": 1
+     },
+     {
+      "id": "5bf8fd98-d79c-4c18-a7ea-790391e30f97",
+      "type": "SUCCESS_DEFINITION",
+      "text": "His focus should be on leading the team now.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7d1250b9-4421-4c42-b729-6f36852dbb2a",
+      "sessionNumber": 1
+     },
+     {
+      "id": "43e1b17f-9147-418f-9595-e48461aa7e1f",
+      "type": "SUCCESS_DEFINITION",
+      "text": "I'd know it's working if I don't hear about any major issues from the team or from customers.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7d1250b9-4421-4c42-b729-6f36852dbb2a",
+      "sessionNumber": 1
+     },
+     {
+      "id": "e16f4c77-8e41-4698-bc78-56f71ac6f154",
+      "type": "SUCCESS_DEFINITION",
+      "text": "I'd see the team continuing to hit their resolution numbers, and that Daniel is delegating effectively.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7d1250b9-4421-4c42-b729-6f36852dbb2a",
+      "sessionNumber": 1
+     },
+     {
+      "id": "917cbd15-a81b-46c7-8f4a-16b1a05d83de",
+      "type": "SUCCESS_DEFINITION",
+      "text": "a smooth operation",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7d1250b9-4421-4c42-b729-6f36852dbb2a",
+      "sessionNumber": 1
+     },
+     {
+      "id": "ff2bb03e-7dda-4802-baf3-5a64897ac570",
+      "type": "SUCCESS_DEFINITION",
+      "text": "consistent performance, no drop in customer satisfaction, and the team seems to be working together effectively.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7d1250b9-4421-4c42-b729-6f36852dbb2a",
+      "sessionNumber": 1
+     },
+     {
+      "id": "ea11d2b8-4a56-49fb-8665-0f6c4a4c1c6f",
+      "type": "TOLERANCE",
+      "text": "I wouldn't be hearing any complaints or seeing any performance dips.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7d1250b9-4421-4c42-b729-6f36852dbb2a",
+      "sessionNumber": 1
+     },
+     {
+      "id": "f2185361-b118-444a-8e62-fca8c78b310a",
+      "type": "TENSION",
+      "text": "Promotions from within can sometimes be tricky. People can find it hard to transition from peer to manager.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "7d1250b9-4421-4c42-b729-6f36852dbb2a",
+      "sessionNumber": 1
+     },
+     {
+      "id": "a4f4ff86-f47f-449b-9ba4-32b045b4913e",
+      "type": "PROGRESS",
+      "text": "We've had two fifteen-minute check-ins in the last six weeks.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "memory",
+      "markSays": "From memory only",
+      "checkInId": "7d1250b9-4421-4c42-b729-6f36852dbb2a",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": [
+     {
+      "who": "Maria Santos",
+      "participantId": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+      "probe": [],
+      "encourage": [
+       "Worth getting on record, where anyone could check it later: He needs to let go of doing the day-to-day support tickets himself and His focus should be on leading the team now."
+      ],
+      "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+     },
+     {
+      "who": "Tomi Balogun",
+      "participantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+      "probe": [],
+      "encourage": [],
+      "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+     },
+     {
+      "who": "Daniel Park",
+      "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+      "probe": [],
+      "encourage": [],
+      "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+     }
+    ],
+    "soloArtifact": {
+     "summary": "Here is what you shared.\n\nYou are bringing in a new manager for the support team, who will be responsible for its day-to-day operations. Success would be seeing this person delegate the daily work to focus on leading the team, maintaining customer satisfaction and performance. You noted that the transition from a peer to a manager can be a difficult one. You have had two fifteen-minute check-ins together in the last six weeks.",
+     "whatToCarry": "You mentioned that a promotion from within can be tricky. It might be worth watching for how this person is handling the shift from being a peer to being a manager."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    },
+    "forTheLead": [
+     {
+      "id": "difference-1",
+      "decide": "Settle the difference between what you, Daniel Park and Tomi Balogun said.",
+      "why": "There is a fundamental disagreement about what the new manager should be doing day-to-day. You, Daniel Park and Tomi Balogun said different things about this, so nobody can assume it is agreed.",
+      "changes": "If the new manager keeps working on support tickets, the team's capacity for the most challenging work will depend on one person."
+     }
+    ]
+   },
+   "board": {
+    "groundId": "e10a57b7-bc00-4c65-91a6-ae181ce6f691",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "ONBOARDING",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "phaseSpine",
+     "objectives",
+     "dependencies",
+     "checkInGrid",
+     "divergence",
+     "contribution"
+    ],
+    "title": "First ninety days managing the team he was on",
+    "scenario": "NEW_MANAGER",
+    "kindOfWork": "support desk",
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. They disagree on what the new manager should be doing day-to-day.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 6,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "Daniel Park is doing a different job from the one you hired them for, and this is now taking challenging work away from Tomi Balogun.",
+     "whatToDo": [
+      {
+       "move": "Give Daniel Park a clear, written description of what managing the support team means, including delegating tickets.",
+       "because": "Daniel Park understood the role to be making sure the team keeps hitting its targets and that the queues stay clear.",
+       "startWith": "Daniel Park"
+      },
+      {
+       "move": "Tell Daniel Park to assign the hard tickets to Tomi Balogun.",
+       "because": "Tomi Balogun reports that the hard tickets that used to come to Tomi are no longer being assigned to Tomi.",
+       "startWith": "Tomi Balogun"
+      },
+      {
+       "move": "Ask Daniel Park what support they need to delegate work instead of doing it themselves.",
+       "because": "Your goal is for Daniel Park to let go of doing day-to-day support tickets, but the record does not show that this was ever agreed with Daniel.",
+       "startWith": "Daniel Park"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "You expect Daniel Park to lead the team by delegating tasks and to stop working on support tickets directly.",
+       "soWhat": "This expectation has not been met, because Daniel Park has a different understanding of the role.",
+       "fieldId": "You"
+      },
+      {
+       "says": "Daniel Park believes the role includes personally clearing tickets to keep the queue manageable and reports that ticket numbers are good.",
+       "soWhat": "Daniel Park is succeeding at the job they think they have, not the job you want them to do.",
+       "fieldId": "Daniel Park"
+      },
+      {
+       "says": "Tomi Balogun reports that the hard tickets that used to come to them are no longer being assigned to them.",
+       "soWhat": "You are now using a manager to do work that an experienced specialist on the team could be doing.",
+       "fieldId": "Tomi Balogun"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "This check-in did not ask the other five members of the support team about their work under the new manager.",
+       "howManyMissedIt": 5
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The record only shows that Daniel Park understood the role differently, not that they are unwilling or unable to change.",
+       "about": "This cannot tell you whether Daniel Park is able to manage the team without working on tickets themselves.",
+       "toKnow": "You would need to agree on the new expectations with Daniel Park and then see what happens."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Daniel Park is a support team manager, six weeks in. The role description also says \"Six direct reports.\" Since then, the record holds 1 session, 7 lines of what was said, none with a name, a number or a date in them and none backed by a document.",
+       "who": "Daniel Park",
+       "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2"
+      },
+      {
+       "say": "Tomi Balogun is a support specialist. Tomi is on Daniel's team. Tomi was his peer. Since then, the record holds 1 session, 6 lines of what was said, 6 with a name, a number or a date in them and none backed by a document.",
+       "who": "Tomi Balogun",
+       "participantId": "53bae0de-e340-4d54-9d09-935e4f68741d"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [],
+     "commitments": [],
+     "dependencies": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself.",
+      "Nobody has said in a check-in what they would do next. Ask for one thing, with a date, from each person."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T02:13:27.710Z",
+    "participants": [
+     {
+      "id": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+      "name": "Maria Santos",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "53bae0de-e340-4d54-9d09-935e4f68741d",
+      "name": "Tomi Balogun",
+      "role": "Support specialist. On Daniel's team; was his peer.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+      "name": "Daniel Park",
+      "role": "Support team manager, six weeks in. Six direct reports.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "phaseSpine": {
+     "startsAt": null,
+     "endsAt": null,
+     "currentSession": 1,
+     "plannedSessions": 6,
+     "sessions": [
+      {
+       "n": 1,
+       "state": "done",
+       "date": "2026-10-02T02:09:42.475Z",
+       "opensOn": null,
+       "openedOn": "2026-10-02T02:06:30.556Z",
+       "says": "Session 1 finished on 2 October."
+      },
+      {
+       "n": 2,
+       "state": "upcoming",
+       "date": null,
+       "opensOn": "2026-10-16T02:07:59.365Z",
+       "openedOn": null,
+       "says": "Session 2 opens on 16 October."
+      }
+     ]
+    },
+    "targetsNobodyOwns": null,
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "cc4424da-7897-4cfa-9553-0aa6b1c26d77",
+      "name": "The team is aiming for a smooth operation, with consistent performance and no drop in customer satisfaction.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "There is a fundamental disagreement about what the new manager should be doing day-to-day.",
+       "atStake": "If the new manager keeps working on support tickets, the team's capacity for the most challenging work will depend on one person.",
+       "evidence": [
+        "Your account describes success as Daniel Park stepping back from hands-on work.",
+        "Daniel Park's account describes personally working on tickets as a necessary part of the job.",
+        "Tomi Balogun's account notes that the most difficult tickets are now being handled by someone else."
+       ],
+       "positions": [
+        {
+         "view": "You expect Daniel Park to lead the team by delegating tasks and to stop working on support tickets directly.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Daniel Park believes the role includes personally clearing tickets to keep the queue manageable and ensure performance targets are met.",
+         "participantLabel": "Daniel Park",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Daniel Park"
+        },
+        {
+         "view": "Tomi Balogun reports that the more challenging tickets are no longer being assigned to Tomi, which is a change from before the promotion.",
+         "participantLabel": "Tomi Balogun",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Tomi Balogun"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "All state that Daniel Park is the new manager.",
+      "Both you and Daniel Park describe the manager role as being responsible for the team hitting its performance numbers."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "If the new manager keeps working on support tickets, the team's capacity for the most challenging work will depend on one person. That is what settles there is a fundamental disagreement about what the new manager should be doing day-to-day.",
+     "settled": [
+      "All state that Daniel Park is the new manager.",
+      "Both you and Daniel Park describe the manager role as being responsible for the team hitting its performance numbers."
+     ],
+     "stillOpen": [
+      "There is a fundamental disagreement about what the new manager should be doing day-to-day."
+     ]
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+      "who": "Tomi Balogun",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing checkable",
+      "says": "Nothing Tomi Balogun said this round can be checked yet. A number, a date or a document for what moved would change that.",
+      "ask": "Ask Tomi Balogun for a photo, a message or a document that shows what moved.",
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Tomi Balogun reports that the hard tickets that used to come to Tomi are no longer being assigned to Tomi. Tomi now receives more routine tickets.",
+      "hasGap": true,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     },
+     {
+      "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+      "who": "Daniel Park",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Daniel Park has checked in.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Daniel Park understood the role to be making sure the team keeps hitting its targets and that the queues stay clear. Daniel reports that ticket numbers are good and the queue is manageable.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+       "name": "Maria Santos",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+       "name": "Tomi Balogun",
+       "role": "Support specialist. On Daniel's team; was his peer.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+       "name": "Daniel Park",
+       "role": "Support team manager, six weeks in. Six direct reports.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "dependencies": [],
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things. There is a fundamental disagreement about what the new manager should be doing day-to-day.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "2 worries",
+      "sub": "You said, \"Promotions from within can sometimes be tricky.\" There is 1 more worry on record, and nobody is waiting on anybody.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "contribution": [
+     {
+      "participantId": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+      "name": "Maria Santos",
+      "remit": null,
+      "remitDefined": false,
+      "position": null,
+      "reason": null,
+      "note": "No position shown, because the role was never clearly defined. Define what it is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person.",
+      "confidence": 0,
+      "evidenceCount": 0,
+      "shown": false,
+      "basis": "No role was defined, so there is nothing to read against."
+     },
+     {
+      "participantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+      "name": "Tomi Balogun",
+      "remit": "Support specialist. On Daniel's team; was his peer.",
+      "remitDefined": true,
+      "position": null,
+      "positionLabel": null,
+      "reason": null,
+      "nothingCheckable": false,
+      "isBlocked": false,
+      "ownVoice": null,
+      "shown": true,
+      "guard": "Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone."
+     },
+     {
+      "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+      "name": "Daniel Park",
+      "remit": "Support team manager, six weeks in. Six direct reports.",
+      "remitDefined": true,
+      "position": null,
+      "positionLabel": null,
+      "reason": "Nobody can check what Daniel Park has said so far because there is no number, date, or document for what moved.",
+      "nothingCheckable": true,
+      "isBlocked": false,
+      "ownVoice": null,
+      "shown": true,
+      "guard": "Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone."
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+      ],
+      "general": true,
+      "role": null,
+      "whyNoRoleMap": "What kind of work this is has not been read from the record yet, so this is about where you are rather than about the role."
+     },
+     "eachPerson": [
+      {
+       "who": "Maria Santos",
+       "participantId": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+       "probe": [],
+       "encourage": [
+        "Worth getting on record, where anyone could check it later: He needs to let go of doing the day-to-day support tickets himself and His focus should be on leading the team now."
+       ],
+       "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+      },
+      {
+       "who": "Tomi Balogun",
+       "participantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+       "probe": [],
+       "encourage": [],
+       "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+      },
+      {
+       "who": "Daniel Park",
+       "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+       "probe": [],
+       "encourage": [],
+       "triedToUnblock": "Nothing recorded as blocked, so there is nothing here about unblocking."
+      }
+     ]
+    },
+    "eachPersonToday": [
+     {
+      "participantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+      "who": "Tomi Balogun",
+      "line": "Nothing Tomi Balogun said this round can be checked yet. A number, a date or a document for what moved would change that."
+     },
+     {
+      "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+      "who": "Daniel Park",
+      "line": "Daniel Park has checked in."
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "tickets",
+      "state": "filled",
+      "rows": [
+       {
+        "id": "0a30d659-4456-4e88-bb54-a56dfad6ea26",
+        "kind": "ticket",
+        "name": "the day-to-day support tickets",
+        "stage": null,
+        "owner": "Maria Santos",
+        "ownerParticipantId": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "He needs to let go of doing the day-to-day support tickets himself.",
+        "saidBy": "Maria",
+        "saidByParticipantId": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "9daad7d2-811f-424f-80cc-ebf5d1fd9c44",
+        "kind": "ticket",
+        "name": "the ticket queue",
+        "stage": null,
+        "owner": "Daniel Park",
+        "ownerParticipantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "If the ticket queue gets too high, that reflects on me.",
+        "saidBy": "Daniel",
+        "saidByParticipantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "b43ce4c5-9f15-4218-a7b3-4b771900e5a1",
+        "kind": "ticket",
+        "name": "the queue",
+        "stage": null,
+        "owner": "Daniel Park",
+        "ownerParticipantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "Our ticket numbers are good, and the queue is manageable.",
+        "saidBy": "Daniel",
+        "saidByParticipantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "82132c42-749e-4c7e-a99a-fc2ab35093f5",
+        "kind": "ticket",
+        "name": "Our ticket numbers",
+        "stage": null,
+        "owner": "Daniel Park",
+        "ownerParticipantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "Our ticket numbers are good, and the queue is manageable.",
+        "saidBy": "Daniel",
+        "saidByParticipantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "fe6110b6-ba7c-4352-8c36-57c618907b78",
+        "kind": "ticket",
+        "name": "hard tickets",
+        "stage": null,
+        "owner": "Tomi Balogun",
+        "ownerParticipantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "The hard tickets used to come to me. Now they don't.",
+        "saidBy": "Tomi",
+        "saidByParticipantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "16da4f1f-3b41-45a1-a483-040d49b9aa90",
+        "kind": "ticket",
+        "name": "different kinds of tickets",
+        "stage": null,
+        "owner": "Tomi Balogun",
+        "ownerParticipantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I'm getting different kinds of tickets now, more routine ones.",
+        "saidBy": "Tomi",
+        "saidByParticipantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "34891675-e9b0-4a4b-b154-4c0847de3f0e",
+        "kind": "ticket",
+        "name": "routine ones",
+        "stage": null,
+        "owner": "Tomi Balogun",
+        "ownerParticipantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I'm getting different kinds of tickets now, more routine ones.",
+        "saidBy": "Tomi",
+        "saidByParticipantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       }
+      ]
+     },
+     {
+      "section": "Themes",
+      "holds": "ticket volume and causes from the helpdesk",
+      "state": "not-known",
+      "why": "Groundwork does not keep this yet. It needs the ticket counts from the helpdesk itself."
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+      "who": "Tomi Balogun",
+      "says": "Tomi Balogun has answered 1 session, and the record holds no commitment from Tomi Balogun yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Tomi Balogun answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+      "who": "Daniel Park",
+      "says": "Daniel Park has answered 1 session, and the record holds no commitment from Daniel Park yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Daniel Park answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     }
+    ],
+    "byArea": {
+     "state": "not-known",
+     "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+    }
+   },
+   "participantReport": {
+    "id": "b8b15f01-c856-480b-b287-f36b8cdfb149",
+    "groundId": "e10a57b7-bc00-4c65-91a6-ae181ce6f691",
+    "sharedPicture": "All three people have answered. They disagree on what the new manager should be doing day-to-day. Maria Santos is bringing you in to manage the support team. Maria's goal is for you to let go of doing day-to-day support tickets. You understood the role to be making sure the team keeps hitting its targets and that the queues stay clear. You report that ticket numbers are good and the queue is manageable. Tomi Balogun reports that the hard tickets that used to come to Tomi are no longer being assigned to Tomi. Tomi now receives more routine tickets.",
+    "theOpening": "All three people have answered. They disagree on what the new manager should be doing day-to-day.",
+    "agreements": [
+     "All state that you are the new manager.",
+     "Both Maria Santos and you describe the manager role as being responsible for the team hitting its performance numbers."
+    ],
+    "centralQuestion": "When you picture you succeeding in this role six months from now, what is the single most important difference in what you are doing day-to-day compared to what you do now?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Maria Santos",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 12,
+       "documentsAttached": 0,
+       "who": "Maria Santos"
+      },
+      {
+       "label": "Daniel Park",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 7,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Daniel Park"
+      },
+      {
+       "label": "Tomi Balogun",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 6,
+       "documentsAttached": 0,
+       "who": "Tomi Balogun"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "There is a fundamental disagreement about what the new manager should be doing day-to-day."
+     ],
+     "sessionCounts": {
+      "Daniel Park": 9,
+      "Tomi Balogun": 9,
+      "Maria Santos": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Daniel Park",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Daniel Park": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Daniel Park": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "whatCouldBeChecked": {
+      "says": [
+       "The one thing described here lines up with something other than what the person said. It is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 1,
+      "checked": 1
+     },
+     "difficultyDisclosures": true
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [],
+     "dependencies": [],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "You understood the role to be making sure the team keeps hitting its targets and that the queues stay clear. You report that ticket numbers are good and the queue is manageable.",
+      "hasGap": false,
+      "headline": "Your account of this role is about hitting ticket targets, not managing a team.",
+      "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "releasedAt": "2026-10-02T02:11:34.787Z",
+    "createdAt": "2026-10-02T02:09:11.578Z",
+    "updatedAt": "2026-10-02T02:13:27.710Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They disagree on what the new manager should be doing day-to-day.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Maria Santos is bringing you in to manage the support team.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Maria Santos's goal is for you to let go of doing day-to-day support tickets.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You understood the role to be making sure the team keeps hitting its targets and that the queues stay clear.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You report that ticket numbers are good and the queue is manageable.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Tomi Balogun reports that the hard tickets that used to come to Tomi are no longer being assigned to Tomi.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Tomi Balogun now receives more routine tickets.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "My focus has been on keeping the ticket numbers high, and I have been jumping in myself to do that. It sounds like there is a different view of what my core function should be.",
+     "toAcknowledge": "The other view is that this role is meant to be about leading, not doing the work of the team. Take seriously the idea that your success will be measured by how you delegate, not by how many tickets you clear.",
+     "questionToCarry": "If I were to stop handling tickets myself, what would we need to have in place to feel confident the team can still perform?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "You are on session 1 of support and customer-facing work, and nothing repeats yet, which is normal this early, but what decides whether later sessions are worth anything is what you can point at, because support work is invisible when it goes well and its real contribution leaves no record unless somebody asks for it.",
+     "beforeNextTime": [
+      "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+     ],
+     "general": true,
+     "role": {
+      "label": "Support and customer-facing work",
+      "onTrack": "Named customers unblocked, the repeated problem traced to a cause somebody else can fix, and what was learned written where the team can find it.",
+      "goingWrong": "A very full week, a queue the same length as last week, and nothing anybody else could pick up.",
+      "protectAgainst": "When your support work goes well, it is invisible, and people counting outputs routinely read you as low-value because the escalations that never happened leave no record unless somebody asks for it.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "684edaea-3f7f-4916-bfee-4ceeb8e95b17",
+      "type": "INTENT",
+      "text": "I understood my role to be making sure the team keeps hitting our targets and that the queues stay clear.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d7cec442-67f4-406a-a430-2b54834d6427",
+      "sessionNumber": 1
+     },
+     {
+      "id": "fd1a0a22-c678-40c3-8f7a-be97af948851",
+      "type": "INTENT",
+      "text": "I'm responsible for the numbers.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d7cec442-67f4-406a-a430-2b54834d6427",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b0046694-84e4-41c7-8bf4-3da56164c9dc",
+      "type": "TOLERANCE",
+      "text": "If the ticket queue gets too high, that reflects on me.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d7cec442-67f4-406a-a430-2b54834d6427",
+      "sessionNumber": 1
+     },
+     {
+      "id": "0e2649f0-f921-42d8-969c-4ef52680ee7e",
+      "type": "INTENT",
+      "text": "It means jumping in and clearing tickets myself to keep the queue down. And making sure everyone else is doing their part too.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d7cec442-67f4-406a-a430-2b54834d6427",
+      "sessionNumber": 1
+     },
+     {
+      "id": "e39b70c5-534f-45cb-a7d5-cd90e9cdafe1",
+      "type": "PROGRESS",
+      "text": "Our ticket numbers are good, and the queue is manageable.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d7cec442-67f4-406a-a430-2b54834d6427",
+      "sessionNumber": 1
+     },
+     {
+      "id": "05e3e335-421f-423e-b5a4-a3ee8dbd0d05",
+      "type": "PROGRESS",
+      "text": "The overall numbers are good.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d7cec442-67f4-406a-a430-2b54834d6427",
+      "sessionNumber": 1
+     },
+     {
+      "id": "8281468c-1887-44db-a17f-62b2390ef993",
+      "type": "INTENT",
+      "text": "I'm now managing them instead of being one of them. I'm focused on the overall performance.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "d7cec442-67f4-406a-a430-2b54834d6427",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\nYou see your role as being responsible for the numbers and ensuring the team hits its targets. You shared that if the ticket queue gets too high, it reflects on you, and you will jump in to clear tickets yourself to keep the queue down. You see yourself as now managing the team and focusing on overall performance, and you report that the overall numbers are good and the queue is manageable.",
+     "whatToCarry": "You mentioned that you jump in and clear tickets yourself. As you continue to focus on overall performance, what would it take for the team to manage the queue without you needing to step in?"
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "e10a57b7-bc00-4c65-91a6-ae181ce6f691",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "ONBOARDING",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "phaseSpine",
+     "objectives",
+     "dependencies",
+     "checkInGrid",
+     "divergence",
+     "contribution"
+    ],
+    "title": "First ninety days managing the team he was on",
+    "scenario": "NEW_MANAGER",
+    "kindOfWork": "support desk",
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. They disagree on what the new manager should be doing day-to-day.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 6,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T02:13:27.710Z",
+    "participants": [
+     {
+      "id": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+      "name": "Maria Santos",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "53bae0de-e340-4d54-9d09-935e4f68741d",
+      "name": "Tomi Balogun",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+      "name": "Daniel Park",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "phaseSpine": {
+     "startsAt": null,
+     "endsAt": null,
+     "currentSession": 1,
+     "plannedSessions": 6,
+     "sessions": [
+      {
+       "n": 1,
+       "state": "done",
+       "date": "2026-10-02T02:09:42.475Z",
+       "opensOn": null,
+       "openedOn": "2026-10-02T02:06:30.556Z",
+       "says": "Session 1 finished on 2 October."
+      },
+      {
+       "n": 2,
+       "state": "upcoming",
+       "date": null,
+       "opensOn": "2026-10-16T02:07:59.365Z",
+       "openedOn": null,
+       "says": "Session 2 opens on 16 October."
+      }
+     ]
+    },
+    "objectives": [
+     {
+      "journey": {
+       "direction": "unknown",
+       "start": 0,
+       "now": 0,
+       "target": null,
+       "say": "Nothing has been counted for it yet.",
+       "covered": null
+      },
+      "direction": null,
+      "directionSuggested": null,
+      "directionQuestion": null,
+      "notSettled": null,
+      "id": "cc4424da-7897-4cfa-9553-0aa6b1c26d77",
+      "name": "The team is aiming for a smooth operation, with consistent performance and no drop in customer satisfaction.",
+      "count": 0,
+      "prevCount": 0,
+      "target": null,
+      "assumes": [],
+      "ownerParticipantId": null,
+      "owner": null,
+      "delta": 0,
+      "isNew": false,
+      "suggestedCount": null,
+      "suggestedSaid": null,
+      "askedOf": null
+     }
+    ],
+    "divergence": {
+     "items": [
+      {
+       "topic": "There is a fundamental disagreement about what the new manager should be doing day-to-day.",
+       "atStake": "If the new manager keeps working on support tickets, the team's capacity for the most challenging work will depend on one person.",
+       "evidence": [
+        "Maria Santos's account describes success as you stepping back from hands-on work.",
+        "Your account describes personally working on tickets as a necessary part of the job.",
+        "Tomi Balogun's account notes that the most difficult tickets are now being handled by someone else."
+       ],
+       "positions": [
+        {
+         "view": "Maria Santos expects you to lead the team by delegating tasks and to stop working on support tickets directly.",
+         "participantLabel": "Maria Santos",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Maria Santos"
+        },
+        {
+         "view": "You believe the role includes personally clearing tickets to keep the queue manageable and ensure performance targets are met.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Tomi Balogun reports that the more challenging tickets are no longer being assigned to Tomi, which is a change from before the promotion.",
+         "participantLabel": "Tomi Balogun",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Tomi Balogun"
+        }
+       ],
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "All state that you are the new manager.",
+      "Both Maria Santos and you describe the manager role as being responsible for the team hitting its performance numbers."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "If the new manager keeps working on support tickets, the team's capacity for the most challenging work will depend on one person. That is what settles there is a fundamental disagreement about what the new manager should be doing day-to-day.",
+     "settled": [
+      "All state that you are the new manager.",
+      "Both Maria Santos and you describe the manager role as being responsible for the team hitting its performance numbers."
+     ],
+     "stillOpen": [
+      "There is a fundamental disagreement about what the new manager should be doing day-to-day."
+     ]
+    },
+    "checkInGrid": {
+     "sessions": [
+      1,
+      2
+     ],
+     "rows": [
+      {
+       "participantId": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+       "name": "Maria Santos",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+       "name": "Tomi Balogun",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      },
+      {
+       "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+       "name": "Daniel Park",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done",
+        "2": "not-started"
+       }
+      }
+     ]
+    },
+    "dependencies": [],
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things. There is a fundamental disagreement about what the new manager should be doing day-to-day.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "Not tracked",
+      "sub": "Somebody named a number, and nothing is tracking it.",
+      "tone": "warn"
+     },
+     {
+      "label": "Blockers",
+      "value": "2 worries",
+      "sub": "Maria Santos said, \"Promotions from within can sometimes be tricky.\" There is 1 more worry on record, and nobody is waiting on anybody.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "contribution": [
+     {
+      "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+      "name": "Daniel Park",
+      "remit": null,
+      "remitDefined": true,
+      "position": null,
+      "positionLabel": null,
+      "reason": "1 check-in on record. Nothing named so far could be checked by anyone else, because no people, organisations, numbers or dates were named. Their work is read against what being on track means for support and customer-facing work, which is named customers unblocked, the repeated problem traced to a cause somebody else can fix, and what was learned written where the team can find it.",
+      "fn": "SUPPORT",
+      "fnLabel": "Support and customer-facing work",
+      "fnConfident": true,
+      "isBlocked": false,
+      "ownVoice": null,
+      "nothingCheckable": true,
+      "confidence": 0.15,
+      "evidenceCount": 0,
+      "shown": true,
+      "basis": "Based on 1 check-in, 0 checkable things named, none of it confirmed by anyone else.",
+      "guard": "Each person against their own role, in its own terms, never on one scale. A position is never shown without its reason, and never at all if the role was not defined. This shows what the record holds, not a rating of anyone."
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "You are on session 1 of support and customer-facing work, and nothing repeats yet, which is normal this early, but what decides whether later sessions are worth anything is what you can point at, because support work is invisible when it goes well and its real contribution leaves no record unless somebody asks for it.",
+      "beforeNextTime": [
+       "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+      ],
+      "general": true,
+      "role": {
+       "label": "Support and customer-facing work",
+       "onTrack": "Named customers unblocked, the repeated problem traced to a cause somebody else can fix, and what was learned written where the team can find it.",
+       "goingWrong": "A very full week, a queue the same length as last week, and nothing anybody else could pick up.",
+       "protectAgainst": "When your support work goes well, it is invisible, and people counting outputs routinely read you as low-value because the escalations that never happened leave no record unless somebody asks for it.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": null
+    },
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "tickets",
+      "state": "filled",
+      "rows": [
+       {
+        "id": "0a30d659-4456-4e88-bb54-a56dfad6ea26",
+        "kind": "ticket",
+        "name": "the day-to-day support tickets",
+        "stage": null,
+        "owner": "Maria Santos",
+        "ownerParticipantId": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "He needs to let go of doing the day-to-day support tickets himself.",
+        "saidBy": "Maria",
+        "saidByParticipantId": "f41141ea-1c36-430c-bdde-79c0ae6ada22",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "9daad7d2-811f-424f-80cc-ebf5d1fd9c44",
+        "kind": "ticket",
+        "name": "the ticket queue",
+        "stage": null,
+        "owner": "Daniel Park",
+        "ownerParticipantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "If the ticket queue gets too high, that reflects on me.",
+        "saidBy": "Daniel",
+        "saidByParticipantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "b43ce4c5-9f15-4218-a7b3-4b771900e5a1",
+        "kind": "ticket",
+        "name": "the queue",
+        "stage": null,
+        "owner": "Daniel Park",
+        "ownerParticipantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "Our ticket numbers are good, and the queue is manageable.",
+        "saidBy": "Daniel",
+        "saidByParticipantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "82132c42-749e-4c7e-a99a-fc2ab35093f5",
+        "kind": "ticket",
+        "name": "Our ticket numbers",
+        "stage": null,
+        "owner": "Daniel Park",
+        "ownerParticipantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "Our ticket numbers are good, and the queue is manageable.",
+        "saidBy": "Daniel",
+        "saidByParticipantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "fe6110b6-ba7c-4352-8c36-57c618907b78",
+        "kind": "ticket",
+        "name": "hard tickets",
+        "stage": null,
+        "owner": "Tomi Balogun",
+        "ownerParticipantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "The hard tickets used to come to me. Now they don't.",
+        "saidBy": "Tomi",
+        "saidByParticipantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "16da4f1f-3b41-45a1-a483-040d49b9aa90",
+        "kind": "ticket",
+        "name": "different kinds of tickets",
+        "stage": null,
+        "owner": "Tomi Balogun",
+        "ownerParticipantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I'm getting different kinds of tickets now, more routine ones.",
+        "saidBy": "Tomi",
+        "saidByParticipantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       },
+       {
+        "id": "34891675-e9b0-4a4b-b154-4c0847de3f0e",
+        "kind": "ticket",
+        "name": "routine ones",
+        "stage": null,
+        "owner": "Tomi Balogun",
+        "ownerParticipantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+        "due": null,
+        "fields": {},
+        "from": "said",
+        "said": "I'm getting different kinds of tickets now, more routine ones.",
+        "saidBy": "Tomi",
+        "saidByParticipantId": "53bae0de-e340-4d54-9d09-935e4f68741d",
+        "known": "said",
+        "knownSays": "Someone said it.",
+        "next": null,
+        "nextKnown": null,
+        "nextSays": "Nobody has said what happens next."
+       }
+      ]
+     },
+     {
+      "section": "Themes",
+      "holds": "ticket volume and causes from the helpdesk",
+      "state": "not-known",
+      "why": "Groundwork does not keep this yet. It needs the ticket counts from the helpdesk itself."
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "78b9fca6-b319-4f0b-aa7d-51e58850f3d2",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     }
+    ],
+    "byArea": {
+     "state": "not-known",
+     "why": "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet."
+    }
+   },
+   "participantSeen": "daniel",
+   "patterns": [
+    {
+     "code": "A2",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "The person's plan for managing the team includes stepping in to clear the ticket queue themselves.",
+     "participant": {
+      "email": "daniel.1790906721170@newmanager.test"
+     }
+    },
+    {
+     "code": "A3",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "A contributor who previously handled complex work is now assigned routine tasks after a management change.",
+     "participant": {
+      "email": "tomi.1790906721170@newmanager.test"
+     }
+    }
+   ],
+   "commitments": []
+  }
+ ]
+}

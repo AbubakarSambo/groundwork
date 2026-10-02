@@ -1,0 +1,2219 @@
+{
+ "scenario": {
+  "key": "handover",
+  "label": "What the finance manager knows that nobody else does",
+  "scenario": "ROLE_HANDOVER",
+  "moment": "RECOGNITION",
+  "cadence": "ONE_TIME",
+  "timelineDays": 21,
+  "sessions": 1,
+  "brief": "Our finance manager leaves in three weeks after six years. I want everything that is in her head and not in a system written down, and I want the person taking over to say what they think they are inheriting, so we can see the gap.",
+  "theDecision": "Two things exist only in her head: a payment arrangement with a supplier that is not in any contract, and the fact that the year-end reconciliation depends on a spreadsheet on her own drive. A right answer surfaces both as things with no owner after the 30th.",
+  "people": [
+   {
+    "key": "fd",
+    "name": "Michael Achebe",
+    "isLead": true,
+    "remit": "Finance director. Managing the handover.",
+    "truth": "He thinks the handover is mostly done because the documented processes are documented. He does not know about the supplier arrangement or the spreadsheet.",
+    "manner": "Organised, checklist-minded, assumes documentation equals knowledge."
+   },
+   {
+    "key": "leaver",
+    "name": "Patience Nkemdirim",
+    "remit": "Finance manager, leaving on the 30th after six years.",
+    "truth": "She has a verbal 60-day payment arrangement with the main printing supplier, agreed with their MD in 2022, not in any contract; the written terms say 30 days. Year-end reconciliation runs off a spreadsheet on her personal drive with eleven years of adjustments in it. She will mention both if asked what only she knows.",
+    "manner": "Loyal, thorough, slightly sad. Does not volunteer, but answers a direct question fully."
+   },
+   {
+    "key": "incoming",
+    "name": "Jide Sanusi",
+    "remit": "Incoming finance manager, internal move.",
+    "truth": "He thinks he is inheriting the month-end close and the payables run. He has never done a year-end. He has not been told about either of the two undocumented things.",
+    "manner": "Willing, honest about what he does not know."
+   }
+  ]
+ },
+ "groundId": "c3231a0f-47bd-4bbc-b3a5-0e73c7c1bcfb",
+ "orgId": "39fd0042-aaa9-4837-9584-fd5dc719febd",
+ "emails": {
+  "fd": "fd.1790901032382@handover.test",
+  "leaver": "leaver.1790901032382@handover.test",
+  "incoming": "incoming.1790901032382@handover.test"
+ },
+ "sessions": [
+  {
+   "session": 1,
+   "people": [
+    {
+     "key": "fd",
+     "name": "Michael Achebe",
+     "isLead": true,
+     "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "This is about making sure nothing important from the outgoing Finance Manager's six years here gets dropped in the handover. Let's start with what is genuinely fragile - the thing that works because you have been watching it, not because it is set up to work.\n\nWhere would you like to start?"
+      },
+      {
+       "from": "MICHAEL ACHEBE",
+       "text": "Okay, I understand. From my perspective, the core processes are well-documented, so I'm not seeing major fragility there. I'm ready to discuss any area you feel is a concern."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. The conversations that save the most time happen before work starts, not after something goes wrong. You are here at the right moment. Who is relying on you personally rather than on the role?",
+       "suggestedAnswers": [
+        "I am helping a few colleagues.",
+        "I am supporting ... with some specific tasks.",
+        "I don't think anyone is right now.",
+        "I need to consider that carefully."
+       ]
+      },
+      {
+       "from": "MICHAEL ACHEBE",
+       "text": "That's an interesting question. I believe my team relies on me in my role as Finance Director. I ensure our financial operations are stable and documented."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What did you decide that somebody could easily undo without knowing they were undoing it?",
+       "suggestedAnswers": [
+        "I made a decision about ..., but it needs documenting.",
+        "My choice on ... could be easily reverted.",
+        "I haven't made such a decision yet."
+       ]
+      },
+      {
+       "from": "MICHAEL ACHEBE",
+       "text": "I haven't made any decisions that I believe could be easily undone without awareness. All significant decisions are documented and communicated."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "One more thing before we go further - is there anything you are relying on them to cover that you have not explicitly agreed yet?",
+       "suggestedAnswers": [
+        "Everything is agreed.",
+        "I am still confirming some details.",
+        "I need their agreement on ...",
+        "Not yet."
+       ]
+      },
+      {
+       "from": "MICHAEL ACHEBE",
+       "text": "No, I don't believe so. We've gone through the process documentation thoroughly. The new person will be following established procedures."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've highlighted that the core processes are well-documented and all significant decisions communicated, and that you're not relying on any unagreed coverage. That clarity early on makes the handover process much stronger. What would have to exist for you to know this is working?",
+       "suggestedAnswers": [
+        "I'd see their first ... completed successfully.",
+        "I'll know once they've completed training.",
+        "If they ask too many questions, it's not.",
+        "They would follow procedures without issues."
+       ]
+      },
+      {
+       "from": "MICHAEL ACHEBE",
+       "text": "For me to know this is working, I would need to see the new person competently executing the documented financial processes without significant issues. I'd also expect positive feedback from the team."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "And how much of your day-to-day work is written down for your successor to achieve that?",
+       "suggestedAnswers": [
+        "I've documented most of my work.",
+        "Not much is written down yet.",
+        "I'm still working on it.",
+        "I don't know exactly."
+       ]
+      },
+      {
+       "from": "MICHAEL ACHEBE",
+       "text": "All of the critical financial processes and decision-making frameworks that impact the business are thoroughly documented. That's my focus."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What process or system is the best target for a quick win for your successor?",
+       "suggestedAnswers": [
+        "They can quickly improve our payment process.",
+        "Our budgeting process is still stuck.",
+        "I have not thought about it yet."
+       ]
+      },
+      {
+       "from": "MICHAEL ACHEBE",
+       "text": "I believe the expense reporting system is quite straightforward; a quick win could be streamlining its monthly reconciliation process further. That's a good place to start."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You've identified the expense reporting system's monthly reconciliation as a clear quick win for your successor. What specifically do you expect of Jide Sanusi here?",
+       "suggestedAnswers": [
+        "I want Jide to help streamline reconciliation.",
+        "I need Jide to identify current roadblocks.",
+        "I don't know yet what I expect."
+       ]
+      },
+      {
+       "from": "MICHAEL ACHEBE",
+       "text": "I expect Jide to take over the monthly reconciliation process for expense reporting and ensure its efficient and accurate completion. It's a standard task."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "When did you tell them, and in what words?",
+       "suggestedAnswers": [
+        "I told them today. It was straightforward.",
+        "I haven't been able to tell them yet.",
+        "I will tell them later this week."
+       ]
+      },
+      {
+       "from": "MICHAEL ACHEBE",
+       "text": "I haven't directly communicated specific tasks to Jide yet regarding the expense reporting. That will happen during the formal handover meetings next week."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What else should I know?",
+       "suggestedAnswers": [
+        "Things are moving forward.",
+        "We hit a small problem.",
+        "I don't know yet.",
+        "Still working on it."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "leaver",
+     "name": "Patience Nkemdirim",
+     "isLead": false,
+     "checkInId": "f22f6401-a3da-43ac-8043-073000b92527",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Before anything else, so this asks you the right things: are you the person this check-in is about, or somebody working alongside them? One line is enough."
+      },
+      {
+       "from": "PATIENCE NKEMDIRIM",
+       "text": "I'm the person this check-in is about."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. This record is for your perspective on your role. What did you understand your role in this to be-in your own words, before anyone else's version?",
+       "suggestedAnswers": [
+        "I saw my role as leading the charge.",
+        "I didn't fully understand my role.",
+        "I am still figuring out my role."
+       ]
+      },
+      {
+       "from": "PATIENCE NKEMDIRIM",
+       "text": "My role was to manage the company's finances, making sure everything ran smoothly and that we were in a good financial position. I handled all the ins and outs, keeping track of everything."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Can you give me an example of an \"in\" and an \"out\" you handled recently?",
+       "suggestedAnswers": [
+        "I finished the ... report.",
+        "The ... payment is delayed.",
+        "I am still thinking."
+       ]
+      },
+      {
+       "from": "PATIENCE NKEMDIRIM",
+       "text": "An \"in\" would be processing a payment from a client for a completed project. An \"out\" would be paying our quarterly VAT bill."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Those are clear examples of transactions. What would you say is the implication of having successfully processed those?",
+       "suggestedAnswers": [
+        "We can finally move on.",
+        "It means we are done.",
+        "We still have more to do.",
+        "I am not sure yet."
+       ]
+      },
+      {
+       "from": "PATIENCE NKEMDIRIM",
+       "text": "It means the company is getting paid for its work and meeting its financial obligations. It keeps everything moving as it should."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Who arranged for the company to get paid for its work, and for the financial obligations to be met?",
+       "suggestedAnswers": [
+        "I made sure payments went out.",
+        "Still waiting for some payments.",
+        "I'm not sure yet."
+       ]
+      },
+      {
+       "from": "PATIENCE NKEMDIRIM",
+       "text": "I managed the processes that ensured both of those things happened. I made sure invoices went out and bills were paid on time."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You managed the processes. What is the one process you put in place that the next person should absolutely not change?",
+       "suggestedAnswers": [
+        "The invoice system makes sure payments arrive.",
+        "I am still thinking about that one.",
+        "No single process is truly unchangeable.",
+        "The process for paying bills works well."
+       ]
+      },
+      {
+       "from": "PATIENCE NKEMDIRIM",
+       "text": "That's a tough one, as most processes evolve. I don't think there's one single process I'd say should *absolutely* not change, as the company's needs might shift."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What is the one process you believe is most critical to keep running as it is, even with changing needs, and why?",
+       "suggestedAnswers": [
+        "I'm still thinking about it.",
+        "It's hard to pick just one critical process.",
+        "I don't believe any process should never change."
+       ]
+      },
+      {
+       "from": "PATIENCE NKEMDIRIM",
+       "text": "I think keeping the year-end reconciliation process as it is, is the most critical. It's what ensures all our figures are accurate and provides continuity."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What one tool, that is not an official system, could you not do your job without?",
+       "suggestedAnswers": [
+        "My personal spreadsheet is vital for my accuracy.",
+        "I use a simple notepad for all my figures.",
+        "I don't think I have one truly essential tool.",
+        "I haven't found a non-official tool I need yet."
+       ]
+      },
+      {
+       "from": "PATIENCE NKEMDIRIM",
+       "text": "There's a spreadsheet I use for the year-end reconciliation; it's on my personal drive. I really couldn't do without that."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "When you say year-end, do you mean 31 December 2026?",
+       "suggestedAnswers": [
+        "Yes, that's the date I mean.",
+        "No, I actually meant a different date.",
+        "I'm not sure which date yet.",
+        "I'm still checking the exact date."
+       ]
+      },
+      {
+       "from": "PATIENCE NKEMDIRIM",
+       "text": "No, I mean the annual year-end for our financial reporting cycle. It's not necessarily December 31st."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That spreadsheet for year-end reconciliation is clearly central to how you work. What knowledge or insights do you have that aren't written down in any system?",
+       "suggestedAnswers": [
+        "I've learned a lot about customer needs.",
+        "I don't have unique insights yet.",
+        "I'm still figuring out the challenges."
+       ]
+      }
+     ]
+    },
+    {
+     "key": "incoming",
+     "name": "Jide Sanusi",
+     "isLead": false,
+     "checkInId": "91c70009-32c0-4c68-9ad6-4798762e10db",
+     "naturalClose": false,
+     "turns": [
+      {
+       "from": "GROUNDWORK",
+       "text": "Before anything else, so this asks you the right things: are you the person this check-in is about, or somebody working alongside them? One line is enough."
+      },
+      {
+       "from": "JIDE SANUSI",
+       "text": "I'm the person taking over, the new finance manager."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That helps shape this conversation. What did you understand your role in this to be, in your own words, before anyone else's version?",
+       "suggestedAnswers": [
+        "I understood my role was to manage finances.",
+        "My understanding of it is still evolving.",
+        "I am still defining my role."
+       ]
+      },
+      {
+       "from": "JIDE SANUSI",
+       "text": "I'm here to talk about what I think I'm inheriting, and what my new role will be."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Michael, Michael, is hoping to ensure nothing important from the outgoing finance manager's six years gets dropped in the handover. What have you inherited that you do not yet understand? Name the thing you would be guessing about if you had to act on it this week."
+      },
+      {
+       "from": "JIDE SANUSI",
+       "text": "I think the main things I'll be inheriting are the month-end close and the payables run. I'd be guessing about the year-end close; I've never done one."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "What specifically about the year-end close feels like a guess right now?",
+       "suggestedAnswers": [
+        "Some parts are clearer now.",
+        "I don't know the whole process yet.",
+        "Still lots of unknowns for me."
+       ]
+      },
+      {
+       "from": "JIDE SANUSI",
+       "text": "Well, I haven't been involved in one here before, so I don't know the specific steps or any particular quirks for our company."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "You have not been involved in one here before, so the specific steps for our company's year-end close are not clear. What looks wrong to you from outside it?",
+       "suggestedAnswers": [
+        "It looks good from here.",
+        "Something looks stuck to me.",
+        "I don't know yet.",
+        "I see a few strange things."
+       ]
+      },
+      {
+       "from": "JIDE SANUSI",
+       "text": "Nothing looks wrong to me. I just don't know the process at all for here."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Understood. The process for year-end close is a blank right now. What must not be dropped in the handover for the role to succeed?",
+       "suggestedAnswers": [
+        "I have all the important parts.",
+        "I still need details about the process.",
+        "I am not sure what is missing."
+       ]
+      },
+      {
+       "from": "JIDE SANUSI",
+       "text": "I need to make sure I understand the month-end close and the payables run completely. Those are critical."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Those are critical. Which relationships come with this role?",
+       "suggestedAnswers": [
+        "I have identified a few key relationships.",
+        "I am still learning all the connections.",
+        "I don't know yet."
+       ]
+      },
+      {
+       "from": "JIDE SANUSI",
+       "text": "I don't know yet what specific relationships come with this role. I'm still learning that."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "That the role has specific relationships is something to get clear. Given that most of your work will be in finance, is that right, or would you describe your role differently?",
+       "suggestedAnswers": [
+        "Yes, finance is definitely the focus.",
+        "The finance aspect is still a bit unclear.",
+        "I'm still learning about my role."
+       ]
+      },
+      {
+       "from": "JIDE SANUSI",
+       "text": "Yes, most of my work will definitely be in finance. That's a correct description."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "Michael is looking to ensure that everything from the outgoing finance manager's six years that is in Michael's head and not in a system gets written down. What is the most important thing that is in your head right now that is not written down anywhere?",
+       "suggestedAnswers": [
+        "I have a new idea.",
+        "One thing is stuck.",
+        "I don't know yet.",
+        "I have a good thought."
+       ]
+      },
+      {
+       "from": "JIDE SANUSI",
+       "text": "The most important thing in my head is probably my understanding of the month-end close process and the payables run from my current role. It's not formally written down as my new process yet."
+      },
+      {
+       "from": "GROUNDWORK",
+       "text": "So it is not that no one has raised it, it keeps sliding. What has made it easy to defer each time?",
+       "suggestedAnswers": [
+        "I always had other urgent tasks.",
+        "I did not have a clear process yet.",
+        "I am not sure yet."
+       ]
+      }
+     ]
+    }
+   ],
+   "released": true,
+   "leadReport": {
+    "id": "6356d698-ee46-4637-b815-fe4e85600608",
+    "groundId": "c3231a0f-47bd-4bbc-b3a5-0e73c7c1bcfb",
+    "sharedPicture": "All three people have answered. They disagree on the completeness and accessibility of documentation for the year-end reconciliation process.\n\nYou believe the core financial processes are well-documented. You say you have not yet communicated specific tasks to Jide Sanusi about expense reporting.\n\nPatience Nkemdirim says Patience's role was to manage the company's finances. Patience says a spreadsheet for the year-end reconciliation is on Patience's personal drive.\n\nJide is the new finance manager who is taking the work over. Jide says Jide needs to understand the month-end close and would be guessing about the year-end close.\n\nThe shared goal is to ensure that critical knowledge and processes are successfully transferred from the outgoing manager to the incoming one, ensuring the stability of the company's financial operations.",
+    "theOpening": "All three people have answered. They disagree on the completeness and accessibility of documentation for the year-end reconciliation process.",
+    "agreements": [
+     "All agree that the continuity of core financial processes, such as month-end and year-end reconciliation, is the central purpose of this handover.",
+     "Both the outgoing and incoming managers identify specific, critical financial processes as the core of the role."
+    ],
+    "divergences": [
+     {
+      "topic": "The completeness and accessibility of documentation for the year-end reconciliation process.",
+      "atStake": "If this holds, the annual reconciliation process is at risk, as the incoming manager does not have the knowledge or the tools to complete it.",
+      "evidence": [
+       "You stated that all significant financial processes are thoroughly documented.",
+       "Patience Nkemdirim's record shows that a critical file for the year-end reconciliation is saved on a personal drive.",
+       "Jide Sanusi's record shows a lack of familiarity with the company's year-end process."
+      ],
+      "positions": [
+       {
+        "view": "You described all critical financial processes as being thoroughly documented and stable.",
+        "participantLabel": "You",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Patience Nkemdirim stated that a critical spreadsheet for the year-end reconciliation is located on a personal drive.",
+        "participantLabel": "Patience Nkemdirim",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "view": "Jide Sanusi described not knowing the year-end process at all for the company.",
+        "participantLabel": "Jide Sanusi",
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ],
+      "settledBy": "Agree on a shared, permanent location for all process documentation and tools, and schedule a walkthrough of the year-end process before the handover is complete.",
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "evidenceMarks": [
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       },
+       {
+        "mark": "said",
+        "markSays": "Only someone’s word"
+       }
+      ]
+     }
+    ],
+    "centralQuestion": "For the three most critical processes in this role-month-end close, payables, and year-end reconciliation, what single action for each would make it fully accessible to Jide Sanusi without needing Patience Nkemdirim?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Michael Achebe",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 13,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Michael Achebe"
+      },
+      {
+       "label": "Patience Nkemdirim",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 9,
+       "documentsAttached": 0,
+       "who": "Patience Nkemdirim"
+      },
+      {
+       "label": "Jide Sanusi",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 10,
+       "documentsAttached": 0,
+       "who": "Jide Sanusi"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "concernFlags": [],
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "The completeness and accessibility of documentation for the year-end reconciliation process."
+     ],
+     "sessionCounts": {
+      "Patience Nkemdirim": 9,
+      "Jide Sanusi": 9,
+      "Michael Achebe": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Michael Achebe",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Michael Achebe": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Michael Achebe": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [],
+     "whatCouldBeChecked": {
+      "says": [
+       "The one thing described here lines up with something other than what the person said. It is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 1,
+      "checked": 1
+     },
+     "difficultyDisclosures": false
+    },
+    "inferences": [],
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "leadershipGaps": [
+     {
+      "gap": "One account describes the immediate priority for the new role as streamlining monthly expense reconciliation, while another describes it as learning the month-end close and payables run.",
+      "note": "This difference appears to exist because the specific 'quick win' you want has not been communicated to the person who would do the work.",
+      "pattern": "SETUP_NEVER_SAID",
+      "periods": 1
+     }
+    ],
+    "networkPicture": null,
+    "theJudgement": {
+     "theGap": "You believe the financial processes are well-documented, but the year-end reconciliation process depends on a spreadsheet on Patience Nkemdirim's personal drive. Jide Sanusi, who is taking over the role, does not know this process and says Jide would be guessing.",
+     "whatToDo": [
+      {
+       "move": "Get the year-end reconciliation spreadsheet from Patience Nkemdirim's personal drive onto a shared company system today.",
+       "because": "Patience Nkemdirim is leaving on the 30th and says the spreadsheet is on a personal drive.",
+       "startWith": "Patience Nkemdirim"
+      },
+      {
+       "move": "Ask Patience Nkemdirim to show Jide Sanusi how the year-end reconciliation process works, using the spreadsheet.",
+       "because": "Jide Sanusi says Jide would be guessing about the year-end close.",
+       "startWith": "Jide Sanusi"
+      },
+      {
+       "move": "Define the specific handover tasks that must be completed before Patience Nkemdirim leaves.",
+       "because": "You have not yet communicated specific tasks to Jide Sanusi and said it \"will happen during the formal handover meetings\".",
+       "startWith": "You"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "Patience Nkemdirim says a spreadsheet for the year-end reconciliation is on Patience's personal drive.",
+       "soWhat": "This means a critical financial process is not secured in a company location before Patience Nkemdirim leaves.",
+       "fieldId": "Patience Nkemdirim"
+      },
+      {
+       "says": "Jide Sanusi says Jide needs to understand the month-end close and would be guessing about the year-end close.",
+       "soWhat": "This means Jide Sanusi cannot currently do a key part of the job.",
+       "fieldId": "Jide Sanusi"
+      },
+      {
+       "says": "You believe the core financial processes are well-documented and stable.",
+       "soWhat": "This means you are not aware of the risk to the handover of the finance role.",
+       "fieldId": "You"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "A list of all the documents essential for the finance role.",
+       "howManyMissedIt": 3
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The conversation focused on the one spreadsheet Patience Nkemdirim mentioned.",
+       "about": "What other critical documents exist only on personal drives.",
+       "toKnow": "Ask Patience Nkemdirim to list all documents required for the role and to confirm their locations."
+      },
+      {
+       "why": "The record only contains your statement that they will happen.",
+       "about": "When the \"formal handover meetings\" are, or what they will cover.",
+       "toKnow": "Your own account of this is not in this check-in."
+      }
+     ]
+    },
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Patience Nkemdirim is a finance manager, leaving on the 30th after six years. Since then, the record holds 1 session, 9 lines of what was said, 3 with a name, a number or a date in them and none backed by a document.",
+       "who": "Patience Nkemdirim",
+       "participantId": "f70d8b0f-bd25-498b-b489-53f287467ba4"
+      },
+      {
+       "say": "Jide Sanusi is down as \"Incoming finance manager, internal move\", and nothing on record says what that role covers. Since then, the record holds 1 session, 10 lines of what was said, none with a name, a number or a date in them and none backed by a document.",
+       "who": "Jide Sanusi",
+       "participantId": "09d605cd-9940-4efa-a145-523b5d213000"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "In session 1, you said, \"That will happen during the formal handover meetings\". The time you gave for it was \"next week\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, you said, \"That will happen during the formal handover meetings\". The time you gave for it was \"next week\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "That will happen during the formal handover meetings",
+       "when": "next week",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "direction": null,
+    "findings": [
+     {
+      "text": "You believe the core financial processes are well-documented. You say you have not yet communicated specific tasks to Jide Sanusi about expense reporting.",
+      "hasGap": false,
+      "headline": "You have not yet assigned specific tasks for the handover to Jide Sanusi.",
+      "participantId": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Patience Nkemdirim says Patience's role was to manage the company's finances. Patience says a spreadsheet for the year-end reconciliation is on Patience's personal drive.",
+      "hasGap": false,
+      "headline": "A spreadsheet for the year-end reconciliation is on Patience Nkemdirim's personal drive.",
+      "participantId": "f70d8b0f-bd25-498b-b489-53f287467ba4",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Jide Sanusi is the new finance manager who is taking the work over. Jide says Jide needs to understand the month-end close and would be guessing about the year-end close.",
+      "hasGap": false,
+      "headline": "Jide Sanusi says Jide would have to guess how to do the year-end close.",
+      "participantId": "09d605cd-9940-4efa-a145-523b5d213000",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "arcSignals": null,
+    "releasedAt": "2026-10-02T00:39:02.955Z",
+    "createdAt": "2026-10-02T00:35:59.904Z",
+    "updatedAt": "2026-10-02T00:40:53.779Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They disagree on the completeness and accessibility of documentation for the year-end reconciliation process.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You believe the core financial processes are well-documented.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You say you have not yet communicated specific tasks to Jide Sanusi about expense reporting.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Patience Nkemdirim says Patience's role was to manage the company's finances.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Patience Nkemdirim says a spreadsheet for the year-end reconciliation is on Patience's personal drive.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Jide Sanusi is the new finance manager who is taking the work over.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Jide Sanusi says Jide needs to understand the month-end close and would be guessing about the year-end close.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The shared goal is to ensure that critical knowledge and processes are successfully transferred from the outgoing manager to the incoming one, ensuring the stability of the company's financial operations.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "My working assumption has been that our handover is on track if the core processes are documented, but I am hearing that there are essential tools for the year-end that are not in a shared system.",
+     "toAcknowledge": "The other view is that the most critical priority right now is not to improve a process, but to make sure the year-end reconciliation can be handed over at all.",
+     "questionToCarry": "Beyond the official documents, what is the complete list of tools and files the new person needs to get the year-end reconciliation done?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "You have started session 1 of the operations and people work, and as expected for this early stage, nothing repeats yet; the value of later sessions will depend on what you can show.",
+     "beforeNextTime": [
+      "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+     ],
+     "general": true,
+     "role": {
+      "label": "Operations and people",
+      "onTrack": "Handoffs held and owned, the hard conversation had on time, preventive work visible.",
+      "goingWrong": "No issues that turns out to be suppression; handoffs dropped and owned by nobody.",
+      "protectAgainst": "You are only noticed when something breaks, and a good period looks like an empty account, so preventive work has to be actively credited or your role reads as low contribution for doing its job well.",
+      "noticed": null,
+      "lookingLike": null
+     },
+     "whyNoRoleMap": null
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "4883771c-c6aa-4664-9086-bf46a444e6bc",
+      "type": "INTENT",
+      "text": "From my perspective, the core processes are well-documented, so I'm not seeing major fragility there.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+      "sessionNumber": 1
+     },
+     {
+      "id": "99264e11-5aa7-4248-83f6-32534652adca",
+      "type": "INTENT",
+      "text": "I believe my team relies on me in my role as Finance Director.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+      "sessionNumber": 1
+     },
+     {
+      "id": "0e750698-d8e8-40ff-882b-07cf074d2a30",
+      "type": "INTENT",
+      "text": "I ensure our financial operations are stable and documented.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+      "sessionNumber": 1
+     },
+     {
+      "id": "f2f16a00-1494-4613-9bb2-2045dab710c5",
+      "type": "INTENT",
+      "text": "All significant decisions are documented and communicated.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+      "sessionNumber": 1
+     },
+     {
+      "id": "62e260b9-55e7-4b7b-b0fd-4b8a604fa920",
+      "type": "PROGRESS",
+      "text": "We've gone through the process documentation thoroughly.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b7616855-4d2a-4803-9a0c-8901f475f396",
+      "type": "INTENT",
+      "text": "The new person will be following established procedures.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+      "sessionNumber": 1
+     },
+     {
+      "id": "8b1a24cd-796b-4660-a155-0dfc4dc35ea8",
+      "type": "SUCCESS_DEFINITION",
+      "text": "For me to know this is working, I would need to see the new person competently executing the documented financial processes without significant issues.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+      "sessionNumber": 1
+     },
+     {
+      "id": "9461cafc-926e-4d0a-8767-11c6c9e2788d",
+      "type": "SUCCESS_DEFINITION",
+      "text": "I'd also expect positive feedback from the team.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+      "sessionNumber": 1
+     },
+     {
+      "id": "7b895c3e-c50f-47ca-bdff-244a4bd2a2f4",
+      "type": "INTENT",
+      "text": "All of the critical financial processes and decision-making frameworks that impact the business are thoroughly documented. That's my focus.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+      "sessionNumber": 1
+     },
+     {
+      "id": "bf1a3584-5794-47c5-b8b1-9ebc80a8f8c4",
+      "type": "INTENT",
+      "text": "a quick win could be streamlining its monthly reconciliation process further.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+      "sessionNumber": 1
+     },
+     {
+      "id": "c6f3d413-1b1d-45ba-9267-5321af54cbf6",
+      "type": "INTENT",
+      "text": "I expect Jide to take over the monthly reconciliation process for expense reporting and ensure its efficient and accurate completion.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+      "sessionNumber": 1
+     },
+     {
+      "id": "a8bbfbb0-a79a-4253-884f-457e5a3840f9",
+      "type": "TENSION",
+      "text": "I haven't directly communicated specific tasks to Jide yet regarding the expense reporting.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b4f42d19-d600-4d0c-a1c8-bd305abb5561",
+      "type": "COMMITMENT",
+      "text": "That will happen during the formal handover meetings next week.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "e12f12ee-203b-4404-8f0c-27672b08e110",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\nYou see your core financial processes as well-documented and stable, and believe the team relies on you to maintain this. You expect the new person to follow these established procedures. Success for you would be seeing them execute the processes competently and hearing positive feedback from the team. You noted that while you expect Jide to take over the monthly reconciliation for expense reporting, you have not yet communicated these specific tasks to him.",
+     "whatToCarry": "Your plan is to communicate the specific tasks for the expense reporting process during the formal handover meetings next week."
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    },
+    "forTheLead": [
+     {
+      "id": "difference-1",
+      "decide": "Agree on a shared, permanent location for all process documentation and tools, and schedule a walkthrough of the year-end process before the handover is complete.",
+      "why": "The completeness and accessibility of documentation for the year-end reconciliation process. You, Patience Nkemdirim and Jide Sanusi said different things about this, so nobody can assume it is agreed.",
+      "changes": "If this holds, the annual reconciliation process is at risk, as the incoming manager does not have the knowledge or the tools to complete it."
+     }
+    ]
+   },
+   "board": {
+    "groundId": "c3231a0f-47bd-4bbc-b3a5-0e73c7c1bcfb",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "DELIVERY",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "divergence",
+     "checkInGrid"
+    ],
+    "title": "What the finance manager knows that nobody else does",
+    "scenario": "ROLE_HANDOVER",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. They disagree on the completeness and accessibility of documentation for the year-end reconciliation process.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": {
+     "theGap": "You believe the financial processes are well-documented, but the year-end reconciliation process depends on a spreadsheet on Patience Nkemdirim's personal drive. Jide Sanusi, who is taking over the role, does not know this process and says Jide would be guessing.",
+     "whatToDo": [
+      {
+       "move": "Get the year-end reconciliation spreadsheet from Patience Nkemdirim's personal drive onto a shared company system today.",
+       "because": "Patience Nkemdirim is leaving on the 30th and says the spreadsheet is on a personal drive.",
+       "startWith": "Patience Nkemdirim"
+      },
+      {
+       "move": "Ask Patience Nkemdirim to show Jide Sanusi how the year-end reconciliation process works, using the spreadsheet.",
+       "because": "Jide Sanusi says Jide would be guessing about the year-end close.",
+       "startWith": "Jide Sanusi"
+      },
+      {
+       "move": "Define the specific handover tasks that must be completed before Patience Nkemdirim leaves.",
+       "because": "You have not yet communicated specific tasks to Jide Sanusi and said it \"will happen during the formal handover meetings\".",
+       "startWith": "You"
+      }
+     ],
+     "whatTheNumbersSay": [
+      {
+       "says": "Patience Nkemdirim says a spreadsheet for the year-end reconciliation is on Patience's personal drive.",
+       "soWhat": "This means a critical financial process is not secured in a company location before Patience Nkemdirim leaves.",
+       "fieldId": "Patience Nkemdirim"
+      },
+      {
+       "says": "Jide Sanusi says Jide needs to understand the month-end close and would be guessing about the year-end close.",
+       "soWhat": "This means Jide Sanusi cannot currently do a key part of the job.",
+       "fieldId": "Jide Sanusi"
+      },
+      {
+       "says": "You believe the core financial processes are well-documented and stable.",
+       "soWhat": "This means you are not aware of the risk to the handover of the finance role.",
+       "fieldId": "You"
+      }
+     ],
+     "whatWeFailedToAsk": [
+      {
+       "about": "A list of all the documents essential for the finance role.",
+       "howManyMissedIt": 3
+      }
+     ],
+     "whatThisCannotTellYou": [
+      {
+       "why": "The conversation focused on the one spreadsheet Patience Nkemdirim mentioned.",
+       "about": "What other critical documents exist only on personal drives.",
+       "toKnow": "Ask Patience Nkemdirim to list all documents required for the role and to confirm their locations."
+      },
+      {
+       "why": "The record only contains your statement that they will happen.",
+       "about": "When the \"formal handover meetings\" are, or what they will cover.",
+       "toKnow": "Your own account of this is not in this check-in."
+      }
+     ]
+    },
+    "theTable": null,
+    "overTime": {
+     "gaps": [
+      {
+       "say": "Patience Nkemdirim is a finance manager, leaving on the 30th after six years. Since then, the record holds 1 session, 9 lines of what was said, 3 with a name, a number or a date in them and none backed by a document.",
+       "who": "Patience Nkemdirim",
+       "participantId": "f70d8b0f-bd25-498b-b489-53f287467ba4"
+      },
+      {
+       "say": "Jide Sanusi is down as \"Incoming finance manager, internal move\", and nothing on record says what that role covers. Since then, the record holds 1 session, 10 lines of what was said, none with a name, a number or a date in them and none backed by a document.",
+       "who": "Jide Sanusi",
+       "participantId": "09d605cd-9940-4efa-a145-523b5d213000"
+      }
+     ],
+     "patterns": [],
+     "sessions": 1,
+     "stillOpen": [
+      "In session 1, you said, \"That will happen during the formal handover meetings\". The time you gave for it was \"next week\". Nobody has said yet whether it happened."
+     ],
+     "commitments": [
+      {
+       "say": "In session 1, you said, \"That will happen during the formal handover meetings\". The time you gave for it was \"next week\". Nobody has said yet whether it happened.",
+       "who": "You",
+       "what": "That will happen during the formal handover meetings",
+       "when": "next week",
+       "status": "UNKNOWN",
+       "leadLabel": "You",
+       "settledBy": null,
+       "fromAPaste": false,
+       "restatedIn": [],
+       "theySaidIt": true,
+       "participantId": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+       "saidWordForWord": true,
+       "statedInSession": 1,
+       "whenSaidWordForWord": true
+      }
+     ],
+     "dependencies": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ],
+     "toSettleFirst": [
+      "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.",
+      "Nothing here is backed by a document. Ask for one thing in writing that you could check yourself."
+     ],
+     "inSessions": "in 1 session"
+    },
+    "myParticipantId": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+    "canEditFrame": true,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T00:40:53.779Z",
+    "participants": [
+     {
+      "id": "09d605cd-9940-4efa-a145-523b5d213000",
+      "name": "Jide Sanusi",
+      "role": "Incoming finance manager, internal move.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+      "name": "Michael Achebe",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "f70d8b0f-bd25-498b-b489-53f287467ba4",
+      "name": "Patience Nkemdirim",
+      "role": "Finance manager, leaving on the 30th after six years.",
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [
+      {
+       "topic": "The completeness and accessibility of documentation for the year-end reconciliation process.",
+       "atStake": "If this holds, the annual reconciliation process is at risk, as the incoming manager does not have the knowledge or the tools to complete it.",
+       "evidence": [
+        "You stated that all significant financial processes are thoroughly documented.",
+        "Patience Nkemdirim's record shows that a critical file for the year-end reconciliation is saved on a personal drive.",
+        "Jide Sanusi's record shows a lack of familiarity with the company's year-end process."
+       ],
+       "positions": [
+        {
+         "view": "You described all critical financial processes as being thoroughly documented and stable.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Patience Nkemdirim stated that a critical spreadsheet for the year-end reconciliation is located on a personal drive.",
+         "participantLabel": "Patience Nkemdirim",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Patience Nkemdirim"
+        },
+        {
+         "view": "Jide Sanusi described not knowing the year-end process at all for the company.",
+         "participantLabel": "Jide Sanusi",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Jide Sanusi"
+        }
+       ],
+       "settledBy": "Agree on a shared, permanent location for all process documentation and tools, and schedule a walkthrough of the year-end process before the handover is complete.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "All agree that the continuity of core financial processes, such as month-end and year-end reconciliation, is the central purpose of this handover.",
+      "Both the outgoing and incoming managers identify specific, critical financial processes as the core of the role."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Agree on a shared, permanent location for all process documentation and tools, and schedule a walkthrough of the year-end process before the handover is complete. That is what settles the completeness and accessibility of documentation for the year-end reconciliation process.",
+     "settled": [
+      "All agree that the continuity of core financial processes, such as month-end and year-end reconciliation, is the central purpose of this handover.",
+      "Both the outgoing and incoming managers identify specific, critical financial processes as the core of the role."
+     ],
+     "stillOpen": [
+      "The completeness and accessibility of documentation for the year-end reconciliation process."
+     ]
+    },
+    "stillUnanswered": [],
+    "eachPerson": [
+     {
+      "participantId": "09d605cd-9940-4efa-a145-523b5d213000",
+      "who": "Jide Sanusi",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Jide Sanusi has checked in.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Jide Sanusi is the new finance manager who is taking the work over. Jide says Jide needs to understand the month-end close and would be guessing about the year-end close.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     },
+     {
+      "participantId": "f70d8b0f-bd25-498b-b489-53f287467ba4",
+      "who": "Patience Nkemdirim",
+      "nameIsTheirRole": false,
+      "target": null,
+      "count": 0,
+      "reason": "nothing to do",
+      "says": "Patience Nkemdirim has checked in.",
+      "ask": null,
+      "notLetIn": false,
+      "notLetInBy": null,
+      "notLetInAt": null,
+      "finding": "Patience Nkemdirim says Patience's role was to manage the company's finances. Patience says a spreadsheet for the year-end reconciliation is on Patience's personal drive.",
+      "hasGap": false,
+      "findingMark": "said",
+      "findingMarkSays": "Only someone’s word"
+     }
+    ],
+    "toLookAt": [],
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "09d605cd-9940-4efa-a145-523b5d213000",
+       "name": "Jide Sanusi",
+       "role": "Incoming finance manager, internal move.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+       "name": "Michael Achebe",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "f70d8b0f-bd25-498b-b489-53f287467ba4",
+       "name": "Patience Nkemdirim",
+       "role": "Finance manager, leaving on the 30th after six years.",
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things about the completeness and accessibility of documentation for the year-end reconciliation process.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "No target set",
+      "sub": "Nobody has set anything to measure this against.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "7 worries",
+      "sub": "You said, \"I haven't directly communicated specific tasks to Jide yet regarding the expense reporting.\" There are 6 more worries on record, and nobody is waiting on anybody.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "You have started session 1 of the operations and people work, and as expected for this early stage, nothing repeats yet; the value of later sessions will depend on what you can show.",
+      "beforeNextTime": [
+       "You gave everything from memory; next time bring one thing somebody else could open, such as a message, a document, or a number from a system."
+      ],
+      "general": true,
+      "role": {
+       "label": "Operations and people",
+       "onTrack": "Handoffs held and owned, the hard conversation had on time, preventive work visible.",
+       "goingWrong": "No issues that turns out to be suppression; handoffs dropped and owned by nobody.",
+       "protectAgainst": "You are only noticed when something breaks, and a good period looks like an empty account, so preventive work has to be actively credited or your role reads as low contribution for doing its job well.",
+       "noticed": null,
+       "lookingLike": null
+      },
+      "whyNoRoleMap": null
+     },
+     "eachPerson": null
+    },
+    "eachPersonToday": [
+     {
+      "participantId": "09d605cd-9940-4efa-a145-523b5d213000",
+      "who": "Jide Sanusi",
+      "line": "Jide Sanusi has checked in."
+     },
+     {
+      "participantId": "f70d8b0f-bd25-498b-b489-53f287467ba4",
+      "who": "Patience Nkemdirim",
+      "line": "Patience Nkemdirim has checked in."
+     }
+    ],
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "c814fd44-193b-4cf0-bfa8-d4e824d3c913",
+      "participantId": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+      "who": "You",
+      "says": "In session 1, you said, \"That will happen during the formal handover meetings\". The time you gave for it was \"next week\". Nobody has said yet whether it happened.",
+      "when": "next week",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, you committed to that will happen during the formal handover meetings."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "09d605cd-9940-4efa-a145-523b5d213000",
+      "who": "Jide Sanusi",
+      "says": "Jide Sanusi has answered 1 session, and the record holds no commitment from Jide Sanusi yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Jide Sanusi answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     },
+     {
+      "participantId": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+      "who": "You",
+      "says": "You have answered 1 session and made 1 commitment. 0 are done, 0 are not done or dropped, and 1 is still open.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you made 1 commitment."
+       }
+      ]
+     },
+     {
+      "participantId": "f70d8b0f-bd25-498b-b489-53f287467ba4",
+      "who": "Patience Nkemdirim",
+      "says": "Patience Nkemdirim has answered 1 session, and the record holds no commitment from Patience Nkemdirim yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, Patience Nkemdirim answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     }
+    ],
+    "busyOrMoving": {
+     "eachPerson": [
+      {
+       "participantId": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+       "who": "You",
+       "says": "You have made 1 commitment across 1 answered session."
+      }
+     ],
+     "cannotTellYou": "These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that."
+    },
+    "leadActions": [
+     {
+      "id": "own-c814fd44-193b-4cf0-bfa8-d4e824d3c913",
+      "says": "In session 1, you said, \"That will happen during the formal handover meetings\". The time you gave for it was \"next week\". Nobody has said yet whether it happened.",
+      "because": null
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+      "who": "You",
+      "promised": [
+       "In session 1, you said, \"That will happen during the formal handover meetings\". The time you gave for it was \"next week\". Nobody has said yet whether it happened."
+      ],
+      "othersWaitFor": []
+     }
+    ]
+   },
+   "participantReport": {
+    "id": "6356d698-ee46-4637-b815-fe4e85600608",
+    "groundId": "c3231a0f-47bd-4bbc-b3a5-0e73c7c1bcfb",
+    "sharedPicture": "All three people have answered. They disagree on the completeness and accessibility of documentation for the year-end reconciliation process. Michael Achebe believes the core financial processes are well-documented. Michael says Michael has not yet communicated specific tasks to Jide Sanusi about expense reporting. You say your role was to manage the company's finances. You say a spreadsheet for the year-end reconciliation is on your personal drive. Jide is the new finance manager who is taking the work over. Jide says Jide needs to understand the month-end close and would be guessing about the year-end close. The shared goal is to ensure that critical knowledge and processes are successfully transferred from the outgoing manager to the incoming one, ensuring the stability of the company's financial operations.",
+    "theOpening": "All three people have answered. They disagree on the completeness and accessibility of documentation for the year-end reconciliation process.",
+    "agreements": [
+     "All agree that the continuity of core financial processes, such as month-end and year-end reconciliation, is the central purpose of this handover.",
+     "Both the outgoing and incoming managers identify specific, critical financial processes as the core of the role."
+    ],
+    "centralQuestion": "For the three most critical processes in this role-month-end close, payables, and year-end reconciliation, what single action for each would make it fully accessible to Jide Sanusi without needing you?",
+    "engagement": {
+     "note": "This report is built from what each person said themselves - it is not independently verified.",
+     "parties": [
+      {
+       "label": "Michael Achebe",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 13,
+       "documentsAttached": 0,
+       "who": "Michael Achebe"
+      },
+      {
+       "label": "Patience Nkemdirim",
+       "sessions": 1,
+       "confidence": {
+        "band": "thin",
+        "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+       },
+       "contributed": true,
+       "recordEntries": 9,
+       "specificityLabel": "low",
+       "documentsAttached": 0,
+       "who": "Patience Nkemdirim"
+      },
+      {
+       "label": "Jide Sanusi",
+       "sessions": 1,
+       "contributed": true,
+       "recordEntries": 10,
+       "documentsAttached": 0,
+       "who": "Jide Sanusi"
+      }
+     ],
+     "coverage": "moderate",
+     "docStatus": {
+      "total": 0,
+      "withAnnotations": 0,
+      "discrepancyFlags": []
+     },
+     "coverageBand": "moderate",
+     "session2Focus": [
+      "The completeness and accessibility of documentation for the year-end reconciliation process."
+     ],
+     "sessionCounts": {
+      "Patience Nkemdirim": 9,
+      "Jide Sanusi": 9,
+      "Michael Achebe": 9
+     },
+     "documentBacked": false,
+     "specificityNotes": [
+      {
+       "label": "Patience Nkemdirim",
+       "dimensions": [
+        {
+         "dim": "coverage",
+         "note": "The work is described across the board (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "delivery",
+         "note": "Clear on what was finished (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "evidence",
+         "note": "Some of this could be checked, most could not (session 1)",
+         "level": "directional"
+        },
+        {
+         "dim": "commitment",
+         "note": "Next steps named, some with dates (session 1)",
+         "level": "managed"
+        },
+        {
+         "dim": "enablement",
+         "note": "Clear about what is needed from others (session 1)",
+         "level": "managed"
+        }
+       ]
+      }
+     ],
+     "documentBackedPct": 0,
+     "pictureConfidence": {
+      "Patience Nkemdirim": {
+       "band": "thin",
+       "line": "We are not confident this part of the picture is complete. What is here is general rather than checkable, so it is a weak basis for a decision about anybody. Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person."
+      }
+     },
+     "specificityCauses": [],
+     "specificitySignal": {
+      "Patience Nkemdirim": "low"
+     },
+     "currentBestReading": "This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.",
+     "hiddenContributors": [],
+     "whatCouldBeChecked": {
+      "says": [
+       "The one thing described here lines up with something other than what the person said. It is backed by what another person said, a document, or a record.",
+       "Not being checked does not make something wrong. Most of what people do leaves no record, and most true things in any report are unchecked. It means hold it more lightly, not less."
+      ],
+      "total": 1,
+      "checked": 1
+     },
+     "difficultyDisclosures": false
+    },
+    "promptVersionId": "c69dbfdd-daf8-4df4-b10a-6e03e442405e",
+    "finalSynthesis": null,
+    "overTime": {
+     "sessions": 1,
+     "inSessions": "in 1 session",
+     "commitments": [],
+     "dependencies": [],
+     "patterns": [],
+     "gaps": [],
+     "stillOpen": [],
+     "toSettleFirst": [],
+     "cannotTellYou": [
+      "Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.",
+      "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.",
+      "Most of what anybody did is not in here. This is what was said in the sessions, and nothing else."
+     ]
+    },
+    "builtFromAnswers": 3,
+    "sharedAs": null,
+    "findings": [
+     {
+      "text": "You say your role was to manage the company's finances. You say a spreadsheet for the year-end reconciliation is on your personal drive.",
+      "hasGap": false,
+      "headline": "A spreadsheet for the year-end reconciliation is on your personal drive.",
+      "participantId": "f70d8b0f-bd25-498b-b489-53f287467ba4",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "releasedAt": "2026-10-02T00:39:02.955Z",
+    "createdAt": "2026-10-02T00:35:59.904Z",
+    "updatedAt": "2026-10-02T00:40:53.779Z",
+    "sharedPictureLines": [
+     {
+      "text": "All three people have answered.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "They disagree on the completeness and accessibility of documentation for the year-end reconciliation process.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Michael Achebe believes the core financial processes are well-documented.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Michael Achebe says Michael has not yet communicated specific tasks to Jide Sanusi about expense reporting.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You say your role was to manage the company's finances.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "You say a spreadsheet for the year-end reconciliation is on your personal drive.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Jide Sanusi is the new finance manager who is taking the work over.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "Jide Sanusi says Jide needs to understand the month-end close and would be guessing about the year-end close.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "text": "The shared goal is to ensure that critical knowledge and processes are successfully transferred from the outgoing manager to the incoming one, ensuring the stability of the company's financial operations.",
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "agreementMarks": [
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     },
+     {
+      "mark": "said",
+      "markSays": "Only someone’s word"
+     }
+    ],
+    "activated": true,
+    "behindTheAnswers": {
+     "answered": 3,
+     "read": 3,
+     "behindBy": 0,
+     "say": null
+    },
+    "postReportGuide": {
+     "openingLine": "For me, the priority is making sure the year-end reconciliation is secure, and I am not sure the official documentation is enough for that on its own.",
+     "toAcknowledge": "There is another view that a quick win could come from making the monthly reconciliation process more efficient.",
+     "questionToCarry": "Beyond the formal documents, what else do you think is needed for the role to be performed successfully from day one?"
+    },
+    "coaching": {
+     "aboutYou": [
+      "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+     ],
+     "showingUp": null,
+     "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+     "beforeNextTime": [
+      "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+     ],
+     "general": true,
+     "role": null,
+     "whyNoRoleMap": "Your record looks like finance, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+    },
+    "theDirection": null,
+    "myRows": [
+     {
+      "id": "7956d5fe-298b-4af6-974d-4bd2914e6b1e",
+      "type": "INTENT",
+      "text": "My role was to manage the company's finances, making sure everything ran smoothly and that we were in a good financial position.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "f22f6401-a3da-43ac-8043-073000b92527",
+      "sessionNumber": 1
+     },
+     {
+      "id": "b7e5c748-4cd4-428c-8def-f5f49076c592",
+      "type": "INTENT",
+      "text": "I handled all the ins and outs, keeping track of everything.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "f22f6401-a3da-43ac-8043-073000b92527",
+      "sessionNumber": 1
+     },
+     {
+      "id": "2a7707cd-f5ef-40b5-8b57-d4cb67f7c562",
+      "type": "PROGRESS",
+      "text": "An \"in\" would be processing a payment from a client for a completed project.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "f22f6401-a3da-43ac-8043-073000b92527",
+      "sessionNumber": 1
+     },
+     {
+      "id": "14e3e10e-db5a-4a15-9ca2-6aed9ff1c0cb",
+      "type": "PROGRESS",
+      "text": "An \"out\" would be paying our quarterly VAT bill.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "f22f6401-a3da-43ac-8043-073000b92527",
+      "sessionNumber": 1
+     },
+     {
+      "id": "958f2992-43e4-444b-868e-d0d8154405ec",
+      "type": "SUCCESS_DEFINITION",
+      "text": "It means the company is getting paid for its work and meeting its financial obligations. It keeps everything moving as it should.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "f22f6401-a3da-43ac-8043-073000b92527",
+      "sessionNumber": 1
+     },
+     {
+      "id": "ac5751c0-9a6b-4ab1-a1fd-9c8fd6d2c092",
+      "type": "INTENT",
+      "text": "I managed the processes that ensured both of those things happened. I made sure invoices went out and bills were paid on time.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "f22f6401-a3da-43ac-8043-073000b92527",
+      "sessionNumber": 1
+     },
+     {
+      "id": "1d582407-c481-4227-acd8-56898d479600",
+      "type": "TOLERANCE",
+      "text": "I don't think there's one single process I'd say should *absolutely* not change, as the company's needs might shift.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "f22f6401-a3da-43ac-8043-073000b92527",
+      "sessionNumber": 1
+     },
+     {
+      "id": "257b6469-6c43-4cfb-9933-4e2efb499b58",
+      "type": "TOLERANCE",
+      "text": "I think keeping the year-end reconciliation process as it is, is the most critical. It's what ensures all our figures are accurate and provides continuity.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "f22f6401-a3da-43ac-8043-073000b92527",
+      "sessionNumber": 1
+     },
+     {
+      "id": "efc61d69-3dad-45df-b94d-f8df47762cb9",
+      "type": "WORRY",
+      "text": "There's a spreadsheet I use for the year-end reconciliation; it's on my personal drive. I really couldn't do without that.",
+      "disputedAt": null,
+      "documented": false,
+      "documentSays": null,
+      "mark": "said",
+      "markSays": "Only someone’s word",
+      "checkInId": "f22f6401-a3da-43ac-8043-073000b92527",
+      "sessionNumber": 1
+     }
+    ],
+    "couldTry": [],
+    "mySoftSpots": [],
+    "probes": null,
+    "soloArtifact": {
+     "summary": "Here is what you shared.\n\nYou described your role as managing the company's finances, handling all the money coming in and going out to keep things running smoothly. You said success in this role means the company is getting paid for its work and meeting its financial obligations on time. While you are open to changing processes as the company's needs shift, you see the year-end reconciliation process as the most critical one to keep as it is, because it ensures all the figures are accurate and provides continuity. You noted that you couldn't do this without a specific spreadsheet you use, which is on your personal drive.",
+     "whatToCarry": "You have a spreadsheet on your personal drive for the year-end reconciliation that you said you 'really couldn't do without'"
+    },
+    "declined": [],
+    "restsOn": {
+     "documents": [],
+     "otherPartiesHave": 0,
+     "nothing": "No documents were attached to this check-in. Everything here comes from what people said."
+    }
+   },
+   "participantBoard": {
+    "groundId": "c3231a0f-47bd-4bbc-b3a5-0e73c7c1bcfb",
+    "renders": true,
+    "mode": "SHARED",
+    "family": "DELIVERY",
+    "peopleWorkTogether": true,
+    "sections": [
+     "quickRead",
+     "divergence",
+     "checkInGrid"
+    ],
+    "title": "What the finance manager knows that nobody else does",
+    "scenario": "ROLE_HANDOVER",
+    "kindOfWork": null,
+    "howItIsGoing": {
+     "latestSummary": "All three people have answered. They disagree on the completeness and accessibility of documentation for the year-end reconciliation process.",
+     "glance": {
+      "progress": {
+       "roundsDone": 1,
+       "roundsPlanned": 1,
+       "answeredThisRound": 3,
+       "ofPeople": 3,
+       "waitingOn": []
+      },
+      "inTheWay": {
+       "count": 0,
+       "oldest": null,
+       "daysWaiting": null
+      }
+     }
+    },
+    "groundStatus": "ACTIVE",
+    "endState": null,
+    "coverageVariant": "text",
+    "startingState": null,
+    "whatTheAnswersSay": null,
+    "theJudgement": null,
+    "theTable": null,
+    "overTime": null,
+    "myParticipantId": "f70d8b0f-bd25-498b-b489-53f287467ba4",
+    "canEditFrame": false,
+    "readOnlyNote": null,
+    "lastChangedAt": "2026-10-02T00:40:53.779Z",
+    "participants": [
+     {
+      "id": "09d605cd-9940-4efa-a145-523b5d213000",
+      "name": "Jide Sanusi",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     },
+     {
+      "id": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+      "name": "Michael Achebe",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "INITIATOR"
+     },
+     {
+      "id": "f70d8b0f-bd25-498b-b489-53f287467ba4",
+      "name": "Patience Nkemdirim",
+      "role": null,
+      "managingOnly": false,
+      "signedOffAt": null,
+      "partyType": "PARTICIPANT"
+     }
+    ],
+    "aTeamReportComes": true,
+    "whoIsAway": [],
+    "divergence": {
+     "items": [
+      {
+       "topic": "The completeness and accessibility of documentation for the year-end reconciliation process.",
+       "atStake": "If this holds, the annual reconciliation process is at risk, as the incoming manager does not have the knowledge or the tools to complete it.",
+       "evidence": [
+        "Michael Achebe stated that all significant financial processes are thoroughly documented.",
+        "Your record shows that a critical file for the year-end reconciliation is saved on a personal drive.",
+        "Jide Sanusi's record shows a lack of familiarity with the company's year-end process."
+       ],
+       "positions": [
+        {
+         "view": "Michael Achebe described all critical financial processes as being thoroughly documented and stable.",
+         "participantLabel": "Michael Achebe",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Michael Achebe"
+        },
+        {
+         "view": "You stated that a critical spreadsheet for the year-end reconciliation is located on a personal drive.",
+         "participantLabel": "You",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "You"
+        },
+        {
+         "view": "Jide Sanusi described not knowing the year-end process at all for the company.",
+         "participantLabel": "Jide Sanusi",
+         "mark": "said",
+         "markSays": "Only someone’s word",
+         "who": "Jide Sanusi"
+        }
+       ],
+       "settledBy": "Agree on a shared, permanent location for all process documentation and tools, and schedule a walkthrough of the year-end process before the handover is complete.",
+       "mark": "said",
+       "markSays": "Only someone’s word",
+       "evidenceMarks": [
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        },
+        {
+         "mark": "said",
+         "markSays": "Only someone’s word"
+        }
+       ]
+      }
+     ],
+     "agreements": [
+      "All agree that the continuity of core financial processes, such as month-end and year-end reconciliation, is the central purpose of this handover.",
+      "Both the outgoing and incoming managers identify specific, critical financial processes as the core of the role."
+     ],
+     "agreementMarks": [
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      },
+      {
+       "mark": "said",
+       "markSays": "Only someone’s word"
+      }
+     ],
+     "centralQuestion": "Agree on a shared, permanent location for all process documentation and tools, and schedule a walkthrough of the year-end process before the handover is complete. That is what settles the completeness and accessibility of documentation for the year-end reconciliation process.",
+     "settled": [
+      "All agree that the continuity of core financial processes, such as month-end and year-end reconciliation, is the central purpose of this handover.",
+      "Both the outgoing and incoming managers identify specific, critical financial processes as the core of the role."
+     ],
+     "stillOpen": [
+      "The completeness and accessibility of documentation for the year-end reconciliation process."
+     ]
+    },
+    "checkInGrid": {
+     "sessions": [
+      1
+     ],
+     "rows": [
+      {
+       "participantId": "09d605cd-9940-4efa-a145-523b5d213000",
+       "name": "Jide Sanusi",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+       "name": "Michael Achebe",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      },
+      {
+       "participantId": "f70d8b0f-bd25-498b-b489-53f287467ba4",
+       "name": "Patience Nkemdirim",
+       "role": null,
+       "managingOnly": false,
+       "cells": {
+        "1": "done"
+       }
+      }
+     ]
+    },
+    "quickRead": [
+     {
+      "label": "Differences",
+      "value": "1",
+      "sub": "People said different things about the completeness and accessibility of documentation for the year-end reconciliation process.",
+      "tone": "warn"
+     },
+     {
+      "label": "Movement",
+      "value": "No target set",
+      "sub": "Nobody has set anything to measure this against.",
+      "tone": "flat"
+     },
+     {
+      "label": "Blockers",
+      "value": "7 worries",
+      "sub": "Michael Achebe said, \"I haven't directly communicated specific tasks to Jide yet regarding the expense reporting.\" There are 6 more worries on record, and nobody is waiting on anybody.",
+      "tone": "warn"
+     },
+     {
+      "label": "How much was said",
+      "value": "All from memory",
+      "sub": "Nothing said this session has a document behind it.",
+      "tone": "warn"
+     }
+    ],
+    "coaching": {
+     "yours": {
+      "aboutYou": [
+       "Everything in your session came from memory, so there is nothing here that anybody else could open and check."
+      ],
+      "showingUp": null,
+      "whyItMatters": "This is session 1 of this work. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.",
+      "beforeNextTime": [
+       "Everything you gave was from memory. Bring one thing next time somebody else could open: a message, a document, a number from a system."
+      ],
+      "general": true,
+      "role": null,
+      "whyNoRoleMap": "Your record looks like finance, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it."
+     },
+     "eachPerson": null
+    },
+    "workRecords": [
+     {
+      "section": "Deal grid",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Forecast",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Themes",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Work plan",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Timeline",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     },
+     {
+      "section": "Obligations",
+      "holds": "",
+      "state": "not-known",
+      "why": "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind."
+     }
+    ],
+    "workPlan": [
+     {
+      "id": "c814fd44-193b-4cf0-bfa8-d4e824d3c913",
+      "participantId": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+      "who": "Michael Achebe",
+      "says": "In session 1, Michael Achebe said, \"That will happen during the formal handover meetings\". The time Michael Achebe gave for it was \"next week\". Nobody has said yet whether it happened.",
+      "when": "next week",
+      "state": "open",
+      "statedInSession": 1
+     }
+    ],
+    "timeline": [
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, the first answers for session 1 came in."
+     },
+     {
+      "on": "2026-10-02",
+      "says": "On 2 October, Michael Achebe committed to that will happen during the formal handover meetings."
+     }
+    ],
+    "personHistory": [
+     {
+      "participantId": "f70d8b0f-bd25-498b-b489-53f287467ba4",
+      "who": "You",
+      "says": "You have answered 1 session, and the record holds no commitment from you yet.",
+      "sessions": [
+       {
+        "n": 1,
+        "on": "2026-10-02",
+        "says": "In session 1, you answered, and the record holds no new commitment or wait from it."
+       }
+      ]
+     }
+    ],
+    "obligations": [
+     {
+      "participantId": "39c7a0a1-afdc-4528-921d-1cfb22b2b6ed",
+      "who": "Michael Achebe",
+      "promised": [
+       "In session 1, Michael Achebe said, \"That will happen during the formal handover meetings\". The time Michael Achebe gave for it was \"next week\". Nobody has said yet whether it happened."
+      ],
+      "othersWaitFor": []
+     }
+    ]
+   },
+   "participantSeen": "leaver",
+   "patterns": [
+    {
+     "code": "D6",
+     "status": "CANDIDATE",
+     "seenInSessions": [
+      1
+     ],
+     "observationText": "A critical year-end reconciliation process relies on a spreadsheet held on a personal drive.",
+     "participant": {
+      "email": "leaver.1790901032382@handover.test"
+     }
+    }
+   ],
+   "commitments": [
+    {
+     "text": "That will happen during the formal handover meetings",
+     "whenSaid": "next week",
+     "status": "UNKNOWN",
+     "statedInSession": 1,
+     "saidAgainIn": [],
+     "participant": {
+      "email": "fd.1790901032382@handover.test"
+     }
+    }
+   ]
+  }
+ ]
+}
