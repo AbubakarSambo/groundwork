@@ -129,7 +129,7 @@ import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
 import { scrollTo } from '@/lib/scroll-to'
-import { KindOfWorkBanner, WorkRecordsSections, YourOwnRecordsSections } from './WorkRecords'
+import { KindOfWorkBanner, WorkRecordsSections, YourOwnRecordsSections, sectionHeading } from './WorkRecords'
 import {
   RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockersSection,
   EvidenceIndexSection, BusyOrMovingSection, ObligationsSection, ForecastSection,
@@ -1220,6 +1220,23 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      */
     coaching: !!b.coaching && (!!b.coaching.yours || !!b.coaching.eachPerson?.length),
   }
+  /*
+   * ONBOARDING BOARD FIX 4: NOT A SECOND, EMPTY "WORK PLAN". A not-known `workRecords` entry
+   * ("Work plan" - "Groundwork does not know what kind of work this check-in is about yet...")
+   * used to sit, in the end fold, right beside the switchboard's own filled `WorkPlanSection`
+   * ("Work plan" - the real commitments) - the same words, twice, back to back, one of them
+   * empty. `sectionHeading` is the exact words each not-known entry actually prints (not always
+   * its raw `section` name - a not-known "Timeline" reads "Every deadline", which never collides),
+   * so this compares the real, printed heading, not a guess from the name.
+   */
+  const switchboardHeadingsAlreadyShown = new Set<string>([
+    ...(shown.workPlan ? ['Work plan'] : []),
+    ...(shown.timeline ? ['Timeline'] : []),
+    ...(shown.obligations ? ['What each side promised'] : []),
+    ...(shown.forecast ? ['Where this could end up'] : []),
+  ])
+  const restOfWorkRecordSectionsToShow = restOfWorkRecordSections.filter((s) =>
+    s.state !== 'not-known' || !switchboardHeadingsAlreadyShown.has(sectionHeading((b as any).kindOfWork ?? null, s)))
   // Only the caller's own availability is theirs to toggle.
   const myIds = new Set(b.myParticipantId ? [b.myParticipantId] : [])
 
@@ -2265,11 +2282,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           `MaybeFolded` above), beside "By area", exactly where the lead reads it, so there is
           nothing left to withhold.
         */}
-        {restOfWorkRecordSections.length > 0 && (
+        {restOfWorkRecordSectionsToShow.length > 0 && (
           <WorkRecordsSections
             groundId={id!}
             kindOfWork={(b as any).kindOfWork ?? null}
-            sections={restOfWorkRecordSections}
+            sections={restOfWorkRecordSectionsToShow}
             participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
             readerIsLead={viewerRunsThisCheckIn}

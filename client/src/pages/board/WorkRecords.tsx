@@ -192,8 +192,14 @@ const OWNER_LABEL_FOR_KIND: Record<KindOfWork, string> = {
   'a government programme': 'Owner',
 }
 
-/** The section's own heading, a person can actually read - never the switchboard's internal name. */
-function sectionHeading(kindOfWork: KindOfWork | null, section: AServedWorkSection): string {
+/**
+ * The section's own heading, a person can actually read - never the switchboard's internal name.
+ * Exported (onboarding board fix 4) so BoardPage.tsx can tell whether a not-known `workRecords`
+ * entry's heading is the same words as a switchboard section it is about to draw filled, rather
+ * than guessing from the raw `section` name, which does not always match what is actually printed
+ * (a not-known "Timeline" reads "Every deadline", never "Timeline").
+ */
+export function sectionHeading(kindOfWork: KindOfWork | null, section: AServedWorkSection): string {
   if (section.section === 'Timeline') return 'Every deadline'
   if (section.section === 'Obligations') return 'The parties'
   const byKind = kindOfWork
