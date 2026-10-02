@@ -274,6 +274,14 @@ One step was taken against the rule: to give the rows their side padding, the bu
 
 That is done. The shared row has a named side padding: panel (22 pixels, the prototype's own panel padding), list, record and kicker. Every reused one-off padding class in the board page, the judgement and the record tables is gone, and nothing moved. Builders kept stopping after one or two of the board page's sections, so the remaining sections now go two or three at a time: the targets and the participant's view first, with the same fix for the targets band.
 
+Those are done.
+- Each target is a row with the prototype's panel padding (22 pixels, read from its "Where each target stands").
+- The two warnings about targets are the shared warning callout.
+- The participant's view lost its extra wrapper.
+- The picture check caught a "Change" button stretched across its row after the change, and it was fixed.
+
+But the builder again reused two old one-off classes. So a fourth guard now freezes how many one-off uses each file has (33 files, 1,300 uses), and any file that uses one more fails. Those counts can only go down from here.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
