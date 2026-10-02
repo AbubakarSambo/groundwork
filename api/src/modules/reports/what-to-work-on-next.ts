@@ -1,4 +1,5 @@
 import { runsTheirOwnBusiness } from '../board/function-detection';
+import { eachWaitUnderWhoeverHoldsIt, waitingOnEachHolder } from './each-wait-under-whoever-holds-it';
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 import { plainNameOf } from '../patterns/plain-pattern-names';
 import { roleMapFor, MIN_COACHING_CONFIDENCE, type RoleMap } from '../board/role-maps';
@@ -343,16 +344,18 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     const escalated = i.waitingOn.filter((d) => d.escalated);
     const notYet = i.waitingOn.filter((d) => !d.escalated);
     if (notYet.length) {
-      const from = [...new Set(notYet.map((d) => d.who).filter(Boolean))] as string[];
       const oldest = Math.max(...notYet.map((d) => d.daysOld));
-      const items = andList(notYet.map((d) => theThing(d.what)));
       const since = [...notYet].sort((a, b) => b.daysOld - a.daysOld)[0]?.since ?? null;
+      /* Each wait under whoever holds it, and each thing once (item 18). See each-wait-under-whoever-holds-it.ts. */
+      const groups = eachWaitUnderWhoeverHoldsIt(notYet);
+      const onEach = waitingOnEachHolder(groups);
+      const many = groups.length > 1;
       actions.push(
         oldest >= 14
           ? (since
-            ? `You have been waiting${from.length ? ` on ${andList(from)}` : ''} for ${items} since ${since}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`
-            : `You have been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`)
-          : `Put ${items} in writing${from.length ? ` to ${andList(from)}` : ''}, with the date you need ${notYet.length > 1 ? 'them' : 'it'} by.`,
+            ? `You have been waiting ${onEach}${many ? ',' : ''} since ${since}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`
+            : `You have been waiting${howLong(oldest)} ${onEach}, and you have not taken it any further. Put the request in writing with a date, or take it to whoever is above them.`)
+          : groups.map((g) => `Put ${andList(g.items)} in writing${g.who ? ` to ${g.who}` : ''}, with the date you need ${g.items.length > 1 ? 'them' : 'it'} by.`).join(' '),
       );
       const kind = whatKindOfThing(notYet);
       if (kind) actions.push(kind);
