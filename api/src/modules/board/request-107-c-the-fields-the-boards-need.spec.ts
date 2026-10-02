@@ -150,7 +150,9 @@ describe('4. on a sales board, what was reported at each stage, and that the rul
     const says = Object.fromEntries(b.reportedAgainstCriteria.stages.map((s: any) => [s.stage, s.says]));
     expect(says.Won).toBe('1 deal was reported at Won, and it has a document behind it.');
     expect(says.Qualified).toBe('1 deal was reported at Qualified, and it has no document behind it.');
-    expect(says.Pitched).toBe('Nobody has reported a deal at Pitched.');
+    /* Changed 2 Oct 2026 (request 115 f): a stage with no deal is left out, not said as "Nobody has reported a deal at Pitched." */
+    expect(says.Pitched).toBeUndefined();
+    expect(b.reportedAgainstCriteria.stages.map((s: any) => s.stage)).toEqual(['Contacted', 'Qualified', 'Won']);
   });
   it('is not served for other kinds of work', async () => {
     const b = await boardAs({ ...SALES, kindOfWork: 'support desk', items: [item('t-1', 'ticket', 'Login fails', { addedByUserId: 'u-amina' })] }, ...AMINA);

@@ -67,7 +67,12 @@ export interface ReportedAtEachStage {
   state: 'not-known';
   why: string;
   stages: { stage: string; reported: number; withProof: number; says: string }[];
+  /** One sentence where nobody has reported a deal at any stage, in place of a row for each empty stage. */
+  says?: string;
 }
+
+/** Said once where no stage has a deal in it (request 115 f). */
+export const NO_DEAL_REPORTED_YET = 'Nobody has reported a deal at any stage yet.';
 
 export const NO_STAGE_RULES = 'Nothing on record says what a deal must show to be at each stage, so the board counts what people reported and how much of it has a document behind it, but not how many meet the rules.';
 
@@ -76,7 +81,13 @@ export function reportedAgainstTheRules(kind: KindOfWork | null, sections: AServ
   const grid = (sections ?? []).find((s: any) => Array.isArray(s.rows) && s.rows.some((r: AServedRecord) => r.kind === 'deal')) as any;
   const deals: AServedRecord[] = grid ? grid.rows.filter((r: AServedRecord) => r.kind === 'deal') : [];
   const order: string[] = Array.isArray(grid?.stages) ? grid.stages : [];
+  /*
+   * ONLY STAGES WITH SOMETHING IN THEM (request 115 f). Four rows of "Nobody has reported a deal at ..."
+   * said nothing a reader could use. A stage with no deal is left out, in the stages' own order; where no
+   * stage has one, the section says so once.
+   */
   const stages = [...new Set([...order, ...deals.map((d) => d.stage).filter((s): s is string => !!s)])]
+    .filter((stage) => deals.some((d) => d.stage === stage))
     .map((stage) => {
       const at = deals.filter((d) => d.stage === stage);
       const withProof = at.filter((d) => d.known === 'proof').length;
@@ -85,8 +96,8 @@ export function reportedAgainstTheRules(kind: KindOfWork | null, sections: AServ
         : withProof === 0 ? 'none of them has a document behind it'
           : withProof === at.length ? 'all of them have a document behind them'
             : `${withProof} of them ${withProof === 1 ? 'has' : 'have'} a document behind ${withProof === 1 ? 'it' : 'them'}`;
-      const says = !at.length ? `Nobody has reported a deal at ${stage}.` : `${plural(at.length, 'deal')} ${at.length === 1 ? 'was' : 'were'} reported at ${stage}, and ${proof}.`;
+      const says = `${plural(at.length, 'deal')} ${at.length === 1 ? 'was' : 'were'} reported at ${stage}, and ${proof}.`;
       return { stage, reported: at.length, withProof, says };
     });
-  return { state: 'not-known', why: NO_STAGE_RULES, stages };
+  return { state: 'not-known', why: NO_STAGE_RULES, stages, ...(stages.length ? {} : { says: NO_DEAL_REPORTED_YET }) };
 }
