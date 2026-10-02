@@ -2943,7 +2943,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         </div>
                       )}
                       <div className={`gwui-mt-8 gwui-fs-15 gwui-pt-6 gwui-pr-10 gwui-pb-6 gwui-pl-10 ${c.ownVoice ? 'gwui-ownvoice' : 'gwui-ownvoice-none'}`} style={{lineHeight: 1.4, borderRadius: 9, fontStyle: c.ownVoice ? 'normal' : 'italic'}}>
-                        {c.ownVoice ?? 'No note. This person can add their own context through their next check-in.'}
+                        {c.ownVoice ?? (isReader ? 'No note. You can add your own context through your next check-in.' : 'No note. This person can add their own context through their next check-in.')}
                       </div>
                     </>
                   )}
@@ -2986,13 +2986,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </button>
               </div>
 
-              {b.coverage.reads.filter((r) => r.shown !== false).map((r) => (
+              {b.coverage.reads.filter((r) => r.shown !== false).map((r) => {
+                /* Re-review, 2 October: "Staying with them" and the "No note" fallback both still
+                   talked about the reader's own row in the third person, under a heading that
+                   already says "You" (see the comment below). `isReader` is the same test used
+                   for the heading, reused here so both sentences agree with it. */
+                const isReader = r.participantId === b.myParticipantId
+                return (
                 <div key={r.participantId} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
                   <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
                     {/* Re-review, 2 October: the reader's own row here still headed with their own
                         name - "Rukia Otieno" over her own card, on the board she herself was
                         reading - the same mistake "Who owns what" was fixed for. */}
-                    <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>{r.participantId === b.myParticipantId ? 'You' : nameOnTheBoard(b, r.participantId, r.name)}</span>
+                    <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>{isReader ? 'You' : nameOnTheBoard(b, r.participantId, r.name)}</span>
                     {/* "ROLE LEVEL" read as a heading over a single word; it is a small note beside
                         the name, not a section of its own, so it no longer renders in capitals. */}
                     {/* Board review, 30 September, item 7: "at role level" is a fragment, not
@@ -3000,7 +3006,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <span className="gwui-fs-13 gwui-ink-muted">{`This is measured at the ${String(r.scope).toLowerCase()} level.`}</span>
                     <span className="gwui-ml-auto">
                       <Tag tone={r.kind === 'LEAKING' ? 'attention' : r.kind === 'ABSORBING' ? 'action' : 'plain'}>
-                        {r.kind === 'LEAKING' ? 'Landing with others' : r.kind === 'ABSORBING' ? "Taking on others' work" : 'Staying with them'}
+                        {r.kind === 'LEAKING' ? 'Landing with others' : r.kind === 'ABSORBING' ? "Taking on others' work" : isReader ? 'Staying with you' : 'Staying with them'}
                       </Tag>
                     </span>
                   </div>
@@ -3042,10 +3048,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   {r.basis && <Note tone="muted">{r.basis}</Note>}
 
                   <div className="gwui-mt-7 gwui-fs-15 gwui-rule-dashed gwui-pt-6 gwui-pr-10 gwui-pb-6 gwui-pl-10 gwui-ink-muted" style={{lineHeight: 1.4, borderRadius: 9, fontStyle: 'italic'}}>
-                    {r.ownVoice ?? 'No note. This person can add context through their next check-in.'}
+                    {r.ownVoice ?? (isReader ? 'No note. You can add context through your next check-in.' : 'No note. This person can add context through their next check-in.')}
                   </div>
                 </div>
-              ))}
+                )
+              })}
 
               {b.coverage.reads.some((r) => r.shown === false) && (
                 <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-9" style={{lineHeight: 1.45}}>

@@ -90,6 +90,27 @@ describe('the reader\'s own row says "You", not their own name, at 1440', () => 
     expect(screen.queryByText('Rukia Otieno')).toBeNull()
   })
 
+  /*
+   * Re-review, 2 October: the "No note" fallback under the reader's own card still said "This
+   * person can add their own context..." under a heading that already says "You".
+   */
+  it('reads "No note. You can add your own context..." under the reader\'s own card in "Contribution against role", keeping the colleague\'s sentence in the third person', async () => {
+    const board = {
+      groundId: 'g1', renders: true, mode: 'SHARED', family: 'DELIVERY', title: 'Sales team, Q3', scenario: 'OKR_ALIGNMENT',
+      coverageVariant: 'text', lastChangedAt: '2026-09-23T15:02:00.000Z',
+      sections: ['contribution'], myParticipantId: 'p-rukia', canEditFrame: true, readOnlyNote: null,
+      participants: PARTICIPANTS,
+      contribution: [
+        { participantId: 'p-rukia', name: 'Rukia Otieno', remitDefined: true, reason: 'She has closed three of her four accounts this quarter.', shown: true, basis: null, ownVoice: null },
+        { participantId: 'p-amani', name: 'Amani Wekesa', remitDefined: true, reason: 'He sells fridges in Kilimani.', shown: true, basis: null, ownVoice: null },
+      ],
+    }
+    renderAs({ id: 'u-rukia' }, board)
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
+    expect(await screen.findByText('No note. You can add your own context through your next check-in.')).toBeTruthy()
+    expect(screen.getByText('No note. This person can add their own context through their next check-in.')).toBeTruthy()
+  })
+
   it('heads the reader\'s own card with "You" in "Where work is landing", keeping the colleague\'s name', async () => {
     const board = {
       groundId: 'g1', renders: true, mode: 'SHARED', family: 'DELIVERY', title: 'Sales team, Q3', scenario: 'OKR_ALIGNMENT',
@@ -118,5 +139,39 @@ describe('the reader\'s own row says "You", not their own name, at 1440', () => 
     expect(screen.getByText('You', { selector: 'span' })).toBeTruthy()
     expect(screen.getByText('Amani Wekesa')).toBeTruthy()
     expect(screen.queryByText('Rukia Otieno')).toBeNull()
+  })
+
+  /*
+   * Re-review, 2 October: "Staying with them" and the "No note" fallback, under a card already
+   * headed "You", still talked about the reader's own row in the third person.
+   */
+  it('reads "Staying with you" and "No note. You can add context..." for the reader\'s own card in "Where work is landing", keeping the colleague\'s tag and sentence in the third person', async () => {
+    const board = {
+      groundId: 'g1', renders: true, mode: 'SHARED', family: 'DELIVERY', title: 'Sales team, Q3', scenario: 'OKR_ALIGNMENT',
+      coverageVariant: 'text', lastChangedAt: '2026-09-23T15:02:00.000Z',
+      sections: ['coverage'], myParticipantId: 'p-rukia', canEditFrame: true, readOnlyNote: null,
+      participants: PARTICIPANTS,
+      coverage: {
+        scope: 'team',
+        reads: [
+          {
+            participantId: 'p-rukia', name: 'Rukia Otieno', scope: 'team', pct: 40, kind: 'STABLE', trend: 'flat',
+            what: 'Rukia said she closed the Nyali Fresh account this week.',
+            reason: '', reasonText: 'Nothing has shifted this week.', ownVoice: null, coupledToBlocker: false, remitDefined: true, shown: true,
+          },
+          {
+            participantId: 'p-amani', name: 'Amani Wekesa', scope: 'team', pct: 60, kind: 'STABLE', trend: 'flat',
+            what: 'Amani said he closed two accounts this week.',
+            reason: '', reasonText: 'Nothing has shifted this week.', ownVoice: null, coupledToBlocker: false, remitDefined: true, shown: true,
+          },
+        ],
+      },
+    }
+    renderAs({ id: 'u-rukia' }, board)
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
+    expect(await screen.findByText('Staying with you')).toBeTruthy()
+    expect(screen.getByText('Staying with them')).toBeTruthy()
+    expect(screen.getByText('No note. You can add context through your next check-in.')).toBeTruthy()
+    expect(screen.getByText('No note. This person can add context through their next check-in.')).toBeTruthy()
   })
 })
