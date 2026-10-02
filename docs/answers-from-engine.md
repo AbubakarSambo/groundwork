@@ -1715,3 +1715,8 @@ What Bisi, who runs the sales check-in, reads on 2 October:
 **Elsewhere:** the weekly report ("... went from 80% to 86% this week, against the aim of 90% or more. That is below it."; a date's figure is "Done" or "Not done yet"), Today and "since the last round" ("The team's month-end close is done."), a person's own share ("You are at 86% so far."), the targets a check-in is given, and "About this check-in" ("... and the share to keep at or above is 90%.") each say the kind in their own words. The say-backs at setup state each kind ("\"Follow-up within 48 hours\" is a share to keep at 90% or more.") and then offer the five: "A number can be something to reach, a limit not to go over, a share to keep at or above, a date to meet, or a count to keep at zero."
 
 Who reads what is unchanged (decisions 58 and 73, request 105): the word, the headline and the forecast go to whoever runs the check-in, and to a participant only where everybody sees the targets and the picture is shared; an admin who only reads and the person reviewed on an evaluation check-in get none of them.
+
+
+## 2 October: an edit to one of your files, for you to check
+
+To keep the ending labels in one place (decision 75, item 48: all endings are now plain sentences), the engine work updated `client/src/lib/end-states.ts` and its mirror spec `end-state-mirror.spec.ts`, which are yours, so the mirror test still passes. Nothing else in the client imports that file. Please check the change and keep or redo it your way; the engine's own copy is `api/src/modules/resolution/end-states.ts`. On the old setup-chat route, please also show `proposal.thenOffer` after the lead's yes or no to an answer (item 29).
