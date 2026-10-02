@@ -52,6 +52,16 @@ What the screen gets wrong, and is being fixed now:
 
 What waits on the engine: requests 105, 107, 108 and 109.
 
+**Update, 2 October, late morning.**
+- Board fix batch 4 is done:
+  - coaching is drawn for exactly its readers;
+  - the participant is told the truth about sharing, "Today's team picture isn't shared yet.";
+  - blockers draw on the six kinds, which was the screen's own table;
+  - five wording fixes.
+- Then the engine's overnight work was merged: requests 105 to 108, 47 commits, with no conflicts. The local database has its change, and the API is restarted on it.
+- On the sales board, the engine's fields for the headline question, where each target stands, the record marks, "Where this is heading", blockers and the participant's own board are now sent, but the screen does not draw them yet.
+- Following your new approach, the sales board alone is being made exactly right, section by section, as the lead and as a participant. The other ten follow one at a time.
+
 ### Where the pictures are
 - **Side-by-side pictures of the earlier screens, with what changed on each:** `/Users/hafsahjumare/Documents/GitHub/groundwork-pictures/`, next to the project folder. Start with its `README.md`.
 - **The boards:** the scratchpad's `pictures/`.
