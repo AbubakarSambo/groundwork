@@ -98,38 +98,54 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
        page's different wording, is the one a reader of this board actually sees. */
     const dealGrid = screen.getByRole('region', { name: 'Every deal, day by day' })
     expect(within(dealGrid).getByText('Nyama Choma Palace')).toBeTruthy()
-    /* Board review, 30 September, item 3: a detail read as a label stuck to a bare value
-       ("Value KES 90K") - now a plain sentence. */
-    expect(within(dealGrid).getByText('The value is KES 90K.')).toBeTruthy()
-    /* The owner in its own column; a row with none reads plainly, never blank. */
-    expect(within(dealGrid).getByText('Akinyi Otieno')).toBeTruthy()
-    expect(within(dealGrid).getByText('Nobody named yet.')).toBeTruthy()
+    /*
+     * BOARD REVIEW, SALES PIECE C, ITEM 3 (c): THE REP AND THE DEAL'S VALUE UNDER ITS NAME, AS
+     * ONE LINE - board-as-lead.txt's own shape ("Aisha, KES 110,000"), not a separate "Rep"
+     * column and a second "The value is..." sentence below it (board review, 30 September, item
+     * 3's old fix, now superseded by this one).
+     */
+    expect(within(dealGrid).getByText('Akinyi Otieno, KES 90K')).toBeTruthy()
+    expect(within(dealGrid).queryByText('The value is KES 90K.')).toBeNull()
+    expect(within(dealGrid).queryByText('Akinyi Otieno', { exact: true })).toBeNull()
+    /* Item 3 (d): one sentence for an empty owner, not a width-dependent pair. */
+    expect(within(dealGrid).getByText('Nobody is named for it yet.')).toBeTruthy()
+    expect(within(dealGrid).queryByText('Nobody named yet.')).toBeNull()
     /* One "Stage now" per row - a single tag, not the whole track. */
     expect(within(dealGrid).getByText('Won', { selector: '.gwui-tag' })).toHaveClass('gwui-tag')
     expect(within(dealGrid).getByText('No stage said yet.')).toBeTruthy()
-    /* The person's own words, in their own name, never a colon join and never a status tag. */
-    /* Board review, 30 September, item 1: the row's `owner` (Akinyi, whose deal this is) is not
-       necessarily who said it in their check-in - the API carries no separate field for that, so
-       this reads "In the words of someone in this check-in," rather than guess a name. Wairimu is
-       both the lead AND the reader here, so the record they added reads "You added it.", not
-       "Wairimu added it." */
+    /* The person's own words, in their own name, never a colon join and never a status tag - now
+       part of the row's own detail (item 3 (c): "What shows it" has no column of its own here),
+       but still exactly the same words. */
     expect(within(dealGrid).getByText('In the words of someone in this check-in,')).toBeTruthy()
     expect(within(dealGrid).getByText('“Nyama Choma Palace paid KES 90K on 22 September, so that one is won.”')).toBeTruthy()
     expect(within(dealGrid).queryByText("Someone's word")).toBeNull()
     expect(within(dealGrid).getByText('You added it.')).toBeTruthy()
+    /* The "Next step" column, the prototype's own ("Nothing booked" for neither row). */
+    expect(within(dealGrid).getAllByText('Nothing booked').length).toBe(2)
 
-    /* The shape of the work: every stage, once, with how many rows sit at each. */
-    expect(within(dealGrid).getByText('The shape of the work')).toBeTruthy()
-    /* Board review, 30 September, two passes: "Quoted (1)" read as a label with a number, and
-       "Quoted: 1 deal" still joined a label and a value with a colon - now stacked on two lines,
-       the stage's name and its count, no punctuation joining them. */
-    expect(within(dealGrid).getByText('Won', { selector: '.gwui-stage-track-name' })).toBeTruthy()
-    expect(within(dealGrid).getByText('1 deal')).toBeTruthy()
-    expect(within(dealGrid).getByText('Contacted', { selector: '.gwui-stage-track-name' })).toBeTruthy()
-    expect(within(dealGrid).getAllByText('none yet').length).toBeGreaterThan(0)
+    /*
+     * BOARD REVIEW, SALES PIECE C, ITEM 3 (f): "THE SHAPE OF THE WORK" IS GONE FROM THE DEAL GRID.
+     * It repeated the same stage-by-stage count "Reported vs criteria met, stage by stage" already
+     * gives elsewhere on the board (this fixture does not serve `reportedAgainstCriteria`, so that
+     * section draws nothing here, but the deal grid's own copy is still gone - every other kind of
+     * work, which has no such section anywhere else, keeps it).
+     */
+    expect(within(dealGrid).queryByText('The shape of the work')).toBeNull()
+    expect(screen.queryByText('Won', { selector: '.gwui-stage-track-name' })).toBeNull()
     /* Never drawn as "proven" or "criteria met" - nothing served here says that. */
     expect(screen.queryByText(/proven/i)).toBeNull()
     expect(screen.queryByText(/criteria met/i)).toBeNull()
+
+    /*
+     * ITEM 3 (b): THE KEY NAMES ONLY THE TWO MARKS THIS GRID ACTUALLY DRAWS. "Next step booked"
+     * and "Follow-up, no reply" named states of the "Next step" column that carries no mark of its
+     * own (it is plain text, "Nothing booked" or the server's own sentence) - left out rather than
+     * promising a mark nothing on the grid shows.
+     */
+    expect(within(dealGrid).getByText(/Contact with proof: a photo, a quote, a payment/)).toBeTruthy()
+    expect(within(dealGrid).getByText('Contact in their words')).toBeTruthy()
+    expect(within(dealGrid).queryByText('Next step booked')).toBeNull()
+    expect(within(dealGrid).queryByText('Follow-up, no reply')).toBeNull()
 
     /* Not-known: the server's own reason, under a plain heading built from its own `holds`. */
     const forecast = screen.getByRole('region', { name: 'Where the sales numbers are likely to end up' })

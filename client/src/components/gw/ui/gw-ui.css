@@ -313,17 +313,6 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   .gwui-work-row { grid-template-columns: 1fr !important; align-items: start; gap: 6px; }
 }
 
-/* Board review, 30 September, item 3: at phone width the column names above ("Rep", "Agent"...)
-   are hidden (`gwui-work-head` above), so a bare "Nobody named yet." no longer says whose it is.
-   Two texts, one shown per width - never a duplicate row a screen reader would read twice; each
-   pair here is one logical value, only one of the two ever visible. */
-.gwui-nobody-wide { display: inline; }
-.gwui-nobody-narrow { display: none; }
-@media (max-width: 640px) {
-  .gwui-nobody-wide { display: none; }
-  .gwui-nobody-narrow { display: inline; }
-}
-
 /* ── FOLDED PANEL (prototype: "Who reports to whom", a closed .panel) ───── */
 .gwui-folded { background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; }
 .gwui-folded-summary {
