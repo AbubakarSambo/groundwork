@@ -2284,3 +2284,77 @@ This is new: before today, somebody who only took part in the check-in that feed
 2. **A lead is asked their own questions.** Where the strategy is not reaching the work goes in full to admins; a lead, or anybody who runs a check-in, is given only the questions asked of them, as "For you". The prototype says each question "goes to the person who can answer it".
 3. **What new people keep asking (request 17 (g)) is not built.** No decision since 27 September answers item 26.1, and the rule is that questions to Ask Groundwork are private always, so the more private option is to leave it out.
 4. **Linked organisations (request 17 (f)) are not built.** No decision answers item 26.6. "What each level understood" is built within one organisation instead, from the organisation's own aims, which needs no new privacy rule.
+
+## Decision 78: the free trial is one month, and WhatsApp is a paid add-on, on Plan and billing (2 October)
+
+Commits `510f9479` (the trial) and `c694a670` (the add-on and the limit). Nothing in `client/` was touched. Everything a person reads below is served by the API, built from the database; please show the sentences as they come and do not write any of them, or any price, limit or number of months, into the screen.
+
+### The free trial is one month
+
+`GET /billing/pricing` still serves `trial: { on, teamsUnder, months }`. `months` is now `1` (the setting `pricing.freeTrial`, and its shipped default). The switch is still off, so nothing about the trial is shown until Hafsah turns it on. When it is on, the prototype's "3 months" has to come from `months`, and one month reads as "1 month", never "1 months": for example "Teams of fewer than 20 people get 1 month free." The screens' own sentence builder (`client/src/lib/the-free-trial.ts`) is yours to check for the singular.
+
+### WhatsApp on Plan and billing
+
+**`GET /billing/whatsapp`**, for anybody signed in to the organisation. What it serves depends on who reads it, and the server decides that, not the screen.
+
+An admin of the organisation (role ADMIN) is served:
+
+    {
+      on: boolean,                       // whether the organisation has turned WhatsApp on
+      plan: 'STARTER' | 'SMALL_TEAM' | 'GROWTH' | 'BUSINESS' | 'SCALE' | 'ENTERPRISE' | null,
+      price: { amountCents: number, currency: 'USD' } | null,   // the add-on's price on this plan, a month
+      charged: boolean,                  // whether it is a line on the Stripe subscription now
+      freeTrial: { months: number, endsOn: string } | null,     // only while the organisation is in its free trial
+      onTheFreePlan: boolean,
+      use: { month: '2026-10', sent: number, limit: number | null, startsAgainOn: string },
+      sending: boolean,                  // whether a WhatsApp message for this organisation goes now
+      heldBecause: 'not turned on' | 'not on a paid plan' | 'at the limit' | null,
+      says: {
+        onOrOff: string,
+        price: string | null,
+        charge: string,
+        use: string,
+        atTheLimit: string | null,
+        reachedTheLimit: string | null,
+        held: string | null
+      }
+    }
+
+Anybody else (a lead, somebody who takes part, a guest) is served only:
+
+    { sending: boolean, says: string | null }
+
+They are never served the price, the use, the limit or whether the organisation pays.
+
+**`PATCH /billing/whatsapp`** with `{ on: true }` or `{ on: false }`, an admin of the organisation only (a lead or member gets 403). It answers with the admin's shape above. Turning it on for a plan that does not sell it (Enterprise) is refused with 400 and "WhatsApp is not sold by itself on Enterprise. Contact us to arrange it."
+
+### What to show, and where
+
+A new section on Plan and billing, under "Your plan", titled **WhatsApp**, for an admin:
+
+| Row | Show | Example, as served |
+| --- | --- | --- |
+| On or off | `says.onOrOff`, with a switch that sends `PATCH /billing/whatsapp` | "WhatsApp is on for your organisation." or "WhatsApp is off for your organisation, so check-ins stay in the app." |
+| Price | `says.price` | "WhatsApp costs $72 a month on your Small Team plan." |
+| What is charged | `says.charge` | During the trial: "Your free trial lasts 1 month and ends on 1 November 2026. Nothing is charged for WhatsApp until then." On the free plan: "Nothing is charged for WhatsApp while you are on the free plan." Paying, with it on: "WhatsApp is added to your monthly bill as a second line." Paying, with it off: "If you turn WhatsApp on, it is added to your monthly bill as a second line." While the trial switch is off: "Nothing is charged for WhatsApp at the moment." |
+| This month | `says.use` | "Your organisation has sent 412 of its 2,000 WhatsApp messages this month." |
+| At the limit | `says.atTheLimit` | "If your organisation sends all 2,000 messages in a month, nothing more is sent by WhatsApp until the next month begins. Check-ins carry on in the app, and you are told once." |
+| Reached | `says.reachedTheLimit`, only when not null, in place of the "At the limit" row | "Your organisation has used all 2,000 of its WhatsApp messages for October. Nothing more is sent by WhatsApp until 1 November 2026. Check-ins carry on in the app, so nobody misses one." |
+
+If you draw a bar for the use, use `use.sent` and `use.limit`; with `limit` null, draw no bar.
+
+For everybody, including the admin: where a check-in would have gone to their phone (the check-in page, and Settings beside their WhatsApp number), when `says` (or `says.held` for an admin) is not null, show it as it comes. The three sentences are:
+
+- "Your organisation has not turned on WhatsApp, so this check-in stays in the app."
+- "Your organisation is not on a paid plan at the moment, so this check-in stays in the app."
+- "Your organisation has used all its WhatsApp messages for this month, so this check-in stays in the app. WhatsApp starts again on 1 November 2026."
+
+### What happens, so the screen does not have to guess
+
+- While the free trial's switch is off, which is how it ships, nothing is held and nothing is charged. WhatsApp goes exactly as today. The monthly limit still applies.
+- Once it is on: during the free trial and on the free plan, WhatsApp goes and nothing is charged. After the trial, an organisation that pays with WhatsApp turned on has it as a second monthly line on its Stripe subscription; without it turned on, nothing goes by WhatsApp.
+- At the limit, nothing more goes by WhatsApp until the first day of the next month (UTC). The check-in carries on in the app, and the organisation's admins are emailed once that month.
+
+### For Groundwork's own staff (Admin, System, Pricing)
+
+`GET /admin/pricing` now carries `whatsappAddOnCents` and `whatsappMonthlyLimit` on each plan. `PATCH /admin/pricing/:plan` takes either or both, beside `amountCents` and `memberCap`: the price in cents (empty takes it off sale on that plan), and the limit as a whole number of messages a month (empty means no limit). A changed price creates a new Stripe price the next time it is needed.
