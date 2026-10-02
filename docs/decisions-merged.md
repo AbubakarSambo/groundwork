@@ -216,3 +216,12 @@ These are settled. Do not change them. If one seems to block the work, stop and 
     8. **The roster import** tidies numbers the same way (`tidyANumberFor`).
     9. **The lead's daily summary on WhatsApp.** The lead receives a daily summary of their check-ins' boards on WhatsApp: plain sentences, only what the lead can see in the app, nothing from a check-in kept in the app, and a link to the full board. It is Groundwork's one message of the day for that lead (decision 13), so it carries anything else waiting for them that day, such as approvals or reminders, rather than sending separate messages. The lead chooses the time (default: morning in their own time zone) and can reply "not now" or stop it. Its template is in `docs/whatsapp-templates.md`.
     `docs/whatsapp-end-to-end.md` also says plainly the exact name of every server setting WhatsApp needs, what each holds, and where it is found in Meta's tools, never a value.
+83. **WhatsApp templates and how often Groundwork writes first** (decided 2 October, alongside decision 13). Hafsah's eight templates go into `docs/whatsapp-templates.md` word for word and are wired up: `checkin_open`, `checkin_due_tomorrow`, `checkin_opens_soon`, `checkin_closes_soon`, `checkin_overdue`, `checkin_team_almost_in`, `checkin_your_view_matters` and `lead_daily_summary`. The rules:
+    1. **Up to two messages on the day a check-in opens or closes, and at most one on every other day**, for each person.
+    2. **"Not now" and "stop" always work.**
+    3. **Nothing about a check-in kept in the app.**
+    4. **Counts like "3 of 5" leave out anyone not yet let in** (decision 77).
+    5. `checkin_overdue` is sent only while the check-in really is still open; if late answers are not accepted, Hafsah is told and wording is proposed.
+    6. `checkin_team_almost_in` only when at least half the people have checked in; `checkin_your_view_matters` when fewer than half have; the report's contents are never sent to somebody who has not answered.
+    7. `lead_daily_summary`'s second blank is one paragraph with no line breaks.
+    Every template is checked against WhatsApp's rules (length, no line break inside a blank, the utility category), and any that would be refused is said.
