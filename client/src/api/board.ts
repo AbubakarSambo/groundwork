@@ -19,7 +19,9 @@ export type CoverageVariant = 'text' | 'bar'
  */
 export interface AnAction {
   label: string
-  says: string
+  /** Not always sent: a choice with `route: null` ("Not yet") draws only when this is there to say
+      something back - see `ActionButtons` in BoardPage.tsx. */
+  says?: string
   goesTo: 'check-in' | 'context' | null
   choices?: { label: string; route: { method: 'PATCH' | 'POST'; path: string; body: Record<string, unknown> } | null }[]
 }

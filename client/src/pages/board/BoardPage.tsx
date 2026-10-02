@@ -497,22 +497,35 @@ function useRunBoardAction(groundId: string) {
  */
 function ActionButtons({ groundId, action }: { groundId: string; action?: AnAction }) {
   const run = useRunBoardAction(groundId)
+  /*
+   * "NOT YET" MUST SAY SOMETHING. A choice with `route: null` ("Not yet") changes nothing, so it
+   * carries no call at all - but pressing it used to do and say nothing either, which reads as a
+   * broken button. It now shows the action's own `says` (the engine's sentence for what staying
+   * open means) as a short note under the buttons. A choice with no route AND no `says` to show for
+   * it is not drawn at all - there would be nothing to press it for.
+   */
+  const [notYetSaid, setNotYetSaid] = useState<string | null>(null)
   if (!action) return <Link to={`/grounds/${groundId}`} className="gwui-plain-link">Open</Link>
   if (action.choices?.length) {
+    const choices = action.choices.filter((c) => c.route || action.says)
+    if (!choices.length) return null
     return (
-      <>
-        {action.choices.map((c) => (
-          <UIButton
-            key={c.label}
-            kind="secondary"
-            size="small"
-            disabled={run.isPending}
-            onClick={c.route ? () => run.mutate(c.route) : undefined}
-          >
-            {c.label}
-          </UIButton>
-        ))}
-      </>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+        <div className="gwui-gap-7" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {choices.map((c) => (
+            <UIButton
+              key={c.label}
+              kind="secondary"
+              size="small"
+              disabled={run.isPending}
+              onClick={c.route ? () => { setNotYetSaid(null); run.mutate(c.route) } : () => setNotYetSaid(action.says ?? null)}
+            >
+              {c.label}
+            </UIButton>
+          ))}
+        </div>
+        {notYetSaid && <div className="gwui-fs-13-5 gwui-ink-muted">{notYetSaid}</div>}
+      </div>
     )
   }
   return (
