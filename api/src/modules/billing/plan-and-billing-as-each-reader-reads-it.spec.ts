@@ -18,11 +18,14 @@ const ADMIN_ONLY = [
   'cancelAccount', 'claimFreeExtension', 'createSubscription', 'cancelSubscription', 'keepSubscription',
   'changeSubscriptionPlan', 'pauseSubscription', 'resumeSubscription', 'applyContributorCode',
   'purchaseSession', 'redeemContributorCode', 'disableCode', 'getShareCard', 'listContributorCodes', 'portal',
+  /* Turning the WhatsApp add-on on or off (decision 78). */
+  'turnWhatsApp',
 ];
 /* Groundwork's own staff only, whatever their role in an organisation. */
 const STAFF_ONLY = ['generateContributorCode', 'sendContributorCodeToEmail', 'platformAdminStats', 'creditSession', 'stripeFailures'];
 /* Read by anybody signed in, because the People and check-in pages warn about a full plan. */
-const ANYBODY_SIGNED_IN = ['status', 'canCreateGround'];
+/* The WhatsApp read is served to everybody, cut down for anybody but an admin (decision 78). */
+const ANYBODY_SIGNED_IN = ['status', 'canCreateGround', 'whatsapp'];
 /* Before there is an account, or from Stripe itself (checked by Stripe's own signature). */
 const PUBLIC = ['onTheHouse', 'getPricing', 'webhook'];
 

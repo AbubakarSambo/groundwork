@@ -14,7 +14,7 @@ import { BillingController } from './billing.controller';
  */
 describe('purchase-session', () => {
   it('is gone, with a sentence rather than a 404', () => {
-    const c = new BillingController({} as any, {} as any, {} as any, { whatIsWaitingFor: async () => null } as any);
+    const c = new BillingController({} as any, {} as any, {} as any, { whatIsWaitingFor: async () => null } as any, {} as any);
     expect(() => c.purchaseSession()).toThrow(GoneException);
     expect(() => c.purchaseSession()).toThrow(/not sold one at a time/);
   });

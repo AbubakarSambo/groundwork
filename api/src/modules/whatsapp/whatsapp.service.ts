@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import { Injectable, Logger, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException, BadRequestException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /** Did it go. One shape from both numbers; see sendMessage. */
@@ -25,6 +25,7 @@ export function metaErrorCode(body: string): string {
   }
 }
 import { PrismaService } from '../prisma/prisma.service';
+import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
 import { ATemplate, insideTheServiceWindow, isBusinessInitiated, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP } from './a-message-outside-the-window';
 
 /**
@@ -45,7 +46,51 @@ export class WhatsAppService {
   constructor(
     private config: ConfigService,
     private prisma: PrismaService,
+    /*
+     * WHATSAPP IS A PAID ADD-ON, WITH A MONTHLY LIMIT (decision 78). Asked before every message an
+     * organisation's check-ins send, and told about every one that went. Optional only so a test that
+     * builds this by hand without it still runs; Nest always provides it.
+     */
+    @Optional() private addOn?: WhatsAppAddOnService,
   ) {}
+
+  /**
+   * WHOSE MESSAGE THIS IS, for the add-on and the limit. A send on our own number carries no
+   * organisation, so it is read from the check-in it is about, or from the number when exactly one
+   * organisation has it. Null when nobody can be named, which is a message about finding the person
+   * their organisation (not recognised, or which one), and those are never held.
+   */
+  private async whoseMessage(context: SendContext, to: string): Promise<string | null> {
+    if (context.checkInId) {
+      const ci = await this.prisma.checkIn
+        .findUnique({ where: { id: context.checkInId }, select: { ground: { select: { organizationId: true } } } })
+        .catch(() => null);
+      if (ci?.ground?.organizationId) return ci.ground.organizationId;
+    }
+    const orgs = await this.whichOrganisations(to).catch(() => [] as { id: string }[]);
+    return orgs.length === 1 ? orgs[0].id : null;
+  }
+
+  /**
+   * HELD, WHEN THE ORGANISATION HAS NOT TURNED WHATSAPP ON OR HAS USED THIS MONTH'S MESSAGES. Nothing
+   * goes by WhatsApp; the send record says why in the sentence the person reads in the app, and the
+   * month's count of held messages goes up (at the limit, the admins are told once). Null when it may go.
+   */
+  private async heldFor(organizationId: string | null, to: string, context: SendContext): Promise<SendResult | null> {
+    if (!organizationId || !this.addOn) return null;
+    const may = await this.addOn.mayWeSend(organizationId);
+    if (may.send) return null;
+    const result: SendResult = { sent: false, error: may.saying };
+    this.writeItDown(organizationId, to, result, { ...context, kind: context.kind ? `${context.kind}:held` : 'held' });
+    await this.addOn.countHeld(organizationId, may.why);
+    return result;
+  }
+
+  /** A message that went counts towards its organisation's month. */
+  private async counted(organizationId: string | null, result: SendResult): Promise<SendResult> {
+    if (organizationId && result.sent && this.addOn) await this.addOn.countSent(organizationId);
+    return result;
+  }
 
   private static readonly TOGGLE_KEY = 'whatsapp_enabled';
 
@@ -136,11 +181,19 @@ export class WhatsAppService {
    */
   async sendMessage(phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
     const to = WhatsAppService.normalize(phoneNumber);
+    const org = this.addOn ? await this.whoseMessage(context, to) : null;
+    const held = await this.heldFor(org, to, context);
+    if (held) return held;
+    return this.sendOnOurNumber(org, to, text, context);
+  }
+
+  /** Our own number, once the add-on and the limit have said it may go. */
+  private async sendOnOurNumber(org: string | null, to: string, text: string, context: SendContext): Promise<SendResult> {
     const gate = await this.mayInitiate(null, to, context);
     if (!gate.free) {
-      if (gate.template) return this.sendTemplate(this.config.get<string>('whatsapp.phoneNumberId') ?? '', this.config.get<string>('whatsapp.accessToken') ?? '', null, to, text, gate.template, context);
+      if (gate.template) return this.sendTemplate(this.config.get<string>('whatsapp.phoneNumberId') ?? '', this.config.get<string>('whatsapp.accessToken') ?? '', org, to, text, gate.template, context);
       const result: SendResult = { sent: false, error: gate.because };
-      this.writeItDown(null, to, result, context);
+      this.writeItDown(org, to, result, context);
       return result;
     }
     if (!(await this.isEnabled())) {
@@ -161,7 +214,7 @@ export class WhatsAppService {
         this.logger.warn(`[DEV WHATSAPP] a message of ${text.length} characters was not sent.`);
       }
       const result: SendResult = { sent: false, error: 'WhatsApp is not configured on this deployment' };
-      this.writeItDown(null, to, result, context);
+      this.writeItDown(org, to, result, context);
       return result;
     }
 
@@ -169,8 +222,8 @@ export class WhatsAppService {
     const phoneNumberId = this.config.get<string>('whatsapp.phoneNumberId') ?? '';
     const result = await this.post(phoneNumberId, accessToken, to, text);
     if (result.sent) this.logger.log(`WhatsApp message sent to ${to}`);
-    this.writeItDown(null, to, result, context);
-    return result;
+    this.writeItDown(org, to, result, context);
+    return this.counted(org, result);
   }
 
   /** The one HTTP call both numbers make. Never throws: the answer is in the result. */
@@ -227,9 +280,11 @@ export class WhatsAppService {
    * the check-in it was about.
    */
   async sendFor(organizationId: string, phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
-    const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
-    if (!own || !own.enabled) return this.sendMessage(phoneNumber, text, context);
     const to = WhatsAppService.normalize(phoneNumber);
+    const held = await this.heldFor(organizationId, to, context);
+    if (held) return held;
+    const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
+    if (!own || !own.enabled) return this.sendOnOurNumber(organizationId, to, text, context);
     const gate = await this.mayInitiate(organizationId, to, context);
     if (!gate.free) {
       if (gate.template) return this.sendTemplate(own.phoneNumberId, own.accessToken, organizationId, to, text, gate.template, context);
@@ -240,7 +295,7 @@ export class WhatsAppService {
     const result = await this.deliver(own.phoneNumberId, own.accessToken, to, text);
     if (result.sent) await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } }).catch(() => undefined);
     this.writeItDown(organizationId, to, result, context);
-    return result;
+    return this.counted(organizationId, result);
   }
 
   /**
@@ -248,8 +303,9 @@ export class WhatsAppService {
    * numbered version, sent when the organisation has no connection of its own or the list is refused.
    */
   async sendListFor(organizationId: string, phoneNumber: string, body: string, rows: { id: string; title: string; description: string }[], fallbackText: string): Promise<boolean> {
+    if (await this.heldFor(organizationId, WhatsAppService.normalize(phoneNumber), { kind: 'which-one' })) return false;
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
-    if (!own || !own.enabled) return (await this.sendMessage(phoneNumber, fallbackText, { kind: 'which-one' })).sent;
+    if (!own || !own.enabled) return (await this.sendOnOurNumber(organizationId, WhatsAppService.normalize(phoneNumber), fallbackText, { kind: 'which-one' })).sent;
     const to = WhatsAppService.normalize(phoneNumber).replace('+', '');
     try {
       const res = await fetch(`https://graph.facebook.com/v20.0/${own.phoneNumberId}/messages`, {
@@ -260,12 +316,12 @@ export class WhatsAppService {
           interactive: { type: 'list', body: { text: body.slice(0, 1024) }, action: { button: 'Choose', sections: [{ title: 'Your check-ins', rows: rows.slice(0, 10) }] } },
         }),
       });
-      if (res.ok) return true;
+      if (res.ok) { await this.counted(organizationId, { sent: true }); return true; }
       this.logger.warn(`WhatsApp list refused for ${to}: ${res.status}; sending the numbered text instead.`);
     } catch (err: any) {
       this.logger.warn(`WhatsApp list failed for ${to}: ${err?.message}; sending the numbered text instead.`);
     }
-    return (await this.deliver(own.phoneNumberId, own.accessToken, `+${to}`, fallbackText)).sent;
+    return (await this.counted(organizationId, await this.deliver(own.phoneNumberId, own.accessToken, `+${to}`, fallbackText))).sent;
   }
 
   /**
@@ -356,7 +412,7 @@ export class WhatsAppService {
       result = { sent: false, error: err?.message ?? 'template send failed' };
     }
     this.writeItDown(organizationId, to, result, { ...context, kind: `${context.kind}:template` });
-    return result;
+    return this.counted(organizationId, result);
   }
 
   /**

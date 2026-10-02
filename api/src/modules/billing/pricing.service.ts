@@ -65,6 +65,8 @@ export const MAX_FREE_MEMBER_LIMIT = 1000;
  * prevent.
  */
 export const FREE_TRIAL_KEY = 'pricing.freeTrial';
+/** What the WhatsApp add-on's Stripe Prices are marked with, so its subscription line is never mistaken for the plan's. */
+export const WHATSAPP_ADD_ON_KIND = 'whatsapp-add-on';
 /**
  * `onSince` is when the setting was last switched on. Kept on the server only (never on the public
  * read): it is what tells an organisation that was already on the free plan from a new one.
@@ -112,6 +114,10 @@ export class PricingService {
       /** Null means unlimited. The client renders the count without a ceiling rather than a number. */
       memberCap: r.memberCap,
       hasStripePrice: !!r.stripePriceId,
+      /** WhatsApp, the paid add-on (decision 78): its monthly price on this plan, null where it is not sold by itself. */
+      whatsappAddOnCents: r.whatsappAddOnCents ?? null,
+      /** How many WhatsApp messages an organisation on this plan may send in a calendar month. Null means no limit. */
+      whatsappMonthlyLimit: r.whatsappMonthlyLimit ?? null,
       updatedAt: r.updatedAt,
     }));
   }
@@ -209,6 +215,46 @@ export class PricingService {
   async setMemberCap(plan: SubscriptionPlan, memberCap: number | null): Promise<void> {
     await this.prisma.pricingPlan.update({ where: { plan }, data: { memberCap } });
     this.logger.log(`Member cap for ${plan} set to ${memberCap === null ? 'unlimited' : memberCap}`);
+  }
+
+  /**
+   * Admin update for the WhatsApp add-on's monthly price on a plan (decision 78). A Stripe Price is
+   * immutable, so a new amount clears the cached add-on price, exactly as `setAmountCents` does.
+   * Null takes the add-on off sale on this plan.
+   */
+  async setWhatsAppAddOnCents(plan: SubscriptionPlan, cents: number | null): Promise<void> {
+    await this.prisma.pricingPlan.update({ where: { plan }, data: { whatsappAddOnCents: cents, whatsappAddOnStripePriceId: null } });
+    this.logger.log(`WhatsApp add-on for ${plan} set to ${cents === null ? 'not sold' : `${cents} cents`} (cached Stripe price cleared)`);
+  }
+
+  /** Admin update for the plan's monthly WhatsApp limit. Null means no limit. Not part of any Stripe price. */
+  async setWhatsAppMonthlyLimit(plan: SubscriptionPlan, limit: number | null): Promise<void> {
+    await this.prisma.pricingPlan.update({ where: { plan }, data: { whatsappMonthlyLimit: limit } });
+    this.logger.log(`WhatsApp monthly limit for ${plan} set to ${limit === null ? 'no limit' : limit}`);
+  }
+
+  /**
+   * The Stripe Price for the WhatsApp add-on on a plan, created only when the database amount has no
+   * cached price id, exactly as plan prices are. Stripe is used in test mode only until Hafsah says
+   * otherwise (docs/deploy.md). Refuses a plan with no add-on price rather than charging zero.
+   */
+  async getOrCreateWhatsAppAddOnPrice(plan: SubscriptionPlan): Promise<string> {
+    const row = await this.prisma.pricingPlan.findUnique({ where: { plan } });
+    if (!row) throw new NotFoundException(`No price configured for plan ${plan}`);
+    if (row.whatsappAddOnStripePriceId) return row.whatsappAddOnStripePriceId;
+    if (row.whatsappAddOnCents === null || row.whatsappAddOnCents === undefined) {
+      throw new BadRequestException(`WhatsApp is not sold by itself on ${PLAN_LABELS[plan]}. This plan is arranged by contacting us.`);
+    }
+    const price = await this.stripe.stripe.prices.create({
+      unit_amount: row.whatsappAddOnCents,
+      currency: 'usd',
+      recurring: { interval: 'month' },
+      product_data: { name: `Groundwork WhatsApp on ${PLAN_LABELS[plan]}`, metadata: { plan, kind: WHATSAPP_ADD_ON_KIND } },
+      metadata: { plan, kind: WHATSAPP_ADD_ON_KIND },
+    });
+    await this.prisma.pricingPlan.update({ where: { plan }, data: { whatsappAddOnStripePriceId: price.id } });
+    this.logger.log(`Created Stripe price ${price.id} for the WhatsApp add-on on ${plan} (${row.whatsappAddOnCents} cents)`);
+    return price.id;
   }
 
   /** Returns a live Stripe Price id for the plan, creating one lazily if the DB amount changed. */

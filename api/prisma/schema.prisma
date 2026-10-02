@@ -313,6 +313,16 @@ model PricingPlan {
   memberCap       Int?             @map("member_cap")
   stripeProductId String?          @map("stripe_product_id")
   stripePriceId   String?          @map("stripe_price_id")
+  /// WHATSAPP, A PAID ADD-ON (decision 78). What WhatsApp costs a month on this plan, about 80% of
+  /// the plan's price, edited at Admin, System, Pricing the way the plan price is. Null means the
+  /// add-on cannot be bought on this plan by itself (Enterprise is arranged by contacting us).
+  whatsappAddOnCents         Int?    @map("whatsapp_add_on_cents")
+  /// The Stripe Price for the add-on, created only when the amount has none cached, and cleared
+  /// whenever the amount changes, exactly as `stripePriceId` is.
+  whatsappAddOnStripePriceId String? @map("whatsapp_add_on_stripe_price_id")
+  /// How many WhatsApp messages an organisation on this plan may send in a calendar month. Null
+  /// means no limit. At the limit, check-ins carry on in the app until the next month.
+  whatsappMonthlyLimit       Int?    @map("whatsapp_monthly_limit")
   updatedAt       DateTime         @updatedAt @map("updated_at")
 
   @@map("pricing_plans")
@@ -526,6 +536,14 @@ model Organization {
   /// trial once. The months themselves are `freeUntil` and `freePlan`, like any free run. Empty
   /// while the trial setting (`pricing.freeTrial`) is off, which it is by default.
   freeTrialStartedAt DateTime? @map("free_trial_started_at")
+  /// WHATSAPP, A PAID ADD-ON (decision 78). Turned on by an admin of the organisation on Plan and
+  /// billing. Nothing is charged during the free trial or on the free plan; once the trial has ended
+  /// and the organisation pays for a plan, it is a second monthly line on its Stripe subscription.
+  whatsappAddOnOn        Boolean   @default(false) @map("whatsapp_add_on_on")
+  whatsappAddOnChangedAt DateTime? @map("whatsapp_add_on_changed_at")
+  /// The Stripe subscription item that charges the add-on, while it is charged.
+  whatsappAddOnItemId    String?   @map("whatsapp_add_on_item_id")
+  whatsappMonthlyUse     WhatsAppMonthlyUse[]
 
   companyStage CompanyStage? @map("company_stage")
 
@@ -3103,6 +3121,25 @@ model WhatsAppSend {
   @@index([organizationId, createdAt])
   @@index([failedAt])
   @@map("whatsapp_sends")
+}
+
+/// HOW MANY WHATSAPP MESSAGES AN ORGANISATION SENT IN ONE CALENDAR MONTH (decision 78), counted as
+/// they go, so the plan's monthly limit can be held. `month` is the calendar month in UTC, as
+/// "2026-10". `held` counts messages that were not sent because of the add-on or the limit.
+/// `adminToldAt` is when the organisation's admins were told the limit was reached, so they are told once.
+model WhatsAppMonthlyUse {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  month          String
+  sent           Int       @default(0)
+  held           Int       @default(0)
+  adminToldAt    DateTime? @map("admin_told_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, month])
+  @@map("whatsapp_monthly_use")
 }
 
 model WhatsAppThread {
