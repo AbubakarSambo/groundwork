@@ -58,7 +58,7 @@ import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
-import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded } from '@/components/gw/ui'
+import { Page, CheckInHeader, Section, Panel, RowList, Row, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList, Folded, Callout, Stack } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
@@ -1231,17 +1231,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             {/* One total, ten people, from the export they already have. Above the form, because
                 somebody with a team and a committed number reaches for this before typing. */}
             {b.canEditFrame && <SplitOneTotalAcrossPeople groundId={id!} />}
+            <Stack gap={8}>
             {b.targetsNobodyOwns && (
-              <div className="gwui-rule-amber gwui-pt-10 gwui-pr-14 gwui-pb-10 gwui-pl-14 gwui-mb-8 gwui-fs-15 gwui-ink-amber" style={{background: 'var(--gw-amber-bg)', borderRadius: 10, lineHeight: 1.5}}>
-                {b.targetsNobodyOwns}
-              </div>
+              <Callout tone="warning">{b.targetsNobodyOwns}</Callout>
             )}
             {b.objectivesPrompt && (
-              <div className="gwui-rule-amber gwui-pt-10 gwui-pr-14 gwui-pb-10 gwui-pl-14 gwui-mb-8 gwui-fs-15 gwui-ink-amber" style={{background: 'var(--gw-amber-bg)', borderRadius: 10, lineHeight: 1.5}}>
-                {b.objectivesPrompt}
-              </div>
+              <Callout tone="warning">{b.objectivesPrompt}</Callout>
             )}
             <Panel pad={false}>
+              <RowList label="What we are aiming for">
               {b.objectives.map((o) => {
                 /*
                   A MEASURE THAT GOES DOWN IS STILL GOING WELL.
@@ -1254,7 +1252,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 */
                 const pct = o.journey?.covered ?? (o.target && o.target > 0 ? Math.min(100, Math.round((o.count / o.target) * 100)) : 0)
                 return (
-                  <div key={o.id} className="gwui-panel-row">
+                  <Row key={o.id} columns="1fr" inset="panel">
                     <div className="gwui-gap-12" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
                       <div className="gwui-fs-16" style={{flex: 1, fontWeight: 600, minWidth: 160}}>
                         {o.name}
@@ -1394,40 +1392,44 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         })()}
                       </div>
                     )}
-                  </div>
+                  </Row>
                 )
               })}
               {/* The lead sets the frame. A target, never an assessment of a person. */}
               {b.canEditFrame && (
-                <div className="gwui-panel-row gwui-gap-8" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
-                  <input
-                    value={newObjName}
-                    onChange={(e) => setNewObjName(e.target.value)}
-                    placeholder="Add a target, e.g. Paying companies"
-                    className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-13-5 gwui-rule" style={{flex: 1, minWidth: 200, borderRadius: 7, fontFamily: 'inherit', outline: 'none'}}
-                  />
-                  <input
-                    value={newObjTarget}
-                    onChange={(e) => setNewObjTarget(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="how many"
-                    className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-13-5 gwui-rule" style={{width: 96, borderRadius: 7, fontFamily: 'inherit', outline: 'none'}}
-                  />
-                  {/*
-                    SECONDARY, NOT NAVY (Hafsah, 30 September, item 2: "at most one primary
-                    (navy) button per screen"). The board's one primary is "Your check-in", in
-                    the header, as the prototype's own board-as-lead.txt draws it; every other
-                    action on this page, including adding a target, is secondary or quiet.
-                  */}
-                  <UIButton
-                    kind="secondary" size="small"
-                    onClick={() => addObjective.mutate()}
-                    disabled={!newObjName.trim() || addObjective.isPending}
-                  >
-                    {addObjective.isPending ? 'Adding...' : 'Add target'}
-                  </UIButton>
-                </div>
+                <Row columns="1fr" inset="panel">
+                  <div className="gwui-gap-8" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
+                    <input
+                      value={newObjName}
+                      onChange={(e) => setNewObjName(e.target.value)}
+                      placeholder="Add a target, e.g. Paying companies"
+                      className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-13-5 gwui-rule" style={{flex: 1, minWidth: 200, borderRadius: 7, fontFamily: 'inherit', outline: 'none'}}
+                    />
+                    <input
+                      value={newObjTarget}
+                      onChange={(e) => setNewObjTarget(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="how many"
+                      className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-13-5 gwui-rule" style={{width: 96, borderRadius: 7, fontFamily: 'inherit', outline: 'none'}}
+                    />
+                    {/*
+                      SECONDARY, NOT NAVY (Hafsah, 30 September, item 2: "at most one primary
+                      (navy) button per screen"). The board's one primary is "Your check-in", in
+                      the header, as the prototype's own board-as-lead.txt draws it; every other
+                      action on this page, including adding a target, is secondary or quiet.
+                    */}
+                    <UIButton
+                      kind="secondary" size="small"
+                      onClick={() => addObjective.mutate()}
+                      disabled={!newObjName.trim() || addObjective.isPending}
+                    >
+                      {addObjective.isPending ? 'Adding...' : 'Add target'}
+                    </UIButton>
+                  </div>
+                </Row>
               )}
+              </RowList>
             </Panel>
+            </Stack>
           </Section>
         )}
 

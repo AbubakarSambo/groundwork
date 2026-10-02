@@ -477,3 +477,35 @@ above), so no new named value was needed - `TargetsBand.tsx`'s row now takes `in
 replacing its one-off `gwui-pl-13 gwui-pr-13` pair. The row's own vertical padding (`gwui-pt-9
 gwui-pb-9`, a value distinct from `Row`'s 12px rhythm) stays on the inner `div`, as the other insets
 already do. No wording or behaviour changed.
+
+## Board task, batch 3, part 7 (Hafsah: "What we are aiming for" onto RowList/Row and Callout, in BoardPage.tsx)
+
+The targets section's own list (`BoardPage.tsx`, "What we are aiming for") drew each objective as a
+plain `<div className="gwui-panel-row">` sibling (`.gwui-panel-row`, `padding: 20px 22px`, a border
+between consecutive rows) rather than the shared `RowList`/`Row`. Each objective, and the lead's own
+"Add target" form row, now sits inside a `RowList` as a `Row` with `inset="panel"` - the same named
+value part 5 and part 6 already use for a row sitting directly under a `Panel` with no header strip
+of its own. As with the "Where people differ" rows part 4/5 already converted this way, the vertical
+rhythm becomes `Row`'s own 12px (from `.gwui-row`), not `gwui-panel-row`'s 20px: the same accepted
+trade read off that earlier conversion, not a new decision. No row's wording or its controls (Lower,
+Raise, Remove, Change, Confirm, "Use N") changed.
+
+The two amber notices above the list (`b.targetsNobodyOwns`, `b.objectivesPrompt` - sentences the
+server computes, not a pictured prototype screen) were a one-off box: `gwui-rule-amber` plus
+`gwui-pt-10 gwui-pr-14 gwui-pb-10 gwui-pl-14` padding, an inline amber background and 10px radius,
+15px text at 1.5 line-height. `Callout`'s own plain `tone="warning"` shape (`gw-ui.css`:
+`background: var(--gw-amber-bg)`, `color: var(--gw-amber-t)`, `border-radius: 10px`, `padding: 10px
+14px`, `font-size: 14.5px`, `line-height: 1.45`) already matches this box on every property but the
+text's own size and line-height, each half a pixel and a hundredth off (15px/1.5 against 14.5px/1.45)
+- not a value read from any pictured screen (this box answers a server computation, not a screen
+`docs/prototype/screens` pictures), and `Callout` `tone="warning"` is already the part dozens of
+other pages use for exactly this kind of amber instruction. It moves a pixel, as the task allows,
+rather than adding a new named option for a difference nothing pictures. Both notices are now plain
+`<Callout tone="warning">` calls, with no wrapper div.
+
+Their own 8px gap (`gwui-mb-8` on each, when either or both are present, and before the `Panel`
+below) is `Stack` `gap={8}` (`client/src/components/gw/ui/Stack.tsx`) - the named part for exactly
+this run, not a one-off margin class or a wrapper div: `Stack` wraps the two conditional notices and
+the targets `Panel` together, so the 8px lands between whichever of the three are actually rendered,
+same as the per-element margins did, with nothing added before the first of them (`SplitOneTotalAcrossPeople`,
+outside the `Stack`, keeps its own unchanged, margin-free spot in front).
