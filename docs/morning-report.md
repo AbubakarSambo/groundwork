@@ -82,7 +82,9 @@ The recognise suggestion is built and **off** (`reviews.recognise`). The proposa
 - **Privacy question:** the platform admin reads people's outcome feedback notes word for word, on the dashboard and the Feedback tab. Is that allowed, given the console should show counts, never what people said? Nothing was changed; this needs your decision.
 - For the rebuild (item 22): the console shows no WhatsApp sends and no Ask Groundwork use; "Sessions in balance" means nothing under subscriptions; the drop-off chart stops at session 7.
 
-Now running: request 118 then item 18 (the board helper), and the Connections page's WhatsApp numbers (Ask Groundwork threads counted as people, held messages counted as failures) with the billing date format. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**The Connections page's WhatsApp numbers are fixed** (`1d706656`): in a seeded week, "5 people checking in on WhatsApp, 9 check-ins this month, 4 failed messages this week" now reads 2, 2 and 2, because Ask Groundwork conversations, held messages and the free "WhatsApp is off" notice are no longer counted. Nothing on the screen moves. **The billing dates use the one shared format** (`84c2c0ed`); the emails read the same. 979 tests in those parts pass.
+
+Now running: request 118 then item 18 (the board helper), and WhatsApp's waiting answers kept in the database. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 

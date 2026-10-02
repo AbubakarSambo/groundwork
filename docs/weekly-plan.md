@@ -38,13 +38,15 @@ From now on, every change to what the board, reports or Today page send is writt
 18. What the sales, onboarding and project boards still need from the engine. *In progress* (onboarding and project; sales is item 1).
 
 **f. The back office**
-19. Its usage numbers checked after this work, and anything broken fixed. *Done* (`aeb8d414` to `bf6bd58f`): eight wrong numbers fixed. Connections' WhatsApp numbers and one date format *in progress*. Its rebuild comes last (item 22).
+19. Its usage numbers checked after this work, and anything broken fixed. *Done* (`aeb8d414` to `bf6bd58f`): eight wrong numbers fixed. Connections' WhatsApp numbers and the billing date format also fixed (`84c2c0ed`, `1d706656`). Its rebuild comes last (item 22).
 
 **g. When the screens workspace stops, its screen work**
 20. The sales, onboarding and project boards, then the three suites, from `docs/screens-handover.md`. *Waiting for the screens workspace to stop.*
 
 **Found on the way, to do when the board files are free**
 - On WhatsApp, the board merges two alike waits from different check-ins before Ask Groundwork leaves out the ones kept in the app, so in a rare case a wait from such a check-in could be said. The fix is an option in the board's own reads (`waitingAcrossTheOrg`, `whoNeedsYouThisWeek`) to leave them out before merging. *Not started.*
+
+- WhatsApp's waiting yes-or-no answers and parked approvals kept in the database, so a restart or a second copy of the server does not lose them. *In progress.*
 
 **h. Then everything else**
 21. The other seven boards, and the rest of the earlier list. *Not started.*
