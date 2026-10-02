@@ -111,8 +111,9 @@ describe('when a check-in about one person ends and they carry on', () => {
     expect(b.next).toHaveLength(1);
     expect(b.next[0]).toMatchObject({ name: 'Kwame Mensah', writtenWith: 'Wairimu Mensah', stands: 'ready', mayStart: true });
     expect(b.next[0].proposal).toBe(
-      'Groundwork suggests a review for Kwame, because a check-in about Kwame\'s work has ended. Nothing is sent to Kwame unless you say yes.',
+      'Groundwork suggests a review for Kwame, because a check-in about Kwame’s work has ended. Nothing is sent to Kwame unless you say yes.',
     );
+    expect(b.next[0].proposal).not.toMatch(/'/);
     expect(b.next[0].proposal).not.toMatch(LABELS);
   });
 

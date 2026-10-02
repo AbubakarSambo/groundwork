@@ -105,9 +105,11 @@ describe('a performance review, on Today', () => {
   it('Wairimu, who writes them, reads the reviews ready for her to start, and not the one already started', async () => {
     const { read } = setup();
     expect(await read('u-wairimu')).toEqual([{
-      says: 'Miriam’s review is ready for you to start. Groundwork suggests a review for Miriam, because a check-in about Miriam\'s work has ended. Nothing is sent to Miriam unless you say yes.',
+      says: 'Miriam’s review is ready for you to start. Groundwork suggests a review for Miriam, because a check-in about Miriam’s work has ended. Nothing is sent to Miriam unless you say yes.',
       to: '/suite/reviews', label: 'Look at it', kind: 'decide',
     }]);
+    /* One apostrophe in one item: the prototype's screens write ’ everywhere, so a straight one never sits beside it. */
+    expect((await read('u-wairimu'))[0].says).not.toMatch(/'/);
   });
 
   it('Juma, another lead, reads only his own team\'s, and only the one due soon', async () => {
