@@ -29,7 +29,6 @@ import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
-import { whoIsBeingWaitedOn } from '../board/what-the-whole-place-is-waiting-on';
 import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
 import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
 import { HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
@@ -638,7 +637,7 @@ export class AssistantService {
       return rules('where_am_i_needed', text('I cannot match you to a check-in, so I cannot tell you where you are needed.'));
     }
 
-    const week = await (await this.theBoardItMayRead(organizationId)).whoNeedsYouThisWeek(organizationId, key);
+    const week = await this.board.whoNeedsYouThisWeek(organizationId, key, await this.theBoardLeavesOut(organizationId));
     if (!week.buckets.length) return rules('where_am_i_needed', text(NOTHING_FLAGGED));
 
     const parts = week.buckets.map((b) => [
@@ -652,7 +651,7 @@ export class AssistantService {
   }
 
   private async whatIsStuck(organizationId: string, who: string | null, question = ''): Promise<Reply> {
-    const { waiting, waitedOn } = await (await this.theBoardItMayRead(organizationId)).waitingAcrossTheOrg(organizationId);
+    const { waiting, waitedOn } = await this.board.waitingAcrossTheOrg(organizationId, undefined, await this.theBoardLeavesOut(organizationId));
 
     const person = who
       ? await this.prisma.person.findFirst({
@@ -803,7 +802,7 @@ export class AssistantService {
       lastMentionedAt: c.lastFollowedUpAt,
     }));
 
-    const { waiting } = await (await this.theBoardItMayRead(organizationId)).waitingAcrossTheOrg(organizationId);
+    const { waiting } = await this.board.waitingAcrossTheOrg(organizationId, undefined, await this.theBoardLeavesOut(organizationId));
     const person = await this.prisma.person.findFirst({
       where: { organizationId, externalId: personExternalId }, select: { email: true },
     });
@@ -839,7 +838,7 @@ export class AssistantService {
       this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
     ]);
     const key = person?.email?.toLowerCase() ?? null;
-    const week = key ? await (await this.theBoardItMayRead(organizationId)).whoNeedsYouThisWeek(organizationId, key) : { buckets: [] as any[] };
+    const week = key ? await this.board.whoNeedsYouThisWeek(organizationId, key, await this.theBoardLeavesOut(organizationId)) : { buckets: [] as any[] };
     const waitingOnYou = (week.buckets as any[]).filter((b) => b.kind === 'WAITING_ON_YOU').flatMap((b) => b.needs as any[]);
     const reply = theOneToDoFirst({ commitments: commitments as any, toDos: toDos as any, waitingOnYou, now: new Date() });
     return this.compose(reply, whatMustSurviveIn(reply));
@@ -879,29 +878,13 @@ export class AssistantService {
   }
 
   /**
-   * WHAT IS WAITING, AS THE BOARD WORKS IT OUT, WITHOUT A CHECK-IN KEPT IN THE APP when the question
-   * came in on WhatsApp (decision 82, item 7). The board's own code runs; only its two reads of the
-   * record are narrowed, so nothing from such a check-in is ever read, rather than read and hidden.
+   * THE CHECK-INS THE BOARD'S READS LEAVE OUT for this question (decision 82, item 7): none in the
+   * app; on WhatsApp, every check-in kept in the app. The board leaves them out in its own query,
+   * before it merges alike waits across check-ins, so a kept wait never lends its words to one that
+   * is said. Nothing is read and then hidden.
    */
-  private async theBoardItMayRead(organizationId: string): Promise<BoardService> {
-    const kept = await keptInTheApp(this.prisma as any, organizationId);
-    if (!kept.size) return this.board;
-    const board = this.board as any;
-    const view = Object.create(board);
-    view.waitingAcrossTheOrg = async (org: string, now?: Date) => {
-      const all = await board.waitingAcrossTheOrg(org, now);
-      const waiting = (all?.waiting ?? []).filter((w: any) => mayBeRead(kept, w.groundId));
-      return { waiting, waitedOn: whoIsBeingWaitedOn(waiting) };
-    };
-    const prisma = board.prisma;
-    if (prisma) {
-      view.prisma = new Proxy(prisma, {
-        get: (target, prop) => (prop === 'checkIn'
-          ? { ...target.checkIn, findMany: (args: any) => target.checkIn.findMany({ ...args, where: { ...(args?.where ?? {}), AND: [...(args?.where?.AND ?? []), { ground: notAKeptCheckIn(kept) }] } }) }
-          : Reflect.get(target, prop, target)),
-      });
-    }
-    return view as BoardService;
+  private async theBoardLeavesOut(organizationId: string): Promise<{ leaveOut: Set<string> }> {
+    return { leaveOut: await keptInTheApp(this.prisma as any, organizationId) };
   }
 
   /**

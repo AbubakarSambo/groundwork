@@ -3473,11 +3473,18 @@ export class BoardService {
     return near.map((r) => ({ title: r.title, parentTitle: titleOf.get(r.parentExternalId!) ?? null }));
   }
 
-  async waitingAcrossTheOrg(organizationId: string, now = new Date()) {
+  /**
+   * `leaveOut`: check-ins whose waits are never read at all (decision 82, item 7: Ask Groundwork on
+   * WhatsApp and a check-in kept in the app). They are left out in the query, BEFORE alike waits are
+   * merged across check-ins, so a kept wait can never lend its words, its date or who it is on to a
+   * wait that is said. '*' leaves out every check-in.
+   */
+  async waitingAcrossTheOrg(organizationId: string, now = new Date(), opts: { leaveOut?: ReadonlySet<string> } = {}) {
     const rows = await this.prisma.groundDependency.findMany({
       where: {
         ground: { organizationId },
         status: { in: [DependencyStatus.BLOCKING, DependencyStatus.WAITING] },
+        ...notInTheseCheckIns(opts.leaveOut, 'groundId'),
       },
       select: {
         fromParticipantId: true, onParticipantId: true, onLabel: true, what: true,
@@ -3526,10 +3533,10 @@ export class BoardService {
    *
    * The shaping - four buckets, no score, what it refuses to mean - is in who-needs-you-this-week.ts.
    */
-  async whoNeedsYouThisWeek(organizationId: string, managerKey: string) {
+  async whoNeedsYouThisWeek(organizationId: string, managerKey: string, opts: { leaveOut?: ReadonlySet<string> } = {}) {
     const key = managerKey.toLowerCase();
     const now = new Date();
-    const { waiting } = await this.waitingAcrossTheOrg(organizationId);
+    const { waiting } = await this.waitingAcrossTheOrg(organizationId, now, opts);
 
     const needs: Need[] = [];
 
@@ -3564,7 +3571,7 @@ export class BoardService {
      * for. Only ever from what the person said about themselves - see they-said-why-themselves.ts.
      */
     const said = await this.prisma.checkIn.findMany({
-      where: { saidWhy: 'SKILL', ground: { organizationId } },
+      where: { saidWhy: 'SKILL', ground: { organizationId }, ...notInTheseCheckIns(opts.leaveOut, 'groundId') },
       /*
        * The check-in's own completion, not a timestamp on the person. `completedAt` is when they
        * said it; falling back to when the check-in was made keeps an in-progress one from reading
@@ -3668,3 +3675,12 @@ export class BoardService {
 
 }
 
+/**
+ * A where clause that never selects a row from these check-ins (by the row's `field`, a required
+ * check-in id). Nothing to leave out gives an empty clause; '*' leaves out every check-in.
+ */
+export function notInTheseCheckIns(leaveOut: ReadonlySet<string> | undefined, field: string): Record<string, unknown> {
+  if (!leaveOut?.size) return {};
+  if (leaveOut.has('*')) return { [field]: { in: [] } };
+  return { [field]: { notIn: [...leaveOut] } };
+}
