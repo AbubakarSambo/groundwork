@@ -15,9 +15,18 @@
 const A_VERB = /\s(?:is|are|was|were|has|have|had|does|do|did|differs?|disagrees?|agrees?|can|cannot|can't|will|would|should|could|may|might|must|seems?|appears?|remains?|needs?|wants?|depends?|lacks?|exceeds?)\b/i;
 const STARTS_A_NOUN_CLAUSE = /^(?:whether|what|how|who|when|where|which|why|if)\b/i;
 
+/*
+ * A NOUN CLAUSE WITH A VERB OF ITS OWN AFTER IT IS STILL A WHOLE SENTENCE (item 18). "Who has the final authority on
+ * the completion of the Atlas analysis is not agreed." starts like "who has ..." but says something of it, so Tunde read
+ * "People in this check-in said different things about who has the final authority ... is not agreed".
+ */
+const SAYS_SOMETHING_OF_IT = /\s(?:is|are|was|were)\s+(?:still\s+)?(?:not\s+)?(?:agreed|clear|settled|decided|known|defined|shared)(?:\s+(?:upon|on))?$|\s(?:is|are|remains?|was|were)\s+(?:unclear|undecided|unsettled|disputed|undefined|open|contested)$/i;
+
 export function isAWholeSentence(topic: string): boolean {
-  const t = (topic ?? '').trim();
-  return !!t && !STARTS_A_NOUN_CLAUSE.test(t) && A_VERB.test(` ${t}`);
+  const t = (topic ?? '').trim().replace(/[.!?]+$/, '');
+  if (!t) return false;
+  if (STARTS_A_NOUN_CLAUSE.test(t)) return SAYS_SOMETHING_OF_IT.test(t);
+  return A_VERB.test(` ${t}`);
 }
 
 const inASentence = (phrase: string): string => {
