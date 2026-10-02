@@ -1,4 +1,5 @@
-import { METRICS_BY_KEY } from './a-number-you-can-open';
+import { METRICS_BY_KEY, SESSION_CLOSED_BY_THE_CLOCK } from './a-number-you-can-open';
+import { CLOSED_BY_THE_CLOCK } from '../conversation/conversation.service';
 
 /**
  * ITEM 19: HOW LONG A SESSION TAKES IS READ OVER SESSIONS A PERSON FINISHED (2 October 2026).
@@ -31,5 +32,9 @@ describe('product.session_minutes_median', () => {
     expect(served.rows.map((r) => r.session)).toEqual(['a', 'b']);
     expect(served.value).toBe(9);
     expect(metric.counts).toContain('leaving out those the clock closed');
+  });
+
+  it('names a clock-closed session with the product\'s own word for it', () => {
+    expect(SESSION_CLOSED_BY_THE_CLOCK).toBe(CLOSED_BY_THE_CLOCK);
   });
 });

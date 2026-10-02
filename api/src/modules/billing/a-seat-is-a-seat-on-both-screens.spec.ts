@@ -235,8 +235,12 @@ describe('there is one definition of a seat, not a copy per call site', () => {
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/^\s*\/\/.*$/gm, '');
       expect(code).not.toMatch(/_count: \{ select: \{ (grounds: true, )?users: true/);
-      expect(code).toMatch(/SEAT_WHERE|SEAT_RELATION_COUNT|seatsIn\(/);
+      expect(code).toMatch(/SEAT_WHERE|SEAT_RELATION_COUNT|seatsIn\(|seatsByOrganisation\(/);
     }
+    /* seatsByOrganisation counts every organisation at once (item 19), and is only a way through if it reads SEAT_WHERE itself. */
+    const seats = readFileSync(join(__dirname, '..', '..', 'common', 'seats.ts'), 'utf8');
+    const body = seats.slice(seats.indexOf('export async function seatsByOrganisation'));
+    expect(body).toMatch(/where: SEAT_WHERE/);
   });
 
   it('the two counts that ask a DIFFERENT question are left alone, deliberately', () => {

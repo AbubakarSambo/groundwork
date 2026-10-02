@@ -1,7 +1,6 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsCapability } from './what-somebody-may-do';
 import { medianOf, whatTheMedianSays } from './a-check-in-takes-about-as-long-as-we-say';
-import { A_SESSION_A_PERSON_FINISHED } from '../prompts/what-the-platform-has-actually-done';
 
 /**
  * A number, and the rows that made it.
@@ -52,6 +51,9 @@ export interface MetricDefinition {
 }
 
 const within = (window: MetricWindow) => ({ gte: window.from, lte: window.to });
+
+/** `CheckIn.closedReason` when the sweep, not the person, ended a session (the product's CLOSED_BY_THE_CLOCK). */
+export const SESSION_CLOSED_BY_THE_CLOCK = 'auto_closed';
 
 /**
  * Turns the company ids on activity rows into names.
@@ -425,8 +427,10 @@ export const METRICS: MetricDefinition[] = [
           startedAt: { not: null },
           completedAt: within(window),
           ground: { organization: { isInternal: false } },
-          /* Not one the clock closed a day after the person walked away (item 19). */
-          ...A_SESSION_A_PERSON_FINISHED,
+          /* Not one the clock closed a day after the person walked away (item 19). The ops system
+             may not import the product, so the product's word for it is written here, and
+             item-19-a-session-the-clock-closed-is-not-timed.spec.ts holds the two the same. */
+          OR: [{ closedReason: null }, { closedReason: { not: SESSION_CLOSED_BY_THE_CLOCK } }],
         },
         select: { id: true, sessionNumber: true, startedAt: true, completedAt: true },
       });

@@ -165,7 +165,7 @@ export class PromptsService implements OnModuleInit {
       ),
 
       // 2. Avg session duration in minutes, with the sample size (raw SQL). Only sessions a person
-      //    finished: the clock closes the rest a day later (see A_SESSION_A_PERSON_FINISHED).
+      //    finished: the clock closes the rest a day later (see CLOSED_BY_THE_CLOCK).
       this.prisma.$queryRaw<{ session_number: number; avg_minutes: number; n: number }[]>`
         SELECT ci.session_number, ROUND(AVG(EXTRACT(EPOCH FROM (ci.completed_at - ci.started_at)) / 60)::numeric, 1)::float as avg_minutes, COUNT(*)::int as n
         FROM check_ins ci
