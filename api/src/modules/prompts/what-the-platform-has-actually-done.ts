@@ -1,5 +1,5 @@
 import { PrismaService } from '../prisma/prisma.service';
-import { CLOSED_BY_THE_CLOCK } from '../conversation/conversation.service';
+import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
 
 /**
  * WHAT THE PLATFORM HAS ACTUALLY DONE: ONE SET OF PREDICATES, ONE CLOCK, ONE RATE.

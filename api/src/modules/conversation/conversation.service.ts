@@ -68,8 +68,9 @@ import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, Wha
 import type { SpecificityLevel } from './how-checkable-a-session-was';
 import { readTheTurns } from './the-specificity-read';
 
-/** `CheckIn.closedReason` when the sweep, not the person, ended the session. */
-export const CLOSED_BY_THE_CLOCK = 'auto_closed';
+/** `CheckIn.closedReason` when the sweep, not the person, ended the session. It lives in a file with no imports, so nothing that reads it has to import this service. */
+import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
+export { CLOSED_BY_THE_CLOCK };
 /** `CheckIn.closedReason` when the person declined to take part. */
 export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
