@@ -109,6 +109,8 @@ describe('Grace, an admin, reads the whole board', () => {
     expect(waiting[0]).toEqual({
       id: 'r-aisha', name: 'Aisha Otieno', startsOn: '2026-10-01', endsOn: '2026-10-02', days: 2, daysLeft: 16,
       team: 'Sales', alsoOff: [], standIn: 'Miriam Wanjiku', mayDecide: false,
+      /* Where it is, in a full sentence (decision 85, build step 4): one step, waiting for her manager. */
+      where: 'It is waiting for Wairimu.',
     });
     expect(waiting[1]).toMatchObject({ name: 'Samuel Njoroge', daysLeft: 21, team: 'Sales', alsoOff: ['Brian'] });
   });

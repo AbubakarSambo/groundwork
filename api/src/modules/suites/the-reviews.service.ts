@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
-import { couldBeNamed, decidesIt, theOneWhoDecides, theStepsFor, type WhoDecides } from './who-may-decide';
+import { couldBeNamed, decidesIt, everyRuleIn, theOneWhoDecides, theStepsFor, type WhoDecides } from './who-may-decide';
 import { withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { isProposedByGroundwork, theProposalSentence } from './a-review-falls-due';
 import { whatGroundworkNoticed } from './the-review-noticed-from-the-record';
@@ -170,7 +170,7 @@ export class ReviewsService {
      * write; any other member, and a guest, are refused, as before.
      */
     const asApprover = role !== 'ADMIN' && role !== 'LEAD';
-    if (asApprover && !(role === 'MEMBER' && (await couldBeNamed(this.prisma, theStepsFor('reviews', answers), reader.organizationId, { userId: reader.userId, role })))) {
+    if (asApprover && !(role === 'MEMBER' && (await couldBeNamed(this.prisma, everyRuleIn(theStepsFor('reviews', answers)), reader.organizationId, { userId: reader.userId, role })))) {
       throw new ForbiddenException(REVIEW_REFUSED.onlyAdminsAndLeads);
     }
     const dues = await this.prisma.evaluationDue.findMany({
@@ -372,7 +372,7 @@ export class ReviewsService {
 
   /** Who writes this person's review, by rule: "Their manager" is their manager, else an admin; "An admin" is an admin. */
   private theWriter(organizationId: string, p: Person, writer: string | null): Promise<WhoDecides> {
-    return theOneWhoDecides(this.prisma, theStepsFor('reviews', { writer }), {
+    return theOneWhoDecides(this.prisma, theStepsFor('reviews', { writer })[0], {
       organizationId, requesterUserId: p.userId ?? `person:${p.externalId}`, managerExternalId: p.managerExternalId, team: p.department,
     });
   }

@@ -118,6 +118,8 @@ describe('Omar, a member named for anything over KES 20,000', () => {
     expect(b.waiting).toEqual([{
       id: 's-2', name: 'Lina Mutua', firstName: 'Lina', amount: 95000, what: 'a new laptop', team: 'Product',
       left: 60000, over: true, approver: { kind: 'person', firstName: 'Omar' }, mayDecide: true,
+      /* Where it is, in a full sentence (decision 85, build step 4). */
+      where: 'It is waiting for you.',
     }]);
     /* Not the rest of the board: the prototype shows each team's budget to an admin only. */
     expect(b.budgets).toEqual([]);

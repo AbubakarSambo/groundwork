@@ -1,6 +1,7 @@
 import type { PrismaService } from '../prisma/prisma.service';
 import { theirSignIn, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { readDuties, whoHolds, type Duties } from './who-holds-each-duty';
+import type { AWorkflow } from './the-approval-steps';
 
 /**
  * WHO MAY DECIDE A REQUEST, BY RULE: the one approval resolver (decision 85; step 3 of the build list
@@ -22,8 +23,15 @@ import { readDuties, whoHolds, type Duties } from './who-holds-each-duty';
  * A rule that finds nobody gives null, so the next step is tried. A guest, and somebody no longer in the
  * organisation, are passed over. The requester is never returned: nobody decides their own.
  *
- * TODAY'S ANSWERS, AS RULES (`theStepsFor`). Each is a list tried in order, ending with an admin, so
- * every request has somebody who may decide it:
+ * STEPS (build step 4). `theStepsFor` gives a list of steps. Each step is a list of rules tried in
+ * order: the first that names somebody decides that step, and a request passed on for waiting too long
+ * moves to the next rule in the same list (a-request-waits-too-long.ts). An approval moves the request to
+ * the next step, and only the last step ends it. A request carries which step it is on and how far it
+ * has been passed on (`WhereItIs`), and `whoDecidesNow` reads who decides it from there.
+ *
+ * An admin may set the steps for leave, time sheets and spending (the-approval-steps.ts). With nothing
+ * set, TODAY'S ANSWERS ARE ONE STEP EACH, a list tried in order, ending with an admin, so every request
+ * has somebody who may decide it:
  *   - leave and time sheets: the manager, else an admin (the one answer of 1 October 2026, which does
  *     not read the admin's "Who approves?" answer);
  *   - reviews: "Their manager" is the manager, else an admin; "An admin" is an admin;
@@ -33,7 +41,10 @@ import { readDuties, whoHolds, type Duties } from './who-holds-each-duty';
  */
 
 export type Rule = 'manager' | 'budgetOwner' | 'departmentHead' | 'finance' | 'hr' | 'chiefExecutive' | 'admin';
-export type Step = Rule | { named: string };
+/** One rule, or one person an admin named on a suite. */
+export type ARule = Rule | { named: string };
+/** One approval step: the rules tried in order. The first that names somebody decides it. */
+export type Step = ARule[];
 
 /** The request, as far as deciding who may decide it needs. */
 export interface ARequest {
@@ -75,7 +86,7 @@ async function aPersonWhoMay(prisma: PrismaService, request: ARequest, userId: s
 }
 
 /** The person one rule names for this request, or null when it names nobody. */
-export async function whoMayDecide(prisma: PrismaService, rule: Step, request: ARequest, known: Known = {}): Promise<WhoDecides | null> {
+export async function whoMayDecide(prisma: PrismaService, rule: ARule, request: ARequest, known: Known = {}): Promise<WhoDecides | null> {
   if (rule === 'admin') return { kind: 'admin', rule: 'admin' };
   if (typeof rule === 'object') return (await aPersonWhoMay(prisma, request, rule.named)) ? { kind: 'person', rule: 'named', userId: rule.named } : null;
   if (rule === 'manager') return theManager(prisma, request);
@@ -94,14 +105,60 @@ export async function whoMayDecide(prisma: PrismaService, rule: Step, request: A
   return (await aPersonWhoMay(prisma, request, holder)) ? { kind: 'person', rule, userId: holder! } : null;
 }
 
-/** The first step that names somebody. Every list ends with an admin, so somebody always may. */
-export async function theOneWhoDecides(prisma: PrismaService, steps: Step[], request: ARequest): Promise<WhoDecides> {
-  const known: Known = {};
-  for (const step of steps) {
-    const who = await whoMayDecide(prisma, step, request, known);
-    if (who) return who;
+/** The first rule of one step that names somebody. When none does, an admin, so somebody always may. */
+export async function theOneWhoDecides(prisma: PrismaService, rules: ARule[], request: ARequest): Promise<WhoDecides> {
+  return (await whoDecidesFrom(prisma, rules, request, 0)).who;
+}
+
+/**
+ * The first rule from `from` on that names somebody, and its place in the list. When none does, an
+ * admin, at the place just after the last rule.
+ */
+export async function whoDecidesFrom(prisma: PrismaService, rules: ARule[], request: ARequest, from = 0, known: Known = {}): Promise<{ who: WhoDecides; at: number }> {
+  for (let i = Math.max(0, from); i < rules.length; i++) {
+    const who = await whoMayDecide(prisma, rules[i], request, known);
+    if (who) return { who, at: i };
   }
-  return { kind: 'admin', rule: 'admin' };
+  return { who: { kind: 'admin', rule: 'admin' }, at: rules.length };
+}
+
+/** Where a request is: the step it is on, and how far down that step's list it has been passed on. */
+export interface WhereItIs { step?: number | null; escalatedTo?: number | null }
+
+/** Who decides a request now, at which step and rule, whether this is the last step, and the team read. */
+export interface DecidesNow { who: WhoDecides; step: number; at: number; last: boolean; team: string | null }
+
+/** Who decides this request now, from where it is. A step past the end reads as the last step. */
+export async function whoDecidesNow(prisma: PrismaService, steps: Step[], request: ARequest, where: WhereItIs = {}): Promise<DecidesNow> {
+  const all = steps.length ? steps : [['admin'] as Step];
+  const step = Math.min(Math.max(0, where.step ?? 0), all.length - 1);
+  const known: Known = {};
+  const { who, at } = await whoDecidesFrom(prisma, all[step], request, where.escalatedTo ?? 0, known);
+  const team = known.team !== undefined ? known.team : request.team?.trim() || (await theTeamOf(prisma, request).catch(() => null));
+  return { who, step, at, last: step >= all.length - 1, team };
+}
+
+/** Whether two answers name the same people: both any admin, or the same person. */
+export function samePeople(a: WhoDecides, b: WhoDecides): boolean {
+  if (a.kind === 'admin' || b.kind === 'admin') return a.kind === b.kind;
+  return a.userId === b.userId;
+}
+
+/**
+ * Who a request would be passed to if it is passed on now: the next rule on the same step's list that
+ * names somebody else. Null when nobody else is left on that list.
+ */
+export async function whoComesNext(prisma: PrismaService, steps: Step[], request: ARequest, where: WhereItIs = {}): Promise<{ now: DecidesNow; next: { who: WhoDecides; at: number } } | null> {
+  const now = await whoDecidesNow(prisma, steps, request, where);
+  const rules = (steps.length ? steps : [['admin'] as Step])[now.step];
+  let from = now.at + 1;
+  while (from <= rules.length) {
+    const next = await whoDecidesFrom(prisma, rules, request, from);
+    if (!samePeople(next.who, now.who)) return { now, next };
+    if (next.at >= rules.length) return null;
+    from = next.at + 1;
+  }
+  return null;
 }
 
 /** Whether this reader decides: the one named, or any admin when an admin decides; never the requester. */
@@ -116,7 +173,7 @@ export function decidesIt(who: WhoDecides, reader: { userId: string; role: strin
  * an admin for `manager`, whoever holds a duty for a duty, and the named person. Used by a board to
  * let a member in as an approver, who then reads only what waits for them.
  */
-export async function couldBeNamed(prisma: PrismaService, steps: Step[], organizationId: string, reader: { userId: string; role: string | null }): Promise<boolean> {
+export async function couldBeNamed(prisma: PrismaService, steps: ARule[], organizationId: string, reader: { userId: string; role: string | null }): Promise<boolean> {
   if (!reader.role || reader.role === 'GUEST') return false;
   let duties: Duties | null = null;
   for (const step of steps) {
@@ -131,21 +188,33 @@ export async function couldBeNamed(prisma: PrismaService, steps: Step[], organiz
   return false;
 }
 
-/** The steps for each suite, from the answers the admin gave when switching it on. */
-export function theStepsFor(suite: 'leave' | 'time', answers?: unknown): Step[];
+/**
+ * The steps for each suite, from the answers the admin gave when switching it on and the workflow they
+ * set (the-approval-steps.ts), which the services pass as `answers.workflow`. With no workflow, one
+ * step, exactly the list each suite had before steps existed.
+ */
+export function theStepsFor(suite: 'leave' | 'time', answers?: { workflow?: AWorkflow | null } | unknown): Step[];
 export function theStepsFor(suite: 'reviews', answers: { writer: string | null }): Step[];
-export function theStepsFor(suite: 'spend', answers: { limit: number | null; above: string | null }, amount: number): Step[];
+export function theStepsFor(suite: 'spend', answers: { limit: number | null; above: string | null; workflow?: AWorkflow | null }, amount: number): Step[];
 export function theStepsFor(suite: 'leave' | 'time' | 'reviews' | 'spend', answers?: any, amount?: number): Step[] {
-  if (suite === 'reviews') return answers?.writer === 'Their manager' ? ['manager', 'admin'] : ['admin'];
+  if (suite === 'reviews') return [answers?.writer === 'Their manager' ? ['manager', 'admin'] : ['admin']];
+  const workflow = (answers?.workflow ?? null) as AWorkflow | null;
   if (suite === 'spend' && answers?.limit != null && Number(amount ?? 0) > answers.limit) {
-    return ['budgetOwner', 'finance', ...(answers.above ? [{ named: answers.above as string }] : []), 'admin'];
+    if (workflow?.stepsAbove?.length) return workflow.stepsAbove;
+    return [['budgetOwner', 'finance', ...(answers.above ? [{ named: answers.above as string }] : []), 'admin']];
   }
-  return ['manager', 'admin'];
+  if (workflow?.steps?.length) return workflow.steps;
+  return [['manager', 'admin']];
 }
 
-/** Every step a suite's answers could use, whatever the amount: what a board asks `couldBeNamed`. */
-export function everyStepFor(suite: 'spend', answers: { limit: number | null; above: string | null }): Step[] {
-  return answers.limit == null ? theStepsFor(suite, answers, 0) : [...theStepsFor(suite, answers, 0), ...theStepsFor(suite, answers, answers.limit + 1)];
+/** Every rule in these steps, in order: what a board asks `couldBeNamed`. */
+export const everyRuleIn = (steps: Step[]): ARule[] => steps.flat();
+
+/** Every rule a suite's answers could use, whatever the amount: what a board asks `couldBeNamed`. */
+export function everyStepFor(suite: 'spend', answers: { limit: number | null; above: string | null; workflow?: AWorkflow | null }): ARule[] {
+  return answers.limit == null
+    ? everyRuleIn(theStepsFor(suite, answers, 0))
+    : [...everyRuleIn(theStepsFor(suite, answers, 0)), ...everyRuleIn(theStepsFor(suite, answers, answers.limit + 1))];
 }
 
 // -------------------------------------------------------------------------------------------------

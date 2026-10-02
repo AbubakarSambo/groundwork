@@ -2,6 +2,8 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from '../prisma/prisma.service';
 import { GROUPS, SUITES, checkAnswers, suiteOf, type Answers, type Question, type SuiteGroup } from './the-ten-suites';
 import { DUTIES_REFUSED, DUTIES_ROW, ORGANISATION_DUTIES, TEAM_DUTIES, changeDuties, dutiesFrom, type Duties } from './who-holds-each-duty';
+import { RULES_AN_ADMIN_MAY_SET, RULE_IN_WORDS, STEP_SUITES, WORKFLOWS_REFUSED, WORKFLOWS_ROW, aWorkflowSaid, changeWorkflows, workflowsFrom, type StepSuite, type Workflows } from './the-approval-steps';
+import { theStepsFor, type Step } from './who-may-decide';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const REFUSED = {
@@ -38,6 +40,26 @@ export interface TheDuties {
 
 export const DUTIES_USED_FOR =
   'Spending over the most a manager may approve on their own goes first to whoever holds that team’s budget, then to whoever looks after finance, and only then to the person named on the spending suite.';
+
+/** The approval steps of leave, time sheets and spending (the-approval-steps.ts), as the admin who sets them reads them. */
+export interface TheWorkflows {
+  suites: {
+    key: StepSuite;
+    name: string;
+    /** Whether an admin has set steps or days for this suite; otherwise it runs as it always has. */
+    set: boolean;
+    /** The steps that run now, each a list of rules tried in order. For spending, those up to the limit. */
+    steps: Step[];
+    /** For spending with a limit, the steps above it; otherwise null. */
+    stepsAbove: Step[] | null;
+    /** Working days before a request is passed on, or null when it never is. */
+    escalateAfter: number | null;
+    /** The workflow said back in full sentences. */
+    said: string[];
+  }[];
+  /** The rules a step may use, each with how it is said. */
+  rules: { key: string; said: string }[];
+}
 
 export interface ForALead {
   reader: 'lead';
@@ -164,6 +186,50 @@ export class SuitesService {
       update: { answers, changedById: reader.userId },
     });
     return this.duties(reader);
+  }
+
+  /** The approval steps of leave, time sheets and spending, for the admin who sets them. Nobody else reads this. */
+  async workflows(reader: Reader): Promise<TheWorkflows> {
+    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(WORKFLOWS_REFUSED.onlyAnAdmin);
+    const rows = await this.rows(reader.organizationId);
+    const kept = workflowsFrom(rows.get(WORKFLOWS_ROW)?.answers);
+    const spend = (rows.get('spend')?.answers ?? {}) as Record<string, unknown>;
+    const limit = typeof spend.limit === 'number' ? spend.limit : null;
+    const above = typeof spend.above === 'string' ? spend.above : null;
+    return {
+      suites: STEP_SUITES.map((key) => {
+        const workflow = kept[key];
+        const steps = key === 'spend' ? theStepsFor('spend', { limit, above, workflow }, 0) : theStepsFor(key, { workflow });
+        const stepsAbove = key === 'spend' && limit != null ? theStepsFor('spend', { limit, above, workflow }, limit + 1) : null;
+        return {
+          key, name: suiteOf(key)?.name ?? key, set: !!workflow, steps, stepsAbove,
+          escalateAfter: workflow?.escalateAfter ?? null,
+          said: aWorkflowSaid(key, steps, stepsAbove, workflow?.escalateAfter),
+        };
+      }),
+      rules: RULES_AN_ADMIN_MAY_SET.map((key) => ({ key, said: RULE_IN_WORDS[key] })),
+    };
+  }
+
+  /**
+   * An admin sets the approval steps, or the working days before a request is passed on, for leave,
+   * time sheets or spending. A suite or a part given as null is cleared back to how it always ran; one
+   * left out is kept.
+   */
+  async setWorkflows(reader: Reader, input: unknown): Promise<TheWorkflows> {
+    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(WORKFLOWS_REFUSED.onlyAnAdmin);
+    const org = reader.organizationId;
+    const where = { organizationId_suite: { organizationId: org, suite: WORKFLOWS_ROW } };
+    const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });
+    const changed = changeWorkflows(workflowsFrom(row?.answers), input);
+    if ('refused' in changed) throw new BadRequestException(changed.refused);
+    const answers = changed.workflows as Workflows as never;
+    await this.prisma.organizationSuite.upsert({
+      where,
+      create: { organizationId: org, suite: WORKFLOWS_ROW, isOn: false, answers, changedById: reader.userId },
+      update: { answers, changedById: reader.userId },
+    });
+    return this.workflows(reader);
   }
 
   // ---------------------------------------------------------------------------------------------

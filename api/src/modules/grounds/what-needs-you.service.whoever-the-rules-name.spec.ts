@@ -128,8 +128,9 @@ function setup(opts: { above?: string; duties?: Record<string, unknown> } = {}) 
   return { today };
 }
 
-function theRulesAre(steps: rules.Step[]) {
-  jest.spyOn(rules, 'theStepsFor').mockImplementation((() => steps) as any);
+/* One approval step, its rules tried in order (theStepsFor gives a list of steps since build step 4). */
+function theRulesAre(rulesOfTheStep: rules.Step) {
+  jest.spyOn(rules, 'theStepsFor').mockImplementation((() => [rulesOfTheStep]) as any);
 }
 
 beforeEach(() => {

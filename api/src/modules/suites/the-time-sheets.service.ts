@@ -3,9 +3,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { whoApprovesFor } from './who-approves';
-import { couldBeNamed, decidesIt, theOneWhoDecides, theStepsFor } from './who-may-decide';
+import { couldBeNamed, decidesIt, everyRuleIn, theStepsFor, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
-import { anHoursRequest } from './a-request-in-words';
+import { anHoursRequest, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
+import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
+import { saidAsADay } from './who-is-away';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const TIME_REFUSED = {
@@ -27,7 +29,33 @@ export interface AWeek {
   weekOf: Day;
   /** The clients and projects with hours this week, in the order the admin listed them. */
   clients: string[];
-  people: { personId: string; name: string; minutes: Record<string, number>; total: number; approved: boolean; mayApprove: boolean; /** The days of this week that have hours, so a sentence can say which. */ days: Day[] }[];
+  people: {
+    personId: string; name: string; minutes: Record<string, number>; total: number; approved: boolean; mayApprove: boolean;
+    /** The days of this week that have hours, so a sentence can say which. */ days: Day[];
+    /** Where these hours are, in a full sentence for this reader: "Wairimu has approved these hours, and they are now waiting for you." */
+    where: string;
+  }[];
+}
+
+/** A week's row as kept: the last step's approval, and where the week is among the steps (decision 85, build step 4). */
+type WeekRow = {
+  userId: string; weekOf: Date; approvedMinutes: number | null; approvedById?: string | null;
+  seenMinutes?: number | null; step?: number | null; escalatedTo?: number | null; approvedByIds?: string[] | null;
+};
+
+/** Where a week is: its step, how far it was passed on, who approved so far, and whether the last step approved this total. */
+interface WeekState { step: number; escalatedTo: number; approvedByIds: string[]; approved: boolean }
+
+/**
+ * A week's state for its total now. Hours added or changed since the steps approved start it again at
+ * the first step, as a changed week waited again before steps existed.
+ */
+export function weekStateOf(row: WeekRow | undefined, total: number): WeekState {
+  const approved = !!row && total > 0 && row.approvedMinutes === total;
+  if (row && row.seenMinutes != null && row.seenMinutes === total) {
+    return { step: row.step ?? 0, escalatedTo: row.escalatedTo ?? 0, approvedByIds: row.approvedByIds ?? [], approved };
+  }
+  return { step: 0, escalatedTo: 0, approvedByIds: approved && row?.approvedById ? [row.approvedById] : [], approved };
 }
 
 export interface Agreement { client: string; work: string; hours: number; span: 'whole' | 'month'; usedMinutes: number }
@@ -78,7 +106,7 @@ export class TimeSheetsService {
      * for them; any other member, and a guest, are refused, as before.
      */
     const asApprover = role !== 'ADMIN' && role !== 'LEAD';
-    if (asApprover && !(role === 'MEMBER' && (await couldBeNamed(this.prisma, theStepsFor('time', answers), reader.organizationId, { userId: reader.userId, role })))) {
+    if (asApprover && !(role === 'MEMBER' && (await couldBeNamed(this.prisma, everyRuleIn(theStepsFor('time', answers)), reader.organizationId, { userId: reader.userId, role })))) {
       throw new ForbiddenException(TIME_REFUSED.onlyAdminsAndLeads);
     }
 
@@ -90,19 +118,33 @@ export class TimeSheetsService {
     })) as Entry[];
     const people = await this.directory(reader.organizationId, entries.map((e) => e.userId));
     const teamOf = role === 'ADMIN' ? () => true : role === 'LEAD' ? await this.theLeadsTeam(reader, people) : () => false;
-    /* A lead reads their own team's hours; anybody also reads the hours of each person whose hours wait for them to approve. */
-    const approves = new Map<string, boolean>();
-    for (const userId of new Set(entries.map((e) => e.userId))) {
-      if (userId !== reader.userId) approves.set(userId, await this.mayApprove(reader, role, userId, people, answers));
-    }
-    const inScope = (userId: string) => teamOf(userId) || approves.get(userId) === true;
-    const mine = entries.filter((e) => e.userId !== reader.userId && inScope(e.userId));
 
-    const approvals = await this.prisma.timeWeek.findMany({
+    const approvals = (await this.prisma.timeWeek.findMany({
       where: { organizationId: reader.organizationId, weekOf: { gte: from } },
-      select: { userId: true, weekOf: true, approvedMinutes: true },
-    });
-    const approvedAt = new Map(approvals.map((a) => [`${dayOf(a.weekOf)}|${a.userId}`, a.approvedMinutes]));
+      select: { userId: true, weekOf: true, approvedMinutes: true, approvedById: true, seenMinutes: true, step: true, escalatedTo: true, approvedByIds: true },
+    })) as WeekRow[];
+    const rowOf = new Map(approvals.map((a) => [`${dayOf(a.weekOf)}|${a.userId}`, a]));
+    const totals = new Map<string, number>();
+    for (const e of entries) {
+      const k = `${dayOf(mondayOf(e.onDay))}|${e.userId}`;
+      totals.set(k, (totals.get(k) ?? 0) + e.minutes);
+    }
+    /*
+     * A lead reads their own team's hours; anybody also reads each week of hours that waits for them to
+     * approve, at the step it is on.
+     */
+    const approves = new Map<string, boolean>();
+    const nowOf = new Map<string, { now: DecidesNow; state: WeekState }>();
+    for (const [k, total] of totals) {
+      const userId = k.split('|')[1];
+      if (userId === reader.userId) continue;
+      const state = weekStateOf(rowOf.get(k), total);
+      const now = await this.now(reader.organizationId, userId, people, answers, state);
+      nowOf.set(k, { now, state });
+      approves.set(k, decidesIt(now.who, { userId: reader.userId, role }, userId));
+    }
+    const inScope = (e: Entry) => teamOf(e.userId) || approves.get(`${dayOf(mondayOf(e.onDay))}|${e.userId}`) === true;
+    const mine = entries.filter((e) => e.userId !== reader.userId && inScope(e));
     const names = await this.names(mine.map((e) => e.userId));
 
     const byWeek = new Map<Day, Entry[]>();
@@ -122,11 +164,15 @@ export class TimeSheetsService {
         const total = theirs.reduce((n, e) => n + e.minutes, 0);
         const name = names.get(userId);
         if (!name) continue;
+        const k = `${w}|${userId}`;
+        const at = nowOf.get(k);
+        const mayApprove = approves.get(k) === true;
         rows.push({
           personId: userId, name, minutes, total,
           days: [...new Set(theirs.map((e) => dayOf(e.onDay)))].sort(),
-          approved: approvedAt.get(`${w}|${userId}`) === total,
-          mayApprove: approves.get(userId) === true,
+          approved: at?.state.approved === true,
+          mayApprove,
+          where: at ? whereItIsOnTheBoard(await this.whereItStands(at.state, at.now, mayApprove, reader.userId), true) : '',
         });
       }
       rows.sort((a, b) => a.name.localeCompare(b.name));
@@ -140,28 +186,77 @@ export class TimeSheetsService {
     };
   }
 
-  /** The approver approves one person's week, with the total they saw. */
+  /**
+   * The approver of the step a week is on approves it, with the total they saw. At a step that is not
+   * the last, the week moves to the next step and whoever approves that one is told; the last step's
+   * approval ends it, and then the person is told. Hours cannot be declined.
+   */
   async approve(reader: Reader, personId: string, weekOf: Day, today = new Date()) {
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(weekOf ?? '')) throw new BadRequestException(TIME_REFUSED.nothingToApprove);
     const monday = mondayOf(atMidnight(weekOf));
     const people = await this.directory(reader.organizationId, [personId]);
-    const ok = await this.mayApprove(reader, role, personId, people, answers);
-    if (!ok) throw new ForbiddenException(TIME_REFUSED.notYours);
     const entries = await this.prisma.timeEntry.findMany({
       where: { organizationId: reader.organizationId, userId: personId, onDay: { gte: monday, lt: new Date(monday.getTime() + 7 * DAY) } },
       select: { minutes: true, client: true, onDay: true },
     });
     const total = entries.reduce((n, e) => n + e.minutes, 0);
+    const state = weekStateOf(await this.weekRow(reader.organizationId, personId, monday), total);
+    const now = await this.now(reader.organizationId, personId, people, answers, state);
+    if (personId === reader.userId || !decidesIt(now.who, { userId: reader.userId, role }, personId)) throw new ForbiddenException(TIME_REFUSED.notYours);
     if (total === 0) throw new BadRequestException(TIME_REFUSED.nothingToApprove);
+    const where = { organizationId_userId_weekOf: { organizationId: reader.organizationId, userId: personId, weekOf: monday } };
+    const approvedByIds = [...state.approvedByIds, reader.userId];
+    if (!now.last && !state.approved) {
+      const next = { step: now.step + 1, escalatedTo: 0, stepSince: new Date(), seenMinutes: total, approvedByIds };
+      await this.prisma.timeWeek.upsert({
+        where,
+        create: { organizationId: reader.organizationId, userId: personId, weekOf: monday, approvedMinutes: null, approvedById: null, approvedAt: null, ...next },
+        update: next,
+      });
+      await this.tellWhoApproves(reader.organizationId, personId, monday, entries as Entry[], { ...next, approved: false });
+      return this.board(reader, today);
+    }
     await this.prisma.timeWeek.upsert({
-      where: { organizationId_userId_weekOf: { organizationId: reader.organizationId, userId: personId, weekOf: monday } },
-      create: { organizationId: reader.organizationId, userId: personId, weekOf: monday, approvedMinutes: total, approvedById: reader.userId },
-      update: { approvedMinutes: total, approvedById: reader.userId, approvedAt: new Date() },
+      where,
+      create: { organizationId: reader.organizationId, userId: personId, weekOf: monday, approvedMinutes: total, approvedById: reader.userId, seenMinutes: total, step: now.step, approvedByIds },
+      update: { approvedMinutes: total, approvedById: reader.userId, approvedAt: new Date(), seenMinutes: total, step: now.step, approvedByIds },
     });
     await this.tellThePerson(reader.organizationId, personId, monday, entries as Entry[], reader.userId);
     return this.board(reader, today);
+  }
+
+  /** Who a week of hours waits for now, in words ("Omar in finance"), or null when it no longer waits. */
+  async nowWaitingFor(organizationId: string, personId: string, weekOf: Day): Promise<string | null> {
+    const answers = await this.suiteAnswers(organizationId);
+    const monday = mondayOf(atMidnight(weekOf));
+    const entries = await this.prisma.timeEntry.findMany({
+      where: { organizationId, userId: personId, onDay: { gte: monday, lt: new Date(monday.getTime() + 7 * DAY) } },
+      select: { minutes: true },
+    });
+    const total = entries.reduce((n, e) => n + e.minutes, 0);
+    const state = weekStateOf(await this.weekRow(organizationId, personId, monday), total);
+    if (!total || state.approved) return null;
+    const now = await this.now(organizationId, personId, await this.directory(organizationId, [personId]), answers, state);
+    return whoInWords(this.prisma, now.who, now.team);
+  }
+
+  /** Whoever approves the step a week is on is told on WhatsApp (decision 82, item 1). */
+  async tellWhoApproves(organizationId: string, personId: string, monday: Date, entries: { client: string; onDay: Date; minutes: number }[], state: WeekState, answers?: { clients: string[]; approver: string | null; workflow?: AWorkflow }): Promise<void> {
+    if (!this.told || !entries.length) return;
+    try {
+      const a = answers ?? (await this.suiteAnswers(organizationId));
+      const now = await this.now(organizationId, personId, await this.directory(organizationId, [personId]), a, state);
+      const first = await this.told.firstNameOf(personId);
+      await this.told.waiting(organizationId, await this.told.approversOf(organizationId, now.who, personId), { ...this.inWords(personId, first, entries), ref: `${personId}|${dayOf(monday)}` });
+    } catch { /* the hours stand */ }
+  }
+
+  /** The kept row of one person's week, read in code so a changed week is never missed. */
+  private async weekRow(organizationId: string, userId: string, monday: Date): Promise<WeekRow | undefined> {
+    const rows = (await this.prisma.timeWeek.findMany({ where: { organizationId, userId } }).catch(() => [])) as WeekRow[];
+    return [...(rows ?? [])].reverse().find((r) => dayOf(new Date(r.weekOf)) === dayOf(monday));
   }
 
   /** Each person's own hours, week by week. Nobody else's. */
@@ -174,17 +269,23 @@ export class TimeSheetsService {
       where: { organizationId: reader.organizationId, userId: reader.userId, onDay: { gte: from } },
       select: { userId: true, client: true, onDay: true, minutes: true },
     })) as Entry[];
-    const approvals = await this.prisma.timeWeek.findMany({
+    const approvals = (await this.prisma.timeWeek.findMany({
       where: { organizationId: reader.organizationId, userId: reader.userId, weekOf: { gte: from } },
-      select: { weekOf: true, approvedMinutes: true },
-    });
-    const weeks = [...new Set(entries.map((e) => dayOf(mondayOf(e.onDay))))].sort().reverse().map((w) => {
+      select: { userId: true, weekOf: true, approvedMinutes: true, approvedById: true, seenMinutes: true, step: true, escalatedTo: true, approvedByIds: true },
+    })) as WeekRow[];
+    const people = await this.directory(reader.organizationId, [reader.userId]);
+    const weeks: { weekOf: Day; minutes: Record<string, number>; total: number; approved: boolean; where: string }[] = [];
+    for (const w of [...new Set(entries.map((e) => dayOf(mondayOf(e.onDay))))].sort().reverse()) {
       const es = entries.filter((e) => dayOf(mondayOf(e.onDay)) === w);
       const minutes: Record<string, number> = {};
       for (const c of this.clientOrder(answers.clients, es)) minutes[c] = es.filter((e) => e.client === c).reduce((n, e) => n + e.minutes, 0);
       const total = es.reduce((n, e) => n + e.minutes, 0);
-      return { weekOf: w, minutes, total, approved: approvals.some((a) => dayOf(a.weekOf) === w && a.approvedMinutes === total) };
-    });
+      const state = weekStateOf([...approvals].reverse().find((a) => dayOf(new Date(a.weekOf)) === w), total);
+      const now = state.approved ? null : await this.now(reader.organizationId, reader.userId, people, answers, state);
+      /* "Your hours for the week of Monday 28 September are approved by Wairimu and are now waiting for Omar in finance." */
+      const where = whereYourRequestIs(`Your hours for the week of ${saidAsADay(w)}`, await this.whereItStands(state, now, false, reader.userId), true);
+      weeks.push({ weekOf: w, minutes, total, approved: state.approved, where });
+    }
     return { weeks };
   }
 
@@ -196,8 +297,8 @@ export class TimeSheetsService {
     const answers = await this.suiteAnswers(organizationId);
     const role = await this.roleOf({ userId, organizationId });
     if (!role || role === 'GUEST') throw new ForbiddenException(TIME_REFUSED.notInIt);
-    const who = await whoApprovesFor(this.prisma, { organizationId, personUserId: userId });
-    return { clients: answers.clients, approverFirstName: who.kind === 'manager' ? who.firstName : null };
+    const who = await whoApprovesFor(this.prisma, { organizationId, personUserId: userId, suite: 'time' });
+    return { clients: answers.clients, approverFirstName: who.kind === 'admin' ? null : who.firstName };
   }
 
   /**
@@ -217,12 +318,12 @@ export class TimeSheetsService {
     });
     if (!rows.length) throw new BadRequestException(TIME_REFUSED.badHours);
     await this.prisma.timeEntry.createMany({ data: rows });
-    /* The one who approves is told on WhatsApp too (decision 82, item 1). */
+    /* Whoever approves the first step is told on WhatsApp too (decision 82, item 1): changed hours start again there. */
     if (this.told) {
       try {
-        const who = await theOneWhoDecides(this.prisma, theStepsFor('time', answers), { organizationId, requesterUserId: userId });
+        const now = await this.now(organizationId, userId, await this.directory(organizationId, [userId]), answers, { step: 0, escalatedTo: 0 });
         const first = await this.told.firstNameOf(userId);
-        await this.told.waiting(organizationId, await this.told.approversOf(organizationId, who, userId), this.inWords(userId, first, rows));
+        await this.told.waiting(organizationId, await this.told.approversOf(organizationId, now.who, userId), this.inWords(userId, first, rows));
       } catch { /* the hours stand */ }
     }
     return { recorded: rows.length };
@@ -291,7 +392,7 @@ export class TimeSheetsService {
     return [...listed.filter((c) => used.has(c)), ...[...used].filter((c) => !listed.includes(c)).sort()];
   }
 
-  private async suiteAnswers(organizationId: string): Promise<{ clients: string[]; approver: string | null }> {
+  private async suiteAnswers(organizationId: string): Promise<{ clients: string[]; approver: string | null; workflow?: AWorkflow }> {
     const suite = await this.prisma.organizationSuite.findUnique({
       where: { organizationId_suite: { organizationId, suite: 'time' } },
       select: { isOn: true, answers: true },
@@ -301,6 +402,8 @@ export class TimeSheetsService {
     return {
       clients: Array.isArray(a.clients) ? a.clients.filter((c): c is string => typeof c === 'string') : [],
       approver: typeof a.approver === 'string' ? a.approver : null,
+      /* The steps an admin set (the-approval-steps.ts). None: one step, as before. */
+      workflow: await readWorkflow(this.prisma, organizationId, 'time'),
     };
   }
 
@@ -318,14 +421,21 @@ export class TimeSheetsService {
     return new Map([...ps].map(([userId, p]) => [userId, { externalId: p.externalId as string, department: p.department as string | null, managerExternalId: p.managerExternalId as string | null }]));
   }
 
-  /** Whether this reader approves this person's hours, by the one approval resolver (who-may-decide.ts). Never their own. */
-  private async mayApprove(reader: Reader, role: string | null, personId: string, people: Map<string, { department: string | null; managerExternalId: string | null }>, answers: { approver: string | null }): Promise<boolean> {
-    if (personId === reader.userId) return false;
-    const who = await theOneWhoDecides(this.prisma, theStepsFor('time', answers), {
-      organizationId: reader.organizationId, requesterUserId: personId,
+  /** Who approves this person's week now, from the step it is on, by the one approval resolver (who-may-decide.ts). */
+  private now(organizationId: string, personId: string, people: Map<string, { department: string | null; managerExternalId: string | null }>, answers: { approver: string | null; workflow?: AWorkflow }, state: { step: number; escalatedTo: number }): Promise<DecidesNow> {
+    return whoDecidesNow(this.prisma, theStepsFor('time', answers), {
+      organizationId, requesterUserId: personId,
       managerExternalId: people.get(personId)?.managerExternalId ?? null, team: people.get(personId)?.department ?? null,
-    });
-    return decidesIt(who, { userId: reader.userId, role }, personId);
+    }, state);
+  }
+
+  /** Who approved a week so far and who it waits for now, as names; "you" for the reader. */
+  private async whereItStands(state: WeekState, now: DecidesNow | null, readerApproves: boolean, readerUserId: string): Promise<WhereItStands> {
+    return {
+      status: state.approved ? 'approved' : 'waiting',
+      approvedBy: await firstNamesOf(this.prisma, state.approvedByIds, readerUserId),
+      waitingFor: !state.approved && now ? (readerApproves ? 'you' : await whoInWords(this.prisma, now.who, now.team, readerUserId)) : null,
+    };
   }
 
   private async theLeadsTeam(reader: Reader, people: Map<string, { externalId: string; department: string | null; managerExternalId: string | null }>) {

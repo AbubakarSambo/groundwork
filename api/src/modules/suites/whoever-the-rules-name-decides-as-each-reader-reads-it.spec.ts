@@ -126,8 +126,9 @@ function setup(duties: Record<string, unknown>) {
 }
 
 /** The rules as a later workflow could set them, for leave, time sheets and reviews alike. */
-function theRulesAre(steps: rules.Step[]) {
-  jest.spyOn(rules, 'theStepsFor').mockImplementation((() => steps) as any);
+/* One approval step, its rules tried in order (theStepsFor gives a list of steps since build step 4). */
+function theRulesAre(rulesOfTheStep: rules.Step) {
+  jest.spyOn(rules, 'theStepsFor').mockImplementation((() => [rulesOfTheStep]) as any);
 }
 afterEach(() => jest.restoreAllMocks());
 
@@ -142,6 +143,8 @@ describe('Omar, a member who heads Sales, where the department head decides', ()
     expect(b.reader).toBe('approver');
     expect(b.waiting).toEqual([{
       id: 'l-aisha', name: 'Aisha Otieno', startsOn: '2026-10-01', endsOn: '2026-10-02', days: 2, daysLeft: 21, team: 'Sales', alsoOff: ['Miriam'], standIn: null, mayDecide: true,
+      /* Where it is, in a full sentence (decision 85, build step 4). */
+      where: 'It is waiting for you.',
     }]);
     /* Nobody's leave beyond what waits for him: not Miriam's approved day, not Otieno's request. */
     expect(b.off).toEqual([]);

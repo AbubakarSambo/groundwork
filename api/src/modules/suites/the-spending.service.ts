@@ -2,9 +2,10 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException,
 import { PrismaService } from '../prisma/prisma.service';
 import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
-import { couldBeNamed, everyStepFor, theOneWhoDecides, theStepsFor } from './who-may-decide';
+import { couldBeNamed, decidesIt, everyStepFor, theStepsFor, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
-import { aSpendRequest } from './a-request-in-words';
+import { aSpendRequest, spendInWords, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
+import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const SPEND_REFUSED = {
@@ -40,6 +41,18 @@ export interface Waiting {
   approver: Approver;
   /** Whether this reader is the one who approves it. */
   mayDecide: boolean;
+  /** Where it is, in a full sentence for this reader: "Wairimu has approved it, and it is now waiting for you." */
+  where: string;
+}
+
+/** The person's own requests to spend (`mine`), newest first. */
+export interface MySpending {
+  currency: string | null;
+  requests: {
+    id: string; amount: number; what: string; status: 'waiting' | 'approved' | 'declined'; askedOn: string;
+    /** Where it is, in a full sentence: "Your request to spend KES 12,000 for fuel is approved by Wairimu and is now waiting for Omar in finance." */
+    where: string;
+  }[];
 }
 
 export interface SpendBoard {
@@ -59,7 +72,17 @@ export interface SpendBoard {
 }
 
 type Dir = { externalId: string; linkedUserId: string | null; department: string | null; managerExternalId: string | null };
-type Row = { id: string; organizationId: string; userId: string; amount: unknown; what: string; team: string | null; status: string; createdAt: Date };
+type Row = {
+  id: string; organizationId: string; userId: string; amount: unknown; what: string; team: string | null; status: string; createdAt: Date;
+  decidedById?: string | null;
+  /* Where it is among the approval steps (decision 85, build step 4). Rows read before steps existed have none: step one. */
+  step?: number | null; escalatedTo?: number | null; stepSince?: Date | null; approvedByIds?: string[] | null;
+};
+type Answers = { currency: string | null; limit: number | null; above: string | null; workflow?: AWorkflow };
+
+/** Who approved the steps so far. A request decided before steps were kept names only who decided it. */
+const approversOf = (r: Row): string[] =>
+  r.approvedByIds?.length ? r.approvedByIds : r.status === 'approved' && r.decidedById ? [r.decidedById] : [];
 
 const monthOf = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
 const n = (x: unknown) => Number(x ?? 0);
@@ -136,7 +159,8 @@ export class SpendingService {
     const names = await this.names(rows.map((r) => r.userId));
     const waiting: Waiting[] = [];
     for (const r of rows.filter((x) => x.status === 'waiting' && x.userId !== reader.userId)) {
-      const who = await this.approverOf(org, r, answers, byUser, dir);
+      const now = await this.now(org, r, answers, byUser);
+      const who = now.who.kind === 'admin' ? { kind: 'admin' as const } : { kind: now.who.kind === 'manager' ? 'manager' as const : 'person' as const, userId: now.who.userId };
       const decides = this.mayDecide(reader, role, r, who);
       /* A lead reads their own team's requests, and also any request that waits for them to decide. */
       if (!inScope(r.userId) && !decides) continue;
@@ -148,6 +172,7 @@ export class SpendingService {
         over: answers.limit != null && n(r.amount) > answers.limit,
         approver: who.kind === 'person' ? { kind: 'person', firstName: (await this.names([who.userId])).get(who.userId)?.first ?? '' } : { kind: who.kind },
         mayDecide: decides,
+        where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides, reader.userId)),
       });
     }
 
@@ -162,7 +187,11 @@ export class SpendingService {
     };
   }
 
-  /** The one who approves says yes or no. Only while it is waiting. */
+  /**
+   * The one who approves the step it is on says yes or no. Only while it is waiting. A yes at a step
+   * that is not the last moves it to the next step, and whoever decides that one is told; only the last
+   * step's yes, or a no at any step, ends it, and then the person who asked is told.
+   */
   async decide(reader: Reader, id: string, outcome: 'approved' | 'declined', today = new Date()) {
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
@@ -170,11 +199,66 @@ export class SpendingService {
     if (!r || r.organizationId !== reader.organizationId) throw new NotFoundException(SPEND_REFUSED.notFound);
     const dir = await this.directory(reader.organizationId);
     const byUser = new Map([...dir.values()].filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p]));
-    if (!this.mayDecide(reader, role, r, await this.approverOf(reader.organizationId, r, answers, byUser, dir))) throw new ForbiddenException(SPEND_REFUSED.notYours);
+    const now = await this.now(reader.organizationId, r, answers, byUser);
+    if (r.userId === reader.userId || !decidesIt(now.who, { userId: reader.userId, role }, r.userId)) throw new ForbiddenException(SPEND_REFUSED.notYours);
     if (r.status !== 'waiting') throw new BadRequestException(SPEND_REFUSED.alreadyDecided);
-    await this.prisma.spendRequest.update({ where: { id }, data: { status: outcome, decidedById: reader.userId, decidedAt: new Date() } });
+    const approvedByIds = [...(r.approvedByIds ?? []), ...(outcome === 'approved' ? [reader.userId] : [])];
+    if (outcome === 'approved' && !now.last) {
+      const next = { ...r, step: now.step + 1, escalatedTo: 0, stepSince: new Date(), approvedByIds };
+      await this.prisma.spendRequest.update({ where: { id }, data: { step: next.step, escalatedTo: 0, stepSince: next.stepSince, approvedByIds } });
+      await this.tellWhoDecides(next, answers);
+      return this.board(reader, today);
+    }
+    await this.prisma.spendRequest.update({ where: { id }, data: { status: outcome, decidedById: reader.userId, decidedAt: new Date(), approvedByIds } });
     await this.tellThePerson(r, answers.currency, outcome, reader.userId);
     return this.board(reader, today);
+  }
+
+  /** The person's own requests to spend, each with where it is. Nobody else's. */
+  async mine(reader: Reader): Promise<MySpending> {
+    const answers = await this.suiteAnswers(reader.organizationId);
+    const role = await this.roleOf(reader);
+    if (!role || role === 'GUEST') throw new ForbiddenException(SPEND_REFUSED.notInIt);
+    const rows = (await this.prisma.spendRequest.findMany({
+      where: { organizationId: reader.organizationId, userId: reader.userId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    })) as Row[];
+    const dir = await this.directory(reader.organizationId);
+    const byUser = new Map([...dir.values()].filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p]));
+    const requests: MySpending['requests'] = [];
+    for (const r of rows) {
+      const now = r.status === 'waiting' ? await this.now(reader.organizationId, r, answers, byUser) : null;
+      requests.push({
+        id: r.id, amount: n(r.amount), what: r.what, status: r.status as 'waiting' | 'approved' | 'declined', askedOn: r.createdAt.toISOString().slice(0, 10),
+        where: whereYourRequestIs(`Your request to spend ${spendInWords(n(r.amount), answers.currency, r.what)}`, await this.whereItStands(r, now, false, reader.userId)),
+      });
+    }
+    return { currency: answers.currency, requests };
+  }
+
+  /** Who a request waits for now, in words ("Omar in finance"), or null when it no longer waits. */
+  async nowWaitingFor(organizationId: string, id: string): Promise<string | null> {
+    const r = (await this.prisma.spendRequest.findUnique({ where: { id } }).catch(() => null)) as Row | null;
+    if (!r || r.organizationId !== organizationId || r.status !== 'waiting') return null;
+    const answers = await this.suiteAnswers(organizationId);
+    const dir = await this.directory(organizationId);
+    const byUser = new Map([...dir.values()].filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p]));
+    const now = await this.now(organizationId, r, answers, byUser);
+    return whoInWords(this.prisma, now.who, now.team);
+  }
+
+  /** Whoever decides the step a request is on is told on WhatsApp (decision 82, item 1). */
+  async tellWhoDecides(r: Row, answers?: Answers): Promise<void> {
+    if (!this.told) return;
+    try {
+      const a = answers ?? (await this.suiteAnswers(r.organizationId));
+      const dir = await this.directory(r.organizationId);
+      const byUser = new Map([...dir.values()].filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p]));
+      const now = await this.now(r.organizationId, r, a, byUser);
+      const first = await this.told.firstNameOf(r.userId);
+      await this.told.waiting(r.organizationId, await this.told.approversOf(r.organizationId, now.who, r.userId), aSpendRequest(r.id, r.userId, first, n(r.amount), a.currency, r.what));
+    } catch { /* the request stands */ }
   }
 
   /** An admin sets one team's budget for this month. */
@@ -250,20 +334,14 @@ export class SpendingService {
     const what = (input.what ?? '').trim().slice(0, 300);
     if (!what) throw new BadRequestException(SPEND_REFUSED.badWhat);
     const person = await theirRosterEntry(this.prisma, organizationId, userId, { department: true });
+    const team = person?.department?.trim() || null;
     const created = await this.prisma.spendRequest.create({
-      data: { organizationId, userId, amount: input.amount, what, team: person?.department?.trim() || null },
+      data: { organizationId, userId, amount: input.amount, what, team },
       select: { id: true },
     });
-    /* The one who approves is told on WhatsApp too (decision 82, item 1): the lead, the person named for over the limit, or the admins. */
+    /* Whoever decides the first step is told on WhatsApp too (decision 82, item 1): the lead, the person named for over the limit, or the admins. */
     if (this.told && created?.id) {
-      try {
-        const answers = await this.suiteAnswers(organizationId);
-        const dir = await this.directory(organizationId);
-        const byUser = new Map([...dir.values()].filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p]));
-        const who = await this.approverOf(organizationId, { userId, amount: input.amount }, answers, byUser, dir);
-        const first = await this.told.firstNameOf(userId);
-        await this.told.waiting(organizationId, await this.told.approversOf(organizationId, who, userId), aSpendRequest(created.id, userId, first, input.amount, answers.currency, what));
-      } catch { /* the request stands */ }
+      await this.tellWhoDecides({ id: created.id, organizationId, userId, amount: input.amount, what, team, status: 'waiting', createdAt: new Date() });
     }
     return created;
   }
@@ -284,21 +362,43 @@ export class SpendingService {
    * Never the requester, and never a guest or somebody no longer in the organisation.
    */
   private async approverOf(
-    organizationId: string, r: { userId: string; amount: unknown; team?: string | null },
-    answers: { limit: number | null; above: string | null },
+    organizationId: string, r: { userId: string; amount: unknown; team?: string | null; step?: number | null; escalatedTo?: number | null },
+    answers: Answers,
     byUser: Map<string, Dir>, _dir: Map<string, Dir>,
   ): Promise<{ kind: 'manager' | 'person'; userId: string } | { kind: 'admin' }> {
-    const who = await theOneWhoDecides(this.prisma, theStepsFor('spend', answers, n(r.amount)), {
-      organizationId, requesterUserId: r.userId,
-      managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null,
-      team: r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null,
-    });
+    const { who } = await this.now(organizationId, r, answers, byUser);
     return who.kind === 'admin' ? { kind: 'admin' } : { kind: who.kind, userId: who.userId };
   }
 
-  /** Whether this person is named for requests over the limit: by the admin, or by holding a team's budget or finance. */
-  private async approvesOverTheLimit(organizationId: string, userId: string, answers: { limit: number | null; above: string | null }): Promise<boolean> {
-    if (answers.limit == null) return false;
+  /** Who decides a request now, from the step it is on (a new request is on step one). */
+  private now(
+    organizationId: string, r: { userId: string; amount: unknown; team?: string | null; step?: number | null; escalatedTo?: number | null },
+    answers: Answers, byUser: Map<string, Dir>,
+  ): Promise<DecidesNow> {
+    return whoDecidesNow(this.prisma, theStepsFor('spend', answers, n(r.amount)), {
+      organizationId, requesterUserId: r.userId,
+      managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null,
+      team: r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null,
+    }, r);
+  }
+
+  /** Who approved it so far, who it waits for now and who declined it, as names; "you" for the reader. */
+  private async whereItStands(r: Row, now: DecidesNow | null, readerDecides: boolean, readerUserId: string): Promise<WhereItStands> {
+    const status = r.status as WhereItStands['status'];
+    return {
+      status,
+      approvedBy: await firstNamesOf(this.prisma, approversOf(r), readerUserId),
+      waitingFor: status === 'waiting' && now ? (readerDecides ? 'you' : await whoInWords(this.prisma, now.who, now.team, readerUserId)) : null,
+      declinedBy: status === 'declined' && r.decidedById ? (await firstNamesOf(this.prisma, [r.decidedById], readerUserId))[0] ?? null : null,
+    };
+  }
+
+  /**
+   * Whether this person could be named to decide some request without being an admin or a lead's
+   * manager: named over the limit, holding a team's budget or finance, or any duty in the steps an
+   * admin set.
+   */
+  private async approvesOverTheLimit(organizationId: string, userId: string, answers: Answers): Promise<boolean> {
     const role = await this.roleOf({ userId, organizationId });
     return couldBeNamed(this.prisma, everyStepFor('spend', answers).filter((s) => s !== 'admin' && s !== 'manager'), organizationId, { userId, role });
   }
@@ -309,7 +409,7 @@ export class SpendingService {
     return who.userId === reader.userId;
   }
 
-  private async suiteAnswers(organizationId: string): Promise<{ currency: string | null; limit: number | null; above: string | null }> {
+  private async suiteAnswers(organizationId: string): Promise<Answers> {
     const suite = await this.prisma.organizationSuite.findUnique({
       where: { organizationId_suite: { organizationId, suite: 'spend' } },
       select: { isOn: true, answers: true },
@@ -320,6 +420,8 @@ export class SpendingService {
       currency: typeof a.currency === 'string' ? a.currency : null,
       limit: typeof a.limit === 'number' ? a.limit : null,
       above: typeof a.above === 'string' ? a.above : null,
+      /* The steps an admin set (the-approval-steps.ts). None: one step, as before. */
+      workflow: await readWorkflow(this.prisma, organizationId, 'spend'),
     };
   }
 

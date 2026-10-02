@@ -2939,18 +2939,23 @@ export class AssistantService {
     try {
       if (!me.linkedUserId) throw new Error(NOTHING_TO_DECIDE);
       const reader = { userId: me.linkedUserId, organizationId };
+      /* An approval at a step that is not the last sends it on (decision 85, build step 4): say to whom. */
+      let nowWaitsFor: string | null = null;
       if (request.kind === 'leave') {
         if (!this.leave) throw new Error(NOTHING_TO_DECIDE);
         await this.leave.decide(reader, request.ref, outcome);
+        nowWaitsFor = await Promise.resolve(this.leave.nowWaitingFor?.(organizationId, request.ref)).catch(() => null) ?? null;
       } else if (request.kind === 'spend') {
         if (!this.spending) throw new Error(NOTHING_TO_DECIDE);
         await this.spending.decide(reader, request.ref, outcome);
+        nowWaitsFor = await Promise.resolve(this.spending.nowWaitingFor?.(organizationId, request.ref)).catch(() => null) ?? null;
       } else {
         if (!this.timeSheets) throw new Error(NOTHING_TO_DECIDE);
         const [personId, weekOf] = request.ref.split('|');
         await this.timeSheets.approve(reader, personId, weekOf);
+        nowWaitsFor = await Promise.resolve(this.timeSheets.nowWaitingFor?.(organizationId, personId, weekOf)).catch(() => null) ?? null;
       }
-      reply = aDecisionDone(request, outcome);
+      reply = aDecisionDone(request, outcome, nowWaitsFor);
     } catch (err: any) {
       const why = typeof err?.message === 'string' && err.message ? err.message : NOTHING_TO_DECIDE;
       reply = why === NOTHING_TO_DECIDE ? why : `I could not do that. ${why}`;

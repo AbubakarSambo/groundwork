@@ -2,9 +2,10 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException,
 import { PrismaService } from '../prisma/prisma.service';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
-import { couldBeNamed, decidesIt, theOneWhoDecides, theStepsFor } from './who-may-decide';
+import { couldBeNamed, decidesIt, everyRuleIn, theStepsFor, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
-import { aLeaveRequest } from './a-request-in-words';
+import { aLeaveRequest, leaveInWords, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
+import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const LEAVE_REFUSED = {
@@ -39,6 +40,8 @@ export interface Waiting {
   standIn: string | null;
   /** Whether this reader is the one who approves it. */
   mayDecide: boolean;
+  /** Where it is, in a full sentence for this reader: "Wairimu has approved it, and it is now waiting for you." */
+  where: string;
 }
 
 /**
@@ -53,13 +56,23 @@ export interface Off { id: string; name: string; startsOn: Day; endsOn: Day; kin
 export interface MyLeave {
   perYear: number | null;
   daysLeft: number | null;
-  requests: { id: string; startsOn: Day; endsOn: Day; days: number; status: 'waiting' | 'approved' | 'declined'; standIn: string | null }[];
+  requests: {
+    id: string; startsOn: Day; endsOn: Day; days: number; status: 'waiting' | 'approved' | 'declined'; standIn: string | null;
+    /** Where it is, in a full sentence: "Your leave from ... is approved by Wairimu and is now waiting for Omar in finance." */
+    where: string;
+  }[];
 }
 
 type Row = {
   id: string; organizationId: string; userId: string; startsOn: Date; endsOn: Date; kind: string;
   standInUserId: string | null; status: string; decidedById: string | null; decidedAt: Date | null;
+  /* Where it is among the approval steps (decision 85, build step 4). Rows read before steps existed have none: step one. */
+  step?: number | null; escalatedTo?: number | null; stepSince?: Date | null; approvedByIds?: string[] | null;
 };
+
+/** Who approved the steps so far. A request decided before steps were kept names only who decided it. */
+const approversOf = (r: Pick<Row, 'status' | 'decidedById' | 'approvedByIds'>): string[] =>
+  r.approvedByIds?.length ? r.approvedByIds : r.status === 'approved' && r.decidedById ? [r.decidedById] : [];
 
 const DAY = 86_400_000;
 const dayOf = (d: Date): Day => d.toISOString().slice(0, 10);
@@ -118,7 +131,7 @@ export class LeaveBoardService {
      * other member, and a guest, are refused, as before.
      */
     const asApprover = role !== 'ADMIN' && role !== 'LEAD';
-    if (asApprover && !(role === 'MEMBER' && (await couldBeNamed(this.prisma, theStepsFor('leave', answers), reader.organizationId, { userId: reader.userId, role })))) {
+    if (asApprover && !(role === 'MEMBER' && (await couldBeNamed(this.prisma, everyRuleIn(theStepsFor('leave', answers)), reader.organizationId, { userId: reader.userId, role })))) {
       throw new ForbiddenException(LEAVE_REFUSED.onlyAdminsAndLeads);
     }
 
@@ -137,7 +150,8 @@ export class LeaveBoardService {
     const waiting: Waiting[] = [];
     for (const r of rows.filter((x) => x.status === 'waiting' && x.userId !== reader.userId)) {
       /* A lead reads their own team's requests; anybody also reads each request that waits for them to decide. */
-      const decides = await this.mayDecide(reader, role, r, people, answers);
+      const now = await this.now(r, people, answers);
+      const decides = decidesIt(now.who, { userId: reader.userId, role }, r.userId);
       if (!inScope(r.userId) && !decides) continue;
       const team = people.get(r.userId)?.department?.trim() || null;
       const alsoOff = team
@@ -155,6 +169,7 @@ export class LeaveBoardService {
         alsoOff: [...new Set(alsoOff)],
         standIn: r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null,
         mayDecide: decides,
+        where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides ? reader.userId : undefined, reader.userId)),
       });
     }
 
@@ -178,6 +193,12 @@ export class LeaveBoardService {
       orderBy: { startsOn: 'desc' },
     })) as Row[];
     const names = await this.names(rows);
+    const people = await this.directory(reader.organizationId, rows);
+    const where = new Map<string, string>();
+    for (const r of rows) {
+      const now = r.status === 'waiting' ? await this.now(r, people, answers) : null;
+      where.set(r.id, whereYourRequestIs(`Your ${leaveInWords(dayOf(r.startsOn), dayOf(r.endsOn))}`, await this.whereItStands(r, now, undefined, reader.userId)));
+    }
     return {
       perYear: answers.perYear,
       daysLeft: this.daysLeft(answers.perYear, rows.filter((r) => r.status === 'approved'), today.getUTCFullYear()),
@@ -188,25 +209,61 @@ export class LeaveBoardService {
         days: workingDays(r.startsOn, r.endsOn),
         status: (r.status as 'waiting' | 'approved' | 'declined'),
         standIn: r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null,
+        where: where.get(r.id) ?? '',
       })),
     };
   }
 
-  /** The approver decides. Only while it is waiting. */
+  /**
+   * The approver of the step it is on decides. Only while it is waiting. An approval at a step that is
+   * not the last moves it to the next step, and whoever decides that one is told; only the last step's
+   * approval, or a decline at any step, ends it, and then the person who asked is told.
+   */
   async decide(reader: Reader, id: string, outcome: 'approved' | 'declined') {
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
     const row = (await this.prisma.leaveRequest.findUnique({ where: { id } })) as Row | null;
     if (!row || row.organizationId !== reader.organizationId) throw new NotFoundException(LEAVE_REFUSED.notFound);
     const people = await this.directory(reader.organizationId, [row]);
-    if (!(await this.mayDecide(reader, role, row, people, answers))) throw new ForbiddenException(LEAVE_REFUSED.notYours);
+    const now = await this.now(row, people, answers);
+    if (row.userId === reader.userId || !decidesIt(now.who, { userId: reader.userId, role }, row.userId)) throw new ForbiddenException(LEAVE_REFUSED.notYours);
     if (row.status !== 'waiting') throw new BadRequestException(LEAVE_REFUSED.alreadyDecided);
+    const approvedByIds = [...(row.approvedByIds ?? []), ...(outcome === 'approved' ? [reader.userId] : [])];
+    if (outcome === 'approved' && !now.last) {
+      const next = { ...row, step: now.step + 1, escalatedTo: 0, stepSince: new Date(), approvedByIds };
+      await this.prisma.leaveRequest.update({ where: { id }, data: { step: next.step, escalatedTo: 0, stepSince: next.stepSince, approvedByIds } });
+      await this.tellWhoDecides(next, people, answers);
+      return this.board(reader);
+    }
     await this.prisma.leaveRequest.update({
       where: { id },
-      data: { status: outcome, decidedById: reader.userId, decidedAt: new Date() },
+      data: { status: outcome, decidedById: reader.userId, decidedAt: new Date(), approvedByIds },
     });
     await this.tellThePerson(row, outcome, reader.userId);
     return this.board(reader);
+  }
+
+  /**
+   * Who a request waits for now, in words, for the approver who has just approved a step ("Omar in
+   * finance"), or null when it no longer waits.
+   */
+  async nowWaitingFor(organizationId: string, id: string): Promise<string | null> {
+    const row = (await this.prisma.leaveRequest.findUnique({ where: { id } }).catch(() => null)) as Row | null;
+    if (!row || row.organizationId !== organizationId || row.status !== 'waiting') return null;
+    const answers = await this.suiteAnswers(organizationId);
+    const now = await this.now(row, await this.directory(organizationId, [row]), answers);
+    return whoInWords(this.prisma, now.who, now.team);
+  }
+
+  /** Whoever decides the step a request is on is told on WhatsApp (decision 82, item 1). */
+  async tellWhoDecides(row: Row, people?: Map<string, any>, answers?: { perYear: number | null; approver: string | null; workflow?: AWorkflow }): Promise<void> {
+    if (!this.told) return;
+    try {
+      const a = answers ?? (await this.suiteAnswers(row.organizationId));
+      const now = await this.now(row, people ?? (await this.directory(row.organizationId, [row])), a);
+      const first = await this.told.firstNameOf(row.userId);
+      await this.told.waiting(row.organizationId, await this.told.approversOf(row.organizationId, now.who, row.userId), aLeaveRequest(row.id, row.userId, first, dayOf(row.startsOn), dayOf(row.endsOn)));
+    } catch { /* the request stands */ }
   }
 
   /** The person who asked is told what was decided, on WhatsApp (decision 82, item 1). True when it went. */
@@ -238,12 +295,9 @@ export class LeaveBoardService {
       data: { organizationId, userId, startsOn, endsOn, standInUserId: standIn },
       select: { id: true },
     });
-    /* The one who approves is told on WhatsApp too (decision 82, item 1). */
+    /* Whoever decides the first step is told on WhatsApp too (decision 82, item 1). */
     if (this.told && created?.id) {
-      const answers = await this.suiteAnswers(organizationId);
-      const who = await theOneWhoDecides(this.prisma, theStepsFor('leave', answers), { organizationId, requesterUserId: userId }).catch(() => ({ kind: 'admin' as const }));
-      const first = await this.told.firstNameOf(userId);
-      await this.told.waiting(organizationId, await this.told.approversOf(organizationId, who, userId), aLeaveRequest(created.id, userId, first, input.startsOn, input.endsOn)).catch(() => undefined);
+      await this.tellWhoDecides({ id: created.id, organizationId, userId, startsOn, endsOn, kind: 'annual', standInUserId: standIn, status: 'waiting', decidedById: null, decidedAt: null });
     }
     return created;
   }
@@ -256,14 +310,23 @@ export class LeaveBoardService {
     return Math.max(0, perYear - used);
   }
 
-  /** Whether this reader decides this request, by the one approval resolver (who-may-decide.ts). Never their own. */
-  private async mayDecide(reader: Reader, role: string | null, r: Row, people: Map<string, any>, answers: { approver: string | null }): Promise<boolean> {
-    if (r.userId === reader.userId) return false;
-    const who = await theOneWhoDecides(this.prisma, theStepsFor('leave', answers), {
+  /** Who decides this request now, from the step it is on, by the one approval resolver (who-may-decide.ts). */
+  private now(r: Row, people: Map<string, any>, answers: { approver: string | null; workflow?: AWorkflow }): Promise<DecidesNow> {
+    return whoDecidesNow(this.prisma, theStepsFor('leave', answers), {
       organizationId: r.organizationId, requesterUserId: r.userId,
       managerExternalId: people.get(r.userId)?.managerExternalId ?? null, team: people.get(r.userId)?.department ?? null,
-    });
-    return decidesIt(who, { userId: reader.userId, role }, r.userId);
+    }, r);
+  }
+
+  /** Who approved it so far, who it waits for now and who declined it, as names; "you" for the reader. */
+  private async whereItStands(r: Row, now: DecidesNow | null, readerDecides: string | undefined, readerUserId: string): Promise<WhereItStands> {
+    const approvedBy = await firstNamesOf(this.prisma, approversOf(r), readerUserId);
+    const status = r.status as WhereItStands['status'];
+    return {
+      status, approvedBy,
+      waitingFor: status === 'waiting' && now ? (readerDecides ? 'you' : await whoInWords(this.prisma, now.who, now.team, readerUserId)) : null,
+      declinedBy: status === 'declined' && r.decidedById ? (await firstNamesOf(this.prisma, [r.decidedById], readerUserId))[0] ?? null : null,
+    };
   }
 
   private async theLeadsTeam(reader: Reader, people: Map<string, { externalId: string; department: string | null; managerExternalId: string | null }>) {
@@ -274,7 +337,7 @@ export class LeaveBoardService {
     };
   }
 
-  private async suiteAnswers(organizationId: string): Promise<{ perYear: number | null; approver: string | null }> {
+  private async suiteAnswers(organizationId: string): Promise<{ perYear: number | null; approver: string | null; workflow?: AWorkflow }> {
     const suite = await this.prisma.organizationSuite.findUnique({
       where: { organizationId_suite: { organizationId, suite: 'leave' } },
       select: { isOn: true, answers: true },
@@ -284,6 +347,8 @@ export class LeaveBoardService {
     return {
       perYear: typeof a.days === 'number' ? a.days : null,
       approver: typeof a.approver === 'string' ? a.approver : null,
+      /* The steps an admin set (the-approval-steps.ts). None: one step, as before. */
+      workflow: await readWorkflow(this.prisma, organizationId, 'leave'),
     };
   }
 

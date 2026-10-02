@@ -146,7 +146,7 @@ describe('leave and time sheets: every answer, every requester, every reader', (
         const prisma = aPrisma();
         const person = signInOf(ext)!;
         const before: string[] = []; const after: string[] = []; const afterResolver: string[] = [];
-        const who = await theOneWhoDecides(prisma, theStepsFor('leave'), { organizationId: ORG, requesterUserId: person, managerExternalId: entry(ext).managerExternalId });
+        const who = await theOneWhoDecides(prisma, theStepsFor('leave')[0], { organizationId: ORG, requesterUserId: person, managerExternalId: entry(ext).managerExternalId });
         for (const reader of READERS) {
           const input = { organizationId: ORG, readerId: reader, readerRole: roles[reader] ?? null, personUserId: person, managerExternalId: entry(ext).managerExternalId };
           if (await BEFORE_mayApproveFor(prisma, input)) before.push(reader);

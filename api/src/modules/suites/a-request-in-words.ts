@@ -77,10 +77,60 @@ export function aDecisionSaidBack(r: AWaitingRequest, outcome: 'approved' | 'dec
   return `You are ${outcome === 'approved' ? 'approving' : 'declining'} ${r.thing}. Is that right?`;
 }
 
-/** After the yes: "Amina's leave from ... is approved now. I have let Amina know." */
-export function aDecisionDone(r: AWaitingRequest, outcome: 'approved' | 'declined'): string {
+/**
+ * After the yes: "Amina's leave from ... is approved now. I have let Amina know." When the approval
+ * was only one step and the request goes on to somebody else (build step 4): "You approved Amina's
+ * leave from .... It now waits for Omar in finance."
+ */
+export function aDecisionDone(r: AWaitingRequest, outcome: 'approved' | 'declined', nowWaitsFor?: string | null): string {
+  if (outcome === 'approved' && nowWaitsFor) return `You approved ${r.thing}. ${r.kind === 'hours' ? 'They now wait' : 'It now waits'} for ${nowWaitsFor}.`;
   const thing = `${r.thing.charAt(0).toUpperCase()}${r.thing.slice(1)}`;
   return `${thing} ${r.kind === 'hours' ? 'are' : 'is'} ${outcome} now. I have let ${r.firstName} know.`;
+}
+
+// ---------------------------------- where a request is (build step 4) ----------------------------------
+
+/** Where a request is, as names: who approved it so far, who it waits for now, or who declined it. */
+export interface WhereItStands {
+  status: 'waiting' | 'approved' | 'declined';
+  /** First names, in order; "you" for the reader. */
+  approvedBy: string[];
+  /** Who it waits for now, in words ("Omar in finance", "an admin", "you"), while it waits. */
+  waitingFor?: string | null;
+  /** Who declined it, as a first name or "you". */
+  declinedBy?: string | null;
+}
+
+const capital = (x: string) => `${x.charAt(0).toUpperCase()}${x.slice(1)}`;
+const lower = (x: string) => `${x.charAt(0).toLowerCase()}${x.slice(1)}`;
+
+/**
+ * The person who asked, reading their own request: "Your leave from Monday 5 October to Friday 9
+ * October is approved by Wairimu and is now waiting for Omar in finance." `thing` begins with "Your";
+ * `plural` is for hours ("Your hours ... are").
+ */
+export function whereYourRequestIs(thing: string, s: WhereItStands, plural = false): string {
+  const is = plural ? 'are' : 'is';
+  const by = s.approvedBy.length ? ` approved by ${listed(s.approvedBy)}` : '';
+  if (s.status === 'declined') return s.declinedBy ? `${capital(s.declinedBy)} declined ${lower(thing)}.` : `${thing} ${is} declined.`;
+  if (s.status === 'approved') return `${thing} ${is}${by || ' approved'}.`;
+  const waits = `waiting for ${s.waitingFor || 'the person who approves it'}`;
+  return by ? `${thing} ${is}${by} and ${is} now ${waits}.` : `${thing} ${is} ${waits}.`;
+}
+
+/**
+ * Somebody who may already read a waiting request on a board: "Wairimu has approved it, and it is now
+ * waiting for you." or "It is waiting for Omar in finance." For hours, "these hours" and "they".
+ */
+export function whereItIsOnTheBoard(s: WhereItStands, plural = false): string {
+  const it = plural ? 'they' : 'it';
+  const is = plural ? 'are' : 'is';
+  if (s.status === 'declined') return s.declinedBy ? `${capital(s.declinedBy)} declined ${plural ? 'these hours' : 'it'}.` : `${capital(it)} ${is} declined.`;
+  if (s.status === 'approved') return s.approvedBy.length ? `${capital(listed(s.approvedBy))} approved ${plural ? 'these hours' : 'it'}.` : `${capital(it)} ${is} approved.`;
+  const waits = `waiting for ${s.waitingFor || 'the person who approves it'}`;
+  if (!s.approvedBy.length) return `${capital(it)} ${is} ${waits}.`;
+  const have = s.approvedBy.length > 1 || s.approvedBy[0] === 'you' ? 'have' : 'has';
+  return `${capital(listed(s.approvedBy))} ${have} approved ${plural ? 'these hours' : 'it'}, and ${it} ${is} now ${waits}.`;
 }
 
 /** After a no: nothing changed. */

@@ -60,6 +60,12 @@ class DutiesDto {
   @IsOptional() @IsObject() departmentHeads?: Record<string, string | null>;
 }
 
+class WorkflowsDto {
+  @IsOptional() @IsObject() leave?: Record<string, unknown> | null;
+  @IsOptional() @IsObject() time?: Record<string, unknown> | null;
+  @IsOptional() @IsObject() spend?: Record<string, unknown> | null;
+}
+
 class AgreementsDto {
   @IsArray() agreements!: unknown[];
 }
@@ -276,6 +282,24 @@ export class SuitesController {
   @ApiOperation({ summary: 'An admin says who holds each duty. A duty given as null is cleared; one left out is kept.' })
   setDuties(@CurrentUser() user: CurrentUserData, @Body() dto: DutiesDto) {
     return this.suites.setDuties({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('workflows')
+  @ApiOperation({ summary: 'The approval steps of leave, time sheets and spending, and the working days before a request is passed on. For an admin only.' })
+  workflows(@CurrentUser() user: CurrentUserData) {
+    return this.suites.workflows({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Put('workflows')
+  @ApiOperation({ summary: 'An admin sets the approval steps or the working days for leave, time sheets or spending. A part given as null is cleared; one left out is kept.' })
+  setWorkflows(@CurrentUser() user: CurrentUserData, @Body() dto: WorkflowsDto) {
+    return this.suites.setWorkflows({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('spend/mine')
+  @ApiOperation({ summary: 'Your own requests to spend, each with where it is. Nobody else reads them here.' })
+  mySpending(@CurrentUser() user: CurrentUserData) {
+    return this.spend.mine({ userId: user.id, organizationId: user.organizationId });
   }
 
   @Put(':key')

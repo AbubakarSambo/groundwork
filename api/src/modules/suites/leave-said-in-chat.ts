@@ -179,7 +179,7 @@ const firstName = (p: { givenName?: string | null; displayName?: string | null }
 async function whoApproves(prisma: PrismaService, organizationId: string, userId: string) {
   const me = await theirRosterEntry(prisma, organizationId, userId, { department: true, managerExternalId: true });
   const who = await whoApprovesFor(prisma, { organizationId, personUserId: userId, managerExternalId: me?.managerExternalId ?? null });
-  return { name: who.kind === 'manager' ? who.firstName : null, team: me?.department?.trim() || null };
+  return { name: who.kind === 'admin' ? null : who.firstName, team: me?.department?.trim() || null };
 }
 
 /** Who else in the person's team is off on any of those days, by first name. */
