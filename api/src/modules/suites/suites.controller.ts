@@ -128,6 +128,12 @@ export class SuitesController {
     return this.leave.decide({ userId: user.id, organizationId: user.organizationId }, id, 'declined');
   }
 
+  @Get('leave/requests/:id/history')
+  @ApiOperation({ summary: 'Who did what on one request for time off, in plain sentences, for the people who may already read it' })
+  leaveHistory(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.leave.history({ userId: user.id, organizationId: user.organizationId }, id);
+  }
+
   @Get('time/board')
   @ApiOperation({ summary: 'Time sheets, while the suite is on, for an admin or the lead of the team. For billing only.' })
   timeBoard(@CurrentUser() user: CurrentUserData) {
@@ -144,6 +150,12 @@ export class SuitesController {
   @ApiOperation({ summary: 'The approver approves one person’s week of hours' })
   approveTime(@Param('weekOf') weekOf: string, @Param('personId') personId: string, @CurrentUser() user: CurrentUserData) {
     return this.time.approve({ userId: user.id, organizationId: user.organizationId }, personId, weekOf);
+  }
+
+  @Get('time/weeks/:weekOf/people/:personId/history')
+  @ApiOperation({ summary: 'Who did what on one person’s week of hours, in plain sentences, for the people who may already read it' })
+  timeHistory(@Param('weekOf') weekOf: string, @Param('personId') personId: string, @CurrentUser() user: CurrentUserData) {
+    return this.time.history({ userId: user.id, organizationId: user.organizationId }, personId, weekOf);
   }
 
   @Put('time/agreements')
@@ -174,6 +186,12 @@ export class SuitesController {
   @ApiOperation({ summary: 'One review, as this reader may read it' })
   oneReview(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
     return this.reviews.one({ userId: user.id, organizationId: user.organizationId }, id);
+  }
+
+  @Get('reviews/:id/history')
+  @ApiOperation({ summary: 'Who started and decided one review, in plain sentences, for the people who may read the review' })
+  reviewHistory(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.reviews.history({ userId: user.id, organizationId: user.organizationId }, id);
   }
 
   @Put('reviews/:id/words')
@@ -234,6 +252,12 @@ export class SuitesController {
   @ApiOperation({ summary: 'The one who approves a request to spend says no' })
   declineSpend(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
     return this.spend.decide({ userId: user.id, organizationId: user.organizationId }, id, 'declined');
+  }
+
+  @Get('spend/requests/:id/history')
+  @ApiOperation({ summary: 'Who did what on one request to spend, in plain sentences, for the people who may already read it' })
+  spendHistory(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.spend.history({ userId: user.id, organizationId: user.organizationId }, id);
   }
 
   @Put('spend/budgets')

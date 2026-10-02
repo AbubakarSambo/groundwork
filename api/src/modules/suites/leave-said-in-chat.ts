@@ -169,7 +169,7 @@ export function theDaysAsRead(d: LeaveDates): string {
 
 interface LeaveLike {
   mine(reader: { userId: string; organizationId: string }, today?: Date): Promise<{ daysLeft: number | null }>;
-  ask(organizationId: string, userId: string, input: { startsOn: Day; endsOn: Day }): Promise<unknown>;
+  ask(organizationId: string, userId: string, input: { startsOn: Day; endsOn: Day; proposalId?: string }): Promise<unknown>;
 }
 
 const firstName = (p: { givenName?: string | null; displayName?: string | null } | null | undefined) =>
@@ -231,16 +231,20 @@ export async function sayBackLeave(
   };
 }
 
-/** After the yes: sent through the leave suite, and nowhere else. */
+/**
+ * After the yes: sent through the leave suite, and nowhere else. `saidBack` is the parked say-back the
+ * person said yes to, kept as a reference in the record of who did what (decision 85, build step 5).
+ */
 export async function sendLeave(
   leave: LeaveLike | undefined,
   prisma: PrismaService,
   reader: { userId: string; organizationId: string },
   dates: LeaveDates,
+  saidBack?: { proposalId: string },
 ): Promise<string> {
   if (!leave) return LEAVE_SUITE_OFF;
   try {
-    await leave.ask(reader.organizationId, reader.userId, dates);
+    await leave.ask(reader.organizationId, reader.userId, saidBack?.proposalId ? { ...dates, proposalId: saidBack.proposalId } : dates);
   } catch (err: any) {
     return typeof err?.message === 'string' && err.message ? `I could not send it. ${err.message}` : 'I could not send it.';
   }

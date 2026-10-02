@@ -73,7 +73,8 @@ describe('hours said to Ask Groundwork', () => {
     const yes = svc({ parked });
     const sent = await said(yes, 'yes');
     expect(yes.record).toHaveBeenCalledTimes(1);
-    expect(yes.record).toHaveBeenCalledWith('org-a', 'u-me', [{ client: 'Atlas', onDay: '2026-10-01', hours: 6 }]);
+    /* With the say-back's reference, kept in the record of who did what (decision 85, build step 5). */
+    expect(yes.record).toHaveBeenCalledWith('org-a', 'u-me', [{ client: 'Atlas', onDay: '2026-10-01', hours: 6 }], { proposalId: expect.any(String) });
     expect(sent.text).toBe('I have logged 6 hours on Atlas for Thursday 1 October and sent it to Wairimu to approve. It is not approved until they decide, and you will see it under your hours.');
     const no = svc({ parked });
     expect((await said(no, 'no')).text).toBe('I have not sent it. Nothing was kept.');
@@ -128,7 +129,8 @@ describe('spending said to Ask Groundwork', () => {
     const yes = svc({ parked });
     const sent = await said(yes, 'yes');
     expect(yes.ask).toHaveBeenCalledTimes(1);
-    expect(yes.ask).toHaveBeenCalledWith('org-a', 'u-me', { amount: 12000, what: 'fuel for the Kisumu trip' });
+    /* With the say-back's reference, kept in the record of who did what (decision 85, build step 5). */
+    expect(yes.ask).toHaveBeenCalledWith('org-a', 'u-me', { amount: 12000, what: 'fuel for the Kisumu trip', proposalId: expect.any(String) });
     expect(sent.text).toBe('I have sent your request to spend KES 12,000 on fuel for the Kisumu trip to Wairimu. It is not approved until they decide, and nothing is spent until then.');
     const no = svc({ parked });
     expect((await said(no, 'no')).text).toBe('I have not sent it. Nothing was kept.');

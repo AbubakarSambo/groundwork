@@ -4,6 +4,7 @@ import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sig
 import { inTheLeadsTeam } from './a-leads-team';
 import { couldBeNamed, decidesIt, everyStepFor, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
+import { aRequestsHistory, recordIt } from './a-request-is-recorded';
 import type { PassedOn } from './the-leave-board.service';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { aSpendRequest, spendInWords, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
@@ -205,6 +206,7 @@ export class SpendingService {
     if (r.userId === reader.userId || !decidesIt(now.who, { userId: reader.userId, role }, r.userId)) throw new ForbiddenException(SPEND_REFUSED.notYours);
     if (r.status !== 'waiting') throw new BadRequestException(SPEND_REFUSED.alreadyDecided);
     const approvedByIds = [...(r.approvedByIds ?? []), ...(outcome === 'approved' ? [reader.userId] : [])];
+    await recordIt(this.prisma, { organizationId: r.organizationId, suite: 'spend', ref: id, kind: outcome, byUserId: reader.userId, step: now.step, basis: { row: 'spend_requests', id } });
     if (outcome === 'approved' && !now.last) {
       const next = { ...r, step: now.step + 1, escalatedTo: 0, stepSince: new Date(), approvedByIds };
       await this.prisma.spendRequest.update({ where: { id }, data: { step: next.step, escalatedTo: 0, stepSince: next.stepSince, approvedByIds } });
@@ -237,6 +239,26 @@ export class SpendingService {
       });
     }
     return { currency: answers.currency, requests };
+  }
+
+  /**
+   * One request's record of who did what, in plain sentences (decision 85, build step 5), for the
+   * people who may already read it: the person who asked, an admin, a lead of their team, and whoever
+   * decides it now. Anybody else is told it was not found.
+   */
+  async history(reader: Reader, id: string): Promise<{ said: string[] }> {
+    const answers = await this.suiteAnswers(reader.organizationId);
+    const role = await this.roleOf(reader);
+    const r = (await this.prisma.spendRequest.findUnique({ where: { id } })) as Row | null;
+    if (!r || r.organizationId !== reader.organizationId || !role) throw new NotFoundException(SPEND_REFUSED.notFound);
+    const dir = await this.directory(reader.organizationId);
+    const byUser = new Map([...dir.values()].filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p]));
+    const me = byUser.get(reader.userId);
+    const mayRead = r.userId === reader.userId || role === 'ADMIN'
+      || (role === 'LEAD' && !!me && !!byUser.get(r.userId) && inTheLeadsTeam(me, byUser.get(r.userId)!))
+      || (r.status === 'waiting' && decidesIt((await this.now(reader.organizationId, r, answers, byUser)).who, { userId: reader.userId, role }, r.userId));
+    if (!mayRead) throw new NotFoundException(SPEND_REFUSED.notFound);
+    return aRequestsHistory(this.prisma, reader.organizationId, 'spend', id, reader.userId);
   }
 
   /** Who a request waits for now, in words ("Omar in finance"), or null when it no longer waits. */
@@ -273,6 +295,10 @@ export class SpendingService {
       const why = await whyPassOn(this.prisma, organizationId, comes.now, r.stepSince ?? r.createdAt, today, answers.workflow.escalateAfter);
       if (!why) continue;
       await this.prisma.spendRequest.update({ where: { id: r.id }, data: { escalatedTo: comes.next.at, stepSince: today } });
+      await recordIt(this.prisma, {
+        organizationId, suite: 'spend', ref: r.id, kind: 'escalated', step: comes.now.step, toUserId: comes.next.who.kind === 'admin' ? null : comes.next.who.userId,
+        basis: { row: 'spend_requests', id: r.id, fromUserId: comes.now.who.kind === 'admin' ? null : comes.now.who.userId, ...why },
+      });
       await this.tellWhoDecides({ ...r, escalatedTo: comes.next.at, stepSince: today }, answers);
       out.push({ ref: r.id, step: comes.now.step, from: comes.now.who, to: comes.next.who, why });
     }
@@ -357,7 +383,7 @@ export class SpendingService {
   }
 
   /** A request to spend, as the engine records it once the person has confirmed it (request 26). No route. */
-  async ask(organizationId: string, userId: string, input: { amount: number; what: string }) {
+  async ask(organizationId: string, userId: string, input: { amount: number; what: string; proposalId?: string | null }) {
     await this.suiteAnswers(organizationId);
     const role = await this.roleOf({ userId, organizationId });
     if (!role || role === 'GUEST') throw new ForbiddenException(SPEND_REFUSED.notInIt);
@@ -370,6 +396,8 @@ export class SpendingService {
       data: { organizationId, userId, amount: input.amount, what, team },
       select: { id: true },
     });
+    /* One record of who did what (decision 85, build step 5): asked, after the say-back and the yes when there was one. */
+    if (created?.id) await recordIt(this.prisma, { organizationId, suite: 'spend', ref: created.id, kind: 'asked', byUserId: userId, basis: { row: 'spend_requests', id: created.id, ...(input.proposalId ? { proposalId: input.proposalId } : {}) } });
     /* Whoever decides the first step is told on WhatsApp too (decision 82, item 1): the lead, the person named for over the limit, or the admins. */
     if (this.told && created?.id) {
       await this.tellWhoDecides({ id: created.id, organizationId, userId, amount: input.amount, what, team, status: 'waiting', createdAt: new Date() });

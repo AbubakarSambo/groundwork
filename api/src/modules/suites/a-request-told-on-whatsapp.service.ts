@@ -4,6 +4,7 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { aRequestIsWaiting, aRequestWasDecided } from '../whatsapp/what-goes-to-a-phone';
 import { theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import type { AWaitingRequest } from './a-request-in-words';
+import { SUITE_OF_A_REQUEST, recordIt } from './a-request-is-recorded';
 
 /**
  * A REQUEST, TOLD ON WHATSAPP (decision 82, item 1).
@@ -48,7 +49,9 @@ export class ARequestToldOnWhatsApp {
         const to = await this.reach(organizationId, userId);
         if (!to.phone) continue;
         const said = aRequestIsWaiting(to.firstName, request.firstName, request.what);
-        await this.whatsapp.sendFor(organizationId, to.phone, said.text, { kind: said.kind, params: said.params });
+        const sent = await this.whatsapp.sendFor(organizationId, to.phone, said.text, { kind: said.kind, params: said.params });
+        /* One record of who did what (decision 85, build step 5): told, only when it went. */
+        if (sent?.sent) await recordIt(this.prisma, { organizationId, suite: SUITE_OF_A_REQUEST[request.kind], ref: request.ref, kind: 'told', toUserId: userId, basis: { message: said.kind } });
       } catch (err: any) {
         this.logger.warn(`Could not tell an approver about a ${request.kind} request: ${err?.message}`);
       }
@@ -63,7 +66,10 @@ export class ARequestToldOnWhatsApp {
       if (!to.phone) return false;
       const decider = await this.prisma.user.findUnique({ where: { id: deciderUserId }, select: { firstName: true } }).catch(() => null);
       const said = aRequestWasDecided(to.firstName ?? request.firstName, request.what, outcome, decider?.firstName);
-      return (await this.whatsapp.sendFor(organizationId, to.phone, said.text, { kind: said.kind, params: said.params })).sent;
+      const sent = (await this.whatsapp.sendFor(organizationId, to.phone, said.text, { kind: said.kind, params: said.params })).sent;
+      /* One record of who did what (decision 85, build step 5): told, only when it went. */
+      if (sent) await recordIt(this.prisma, { organizationId, suite: SUITE_OF_A_REQUEST[request.kind], ref: request.ref, kind: 'told', toUserId: request.personUserId, basis: { message: said.kind } });
+      return sent;
     } catch (err: any) {
       this.logger.warn(`Could not tell somebody their ${request.kind} request was decided: ${err?.message}`);
       return false;

@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
+import { aRequestsHistory, recordIt } from './a-request-is-recorded';
 import { couldBeNamed, decidesIt, everyRuleIn, theOneWhoDecides, theStepsFor, type WhoDecides } from './who-may-decide';
 import { withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { isProposedByGroundwork, theProposalSentence } from './a-review-falls-due';
@@ -243,6 +244,8 @@ export class ReviewsService {
       },
       select: { id: true },
     });
+    /* One record of who did what (decision 85, build step 5). */
+    await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'reviews', ref: r.id, kind: 'started', byUserId: reader.userId, basis: { row: 'performance_reviews', id: r.id, due: due.id } });
     /* The person is told it waits for them in the app; nothing of it goes to the phone. */
     await this.toldOnWhatsApp?.toThePerson(reader.organizationId, p.userId, reader.userId, 'started').catch(() => false);
     return { id: r.id };
@@ -336,6 +339,15 @@ export class ReviewsService {
     return this.one(reader, id);
   }
 
+  /**
+   * One review's record of who started and decided it, in plain sentences (decision 85, build step 5),
+   * for exactly the people who may read the review (`one` decides that, and refuses everybody else).
+   */
+  async history(reader: Reader, id: string): Promise<{ said: string[] }> {
+    await this.one(reader, id);
+    return aRequestsHistory(this.prisma, reader.organizationId, 'reviews', id, reader.userId);
+  }
+
   /** The writer decides, with reasons. The person reads both. */
   async decide(reader: Reader, id: string, input: { decision?: string; reasons?: string }) {
     const answers = await this.suiteAnswers(reader.organizationId);
@@ -348,6 +360,8 @@ export class ReviewsService {
       where: { id: row.id },
       data: { decision: says.slice(0, 1000), decisionReasons: reasons.slice(0, 2000), decidedById: reader.userId, decidedAt: new Date() },
     });
+    /* One record of who did what (decision 85, build step 5): who decided and when, never the words. */
+    await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'reviews', ref: row.id, kind: 'decided', byUserId: reader.userId, basis: { row: 'performance_reviews', id: row.id } });
     /* Told once, the first time it is decided; a reason corrected later is not a second message. */
     if (!row.decidedAt) await this.toldOnWhatsApp?.toThePerson(reader.organizationId, person.userId, reader.userId, 'decided').catch(() => false);
     return this.one(reader, id);

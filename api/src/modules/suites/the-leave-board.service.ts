@@ -4,6 +4,7 @@ import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-s
 import { inTheLeadsTeam } from './a-leads-team';
 import { couldBeNamed, decidesIt, everyRuleIn, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow, type WhoDecides } from './who-may-decide';
 import { whyPassOn, type WhyPassedOn } from './a-request-waits-too-long';
+import { aRequestsHistory, recordIt } from './a-request-is-recorded';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { aLeaveRequest, leaveInWords, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
@@ -233,6 +234,7 @@ export class LeaveBoardService {
     if (row.userId === reader.userId || !decidesIt(now.who, { userId: reader.userId, role }, row.userId)) throw new ForbiddenException(LEAVE_REFUSED.notYours);
     if (row.status !== 'waiting') throw new BadRequestException(LEAVE_REFUSED.alreadyDecided);
     const approvedByIds = [...(row.approvedByIds ?? []), ...(outcome === 'approved' ? [reader.userId] : [])];
+    await recordIt(this.prisma, { organizationId: row.organizationId, suite: 'leave', ref: id, kind: outcome, byUserId: reader.userId, step: now.step, basis: { row: 'leave_requests', id } });
     if (outcome === 'approved' && !now.last) {
       const next = { ...row, step: now.step + 1, escalatedTo: 0, stepSince: new Date(), approvedByIds };
       await this.prisma.leaveRequest.update({ where: { id }, data: { step: next.step, escalatedTo: 0, stepSince: next.stepSince, approvedByIds } });
@@ -281,10 +283,32 @@ export class LeaveBoardService {
       if (!why) continue;
       const moved = { ...r, escalatedTo: n.next.at, stepSince: today };
       await this.prisma.leaveRequest.update({ where: { id: r.id }, data: { escalatedTo: n.next.at, stepSince: today } });
+      await recordIt(this.prisma, {
+        organizationId, suite: 'leave', ref: r.id, kind: 'escalated', step: n.now.step, toUserId: n.next.who.kind === 'admin' ? null : n.next.who.userId,
+        basis: { row: 'leave_requests', id: r.id, fromUserId: n.now.who.kind === 'admin' ? null : n.now.who.userId, ...why },
+      });
       await this.tellWhoDecides(moved, people, answers);
       out.push({ ref: r.id, step: n.now.step, from: n.now.who, to: n.next.who, why });
     }
     return out;
+  }
+
+  /**
+   * One request's record of who did what, in plain sentences (decision 85, build step 5), for the
+   * people who may already read it: the person who asked, an admin, a lead of their team, and whoever
+   * decides it now. Anybody else is told it was not found.
+   */
+  async history(reader: Reader, id: string): Promise<{ said: string[] }> {
+    const answers = await this.suiteAnswers(reader.organizationId);
+    const role = await this.roleOf(reader);
+    const row = (await this.prisma.leaveRequest.findUnique({ where: { id } })) as Row | null;
+    if (!row || row.organizationId !== reader.organizationId || !role) throw new NotFoundException(LEAVE_REFUSED.notFound);
+    const people = await this.directory(reader.organizationId, [row]);
+    const mayRead = row.userId === reader.userId || role === 'ADMIN'
+      || (role === 'LEAD' && (await this.theLeadsTeam(reader, people))(row.userId))
+      || (row.status === 'waiting' && decidesIt((await this.now(row, people, answers)).who, { userId: reader.userId, role }, row.userId));
+    if (!mayRead) throw new NotFoundException(LEAVE_REFUSED.notFound);
+    return aRequestsHistory(this.prisma, reader.organizationId, 'leave', id, reader.userId);
   }
 
   /** Whoever decides the step a request is on is told on WhatsApp (decision 82, item 1). */
@@ -309,7 +333,7 @@ export class LeaveBoardService {
    * A request for time off, as the engine will record it once the person has confirmed it
    * (docs/requests-to-engine.md, request 21). There is no route for it: nobody fills in a form.
    */
-  async ask(organizationId: string, userId: string, input: { startsOn: Day; endsOn: Day; standInUserId?: string | null }) {
+  async ask(organizationId: string, userId: string, input: { startsOn: Day; endsOn: Day; standInUserId?: string | null; proposalId?: string | null }) {
     await this.suiteAnswers(organizationId);
     const role = await this.roleOf({ userId, organizationId });
     if (!role || role === 'GUEST') throw new ForbiddenException(LEAVE_REFUSED.notInIt);
@@ -327,6 +351,8 @@ export class LeaveBoardService {
       data: { organizationId, userId, startsOn, endsOn, standInUserId: standIn },
       select: { id: true },
     });
+    /* One record of who did what (decision 85, build step 5): asked, after the say-back and the yes when there was one. */
+    if (created?.id) await recordIt(this.prisma, { organizationId, suite: 'leave', ref: created.id, kind: 'asked', byUserId: userId, basis: { row: 'leave_requests', id: created.id, ...(input.proposalId ? { proposalId: input.proposalId } : {}) } });
     /* Whoever decides the first step is told on WhatsApp too (decision 82, item 1). */
     if (this.told && created?.id) {
       await this.tellWhoDecides({ id: created.id, organizationId, userId, startsOn, endsOn, kind: 'annual', standInUserId: standIn, status: 'waiting', decidedById: null, decidedAt: null });

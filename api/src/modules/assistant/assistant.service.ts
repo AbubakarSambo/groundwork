@@ -2781,7 +2781,7 @@ export class AssistantService {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('ask_for_leave', text(LEAVE_NOTHING_WAITING));
     }
-    const say = await sendLeave(this.leave, this.prisma, { userId: person.linkedUserId, organizationId }, dates);
+    const say = await sendLeave(this.leave, this.prisma, { userId: person.linkedUserId, organizationId }, dates, { proposalId: parked.id });
     await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
     return rules('ask_for_leave', text(say));
   }
@@ -2823,7 +2823,7 @@ export class AssistantService {
     try {
       if (!this.timeSheets) throw new Error(HOURS_SUITE_OFF);
       const facts = await this.timeSheets.forChat(organizationId, person.linkedUserId);
-      await this.timeSheets.record(organizationId, person.linkedUserId, said.entries.map((e) => ({ client: e.client, onDay: said.onDay, hours: e.hours })));
+      await this.timeSheets.record(organizationId, person.linkedUserId, said.entries.map((e) => ({ client: e.client, onDay: said.onDay, hours: e.hours })), { proposalId: parked.id });
       reply = hoursSent(said, facts.approverFirstName);
     } catch (err: any) {
       reply = typeof err?.message === 'string' && err.message && err.message !== HOURS_SUITE_OFF ? `I could not send it. ${err.message}` : HOURS_SUITE_OFF;
@@ -2871,7 +2871,7 @@ export class AssistantService {
     try {
       if (!this.spending) throw new Error(SPEND_SUITE_OFF);
       const facts = await this.spending.checkForChat(organizationId, person.linkedUserId, said.amount);
-      await this.spending.ask(organizationId, person.linkedUserId, { amount: said.amount, what: said.what });
+      await this.spending.ask(organizationId, person.linkedUserId, { amount: said.amount, what: said.what, proposalId: parked.id });
       reply = spendingSent(said, facts.currency, facts.approverFirstName);
     } catch (err: any) {
       reply = typeof err?.message === 'string' && err.message && err.message !== SPEND_SUITE_OFF ? `I could not send it. ${err.message}` : SPEND_SUITE_OFF;

@@ -488,6 +488,9 @@ model Organization {
   customerStandings  CustomerStanding[]
   /// Equipment: who has which laptop, phone or demo freezer, and how it is (E10, U.17).
   equipmentItems     EquipmentItem[]
+  /// One record of who did what on a suite's request, and each change of a suite's rules (decision 85, build step 5).
+  suiteEvents        SuiteEvent[]
+  suiteRuleChanges   SuiteRuleChange[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -2817,6 +2820,54 @@ model OrganizationSuite {
 
   @@unique([organizationId, suite])
   @@map("organization_suites")
+}
+
+/// ONE RECORD OF WHO DID WHAT ON A SUITE'S REQUEST (decision 85, build step 5): asked (after the
+/// say-back and the yes), told, approved at a step, declined, passed on, started, decided. On what
+/// information is kept as references to rows only, never a copy of anybody's words.
+model SuiteEvent {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  /// leave, spend, time or reviews.
+  suite          String   @db.VarChar(16)
+  /// The request: a leave or spending request's id, a review's id, or for hours the person's sign-in and the week's Monday joined by "|".
+  ref            String   @db.VarChar(200)
+  /// asked, told, approved, declined, escalated, started or decided.
+  kind           String   @db.VarChar(16)
+  /// Who did it, by sign-in. Empty when Groundwork did it (telling, passing on).
+  byUserId       String?  @map("by_user_id")
+  /// Who it went to: who was told, or who it was passed to. Empty for any admin.
+  toUserId       String?  @map("to_user_id")
+  /// The approval step it happened at, from 0.
+  step           Int?
+  /// On what information, as references to rows only.
+  basis          Json?
+  at             DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, suite, ref, at])
+  @@map("suite_events")
+}
+
+/// EACH CHANGE OF A SUITE'S RULES (decision 85, build step 5): a suite switched on or off with its
+/// answers, who holds each duty, or the approval steps. `OrganizationSuite` keeps only the last.
+model SuiteRuleChange {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  /// The suite's key, or "duties", or "workflows".
+  suite          String   @db.VarChar(24)
+  changedById    String?  @map("changed_by_id")
+  changedAt      DateTime @default(now()) @map("changed_at")
+  /// What it was: { isOn, answers }, or nothing when it had never been set.
+  before         Json?
+  /// What it became: { isOn, answers }.
+  after          Json
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, changedAt])
+  @@map("suite_rule_changes")
 }
 
 /// The engine's text is written by the engine (docs/requests-to-engine.md, request 15), stored in

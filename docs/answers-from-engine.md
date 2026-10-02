@@ -2857,3 +2857,24 @@ Tests: `api/src/modules/suites/approval-steps-as-each-reader-reads-them.spec.ts`
   - Two more working days without Omar's answer: "Your leave from ... is waiting for an admin.", and on Grace's board "It is waiting for you." It stops there.
 
 Tests: `api/src/modules/suites/a-request-waits-too-long-as-each-reader-reads-it.spec.ts`. All but the two that show nothing moves without days set fail on the old code. No existing test changed.
+
+## One record of who did what on a request, read in plain sentences (3 October, decision 85, build step 5)
+
+**Every leave request, request to spend, week of hours and review now keeps who did what, and when, and it is served to the people who may already read the request** (this commit). Nothing already served changes.
+
+- **New routes**, each answering `{ said: string[] }`, oldest first:
+  - `GET /suites/leave/requests/:id/history`
+  - `GET /suites/spend/requests/:id/history`
+  - `GET /suites/time/weeks/:weekOf/people/:personId/history`
+  - `GET /suites/reviews/:id/history`
+- **Who may read it:** the person who asked, an admin, a lead of the person's team, and whoever decides it now; for a review, exactly whoever may open the review (`GET /suites/reviews/:id`). Anybody else gets "That request was not found." (for hours, "There are no hours here for you to read for that week."). Please show it under the request, on the leave, spending and time sheets boards and under the person's own requests, as a short list of sentences.
+- **What each reader reads**, for Aisha's leave, which Wairimu approved on 2 October and Omar in finance on 3 October:
+  - Aisha: "You asked for it on 1 October, after Groundwork said it back and you said yes." "Groundwork told Wairimu on WhatsApp on 1 October." "Wairimu approved it on 2 October." "Groundwork told Omar on WhatsApp on 2 October." "Omar approved it on 3 October." "Groundwork told you on WhatsApp on 3 October."
+  - Wairimu: "Aisha asked for it on 1 October, after Groundwork said it back and Aisha said yes." "Groundwork told you on WhatsApp on 1 October." "You approved it on 2 October." and the rest with names.
+  - A decline: "Wairimu declined it on 2 October."
+  - Passed on: "Groundwork passed it to Omar on 30 September, because Wairimu had not answered for 2 working days." (Wairimu reads "because you had not answered"). When the approver was on leave: "because Wairimu was on leave".
+  - Hours: "You sent these hours on 29 September, ..." and "Wairimu approved these hours on 30 September."
+  - A review: "Wairimu started the review on 1 October." "Wairimu decided the review on 5 October." Never a word of the review.
+- **What is kept**, in the new table `suite_events`: the suite, the request, what happened (asked, told, approved, declined, escalated, started, decided), who did it, who it went to, the step, when, and on what information as references to rows only (the request's id, the say-back the person said yes to, the WhatsApp message's name, a week's total in minutes). Never a copy of anybody's words.
+
+Tests: `api/src/modules/suites/who-did-what-as-each-reader-reads-it.spec.ts` (Aisha who asked, Wairimu her manager, Omar in finance, Grace the admin, Miriam a colleague, Tomas a guest). All fail on the old code. Three existing tests changed, because the yes in Ask Groundwork now passes the say-back's reference on to the suite: `hours-and-spending-through-ask-groundwork.spec.ts` (two lines), `organisation-memory-and-leave-through-ask-groundwork.spec.ts` and `a-roster-entry-matched-by-email-asks-and-approves.spec.ts` now expect `proposalId` in the call.

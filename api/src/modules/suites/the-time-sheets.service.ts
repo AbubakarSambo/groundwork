@@ -5,6 +5,7 @@ import { inTheLeadsTeam } from './a-leads-team';
 import { whoApprovesFor } from './who-approves';
 import { couldBeNamed, decidesIt, everyRuleIn, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
+import { aRequestsHistory, recordIt } from './a-request-is-recorded';
 import type { PassedOn } from './the-leave-board.service';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { anHoursRequest, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
@@ -18,6 +19,7 @@ export const TIME_REFUSED = {
   notInIt: 'Only people in this organisation have time sheets here.',
   notYours: 'Only the person who approves these hours can approve them.',
   nothingToApprove: 'There are no hours to approve for that week.',
+  nothingToRead: 'There are no hours here for you to read for that week.',
   onlyAnAdmin: 'Only an admin can say what each client agreed.',
   notAClient: 'That is not one of the clients or projects on the list.',
   badHours: 'Give a day and between a quarter of an hour and 24 hours for it.',
@@ -210,6 +212,7 @@ export class TimeSheetsService {
     if (total === 0) throw new BadRequestException(TIME_REFUSED.nothingToApprove);
     const where = { organizationId_userId_weekOf: { organizationId: reader.organizationId, userId: personId, weekOf: monday } };
     const approvedByIds = [...state.approvedByIds, reader.userId];
+    await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'time', ref: `${personId}|${dayOf(monday)}`, kind: 'approved', byUserId: reader.userId, step: now.step, basis: { row: 'time_entries', minutes: total } });
     if (!now.last && !state.approved) {
       const next = { step: now.step + 1, escalatedTo: 0, stepSince: new Date(), seenMinutes: total, approvedByIds };
       await this.prisma.timeWeek.upsert({
@@ -227,6 +230,31 @@ export class TimeSheetsService {
     });
     await this.tellThePerson(reader.organizationId, personId, monday, entries as Entry[], reader.userId);
     return this.board(reader, today);
+  }
+
+  /**
+   * One week's record of who did what, in plain sentences (decision 85, build step 5), for the people
+   * who may already read those hours: the person, an admin, a lead of their team, and whoever approves
+   * them now. Anybody else is told there are no hours to read.
+   */
+  async history(reader: Reader, personId: string, weekOf: Day): Promise<{ said: string[] }> {
+    const answers = await this.suiteAnswers(reader.organizationId);
+    const role = await this.roleOf(reader);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(weekOf ?? '') || !role) throw new NotFoundException(TIME_REFUSED.nothingToRead);
+    const monday = mondayOf(atMidnight(weekOf));
+    const people = await this.directory(reader.organizationId, [personId]);
+    let mayRead = personId === reader.userId || role === 'ADMIN' || (role === 'LEAD' && (await this.theLeadsTeam(reader, people))(personId));
+    if (!mayRead) {
+      const entries = await this.prisma.timeEntry.findMany({
+        where: { organizationId: reader.organizationId, userId: personId, onDay: { gte: monday, lt: new Date(monday.getTime() + 7 * DAY) } },
+        select: { minutes: true },
+      });
+      const total = entries.reduce((t, e) => t + e.minutes, 0);
+      const state = weekStateOf(await this.weekRow(reader.organizationId, personId, monday), total);
+      mayRead = total > 0 && !state.approved && decidesIt((await this.now(reader.organizationId, personId, people, answers, state)).who, { userId: reader.userId, role }, personId);
+    }
+    if (!mayRead) throw new NotFoundException(TIME_REFUSED.nothingToRead);
+    return aRequestsHistory(this.prisma, reader.organizationId, 'time', `${personId}|${dayOf(monday)}`, reader.userId);
   }
 
   /** Who a week of hours waits for now, in words ("Omar in finance"), or null when it no longer waits. */
@@ -288,6 +316,10 @@ export class TimeSheetsService {
         where: { organizationId_userId_weekOf: { organizationId, userId, weekOf: monday } },
         create: { organizationId, userId, weekOf: monday, approvedMinutes: null, approvedById: null, approvedAt: null, ...moved },
         update: moved,
+      });
+      await recordIt(this.prisma, {
+        organizationId, suite: 'time', ref: k, kind: 'escalated', step: n.now.step, toUserId: n.next.who.kind === 'admin' ? null : n.next.who.userId,
+        basis: { row: 'time_entries', minutes: total, fromUserId: n.now.who.kind === 'admin' ? null : n.now.who.userId, ...why },
       });
       await this.tellWhoApproves(organizationId, userId, monday, es, { ...state, escalatedTo: n.next.at }, answers);
       out.push({ ref: k, step: n.now.step, from: n.now.who, to: n.next.who, why });
@@ -358,7 +390,7 @@ export class TimeSheetsService {
    * Hours somebody gave, as the engine will record them once the person has confirmed them
    * (docs/requests-to-engine.md, request 22). There is no route: "There is no grid to fill in."
    */
-  async record(organizationId: string, userId: string, entries: { client: string; onDay: Day; hours: number }[]) {
+  async record(organizationId: string, userId: string, entries: { client: string; onDay: Day; hours: number }[], said: { proposalId?: string | null } = {}) {
     const answers = await this.suiteAnswers(organizationId);
     const role = await this.roleOf({ userId, organizationId });
     if (!role || role === 'GUEST') throw new ForbiddenException(TIME_REFUSED.notInIt);
@@ -371,6 +403,11 @@ export class TimeSheetsService {
     });
     if (!rows.length) throw new BadRequestException(TIME_REFUSED.badHours);
     await this.prisma.timeEntry.createMany({ data: rows });
+    /* One record of who did what (decision 85, build step 5): sent, for each week, after the say-back and the yes when there was one. */
+    for (const w of new Set(rows.map((r) => dayOf(mondayOf(r.onDay))))) {
+      const minutes = rows.filter((r) => dayOf(mondayOf(r.onDay)) === w).reduce((t, r) => t + r.minutes, 0);
+      await recordIt(this.prisma, { organizationId, suite: 'time', ref: `${userId}|${w}`, kind: 'asked', byUserId: userId, basis: { row: 'time_entries', minutes, ...(said.proposalId ? { proposalId: said.proposalId } : {}) } });
+    }
     /* Whoever approves the first step is told on WhatsApp too (decision 82, item 1): changed hours start again there. */
     if (this.told) {
       try {
