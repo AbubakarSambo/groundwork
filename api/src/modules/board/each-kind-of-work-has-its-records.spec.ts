@@ -118,6 +118,8 @@ describe('a sales check-in: deals and their stages', () => {
           saidBy: 'Rukia', saidByParticipantId: 'p-rukia',
           known: 'said', knownSays: 'Someone said it.', mark: 'memory', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
           lastSaidOn: null, group: 'won', groupSays: 'It rests on what somebody said, with no proof yet. No date has been given for it. Nobody has spoken about it in a check-in yet. Nobody has said what happens next.',
+          /* Request 115 (b): its value as said, the days it was spoken about, and the owner's own read where there is one. */
+          value: 'KES 90K', valueSays: null, contactHistory: [], contactHistorySays: 'Each date is a day somebody spoke about this deal in a check-in. Nothing on record holds each contact with the customer.', theirRead: null,
         },
         {
           id: 'w-2', kind: 'deal', name: 'Eastside Foods', stage: 'Qualified', owner: 'Baraka Otieno', ownerParticipantId: 'p-baraka',
@@ -125,11 +127,13 @@ describe('a sales check-in: deals and their stages', () => {
           saidBy: 'Baraka', saidByParticipantId: 'p-baraka',
           known: 'said', knownSays: 'Someone said it.', mark: 'said', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
           lastSaidOn: null, group: 'possible', groupSays: 'It rests on what somebody said, with no proof yet. No date has been given for it. Nobody has spoken about it in a check-in yet. Nobody has said what happens next.',
+          value: null, valueSays: 'Nobody has said what this deal is worth yet.', contactHistory: [], contactHistorySays: 'Each date is a day somebody spoke about this deal in a check-in. Nothing on record holds each contact with the customer.', theirRead: null,
         },
         {
           id: 'w-3', kind: 'deal', name: 'Karen Butchery', stage: 'Contacted', owner: null, ownerParticipantId: null, due: null, fields: {}, from: 'lead', saidBy: null, saidByParticipantId: null,
           known: 'lead', knownSays: 'You added it on the board.', mark: 'none', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
           lastSaidOn: null, group: 'possible', groupSays: 'It was added on the board, not said in a check-in. No date has been given for it. Nobody has spoken about it in a check-in yet. Nobody has said what happens next.',
+          value: null, valueSays: 'Nobody has said what this deal is worth yet.', contactHistory: [], contactHistorySays: 'Each date is a day somebody spoke about this deal in a check-in. Nothing on record holds each contact with the customer.', theirRead: null,
         },
       ],
       /* Request 112 (a): each deal in its group, from its own record. This check-in has no end date. */

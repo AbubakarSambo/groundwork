@@ -14,6 +14,7 @@ import { whereThisIsHeading } from './where-this-is-heading';
 import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
 import { toCloseTheGap } from './to-close-the-gap';
+import { theValueOf, theContactHistory, theirReadInTheirWords, NO_VALUE_SAID, WHAT_CONTACT_HISTORY_IS } from './a-deal-row-from-its-record';
 import { helpNobodyMentioned } from './help-nobody-mentioned';
 
 /** Said where the prototype has "Open issues" (request 115 c): what the record would need to hold. */
@@ -2074,6 +2075,52 @@ export class BoardService {
             return pid ? (nameOf(pid) ?? aColleague(pid)) : 'Somebody';
           }),
         });
+      }
+      /*
+       * WHAT A DEAL ROW NEEDS (request 115 b): its value, the days it was spoken about, and the rep's own read in
+       * their words, only from the record, and only from people whose words this reader may read: their own,
+       * or everybody's for whoever runs it and an admin outside an evaluation check-in, or where people see
+       * each other and this reader's board is not only their own. See a-deal-row-from-its-record.
+       */
+      if (kind === 'sales org' && rows.some((r) => r.kind === 'deal')) {
+        const readsEveryonesWords = runsIt || (adminHere && !isEvaluationCheckIn(ground.scenario))
+          || (!whoMaySee.peersHidden && !colleaguesWordsWalled && !aParticipantOnly);
+        const mayReadTheWordsOf = (pid: string | null | undefined) => !!pid && (pid === me?.id || readsEveryonesWords);
+        const everyLine = ((await (this.prisma.recordEntry.findMany({
+          where: { disputedAt: null, participant: { groundId } } as any,
+          select: { id: true, text: true, participantId: true, createdAt: true, disputedAt: true, ...WHAT_A_MARK_READS } as any,
+        }) as Promise<any[]>).catch(() => [] as any[])) ?? []) as any[];
+        const readableRows = everyLine.filter((l) => !l.disputedAt && mayReadTheWordsOf(l.participantId));
+        const whoAddedEach = await whoAddedEachBackingDocument(this.prisma, readableRows).catch(() => new Map<string, string | null>());
+        const readable = readableRows
+          .map((l) => ({ id: l.id, participantId: l.participantId, text: cleanText(l.text ?? ''), createdAt: l.createdAt, mark: theRecordsMark(theMarkOf({ ...l, text: cleanText(l.text ?? '') }, whoAddedEach)) as string }));
+        const owners = [...new Set(rows.filter((r) => r.kind === 'deal' && mayReadTheWordsOf(r.ownerParticipantId)).map((r) => r.ownerParticipantId as string))];
+        const ownersCheckIns = (checkIns as any[]).filter((c) => owners.includes(c.participantId)).map((c) => c.id);
+        const turns = ownersCheckIns.length
+          ? (((await (this.prisma as any).conversationTurn?.findMany?.({
+            where: { checkInId: { in: ownersCheckIns }, role: 'PERSON' },
+            select: { checkInId: true, content: true, createdAt: true },
+            orderBy: { createdAt: 'asc' },
+          })?.catch?.(() => [])) ?? []) as any[])
+          : [];
+        const ownerOfCheckIn = new Map((checkIns as any[]).map((c) => [c.id, c.participantId]));
+        for (const r of rows) {
+          if (r.kind !== 'deal') continue;
+          const value = theValueOf(r.fields);
+          r.value = value;
+          r.valueSays = value ? null : NO_VALUE_SAID;
+          r.contactHistory = theContactHistory(r.name, readable, now);
+          r.contactHistorySays = WHAT_CONTACT_HISTORY_IS;
+          const theirs = mayReadTheWordsOf(r.ownerParticipantId)
+            ? turns.filter((t) => ownerOfCheckIn.get(t.checkInId) === r.ownerParticipantId).map((t) => String(t.content ?? ''))
+            : [];
+          const words = theirs.length ? theirReadInTheirWords(r.name, theirs) : null;
+          r.theirRead = words && r.owner
+            ? (r.ownerParticipantId === me?.id
+              ? { who: 'You', words, says: 'Your read, in your own words.' }
+              : { who: r.owner, words, says: `${r.owner}'s read, in their own words.` })
+            : null;
+        }
       }
       out.workRecords = theRecordSections(kind, (ground as any).workStages, rows);
     }

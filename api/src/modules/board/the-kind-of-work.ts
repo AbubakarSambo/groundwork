@@ -177,6 +177,14 @@ export interface AServedRecord {
   next?: string | null;
   nextKnown?: 'said' | null;
   nextSays?: string;
+  /** What it is worth, where somebody said (request 115 b), and the sentence where nobody has. */
+  value?: string | null;
+  valueSays?: string | null;
+  /** Each day somebody spoke about it in a check-in, newest first, and what those dates are. */
+  contactHistory?: { on: string; how: 'with proof' | 'in their words'; says: string }[];
+  contactHistorySays?: string;
+  /** The owner's own latest sentence that names it, word for word, where this reader may read their words. */
+  theirRead?: { who: string; words: string; says: string } | null;
 }
 
 export type AServedSection =
