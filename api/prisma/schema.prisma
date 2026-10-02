@@ -2803,6 +2803,11 @@ model Suggestion {
   decidedById    String?   @map("decided_by_id")
   decidedAt      DateTime? @map("decided_at")
 
+  /// WHEN THE PERSON CAUGHT UP (decision 75, item 24). Set when, before anyone decided, they are back at or
+  /// above the threshold that reached this suggestion; cleared if they fall below it again before a decision.
+  /// The original facts are never rewritten. Frozen once decided.
+  caughtUpAt DateTime? @map("caught_up_at")
+
   /// THE PERSON'S SIDE, in their own words. The lead reads it beside the facts.
   theirSide   String?   @map("their_side") @db.Text
   theirSideAt DateTime? @map("their_side_at")

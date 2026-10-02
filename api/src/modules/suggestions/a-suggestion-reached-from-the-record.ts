@@ -120,3 +120,16 @@ export function aSuggestionFromTheRecord(
     whatWouldChangeItForThem: `Keeping at least ${theLine} of your commitments in this check-in over the next four weeks.`,
   };
 }
+
+/**
+ * WHETHER THE PERSON IS BACK AT OR ABOVE THE LINE (decision 75, item 24, on decision 61's threshold). True when
+ * at least as many commitments are settled as the threshold needs and the share kept is at or above its line;
+ * false when they are settled and still below it; null when there is too little to tell, or no threshold, in
+ * which case nothing about a suggestion already reached is changed.
+ */
+export function backAtTheLine(record: Pick<TheRecordForOnePerson, 'commitmentsSettledRecently'>, thresholds: SuggestionThresholds): boolean | null {
+  const threshold = thresholdFor(thresholds, 'support');
+  const kl = record.commitmentsSettledRecently;
+  if (!threshold || !kl || kl.of < threshold.overPeriods || kl.of <= 0) return null;
+  return kl.kept / kl.of >= threshold.keptBelow;
+}

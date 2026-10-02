@@ -1,3 +1,5 @@
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+
 /**
  * A VERDICT, TOLD LIKE A SIGNAL (C3, U.13; docs/decisions.md rule 6).
  *
@@ -67,6 +69,8 @@ export interface SuggestionRow {
   appealReason: string | null;
   appealDecidedById: string | null;
   appealDecidedAt: Date | string | null;
+  /** When the person caught up before anyone decided (decision 75, item 24). Null when they have not. */
+  caughtUpAt?: Date | string | null;
   createdAt: Date | string;
 }
 
@@ -84,6 +88,21 @@ export interface WhoIsWho {
 }
 
 const iso = (d: Date | string | null | undefined): string | null => (d ? new Date(d).toISOString() : null);
+
+/**
+ * THE PERSON HAS CAUGHT UP SINCE THIS WAS SUGGESTED (decision 75, item 24). The suggestion keeps the facts it
+ * was reached on, which the person first read, and is never rewritten. But if, before anyone decided, the person
+ * is back at or above the line that reached it, every reader of it is told so, in a plain sentence with the date.
+ * The lead and an admin read it with no count behind it (decision 53); the person reads it as "you".
+ */
+export function theyCaughtUp(row: Pick<SuggestionRow, 'caughtUpAt'>, who: Pick<WhoIsWho, 'aboutName'>, as: 'lead' | 'person' | 'admin'): string | null {
+  if (!row.caughtUpAt) return null;
+  const on = whenItWas(row.caughtUpAt, 'weekdayAndDay');
+  if (!on) return null;
+  return as === 'person'
+    ? `You have caught up since this was suggested. Since ${on}, you have kept as many of your commitments in this check-in as Groundwork looks for.`
+    : `${who.aboutName} has caught up since this was suggested. Since ${on}, ${who.aboutName} has kept as many of the commitments made in this check-in as Groundwork looks for.`;
+}
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -161,6 +180,8 @@ export interface ForTheLead {
   appealDecision: TheAppealDecision | null;
   /** The lead may change their decision until it is appealed. */
   mayChangeTheDecision: boolean;
+  /** "Kwame has caught up since this was suggested. ..." when he did before anyone decided (item 24). */
+  caughtUp: string | null;
   /**
    * DECISION 56, ITEM 3. Set only where this suggestion is about somebody with a goal the lead has
    * written and not told them about yet - wherever an untold goal counts against the person, the
@@ -187,6 +208,7 @@ export function forTheLead(row: SuggestionRow, who: WhoIsWho): ForTheLead {
     appeal: row.appeal ? { says: row.appeal, at: iso(row.appealedAt) } : null,
     appealDecision: theAppealDecision(row, who),
     mayChangeTheDecision: !row.appeal,
+    caughtUp: theyCaughtUp(row, who, 'lead'),
   };
 }
 
@@ -203,6 +225,8 @@ export interface ForThePerson {
   appealDecision: TheAppealDecision | null;
   /** An appeal can be made once, and only once there is a decision. */
   mayAppeal: boolean;
+  /** "You have caught up since this was suggested. ..." when they did before anyone decided (item 24). */
+  caughtUp: string | null;
 }
 
 export function forThePerson(row: SuggestionRow, who: WhoIsWho): ForThePerson {
@@ -217,6 +241,7 @@ export function forThePerson(row: SuggestionRow, who: WhoIsWho): ForThePerson {
     yourAppeal: row.appeal ? { says: row.appeal, at: iso(row.appealedAt) } : null,
     appealDecision: theAppealDecision(row, who),
     mayAppeal: !!row.decision && !row.appeal,
+    caughtUp: theyCaughtUp(row, who, 'person'),
   };
 }
 
@@ -240,6 +265,8 @@ export interface ForAnAdmin {
   appealDecision: TheAppealDecision | null;
   /** False when this admin made the decision being appealed: somebody else decides. */
   mayDecide: boolean;
+  /** As the lead reads it, when the person caught up before anyone decided (item 24). */
+  caughtUp: string | null;
 }
 
 export function forAnAdmin(row: SuggestionRow, who: WhoIsWho, readerId: string): ForAnAdmin | null {
@@ -258,5 +285,6 @@ export function forAnAdmin(row: SuggestionRow, who: WhoIsWho, readerId: string):
     appeal: { says: row.appeal, at: iso(row.appealedAt) },
     appealDecision: theAppealDecision(row, who),
     mayDecide: !row.appealOutcome && row.decidedById !== readerId,
+    caughtUp: theyCaughtUp(row, who, 'admin'),
   };
 }
