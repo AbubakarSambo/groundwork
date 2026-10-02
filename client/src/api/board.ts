@@ -270,7 +270,9 @@ export type BoardPresent = {
   coverage?: {
     scope: string
     reads: {
-      participantId: string; name: string | null; scope: string; pct: number
+      /** Request 111 (a): a score of where a person's work lands stays removed - the engine does
+          not always send this any more, so the bar variant only draws when it is a real number. */
+      participantId: string; name: string | null; scope: string; pct?: number
       kind: 'LEAKING' | 'ABSORBING' | 'STABLE'; trend: string; what: string
       reason: string; reasonText: string; ownVoice: string | null
       coupledToBlocker: boolean; remitDefined: boolean

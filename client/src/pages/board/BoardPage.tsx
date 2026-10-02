@@ -2993,7 +2993,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     </span>
                   </div>
 
-                  {b.coverageVariant === 'bar' && r.remitDefined && (
+                  {/*
+                    REQUEST 111 (a): A SCORE OF WHERE A PERSON'S WORK LANDS STAYS REMOVED. `pct` is
+                    typed as a plain `number`, but the engine no longer always sends one - drawing a
+                    bar from `undefined` drew a 0%-wide sliver that read as a verdict with nothing
+                    behind it (CLAUDE.md: no score or label shown on a person). A row with no `pct`
+                    now draws exactly as the text-only variant does - nothing invented in its place.
+                  */}
+                  {b.coverageVariant === 'bar' && r.remitDefined && typeof r.pct === 'number' && (
                     <div className="gwui-mt-9" style={{height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden'}}>
                       <div style={{height: '100%', width: `${r.pct}%`, borderRadius: 6, background: r.kind === 'LEAKING' ? 'var(--gw-amber-b)' : r.kind === 'ABSORBING' ? 'var(--gw-navy)' : 'var(--gw-muted)'}} />
                     </div>
