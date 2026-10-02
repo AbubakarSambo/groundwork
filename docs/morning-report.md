@@ -120,7 +120,11 @@ The rest of request 117 on the sales board is stored rows on the screens workspa
 
 **The lead's read of a handoff says only what is true** (`1973482c`; 5,003 tests pass). Before: "the schema sign-off - 20 days with Tom, blocking. Tom has been told - it was raised automatically once it passed 14 days." Now: "Priya has been waiting on Tom for the schema sign-off since 12 May. They have said it stops their work. Groundwork raised it on 26 May, after it had been open for 14 days. That posts a notice to your organisation's own connected tools, where there are any. It does not tell Tom directly. If it is still open, ask Tom what they need in order to finish it, rather than whether they will."
 
-Now running: run-25 on `4090223b`, and the rest of that read made plain (late and undated commitments, findings). Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**The rest of the lead's read is plain** (`2d5f3b3f`; 5,010 tests pass). "Send the migration plan. - due 9 days ago, still open." now reads "Priya promised "Send the migration plan" by 23 May, and it is still open." "A STALLED OBJECTIVE finding, 5 days old." now reads "Groundwork first raised "stalled objective" on 27 May, and nothing more was written about it." Two wordings had no prototype to copy, so they are the helper's own: "Priya's next check-in asks them to put a date on it", which mixes a name with "them", and the finding's key put into words.
+
+**Decision 85, the suites as one workflow layer, recorded.** The comparison of each suite with the seven layers is running. Four points meet earlier decisions and wait for Hafsah: counts in the manager's review briefing (decision 53), patterns about one person (decision 74), the chief executive seeing individual records (decision 73), and calendar and payment-system connections.
+
+Now running: run-25 on `4090223b`, and the suites compared with the seven layers. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 

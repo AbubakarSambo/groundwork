@@ -50,11 +50,11 @@ From now on, every change to what the board, reports or Today page send is writt
 - The API did not start from `4baeb646` (two files importing each other). *Done* (`4090223b`), with a test that builds the whole app.
 - Ask Groundwork named people by email and answered in clipped lines. *Done* (`856d0cbd`, `bc7aa385`).
 - Waits taken further could never show in "where am I needed". *Done* (`72e9b0a6`), shown only to whoever runs that check-in.
-- The lead's "<who> has been told" sentence is untrue. *Done* (`1973482c`). The rest of that read (late and undated commitments, findings) made plain: *in progress*.
+- The lead's "<who> has been told" sentence is untrue. *Done* (`1973482c`). The rest of that read made plain too (`2d5f3b3f`).
 - A scenario run (run-25) to measure requests 117 and 118's model-written changes against the baseline. *In progress.*
 
 **d2. The suites as one request and workflow layer (decision 85, 3 October)**
-- Compare leave, spending and payments, timesheets and performance reviews with the seven layers, suite by suite, and list what exists, what is partly there and what is missing. *Not started.*
+- Compare leave, spending and payments, timesheets and performance reviews with the seven layers, suite by suite, and list what exists, what is partly there and what is missing. *In progress* (`docs/suites-against-the-workflow-model.md`).
 - Then build the missing parts in this order: approvers by rule and escalation; who sees what by record, field and action, with an audit record; leave's manager view (balance, who else is away, what the person owns in those days); spending thresholds, finance verifying, exporting and marking paid; timesheets drafted from the record; the review as the record interpreted, with the person correcting it; and the conversational setup. *Not started.*
 - The parts that meet decisions 53, 73 and 74 wait for Hafsah.
 
