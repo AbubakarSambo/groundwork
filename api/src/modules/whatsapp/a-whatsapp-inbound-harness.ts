@@ -54,6 +54,8 @@ export function anInboundHarness(opts: {
     sendListFor: jest.fn(async (_org: string, _to: string, _body: string, _rows: any[], asText: string) => { said.push(asText); return true; }),
     sendListOn: jest.fn(async (_via: string, _org: string, _to: string, _body: string, _rows: any[], asText: string) => { said.push(asText); return true; }),
     fetchMediaFor: jest.fn(async () => null),
+    fetchMediaOn: jest.fn(async () => null),
+    lastWroteTo: jest.fn(async () => null),
   };
   const conversation: any = {
     open: jest.fn(async () => ({ reply: 'What moved since last time?' })),

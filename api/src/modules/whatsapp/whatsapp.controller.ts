@@ -83,7 +83,8 @@ export class WhatsAppController {
       if (!message?.from) return { received: true };
       const fromNumber: string = message.from;
       const organizationId = await this.whichOrganisation(fromNumber, message);
-      if (organizationId) await this.inbound.handle(organizationId, body);
+      /* Written to Groundwork's number, so every reply goes back on Groundwork's number (survey item 8). */
+      if (organizationId) await this.inbound.handle(organizationId, body, 'ours');
     } catch (err: any) {
       /*
        * SILENCE IS THE ONE OUTCOME THIS CHANNEL CANNOT PRODUCE. A spent balance, a paused ground, an

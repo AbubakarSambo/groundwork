@@ -28,6 +28,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
 import { aLocalForm, callingCodeOf, formsOfTheSameNumber, tidyANumber } from './a-number-whatsapp-can-reach';
 import { theCountryCodeOf, tidyANumberFor } from './the-organisations-country';
+import { WhichNumber, inboundKeysFrom, whichNumberOf } from './one-number-per-conversation';
 import { ATemplate, insideTheServiceWindow, isBusinessInitiated, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP } from './a-message-outside-the-window';
 
 /**
@@ -221,7 +222,7 @@ export class WhatsAppService {
 
   /** Our own number, once the add-on and the limit have said it may go. */
   private async sendOnOurNumber(org: string | null, to: string, text: string, context: SendContext): Promise<SendResult> {
-    const gate = await this.mayInitiate(null, to, context);
+    const gate = await this.mayInitiate(org, to, context, 'ours');
     if (!gate.free) {
       if (gate.template) return this.sendTemplate(this.config.get<string>('whatsapp.phoneNumberId') ?? '', this.config.get<string>('whatsapp.accessToken') ?? '', org, to, text, gate.template, context);
       const result: SendResult = { sent: false, error: gate.because };
@@ -317,7 +318,7 @@ export class WhatsAppService {
     if (held) return held;
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
     if (!own || !own.enabled) return this.sendOnOurNumber(organizationId, to, text, context);
-    const gate = await this.mayInitiate(organizationId, to, context);
+    const gate = await this.mayInitiate(organizationId, to, context, 'theirs');
     if (!gate.free) {
       if (gate.template) return this.sendTemplate(own.phoneNumberId, own.accessToken, organizationId, to, text, gate.template, context);
       const result: SendResult = { sent: false, error: gate.because };
@@ -328,6 +329,58 @@ export class WhatsAppService {
     if (result.sent) await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } }).catch(() => undefined);
     this.writeItDown(organizationId, to, result, context);
     return this.counted(organizationId, result);
+  }
+
+  /**
+   * A REPLY GOES FROM THE NUMBER THE PERSON WROTE TO (survey item 8). `theirs` is the organisation's
+   * own number, falling back to ours when it has none; `ours` is Groundwork's number, even for an
+   * organisation that has its own, because that is the number this person is talking to.
+   */
+  async sendOn(via: WhichNumber, organizationId: string, phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
+    if (via === 'theirs') return this.sendFor(organizationId, phoneNumber, text, context);
+    const to = await this.reachable(organizationId, phoneNumber);
+    const held = await this.heldFor(organizationId, to, context);
+    if (held) return held;
+    return this.sendOnOurNumber(organizationId, to, text, context);
+  }
+
+  /** The list of check-ins, on the number the person wrote to. Our number sends the numbered text. */
+  async sendListOn(via: WhichNumber, organizationId: string, phoneNumber: string, body: string, rows: { id: string; title: string; description: string }[], fallbackText: string): Promise<boolean> {
+    if (via === 'theirs') return this.sendListFor(organizationId, phoneNumber, body, rows, fallbackText);
+    return (await this.sendOn('ours', organizationId, phoneNumber, fallbackText, { kind: 'which-one' })).sent;
+  }
+
+  /** A file the person sent, fetched with the token of the number they sent it to. */
+  async fetchMediaOn(via: WhichNumber, organizationId: string, mediaId: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
+    return this.fetchMediaFor(via === 'theirs' ? organizationId : null, mediaId);
+  }
+
+  /**
+   * WHICH NUMBER THIS PERSON LAST WROTE TO, read from the claim on the last message they sent. Null
+   * when nothing they sent was claimed with its number.
+   */
+  async lastWroteTo(organizationId: string, phoneNumber: string): Promise<WhichNumber | null> {
+    const phone = WhatsAppService.normalize(phoneNumber);
+    const last = await this.prisma.whatsAppInboundMessage
+      .findFirst({
+        where: { organizationId, OR: [{ messageId: { startsWith: inboundKeysFrom('ours', phone) } }, { messageId: { startsWith: inboundKeysFrom('theirs', phone) } }] },
+        orderBy: { handledAt: 'desc' },
+        select: { messageId: true },
+      })
+      .catch(() => null);
+    return whichNumberOf(last?.messageId);
+  }
+
+  /** When this person last wrote to this one number. */
+  private async lastWroteOn(via: WhichNumber, organizationId: string | null, to: string): Promise<Date | null> {
+    const last = await this.prisma.whatsAppInboundMessage
+      ?.findFirst({
+        where: { ...(organizationId ? { organizationId } : {}), messageId: { startsWith: inboundKeysFrom(via, to) } },
+        orderBy: { handledAt: 'desc' },
+        select: { handledAt: true },
+      })
+      .catch(() => null);
+    return last?.handledAt ?? null;
   }
 
   /**
@@ -361,8 +414,8 @@ export class WhatsAppService {
    * organisation's own token in two steps, the second signed the same way. Ten megabytes is the
    * document pipeline's own ceiling.
    */
-  async fetchMediaFor(organizationId: string, mediaId: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
-    const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
+  async fetchMediaFor(organizationId: string | null, mediaId: string): Promise<{ buffer: Buffer; mimeType: string } | null> {
+    const own = organizationId ? await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null) : null;
     const token = own?.accessToken ?? this.config.get<string>('whatsapp.accessToken');
     if (!token) return null;
     try {
@@ -391,7 +444,7 @@ export class WhatsAppService {
    * approved template or is recorded as not sent, with the reason - checked before anything is
    * composed or paid for. See a-message-outside-the-window.ts.
    */
-  private async mayInitiate(organizationId: string | null, to: string, context: SendContext): Promise<{ free: true } | { free: false; template: ATemplate | null; because: string }> {
+  private async mayInitiate(organizationId: string | null, to: string, context: SendContext, via: WhichNumber): Promise<{ free: true } | { free: false; template: ATemplate | null; because: string }> {
     if (!isBusinessInitiated(context.kind)) return { free: true };
     const person = await this.prisma.person
       .findFirst({
@@ -401,7 +454,18 @@ export class WhatsAppService {
       })
       .catch(() => null);
     if (person?.whatsappStoppedAt) return { free: false, template: null, because: THEY_SAID_STOP };
-    if (insideTheServiceWindow(person?.whatsappLastInboundAt)) return { free: true };
+    /*
+     * THE WINDOW IS PER BUSINESS NUMBER (survey item 8). When the organisation has a number of its
+     * own, two numbers are in play, and a message the person wrote to one does not open the window
+     * on the other: only what they wrote to THIS number counts. With only our number in play, the
+     * person's own stamp is the same thing, and is what older messages carry.
+     */
+    const ownNumber = organizationId
+      ? await this.prisma.whatsAppConnection?.findUnique({ where: { organizationId }, select: { enabled: true } }).catch(() => null)
+      : null;
+    const onThisNumber = await this.lastWroteOn(via, organizationId, to);
+    const lastWrote = ownNumber?.enabled ? onThisNumber : (onThisNumber ?? person?.whatsappLastInboundAt);
+    if (insideTheServiceWindow(lastWrote)) return { free: true };
     return { free: false, template: templateFor(context.kind, await this.approvedFor(organizationId)), because: OUTSIDE_THE_WINDOW };
   }
 

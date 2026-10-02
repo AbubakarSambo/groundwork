@@ -19,6 +19,7 @@ import { asATextMessage } from './a-reply-reads-as-a-text-message';
 import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING } from '../whatsapp/a-message-outside-the-window';
 import { keptOffThePhone, answerItInTheApp } from '../whatsapp/a-check-in-kept-off-the-phone';
+import { WhichNumber, anInboundKey } from '../whatsapp/one-number-per-conversation';
 import {
   aStrangerHearsNothing, NOT_ONE_OF_YOURS, type WhatCameBack, type WhoHoldsTheNumber,
 } from './their-number-stays-theirs';
@@ -49,19 +50,24 @@ export class WhatsAppForAnOrganisationService {
     private readonly anthropic: AnthropicService,
   ) {}
 
-  async handle(organizationId: string, body: any): Promise<void> {
+  /**
+   * `via` is the number the message came in on: `theirs` (the organisation's own, the default) or
+   * `ours` (Groundwork's). Every reply goes back on that same number (survey item 8).
+   */
+  async handle(organizationId: string, body: any, via: WhichNumber = 'theirs'): Promise<void> {
     const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
     if (!message) return;
     const from: string = message.from;
     if (!from) return;
-    /* A redelivery is not a second answer. The id is claimed before anything else happens. */
-    if (message.id && !(await this.firstTimeWeSeeThis(organizationId, String(message.id)))) return;
-    await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { lastInboundAt: new Date() } }).catch(() => undefined);
+    /* A redelivery is not a second answer. The id is claimed before anything else happens, with the
+       number it came in on, which is how the last number this person wrote to is known. */
+    if (message.id && !(await this.firstTimeWeSeeThis(organizationId, anInboundKey(via, WhatsAppService.normalize(from), String(message.id))))) return;
+    if (via === 'theirs') await this.prisma.whatsAppConnection.update({ where: { organizationId }, data: { lastInboundAt: new Date() } }).catch(() => undefined);
     await this.route(organizationId, from, whatArrived(message), {
       who: 'we do',
-      say: (text) => this.whatsapp.sendFor(organizationId, from, text),
-      list: (prompt, rows, asText) => this.whatsapp.sendListFor(organizationId, from, prompt, rows, asText),
-      fetchMedia: (mediaId) => this.whatsapp.fetchMediaFor(organizationId, mediaId),
+      say: (text) => this.whatsapp.sendOn(via, organizationId, from, text),
+      list: (prompt, rows, asText) => this.whatsapp.sendListOn(via, organizationId, from, prompt, rows, asText),
+      fetchMedia: (mediaId) => this.whatsapp.fetchMediaOn(via, organizationId, mediaId),
     });
   }
 
@@ -89,7 +95,7 @@ export class WhatsAppForAnOrganisationService {
      */
     const who = await this.whatsapp.whoIsWritingTo(organizationId, from).catch(() => ({ personId: null, userId: null } as any));
     if (!who.personId && !who.userId) return NOT_ONE_OF_YOURS;
-    if (messageId && !(await this.firstTimeWeSeeThis(organizationId, String(messageId)))) return { mine: true };
+    if (messageId && !(await this.firstTimeWeSeeThis(organizationId, anInboundKey('theirs', WhatsAppService.normalize(from), String(messageId))))) return { mine: true };
     await this.prisma.whatsAppConnection
       .update({ where: { organizationId }, data: { lastInboundAt: new Date() } })
       .catch(() => undefined);
@@ -348,10 +354,12 @@ export class WhatsAppForAnOrganisationService {
     text = await this.inTheirLanguage(text, row.participant.language);
     /* Retry the SEND, not the report. The synthesis, four polls and a translation are already paid for; a
        failed send is retried once with the text in hand rather than by running all of that again. */
-    const first = await this.whatsapp.sendFor(organizationId, phone, text, { checkInId: c.id, kind: 'report' });
+    /* On the number the person last wrote to, so the report arrives in the same conversation (survey item 8). */
+    const via = (await this.whatsapp.lastWroteTo(organizationId, phone).catch(() => null)) ?? 'theirs';
+    const first = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report' });
     if (!first.sent) {
       await new Promise((r) => setTimeout(r, 3000));
-      const second = await this.whatsapp.sendFor(organizationId, phone, text, { checkInId: c.id, kind: 'report-retry' });
+      const second = await this.whatsapp.sendOn(via, organizationId, phone, text, { checkInId: c.id, kind: 'report-retry' });
       if (!second.sent) this.logger.error(`The report for check-in ${c.id} could not be sent to WhatsApp twice: ${second.error ?? 'no detail'}`);
     }
   }

@@ -32,7 +32,9 @@ describe('the window', () => {
 describe('the service', () => {
   it('gates both senders before composing or paying, and records a message it did not send with the reason', () => {
     expect(service.match(/const gate = await this\.mayInitiate\(/g)?.length).toBe(2);
-    expect(service).toContain('if (insideTheServiceWindow(person?.whatsappLastInboundAt)) return { free: true };');
+    /* Measured on the number the message goes from (survey item 8); the person's own stamp only where ours is the only number. */
+    expect(service).toContain('if (insideTheServiceWindow(lastWrote)) return { free: true };');
+    expect(service).toContain('const lastWrote = ownNumber?.enabled ? onThisNumber : (onThisNumber ?? person?.whatsappLastInboundAt);');
     expect(service).toContain('because: OUTSIDE_THE_WINDOW');
     expect(OUTSIDE_THE_WINDOW).toMatch(/not sent$/);
     expect(service).toMatch(/type: 'template'/);

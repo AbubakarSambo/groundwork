@@ -643,7 +643,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           select: {
             id: true,
             email: true,
-            ground: { select: { label: true, overWhatsApp: true } },
+            ground: { select: { label: true, overWhatsApp: true, organizationId: true } },
             /* No recordEntries here, structurally (NL-007): this sweep used to put the person's last
                private record line into the mail and the WhatsApp body as "Last time: ...". The product's
                central promise is that nothing they wrote reaches a mailbox; the reminder never needed it. */
@@ -682,7 +682,10 @@ export class GroundsCron implements OnApplicationBootstrap {
         await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl);
 
         /* A check-in the lead keeps in the app is never announced on a phone (survey item 5). */
-        if (p.user?.phoneNumber && !keptOffThePhone(p.ground) && (await this.whatsapp.isEnabled())) {
+        /* And never a second notice on Groundwork's number for an organisation with its own: the opening
+           notice already went from theirs (survey item 8). */
+        const theirOwnNumber = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: p.ground.organizationId }, select: { enabled: true } }).catch(() => null);
+        if (p.user?.phoneNumber && !keptOffThePhone(p.ground) && !theirOwnNumber?.enabled && (await this.whatsapp.isEnabled())) {
           try {
             await this.whatsapp.sendMessage(p.user.phoneNumber, `Your next check-in for ${p.ground.label} is open.\n${checkInUrl}`, { checkInId: ci.id, kind: 'session-ready' });
           } catch (waErr: any) {
