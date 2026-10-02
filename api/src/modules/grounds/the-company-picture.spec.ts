@@ -130,7 +130,7 @@ describe('(c) named by more than one team', () => {
     expect(groups).toHaveLength(1);
     expect(groups[0]).toMatchObject({
       title: 'No way for customers to order in bulk',
-      touches: 'Touches priority 1 and priority 2.',
+      touches: 'Touches priorities 1 and 2.',
       restsOn: ['g-cust', 'g-ops', 'g-sales'],
     });
     expect(groups[0].teams.map((t) => t.team)).toEqual(['Customers', 'Operations', 'Sales']);
@@ -363,10 +363,13 @@ describe('as each reader reads it', () => {
     expect(page.namedByTeams.map((g) => g.title)).toEqual(['No bulk ordering for customers']);
   });
 
-  it('Miriam, who is in the sales check-in, reads how priority 1 is moving and nothing addressed to leadership', async () => {
+  /* Decision 79, item 1: the picture is for admins, leads and whoever runs a check-in. Miriam only
+     takes part, so she is given none of it, not even the reading of the priority her check-in feeds. */
+  it('Miriam, who only takes part in the sales check-in, is given none of the company-wide picture', async () => {
     const page = await read('miriam');
-    expect(page.priorities[0].reading).toEqual({ tag: 'Moving, but not enough of it', says: expect.any(String) });
-    expect(page.priorities[1].reading).toBeNull();
+    expect(page.priorities.map((p) => p.reading)).toEqual([null, null, null]);
+    expect(page.priorities.every((p) => p.levels.length === 0)).toBe(true);
+    expect(page.namedByTeams).toEqual([]);
     expect(page.notReaching).toEqual([]);
     expect(page.saidAndShown).toEqual([]);
     expect(JSON.stringify(page)).not.toContain('Who owns priority 3');

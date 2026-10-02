@@ -43,6 +43,8 @@ Give back three things.
 
 3. showing: for each priority that has "shownCounts", one or two plain sentences of where the check-ins' time went against that priority, with the reason, using only the counts you were given.
 
+4. meaningChanged: you are also given AIMS, the objectives and projects that hang under each priority, each with its id, the id of the aim above it, its title and what it measures. For each aim whose meaning is NOT the same as the aim directly above it (for example the aim above is about reaching more farmers, and this one is about making more visits), give its "aimId", and "from" and "to": a few plain words for what the aim above means and what this one means ("more farmers", "more visits"). Leave out every aim that only breaks the aim above into a smaller part of the same thing. If no meaning changed, return none. No numbers in "from" or "to".
+
 Write every sentence in full, plain words that people with basic English understand. No fragments joined with colons, dots or arrows.
 
 NEVER write a person's name, a person token, or an email address. NEVER copy words from a handoff: say it in your own words. NEVER use a number that is not in the record you were given. NEVER rank teams or people, and never say one is better, worse, faster, slower, first or last than another. NEVER put a label on a person. NEVER judge anybody: say what happened, why, and what would change it.`;
@@ -75,6 +77,10 @@ export const COMPANY_PICTURE_SCHEMA = {
       showing: {
         type: 'array',
         items: { type: 'object', properties: { priorityId: { type: 'string' }, says: { type: 'string' } }, required: ['priorityId', 'says'] },
+      },
+      meaningChanged: {
+        type: 'array',
+        items: { type: 'object', properties: { aimId: { type: 'string' }, from: { type: 'string' }, to: { type: 'string' } }, required: ['aimId', 'from', 'to'] },
       },
     },
     required: ['readings'],
@@ -109,6 +115,8 @@ export interface HandoffFact {
   about: string;
   status: 'BLOCKING' | 'WAITING';
   priorityNumbers: number[];
+  /** Whether it says who or what it waits on: a person in the check-in, another check-in, or a named outside party. */
+  waitsOnSomebody?: boolean;
 }
 
 export interface SubjectFact {
@@ -119,6 +127,8 @@ export interface SubjectFact {
   ownerExternalId: string | null;
   parentExternalId: string | null;
   overdue: boolean;
+  /** What it measures, as the organisation's own system wrote it. Given to the model only, never served. */
+  measure?: string | null;
 }
 
 export interface PictureInput {
@@ -136,9 +146,17 @@ export interface PictureInput {
 
 export type ForWhom = { kind: 'leadership' } | { kind: 'owner'; externalId: string };
 
-export interface StoredReading { priorityId: string; number: number; tag: string; says: string; restsOn: string[] }
+/**
+ * ONE LEVEL OF A PRIORITY, FROM THE TOP DOWN ("What each level understood"). The priority itself,
+ * then each objective and project under it, as the organisation's own system holds them. Rests on
+ * no check-in: it is the shape of the organisation's own aims. `changedHere` is said only where the
+ * model found that the aim means something other than the aim above it, and its words passed the
+ * checks.
+ */
+export interface StoredLevel { subjectId: string; parentSubjectId: string | null; depth: number; kind: 'Priority' | 'Objective' | 'Project'; title: string; changedHere: string | null }
+export interface StoredReading { priorityId: string; number: number; tag: string; says: string; restsOn: string[]; levels?: StoredLevel[] }
 export interface StoredNotReaching { id: string; observation: string; question: string; forWhom: ForWhom; restsOn: string[] }
-export interface StoredNamedByTeams { id: string; title: string; touches: string; teams: { team: string; says: string }[]; restsOn: string[] }
+export interface StoredNamedByTeams { id: string; title: string; touches: string; teams: { team: string; says: string; restsOn?: string[] }[]; restsOn: string[] }
 export interface StoredSaidAndShown { id: string; area: string; youSaid: string; checkInsShow: string; restsOn: string[] }
 
 export interface StoredPicture {
@@ -152,6 +170,7 @@ export interface TheModelsPicture {
   readings?: { priorityId?: string; says?: string }[];
   namedByTeams?: { title?: string; handoffIds?: string[]; teams?: { team?: string; says?: string }[] }[];
   showing?: { priorityId?: string; says?: string }[];
+  meaningChanged?: { aimId?: string; from?: string; to?: string }[];
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -162,11 +181,11 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 const sentence = (t: string) => (/[.!?]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`);
 const hash = (s: string) => createHash('sha256').update(s).digest('hex').slice(0, 16);
 
-/** "priority 1", "priority 1 and priority 2", "priority 1, priority 2 and priority 3". */
+/** "priority 1", "priorities 1 and 2", "priorities 1, 2 and 3", as the prototype says it (company.txt). */
 function thePriorities(numbers: number[]): string {
-  const p = [...new Set(numbers)].sort((a, b) => a - b).map((n) => `priority ${n}`);
-  if (p.length <= 1) return p.join('');
-  return `${p.slice(0, -1).join(', ')} and ${p[p.length - 1]}`;
+  const p = [...new Set(numbers)].sort((a, b) => a - b).map(String);
+  if (p.length === 1) return `priority ${p[0]}`;
+  return `priorities ${p.slice(0, -1).join(', ')} and ${p[p.length - 1]}`;
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -254,6 +273,8 @@ export function notReachingFrom(input: PictureInput): StoredNotReaching[] {
   };
   for (const s of input.subjects) {
     if (priorityIds.has(s.id)) continue;
+    /* A shop, a client or a decision is not part of the strategy; only an aim can miss a priority. */
+    if (s.type !== 'OBJECTIVE' && s.type !== 'PROJECT') continue;
     const root = rootOf(s);
     if (root && priorityIds.has(root.id)) continue;
     out.push({
@@ -280,14 +301,61 @@ export function notReachingFrom(input: PictureInput): StoredNotReaching[] {
 }
 
 /* ------------------------------------------------------------------------------------------ */
+/* What each level understood, from the top down                                               */
+/* ------------------------------------------------------------------------------------------ */
+
+const KIND: Record<string, StoredLevel['kind']> = { OBJECTIVE: 'Objective', PROJECT: 'Project' };
+
+/** Each priority, then every objective and project under it, depth first, in the order the organisation's system gave them. */
+export function aimsUnderPriorities(input: PictureInput): (StoredLevel & { priorityId: string })[] {
+  const out: (StoredLevel & { priorityId: string })[] = [];
+  for (const p of input.priorities) {
+    const top = input.subjects.find((x) => x.id === p.id);
+    if (!top) continue;
+    const seen = new Set<string>([top.externalId]);
+    out.push({ priorityId: p.id, subjectId: top.id, parentSubjectId: null, depth: 0, kind: 'Priority', title: top.title, changedHere: null });
+    const walk = (parent: SubjectFact, depth: number) => {
+      for (const c of input.subjects) {
+        if (c.parentExternalId !== parent.externalId || !KIND[c.type] || seen.has(c.externalId)) continue;
+        if (out.filter((l) => l.priorityId === p.id).length >= 40) return;
+        seen.add(c.externalId);
+        out.push({ priorityId: p.id, subjectId: c.id, parentSubjectId: parent.id, depth, kind: KIND[c.type], title: c.title, changedHere: null });
+        walk(c, depth + 1);
+      }
+    };
+    walk(top, 1);
+  }
+  return out;
+}
+
+/** "The meaning changed here, from more farmers to more visits." Only where the model said so and its words pass the checks. */
+function levelsFrom(input: PictureInput, model: TheModelsPicture | null | undefined): Map<string, StoredLevel[]> {
+  const sources = input.handoffs.map((h) => h.about);
+  const levels = aimsUnderPriorities(input);
+  const byPriority = new Map<string, StoredLevel[]>();
+  for (const l of levels) {
+    const { priorityId, ...level } = l;
+    const said = l.parentSubjectId ? model?.meaningChanged?.find((m) => m?.aimId === l.subjectId) : undefined;
+    if (said) {
+      const check = (t?: string) => aSentenceTheRecordSupports(t, { allowedNumbers: [], names: input.names, sources, min: 3, max: 60 })?.replace(/\.$/, '') ?? null;
+      const from = check(said.from);
+      const to = check(said.to);
+      if (from && to && from.toLowerCase() !== to.toLowerCase()) level.changedHere = `The meaning changed here, from ${from} to ${to}.`;
+    }
+    byPriority.set(priorityId, [...(byPriority.get(priorityId) ?? []), level]);
+  }
+  return byPriority;
+}
+
+/* ------------------------------------------------------------------------------------------ */
 /* The model's record, and what changes the picture                                            */
 /* ------------------------------------------------------------------------------------------ */
 
 export function theInputKey(input: PictureInput): string {
   const rows = [
     ...input.priorities.map((p) => ['P', p.id, p.number, p.title, p.ownerExternalId ?? '', p.overdue, p.hasChildren, p.feedingGroundIds.slice().sort().join(','), p.finishedLast30, p.blocked, p.waiting, p.teams.slice().sort().join(',')].join('|')),
-    ...input.handoffs.map((h) => ['H', h.id, h.groundId, h.team ?? '', h.about, h.status, h.priorityNumbers.join(',')].join('|')),
-    ...input.subjects.map((s) => ['S', s.id, s.type, s.title, s.ownerExternalId ?? '', s.parentExternalId ?? '', s.overdue].join('|')),
+    ...input.handoffs.map((h) => ['H', h.id, h.groundId, h.team ?? '', h.about, h.status, h.priorityNumbers.join(','), h.waitsOnSomebody ?? ''].join('|')),
+    ...input.subjects.map((s) => ['S', s.id, s.type, s.title, s.ownerExternalId ?? '', s.parentExternalId ?? '', s.overdue, s.measure ?? ''].join('|')),
     `F|${input.finishedOnPriorities}`,
   ].sort();
   return createHash('sha256').update(rows.join('\n')).digest('hex');
@@ -309,6 +377,10 @@ export function theRecordForTheModel(input: PictureInput): string {
     handoffs: input.handoffs.map((h) => ({
       id: h.id, team: h.team, checkIn: `check-in ${n(h.groundId)}`, feedsPriorities: h.priorityNumbers, about: h.about, status: h.status,
     })),
+    aims: aimsUnderPriorities(input).filter((l) => l.parentSubjectId).map((l) => {
+      const s = input.subjects.find((x) => x.id === l.subjectId);
+      return { id: l.subjectId, under: l.parentSubjectId, title: l.title, measures: s?.measure ?? null };
+    }),
   }, null, 2);
 }
 
@@ -376,12 +448,13 @@ export function aSentenceTheRecordSupports(
 
 function readingsFrom(input: PictureInput, model: TheModelsPicture | null | undefined): StoredReading[] {
   const sources = input.handoffs.map((h) => h.about);
+  const levels = levelsFrom(input, model);
   return input.priorities.map((p) => {
     const tag = tagFor(p);
     const given = model?.readings?.find((r) => r?.priorityId === p.id)?.says;
     const allowed = [p.number, p.feedingGroundIds.length, p.finishedLast30, p.blocked, p.waiting, p.teams.length, 30, 1, 2, 3];
     const says = aSentenceTheRecordSupports(given, { allowedNumbers: allowed, names: input.names, sources, max: 300 }) ?? plainReading(p, tag);
-    return { priorityId: p.id, number: p.number, tag, says, restsOn: [...p.feedingGroundIds].sort() };
+    return { priorityId: p.id, number: p.number, tag, says, restsOn: [...p.feedingGroundIds].sort(), levels: levels.get(p.id) ?? [] };
   });
 }
 
@@ -406,13 +479,15 @@ function namedByTeamsFrom(input: PictureInput, model: TheModelsPicture | null | 
         (g.teams ?? []).find((t) => (t?.team ?? '').trim().toLowerCase() === team.toLowerCase())?.says,
         { allowedNumbers: [mine.length, checkIns], names: input.names, sources, max: 220 },
       ) ?? `${team} raised this in ${plural(checkIns, 'check-in', 'check-ins')}, with ${plural(mine.length, 'open handoff', 'open handoffs')}.`;
-      return { team, says };
+      return { team, says, restsOn: [...new Set(mine.map((h) => h.groundId))].sort() };
     });
     const priorityNumbers = [...new Set(hs.flatMap((h) => h.priorityNumbers))];
+    /* "Nobody owns it." only when not one of these handoffs says who or what it waits on. */
+    const nobody = hs.every((h) => h.waitsOnSomebody === false) ? ' Nobody owns it.' : '';
     out.push({
       id: hash(ids.slice().sort().join(',')),
       title: title.replace(/\.$/, ''),
-      touches: priorityNumbers.length ? `Touches ${thePriorities(priorityNumbers)}.` : 'It does not sit under any priority yet.',
+      touches: (priorityNumbers.length ? `Touches ${thePriorities(priorityNumbers)}.` : 'It does not sit under any priority yet.') + nobody,
       teams: perTeam,
       restsOn: [...new Set(hs.map((h) => h.groundId))].sort(),
     });
@@ -457,20 +532,26 @@ export function buildPicture(input: PictureInput, model: TheModelsPicture | null
 const restsOnlyOnWhatTheyMayOpen = (restsOn: string[], mayOpen: Set<string>) => restsOn.every((id) => mayOpen.has(id));
 
 /**
- * THE READER'S SHARE. An item is given only when the reader may open every check-in it was built
- * from. An item built from none (the shape of the organisation's own priorities) is given as follows:
- * how a priority is moving to everybody, who reads the priorities already; where the strategy is not
- * reaching the work, and what leadership says against the check-ins, to readers who may read every
- * check-in, because they are questions for leadership.
+ * THE READER'S SHARE. Only for a reader who may read the company-wide picture at all (an admin, a
+ * lead, or anybody who runs a check-in: `mayReadThePicture`); everybody else is given none of it,
+ * and the page decides that before it comes here.
+ *
+ * An item is given only when the reader may open every check-in it was built from. An item built
+ * from none (the shape of the organisation's own priorities) is given as follows: how a priority is
+ * moving, and what each level of it understood, to every reader of the picture; where the strategy
+ * is not reaching the work to readers who may read every check-in, and otherwise only the questions
+ * asked of the reader themselves; what leadership says against the check-ins only to readers who
+ * may read every check-in, because those are questions for leadership.
  */
 export function theShareFor(
   stored: StoredPicture,
-  reader: { readsEverything: boolean; mayOpen: Set<string> },
+  reader: { readsEverything: boolean; mayOpen: Set<string>; askedOfThem?: (n: StoredNotReaching) => boolean },
 ) {
   const { readsEverything, mayOpen } = reader;
   return {
     readings: new Map(stored.readings.filter((r) => restsOnlyOnWhatTheyMayOpen(r.restsOn, mayOpen)).map((r) => [r.priorityId, r])),
-    notReaching: stored.notReaching.filter((n) => readsEverything && restsOnlyOnWhatTheyMayOpen(n.restsOn, mayOpen)),
+    levels: new Map(stored.readings.map((r) => [r.priorityId, r.levels ?? []])),
+    notReaching: stored.notReaching.filter((n) => restsOnlyOnWhatTheyMayOpen(n.restsOn, mayOpen) && (readsEverything || !!reader.askedOfThem?.(n))),
     namedByTeams: stored.namedByTeams.filter((g) => restsOnlyOnWhatTheyMayOpen(g.restsOn, mayOpen)),
     saidAndShown: stored.saidAndShown.filter((s) => readsEverything && restsOnlyOnWhatTheyMayOpen(s.restsOn, mayOpen)),
   };

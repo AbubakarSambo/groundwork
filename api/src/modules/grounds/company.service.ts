@@ -34,6 +34,9 @@ export class CompanyService {
     const org = reader.organizationId;
     const readsEverything = reader.role === 'ADMIN';
     const now = new Date();
+    /* The company-wide picture, and what the organisation keeps, go to an admin, a lead and anybody who
+       runs a check-in (decision 79, item 1). Somebody who only takes part reads the priorities alone. */
+    const readsThePicture = await mayReadWhatIsKept(this.prisma, { userId: reader.userId, organizationId: org, role: reader.role }).catch(() => false);
 
     const [organisation, list, subjects, linked, memberships, stored] = await Promise.all([
       this.prisma.organization.findUnique({ where: { id: org }, select: { name: true } }),
@@ -102,11 +105,12 @@ export class CompanyService {
       picture,
       ownerDetails,
       readerUserId: reader.userId,
+      readsThePicture,
     });
 
     /* What was kept for the organisation, for the readers who may read it. Read, never built, on opening. */
     try {
-      if (await mayReadWhatIsKept(this.prisma, { userId: reader.userId, organizationId: org, role: reader.role })) {
+      if (readsThePicture) {
         const kept = await keptForTheOrganisation(this.prisma, org);
         page.whatWeKeep = {
           readBy: WHO_READS_WHAT_IS_KEPT,

@@ -20,15 +20,21 @@
  * any label on a person. A priority that has been deleted in the organisation's own system is not
  * shown; one whose wording has not been refreshed for a while says when it was.
  *
- * WHAT THE ENGINE WRITES (request 17, the-company-picture.ts): how each priority is moving, where
- * the strategy is not reaching the work, what more than one team has named, and what leadership
- * says next to what the check-ins show. It is written once when the record changes and only READ
- * here. Each item is given to a reader only if they may open every check-in it was built from; the
- * last two lists and the second are for readers who may read every check-in. Until a picture has
- * been written for the organisation these are empty, and nothing is worked out on opening.
+ * WHAT THE ENGINE WRITES (request 17, the-company-picture.ts): how each priority is moving, what
+ * each level under it understood, where the strategy is not reaching the work, what more than one
+ * team has named, and what leadership says next to what the check-ins show. It is written once when
+ * the record changes and only READ here.
+ *
+ * WHO READS IT (decision 79, item 1): an admin, a lead, and anybody who runs a check-in, the same
+ * readers as what the organisation keeps (organisation-memory.ts, `mayReadWhatIsKept`). Somebody who
+ * only takes part in check-ins is given none of it: `reading` is null, `levels` and the lists are
+ * empty. Within it, each item is given only if the reader may open every check-in it was built from;
+ * "what you say" is for readers who may read every check-in, and "where the strategy is not reaching
+ * the work" too, except that a lead is given the questions asked of them. Until a picture has been
+ * written for the organisation these are empty, and nothing is worked out on opening.
  */
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
-import { theShareFor, type StoredPicture } from './the-company-picture';
+import { theShareFor, type StoredNotReaching, type StoredPicture } from './the-company-picture';
 
 export interface CompanyPriority {
   id: string;
@@ -45,9 +51,27 @@ export interface CompanyPriority {
   staleSays: string | null;
   /** How this priority is moving, written from the record. Null when none is written yet, or when it rests on a check-in the reader may not open. */
   reading: { tag: string; says: string } | null;
+  /**
+   * WHAT EACH LEVEL UNDERSTOOD, from the priority down through every objective and project under it.
+   * Empty for a reader of the page who may not read the company-wide picture, and until it is written.
+   */
+  levels: CompanyLevel[];
   /** Admins only: what success looks like. */
   measure?: string | null;
   target?: string | null;
+}
+
+export interface CompanyLevel {
+  id: string;
+  /** 0 for the priority itself, 1 for what hangs directly under it, and so on. */
+  depth: number;
+  /** "Priority 1", "Objective" or "Project". */
+  level: string;
+  title: string;
+  /** "The meaning changed here, from more farmers to more visits.", or null. */
+  changedHere: string | null;
+  /** "Fed by Sales team, Q3" for the check-ins tied to exactly this level that the reader may open, or null. */
+  fedBy: string | null;
 }
 
 export interface CompanyPage {
@@ -59,7 +83,7 @@ export interface CompanyPage {
   /** Where the strategy is not reaching the work. For readers who may read every check-in. */
   notReaching: { id: string; observation: string; question: string; forWhom: string }[];
   /** Something named by more than one team. Teams are in alphabetical order, never ranked. */
-  namedByTeams: { id: string; title: string; touches: string; teams: { team: string; says: string }[] }[];
+  namedByTeams: { id: string; title: string; touches: string; teams: { team: string; says: string; checkIns: { id: string; name: string }[] }[] }[];
   /** What leadership says, next to what the check-ins show. For readers who may read every check-in. */
   saidAndShown: { id: string; area: string; youSaid: string; checkInsShow: string }[];
   /**
@@ -145,9 +169,16 @@ export function companyPage(input: {
   /** Who owns what was asked of somebody, by the customer's own id. */
   ownerDetails?: Map<string, OwnerDetail>;
   readerUserId?: string;
+  /** An admin, a lead, or anybody who runs a check-in. Nobody else is given any of the picture. */
+  readsThePicture?: boolean;
 }): CompanyPage {
-  const share = input.picture
-    ? theShareFor(input.picture, { readsEverything: input.readsEverything, mayOpen: new Set(input.mayOpen.map((g) => g.id)) })
+  const askedOfThem = (n: StoredNotReaching) => {
+    if (n.forWhom.kind !== 'owner') return false;
+    const o = input.ownerDetails?.get(n.forWhom.externalId);
+    return !!(o?.linkedUserId && input.readerUserId && o.linkedUserId === input.readerUserId);
+  };
+  const share = input.picture && input.readsThePicture
+    ? theShareFor(input.picture, { readsEverything: input.readsEverything, mayOpen: new Set(input.mayOpen.map((g) => g.id)), askedOfThem })
     : null;
 
   const live = input.subjects.filter((s) => freshnessOf(s, input.now) !== 'disconnected');
@@ -172,6 +203,15 @@ export function companyPage(input: {
   };
 
   const openable = new Map(input.mayOpen.map((g) => [g.id, g]));
+  const nameOf = (g: GroundRow) => (g.label || g.name || '').trim();
+  const externalOf = new Map(live.map((s) => [s.id, s.externalId]));
+  /** The check-ins tied to exactly this aim that the reader may open. */
+  const fedByExactly = (subjectId: string): string | null => {
+    const ext = externalOf.get(subjectId);
+    const names = input.linkedGrounds.filter((g) => ext && g.subjectExternalId === ext)
+      .map((g) => openable.get(g.id)).filter((g): g is GroundRow => !!g).map(nameOf).filter(Boolean);
+    return names.length ? `Fed by ${andList([...new Set(names)])}` : null;
+  };
 
   const priorities = top.map((s, i): CompanyPriority => {
     const branch = under(s.externalId);
@@ -194,6 +234,14 @@ export function companyPage(input: {
       fedBy: nothingUnder ? 'No team feeds it' : named.length ? `Fed by ${andList([...new Set(named)])}` : null,
       staleSays: stale ? `This was last updated on ${onDay(s.syncedAt)}.` : null,
       reading: (() => { const r = share?.readings.get(s.id); return r ? { tag: r.tag, says: r.says } : null; })(),
+      levels: (share?.levels.get(s.id) ?? []).map((l) => ({
+        id: l.subjectId,
+        depth: l.depth,
+        level: l.kind === 'Priority' ? `Priority ${i + 1}` : l.kind,
+        title: l.title,
+        changedHere: l.changedHere,
+        fedBy: fedByExactly(l.subjectId),
+      })),
     };
     if (input.readsEverything) {
       p.measure = s.measure;
@@ -216,7 +264,15 @@ export function companyPage(input: {
     priorities,
     readsTargets: input.readsEverything,
     notReaching: (share?.notReaching ?? []).map((n) => ({ id: n.id, observation: n.observation, question: n.question, forWhom: forWhom(n.forWhom) })),
-    namedByTeams: (share?.namedByTeams ?? []).map((g) => ({ id: g.id, title: g.title, touches: g.touches, teams: g.teams.map((t) => ({ team: t.team, says: t.says })) })),
+    namedByTeams: (share?.namedByTeams ?? []).map((g) => ({
+      id: g.id, title: g.title, touches: g.touches,
+      teams: g.teams.map((t) => ({
+        team: t.team,
+        says: t.says,
+        /* Where "Read what each team said" goes: only check-ins this reader may open, which is all of them, or the item would not be here. */
+        checkIns: (t.restsOn ?? []).map((id) => openable.get(id)).filter((x): x is GroundRow => !!x).map((x) => ({ id: x.id, name: nameOf(x) })),
+      })),
+    })),
     saidAndShown: (share?.saidAndShown ?? []).map((x) => ({ id: x.id, area: x.area, youSaid: x.youSaid, checkInsShow: x.checkInsShow })),
   };
 }
