@@ -7,6 +7,7 @@ import { whyPassOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt } from './a-request-is-recorded';
 import type { PassedOn } from './the-leave-board.service';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
+import { LEAVE_QUESTION_KIND, QUESTION_REFUSED, aQuestionSaid, aReasonSaid, wordsGiven, type AQuestion } from './a-question-about-a-request';
 import { aSpendRequest, spendInWords, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
 import {
@@ -54,6 +55,11 @@ export interface Waiting {
   category: string | null;
   /** The evidence the rules ask for, in full sentences for whoever reads the board: "Spending on Fuel needs a receipt." Empty when none. */
   needs: string[];
+  /**
+   * Each question whoever decides it asked, and the answer, in full sentences for this reader (build
+   * step 9, as leave has): "You asked Kamau on 5 October, “Is this for the Kisumu van?”"
+   */
+  questions: string[];
 }
 
 /** The person's own requests to spend (`mine`), newest first. */
@@ -63,6 +69,12 @@ export interface MySpending {
     id: string; amount: number; what: string; status: 'waiting' | 'approved' | 'declined'; askedOn: string;
     /** The category it is for (build step 9), or null. */
     category: string | null;
+    /** Each question asked about it, and the answer, in full sentences with "you" for the person. */
+    questions: string[];
+    /** The question still waiting for this person's answer, so the screen can offer a place to answer it; null when none waits. */
+    questionWaiting: { id: string; question: string; askedBy: string } | null;
+    /** What the person who declined it said: "Fatuma said, “The van is being sold.”" Null when they said nothing. */
+    declinedBecause: string | null;
     /** Where it is, in a full sentence: "Your request to spend KES 12,000 for fuel is approved by Wairimu and is now waiting for Omar in finance." */
     where: string;
   }[];
@@ -92,6 +104,8 @@ type Row = {
   step?: number | null; escalatedTo?: number | null; stepSince?: Date | null; approvedByIds?: string[] | null;
   /* The spending rules (build step 9). */
   category?: string | null; evidenceNeeded?: string[] | null;
+  /* The reason a decline was given with. */
+  declineReason?: string | null;
 };
 type Answers = { currency: string | null; limit: number | null; above: string | null; workflow?: AWorkflow; thresholds?: AThreshold[]; rules?: SpendRules };
 
@@ -172,6 +186,8 @@ export class SpendingService {
     const leftOf = (team: string | null) => (team && budgetOf.has(team) ? budgetOf.get(team)! - (spent.get(team) ?? 0) : null);
 
     const names = await this.names(rows.map((r) => r.userId));
+    const questions = await this.questionsOn(org, rows.filter((r) => r.status === 'waiting').map((r) => r.id));
+    const askers = await this.firstNames(questions.flatMap((q) => [q.askedById, q.toUserId]));
     const waiting: Waiting[] = [];
     for (const r of rows.filter((x) => x.status === 'waiting' && x.userId !== reader.userId)) {
       const now = await this.now(org, r, answers, byUser);
@@ -190,6 +206,7 @@ export class SpendingService {
         where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides, reader.userId)),
         category: r.category ?? null,
         needs: this.needsSaid(r, answers),
+        questions: questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, askers, reader.userId)),
       });
     }
 
@@ -209,7 +226,10 @@ export class SpendingService {
    * that is not the last moves it to the next step, and whoever decides that one is told; only the last
    * step's yes, or a no at any step, ends it, and then the person who asked is told.
    */
-  async decide(reader: Reader, id: string, outcome: 'approved' | 'declined', today = new Date()) {
+  async decide(reader: Reader, id: string, outcome: 'approved' | 'declined', today = new Date(), reasonGiven?: unknown) {
+    /* A reason may go with a decline (build step 9, as leave has), and is told to the person. */
+    const reason = outcome === 'declined' ? wordsGiven(reasonGiven) : null;
+    if (reason === 'too long') throw new BadRequestException(QUESTION_REFUSED.tooLong);
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
     const r = (await this.prisma.spendRequest.findUnique({ where: { id } })) as Row | null;
@@ -220,16 +240,98 @@ export class SpendingService {
     if (r.userId === reader.userId || !decidesIt(now.who, { userId: reader.userId, role }, r.userId)) throw new ForbiddenException(SPEND_REFUSED.notYours);
     if (r.status !== 'waiting') throw new BadRequestException(SPEND_REFUSED.alreadyDecided);
     const approvedByIds = [...(r.approvedByIds ?? []), ...(outcome === 'approved' ? [reader.userId] : [])];
-    await recordIt(this.prisma, { organizationId: r.organizationId, suite: 'spend', ref: id, kind: outcome, byUserId: reader.userId, step: now.step, basis: { row: 'spend_requests', id } });
+    await recordIt(this.prisma, { organizationId: r.organizationId, suite: 'spend', ref: id, kind: outcome, byUserId: reader.userId, step: now.step, basis: { row: 'spend_requests', id, ...(reason ? { withAReason: true } : {}) } });
     if (outcome === 'approved' && !now.last) {
       const next = { ...r, step: now.step + 1, escalatedTo: 0, stepSince: new Date(), approvedByIds };
       await this.prisma.spendRequest.update({ where: { id }, data: { step: next.step, escalatedTo: 0, stepSince: next.stepSince, approvedByIds } });
       await this.tellWhoDecides(next, answers);
       return this.board(reader, today);
     }
-    await this.prisma.spendRequest.update({ where: { id }, data: { status: outcome, decidedById: reader.userId, decidedAt: new Date(), approvedByIds } });
-    await this.tellThePerson(r, answers.currency, outcome, reader.userId);
+    await this.prisma.spendRequest.update({ where: { id }, data: { status: outcome, decidedById: reader.userId, decidedAt: new Date(), approvedByIds, ...(reason ? { declineReason: reason } : {}) } });
+    await this.tellThePerson(r, answers.currency, outcome, reader.userId, reason);
+    /* A question still waiting for the person's answer in Ask Groundwork is no longer asked. */
+    await this.forgetTheQuestionsInAskGroundwork(r);
     return this.board(reader, today);
+  }
+
+  /**
+   * ASK A QUESTION (decision 85, item 2; build step 9, as leave has). Whoever decides the request now
+   * asks the person who made it, and the request keeps waiting. The person is told under their own
+   * requests to spend, on Today, in Ask Groundwork the next time they write there, and on WhatsApp,
+   * where they can reply with their answer.
+   */
+  async askAQuestion(reader: Reader, id: string, questionGiven: unknown, today = new Date()) {
+    const question = wordsGiven(questionGiven);
+    if (!question) throw new BadRequestException(QUESTION_REFUSED.emptyQuestion);
+    if (question === 'too long') throw new BadRequestException(QUESTION_REFUSED.tooLong);
+    const answers = await this.suiteAnswers(reader.organizationId);
+    const role = await this.roleOf(reader);
+    const r = (await this.prisma.spendRequest.findUnique({ where: { id } })) as Row | null;
+    if (!r || r.organizationId !== reader.organizationId) throw new NotFoundException(SPEND_REFUSED.notFound);
+    const dir = await this.directory(reader.organizationId);
+    const byUser = new Map([...dir.values()].filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p]));
+    const now = await this.now(reader.organizationId, r, answers, byUser);
+    if (r.userId === reader.userId || !decidesIt(now.who, { userId: reader.userId, role }, r.userId)) throw new ForbiddenException(QUESTION_REFUSED.notYours);
+    if (r.status !== 'waiting') throw new BadRequestException(QUESTION_REFUSED.notWaiting);
+    const q = await (this.prisma as any).suiteQuestion.create({
+      data: { organizationId: r.organizationId, suite: 'spend', ref: id, askedById: reader.userId, toUserId: r.userId, question },
+      select: { id: true },
+    });
+    await recordIt(this.prisma, { organizationId: r.organizationId, suite: 'spend', ref: id, kind: 'questioned', byUserId: reader.userId, toUserId: r.userId, step: now.step, basis: { row: 'suite_questions', id: q.id } });
+    /* Ask Groundwork holds it for the person's answer: the next thing they write there is said back as their answer. */
+    const entry = await theirRosterEntry(this.prisma, r.organizationId, r.userId, { externalId: true }).catch(() => null);
+    if (entry?.externalId && (this.prisma as any).assistantProposal?.create) {
+      const asker = (await this.firstNames([reader.userId])).get(reader.userId) || 'The person who decides it';
+      await (this.prisma as any).assistantProposal.create({
+        data: {
+          organizationId: r.organizationId, personExternalId: entry.externalId, kind: LEAVE_QUESTION_KIND,
+          summary: `${asker} asked you a question about your request to spend ${spendInWords(n(r.amount), answers.currency, r.what)}.`,
+          payload: { suite: 'spend', requestId: id, questionId: q.id } as never,
+        },
+      }).catch(() => undefined);
+    }
+    if (this.told) {
+      const first = await this.told.firstNameOf(r.userId);
+      await this.told.asked(r.organizationId, aSpendRequest(r.id, r.userId, first, n(r.amount), answers.currency, r.what), reader.userId, question).catch(() => false);
+    }
+    return this.board(reader, today);
+  }
+
+  /**
+   * THE PERSON ANSWERS (build step 9): the latest question still waiting for them on their own request.
+   * Only the person who asked to spend answers; the request keeps waiting, and whoever asked is told.
+   */
+  async answerAQuestion(reader: Reader, id: string, answerGiven: unknown): Promise<MySpending> {
+    const answer = wordsGiven(answerGiven);
+    if (!answer) throw new BadRequestException(QUESTION_REFUSED.emptyAnswer);
+    if (answer === 'too long') throw new BadRequestException(QUESTION_REFUSED.tooLong);
+    const answers = await this.suiteAnswers(reader.organizationId);
+    const r = (await this.prisma.spendRequest.findUnique({ where: { id } })) as Row | null;
+    if (!r || r.organizationId !== reader.organizationId) throw new NotFoundException(SPEND_REFUSED.notFound);
+    if (r.userId !== reader.userId) throw new ForbiddenException(QUESTION_REFUSED.onlyThePersonWhoAskedToSpend);
+    if (r.status !== 'waiting') throw new BadRequestException(QUESTION_REFUSED.notWaiting);
+    const waiting = (await this.questionsOn(reader.organizationId, [id])).filter((q) => q.answer == null && q.toUserId === reader.userId).pop();
+    if (!waiting) throw new BadRequestException(QUESTION_REFUSED.nothingToAnswer);
+    await (this.prisma as any).suiteQuestion.update({ where: { id: waiting.id }, data: { answer, answeredAt: new Date() } });
+    await recordIt(this.prisma, { organizationId: r.organizationId, suite: 'spend', ref: id, kind: 'answered', byUserId: reader.userId, toUserId: waiting.askedById, basis: { row: 'suite_questions', id: waiting.id } });
+    await this.forgetTheQuestionsInAskGroundwork(r);
+    if (this.told) {
+      const first = await this.told.firstNameOf(r.userId);
+      await this.told.answered(r.organizationId, waiting.askedById, aSpendRequest(r.id, r.userId, first, n(r.amount), answers.currency, r.what), answer).catch(() => false);
+    }
+    return this.mine(reader);
+  }
+
+  /** The question waiting for this person's answer on one of their requests, for Ask Groundwork. Null when none waits. */
+  async questionWaitingFor(reader: Reader, id: string): Promise<{ askedBy: string; leave: string; question: string } | null> {
+    const r = (await this.prisma.spendRequest.findUnique({ where: { id } }).catch(() => null)) as Row | null;
+    if (!r || r.organizationId !== reader.organizationId || r.userId !== reader.userId || r.status !== 'waiting') return null;
+    const q = (await this.questionsOn(reader.organizationId, [id])).filter((x) => x.answer == null && x.toUserId === reader.userId).pop();
+    if (!q) return null;
+    const answers = await this.suiteAnswers(reader.organizationId).catch(() => null);
+    const askedBy = (await this.firstNames([q.askedById])).get(q.askedById) || 'The person who decides it';
+    /* `leave` is the thing asked about, for the middle of a sentence, as the leave suite gives it. */
+    return { askedBy, leave: `request to spend ${spendInWords(n(r.amount), answers?.currency ?? null, r.what)}`, question: q.question };
   }
 
   /** The person's own requests to spend, each with where it is. Nobody else's. */
@@ -244,12 +346,22 @@ export class SpendingService {
     })) as Row[];
     const dir = await this.directory(reader.organizationId);
     const byUser = new Map([...dir.values()].filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p]));
+    const questions = await this.questionsOn(reader.organizationId, rows.map((r) => r.id));
+    const firsts = await this.firstNames([...questions.flatMap((q) => [q.askedById, q.toUserId]), ...rows.map((r) => r.decidedById ?? '')]);
     const requests: MySpending['requests'] = [];
     for (const r of rows) {
       const now = r.status === 'waiting' ? await this.now(reader.organizationId, r, answers, byUser) : null;
       requests.push({
         id: r.id, amount: n(r.amount), what: r.what, status: r.status as 'waiting' | 'approved' | 'declined', askedOn: r.createdAt.toISOString().slice(0, 10),
         category: r.category ?? null,
+        questions: questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, firsts, reader.userId)),
+        questionWaiting: (() => {
+          const q = r.status === 'waiting' ? questions.filter((x) => x.ref === r.id && x.answer == null && x.toUserId === reader.userId).pop() : undefined;
+          return q ? { id: q.id, question: q.question, askedBy: firsts.get(q.askedById) || 'The person who decides it' } : null;
+        })(),
+        declinedBecause: r.status === 'declined' && r.declineReason?.trim()
+          ? aReasonSaid(r.decidedById ? (firsts.get(r.decidedById) || 'The person who decided it') : 'The person who decided it', r.declineReason)
+          : null,
         where: whereYourRequestIs(`Your request to spend ${spendInWords(n(r.amount), answers.currency, r.what)}`, await this.whereItStands(r, now, false, reader.userId)),
       });
     }
@@ -449,10 +561,11 @@ export class SpendingService {
   }
 
   /** The person who asked is told what was decided, on WhatsApp (decision 82, item 1). True when it went. */
-  async tellThePerson(r: { id: string; organizationId: string; userId: string; amount: unknown; what: string }, currency: string | null, outcome: 'approved' | 'declined', deciderUserId: string): Promise<boolean> {
+  async tellThePerson(r: { id: string; organizationId: string; userId: string; amount: unknown; what: string }, currency: string | null, outcome: 'approved' | 'declined', deciderUserId: string, reason?: string | null): Promise<boolean> {
     if (!this.told) return false;
     const first = await this.told.firstNameOf(r.userId);
-    return this.told.decided(r.organizationId, aSpendRequest(r.id, r.userId, first, n(r.amount), currency, r.what), outcome, deciderUserId).catch(() => false);
+    const request = aSpendRequest(r.id, r.userId, first, n(r.amount), currency, r.what);
+    return (reason ? this.told.decided(r.organizationId, request, outcome, deciderUserId, reason) : this.told.decided(r.organizationId, request, outcome, deciderUserId)).catch(() => false);
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -503,6 +616,33 @@ export class SpendingService {
   private async approvesOverTheLimit(organizationId: string, userId: string, answers: Answers): Promise<boolean> {
     const role = await this.roleOf({ userId, organizationId });
     return couldBeNamed(this.prisma, everyStepFor('spend', answers).filter((s) => s !== 'admin' && s !== 'manager'), organizationId, { userId, role });
+  }
+
+  /** The questions asked on these requests, oldest first. A test built by hand may have no table. */
+  private async questionsOn(organizationId: string, ids: string[]): Promise<(AQuestion & { ref: string })[]> {
+    const table = (this.prisma as any).suiteQuestion;
+    if (!ids.length || !table?.findMany) return [];
+    return ((await table.findMany({ where: { organizationId, suite: 'spend', ref: { in: ids } }, orderBy: { askedAt: 'asc' } }).catch(() => [])) ?? []) as (AQuestion & { ref: string })[];
+  }
+
+  /** First names of sign-ins, by id. Never an address. */
+  private async firstNames(ids: string[]): Promise<Map<string, string>> {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (!unique.length) return new Map();
+    const us = await this.prisma.user.findMany({ where: { id: { in: unique } }, select: { id: true, firstName: true } }).catch(() => []);
+    return new Map((us ?? []).map((u: any) => [u.id, u.firstName?.trim() || '']));
+  }
+
+  /** The person's question in Ask Groundwork is no longer waiting: answered, or the request decided. */
+  private async forgetTheQuestionsInAskGroundwork(r: { id: string; organizationId: string; userId: string }) {
+    const table = (this.prisma as any).assistantProposal;
+    if (!table?.updateMany) return;
+    const entry = await theirRosterEntry(this.prisma, r.organizationId, r.userId, { externalId: true }).catch(() => null);
+    if (!entry?.externalId) return;
+    await table.updateMany({
+      where: { organizationId: r.organizationId, personExternalId: entry.externalId, kind: LEAVE_QUESTION_KIND, state: 'PARKED', payload: { path: ['requestId'], equals: r.id } },
+      data: { state: 'DROPPED', resolvedAt: new Date() },
+    }).catch(() => undefined);
   }
 
   /** The evidence a request needs, said for whoever reads the board, from what was kept when it was asked. */

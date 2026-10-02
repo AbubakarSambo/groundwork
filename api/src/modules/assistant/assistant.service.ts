@@ -33,7 +33,7 @@ import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
 import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
-import { LEAVE_ANSWER_KIND, LEAVE_QUESTION_KIND, LONGEST, NO_QUESTION_WAITING, QUESTION_REFUSED, aDeclineWithAReasonSaidBack, aReasonIn, anAnswerNotSent, anAnswerSaidBack, anAnswerSent, type AQuestionWaiting } from '../suites/a-question-about-a-request';
+import { LEAVE_ANSWER_KIND, LEAVE_QUESTION_KIND, LONGEST, NO_QUESTION_WAITING, QUESTION_REFUSED, aDeclineWithAReasonSaidBack, aReasonIn, anAnswerNotSent, anAnswerSaidBack, anAnswerSent, noQuestionWaiting, type AQuestionWaiting, type QuestionSuite } from '../suites/a-question-about-a-request';
 import { HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
 import { SPEND_MISSING_KIND, SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
 import { theCategoryCalled, theCategoryIn, whichCategory, whichCategoryAgain, type SpendRules } from '../suites/the-spending-rules';
@@ -2818,9 +2818,13 @@ export class AssistantService {
    */
   private async resolveParkedLeaveQuestion(organizationId: string, personId: string, who: string, parked: any, message: string): Promise<Reply> {
     const requestId = (parked.payload as { requestId?: string } | null)?.requestId;
+    /* A question about a request to spend is held the same way (build step 9), marked with its suite. */
+    const suite: QuestionSuite = (parked.payload as { suite?: string } | null)?.suite === 'spend' ? 'spend' : 'leave';
+    const lane = suite === 'spend' ? 'ask_to_spend' : 'ask_for_leave';
     const me = await this.theSignInOf(organizationId, who);
-    const waiting = me.linkedUserId && requestId && this.leave
-      ? await Promise.resolve(this.leave.questionWaitingFor?.({ userId: me.linkedUserId, organizationId }, requestId)).catch(() => null)
+    const asking = suite === 'spend' ? this.spending : this.leave;
+    const waiting = me.linkedUserId && requestId && asking
+      ? await Promise.resolve(asking.questionWaitingFor?.({ userId: me.linkedUserId, organizationId }, requestId)).catch(() => null)
       : null;
     if (!waiting) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
@@ -2830,41 +2834,45 @@ export class AssistantService {
     if (!typed || aDecisionIn(typed) || soundsLikeLeave(typed) || soundsLikeHours(typed) || soundsLikeSpending(typed)) {
       return this.answer(organizationId, personId, who, message, true);
     }
-    if (typed.length > LONGEST) return rules('ask_for_leave', text(QUESTION_REFUSED.tooLong));
+    if (typed.length > LONGEST) return rules(lane, text(QUESTION_REFUSED.tooLong));
     const say = anAnswerSaidBack(waiting.askedBy, waiting.leave, waiting.question, typed);
     await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
     const row = await this.prisma.assistantProposal.create({
-      data: { organizationId, personExternalId: who, kind: LEAVE_ANSWER_KIND, summary: say, payload: { requestId, answer: typed, askedBy: waiting.askedBy } as never },
+      data: { organizationId, personExternalId: who, kind: LEAVE_ANSWER_KIND, summary: say, payload: { requestId, answer: typed, askedBy: waiting.askedBy, ...(suite === 'spend' ? { suite } : {}) } as never },
       select: { id: true },
     });
-    return { lane: 'ask_for_leave', composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
+    return { lane, composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
   }
 
   /** The person's yes sends their answer through the leave suite; a no keeps the question waiting for them. */
   private async resolveParkedLeaveAnswer(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
-    const p = (parked.payload ?? {}) as { requestId?: string; answer?: string; askedBy?: string };
+    const p = (parked.payload ?? {}) as { requestId?: string; answer?: string; askedBy?: string; suite?: string };
+    const suite: QuestionSuite = p.suite === 'spend' ? 'spend' : 'leave';
+    const lane = suite === 'spend' ? 'ask_to_spend' : 'ask_for_leave';
     const asker = p.askedBy || 'the person who decides it';
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
       if (p.requestId) {
         await this.prisma.assistantProposal.create({
-          data: { organizationId, personExternalId: who, kind: LEAVE_QUESTION_KIND, summary: parked.summary, payload: { requestId: p.requestId } as never },
+          data: { organizationId, personExternalId: who, kind: LEAVE_QUESTION_KIND, summary: parked.summary, payload: { requestId: p.requestId, ...(suite === 'spend' ? { suite } : {}) } as never },
         }).catch(() => undefined);
       }
-      return rules('ask_for_leave', text(anAnswerNotSent(asker)));
+      return rules(lane, text(anAnswerNotSent(asker, suite)));
     }
     const me = await this.theSignInOf(organizationId, who);
+    const none = noQuestionWaiting(suite);
     let reply: string;
     try {
-      if (!this.leave || !me.linkedUserId || !p.requestId || !p.answer) throw new Error(NO_QUESTION_WAITING);
-      await this.leave.answerAQuestion({ userId: me.linkedUserId, organizationId }, p.requestId, p.answer);
-      reply = anAnswerSent(asker);
+      const answering = suite === 'spend' ? this.spending : this.leave;
+      if (!answering || !me.linkedUserId || !p.requestId || !p.answer) throw new Error(none);
+      await answering.answerAQuestion({ userId: me.linkedUserId, organizationId }, p.requestId, p.answer);
+      reply = anAnswerSent(asker, suite);
     } catch (err: any) {
-      const why = typeof err?.message === 'string' && err.message ? err.message : NO_QUESTION_WAITING;
-      reply = why === NO_QUESTION_WAITING || why === QUESTION_REFUSED.nothingToAnswer ? NO_QUESTION_WAITING : `I could not send it. ${why}`;
+      const why = typeof err?.message === 'string' && err.message ? err.message : none;
+      reply = why === none || why === QUESTION_REFUSED.nothingToAnswer ? none : `I could not send it. ${why}`;
     }
     await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
-    return rules('ask_for_leave', text(reply));
+    return rules(lane, text(reply));
   }
 
   /**
@@ -3054,6 +3062,10 @@ export class AssistantService {
           const waiting = await Promise.resolve(this.leave.questionWaitingFor?.(reader, q.ref)).catch(() => null);
           if (waiting) return { id: q.id, suite: 'leave', ref: q.ref, askedBy: waiting.askedBy, about: 'your leave' };
         }
+        if (q.suite === 'spend' && this.spending) {
+          const waiting = await Promise.resolve(this.spending.questionWaitingFor?.(reader, q.ref)).catch(() => null);
+          if (waiting) return { id: q.id, suite: 'spend', ref: q.ref, askedBy: waiting.askedBy, about: 'your request to spend' };
+        }
       }
       return null;
     } catch {
@@ -3069,18 +3081,20 @@ export class AssistantService {
   async answerAQuestionOnWhatsApp(organizationId: string, personId: string, questionId: string, answer: string): Promise<string> {
     const waiting = await this.aQuestionWaitsForYourAnswer(organizationId, personId);
     if (!waiting || waiting.id !== questionId) return NO_QUESTION_WAITING;
+    const none = noQuestionWaiting(waiting.suite);
     const typed = (answer ?? '').trim();
-    if (!typed) return NO_QUESTION_WAITING;
+    if (!typed) return none;
     if (typed.length > LONGEST) return QUESTION_REFUSED.tooLong;
     const me = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { linkedUserId: true, email: true } });
     const userId = await theirSignIn(this.prisma, organizationId, me).catch(() => null);
     try {
-      if (!userId || !this.leave) throw new Error(NO_QUESTION_WAITING);
-      await this.leave.answerAQuestion({ userId, organizationId }, waiting.ref, typed);
-      return anAnswerSent(waiting.askedBy);
+      const answering = waiting.suite === 'spend' ? this.spending : this.leave;
+      if (!userId || !answering) throw new Error(none);
+      await answering.answerAQuestion({ userId, organizationId }, waiting.ref, typed);
+      return anAnswerSent(waiting.askedBy, waiting.suite);
     } catch (err: any) {
-      const why = typeof err?.message === 'string' && err.message ? err.message : NO_QUESTION_WAITING;
-      return why === NO_QUESTION_WAITING || why === QUESTION_REFUSED.nothingToAnswer ? NO_QUESTION_WAITING : `I could not send it. ${why}`;
+      const why = typeof err?.message === 'string' && err.message ? err.message : none;
+      return why === none || why === QUESTION_REFUSED.nothingToAnswer ? none : `I could not send it. ${why}`;
     }
   }
 
@@ -3104,7 +3118,7 @@ export class AssistantService {
     const r = left[0];
     if (r.kind === 'hours' && outcome === 'declined') return rules('decide_a_request', text(HOURS_ARE_NOT_DECLINED(r.firstName)));
     /* A reason given with a declined leave ("because ...") is said back, and told to the person (decision 85, build step 7). */
-    const reason = outcome === 'declined' && r.kind === 'leave' ? aReasonIn(message) : null;
+    const reason = outcome === 'declined' && (r.kind === 'leave' || r.kind === 'spend') ? aReasonIn(message) : null;
     const say = reason ? aDeclineWithAReasonSaidBack(r.thing, r.firstName, reason) : aDecisionSaidBack(r, outcome);
     const row = await this.prisma.assistantProposal.create({
       data: { organizationId, personExternalId: who, kind: 'request_decision', summary: say, payload: { request: r, outcome, ...(reason ? { reason } : {}) } as never },
@@ -3137,7 +3151,7 @@ export class AssistantService {
         nowWaitsFor = await Promise.resolve(this.leave.nowWaitingFor?.(organizationId, request.ref)).catch(() => null) ?? null;
       } else if (request.kind === 'spend') {
         if (!this.spending) throw new Error(NOTHING_TO_DECIDE);
-        await this.spending.decide(reader, request.ref, outcome);
+        await (reason ? this.spending.decide(reader, request.ref, outcome, undefined, reason) : this.spending.decide(reader, request.ref, outcome));
         nowWaitsFor = await Promise.resolve(this.spending.nowWaitingFor?.(organizationId, request.ref)).catch(() => null) ?? null;
       } else {
         if (!this.timeSheets) throw new Error(NOTHING_TO_DECIDE);

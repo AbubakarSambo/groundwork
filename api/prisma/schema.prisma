@@ -2615,6 +2615,9 @@ model SpendRequest {
   /// The evidence the rules asked for when it was asked: "receipt", "quote", or both. Only that it is
   /// needed; no file is kept. Empty when none was needed.
   evidenceNeeded String[]  @default([]) @map("evidence_needed")
+  /// The reason the person who declined it gave, in their words, told to the person who asked
+  /// (decision 85, build step 9, as leave has). Empty when none was given, and on every request before.
+  declineReason  String?   @map("decline_reason") @db.Text
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -2868,7 +2871,7 @@ model SuiteEvent {
 model SuiteQuestion {
   id             String    @id @default(uuid())
   organizationId String    @map("organization_id")
-  /// leave, for now.
+  /// leave or spend.
   suite          String    @db.VarChar(16)
   /// The request's id.
   ref            String    @db.VarChar(200)

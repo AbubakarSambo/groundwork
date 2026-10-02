@@ -136,6 +136,8 @@ describe('Grace, an admin', () => {
       where: 'It is waiting for Fatuma.',
       /* The spending rules (build step 9): none set, so no category and no evidence. */
       category: null, needs: [],
+      /* Questions about it (build step 9): none asked. */
+      questions: [],
     });
     expect(byName(b, 'Lina Mutua')).toMatchObject({ amount: 95000, left: 60000, over: true, approver: { kind: 'person', firstName: 'Grace' }, mayDecide: true });
     /* Wairimu's lead is Grace, an admin, so Grace approves it as her lead. */

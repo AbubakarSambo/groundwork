@@ -300,9 +300,21 @@ export class SuitesController {
   }
 
   @Post('spend/requests/:id/decline')
-  @ApiOperation({ summary: 'The one who approves a request to spend says no' })
-  declineSpend(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
-    return this.spend.decide({ userId: user.id, organizationId: user.organizationId }, id, 'declined');
+  @ApiOperation({ summary: 'The one who approves a request to spend says no, with a reason if they give one, which the person is told' })
+  declineSpend(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: DeclineDto) {
+    return this.spend.decide({ userId: user.id, organizationId: user.organizationId }, id, 'declined', undefined, dto?.reason);
+  }
+
+  @Post('spend/requests/:id/question')
+  @ApiOperation({ summary: 'Whoever decides a request to spend asks the person a question. The request keeps waiting.' })
+  askAboutSpend(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: QuestionDto) {
+    return this.spend.askAQuestion({ userId: user.id, organizationId: user.organizationId }, id, dto.question);
+  }
+
+  @Post('spend/requests/:id/answer')
+  @ApiOperation({ summary: 'The person who asked to spend answers the question waiting for them. The request keeps waiting.' })
+  answerAboutSpend(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AnswerDto) {
+    return this.spend.answerAQuestion({ userId: user.id, organizationId: user.organizationId }, id, dto.answer);
   }
 
   @Get('spend/requests/:id/history')

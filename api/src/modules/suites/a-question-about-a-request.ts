@@ -26,6 +26,7 @@ export const QUESTION_REFUSED = {
   notYours: 'Only the person who decides this request can ask about it.',
   notWaiting: 'This request has already been decided.',
   onlyThePerson: 'Only the person who asked for this leave can answer a question about it.',
+  onlyThePersonWhoAskedToSpend: 'Only the person who asked to spend this can answer a question about it.',
   nothingToAnswer: 'There is no question waiting for your answer on this request.',
   emptyAnswer: 'Write your answer first.',
 };
@@ -86,13 +87,18 @@ export function anAnswerSaidBack(asker: string, leave: string, question: string,
   return `${capital(asker)} asked you about your ${leave}, ${inQuotes(question)} I will send ${asker} your answer as you wrote it, ${inQuotes(answer)} Shall I send it?`;
 }
 
-export const anAnswerSent = (asker: string) =>
-  `I have sent your answer to ${asker}. Your leave request is still waiting for ${asker} to decide.`;
+/** Which request a question is about, for the sentences that follow: leave by default, or a request to spend (build step 9). */
+export type QuestionSuite = 'leave' | 'spend';
 
-export const anAnswerNotSent = (asker: string) =>
-  `I have not sent it. ${capital(asker)}’s question is still waiting for your answer, so write your answer here when you are ready, or answer it under your leave.`;
+export const anAnswerSent = (asker: string, suite: QuestionSuite = 'leave') =>
+  `I have sent your answer to ${asker}. Your ${suite === 'spend' ? 'request to spend' : 'leave request'} is still waiting for ${asker} to decide.`;
+
+export const anAnswerNotSent = (asker: string, suite: QuestionSuite = 'leave') =>
+  `I have not sent it. ${capital(asker)}’s question is still waiting for your answer, so write your answer here when you are ready, or answer it under your ${suite === 'spend' ? 'requests to spend' : 'leave'}.`;
 
 export const NO_QUESTION_WAITING = 'There is no question about your leave waiting for your answer now, so I have not sent anything.';
+export const NO_SPEND_QUESTION_WAITING = 'There is no question about your request to spend waiting for your answer now, so I have not sent anything.';
+export const noQuestionWaiting = (suite: QuestionSuite = 'leave') => (suite === 'spend' ? NO_SPEND_QUESTION_WAITING : NO_QUESTION_WAITING);
 
 // ---------------------------------------------- WhatsApp ----------------------------------------------
 

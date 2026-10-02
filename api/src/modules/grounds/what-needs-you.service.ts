@@ -11,7 +11,7 @@ import { waitingForYouToApprove } from './waiting-for-you-to-approve';
 import { ReviewsService } from '../suites/the-reviews.service';
 import { reviewsToStartOnToday, yourReviewsOnToday } from './a-review-on-today';
 import { aQuestionOnToday, inQuotes } from '../suites/a-question-about-a-request';
-import { leaveInWords } from '../suites/a-request-in-words';
+import { leaveInWords, spendInWords } from '../suites/a-request-in-words';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 
@@ -73,6 +73,25 @@ export class WhatNeedsYouService {
   }
 
   /**
+   * A QUESTION ABOUT YOUR OWN REQUEST TO SPEND, WAITING FOR YOUR ANSWER (build step 9), from the spending
+   * suite's own read of this person's requests (`mine`). Nobody else's: "Fatuma asked you a question
+   * about your request to spend KES 12,000 for tyres for the van.", with the question itself.
+   */
+  private async spendQuestionsFor(userId: string, organizationId: string): Promise<Need[]> {
+    if (!this.spend) return [];
+    const mine = await Promise.resolve().then(() => this.spend!.mine({ userId, organizationId })).catch(() => null);
+    return (mine?.requests ?? []).filter((r) => r.questionWaiting).map((r) => ({
+      key: `spend-question-${r.id}`,
+      kind: 'decide' as const,
+      title: aQuestionOnToday(r.questionWaiting!.askedBy, `request to spend ${spendInWords(r.amount, mine?.currency ?? null, r.what)}`),
+      detail: `${r.questionWaiting!.askedBy} asked, ${inQuotes(r.questionWaiting!.question)} Your request is still waiting.`,
+      action: { label: 'Answer it', to: '/suite/spend' },
+      groundId: '',
+      organizationId,
+    }));
+  }
+
+  /**
    * WHAT IS WAITING FOR THIS READER TO APPROVE (week 21): leave, hours and spending, from each
    * board's own read, which says row by row whether this reader is the one who approves it. Every
    * reader's boards are asked, because the rules can name a member to decide (decisions 85 and 86),
@@ -91,7 +110,7 @@ export class WhatNeedsYouService {
   }
 
   async forReader(userId: string, email: string, organizationId: string, role: string): Promise<WhatNeedsYou> {
-    const [list, waiting, me, toApprove, reviews, leaveQuestions] = await Promise.all([
+    const [list, waiting, me, toApprove, reviews, leaveQuestions, spendQuestions] = await Promise.all([
       this.grounds.list(organizationId, userId, email, role),
       role === 'ADMIN' ? this.grounds.listAwaitingApproval(organizationId, userId) : Promise.resolve([]),
       /**
@@ -105,6 +124,7 @@ export class WhatNeedsYouService {
       this.toApprove(userId, organizationId),
       this.reviewsFor(userId, organizationId),
       this.leaveQuestionsFor(userId, organizationId),
+      this.spendQuestionsFor(userId, organizationId),
     ]);
     /*
      * ONLY THIS ORGANISATION'S (U.5 review). The list also carries check-ins in other organisations
@@ -125,7 +145,7 @@ export class WhatNeedsYouService {
     }
     /* On approved leave today (week 23): their own check-in says the round does not wait for them. Dates only. */
     const awayUntil = (await whoIsAwayOn(this.prisma, [userId], organizationId).catch(() => new Map<string, string>())).get(userId) ?? null;
-    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...reviews, ...leaveQuestions, ...toApprove]);
+    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove]);
     /* A net: no address stands in for a name in any sentence on Today (week 12c). */
     const called = new Map<string, string>();
     for (const g of here as any[]) {
