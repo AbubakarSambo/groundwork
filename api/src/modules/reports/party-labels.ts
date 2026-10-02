@@ -5,6 +5,7 @@ import { theShortNameOf } from './a-title-is-not-a-first-name';
 import { theQuotesKept } from './a-quote-is-what-they-said';
 import { aPlainerWord } from './a-plainer-word';
 import { aNameSaidTwiceInARow } from './a-name-said-twice-in-a-row';
+import { nobodyWaitsOnThemselvesInAStory } from './nobody-waits-on-themselves-in-a-story';
 
 export type LabelParty = {
   id: string;
@@ -961,7 +962,8 @@ function withNamesOutsideTheQuotes(
      disagree" puts the reader second in their own report and then leaves them out of a
      disagreement they are half of. Self-gating: it only acts where a "you" is present, which only
      happens where the reader's own label was just substituted. */
-  return fromTheReadersSide(named, visible.values());
+  /* AND NOBODY WAITS ON THEMSELVES in a story stored before request 111 (e) (request 118). */
+  return nobodyWaitsOnThemselvesInAStory(fromTheReadersSide(named, visible.values()));
 }
 
 /**
