@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
-import { mayApprove } from './who-approves';
+import { mayApprove, whoApprovesFor } from './who-approves';
 import { withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { isProposedByGroundwork, theProposalSentence } from './a-review-falls-due';
 import { whatGroundworkNoticed } from './the-review-noticed-from-the-record';
@@ -119,6 +119,15 @@ const dayOf = (d: Date): Day => d.toISOString().slice(0, 10);
 const DAY = 86_400_000;
 
 /**
+ * The person a started review is said to be written with: whoever decided it, once decided, or else
+ * whoever started it. Read from the review itself, so an admin who started it is named, never the
+ * person's line manager in their place (bug 2 of docs/suites-against-the-workflow-model.md).
+ */
+export function theOneWhoWrote(r: { startedById?: string | null; decidedById?: string | null; decidedAt?: Date | null }): string | null {
+  return (r.decidedAt && r.decidedById) || r.startedById || null;
+}
+
+/**
  * `userId` is the person's sign-in: the link, or the one account in this organisation with the same
  * email, through the one place leave, hours and spending ask too (a-roster-entry-and-its-sign-in.ts).
  */
@@ -162,7 +171,7 @@ export class ReviewsService {
     const me = [...directory.values()].find((p) => p.userId === reader.userId) ?? null;
     const reviews = await this.prisma.performanceReview.findMany({
       where: { organizationId: reader.organizationId, evaluationDueId: { in: dues.map((d) => d.id) } },
-      select: { id: true, evaluationDueId: true, decidedAt: true, startedAt: true },
+      select: { id: true, evaluationDueId: true, decidedAt: true, startedAt: true, startedById: true, decidedById: true },
     });
     const byDue = new Map(reviews.map((r) => [r.evaluationDueId, r]));
     const signIns = dues.map((d) => directory.get(d.personExternalId)?.userId).filter((u): u is string => !!u);
@@ -176,13 +185,13 @@ export class ReviewsService {
       if (!p || p.userId === reader.userId) continue;
       if (role === 'LEAD' && !(me && inTheLeadsTeam(me, p))) continue;
       const r = byDue.get(d.id);
-      const manager = p.managerExternalId ? directory.get(p.managerExternalId) : null;
+      const writtenWith = r ? await this.fullNameOf(theOneWhoWrote(r as any), directory) : await this.whoWouldWrite(reader.organizationId, p, answers.writer, directory);
       const waitingFor = !r && p.userId ? openDecisions.get(p.userId) ?? null : null;
       const stands: Stands = r ? (r.decidedAt ? 'decided' : 'started') : waitingFor ? 'not-yet' : 'ready';
       next.push({
         dueId: d.id,
         name: this.nameOf(p),
-        writtenWith: manager ? this.nameOf(manager) : null,
+        writtenWith,
         dueOn: dayOf(d.dueOn),
         stands,
         standsSays: whereItStandsSaid({
@@ -238,15 +247,15 @@ export class ReviewsService {
     if (!me) return [];
     const rows = await this.prisma.performanceReview.findMany({
       where: { organizationId: reader.organizationId, personExternalId: me.externalId },
-      select: { id: true, evaluationDueId: true, theirView: true, decidedAt: true, decision: true, decisionReasons: true },
+      select: { id: true, evaluationDueId: true, theirView: true, decidedAt: true, decision: true, decisionReasons: true, startedById: true, decidedById: true },
     });
-    const manager = me.managerExternalId ? directory.get(me.managerExternalId) ?? null : null;
-    const writer = manager ? this.firstOf(manager) : null;
     const out: YourReview[] = [];
     for (const r of rows) {
       const due = await this.prisma.evaluationDue.findUnique({ where: { id: r.evaluationDueId }, select: { dueOn: true } });
       if (!due) continue;
       const stands = r.decidedAt && r.decision && r.decisionReasons ? 'decided' : 'started';
+      /* The person who actually started it, or decided it: never the line manager by default (bug 2). */
+      const writer = await this.firstNameOf(theOneWhoWrote(r), directory);
       out.push({ id: r.id, dueOn: dayOf(due.dueOn), writtenWithFirstName: writer, stands, says: yourReviewSaid(stands, writer, !!r.theirView?.trim()) });
     }
     return out.sort((a, b) => b.dueOn.localeCompare(a.dueOn));
@@ -257,7 +266,10 @@ export class ReviewsService {
     const answers = await this.suiteAnswers(reader.organizationId);
     const { row, person, directory } = await this.theReview(reader, id);
     const role = await this.roleOf(reader);
-    const manager = person.managerExternalId ? directory.get(person.managerExternalId) ?? null : null;
+    /* Whoever started it, or decided it, is named; never the line manager by default (bug 2). */
+    const writerId = theOneWhoWrote(row as any);
+    const writerFirst = await this.firstNameOf(writerId, directory);
+    const startedByFirst = await this.firstNameOf((row as any).startedById ?? null, directory);
     const decision = row.decision && row.decisionReasons ? { says: row.decision, reasons: row.decisionReasons } : null;
     const dueOn = dayOf(row.due.dueOn);
 
@@ -267,9 +279,10 @@ export class ReviewsService {
     }).catch(() => null);
     if (person.userId === reader.userId) {
       return {
-        reader: 'person', id: row.id, firstName: this.firstOf(person), writtenWithFirstName: manager ? this.firstOf(manager) : null,
+        reader: 'person', id: row.id, firstName: this.firstOf(person), writtenWithFirstName: writerFirst,
         dueOn, noticed: this.noticedOf(row.noticed, true), theirView: row.theirView ?? null, decision,
-        ...(recognising ? { recognise: recogniseForThePerson(recognising, manager ? this.firstOf(manager) : null) } : {}),
+        /* The count is of check-ins with whoever started the review (theRecordForRecognising), so that person is named. */
+        ...(recognising ? { recognise: recogniseForThePerson(recognising, startedByFirst) } : {}),
       };
     }
     const writes = await this.writes(reader, role, person, answers.writer);
@@ -282,7 +295,7 @@ export class ReviewsService {
     return {
       reader: writes ? 'writer' : role === 'ADMIN' ? 'admin' : 'lead',
       id: row.id, name: this.nameOf(person), firstName: this.firstOf(person),
-      writtenWith: manager ? this.nameOf(manager) : null, writtenWithFirstName: manager ? this.firstOf(manager) : null,
+      writtenWith: await this.fullNameOf(writerId, directory), writtenWithFirstName: writerFirst,
       dueOn, noticed: this.noticedOf(row.noticed, writes), managersWords: row.managersWords ?? null, theirView: row.theirView ?? null, decision, mayWrite: writes, suggestion,
       recognise: writes && recognising && theWriterMayReadIt({ theirView: row.theirView ?? null, startedAt: (row as any).startedAt }) ? recogniseForTheWriter(this.firstOf(person), recognising) : null,
     };
@@ -345,6 +358,34 @@ export class ReviewsService {
       organizationId: reader.organizationId, readerId: reader.userId, readerRole: role,
       personUserId: p.userId ?? `person:${p.externalId}`, approver: writer, managerExternalId: p.managerExternalId,
     });
+  }
+
+  /**
+   * Who would write a review not started yet, by the organisation's answer: for "Their manager", the
+   * person's manager when they can write it (who-approves.ts); otherwise any admin, so nobody is named.
+   */
+  private async whoWouldWrite(organizationId: string, p: Person, writer: string | null, directory: Map<string, Person>): Promise<string | null> {
+    if (writer !== 'Their manager') return null;
+    const who = await whoApprovesFor(this.prisma, { organizationId, personUserId: p.userId ?? `person:${p.externalId}`, managerExternalId: p.managerExternalId }).catch(() => null);
+    return who?.kind === 'manager' ? this.fullNameOf(who.userId, directory) : null;
+  }
+
+  /** A sign-in's first name, from the staff directory, or else from the sign-in itself. Never an address. */
+  private async firstNameOf(userId: string | null, directory: Map<string, Person>): Promise<string | null> {
+    if (!userId) return null;
+    const p = [...directory.values()].find((x) => x.userId === userId);
+    if (p) return this.firstOf(p) || null;
+    const u = await (this.prisma as any).user?.findUnique?.({ where: { id: userId }, select: { firstName: true } }).catch(() => null);
+    return u?.firstName?.trim() || null;
+  }
+
+  /** A sign-in's full name, from the staff directory, or else from the sign-in itself. Never an address. */
+  private async fullNameOf(userId: string | null, directory: Map<string, Person>): Promise<string | null> {
+    if (!userId) return null;
+    const p = [...directory.values()].find((x) => x.userId === userId);
+    if (p) return this.nameOf(p) || null;
+    const u = await (this.prisma as any).user?.findUnique?.({ where: { id: userId }, select: { firstName: true, lastName: true } }).catch(() => null);
+    return [u?.firstName, u?.lastName].filter(Boolean).join(' ').trim() || null;
   }
 
   /** Only lines the engine marked, and only the two marks a person may read. */
