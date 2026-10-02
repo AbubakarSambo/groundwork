@@ -9,20 +9,21 @@ import { PromptsService } from './prompts.service';
  */
 
 /** A fake Prisma with every read the System tab makes, answering with the rows a test seeds. */
-function theSystemTab(seed: { recent?: any[] } = {}) {
+function theSystemTab(seed: { recent?: any[]; versions?: any[]; groundsOnAVersion?: any[]; outcomes?: any[] } = {}) {
   const prisma: any = {
     organization: { count: jest.fn().mockResolvedValue(3) },
     ground: {
       count: jest.fn().mockResolvedValue(4),
-      groupBy: jest.fn().mockResolvedValue([{ status: 'ACTIVE', _count: { id: 4 } }]),
+      groupBy: jest.fn(async ({ by }: any) =>
+        by.includes('promptVersionId') ? seed.groundsOnAVersion ?? [] : [{ status: 'ACTIVE', _count: { id: 4 } }]),
       findMany: jest.fn().mockResolvedValue([]),
     },
     checkIn: {
       count: jest.fn().mockResolvedValue(5),
       findMany: jest.fn(async (args: any) => (args?.take === 15 ? seed.recent ?? [] : [])),
     },
-    promptVersion: { findMany: jest.fn().mockResolvedValue([]) },
-    outcome: { findMany: jest.fn().mockResolvedValue([]) },
+    promptVersion: { findMany: jest.fn().mockResolvedValue(seed.versions ?? []) },
+    outcome: { findMany: jest.fn().mockResolvedValue(seed.outcomes ?? []) },
     outcomeFeedback: { findMany: jest.fn().mockResolvedValue([]) },
   };
   return { prisma, svc: new PromptsService(prisma, {} as any) };
@@ -45,6 +46,23 @@ describe('the System tab', () => {
     ]);
     const feed = prisma.checkIn.findMany.mock.calls.find(([a]: any[]) => a?.take === 15)[0];
     expect(feed.where.completedAt).toEqual({ not: null });
+  });
+});
+
+describe('the prompt versions on the System tab', () => {
+  it('count the check-ins that ran on each version, not the outcomes they reached', async () => {
+    const v = (id: string, version: number, isActive: boolean) => ({ id, key: 'system', version, isActive, activatedAt: null, createdAt: new Date() });
+    const { prisma, svc } = theSystemTab({
+      versions: [v('v44', 44, true), v('v35', 35, false), v('v1', 1, false)],
+      /* What Postgres hands back for customers' check-ins that record a version. */
+      groundsOnAVersion: [{ promptVersionId: 'v44', _count: { id: 89 } }, { promptVersionId: 'v35', _count: { id: 29 } }],
+      outcomes: [{ promptVersionId: 'v35', resolvedState: 'RESOLVED' }],
+    });
+    const served = await svc.platformDashboard('all');
+    /* It served 0, 1 and 0: one outcome on version 35, and nothing on the version that runs. */
+    expect(served.promptPerformance.map((p) => [p.version, p.groundsUsingIt, p.outcomesResolved])).toEqual([[44, 89, 0], [35, 29, 1], [1, 0, 0]]);
+    const asked = prisma.ground.groupBy.mock.calls.find(([a]: any[]) => a.by.includes('promptVersionId'))[0];
+    expect(asked.where).toEqual({ organization: { isInternal: false }, promptVersionId: { not: null } });
   });
 });
 

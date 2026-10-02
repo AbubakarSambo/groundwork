@@ -358,13 +358,23 @@ export class PromptsService implements OnModuleInit {
       },
     });
 
+    /* CHECK-INS USING A VERSION ARE CHECK-INS (item 19). `groundsUsingIt` counted outcomes, which only
+       a check-in that reached an agreed end has: on the test database 24 against 1,393 customers'
+       check-ins that record a version, and the active version read 0. */
+    const groundsByVersion = await this.prisma.ground.groupBy({
+      by: ['promptVersionId'],
+      where: { ...A_REAL_CHECK_IN, promptVersionId: { not: null } },
+      _count: { id: true },
+    });
+    const groundsOn = new Map(groundsByVersion.map((r) => [r.promptVersionId, r._count.id]));
+
     const promptPerformance = promptVersions.map((pv) => {
       const pvOutcomes = outcomes.filter((o) => o.promptVersionId === pv.id);
       const pvFeedback = feedback.filter((f) => f.ground.promptVersionId === pv.id);
       const fairCount = pvFeedback.filter((f) => f.feltFair).length;
       return {
         ...pv,
-        groundsUsingIt: pvOutcomes.length,
+        groundsUsingIt: groundsOn.get(pv.id) ?? 0,
         outcomesResolved: pvOutcomes.filter((o) => o.resolvedState !== 'STALLED').length,
         fairnessRate: pvFeedback.length > 0 ? Math.round((fairCount / pvFeedback.length) * 100) : null,
         feedbackResponses: pvFeedback.length,
