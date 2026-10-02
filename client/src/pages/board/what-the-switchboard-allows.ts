@@ -57,6 +57,18 @@ export function orderedSwitchboardSections(
     if (!hasData[boardSection]) continue
     if (!out.includes(boardSection)) out.push(boardSection)
   }
+  /*
+   * BOARD REVIEW, SALES PIECE A, ITEM 1: "PATTERNS" MOVES TO THE FRONT OF THIS LIST.
+   *
+   * No prototype screen shows "What was agreed at the start", "Where people differ", "What people
+   * are after" or "The quick read" as their own heading on a board - BoardPage.tsx now folds the
+   * other six of these seven sections under one "Everything else from this check-in" disclosure,
+   * near the foot of the board. CLAUDE.md protects patterns (and coaching, right after it) from
+   * ever being folded, hidden or simplified away, so patterns alone stays in the open, ahead of
+   * that fold - for every situation, not only the sales one this review was about. The other six
+   * keep their own order among themselves, unchanged.
+   */
+  if (out.includes('patterns')) return ['patterns', ...out.filter((s) => s !== 'patterns')]
   return out
 }
 

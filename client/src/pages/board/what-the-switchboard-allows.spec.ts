@@ -72,12 +72,20 @@ describe('orderedSwitchboardSections', () => {
    * them: Targets(1), Starting agreement(5), Accounts side by side(6), Change since last(12),
    * Blockers(13), Patterns(15). The order is the table's position, whichever list a section is on.
    */
-  it('only includes sections that have data, in G2’s own table order', () => {
+  /*
+   * BOARD REVIEW, SALES PIECE A, ITEM 1: "PATTERNS" NOW LEADS, NOT TRAILS. No prototype screen
+   * shows the other six of these seven sections as their own heading on a board - BoardPage.tsx
+   * now folds them under "Everything else from this check-in", and CLAUDE.md protects patterns
+   * (and coaching, right after it) from ever being folded away - so patterns alone moves to the
+   * front of this list, for every situation. The other six keep G2's own table order among
+   * themselves, unchanged (updating this pinned expectation, not deleting it - see the commit).
+   */
+  it('only includes sections that have data, with patterns first and the rest in G2’s own table order', () => {
     const out = orderedSwitchboardSections('OKR_ALIGNMENT', {
       objectives: true, dependencies: true, patterns: true,
       startingState: false, divergence: true, quickRead: true,
     }, true)
-    expect(out).toEqual(['objectives', 'divergence', 'quickRead', 'dependencies', 'patterns'])
+    expect(out).toEqual(['patterns', 'objectives', 'divergence', 'quickRead', 'dependencies'])
   })
 
   it('never includes patterns while patterns are off, even if G2 turns it on', () => {
