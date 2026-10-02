@@ -75,11 +75,21 @@ export function theShapeOfIt(cells: Record<string, string>, sessions: (number | 
     of: each.length,
     /** How many of the run they were never on, for the one line that says so. */
     notOn: sessions.length - each.length,
+    /** Which sessions those were, by number - so the sentence can name them rather than only count
+        them (see `theSentenceFor`'s own comment). */
+    notOnSessions: sessions.filter((s) => asCell(cells[String(s)]) === 'na'),
     rest: each.filter((e) => e.state !== usual),
     /** The one session number, when there is only one - so a single-session row can be said by name
         ("session 1") rather than as a count of one. */
     onlySession: each.length === 1 ? each[0].s : null,
   }
+}
+
+/** "session 2." for one, "sessions 2 and 3." for two, "sessions 2, 3 and 4." for more - never a
+    bare count with nothing named. */
+function namedSessions(ns: (number | string)[]): string {
+  if (ns.length === 1) return `session ${ns[0]}`
+  return `sessions ${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`
 }
 
 /**
@@ -102,7 +112,14 @@ export function theSentenceFor(name: string, shape: ReturnType<typeof theShapeOf
   const who = shape.onlySession != null
     ? `${verb} session ${shape.onlySession}`
     : `${verb} ${shape.howMany} of ${shape.of} sessions this phase`
-  const rest = shape.notOn > 0 ? `, and was not part of the other ${shape.notOn}` : ''
+  /*
+   * U.10 RE-REVIEW: NAME THE SESSION, NOT ONLY ITS COUNT. "...and was not part of the other 1."
+   * said how many sessions this person was not on, never which ones - read live, it took a second
+   * trip to the grid above to find session 2. `notOnSessions` carries the actual numbers, so this
+   * names them the same way `onlySession` already names a lone one: "and was not part of session
+   * 2." for one, "...sessions 2 and 3." for several.
+   */
+  const rest = shape.notOn > 0 ? `, and was not part of ${namedSessions(shape.notOnSessions)}` : ''
   return `${name} ${who}${rest}.`
 }
 

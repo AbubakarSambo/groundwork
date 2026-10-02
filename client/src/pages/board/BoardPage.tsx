@@ -8,7 +8,8 @@ import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { WhatToSettleTogether } from '@/components/gw/what-to-settle-together'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckInLinks } from './CheckInLinks'
-import { boardApi, type BoardPresent, type CoverageVariant } from '@/api/board'
+import { boardApi, type BoardPresent, type CoverageVariant, type AnAction } from '@/api/board'
+import { apiClient } from '@/api/client'
 import { groundsApi } from '@/api/grounds'
 import { participantRequestsApi } from '@/api/participantRequests'
 import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-that-can-receive-mail'
@@ -443,6 +444,104 @@ function openTheWholeCheckIn() {
 }
 
 /**
+ * AN ACTION CALL GOES ONLY TO THIS CHECK-IN. `action.choices[].route` is sent by the server, but
+ * this runs whatever method and path it carries - a route to another check-in, to some other part
+ * of the API entirely, or to another site altogether, would be sent exactly the same way a correct
+ * one is. This is the one gate every such call passes through: only `POST` or `PATCH`, and only a
+ * relative path that starts with this check-in's own `/grounds/:id/`, with no `..` (a way out of
+ * that path), no `//` (a scheme-relative address, `//evil.example`) and no scheme of its own
+ * (`https:`, `javascript:`...). Anything else is refused before the network is ever touched.
+ */
+export function isARouteToThisCheckIn(groundId: string, route: { method: string; path: string } | null | undefined): boolean {
+  if (!route) return false
+  if (route.method !== 'POST' && route.method !== 'PATCH') return false
+  const path = route.path
+  if (typeof path !== 'string' || !path) return false
+  if (path.includes('..')) return false
+  if (path.includes('//')) return false
+  if (/^[a-z][a-z0-9+.-]*:/i.test(path)) return false
+  return path.startsWith(`/grounds/${groundId}/`)
+}
+
+/**
+ * REQUEST 112 (b): WHAT THE LEAD CAN DO ABOUT ONE ITEM UNDER "What needs you" (board-as-lead.txt:
+ * "Yes, it counts" / "No", "Ask him"). `action.route` is the exact call the engine already built
+ * to keep that answer (`POST .../board/decisions/:id/answer`, `PATCH .../commitments/:id`); this
+ * calls it generically and reads back `saidBack`, the engine's own sentence for what just
+ * happened. A choice with `route: null` ("Not yet") changes nothing, so it carries no call at all.
+ */
+function useRunBoardAction(groundId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (route: NonNullable<AnAction['choices']>[number]['route']) => {
+      if (!isARouteToThisCheckIn(groundId, route)) {
+        return Promise.reject(new Error('That did not save. Nothing has changed, so try again.'))
+      }
+      return apiClient.request({ method: route!.method, url: route!.path, data: route!.body }).then((r) => r.data)
+    },
+    onSuccess: (data: any) => {
+      qc.invalidateQueries({ queryKey: ['board', groundId] })
+      if (data?.saidBack) toast.success(data.saidBack)
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Nothing has changed, so try again.'),
+  })
+}
+
+/**
+ * REQUEST 112 (b): ONE ITEM'S OWN ACTION, REPLACING THE GENERIC "Open". Each choice becomes its
+ * own button (board-as-lead.txt's own "Yes, it counts" / "No"); with no choices, one button to
+ * where the lead settles it ("check-in" or "context"), in the engine's own words for the button
+ * ("Ask him", "Reply in your check-in"...). `kind="secondary"` always - never a second navy button
+ * on a page that already has its own primary action. Where the engine has sent no `action` at all
+ * (an older server), this falls back to the plain "Open" text link it replaces.
+ */
+function ActionButtons({ groundId, action }: { groundId: string; action?: AnAction }) {
+  const run = useRunBoardAction(groundId)
+  /*
+   * "NOT YET" MUST SAY SOMETHING. A choice with `route: null` ("Not yet") changes nothing, so it
+   * carries no call at all - but pressing it used to do and say nothing either, which reads as a
+   * broken button. It now shows the action's own `says` (the engine's sentence for what staying
+   * open means) as a short note under the buttons. A choice with no route AND no `says` to show for
+   * it is not drawn at all - there would be nothing to press it for.
+   */
+  const [notYetSaid, setNotYetSaid] = useState<string | null>(null)
+  if (!action) return <Link to={`/grounds/${groundId}`} className="gwui-plain-link">Open</Link>
+  if (action.choices?.length) {
+    const choices = action.choices.filter((c) => c.route || action.says)
+    if (!choices.length) return null
+    return (
+      <>
+        {choices.map((c) => (
+          <UIButton
+            key={c.label}
+            kind="secondary"
+            size="small"
+            disabled={run.isPending}
+            onClick={c.route ? () => { setNotYetSaid(null); run.mutate(c.route) } : () => setNotYetSaid(action.says ?? null)}
+          >
+            {c.label}
+          </UIButton>
+        ))}
+        {/*
+          `flexBasis: '100%'` on this one child, inside the parent's own flex-wrap row
+          (`gwui-edge-acts`), is what pushes it onto a line of its own under the buttons, the same
+          way a row of buttons already wraps onto a new line when it runs out of room - not a new
+          gap or margin of its own. The shared `Note` part's own `tone="muted"` (13.5px,
+          `--gw-muted`) is what several other rows on this board already use for a line exactly
+          like this one.
+        */}
+        {notYetSaid && <div style={{ flexBasis: '100%' }}><Note tone="muted">{notYetSaid}</Note></div>}
+      </>
+    )
+  }
+  return (
+    <UIButton kind="secondary" size="small" to={`/grounds/${groundId}?tab=${action.goesTo === 'context' ? 'context' : 'chat'}`}>
+      {action.label}
+    </UIButton>
+  )
+}
+
+/**
  * ONE FOLD, NOT A FOLD INSIDE A FOLD (board review, sales piece C, item 1).
  *
  * "Everything else from this check-in" (the sections the prototype's own sales board does not
@@ -482,7 +581,7 @@ function FoldEverythingElseUnless({ alreadyFolded, children }: { alreadyFolded: 
  * null when this reader has no report of their own yet), and "Read your own report" is drawn only
  * then, as the prototype shows it only once there is one to read.
  */
-function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords, myParticipantId, leadFirstName, yourShare }: {
+function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords, myParticipantId, leadFirstName, yourShare, yourShareSays }: {
   groundId: string
   teamPicture: BoardPresent['teamPicture']
   kindOfWork: string | null
@@ -490,6 +589,8 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
   myParticipantId: string | null
   leadFirstName: string | null
   yourShare: BoardPresent['yourShare']
+  /** REQUEST 110 (a): "There is no number of yours on this board yet, so there is no share to show." - sent only when `yourShare` is `[]`. */
+  yourShareSays?: string | null
 }) {
   const shared = teamPicture?.shared === true
   return (
@@ -541,6 +642,7 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
         )}
       </Panel>
       <YourOwnRecordsSections
+        groundId={groundId}
         kindOfWork={kindOfWork as any}
         sections={workRecords}
         myParticipantId={myParticipantId}
@@ -562,6 +664,16 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
               </div>
             ))}
           </Stack>
+        </Section>
+      )}
+      {/*
+        REQUEST 110 (a): "YOUR SHARE" IS NOW ALWAYS SENT TO A PERSON WHO CHECKS IN, AS A LIST -
+        where they have no number of their own, `yourShare` is `[]` and `yourShareSays` says so in
+        a plain sentence, rather than the whole section just never appearing.
+      */}
+      {!yourShare?.length && yourShareSays && (
+        <Section heading="Your share">
+          <Note tone="muted">{yourShareSays}</Note>
         </Section>
       )}
     </>
@@ -1107,6 +1219,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             myParticipantId={b.myParticipantId}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
             yourShare={b.yourShare}
+            yourShareSays={(b as any).yourShareSays ?? null}
           />
         )}
 
@@ -1192,6 +1305,29 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
 
         {/*
+          REQUEST 115 (c): "TO CLOSE THE GAP, TWO OF THESE THREE" (board-as-lead.txt), beside the
+          headline. Sent only to whoever is served the headline (the lead, the admin who set it
+          up) - never a participant, never on a performance plan - and built only from the open
+          deals this reader is already served and the team's own aim, so it tells nobody anything
+          they could not already read row by row on the deal grid below.
+        */}
+        {(b as any).toCloseTheGap && (
+          <Panel>
+            <Stack gap={8}>
+              <SubHeading>To close the gap</SubHeading>
+              <p className="gwui-panel-text">{(b as any).toCloseTheGap.says}</p>
+              {!!(b as any).toCloseTheGap.deals.length && (
+                <Stack gap={6}>
+                  {(b as any).toCloseTheGap.deals.map((d: { id: string; says: string }) => (
+                    <Note key={d.id} tone="muted">{d.says}</Note>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          </Panel>
+        )}
+
+        {/*
           WHAT THE TARGET ASSUMES (board-as-lead.txt), right after the headline - the lead's own
           lines from Context (U.7), gathered across every target that has any, under one heading.
           This used to render once per target, nested inside "What we are aiming for" (now folded
@@ -1199,18 +1335,32 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           under the headline, so it is pulled out here rather than left where a reader folding away
           "What we are aiming for" would never see it.
         */}
-        {shown.objectives && (b.objectives ?? []).some((o) => (o.assumes ?? []).length > 0) && (
-          <Stack gap={12}>
-            {(b.objectives ?? []).filter((o) => (o.assumes ?? []).length > 0).map((o) => (
-              <WhatTheTargetAssumes
-                key={o.id}
-                figure={o.target != null ? o.target.toLocaleString('en-GB') : null}
-                name={o.name}
-                assumes={o.assumes ?? []}
-              />
-            ))}
-          </Stack>
-        )}
+        {/*
+          REQUEST 115 (c): "WHAT THE TARGET OF 25 ASSUMES" ALSO WHEN NOTHING IS WRITTEN DOWN YET.
+          The engine's own `assumesSays` says so plainly rather than the section just vanishing -
+          only for the headline's own target(s), so a target with no bearing on the headline
+          question does not gain a new empty-looking card nobody asked to see here.
+        */}
+        {(() => {
+          const headlineObjectiveIds = new Set(((b as any).headline?.bars ?? []).map((x: any) => x.objectiveId))
+          const worthShowing = (o: BoardPresent['objectives'] extends (infer T)[] | undefined ? T : never) =>
+            (o.assumes ?? []).length > 0 || (headlineObjectiveIds.has(o.id) && (o as any).assumesSays)
+          const toShow = (b.objectives ?? []).filter(worthShowing)
+          if (!shown.objectives || !toShow.length) return null
+          return (
+            <Stack gap={12}>
+              {toShow.map((o) => (
+                <WhatTheTargetAssumes
+                  key={o.id}
+                  figure={o.target != null ? o.target.toLocaleString('en-GB') : null}
+                  name={o.name}
+                  assumes={o.assumes ?? []}
+                  assumesSays={(o as any).assumesSays ?? null}
+                />
+              ))}
+            </Stack>
+          )
+        })()}
 
         {/*
           WHAT NEEDS YOU IN THIS CHECK-IN (board-as-lead.txt), for whoever runs it - ONE section,
@@ -1241,15 +1391,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 />
               ))}
               {/*
-                BOARD FIX (sales B, item 2): EVERY ITEM GETS ITS OWN ACTION. `needsHere` above
-                already carries a real one from Today's own API (`n.action`); `leadActions` and
-                `decisions` carried none at all - a reader could see what needed them but had
-                nothing to press. Neither field sends a choice or a target to act on directly
-                (no "Yes, it counts" / "No" the server built, no record id to jump to), so rather
-                than invent a control that does something nobody asked for, each gets the same
-                quiet "Open" text action (never navy - `.gwui-plain-link` is not counted as a
-                button at all, see e2e/the-prototype-count-of-buttons.spec.ts) to the Check-in tab,
-                where the lead actually settles this kind of thing, in conversation.
+                REQUEST 112 (b): EVERY ITEM GETS ITS OWN ACTION, FROM THE ENGINE'S OWN `action`
+                (board-as-lead.txt: "Yes, it counts" / "No", "Ask him"). `leadActions` and
+                `decisions` used to carry none at all, so every row fell back to the same quiet
+                "Open" text link to the Check-in tab - the engine now sends, per item, either real
+                choices with the route that keeps each answer, or one named button to where the
+                lead settles it. `ActionButtons` falls back to that same "Open" link on an older
+                server that sends no `action`.
               */}
               {shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan) && b.leadActions!.map((r) => (
                 <EdgeRow
@@ -1257,7 +1405,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   kind="look"
                   title={r.says}
                   detail={r.because ?? undefined}
-                  actions={<Link to={`/grounds/${id}`} className="gwui-plain-link">Open</Link>}
+                  actions={<ActionButtons groundId={id!} action={r.action} />}
                 />
               ))}
               {/*
@@ -1287,7 +1435,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       {d.owner && <span className="gwui-fs-13-5 gwui-ink-sub gwui-ml-7">{decisionOwnerTag(d.owner, b.participants, myName)}</span>}
                     </>
                   )}
-                  actions={<Link to={`/grounds/${id}`} className="gwui-plain-link">Open</Link>}
+                  actions={<ActionButtons groundId={id!} action={d.action} />}
                 />
               ))}
             </EdgeList>
@@ -1509,6 +1657,49 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           )
         })()}
 
+        {/*
+          U.10 ITEM 7: "OVER TIME" MOVES OUT OF THE FOLD, TO THE PROTOTYPE'S OWN PLACE
+          (board-as-lead.txt: between "Who checked in" and "Reports"). It used to sit inside
+          "Everything else from this check-in", with the sections the prototype's sales board
+          does not show at all - but the prototype draws "Over time" itself, right here, so it
+          belongs with the sections above it rather than folded away under them.
+
+          THE WHOLE RUN, IN ONE PLACE. "I need the board to carry the entire history in one place."
+
+          The board read only the CURRENT working copy of the report plus the record entries, so a
+          six-session run showed its latest state and nothing about how it got there - while the
+          per-round snapshots sat in `report_rounds`, immutable, one row per closed round, read by
+          a component that lived on the report tab.
+
+          Both come here: what the report said at the end of each round, and where the run finished
+          if it has. This is now the only screen that carries the arc, which is why the report tab
+          could become a list of sessions.
+
+          UNDER "OVER TIME", OPENING ON ASK. The prototype has this as its own section heading, not
+          a small blue link-style label - picture-check round 6, item E: the same 21px bold heading
+          every other section uses. U.10 (e): now the shared Section itself, using its own `action`
+          slot for "Show"/"Hide" (a control, not the plain `note` sentence) instead of a hand-matched
+          heading beside a plain button.
+        */}
+        <Section
+          heading="Over time"
+          /* Board review, 1 October, item 8: this only opens or closes a section (a fold), drawn
+             with its own one-off classes instead of the shared `gwui-plain-link` quiet-text-link
+             class, so the button-count test counted it as a real button. */
+          action={(
+            <button
+              onClick={() => setShowOverTime((v) => !v)}
+              className="gwui-plain-link"
+              style={{ flexShrink: 0 }}
+            >
+              {showOverTime ? 'Hide' : 'Show'}
+            </button>
+          )}
+        >
+          {showOverTime ? <HowThisHasMoved groundId={id!} viewerRunsThisCheckIn={viewerRunsThisCheckIn} /> : undefined}
+        </Section>
+
+
         {shown.checkInGrid && sessionRows.length > 0 && (
           <Section
             heading="Reports"
@@ -1598,6 +1789,32 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             >
               {EVERY_SESSION.heading}
             </Link>
+          </Section>
+        )}
+
+        {/*
+          REQUEST 115 (c): "HELP NOBODY MENTIONED" (board-as-lead.txt: "You see the help, not who
+          said it."), right after "Reports", in the prototype's own place for it. Sent only to
+          whoever runs the check-in - one person's work, read across other people's check-ins, so
+          no colleague and no read-only admin reads it. Never who said it, and never what they said.
+        */}
+        {(b as any).helpNobodyMentioned && (
+          <Section heading="Help nobody mentioned" note={(b as any).helpNobodyMentioned.why}>
+            <Stack gap={6}>
+              {(b as any).helpNobodyMentioned.lines.map((l: string, i: number) => <Note key={i} tone="muted">{l}</Note>)}
+            </Stack>
+          </Section>
+        )}
+
+        {/*
+          REQUEST 115 (c): "OPEN ISSUES" (board-as-lead.txt: "Each one moving towards a decision.").
+          Nothing on record follows an issue from unclear to decided to done and checked, so this is
+          always the engine's one "not-known" sentence, to whoever runs the check-in, not on a
+          performance plan - the lead's actual open questions are already under "What needs you".
+        */}
+        {(b as any).openIssues && (
+          <Section heading="Open issues">
+            <Note tone="muted">{(b as any).openIssues.why}</Note>
           </Section>
         )}
 
@@ -2776,7 +2993,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     </span>
                   </div>
 
-                  {b.coverageVariant === 'bar' && r.remitDefined && (
+                  {/*
+                    REQUEST 111 (a): A SCORE OF WHERE A PERSON'S WORK LANDS STAYS REMOVED. `pct` is
+                    typed as a plain `number`, but the engine no longer always sends one - drawing a
+                    bar from `undefined` drew a 0%-wide sliver that read as a verdict with nothing
+                    behind it (CLAUDE.md: no score or label shown on a person). A row with no `pct`
+                    now draws exactly as the text-only variant does - nothing invented in its place.
+                  */}
+                  {b.coverageVariant === 'bar' && r.remitDefined && typeof r.pct === 'number' && (
                     <div className="gwui-mt-9" style={{height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden'}}>
                       <div style={{height: '100%', width: `${r.pct}%`, borderRadius: 6, background: r.kind === 'LEAKING' ? 'var(--gw-amber-b)' : r.kind === 'ABSORBING' ? 'var(--gw-navy)' : 'var(--gw-muted)'}} />
                     </div>
@@ -3085,41 +3309,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           rule that could drift from the server's.
         */}
 
-        {/*
-          THE WHOLE RUN, IN ONE PLACE. "I need the board to carry the entire history in one place."
-
-          The board read only the CURRENT working copy of the report plus the record entries, so a
-          six-session run showed its latest state and nothing about how it got there - while the
-          per-round snapshots sat in `report_rounds`, immutable, one row per closed round, read by
-          a component that lived on the report tab.
-
-          Both come here: what the report said at the end of each round, and where the run finished
-          if it has. This is now the only screen that carries the arc, which is why the report tab
-          could become a list of sessions.
-
-          U.10 ITEM 7: UNDER "OVER TIME", OPENING ON ASK. The prototype has this as its own section
-          heading, not a small blue link-style label - picture-check round 6, item E: the same 21px
-          bold heading every other section uses. U.10 (e): now the shared Section itself, using its
-          own `action` slot for "Show"/"Hide" (a control, not the plain `note` sentence) instead of
-          a hand-matched heading beside a plain button.
-        */}
-        <Section
-          heading="Over time"
-          /* Board review, 1 October, item 8: this only opens or closes a section (a fold), drawn
-             with its own one-off classes instead of the shared `gwui-plain-link` quiet-text-link
-             class, so the button-count test counted it as a real button. */
-          action={(
-            <button
-              onClick={() => setShowOverTime((v) => !v)}
-              className="gwui-plain-link"
-              style={{ flexShrink: 0 }}
-            >
-              {showOverTime ? 'Hide' : 'Show'}
-            </button>
-          )}
-        >
-          {showOverTime ? <HowThisHasMoved groundId={id!} viewerRunsThisCheckIn={viewerRunsThisCheckIn} /> : undefined}
-        </Section>
         {/*
           AND HOW IT ENDS, BUT ONLY NEAR THE END.
 

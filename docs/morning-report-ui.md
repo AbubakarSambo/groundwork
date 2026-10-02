@@ -6,6 +6,12 @@ same file.
 
 ## This morning, 2 October: in short
 
+**Stopping for the week, 2 October, evening.** The weekly allowance is nearly used up, so I finished the piece in hand and stopped there. Everything is in `docs/screens-handover.md`: where every screen stands, what is in progress, what comes next, and what needs you. It is committed and pushed.
+- **The sales board.** It is now drawn from the engine's latest work: deal groups, each deal's card, each item's own action, "Open issues", and Amani's share and aim. The fifth review says Amani's board matches. It found four small faults on Rukia's board, and they are fixed and tested, but not yet reviewed. That review is the first thing to do next.
+- **What the engine still sends wrong** on that board is request 117. That includes the false "Met", sessions counted two ways, deal owners missing, and the days changing just by opening the board.
+- **Your new order of work** is recorded below, under "Hafsah's decisions", and in the handover.
+
+
 **A correction, 2 October, afternoon.** For part of today I worked from a rule you had overturned: that nobody may see a rating of anyone's answers. You decided the checkability rating stays, because it rates the answers, not the person. The person sees their own read, and the lead sees "Nothing checkable" with what to ask next, as the prototype shows. What I did about it:
 - **What I had wrongly removed.** The sales board's lines about how checkable each person's answers are, shown to the lead (commits 973d8308 and 817324ed). They are being put back for exactly those readers.
 - **Requests.** Request 114 is withdrawn. Its other items are kept as request 115. Request 116 tells the engine that 111 must not remove the checkability rating; only scores of a person's contribution or performance stay removed.
@@ -41,7 +47,7 @@ None of the eleven is done yet. A kind is marked done only when its pictures mat
 | Support desk | Not done, the same as engineering. | Not done, the same. |
 | Distribution operations | Not done, the same. | Not done, the same. |
 | Trader training programme | Not done, the same. | Not done, the same. |
-| Sales team | **Done, 2 October.** The fourth review says it matches the prototype, apart from the engine's listed faults (requests 111, 112, 115 and 116). The prototype's sections come first, in its order, and every extra section is kept in one fold at the end. Coaching stays open after "What keeps coming up", and the checkability lines are back, as you decided. | **Done, 2 October.** It matches, apart from the engine's faults: Amani's own deals and share are not sent, and her board says the team picture is shared when it is not (requests 111 and 112). |
+| Sales team | **Nearly done.** The engine has since sent new fields, which are now drawn. The fifth review found four small screen faults; they are fixed (`7ad69fc6` to `f828693b`) but not yet reviewed. The engine's faults are request 117. | **Done, 2 October,** after the fifth review, apart from the engine's faults (request 117). |
 | A government programme | Not done. Mainly the engine: its own sections are not sent (request 105). | Not done, the same. |
 | Asset loans | Not done. Mainly the engine (request 105). | Not done, the same. |
 | A law firm matter | Not done. Mainly the engine (request 105). | Not done, the same. |
@@ -537,6 +543,8 @@ nothing about today's billing has changed. Nobody already on the free plan is cu
 U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
+
+**2 October, evening: the new order of work.** The boards for all eleven kinds of work come first: finish the sales board, then the other ten, one at a time, each matched and reviewed before the next. When the engine sends the company-wide picture, the Company page comes next. Then Plan and billing, with these decisions: a one-month free trial for teams under 20, and WhatsApp as a paid add-on, charged monthly after the trial at about 80% of the plan price, with a monthly limit. Prices and limits are never written into the screens; the engine sends them. The back office (group 4) comes last of everything. If a board names the reader instead of saying "you", that exact case (the check-in, the reader and the sentence) goes to the engine as a request. `docs/screens-handover.md` is kept up to date after every finished board.
 
 **2 October, afternoon: the checkability rating stays, and an old rule is withdrawn.** The rating of how specific and checkable a person's answers are is needed, because it rates the answers, not the person. The person sees their own read ("How checkable today's check-in was"), and the lead sees "Nothing checkable" with what to ask next, as the prototype shows. The old instruction that nobody sees a rating of anyone's answers was withdrawn, and must never be acted on again. Only scores of a person's contribution or performance stay hidden. `CLAUDE.md` still has the line "Leads never see how a person's answers were rated."; Hafsah has left it as it is, and it is read under this decision.
 

@@ -56,4 +56,39 @@ describe('the sessions-this-phase row, as a sentence', () => {
     expect(screen.getByText('Faraji Odhiambo has not started session 1.')).toBeTruthy()
     expect(screen.queryByText(/the other/)).toBeNull()
   })
+
+  /*
+   * U.10 RE-REVIEW: "...AND WAS NOT PART OF THE OTHER 1." NAMES NO SESSION.
+   *
+   * Read on a live admin board: "Faraji Odhiambo has not started session 1, and was not part of the
+   * other 1." says how many sessions he was not on, never which one - a second trip to the grid
+   * above was needed to find it was session 2. The session is now named, the same way a lone one
+   * already is ("session 1"): "...and was not part of session 2." for one, "...sessions 2 and 3."
+   * for several.
+   */
+  it('names the one other session he was not part of, rather than only counting it', () => {
+    const shape = theShapeOfIt({ '1': 'not-started' }, [1, 2])
+    expect(theSentenceFor('Faraji Odhiambo', shape)).toBe('Faraji Odhiambo has not started session 1, and was not part of session 2.')
+  })
+
+  it('names several other sessions he was not part of', () => {
+    const shape = theShapeOfIt({ '1': 'not-started' }, [1, 2, 3])
+    expect(theSentenceFor('Faraji Odhiambo', shape)).toBe('Faraji Odhiambo has not started session 1, and was not part of sessions 2 and 3.')
+  })
+
+  it('reads the same way for "A colleague"', () => {
+    const shape = theShapeOfIt({ '1': 'done' }, [1, 2])
+    expect(theSentenceFor('A colleague', shape)).toBe('A colleague has checked in for session 1, and was not part of session 2.')
+  })
+
+  it('renders the named session on the phone-width grid', () => {
+    render(
+      <NineColumnsIsNotAPhoneScreen
+        rows={[{ participantId: 'p1', name: 'Faraji Odhiambo', cells: { '1': 'not-started' } }]}
+        sessions={[1, 2]}
+      />,
+    )
+    expect(screen.getByText('Faraji Odhiambo has not started session 1, and was not part of session 2.')).toBeTruthy()
+    expect(screen.queryByText(/the other 1/)).toBeNull()
+  })
 })
