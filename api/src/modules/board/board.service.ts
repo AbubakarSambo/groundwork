@@ -20,6 +20,7 @@ import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-on
 import { withoutWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals } from './an-untold-goal-is-not-a-board-objective';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
+import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-served';
 import { oneOfTheKinds, plainFields, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
 
 /** What the lead sends to add or change a record of the kind of work. */
@@ -1675,7 +1676,9 @@ export class BoardService {
         out.contribution = contributionAsThisReaderMayRead(buildContribution(readInput, nameOf), me?.id ?? null)!
           .map((r) => ({ ...r, remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, isInitiator) }));
       }
-      if (has('coverage')) out.coverage = buildCoverage(readInput, nameOf);
+      /* Built from what may be served, never the read passed through whole: no confidence, no percentage,
+         no count of evidence, and nothing of a read too thin to show (request 111 a, no-rating-is-served). */
+      if (has('coverage')) out.coverage = coverageAsThisReaderMayRead(buildCoverage(readInput, nameOf), me?.id ?? null);
       /*
        * THE REASON LINES, WORDED. Seventeen interpolated sentences in reads.ts read identically on
        * every board in the product. The engine's claims are unchanged: `safeToUse` holds every number
@@ -2413,7 +2416,8 @@ export class BoardService {
         const atEachStage = reportedAgainstTheRules(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords);
         if (atEachStage) walled.reportedAgainstCriteria = atEachStage;
       }
-      return walled;
+      /* And no number that rates a person leaves on any section, whoever reads it (request 111 a). */
+      return withNoRatingNumber(walled);
     }
   }
 

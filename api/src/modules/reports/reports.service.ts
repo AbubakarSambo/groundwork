@@ -44,7 +44,7 @@ import { stillRaised, notRaisedAgain, sayingWhatWentQuiet } from '../board/a-blo
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
 import { sentenceWithANumber } from './where-you-are-against-what-you-named';
 import { COUNTS_AS_A_SOURCE, whatThisDocumentIs } from '../documents/what-kind-of-thing-a-document-is';
-import { buildCoverage, buildContribution } from '../board/reads';
+import { buildCoverage } from '../board/reads';
 import { roleMapFor } from '../board/role-maps';
 import { BoardFamily, familyFor } from '../board/board-families';
 import { peersAreNamedOn } from './peers-are-named';
@@ -3679,14 +3679,19 @@ Close the report by framing - neutrally, without recommending one - the choice n
           })),
         };
         let coverage: { name: string; reasonText: string }[] = [];
-        let contribution: { name: string; reason: string }[] = [];
+        const contribution: { name: string; reason: string }[] = [];
         try {
           coverage = buildCoverage(readInput as any, nameFor).reads
             .filter((r) => r.reasonText?.trim() && r.name)
             .map((r) => ({ name: r.name!, reasonText: r.reasonText }));
-          contribution = buildContribution(readInput as any, nameFor)
-            .filter((r) => r.reason?.trim() && r.name)
-            .map((r) => ({ name: r.name!, reason: r.reason! }));
+          /*
+           * NOT THE CONTRIBUTION READ. Its sentence is how checkable each named person's answers were
+           * ("1 check-in on record. 3 lines taken from what they said, 1 with a name, a number or a
+           * date in it"), and the picture is read by everybody in the check-in. That is a rating of a
+           * person's answers, sent to the lead and to their colleagues (decision 38, request 111 a).
+           * The engine still uses it on the board, where only the person reads their own. So
+           * `contribution` above stays empty.
+           */
         } catch (err: any) {
           this.logger.warn(`Board reads unavailable for the picture on ${groundId}: ${err?.message}`);
         }

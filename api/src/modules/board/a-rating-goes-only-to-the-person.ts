@@ -20,7 +20,12 @@ export function contributionAsThisReaderMayRead(
 ): ContributionRead[] | undefined {
   if (!rows) return rows;
   return rows.map((r) => {
-    if (meParticipantId && r.participantId === meParticipantId) return r;
+    /* The person's own row keeps the words of their own read (decision 38), never a number: the
+       confidence and the count of evidence are the engine's, and are not served (request 111 a). */
+    if (meParticipantId && r.participantId === meParticipantId) {
+      const { confidence: _c, evidenceCount: _e, ...own } = r as ContributionRead & { confidence?: number; evidenceCount?: number };
+      return own as ContributionRead;
+    }
     const who = r.name || 'this person';
     return {
       participantId: r.participantId,

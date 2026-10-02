@@ -95,13 +95,15 @@ describe('contribution against role, for each reader', () => {
     if (miriam) expect(JSON.stringify(miriam)).not.toMatch(RATING);
   });
 
-  it('the filter keeps the reader\'s own row as it is and takes the rating off everybody else\'s', () => {
+  it('the filter keeps the words of the reader\'s own row, takes the number off it, and takes the rating off everybody else\'s', () => {
     const rows: any[] = [
       { participantId: 'a', name: 'A B', remit: null, remitDefined: true, position: null, reason: '3 check-ins on record. 9 lines taken from what they said.', confidence: 0.8, nothingCheckable: false },
       { participantId: 'b', name: 'C D', remit: null, remitDefined: true, position: null, reason: '2 check-ins on record.', confidence: 0.2, nothingCheckable: true },
     ];
     const out = contributionAsThisReaderMayRead(rows, 'a')!;
-    expect(out[0]).toBe(rows[0]);
+    /* Their own words stay (decision 38); the number does not (request 111 a). */
+    expect(out[0].reason).toBe(rows[0].reason);
+    expect((out[0] as any).confidence).toBeUndefined();
     expect(out[1].reason).toMatch(/^Nothing C D has said so far is checkable/);
     expect((out[1] as any).confidence).toBeUndefined();
   });
