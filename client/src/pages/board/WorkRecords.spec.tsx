@@ -84,6 +84,26 @@ describe('a work record carries its own mark', () => {
 })
 
 /**
+ * BOARD REVIEW, SALES PIECE D, ITEM 3: THE DEAL GRID'S KEY, ONE LINE AT A TIME, AND NONE AT ALL
+ * WHEN NOBODY EARNS IT. "Contact with proof..." and "Contact in their words" used to show
+ * together whenever this was the sales org's deal grid, even when every row was `mark: "none"` -
+ * a key for marks nothing on the grid actually carries.
+ */
+describe('the deal grid key only names marks a row actually carries', () => {
+  it('shows only the "in their words" line when only a said row is on the grid', () => {
+    renderSections([dealGrid({ mark: 'said' })])
+    expect(screen.getByText('Contact in their words')).toBeTruthy()
+    expect(screen.queryByText(/Contact with proof: a photo, a quote, a payment/)).toBeNull()
+  })
+
+  it('shows no key at all when every row is mark "none"', () => {
+    renderSections([dealGrid({ from: 'lead', said: undefined, saidBy: null, mark: 'none' })])
+    expect(screen.queryByText('Contact in their words')).toBeNull()
+    expect(screen.queryByText(/Contact with proof: a photo, a quote, a payment/)).toBeNull()
+  })
+})
+
+/**
  * BOARD REVIEW, SALES PIECE D, ITEM 2: "Grouped by what the proof says about closing this
  * quarter." is the deal grid's own subtitle, directly under its heading - but it used to show
  * even when every deal was added by hand, with nothing proven and nothing said, so there was

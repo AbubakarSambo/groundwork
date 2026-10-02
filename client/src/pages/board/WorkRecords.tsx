@@ -134,12 +134,21 @@ const DEAL_GRID_NOTE: Partial<Record<KindOfWork, string>> = {
  * nothing on this grid draws a mark for either state. A key that lists a mark nothing on the grid
  * shows promises something the page does not keep. Left out until the grid actually draws one -
  * see the task note, docs/morning-report.md.
+ *
+ * BOARD REVIEW, SALES PIECE D, ITEM 3: THE SAME RULE, ONE MARK AT A TIME. Each line is still only
+ * a promise about what the grid draws, so it reads only when some row on THIS grid actually
+ * carries that mark - a sales org whose every deal was added by hand, with nothing proven and
+ * nothing said, drew both lines of a key for marks nobody has. When neither mark is on any row,
+ * there is nothing to explain, so no key is drawn at all.
  */
-function DealGridKey() {
+function DealGridKey({ rows }: { rows: AServedWorkRow[] }) {
+  const hasProven = rows.some((r) => r.mark === 'proven')
+  const hasSaid = rows.some((r) => r.mark === 'said')
+  if (!hasProven && !hasSaid) return null
   return (
     <div className="gwui-gap-16" style={{ display: 'flex', flexWrap: 'wrap' }}>
-      <Note tone="muted"><ProofMark mark="proven" /> Contact with proof: a photo, a quote, a payment</Note>
-      <Note tone="muted"><ProofMark mark="said" /> Contact in their words</Note>
+      {hasProven && <Note tone="muted"><ProofMark mark="proven" /> Contact with proof: a photo, a quote, a payment</Note>}
+      {hasSaid && <Note tone="muted"><ProofMark mark="said" /> Contact in their words</Note>}
     </div>
   )
 }
@@ -902,7 +911,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 
   return (
     <Section heading={heading} note={note}>
-      {isSalesDealGrid ? <Stack gap={12}><DealGridKey />{dealGridContent}</Stack> : dealGridContent}
+      {isSalesDealGrid ? <Stack gap={12}><DealGridKey rows={dealGridRows} />{dealGridContent}</Stack> : dealGridContent}
 
       {/*
         BOARD REVIEW, SALES PIECE C, ITEM 3 (f): NOT HERE FOR THE SALES DEAL GRID. "The shape of
@@ -991,7 +1000,7 @@ export function YourOwnRecordsSections({ kindOfWork, sections, myParticipantId, 
         <Note tone="muted">{`You have no ${itemNoun}s on record yet.`}</Note>
       ) : (
         <Stack gap={12}>
-          {isSalesDeals && <DealGridKey />}
+          {isSalesDeals && <DealGridKey rows={mine} />}
           <Panel pad={false}>
             <RowList label={heading}>
               {mine.map((row) => (

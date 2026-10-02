@@ -70,13 +70,13 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
           {
             id: 'w-1', kind: 'deal', name: 'Nyama Choma Palace', stage: 'Won',
             owner: 'Akinyi Otieno', ownerParticipantId: 'p-akinyi', due: null,
-            fields: { Value: 'KES 90K' }, from: 'said',
+            fields: { Value: 'KES 90K' }, from: 'said', mark: 'said',
             said: 'Nyama Choma Palace paid KES 90K on 22 September, so that one is won.',
           },
           {
             id: 'w-2', kind: 'deal', name: 'Naivas Karen', stage: null,
             owner: null, ownerParticipantId: null, due: '2026-10-09',
-            fields: {}, from: 'lead',
+            fields: {}, from: 'lead', mark: 'none',
           },
         ],
       },
@@ -141,8 +141,15 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
      * and "Follow-up, no reply" named states of the "Next step" column that carries no mark of its
      * own (it is plain text, "Nothing booked" or the server's own sentence) - left out rather than
      * promising a mark nothing on the grid shows.
+     *
+     * BOARD REVIEW, SALES PIECE D, ITEM 3: EACH KEY LINE, ONLY WHEN A ROW ACTUALLY CARRIES THAT
+     * MARK. This fixture used to serve both rows with no `mark` at all, yet still expected both
+     * key lines to show - exactly the defect the third review found on the sales board ("Contact
+     * with proof..." shown while every row was `mark: "none"`). `w-1` now carries `mark: 'said'`
+     * (it is in fact `from: 'said'`, with a quote behind it) and `w-2` carries `mark: 'none'` (it
+     * was added on the board, nothing behind it), so only the "in their words" line is earned.
      */
-    expect(within(dealGrid).getByText(/Contact with proof: a photo, a quote, a payment/)).toBeTruthy()
+    expect(within(dealGrid).queryByText(/Contact with proof: a photo, a quote, a payment/)).toBeNull()
     expect(within(dealGrid).getByText('Contact in their words')).toBeTruthy()
     expect(within(dealGrid).queryByText('Next step booked')).toBeNull()
     expect(within(dealGrid).queryByText('Follow-up, no reply')).toBeNull()
