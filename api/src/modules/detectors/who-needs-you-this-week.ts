@@ -41,6 +41,13 @@ export interface Need {
   says: string;
   /** How long it has been like this. The only ordering there is, and it describes the wait. */
   waitingDays: number;
+  /**
+   * The day it began, as it is said: "since 10 September" ("on 10 September" for asking to be shown).
+   * A count of days from the moment of reading changes every time it is opened (request 117, part 9).
+   */
+  sinceSays?: string | null;
+  /** The whole of it as one plain sentence, with the person's name and "you" for the reader. */
+  sentence?: string;
 }
 
 /**
@@ -51,7 +58,7 @@ export interface Need {
 export const WHAT_IT_ASKS: Record<NeedKind, string> = {
   WAITING_ON_YOU: 'This is yours to clear. Nobody else can.',
   STUCK_AND_RAISED: 'Somebody raised this and it is still open. Either clear it or tell them it is not being cleared.',
-  CYCLE_RAN_OUT: 'Twenty minutes with them, about what is behind it. Not another check-in question.',
+  CYCLE_RAN_OUT: 'Spend twenty minutes with them on what is behind it, rather than asking another check-in question.',
   ASKED_TO_BE_SHOWN: 'They have asked to be shown. That is an hour of somebody\'s time, not a conversation about performance.',
 };
 
@@ -97,5 +104,5 @@ export const NOT_A_RANKING = [
 
 /** What an empty week says, which is the sentence this whole file exists to get right. */
 export const NOTHING_FLAGGED =
-  'Nothing in the record needs you this week. That is not the same as everybody being fine - it is'
+  'Nothing in the record needs you this week. That is not the same as everybody being fine. It is'
   + ' the record being quiet, and the people who most need a conversation are often the quietest in it.';

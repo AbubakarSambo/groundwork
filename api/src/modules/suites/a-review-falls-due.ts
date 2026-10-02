@@ -60,7 +60,7 @@ export function addMonths(d: Date, months: number): Date {
 export function theProposalSentence(source: string, firstName: string): string | null {
   const name = firstName.trim() || 'this person';
   if (source === PROPOSED_BY_GROUNDWORK.aCheckInEnded) {
-    return `Groundwork suggests a review for ${name}, because a check-in about ${name}'s work has ended. Nothing is sent to ${name} unless you say yes.`;
+    return `Groundwork suggests a review for ${name}, because a check-in about ${name}’s work has ended. Nothing is sent to ${name} unless you say yes.`;
   }
   if (source === PROPOSED_BY_GROUNDWORK.theOrganisationsDate) {
     return `Groundwork suggests a review for ${name}, because your organisation asked for reviews on a regular date and this is the next one. Nothing is sent to ${name} unless you say yes.`;

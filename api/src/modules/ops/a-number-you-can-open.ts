@@ -1,6 +1,7 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsCapability } from './what-somebody-may-do';
 import { medianOf, whatTheMedianSays } from './a-check-in-takes-about-as-long-as-we-say';
+import { CLOSED_BY_THE_CLOCK } from '../../common/closed-by-the-clock';
 
 /**
  * A number, and the rows that made it.
@@ -52,8 +53,8 @@ export interface MetricDefinition {
 
 const within = (window: MetricWindow) => ({ gte: window.from, lte: window.to });
 
-/** `CheckIn.closedReason` when the sweep, not the person, ended a session (the product's CLOSED_BY_THE_CLOCK). */
-export const SESSION_CLOSED_BY_THE_CLOCK = 'auto_closed';
+/** `CheckIn.closedReason` when the sweep, not the person, ended a session (the product's CLOSED_BY_THE_CLOCK, read from common/, which both systems share). */
+export const SESSION_CLOSED_BY_THE_CLOCK = CLOSED_BY_THE_CLOCK;
 
 /**
  * Turns the company ids on activity rows into names.

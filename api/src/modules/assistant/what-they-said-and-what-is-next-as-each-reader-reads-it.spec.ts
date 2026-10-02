@@ -329,9 +329,10 @@ describe('"What should I do next?", as each person reads it', () => {
   });
 
   it('puts somebody waiting on you first when nothing of yours has slipped', async () => {
-    const { ask } = harness('wairimu', { waiting: [{ kind: 'WAITING_ON_YOU', who: 'Femi', says: 'waiting on you for the discount approval', waitingDays: 6 }] });
+    const { ask } = harness('wairimu', { waiting: [{ kind: 'WAITING_ON_YOU', who: 'Femi', says: 'waiting on you for the discount approval', waitingDays: 6, sinceSays: 'since 27 September' }] });
     const r = await ask('what do I do next');
-    expect(bodyOf(r)).toContain('Start with Femi. Femi is waiting on you for the discount approval, and has been for 6 days. Nobody else can clear this one.');
+    /* The day the wait began, not a count of days from the asking (request 117, part 9; 3 October). */
+    expect(bodyOf(r)).toContain('Start with Femi. Femi has been waiting on you for the discount approval since 27 September. Nobody else can clear this one.');
     expect(sourceOf(r)).toMatchObject({ kind: 'today', href: '/today' });
   });
 

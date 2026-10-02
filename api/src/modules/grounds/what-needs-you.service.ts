@@ -2,12 +2,14 @@ import { Injectable, Optional } from '@nestjs/common';
 import { isNotLetInYet, whoIsNotLetInYet } from './who-an-admin-did-not-let-in';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
-import { whatNeedsYou, type WhatNeedsYou } from './what-needs-you';
+import { whatNeedsYou, type Need, type WhatNeedsYou } from './what-needs-you';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { whoIsAwayOn } from '../suites/who-is-away';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { waitingForYouToApprove } from './waiting-for-you-to-approve';
+import { ReviewsService } from '../suites/the-reviews.service';
+import { reviewsToStartOnToday, yourReviewsOnToday } from './a-review-on-today';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 
@@ -26,7 +28,25 @@ export class WhatNeedsYouService {
     @Optional() private leave?: LeaveBoardService,
     @Optional() private time?: TimeSheetsService,
     @Optional() private spend?: SpendingService,
+    @Optional() private reviews?: ReviewsService,
   ) {}
+
+  /**
+   * PERFORMANCE REVIEWS ON TODAY (item 16), from the reviews suite's own reads as this reader: their own
+   * reviews once somebody has started them (`mine`), and the reviews ready for them to start (the
+   * board's `mayStart`, only ever an admin's or a lead's). A suite that is off refuses, which is
+   * "nothing here", never an error on Today. See a-review-on-today.ts.
+   */
+  private async reviewsFor(userId: string, organizationId: string, role: string): Promise<Need[]> {
+    if (!this.reviews) return [];
+    const reader = { userId, organizationId };
+    const now = new Date();
+    const [mine, next] = await Promise.all([
+      this.reviews.mine(reader).catch(() => []),
+      role === 'ADMIN' || role === 'LEAD' ? this.reviews.board(reader, now).then((b) => b.next).catch(() => []) : Promise.resolve([]),
+    ]);
+    return [...yourReviewsOnToday(mine, organizationId, now), ...reviewsToStartOnToday(next, organizationId, now)];
+  }
 
   /**
    * WHAT IS WAITING FOR THIS READER TO APPROVE (week 21): leave, hours and spending, from each
@@ -46,7 +66,7 @@ export class WhatNeedsYouService {
   }
 
   async forReader(userId: string, email: string, organizationId: string, role: string): Promise<WhatNeedsYou> {
-    const [list, waiting, me, toApprove] = await Promise.all([
+    const [list, waiting, me, toApprove, reviews] = await Promise.all([
       this.grounds.list(organizationId, userId, email, role),
       role === 'ADMIN' ? this.grounds.listAwaitingApproval(organizationId, userId) : Promise.resolve([]),
       /**
@@ -58,6 +78,7 @@ export class WhatNeedsYouService {
        */
       this.prisma.user.findUnique({ where: { id: userId }, select: { awaitingOrgApproval: true } }),
       this.toApprove(userId, organizationId, role),
+      this.reviewsFor(userId, organizationId, role),
     ]);
     /*
      * ONLY THIS ORGANISATION'S (U.5 review). The list also carries check-ins in other organisations
@@ -78,7 +99,7 @@ export class WhatNeedsYouService {
     }
     /* On approved leave today (week 23): their own check-in says the round does not wait for them. Dates only. */
     const awayUntil = (await whoIsAwayOn(this.prisma, [userId], organizationId).catch(() => new Map<string, string>())).get(userId) ?? null;
-    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), toApprove);
+    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...reviews, ...toApprove]);
     /* A net: no address stands in for a name in any sentence on Today (week 12c). */
     const called = new Map<string, string>();
     for (const g of here as any[]) {

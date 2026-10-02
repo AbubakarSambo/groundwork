@@ -44,7 +44,7 @@ From now on, every change to what the board, reports or Today page send is writt
 20. The sales, onboarding and project boards, then the three suites, from `docs/screens-handover.md`. *Waiting for the screens workspace to stop.*
 
 **Found on the way, to do when the board files are free**
-- On WhatsApp, the board merges two alike waits from different check-ins before Ask Groundwork leaves out the ones kept in the app, so in a rare case a wait from such a check-in could be said. The fix is an option in the board's own reads (`waitingAcrossTheOrg`, `whoNeedsYouThisWeek`) to leave them out before merging. *In progress*, with reviews on Today and one grammar slip.
+- On WhatsApp, the board merges two alike waits from different check-ins before Ask Groundwork leaves out the ones kept in the app, so in a rare case a wait from such a check-in could be said. The fix is an option in the board's own reads (`waitingAcrossTheOrg`, `whoNeedsYouThisWeek`) to leave them out before merging. *Done* (`6cac17d6`); reviews on Today too (`073dd64b`).
 
 - WhatsApp's waiting yes-or-no answers and parked approvals kept in the database, so a restart or a second copy of the server does not lose them. *Done* (`12b132b7`, migration 72). Approvals were already stored.
 - A scenario run (run-25) to measure requests 117 and 118's model-written changes against the baseline. *In progress.*

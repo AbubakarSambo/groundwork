@@ -102,7 +102,21 @@ The rest of request 117 on the sales board is stored rows on the screens workspa
 
 **For Hafsah:** the person's request words ("Can I take Friday off?") are now written to the database while Groundwork waits for their yes or no, up to about 10 minutes, and cleared on the answer or by the next WhatsApp message anyone sends. The code needs the words to act on the yes. If you want them gone at 10 minutes even when nobody writes, a small clean-up can be added to the nightly jobs.
 
-Now running: the WhatsApp merge gap with reviews on Today, and scenario run-25. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**The API did not start, from `4baeb646` onwards.** Run-25 found it: the back office fix (item 19) made two files import each other, so the conversation service could not be set up and the server stopped at once. No test caught it, because no test starts the whole app. Nothing went anywhere, and only the scratchpad run was affected. **Fixed** (`4090223b`): the shared word moved to a file with no imports, and a new test builds the whole app, which fails on the old code. The built server started and answered (`GET /api/v1/billing/pricing` 200). No other loop was added this week.
+
+**Also done:** on WhatsApp, a kept check-in's waits are left out before alike waits are merged (`6cac17d6`), and a performance review now shows on Today, for the person and for whoever writes it (`073dd64b`).
+
+**The WhatsApp merge gap, in detail** (`6cac17d6`): before, Wairimu asking "who is waiting on me" on WhatsApp could read words from a check-in kept in the app ("…before my Westgate review in the plan"). Now she reads only the team's wait. In the app nothing changes. **Grammar** (`44c18570`): "Their own direct reports holds it." now reads "hold it."
+
+**Reviews on Today** (`073dd64b`): Aisha reads "Wairimu has started your review. You can read it and add your own view before you meet."; Wairimu reads "Miriam's review is ready for you to start." A review Groundwork only proposed is never shown to the person.
+
+**For Hafsah:** a writer sees a review on Today only when it is due within two weeks or overdue, and a decided one stays two weeks. Without a limit, a six-monthly review would sit on everybody's Today all the time. Confirm or change the two weeks.
+
+**Ask Groundwork names people, in full sentences** (`856d0cbd`, `bc7aa385`; 4,903 tests pass). Wairimu asking "where am I needed" read "femi@baridi.test: waiting on you for the new price list for Kilimani, 22 days." She now reads "Femi Ade has been waiting on you for the new price list for Kilimani since 10 September." Where somebody may not be named to the reader (the person a performance plan is about, decision 17), or has no name anywhere, it says "Somebody in Sales team, Q3 …". An email is never said. Each wait says the day it began, not a count that changes.
+
+**For Hafsah:** an admin who is waited on in a check-in where people are not named to each other reads "somebody in …", which is stricter than "Everything asked of you", where admins see names. Keep it strict, or let admins see the name there?
+
+Now running: run-25 on `4090223b`, and the "raised that they are stuck" group of "where am I needed", which could never show because one field was never read. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 

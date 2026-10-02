@@ -18,3 +18,37 @@ export function aHolderInTheirOwnWords(onLabel: string | null | undefined, reade
   const rest = m[2].trim();
   return readerIsTheOneWaiting ? `your ${rest}` : `their own ${rest}`;
 }
+
+/*
+ * ONE HOLDER OR SEVERAL (2 October 2026). "Their own direct reports holds it." read as broken English. Whoever holds
+ * a wait can be one person, a team, or several people in the waiting person's own words, so the verb follows them.
+ *
+ * Several: "you", "they" or "we"; a list of names ("Ade and Bola", "Ade, Bola and Chi"); or words that start with "the",
+ * "your", "their own" and so on and end in a plural ("their own direct reports", "the suppliers"). One: a name
+ * ("James", "Chris", "Wairimu Kamau, the head of sales"), a team ("the sales and marketing team"), a word ending in
+ * "ss", "us", "is" or "ics" ("the boss", "logistics"), or a capitalised name at the end ("the Ministry of Lands").
+ */
+const DETERMINER = /^(the|your|their(?: own)?|our|my|his|her|its|these|those|both|all|some|several|many|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+/i;
+const MANY_ALWAYS = /^(these|those|both|several|many|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+/i;
+const PLURAL_WORDS = new Set(['people', 'children', 'men', 'women', 'police']);
+
+export function aHolderIsMany(holder: string | null | undefined): boolean {
+  const h = (holder ?? '').trim().replace(/[.,;:!?]+$/, '');
+  if (!h) return false;
+  if (/^(you|they|we)$/i.test(h)) return true;
+  if (!DETERMINER.test(h)) return /\s(and|&)\s/i.test(h);
+  if (MANY_ALWAYS.test(h)) return true;
+  /* The word that says who: before "in the warehouse" or "of Lands", so "the people in the warehouse" are several. */
+  const head = h.split(/\s+(?:in|at|from|of|on|for|with|at)\s+/i)[0];
+  const last = head.split(/\s+/).pop() ?? '';
+  if (/^[A-Z]/.test(last)) return false;
+  const word = last.toLowerCase();
+  if (PLURAL_WORDS.has(word)) return true;
+  return /s$/.test(word) && !/(ss|us|is|ics)$/.test(word);
+}
+
+/** "Wairimu holds it.", "You hold it.", "Their own direct reports hold it." With a capital at the start. */
+export function holdsItSaid(holder: string | null | undefined): string {
+  const h = (holder ?? '').trim() || 'Somebody';
+  return `${h.charAt(0).toUpperCase()}${h.slice(1)} ${aHolderIsMany(h) ? 'hold' : 'holds'} it.`;
+}

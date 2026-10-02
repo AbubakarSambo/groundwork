@@ -21,14 +21,16 @@ import { hasSlipped } from './what-somebody-said-they-would-do';
 import { WHAT_NEEDS_YOU_SOURCE, YOUR_COMMITMENTS_SOURCE, YOUR_TO_DOS_SOURCE } from './a-source-says-where-it-came-from';
 import { Reply, SourceBlock, rules, text } from './a-reply-is-a-payload-not-a-string';
 
+const atTheStart = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
 export interface ACommitment { id: string; text: string; dueSaid: string | null; dueAt: Date | null; statedAt: Date; state: 'OPEN' | 'KEPT' | 'SLIPPED' | 'DROPPED'; lastFollowedUpAt: Date | null }
 export interface AToDoRow { id: string; text: string; dueSaid: string | null; dueAt: Date | null; createdAt: Date }
-export interface SomebodyWaiting { who: string; says: string; waitingDays: number }
+/** `sinceSays` is the day the wait began ("since 10 September"); `waitingDays` is for the order only. */
+export interface SomebodyWaiting { who: string; says: string; waitingDays: number; sinceSays?: string | null }
 
 export const NOTHING_TO_PUT_FIRST =
   'I have nothing to put first. You have no open commitments or to-dos, and nobody is waiting on you in the record. That can also mean something has been said somewhere I cannot see.';
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const bare = (s: string) => s.trim().replace(/[.!]+$/, '');
 
 /** How the date on a commitment or a to-do reads: a real date where there is one, their own words otherwise. */
@@ -74,8 +76,15 @@ export function theOneToDoFirst(input: {
     source = YOUR_COMMITMENTS_SOURCE;
   } else if (waiting.length) {
     const w = waiting[0];
+    /*
+     * The day it began, never a count of days from the moment of asking, so the answer reads the same at
+     * any hour (request 117, part 9). `who` is the board's: a name, or "somebody in <the check-in>".
+     */
+    const who = atTheStart(w.who);
     first = `Start with ${w.who}.`;
-    why = `${w.who} is ${bare(w.says)}, and has been for ${plural(w.waitingDays, 'day', 'days')}. Nobody else can clear this one.`;
+    why = w.sinceSays
+      ? `${who} has been ${bare(w.says)} ${bare(w.sinceSays)}. Nobody else can clear this one.`
+      : `${who} is ${bare(w.says)}. Nobody else can clear this one.`;
     source = WHAT_NEEDS_YOU_SOURCE;
   } else if (toDos.length) {
     const t = toDos[0];

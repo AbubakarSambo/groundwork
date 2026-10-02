@@ -12,9 +12,11 @@
  * only widens the scope and adds the one thing a single ground cannot know: how long.
  */
 import { ReadDependency, blockerHasSubstance, dedupeDependencies } from './reads';
+import type { WhoIsWaiting } from './the-person-waiting-by-name';
 
 /** A handoff with the two things a ground-scoped read cannot carry: whose it is, and where. */
-export type OrgDependency = ReadDependency & {
+/** Who is waiting travels with the wait, so each reader can be told a name or not (the-person-waiting-by-name.ts). */
+export type OrgDependency = ReadDependency & Partial<Omit<WhoIsWaiting, 'groundLabel'>> & {
   groundId: string;
   groundLabel: string;
   /** The waiting person, resolved across grounds. Their participant row differs in each one. */

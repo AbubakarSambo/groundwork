@@ -16,6 +16,8 @@ import { STYLE, STYLE_VERSION, safeToUse, composePrompt, roleNameIn } from './th
 import { hasSlipped, theOneToRaise } from './what-somebody-said-they-would-do';
 import { catchCommitment, resolveConfirmation, proposalSummary } from './something-said-in-passing';
 import { BoardService } from '../board/board.service';
+import { thePersonWaitingAsTheyRead, atTheStartOfASentence, somebodyIn } from '../board/the-person-waiting-by-name';
+import { theRecordsClock, theDayItBegan } from '../board/a-wait-is-dated-not-counted';
 import { OnboardingService } from '../grounds/onboarding.service';
 import { ContributionKind } from '@prisma/client';
 import {
@@ -29,7 +31,6 @@ import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
-import { whoIsBeingWaitedOn } from '../board/what-the-whole-place-is-waiting-on';
 import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
 import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
 import { HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
@@ -638,12 +639,19 @@ export class AssistantService {
       return rules('where_am_i_needed', text('I cannot match you to a check-in, so I cannot tell you where you are needed.'));
     }
 
-    const week = await (await this.theBoardItMayRead(organizationId)).whoNeedsYouThisWeek(organizationId, key);
+    const week = await this.board.whoNeedsYouThisWeek(organizationId, key, await this.theBoardLeavesOut(organizationId));
     if (!week.buckets.length) return rules('where_am_i_needed', text(NOTHING_FLAGGED));
 
+    /*
+     * EACH ONE A FULL SENTENCE, WITH THE PERSON'S NAME AND THE DAY IT BEGAN (3 October 2026). This read
+     * "femi@baridi.test: waiting on you for the new price list for Kilimani, 22 days.", an address where
+     * the name belongs, pieces joined with a colon, and a count that changed every time it was asked.
+     * The sentence is the board's; a list of one is just the sentence.
+     */
+    const aSentence = (n: any) => n.sentence ?? `${atTheStartOfASentence(n.who)} ${n.kind === 'WAITING_ON_YOU' ? 'is ' : ''}${n.says}.`;
     const parts = week.buckets.map((b) => [
       b.asks,
-      ...b.needs.map((n) => `- ${n.who}: ${n.says}, ${n.waitingDays} days.`),
+      ...(b.needs.length === 1 ? [aSentence(b.needs[0])] : b.needs.map((n) => `- ${aSentence(n)}`)),
     ].join('\n'));
 
     /* Never trimmed away when the list is long. A long list is when it matters most. */
@@ -652,7 +660,7 @@ export class AssistantService {
   }
 
   private async whatIsStuck(organizationId: string, who: string | null, question = ''): Promise<Reply> {
-    const { waiting, waitedOn } = await (await this.theBoardItMayRead(organizationId)).waitingAcrossTheOrg(organizationId);
+    const { waiting, waitedOn } = await this.board.waitingAcrossTheOrg(organizationId, undefined, await this.theBoardLeavesOut(organizationId));
 
     const person = who
       ? await this.prisma.person.findFirst({
@@ -674,9 +682,10 @@ export class AssistantService {
     }
 
     /*
-     * The days are stated rather than turned into a word. "Long overdue" is a judgement the record
-     * cannot support - it does not know what a reasonable wait is for any of these - and eleven days
-     * is a fact the reader can weigh for themselves.
+     * The day it began is stated rather than turned into a word. "Long overdue" is a judgement the
+     * record cannot support - it does not know what a reasonable wait is for any of these - and "since
+     * 10 September" is a fact the reader can weigh for themselves. It is the day, not a count of days,
+     * so the answer reads the same at any hour (request 117, part 9).
      */
     /*
      * THE DRAFT NAMES THE STATUS, BECAUSE A GAP IS WHAT THE MODEL FILLS.
@@ -687,10 +696,28 @@ export class AssistantService {
      * move past. Instructing the composer not to embellish would not have helped, and cutting it off
      * from the model would have traded a better sentence for a bug left in place. Stating the status
      * leaves nothing to invent.
+     *
+     * EACH ONE A FULL SENTENCE, WITH A NAME (3 October 2026). This opened "Waiting on you:" and each
+     * line was "- the price list (Sales team, Q3) - waiting, 22 days", with nobody in it. The person
+     * waiting is named only where this reader may read their name, else "somebody in <the check-in>",
+     * and never by their address (the-person-waiting-by-name.ts).
      */
-    const line = (w: (typeof waiting)[number]) =>
-      `- ${w.what} (${w.groundLabel}) - ${w.status === DependencyStatus.BLOCKING ? 'hard blocker' : 'waiting'}, `
-      + `${w.waitingDays} ${w.waitingDays === 1 ? 'day' : 'days'}`;
+    const clock = theRecordsClock(waiting.map((w) => w.createdAt as any), new Date());
+    const since = (w: (typeof waiting)[number]) => (w.createdAt ? ` since ${theDayItBegan(w.createdAt as any, clock)}` : '');
+    const where = (w: (typeof waiting)[number]) => (w.groundLabel?.trim() ? `, in the check-in ${w.groundLabel.trim()}` : '');
+    const onYou = (w: (typeof waiting)[number]) => {
+      const named = thePersonWaitingAsTheyRead(w, key);
+      const who = atTheStartOfASentence(named);
+      /* "Somebody in Sales team, Q3" already says where; it is not said twice. */
+      const inIt = named === somebodyIn(w.groundLabel) ? '' : where(w);
+      return w.status === DependencyStatus.BLOCKING
+        ? `${who} says they cannot go on without ${w.what}, and has been waiting on you for it${since(w)}${inIt}.`
+        : `${who} has been waiting on you for ${w.what}${since(w)}${inIt}.`;
+    };
+    const yours = (w: (typeof waiting)[number]) => (w.status === DependencyStatus.BLOCKING
+      ? `You said you cannot go on without ${w.what}, and you have been waiting for it${since(w)}${where(w)}.`
+      : `You have been waiting for ${w.what}${since(w)}${where(w)}.`);
+    const aList = (lines: string[]) => (lines.length === 1 ? lines[0] : lines.map((l) => `- ${l}`).join('\n'));
 
     /*
      * ANSWER THE QUESTION THEY ASKED FIRST, EVEN WHEN THE ANSWER IS NOTHING.
@@ -708,12 +735,12 @@ export class AssistantService {
     }
     if (onMe.length) {
       parts.push(
-        `Waiting on you:\n${onMe.map(line).join('\n')}\n\n`
+        `${onMe.length > 1 ? 'Other people have said they are waiting on you for these things.\n' : ''}${aList(onMe.map(onYou))}\n\n`
         + 'That is from what other people said about their own work, not from anyone assigning it to you.',
       );
     }
     if (mine.length) {
-      parts.push(`You said you are waiting on:\n${mine.map(line).join('\n')}`);
+      parts.push(`${mine.length > 1 ? 'You have said you are waiting for these things.\n' : ''}${aList(mine.map(yours))}`);
     }
     return rules('what_is_stuck', text(parts.join('\n\n')));
   }
@@ -803,7 +830,7 @@ export class AssistantService {
       lastMentionedAt: c.lastFollowedUpAt,
     }));
 
-    const { waiting } = await (await this.theBoardItMayRead(organizationId)).waitingAcrossTheOrg(organizationId);
+    const { waiting } = await this.board.waitingAcrossTheOrg(organizationId, undefined, await this.theBoardLeavesOut(organizationId));
     const person = await this.prisma.person.findFirst({
       where: { organizationId, externalId: personExternalId }, select: { email: true },
     });
@@ -839,7 +866,7 @@ export class AssistantService {
       this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
     ]);
     const key = person?.email?.toLowerCase() ?? null;
-    const week = key ? await (await this.theBoardItMayRead(organizationId)).whoNeedsYouThisWeek(organizationId, key) : { buckets: [] as any[] };
+    const week = key ? await this.board.whoNeedsYouThisWeek(organizationId, key, await this.theBoardLeavesOut(organizationId)) : { buckets: [] as any[] };
     const waitingOnYou = (week.buckets as any[]).filter((b) => b.kind === 'WAITING_ON_YOU').flatMap((b) => b.needs as any[]);
     const reply = theOneToDoFirst({ commitments: commitments as any, toDos: toDos as any, waitingOnYou, now: new Date() });
     return this.compose(reply, whatMustSurviveIn(reply));
@@ -879,29 +906,13 @@ export class AssistantService {
   }
 
   /**
-   * WHAT IS WAITING, AS THE BOARD WORKS IT OUT, WITHOUT A CHECK-IN KEPT IN THE APP when the question
-   * came in on WhatsApp (decision 82, item 7). The board's own code runs; only its two reads of the
-   * record are narrowed, so nothing from such a check-in is ever read, rather than read and hidden.
+   * THE CHECK-INS THE BOARD'S READS LEAVE OUT for this question (decision 82, item 7): none in the
+   * app; on WhatsApp, every check-in kept in the app. The board leaves them out in its own query,
+   * before it merges alike waits across check-ins, so a kept wait never lends its words to one that
+   * is said. Nothing is read and then hidden.
    */
-  private async theBoardItMayRead(organizationId: string): Promise<BoardService> {
-    const kept = await keptInTheApp(this.prisma as any, organizationId);
-    if (!kept.size) return this.board;
-    const board = this.board as any;
-    const view = Object.create(board);
-    view.waitingAcrossTheOrg = async (org: string, now?: Date) => {
-      const all = await board.waitingAcrossTheOrg(org, now);
-      const waiting = (all?.waiting ?? []).filter((w: any) => mayBeRead(kept, w.groundId));
-      return { waiting, waitedOn: whoIsBeingWaitedOn(waiting) };
-    };
-    const prisma = board.prisma;
-    if (prisma) {
-      view.prisma = new Proxy(prisma, {
-        get: (target, prop) => (prop === 'checkIn'
-          ? { ...target.checkIn, findMany: (args: any) => target.checkIn.findMany({ ...args, where: { ...(args?.where ?? {}), AND: [...(args?.where?.AND ?? []), { ground: notAKeptCheckIn(kept) }] } }) }
-          : Reflect.get(target, prop, target)),
-      });
-    }
-    return view as BoardService;
+  private async theBoardLeavesOut(organizationId: string): Promise<{ leaveOut: Set<string> }> {
+    return { leaveOut: await keptInTheApp(this.prisma as any, organizationId) };
   }
 
   /**
