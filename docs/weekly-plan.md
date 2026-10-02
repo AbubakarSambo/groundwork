@@ -6,22 +6,22 @@ One list, merged from every instruction since decision 81, without duplicates. M
 
 **a. What the helpers are already doing, finished first**
 1. Request 117, the sales board's engine faults. *In progress.*
-2. The WhatsApp fixes from `docs/whatsapp-end-to-end.md` (the "keep it off the phone" privacy fault, number tidying, switch words). *In progress.*
+2. The WhatsApp fixes from `docs/whatsapp-end-to-end.md` (the "keep it off the phone" privacy fault, number tidying, switch words). *Done* (`937c1c6b` to `3c318354`).
 
 **b. WhatsApp for the first client** (decisions 82 and 83)
-3. Approvals: the approver told on WhatsApp and in the app, approving or declining by WhatsApp reply (said back and confirmed), the person told the decision. *Not started.*
-4. Asking once whether a message during a check-in is a leave, hours or spending request ("Shall I treat this as a leave request?"), and the switch word "ask", said in the opening notice. *In progress.*
-5. The first session announced on Groundwork's number, with WhatsApp reminders and nudges. *In progress.*
-6. Never silence when WhatsApp is held by the add-on or the limit. *In progress.*
-7. The opening notice on one-to-one check-ins never says "released with everybody else's". *In progress.*
-8. Leave, hours and spending for people matched to their sign-in by email. *Not started.*
-9. Ask Groundwork never answers from a check-in kept in the app. *Not started.*
-10. The roster import tidies numbers the same way. *In progress.*
-11. The lead's daily summary on WhatsApp, Groundwork's one message of the day for the lead. Template *in progress*; the summary itself *not started.*
-12. Hafsah's eight templates in `docs/whatsapp-templates.md`, word for word, wired up, with the two-messages-on-the-day rule and a check against WhatsApp's rules. *In progress.*
+3. Approvals: the approver told on WhatsApp and in the app, approving or declining by WhatsApp reply (said back and confirmed), the person told the decision. *In progress.*
+4. Asking once whether a message during a check-in is a leave, hours or spending request ("Shall I treat this as a leave request?"), and the switch word "ask", said in the opening notice. *Done* (`ee0ac236`). The switch words are said in the first reply, because Hafsah's `checkin_open` template has no room for them.
+5. The first session announced on Groundwork's number, with WhatsApp reminders and nudges. *Done* (`045f5a5f`). `checkin_closes_soon` is not sent, because nothing closes at a set hour.
+6. Never silence when WhatsApp is held by the add-on or the limit. *Done* (`f66363a0`).
+7. The opening notice on one-to-one check-ins never says "released with everybody else's". *Done on WhatsApp* (`ee0ac236`); the same phrase is still in three assistant and embed files, now with the item 3 helper.
+8. Leave, hours and spending for people matched to their sign-in by email. *In progress.*
+9. Ask Groundwork never answers from a check-in kept in the app. *In progress.* (Nothing about such a check-in reaches a phone already: `937c1c6b`.)
+10. The roster import tidies numbers the same way. *Done* (`e02ed275`, `96e6ba5c`).
+11. The lead's daily summary on WhatsApp, Groundwork's one message of the day for the lead. Template registered; the summary itself *in progress.*
+12. Hafsah's eight templates in `docs/whatsapp-templates.md`, word for word, wired up, with the two-messages-on-the-day rule and a check against WhatsApp's rules. *Done* (`045f5a5f`, `3c318354`), apart from the three wording questions for Hafsah in the templates file.
 
 **c. WhatsApp settings**
-13. Every server setting's name, what it holds, and where it is found in Meta's tools, never a value. *Done* in `docs/whatsapp-settings.md`; linked from `docs/whatsapp-end-to-end.md` once the helper editing that file has finished. *In progress.*
+13. Every server setting's name, what it holds, and where it is found in Meta's tools, never a value. *Done* in `docs/whatsapp-settings.md`, and linked from `docs/whatsapp-end-to-end.md`.
 
 **d. The three suites, end to end, including over WhatsApp**
 14. Leave requests. Said back and confirmed in chat: *done*; approval and telling people: item 3.

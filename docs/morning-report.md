@@ -6,6 +6,32 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 2 OCTOBER, EVENING: WHATSAPP FOR THE FIRST CLIENT (decisions 82 and 83)
+
+The ordered list is at the top of `docs/weekly-plan.md`. The WhatsApp helper finished items 2, 4, 5, 6, 7 (on WhatsApp), 10 and 12, in eight commits from `937c1c6b` to `3c318354`, all pushed. Its last test run: 341 suites, 3,198 tests passing (whatsapp, public-api, webhooks, users, auth, people, billing, grounds).
+
+What a person now reads:
+
+| Moment | What they read |
+| --- | --- |
+| A check-in kept in the app | Nothing about it reaches a phone. A message about it gets "Your check-in "Performance plan for Amina" is kept in the Groundwork app, so I cannot take your answers to it here. Please open Groundwork and answer it there." |
+| A session opens (now on Groundwork's own number too) | "Hi Miriam, your check-in for the sales team is open. It takes about five minutes, and you can answer right here. Reply START to begin." |
+| "Not now" | "All right. I will not write to you first again today. Your check-in is still open, and you can answer here whenever you are ready." |
+| WhatsApp held back, once a day | "Your organisation has not turned on WhatsApp, so this check-in stays in the app. You can carry on in the Groundwork app." |
+| A request during a check-in | "Shall I treat this as a leave request?" Yes goes to Ask Groundwork, no stays in the check-in. |
+| A local number with no country known | "Please write the whole number with the country code at the start, for example +234 801 234 5678." |
+
+Groundwork writes first at most once a day, or twice on the day a check-in opens, enforced in one place (`howOftenToday`).
+
+**For Hafsah:**
+- **The switch words.** Your `checkin_open` template has no room for "ask, back, switch", so they are said in the first reply when a check-in starts. Add them to the template if you want them earlier.
+- **`checkin_closes_soon` is not sent**, because nothing in Groundwork closes at a set hour; a session stays open and takes late answers.
+- **"Due"** is taken as the day the session opened plus one step of its rhythm. A one-off check-in has no due day.
+- **Three template wording points**, each with a proposed fix in `docs/whatsapp-templates.md`: `lead_daily_summary` ends on a blank, which WhatsApp refuses; `checkin_team_almost_in` numbers its blanks out of order; and three templates may be classed by Meta as marketing, not utility.
+- **Before two copies of the API run:** the waiting "yes or no" on a request is held in memory for ten minutes, and should move to the database.
+
+Now running: request 117 (the sales board), and approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
 - **Decision 75 recorded** (`9922dd9d`): yes to all 49, except items 2, 5, 13, 14, 17, 24, 25, 29, 33, 35/36/45, 37, 42, 46, 48 and 49, each written in `docs/decisions-merged.md`. Being built now, two helpers at a time.

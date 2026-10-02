@@ -37,6 +37,8 @@ Read from the code on 2 October 2026, branch `wip/plain-reports`. Nothing was ru
 
 Names only, never values. Each is set where the API is hosted.
 
+The full steps, with which settings are secret and how to connect the webhook, are in `docs/whatsapp-settings.md`.
+
 | Setting | What it holds | Where it is found in Meta's tools |
 | --- | --- | --- |
 | `WHATSAPP_ACCESS_TOKEN` | The permanent token Groundwork sends messages with. | Meta Business Settings, Users, System users: a system user with the WhatsApp permissions, then "Generate new token". |
