@@ -26,6 +26,8 @@ export function metaErrorCode(body: string): string {
 }
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
+import { aLocalForm, callingCodeOf, formsOfTheSameNumber, tidyANumber } from './a-number-whatsapp-can-reach';
+import { theCountryCodeOf, tidyANumberFor } from './the-organisations-country';
 import { ATemplate, insideTheServiceWindow, isBusinessInitiated, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP } from './a-message-outside-the-window';
 
 /**
@@ -160,11 +162,40 @@ export class WhatsAppService {
     });
   }
 
-  /** Normalizes to E.164-ish digits-only-with-leading-plus for lookup/storage consistency. */
+  /**
+   * The one stored form ("+2348012345678") of a number that already carries its country, such as
+   * the number WhatsApp sends. A local number cannot be tidied without its organisation's country;
+   * see `tidyFor` for numbers people type.
+   */
   static normalize(rawNumber: string): string {
-    const trimmed = rawNumber.trim();
-    const digits = trimmed.replace(/[^\d+]/g, '');
+    const tidied = tidyANumber(rawNumber ?? '');
+    if ('number' in tidied) return tidied.number;
+    const digits = (rawNumber ?? '').trim().replace(/[^\d+]/g, '');
     return digits.startsWith('+') ? digits : `+${digits}`;
+  }
+
+  /**
+   * A NUMBER SOMEBODY TYPED, IN THE ONE STORED FORM (survey item 6). A local number takes the
+   * organisation's country; with none known it is refused with a sentence asking for the whole number.
+   */
+  async tidyFor(organizationId: string | null, rawNumber: string): Promise<string> {
+    return tidyANumberFor(this.prisma as any, organizationId, rawNumber);
+  }
+
+  /** The number to send to: a stored local number gets its organisation's country, when one is known. */
+  private async reachable(organizationId: string | null, rawNumber: string): Promise<string> {
+    if (!aLocalForm(rawNumber)) return WhatsAppService.normalize(rawNumber);
+    return this.tidyFor(organizationId, rawNumber).catch(() => WhatsAppService.normalize(rawNumber));
+  }
+
+  /**
+   * A ROW FOUND BY THE LOCAL FORM OF A NUMBER IS THE SAME NUMBER ONLY IN ITS OWN COUNTRY. "0801..."
+   * kept by a Nigerian organisation is "+234801..."; kept by a Kenyan one it is somebody else.
+   */
+  private async theSameNumber(organizationId: string | null, stored: string | null | undefined, incoming: string): Promise<boolean> {
+    if (!aLocalForm(stored)) return true;
+    const code = await theCountryCodeOf(this.prisma as any, organizationId);
+    return !!code && code === callingCodeOf(incoming);
   }
 
   /**
@@ -180,8 +211,9 @@ export class WhatsAppService {
    * conversation.
    */
   async sendMessage(phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
-    const to = WhatsAppService.normalize(phoneNumber);
+    let to = WhatsAppService.normalize(phoneNumber);
     const org = this.addOn ? await this.whoseMessage(context, to) : null;
+    if (aLocalForm(phoneNumber)) to = await this.reachable(org, phoneNumber);
     const held = await this.heldFor(org, to, context);
     if (held) return held;
     return this.sendOnOurNumber(org, to, text, context);
@@ -280,7 +312,7 @@ export class WhatsAppService {
    * the check-in it was about.
    */
   async sendFor(organizationId: string, phoneNumber: string, text: string, context: SendContext = {}): Promise<SendResult> {
-    const to = WhatsAppService.normalize(phoneNumber);
+    const to = await this.reachable(organizationId, phoneNumber);
     const held = await this.heldFor(organizationId, to, context);
     if (held) return held;
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } }).catch(() => null);
@@ -363,7 +395,7 @@ export class WhatsAppService {
     if (!isBusinessInitiated(context.kind)) return { free: true };
     const person = await this.prisma.person
       .findFirst({
-        where: { phone: to, ...(organizationId ? { organizationId } : {}) },
+        where: { phone: { in: formsOfTheSameNumber(to) }, ...(organizationId ? { organizationId } : {}) },
         orderBy: { whatsappLastInboundAt: { sort: 'desc', nulls: 'last' } },
         select: { whatsappStoppedAt: true, whatsappLastInboundAt: true },
       })
@@ -421,17 +453,19 @@ export class WhatsAppService {
    * organisations.
    */
   async whoIsWritingTo(organizationId: string, rawNumber: string): Promise<{ personId: string | null; userId: string | null; externalId: string | null }> {
-    const normalized = WhatsAppService.normalize(rawNumber);
-    const person = await this.prisma.person.findFirst({
-      where: { organizationId, phone: normalized, active: true },
-      select: { id: true, externalId: true, linkedUserId: true, email: true },
+    const forms = formsOfTheSameNumber(rawNumber);
+    const found = await this.prisma.person.findFirst({
+      where: { organizationId, phone: { in: forms }, active: true },
+      select: { id: true, externalId: true, linkedUserId: true, email: true, phone: true },
     });
+    const person = found && (await this.theSameNumber(organizationId, found.phone, rawNumber)) ? found : null;
     if (person) {
       const userId = person.linkedUserId
         ?? (person.email ? (await this.prisma.user.findFirst({ where: { organizationId, email: person.email, deletedAt: null }, select: { id: true } }))?.id ?? null : null);
       return { personId: person.id, userId, externalId: person.externalId };
     }
-    const user = await this.prisma.user.findFirst({ where: { organizationId, phoneNumber: normalized, deletedAt: null }, select: { id: true, email: true } });
+    const foundUser = await this.prisma.user.findFirst({ where: { organizationId, phoneNumber: { in: forms }, deletedAt: null }, select: { id: true, email: true, phoneNumber: true } });
+    const user = foundUser && (await this.theSameNumber(organizationId, foundUser.phoneNumber, rawNumber)) ? foundUser : null;
     if (!user) return { personId: null, userId: null, externalId: null };
     const byEmail = user.email ? await this.prisma.person.findFirst({ where: { organizationId, email: user.email }, select: { id: true, externalId: true } }) : null;
     return { personId: byEmail?.id ?? null, userId: user.id, externalId: byEmail?.externalId ?? null };
@@ -497,7 +531,7 @@ export class WhatsAppService {
     const own = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId } });
     if (!own) throw new BadRequestException('Connect a number first.');
     if (!toNumber?.trim()) throw new BadRequestException('Say which number to send the test to.');
-    const ok = (await this.deliver(own.phoneNumberId, own.accessToken, WhatsAppService.normalize(toNumber), 'Groundwork is connected to this number. Reply here when a check-in is open and it goes into the record.')).sent;
+    const ok = (await this.deliver(own.phoneNumberId, own.accessToken, await this.tidyFor(organizationId, toNumber), 'Groundwork is connected to this number. Reply here when a check-in is open and it goes into the record.')).sent;
     if (!ok) throw new BadRequestException('Meta refused the message. Check the token, the number id, and that this number may receive messages from your Meta app.');
     await this.prisma.whatsAppConnection.update({ where: { id: own.id }, data: { lastOutboundAt: new Date() } });
     return { sent: true };
@@ -522,21 +556,26 @@ export class WhatsAppService {
    * person which they mean when there is more than one, rather than guessing.
    */
   async whichOrganisations(rawNumber: string): Promise<{ id: string; name: string }[]> {
-    const normalized = WhatsAppService.normalize(rawNumber);
+    const forms = formsOfTheSameNumber(rawNumber);
     const [people, users] = await Promise.all([
-      this.prisma.person.findMany({ where: { phone: normalized, active: true }, select: { organization: { select: { id: true, name: true } } } }),
-      this.prisma.user.findMany({ where: { phoneNumber: normalized, deletedAt: null }, select: { organization: { select: { id: true, name: true } } } }),
+      this.prisma.person.findMany({ where: { phone: { in: forms }, active: true }, select: { phone: true, organization: { select: { id: true, name: true } } } }),
+      this.prisma.user.findMany({ where: { phoneNumber: { in: forms }, deletedAt: null }, select: { phoneNumber: true, organization: { select: { id: true, name: true } } } }),
     ]);
     const seen = new Map<string, { id: string; name: string }>();
-    for (const row of [...people, ...users]) if (row.organization) seen.set(row.organization.id, row.organization);
+    for (const row of [...people, ...users] as any[]) {
+      if (!row.organization) continue;
+      if (!(await this.theSameNumber(row.organization.id, row.phone ?? row.phoneNumber, rawNumber))) continue;
+      seen.set(row.organization.id, row.organization);
+    }
     return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /** Set (or clear) a user's WhatsApp number. Called from Settings (self) or org roster (admin/HR on someone's behalf). */
   async setPhoneNumber(userId: string, rawNumber: string | null): Promise<void> {
+    const user = rawNumber?.trim() ? await this.prisma.user.findUnique({ where: { id: userId }, select: { organizationId: true } }) : null;
     await this.prisma.user.update({
       where: { id: userId },
-      data: { phoneNumber: rawNumber ? WhatsAppService.normalize(rawNumber) : null },
+      data: { phoneNumber: rawNumber?.trim() ? await this.tidyFor(user?.organizationId ?? null, rawNumber) : null },
     });
   }
 }

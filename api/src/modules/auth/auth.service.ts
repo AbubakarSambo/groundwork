@@ -21,6 +21,7 @@ import { GroundworkEvents, OrgSignedUpEvent, OrgSizeSaidEvent } from '../../comm
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { tidyANumberFor } from '../whatsapp/the-organisations-country';
 import { BillingService } from '../billing/billing.service';
 import {
   RegisterDto,
@@ -1466,9 +1467,11 @@ export class AuthService {
     if (dto.lastName !== undefined) userUpdate.lastName = dto.lastName.trim();
     if (dto.jobTitle !== undefined) userUpdate.jobTitle = dto.jobTitle.trim();
     if (dto.emailNotifications !== undefined) userUpdate.emailNotifications = dto.emailNotifications;
-    if (dto.phoneNumber !== undefined) userUpdate.phoneNumber = dto.phoneNumber ? WhatsAppService.normalize(dto.phoneNumber) : null;
 
-    await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const me = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    /* One stored form for every number, the way WhatsApp sends it; a local number takes the
+       organisation's country, or is refused with a sentence asking for the whole number (survey item 6). */
+    if (dto.phoneNumber !== undefined) userUpdate.phoneNumber = dto.phoneNumber?.trim() ? await tidyANumberFor(this.prisma as any, me.organizationId, dto.phoneNumber) : null;
 
     /* Only the person's own row. The organisation is changed through PATCH /users/organization, by an admin. */
     if (Object.keys(userUpdate).length) {
