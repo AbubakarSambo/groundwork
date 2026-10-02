@@ -148,6 +148,9 @@ describe('Omar, a member who heads Sales, where the department head decides', ()
       /* The manager's view in full sentences (decision 85, build step 7). */
       owns: ['Groundwork found nothing Aisha owns that is due on those days.'],
       questions: [],
+      /* No kinds of leave and no rules set (build step 8): none said. */
+      leaveKind: null,
+      rules: [],
       said: [
         'Aisha asked for leave from Thursday 1 October to Friday 2 October, which is 2 working days.',
         'Aisha has 21 days left.',

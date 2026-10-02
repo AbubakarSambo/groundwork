@@ -125,6 +125,14 @@ All three are now on the list the Connections page asks an admin to submit (`the
 
 **Also changed on 3 October (decision 85, build step 7), with no new template:** a reason given with a decline is said inside the 24 hours after the `groundwork_request_decided` sentence ("... was declined by Wairimu. Wairimu said, “Sales is two short that week.” Open Groundwork to read it."); outside them the template goes as before and the reason is read in the app. When the person answers a question, whoever asked is told with `groundwork_request_waiting`; inside the 24 hours they read the answer itself ("Hi Wairimu, Aisha has answered your question about Aisha's leave from ... Aisha said, “Brian will cover it.” Reply here to approve or decline it, or open Groundwork to read it first."), and outside them the template's words stay true, because the request is still waiting for them.
 
+### `groundwork_leave_told_to_hr` (decision 85, build step 8: HR told of leave). Proposed, not wired
+
+- **Category:** Utility. **Language:** en.
+- **Body:** Hi {{1}}, {{2}} has {{3}}. You look after HR, so Groundwork tells you. Open Groundwork to read it on the leave board.
+- **Examples:** {{1}} Joy. {{2}} Aisha Otieno. {{3}} sick leave from 6 to 9 October, approved by Wairimu.
+- **Why:** when the admin chose to tell HR of each approved leave request, or of each request, whoever holds the HR duty reads it on the leave board today, and nothing goes to their phone, because no approved template says this truthfully (`groundwork_request_waiting` would ask them to approve it, which they cannot). With this approved, they would be told on WhatsApp too. It would count as Groundwork writing first.
+- **Checked against WhatsApp's rules:** passes.
+
 ### `groundwork_review_started` (item 16: a review waits for the person)
 
 - **Category:** Utility. **Language:** en.

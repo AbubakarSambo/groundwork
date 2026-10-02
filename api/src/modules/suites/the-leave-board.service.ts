@@ -11,6 +11,8 @@ import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-ap
 import { ownedInWords, whatTheyOwnWhileAway } from './what-they-own-while-away';
 import { aLeaveRequestAsTheApproverReadsIt } from './a-leave-request-as-the-approver-reads-it';
 import { LEAVE_QUESTION_KIND, QUESTION_REFUSED, aQuestionSaid, aReasonSaid, wordsGiven, type AQuestion } from './a-question-about-a-request';
+import { hereSince, inASentence, readLeaveRules, theKindOf, theRulesThatApply, type ALeaveKind, type LeaveRules } from './the-leave-rules';
+import { readDuties } from './who-holds-each-duty';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const LEAVE_REFUSED = {
@@ -22,6 +24,7 @@ export const LEAVE_REFUSED = {
   alreadyDecided: 'This request has already been decided.',
   badDates: 'Give a first and a last day, with the last day on or after the first.',
   badStandIn: 'The stand-in has to be somebody else in this organisation.',
+  badKind: 'That kind of leave is not one your organisation has set.',
 };
 
 export interface Reader { userId: string; organizationId: string }
@@ -39,8 +42,15 @@ export interface Waiting {
   endsOn: Day;
   /** Working days this request takes. */
   days: number;
-  /** Days left this year before this request, when the organisation has said how many each person has. */
+  /**
+   * Days left this year before this request, when the organisation has said how many each person has:
+   * of this kind of leave, when the admin has set kinds (the-leave-rules.ts).
+   */
   daysLeft: number | null;
+  /** The kind of leave, as people say it ("Annual leave"), or null when the organisation has set no kinds. */
+  leaveKind: string | null;
+  /** Each leave rule that applies to this request, in full sentences with the person's name (build step 8). Empty when none does. */
+  rules: string[];
   /** The department the overlap is counted in, or null when the directory gives none. */
   team: string | null;
   /** The first names of others in the same team already off on any of those days. */
@@ -75,15 +85,35 @@ export interface Waiting {
  * for them to decide ("approver"). An approver is served only the requests they decide, and in "off"
  * only their own leave.
  */
-export type BoardReader = 'admin' | 'lead' | 'approver';
+export type BoardReader = 'admin' | 'lead' | 'approver' | 'hr';
 
-export interface Off { id: string; name: string; startsOn: Day; endsOn: Day; kind: 'annual' }
+/** `kind` is "annual" unless the admin set kinds of leave; `kindName` says it ("Annual leave"), or null with no kinds set. */
+export interface Off { id: string; name: string; startsOn: Day; endsOn: Day; kind: string; kindName?: string | null }
+
+/**
+ * A request whoever holds the HR duty is told of (decision 85, build step 8), when the admin chose to
+ * tell HR: each approved request, or each request. Served only to that person.
+ */
+export interface ToldToHr {
+  id: string;
+  name: string;
+  startsOn: Day;
+  endsOn: Day;
+  status: 'waiting' | 'approved';
+  kindName: string | null;
+  /** "Aisha Otieno asked for annual leave from ... to ..., which is 5 working days." "Wairimu approved it." */
+  said: string[];
+}
 
 export interface MyLeave {
   perYear: number | null;
   daysLeft: number | null;
+  /** Each kind of leave the admin set, with this person's days a year and days left; empty when none are set. */
+  kinds: { key: string; name: string; perYear: number | null; daysLeft: number | null }[];
   requests: {
     id: string; startsOn: Day; endsOn: Day; days: number; status: 'waiting' | 'approved' | 'declined'; standIn: string | null;
+    /** The kind of leave ("Annual leave"), or null when the organisation has set no kinds. */
+    leaveKind: string | null;
     /** Where it is, in a full sentence: "Your leave from ... is approved by Wairimu and is now waiting for Omar in finance." */
     where: string;
     /** Each question asked about it, and the answer, in full sentences with "you" for the person (decision 85, build step 7). */
@@ -106,6 +136,7 @@ type Row = {
   step?: number | null; escalatedTo?: number | null; stepSince?: Date | null; approvedByIds?: string[] | null;
   /* The reason a decline was given with (build step 7). */
   declineReason?: string | null;
+  askedAt?: Date | null;
 };
 
 /** Who approved the steps so far. A request decided before steps were kept names only who decided it. */
@@ -160,16 +191,19 @@ export class LeaveBoardService {
     @Optional() private readonly told?: ARequestToldOnWhatsApp,
   ) {}
 
-  async board(reader: Reader, today = new Date()): Promise<{ reader: BoardReader; waiting: Waiting[]; off: Off[] }> {
+  async board(reader: Reader, today = new Date()): Promise<{ reader: BoardReader; waiting: Waiting[]; off: Off[]; toldToHr: ToldToHr[] }> {
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
+    /* Whoever holds the HR duty, when the admin chose to tell HR (build step 8). */
+    const holdsHr = !!answers.rules.tellHr && !!role && role !== 'GUEST' && (await readDuties(this.prisma, reader.organizationId)).hr === reader.userId;
     /*
      * Whoever the rules name decides, whatever their role or team (who-may-decide.ts). A member the
      * rules could name opens the board as an approver and is served only what waits for them; any
      * other member, and a guest, are refused, as before.
      */
     const asApprover = role !== 'ADMIN' && role !== 'LEAD';
-    if (asApprover && !(role === 'MEMBER' && (await couldBeNamed(this.prisma, everyRuleIn(theStepsFor('leave', answers)), reader.organizationId, { userId: reader.userId, role })))) {
+    const mayBeNamed = asApprover && role === 'MEMBER' && (await couldBeNamed(this.prisma, everyRuleIn(theStepsFor('leave', answers)), reader.organizationId, { userId: reader.userId, role }));
+    if (asApprover && !mayBeNamed && !holdsHr) {
       throw new ForbiddenException(LEAVE_REFUSED.onlyAdminsAndLeads);
     }
 
@@ -200,7 +234,10 @@ export class LeaveBoardService {
         : [];
       const first = names.get(r.userId)?.first ?? '';
       const days = workingDays(r.startsOn, r.endsOn);
-      const daysLeft = this.daysLeft(answers.perYear, approved.filter((a) => a.userId === r.userId), r.startsOn.getUTCFullYear());
+      const kind = theKindOf(r.kind, answers.rules);
+      const daysLeft = this.daysLeftOf(answers, kind, approved.filter((a) => a.userId === r.userId), r.startsOn.getUTCFullYear());
+      /* Each leave rule that applies (build step 8), with the person's name. None set: none said. */
+      const rules = await this.theRulesFor(answers.rules, r, kind, { name: first || 'This person' }, today);
       const standIn = r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null;
       /* What the person owns in those days, read for this reader (decision 85, build step 7). */
       const owns = ownedInWords(first, await whatTheyOwnWhileAway(this.prisma, { ...reader, role }, r.userId, r.startsOn, r.endsOn).catch(() => ({ owned: [], hidden: 1 })));
@@ -212,6 +249,8 @@ export class LeaveBoardService {
         endsOn: dayOf(r.endsOn),
         days,
         daysLeft,
+        leaveKind: kind?.name ?? null,
+        rules,
         team,
         alsoOff: [...new Set(alsoOff)],
         standIn,
@@ -221,7 +260,8 @@ export class LeaveBoardService {
         questions: asked,
         said: aLeaveRequestAsTheApproverReadsIt({
           firstName: first, startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), days, daysLeft, team,
-          alsoOff: [...new Set(alsoOff)], standIn, owns, more: asked,
+          kindName: kind ? inASentence(kind) : null,
+          alsoOff: [...new Set(alsoOff)], standIn, owns, more: [...rules, ...asked],
         }),
       });
     }
@@ -231,9 +271,41 @@ export class LeaveBoardService {
     const off: Off[] = approved
       .filter((r) => inScope(r.userId) || r.userId === reader.userId)
       .filter((r) => overlaps(r, { startsOn: from, endsOn: to }))
-      .map((r) => ({ id: r.id, name: names.get(r.userId)?.full ?? '', startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), kind: 'annual' as const }));
+      .map((r) => {
+        const kind = theKindOf(r.kind, answers.rules);
+        return { id: r.id, name: names.get(r.userId)?.full ?? '', startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), kind: kind?.key ?? (r.kind || 'annual'), ...(kind ? { kindName: kind.name } : {}) };
+      });
 
-    return { reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : 'approver', waiting: waiting.filter((w) => w.name), off: off.filter((o) => o.name) };
+    /*
+     * HR TOLD (build step 8): whoever holds the HR duty reads each approved request, or each request,
+     * as the admin chose, from two weeks back onwards. Nobody else is served this list.
+     */
+    const toldToHr: ToldToHr[] = [];
+    if (holdsHr) {
+      const since = dayOf(new Date(atMidnight(dayOf(today)).getTime() - 14 * DAY));
+      for (const r of rows.filter((x) => (x.status === 'approved' || answers.rules.tellHr === 'every') && x.userId !== reader.userId && dayOf(x.endsOn) >= since)) {
+        const kind = theKindOf(r.kind, answers.rules);
+        const first = names.get(r.userId)?.first ?? '';
+        const full = names.get(r.userId)?.full ?? '';
+        if (!full) continue;
+        const what = leaveInWords(dayOf(r.startsOn), dayOf(r.endsOn));
+        const days = workingDays(r.startsOn, r.endsOn);
+        const now = r.status === 'waiting' ? await this.now(r, people, answers) : null;
+        toldToHr.push({
+          id: r.id, name: full, startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), status: r.status as 'waiting' | 'approved', kindName: kind?.name ?? null,
+          said: [
+            `${full} asked for ${kind ? `${inASentence(kind)}${what.slice('leave'.length)}` : what}, which is ${days} working ${days === 1 ? 'day' : 'days'}.`,
+            whereItIsOnTheBoard(await this.whereItStands(r, now, undefined, reader.userId)),
+            ...(kind?.document ? await this.theRulesFor({ kinds: [kind] }, r, kind, { name: first || 'this person' }, today) : []),
+          ],
+        });
+      }
+    }
+
+    return {
+      reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : mayBeNamed ? 'approver' : 'hr',
+      waiting: waiting.filter((w) => w.name), off: off.filter((o) => o.name), toldToHr,
+    };
   }
 
   /** Each person's own requests and days left. Nobody else's. */
@@ -254,9 +326,15 @@ export class LeaveBoardService {
       const now = r.status === 'waiting' ? await this.now(r, people, answers) : null;
       where.set(r.id, whereYourRequestIs(`Your ${leaveInWords(dayOf(r.startsOn), dayOf(r.endsOn))}`, await this.whereItStands(r, now, undefined, reader.userId)));
     }
+    const kinds = (answers.rules.kinds ?? []).map((k) => ({
+      key: k.key, name: k.name, perYear: k.days,
+      daysLeft: this.daysLeftOf(answers, k, rows.filter((r) => r.status === 'approved'), today.getUTCFullYear()),
+    }));
     return {
-      perYear: answers.perYear,
-      daysLeft: this.daysLeft(answers.perYear, rows.filter((r) => r.status === 'approved'), today.getUTCFullYear()),
+      /* With kinds set, the first kind's (the one taken when somebody does not say); otherwise as before. */
+      perYear: kinds.length ? kinds[0].perYear : answers.perYear,
+      daysLeft: kinds.length ? kinds[0].daysLeft : this.daysLeft(answers.perYear, rows.filter((r) => r.status === 'approved'), today.getUTCFullYear()),
+      kinds,
       requests: rows.map((r) => ({
         id: r.id,
         startsOn: dayOf(r.startsOn),
@@ -264,6 +342,7 @@ export class LeaveBoardService {
         days: workingDays(r.startsOn, r.endsOn),
         status: (r.status as 'waiting' | 'approved' | 'declined'),
         standIn: r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null,
+        leaveKind: theKindOf(r.kind, answers.rules)?.name ?? null,
         where: where.get(r.id) ?? '',
         questions: questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, firsts, reader.userId)),
         questionWaiting: (() => {
@@ -307,6 +386,7 @@ export class LeaveBoardService {
       data: { status: outcome, decidedById: reader.userId, decidedAt: new Date(), approvedByIds, ...(reason ? { declineReason: reason } : {}) },
     });
     await this.tellThePerson(row, outcome, reader.userId, reason);
+    if (outcome === 'approved' && answers.rules.tellHr) await this.recordHrTold(row);
     /* A question still waiting for the person's answer in Ask Groundwork is no longer asked. */
     await this.forgetTheQuestionsInAskGroundwork(row);
     return this.board(reader);
@@ -475,8 +555,12 @@ export class LeaveBoardService {
    * A request for time off, as the engine will record it once the person has confirmed it
    * (docs/requests-to-engine.md, request 21). There is no route for it: nobody fills in a form.
    */
-  async ask(organizationId: string, userId: string, input: { startsOn: Day; endsOn: Day; standInUserId?: string | null; proposalId?: string | null }) {
-    await this.suiteAnswers(organizationId);
+  async ask(organizationId: string, userId: string, input: { startsOn: Day; endsOn: Day; standInUserId?: string | null; proposalId?: string | null; kind?: string | null }) {
+    const answers = await this.suiteAnswers(organizationId);
+    /* The kind of leave (build step 8): one the admin set, or the first when none is said. No kinds set: as before. */
+    const kinds = answers.rules.kinds ?? [];
+    if (input.kind && kinds.length && !kinds.some((k) => k.key === input.kind)) throw new BadRequestException(LEAVE_REFUSED.badKind);
+    const kind = kinds.length ? (input.kind || kinds[0].key) : null;
     const role = await this.roleOf({ userId, organizationId });
     if (!role || role === 'GUEST') throw new ForbiddenException(LEAVE_REFUSED.notInIt);
     const ok = /^\d{4}-\d{2}-\d{2}$/;
@@ -490,14 +574,16 @@ export class LeaveBoardService {
       if (standIn === userId || !theirs || theirs === 'GUEST') throw new BadRequestException(LEAVE_REFUSED.badStandIn);
     }
     const created = await this.prisma.leaveRequest.create({
-      data: { organizationId, userId, startsOn, endsOn, standInUserId: standIn },
+      data: { organizationId, userId, startsOn, endsOn, standInUserId: standIn, ...(kind ? { kind } : {}) },
       select: { id: true },
     });
+    /* HR is told of each request when the admin chose that (build step 8). */
+    if (created?.id && answers.rules.tellHr === 'every') await this.recordHrTold({ id: created.id, organizationId, userId });
     /* One record of who did what (decision 85, build step 5): asked, after the say-back and the yes when there was one. */
     if (created?.id) await recordIt(this.prisma, { organizationId, suite: 'leave', ref: created.id, kind: 'asked', byUserId: userId, basis: { row: 'leave_requests', id: created.id, ...(input.proposalId ? { proposalId: input.proposalId } : {}) } });
     /* Whoever decides the first step is told on WhatsApp too (decision 82, item 1). */
     if (this.told && created?.id) {
-      await this.tellWhoDecides({ id: created.id, organizationId, userId, startsOn, endsOn, kind: 'annual', standInUserId: standIn, status: 'waiting', decidedById: null, decidedAt: null });
+      await this.tellWhoDecides({ id: created.id, organizationId, userId, startsOn, endsOn, kind: kind ?? 'annual', standInUserId: standIn, status: 'waiting', decidedById: null, decidedAt: null });
     }
     return created;
   }
@@ -529,6 +615,36 @@ export class LeaveBoardService {
       where: { organizationId: row.organizationId, personExternalId: entry.externalId, kind: LEAVE_QUESTION_KIND, state: 'PARKED', payload: { path: ['requestId'], equals: row.id } },
       data: { state: 'DROPPED', resolvedAt: new Date() },
     }).catch(() => undefined);
+  }
+
+  /**
+   * Days left of one kind of leave, counting only approved requests of that kind; with no kinds set,
+   * the suite's one number of days and every approved request, as before.
+   */
+  private daysLeftOf(answers: { perYear: number | null; rules: LeaveRules }, kind: ALeaveKind | null, approved: Row[], year: number): number | null {
+    if (!kind) return this.daysLeft(answers.perYear, approved, year);
+    return this.daysLeft(kind.days, approved.filter((a) => theKindOf(a.kind, answers.rules)?.key === kind.key), year);
+  }
+
+  /** The leave rules that apply to one request already sent, for whoever reads it on the board. */
+  private async theRulesFor(rules: LeaveRules, r: Row, kind: ALeaveKind | null, reader: { name: string }, today: Date): Promise<string[]> {
+    if (!rules.noticeDays && !rules.blackouts?.length && !rules.eligibleAfterDays && !kind?.noticeDays && !kind?.document) return [];
+    const since = rules.eligibleAfterDays ? await hereSince(this.prisma, r.organizationId, r.userId).catch(() => null) : null;
+    return theRulesThatApply(rules, {
+      kind, startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), days: workingDays(r.startsOn, r.endsOn),
+      askedOn: dayOf(r.askedAt ?? today), hereSince: since,
+    }, reader);
+  }
+
+  /**
+   * HR is told (build step 8): the request is on the leave board of whoever holds the HR duty, and the
+   * record says so. Nothing goes to their phone until a template for it is approved
+   * (docs/whatsapp-templates.md). Nobody named for HR: nothing.
+   */
+  private async recordHrTold(row: { id: string; organizationId: string; userId: string }): Promise<void> {
+    const hr = (await readDuties(this.prisma, row.organizationId).catch(() => ({} as { hr?: string }))).hr;
+    if (!hr || hr === row.userId) return;
+    await recordIt(this.prisma, { organizationId: row.organizationId, suite: 'leave', ref: row.id, kind: 'told', toUserId: hr, basis: { row: 'leave_requests', id: row.id, onTheBoard: 'hr' } });
   }
 
   private daysLeft(perYear: number | null, approved: Row[], year: number): number | null {
@@ -564,7 +680,7 @@ export class LeaveBoardService {
     };
   }
 
-  private async suiteAnswers(organizationId: string): Promise<{ perYear: number | null; approver: string | null; workflow?: AWorkflow }> {
+  private async suiteAnswers(organizationId: string): Promise<{ perYear: number | null; approver: string | null; workflow?: AWorkflow; rules: LeaveRules }> {
     const suite = await this.prisma.organizationSuite.findUnique({
       where: { organizationId_suite: { organizationId, suite: 'leave' } },
       select: { isOn: true, answers: true },
@@ -576,6 +692,8 @@ export class LeaveBoardService {
       approver: typeof a.approver === 'string' ? a.approver : null,
       /* The steps an admin set (the-approval-steps.ts). None: one step, as before. */
       workflow: await readWorkflow(this.prisma, organizationId, 'leave'),
+      /* The leave rules an admin set (the-leave-rules.ts). None: exactly as before. */
+      rules: await readLeaveRules(this.prisma, organizationId),
     };
   }
 

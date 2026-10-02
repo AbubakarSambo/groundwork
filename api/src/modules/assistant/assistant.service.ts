@@ -326,7 +326,7 @@ export class AssistantService {
      */
     if (who && userId && soundsLikeLeave(message)) {
       const dates = readLeaveDates(message);
-      if (dates) return this.proposeLeave(organizationId, who, userId, dates);
+      if (dates) return this.proposeLeave(organizationId, who, userId, dates, message);
       /* Plainly a request for time off whose days cannot be read without guessing: asked again, never shrugged at. */
       if (plainlyAsksForLeave(message)) return rules('ask_for_leave', text(LEAVE_WHICH_DAYS));
     }
@@ -2768,11 +2768,12 @@ export class AssistantService {
    * and parks nothing, so nothing is kept. The days are not kept as context, a record line or a
    * to-do, and no reason is asked for.
    */
-  private async proposeLeave(organizationId: string, who: string, userId: string, dates: { startsOn: string; endsOn: string }): Promise<Reply> {
-    const said = await sayBackLeave(this.prisma, this.leave, { userId, organizationId }, dates);
+  private async proposeLeave(organizationId: string, who: string, userId: string, dates: { startsOn: string; endsOn: string }, message?: string): Promise<Reply> {
+    /* The message is read only for the kind of leave, when the admin has set kinds (build step 8). */
+    const said = await sayBackLeave(this.prisma, this.leave, { userId, organizationId }, dates, new Date(), message);
     if (!said.ok) return rules('ask_for_leave', text(said.say));
     const row = await this.prisma.assistantProposal.create({
-      data: { organizationId, personExternalId: who, kind: 'leave_request', summary: said.say, payload: { ...dates } as never },
+      data: { organizationId, personExternalId: who, kind: 'leave_request', summary: said.say, payload: { ...dates, ...(said.kind ? { kind: said.kind } : {}) } as never },
       select: { id: true },
     });
     return {
@@ -2787,7 +2788,7 @@ export class AssistantService {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
       return rules('ask_for_leave', text(LEAVE_NOT_SENT));
     }
-    const dates = parked.payload as { startsOn: string; endsOn: string };
+    const dates = parked.payload as { startsOn: string; endsOn: string; kind?: string };
     const person = await this.theSignInOf(organizationId, who);
     if (!person?.linkedUserId || !dates?.startsOn || !dates?.endsOn) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });

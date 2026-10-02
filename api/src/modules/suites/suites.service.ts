@@ -5,6 +5,7 @@ import { DUTIES_REFUSED, DUTIES_ROW, ORGANISATION_DUTIES, TEAM_DUTIES, changeDut
 import { RULES_AN_ADMIN_MAY_SET, RULE_IN_WORDS, STEP_SUITES, WORKFLOWS_REFUSED, WORKFLOWS_ROW, aWorkflowSaid, changeWorkflows, workflowsFrom, type StepSuite, type Workflows } from './the-approval-steps';
 import { theStepsFor, type Step } from './who-may-decide';
 import { saidAsADate } from './a-request-is-recorded';
+import { LEAVE_RULES_REFUSED, LEAVE_RULES_ROW, changeLeaveRules, leaveRulesFrom, theLeaveRulesSaid, type LeaveRules } from './the-leave-rules';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const REFUSED = {
@@ -77,6 +78,15 @@ export interface TheRulesHistory {
     before: { isOn: boolean; answers: unknown } | null;
     after: { isOn: boolean; answers: unknown };
   }[];
+}
+
+/** The leave rules (the-leave-rules.ts), as the admin who sets them reads them. */
+export interface TheLeaveRules {
+  rules: LeaveRules;
+  /** The rules said back in full sentences. */
+  said: string[];
+  /** Who holds the HR duty, by name, or null when nobody does. */
+  hr: string | null;
 }
 
 export const RULES_HISTORY_REFUSED = 'Only an admin can read how the suites’ rules were changed.';
@@ -258,6 +268,38 @@ export class SuitesService {
     return this.workflows(reader);
   }
 
+  /** The leave rules, for the admin who sets them. Nobody else reads this. */
+  async leaveRules(reader: Reader): Promise<TheLeaveRules> {
+    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(LEAVE_RULES_REFUSED.onlyAnAdmin);
+    const rows = await this.rows(reader.organizationId);
+    const rules = leaveRulesFrom(rows.get(LEAVE_RULES_ROW)?.answers);
+    const leave = (rows.get('leave')?.answers ?? {}) as Record<string, unknown>;
+    const hrId = dutiesFrom(rows.get(DUTIES_ROW)?.answers).hr;
+    const hr = hrId ? (await this.people(reader.organizationId)).find((p) => p.id === hrId)?.name ?? null : null;
+    return { rules, said: theLeaveRulesSaid(rules, typeof leave.days === 'number' ? leave.days : null, hr), hr };
+  }
+
+  /**
+   * An admin sets the leave rules: kinds of leave, notice, blackout periods, who may take leave, the
+   * documents needed, and whether HR is told. A part given as null is cleared; one left out is kept.
+   */
+  async setLeaveRules(reader: Reader, input: unknown): Promise<TheLeaveRules> {
+    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(LEAVE_RULES_REFUSED.onlyAnAdmin);
+    const org = reader.organizationId;
+    const where = { organizationId_suite: { organizationId: org, suite: LEAVE_RULES_ROW } };
+    const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });
+    const changed = changeLeaveRules(leaveRulesFrom(row?.answers), input);
+    if ('refused' in changed) throw new BadRequestException(changed.refused);
+    const answers = changed.rules as LeaveRules as never;
+    await this.prisma.organizationSuite.upsert({
+      where,
+      create: { organizationId: org, suite: LEAVE_RULES_ROW, isOn: false, answers, changedById: reader.userId },
+      update: { answers, changedById: reader.userId },
+    });
+    await this.keepTheChange(reader, LEAVE_RULES_ROW, row ? { isOn: false, answers: row.answers } : null, { isOn: false, answers });
+    return this.leaveRules(reader);
+  }
+
   /**
    * Each change of the suites' rules, newest first, for an admin only (decision 85, build step 5):
    * who changed it, when, and from what to what, in full sentences. `OrganizationSuite` keeps only the
@@ -282,6 +324,7 @@ export class SuitesService {
         const name = `${full.charAt(0).toLowerCase()}${full.slice(1)}`;
         const said = r.suite === DUTIES_ROW ? `${who} changed who holds each duty on ${on}.`
           : r.suite === WORKFLOWS_ROW ? `${who} changed the approval steps on ${on}.`
+          : r.suite === LEAVE_RULES_ROW ? `${who} changed the leave rules on ${on}.`
           : !r.before?.isOn && r.after?.isOn ? `${who} switched on ${name} on ${on}.`
           : r.before?.isOn && !r.after?.isOn ? `${who} switched off ${name} on ${on}.`
           : `${who} changed the answers for ${name} on ${on}.`;
@@ -325,6 +368,12 @@ export class SuitesService {
         out.push(line(`Who holds the ${t} budget?`, person(b.budgetOwners?.[t]), person(a.budgetOwners?.[t])));
         out.push(line(`Who heads ${t}?`, person(b.departmentHeads?.[t]), person(a.departmentHeads?.[t])));
       }
+    } else if (suite === LEAVE_RULES_ROW) {
+      const said = (x: unknown) => theLeaveRulesSaid(leaveRulesFrom(x), null, null).filter((l) => !/^There are no kinds|^No notice|^A rule never/.test(l));
+      const from = said(before);
+      const to = said(after);
+      for (const l of to) if (!from.includes(l)) out.push(`This was added. ${l}`);
+      for (const l of from) if (!to.includes(l)) out.push(`This was taken away. ${l}`);
     } else if (suite === WORKFLOWS_ROW) {
       const wb = workflowsFrom(before);
       const wa = workflowsFrom(after);

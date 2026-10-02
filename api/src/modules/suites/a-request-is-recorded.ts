@@ -91,7 +91,9 @@ export function theRecordInWords(records: ARecord[], names: Map<string, string>,
         break;
       }
       case 'told':
-        out.push(`Groundwork told ${who(r.toUserId)} on WhatsApp on ${on}.`);
+        out.push((r.basis as any)?.onTheBoard === 'hr'
+          ? `Groundwork told ${who(r.toUserId)}, who ${r.toUserId === readerUserId ? 'look' : 'looks'} after HR, on the leave board on ${on}.`
+          : `Groundwork told ${who(r.toUserId)} on WhatsApp on ${on}.`);
         break;
       case 'approved':
         out.push(`${capital(by)} approved ${it} on ${on}.`);

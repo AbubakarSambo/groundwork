@@ -78,6 +78,14 @@ class WorkflowsDto {
   @IsOptional() @IsObject() spend?: Record<string, unknown> | null;
 }
 
+class LeaveRulesDto {
+  @IsOptional() @IsArray() kinds?: Record<string, unknown>[] | null;
+  @IsOptional() @IsNumber() noticeDays?: number | null;
+  @IsOptional() @IsArray() blackouts?: Record<string, unknown>[] | null;
+  @IsOptional() @IsNumber() eligibleAfterDays?: number | null;
+  @IsOptional() @IsString() tellHr?: 'approved' | 'every' | null;
+}
+
 class AgreementsDto {
   @IsArray() agreements!: unknown[];
 }
@@ -150,6 +158,18 @@ export class SuitesController {
   @ApiOperation({ summary: 'The person who asked for time off answers the question waiting for them. The request keeps waiting.' })
   answerAboutLeave(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AnswerDto) {
     return this.leave.answerAQuestion({ userId: user.id, organizationId: user.organizationId }, id, dto.answer);
+  }
+
+  @Get('leave/rules')
+  @ApiOperation({ summary: 'The leave rules: kinds of leave, notice, blackout periods, who may take leave, documents, and whether HR is told. For an admin only.' })
+  leaveRules(@CurrentUser() user: CurrentUserData) {
+    return this.suites.leaveRules({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Put('leave/rules')
+  @ApiOperation({ summary: 'An admin sets the leave rules. A part given as null is cleared; one left out is kept.' })
+  setLeaveRules(@CurrentUser() user: CurrentUserData, @Body() dto: LeaveRulesDto) {
+    return this.suites.setLeaveRules({ userId: user.id, organizationId: user.organizationId }, dto);
   }
 
   @Get('leave/requests/:id/history')
