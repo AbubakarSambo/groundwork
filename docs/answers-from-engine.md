@@ -2059,3 +2059,8 @@ Each part is proven on the board harness as each reader: Bisi or Amina who runs 
 - A deal's "read in their own words" is the owner's latest typed sentence that names it.
 
 Tests (each fails without its part): `request-115-b-a-deal-row-as-the-prototype-has-it.spec.ts` (6), `request-115-c-what-the-sales-board-was-missing.spec.ts` (13), `request-115-d-waiting-on-a-colleague.spec.ts` (6), `request-115-e-a-blocker-line-says-whose-it-is.spec.ts` (7), `request-115-f-only-stages-with-something-in-them.spec.ts` (2), `request-115-g-an-open-session-is-not-upcoming.spec.ts` (5). Tests changed, each because it expected the defect: `where-each-person-is-against-their-number` (3 cases) and `a-board-that-does-not-contradict-itself` ("nothing to do" or "still has something in the way" for somebody waiting on a colleague), `request-107-c-the-fields-the-boards-need` (the empty Pitched row), `each-kind-of-work-has-its-records` (whole rows, now with the new fields). The board test harness can now be given WorkMention rows. One board test, `the-board-answers-its-own-question` ("prints what each account said"), fails before and after this work, because it reads `client/src/pages/board/BoardPage.tsx`.
+
+
+## 2 October: two more lines in your files, for you to check
+
+For request 115 (d), the engine work changed two lines in `client/src/components/gw/where-each-person-is.tsx` and `client/src/api/board.ts` so the new reason "waiting on someone" draws. Please check them and keep or redo them your way. The engine's test `the-board-answers-its-own-question.spec.ts` now accepts your filtered drawing of a difference's positions (only sides with words, after request 109).
