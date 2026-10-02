@@ -47,3 +47,37 @@ describe('the System tab', () => {
     expect(feed.where.completedAt).toEqual({ not: null });
   });
 });
+
+describe('how long a session takes', () => {
+  /** The funnel's reads; the raw query answers as Postgres would over the seeded sessions. */
+  function theFunnel(sessions: { n: number; minutes: number; closedReason: string | null }[]) {
+    const raws: any[] = [];
+    const prisma: any = {
+      checkIn: { count: jest.fn().mockResolvedValue(0) },
+      ground: { groupBy: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
+      $queryRaw: jest.fn(async (strings: TemplateStringsArray, ...values: unknown[]) => {
+        const sql = strings.join('?');
+        raws.push({ sql, values });
+        if (!sql.includes('avg_minutes')) return [{ avg_days: null, n: 0 }];
+        /* Postgres's own reading of the one condition this test is about. */
+        const leftOut = sql.includes('closed_reason IS DISTINCT FROM') ? values.find((v) => v === 'auto_closed') : undefined;
+        const kept = sessions.filter((s) => leftOut === undefined || s.closedReason !== leftOut);
+        const byN = new Map<number, number[]>();
+        for (const s of kept) byN.set(s.n, [...(byN.get(s.n) ?? []), s.minutes]);
+        return [...byN].map(([n, m]) => ({ session_number: n, avg_minutes: m.reduce((a, b) => a + b, 0) / m.length, n: m.length }));
+      }),
+    };
+    return { svc: new PromptsService(prisma, {} as any), raws };
+  }
+
+  it('averages only the sessions a person finished, not those the clock closed a day later', async () => {
+    const { svc } = theFunnel([
+      { n: 1, minutes: 12, closedReason: null },
+      { n: 1, minutes: 14, closedReason: null },
+      { n: 1, minutes: 1440, closedReason: 'auto_closed' },
+    ]);
+    const served = await svc.usageFunnel('all');
+    /* It served 489 here: the clock's session counted as a day-long session. */
+    expect(served.avgSessionMinutes).toEqual([{ session: 1, avgMinutes: 13, n: 2 }]);
+  });
+});

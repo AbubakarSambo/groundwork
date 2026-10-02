@@ -1,4 +1,6 @@
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CLOSED_BY_THE_CLOCK } from '../conversation/conversation.service';
 
 /**
  * WHAT THE PLATFORM HAS ACTUALLY DONE: ONE SET OF PREDICATES, ONE CLOCK, ONE RATE.
@@ -19,6 +21,18 @@ import { PrismaService } from '../prisma/prisma.service';
 
 /** A session somebody actually gave, on a customer's check-in. */
 export const A_REAL_SESSION = { isSetup: false, ground: { organization: { isInternal: false } } } as const;
+
+/**
+ * A SESSION IS TIMED ONLY WHEN A PERSON FINISHED IT (item 19). The sweep closes a session somebody
+ * walked away from, a day or more after they started, and marks it complete with
+ * `closedReason: 'auto_closed'`. Timed with the rest, those sessions read as about 1,450 minutes
+ * each, and on the test database they put the mean minutes a session takes at 110 where the
+ * sessions people finished took 12.8. A measure of how long a session takes leaves them out. They
+ * are still sessions completed, and every count still counts them. Written as an OR because a
+ * Prisma `not` on a nullable column also drops the nulls, which are the sessions people finished.
+ */
+export { CLOSED_BY_THE_CLOCK };
+export const A_SESSION_A_PERSON_FINISHED: { OR: Prisma.CheckInWhereInput[] } = { OR: [{ closedReason: null }, { closedReason: { not: CLOSED_BY_THE_CLOCK } }] };
 
 /** A check-in belonging to a customer. */
 export const A_REAL_CHECK_IN = { organization: { isInternal: false } } as const;

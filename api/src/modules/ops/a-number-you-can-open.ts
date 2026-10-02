@@ -1,6 +1,7 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { OpsCapability } from './what-somebody-may-do';
 import { medianOf, whatTheMedianSays } from './a-check-in-takes-about-as-long-as-we-say';
+import { A_SESSION_A_PERSON_FINISHED } from '../prompts/what-the-platform-has-actually-done';
 
 /**
  * A number, and the rows that made it.
@@ -415,7 +416,7 @@ export const METRICS: MetricDefinition[] = [
     label: 'How long a session takes',
     shape: 'derived',
     capability: 'product:read',
-    counts: 'The median minutes from a session being started to being completed, over customers\' real sessions completed in the window. The copy says about ten.',
+    counts: 'The median minutes from a session being started to being completed, over customers\' real sessions a person finished in the window, leaving out those the clock closed. The copy says about ten.',
     async compute(prisma, window) {
       const sessions = await prisma.checkIn.findMany({
         where: {
@@ -424,6 +425,8 @@ export const METRICS: MetricDefinition[] = [
           startedAt: { not: null },
           completedAt: within(window),
           ground: { organization: { isInternal: false } },
+          /* Not one the clock closed a day after the person walked away (item 19). */
+          ...A_SESSION_A_PERSON_FINISHED,
         },
         select: { id: true, sessionNumber: true, startedAt: true, completedAt: true },
       });

@@ -4,7 +4,7 @@ import { AnthropicService, ChatTurn } from '../conversation/anthropic.service';
 import { SEED_PROMPTS } from '../conversation/prompt-library';
 import { SEAT_RELATION_COUNT } from '../../common/seats';
 import { Prisma } from '@prisma/client';
-import { A_CUSTOMER, A_REAL_CHECK_IN, A_REAL_SESSION, aRealUsageEvent, aMean, inRange, session2RateOfThoseDue, sinceFor } from './what-the-platform-has-actually-done';
+import { A_CUSTOMER, A_REAL_CHECK_IN, A_REAL_SESSION, CLOSED_BY_THE_CLOCK, aRealUsageEvent, aMean, inRange, session2RateOfThoseDue, sinceFor } from './what-the-platform-has-actually-done';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
 /** What the start writes in `activated_by` when it activates a version itself (decision 74, item 6). */
@@ -164,7 +164,8 @@ export class PromptsService implements OnModuleInit {
         ),
       ),
 
-      // 2. Avg session duration in minutes, with the sample size (raw SQL)
+      // 2. Avg session duration in minutes, with the sample size (raw SQL). Only sessions a person
+      //    finished: the clock closes the rest a day later (see A_SESSION_A_PERSON_FINISHED).
       this.prisma.$queryRaw<{ session_number: number; avg_minutes: number; n: number }[]>`
         SELECT ci.session_number, ROUND(AVG(EXTRACT(EPOCH FROM (ci.completed_at - ci.started_at)) / 60)::numeric, 1)::float as avg_minutes, COUNT(*)::int as n
         FROM check_ins ci
@@ -172,6 +173,7 @@ export class PromptsService implements OnModuleInit {
         JOIN organizations o ON o.id = g.organization_id
         WHERE ci.status = 'COMPLETED' AND ci.started_at IS NOT NULL AND ci.completed_at IS NOT NULL
           AND ci.is_setup = false AND o.is_internal = false ${sinceSql}
+          AND ci.closed_reason IS DISTINCT FROM ${CLOSED_BY_THE_CLOCK}
         GROUP BY ci.session_number
         ORDER BY ci.session_number
       `,
