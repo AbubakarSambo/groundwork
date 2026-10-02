@@ -1193,7 +1193,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           this was the one heading that sat inside its own card rather than above it.
         */}
         {shown.cascade && b.cascade && (
-          <Section heading={b.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}>
+          /*
+           * SECOND BOARD REVIEW, WORDING: "Nothing above this" named nothing a reader could picture
+           * from the heading alone - a label, not a sentence saying what the section holds. The
+           * section is always about the one thing, whichever answer it has: what these objectives
+           * sit under. The "nothing named yet" answer is already said in full, as a sentence, in
+           * `b.cascade.why` just below the heading.
+           */
+          <Section heading="What this sits under">
             <Panel>
               {b.cascade.parentNamed && (
                 <div className="gwui-fs-16 gwui-ink-text gwui-mb-6" style={{fontWeight: 600, lineHeight: 1.35}}>
