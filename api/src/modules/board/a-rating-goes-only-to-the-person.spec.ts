@@ -86,7 +86,7 @@ describe('contribution against role, for each reader', () => {
   it('the person may read their own', async () => {
     const b = await boardFor('u-miriam');
     const own = (b.contribution ?? []).find((r: any) => r.participantId === 'miriam');
-    expect(own.reason).toMatch(/lines? taken from what they said/);
+    expect(own.reason).toMatch(/lines? taken from what you said/);
   });
 
   it('a colleague never reads another person\'s rating', async () => {

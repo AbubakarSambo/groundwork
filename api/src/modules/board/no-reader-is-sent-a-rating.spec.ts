@@ -93,7 +93,7 @@ describe.each([
   it('Rukia reads the words of the read of her own answers, and no number in it', async () => {
     const board = await boardAs(setup, ...RUKIA);
     const own = board.contribution.find((r: any) => r.participantId === 'p-rukia');
-    expect(own.reason).toMatch(/2 check-ins on record\. 2 lines taken from what they said/);
+    expect(own.reason).toMatch(/2 check-ins on record\. 2 lines taken from what you said/);
     expect(own).not.toHaveProperty('confidence');
     expect(own).not.toHaveProperty('evidenceCount');
     const cov = board.coverage.reads.find((r: any) => r.participantId === 'p-rukia');

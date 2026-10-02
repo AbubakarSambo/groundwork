@@ -116,7 +116,7 @@ describe.each([
   it('Rukia reads the words of her own read, and nothing about Baraka\'s', async () => {
     const board = await boardAs(setup, ...RUKIA);
     expect(board.contribution.map((r: any) => r.participantId)).toEqual(['p-rukia']);
-    expect(board.contribution[0].reason).toMatch(/^1 check-in on record\. 1 line taken from what they said/);
+    expect(board.contribution[0].reason).toMatch(/^1 check-in on record\. 1 line taken from what you said/);
     expect(everyString(board).filter((s) => /Baraka/.test(s) && /checkable|can be checked/i.test(s))).toEqual([]);
     expect(anyRatingIn(board)).toEqual([]);
   });

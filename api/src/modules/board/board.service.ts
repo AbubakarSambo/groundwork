@@ -126,6 +126,7 @@ import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { theFirstNameFrom, theShortNameOf } from '../reports/a-title-is-not-a-first-name';
 import { aHolderInTheirOwnWords } from './a-holder-in-their-own-words';
+import { yourOwnRowsSayYou } from './your-own-read-says-you';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -2652,7 +2653,9 @@ export class BoardService {
       }
       /* And no number that rates a person leaves on any section, whoever reads it (request 111 a). */
       /* A sentence true of several people is said once for the section (request 117, part 8). */
-      return withNoRatingNumber(eachRepeatedSentenceSaidOnce(walled));
+      /* And what is left on the reader's own rows is said to them, as "you" (item 18). After the said-once pass, which
+         already says "you" for the reader where a sentence is true of several people (request 118, part 2). */
+      return withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null));
     }
   }
 
