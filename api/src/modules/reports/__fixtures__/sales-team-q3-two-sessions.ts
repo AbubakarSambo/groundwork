@@ -148,7 +148,11 @@ export function serviceFor(kind: 'sales' | 'review' = 'sales') {
         return w.ground.participants.map((p: any) => ({ ...p, checkIns: w.checkIns.filter((c) => c.participantId === p.id && (n === undefined || c.sessionNumber === n)) }));
       },
     },
-    user: { ...none, findUnique: async ({ where }: any) => users[where.id] ?? null },
+    user: {
+      ...none,
+      findUnique: async ({ where }: any) => users[where.id] ?? null,
+      findMany: async ({ where }: any = {}) => Object.values(users).filter((u: any) => (!where?.id?.in || where.id.in.includes(u.id)) && (where?.awaitingOrgApproval === undefined || !!u.awaitingOrgApproval === where.awaitingOrgApproval)),
+    },
   } as any, { get: (t: any, k: string) => (typeof k === 'string' && !k.startsWith('$') ? (t[k] ??= { ...none }) : t[k]) });
   const svc = Object.create(ReportsService.prototype) as any;
   svc.prisma = prisma;

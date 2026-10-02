@@ -190,6 +190,7 @@ import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-co
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
 import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
+import { theInferencesOfSession, keptWithEachSessionsOwn } from './each-sessions-inferences-are-its-own';
 import { asTheReleasedSessionHadIt, isThisSessionReleased, releasedSessionsOf, theLatestReleasedSession, theSessionTheReportHolds, thisSessionIsNotSharedYet, whatReleasingThisSessionDoes, withThisSessionReleased, youAreReadingAnEarlierSession } from './each-sessions-picture-is-released-on-its-own';
 import { aRoleInTheirOwnWords, withoutTheLeadsDescriptionOfAnyone, deeplyWithoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 
@@ -549,6 +550,16 @@ export const A_PICTURE_IS_FORMING =
 /* Set only while the warm-up words what each reader will read (ReportsService.wordTheReadsFor). At
    module scope so a service made without its constructor still reads "not warming". */
 const WORDING_NEW_LINES = new AsyncLocalStorage<true>();
+
+/**
+ * WHERE THE RECORD IS CUT FOR THE REPORT OF A SESSION THAT HAS CLOSED (request 102): that session, the
+ * moment it closed, and the pattern period it closed in.
+ */
+interface AsOfARound {
+  sessionNumber: number;
+  at: Date;
+  period: number;
+}
 
 @Injectable()
 export class ReportsService {
@@ -2219,7 +2230,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
      */
     const priorReport = await this.prisma.report.findUnique({
       where: { groundId },
-      select: { engagement: true },
+      /* And the inferences already kept, so an earlier session's stay its own (request 102). */
+      select: { engagement: true, inferences: true, updatedAt: true },
     });
     const priorEngagement = priorReport?.engagement as Record<string, any> | null | undefined;
     const existingGuides = priorEngagement?.postReportGuides;
@@ -2572,6 +2584,21 @@ Close the report by framing - neutrally, without recommending one - the choice n
       this.logger.warn(`Report for ground ${groundId}: the marks on its lines were not worked out (${err?.message}). The report is kept without them.`);
     }
 
+    /*
+     * EACH SESSION'S INFERENCES STAY ITS OWN (request 102). This synthesis replaces only the items of the
+     * session the report holds now; an earlier session's are kept as that session left them, so its
+     * own report never shows what a later session concluded. Items kept before they carried a session
+     * belong to the session the report held when it was last written.
+     */
+    const holdsNow = await theSessionTheReportHolds(this.prisma, groundId);
+    const heldWhenLastWritten = (priorReport as any)?.updatedAt
+      ? (((await (this.prisma.checkIn?.aggregate?.({
+        where: { groundId, status: CheckInStatus.COMPLETED, isSetup: false, completedAt: { lte: (priorReport as any).updatedAt } } as any,
+        _max: { sessionNumber: true },
+      }) ?? Promise.resolve(null)).catch(() => null)) as any)?._max?.sessionNumber ?? holdsNow)
+      : holdsNow;
+    const inferencesKept = keptWithEachSessionsOwn((priorReport as any)?.inferences, inferences, holdsNow, heldWhenLastWritten);
+
     const report = await this.prisma.report.upsert({
       where: { groundId },
       create: {
@@ -2650,7 +2677,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
          * synthesis, so they are the only part carried across.
          */
         engagement: enrichedEngagement as any,
-        inferences: inferences as any,
+        inferences: inferencesKept as any,
         leadershipGaps: (((result as any).leadershipGaps ?? []).length ? (result as any).leadershipGaps : undefined) as any,
         promptVersionId: synthesisVersion.id,
         finalSynthesis: (Object.keys(arcByParticipant).length
@@ -2671,7 +2698,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         // Carry the private guides across. See the note on the create branch:
         // this write is what destroyed them on every session after the first.
         engagement: { ...enrichedEngagement, ...(existingGuides ? { postReportGuides: existingGuides } : {}) } as any,
-        inferences: inferences as any,
+        inferences: inferencesKept as any,
         leadershipGaps: (((result as any).leadershipGaps ?? []).length ? (result as any).leadershipGaps : undefined) as any,
         promptVersionId: synthesisVersion.id,
         finalSynthesis: (Object.keys(arcByParticipant).length
@@ -3657,6 +3684,20 @@ Close the report by framing - neutrally, without recommending one - the choice n
        * `signal`, and who it is about follows the same naming rule as every other line here.
        */
       patterns: patternsForPage,
+      /*
+       * THIS SESSION'S OWN COACHING NOTE, PROBE LIST AND INFERENCES (request 102, 2 October 2026).
+       *
+       * The report page of session 1, closed on 27 September, read all three from `GET /report`, the
+       * check-in's working copy, so under "Closed 27 Sept 2026. This does not change." it opened "This
+       * is session 2 ...", and the lead's probe list said Baraka had not answered "this session", while
+       * the team report on the same page said he had. Each is now carried here, built from the record
+       * as it stood when this session closed, under the same walls as `GET /report`: the reader's own
+       * coaching note to the reader alone, and the probe list and the inferences to whoever runs it.
+       * Built from what is stored, so opening the page rebuilds nothing (decision 7).
+       */
+      /* A note that cannot be built must not take the report down: the report is what they came for. */
+      ...(await this.thisSessionsOwnCoaching(groundId, ground as any, sessionNumber, me as any, requestingUserId, viewerIsLead, snapshot?.takenAt ?? null, periodOfThisSession)
+        .catch((err: any) => { this.logger?.warn?.(`Session ${sessionNumber}'s own coaching for ${groundId} could not be built: ${err?.message}`); return {}; })),
       /*
        * THE PICTURE FROM EVERYBODY, DRAFTED FROM THE READS AND WORDED BY THE MODEL.
        *
@@ -5597,8 +5638,13 @@ happened, and what is in the way.`;
     return softSpots(shape).map((f) => ({ line: f.line, wouldRaiseIt: whatWouldRaiseIt(f.spot) }));
   }
 
-  private async whatTheRecordHoldsFor(groundId: string, ground: any) {
-    const [detections, dependencies, entries, docs, sessions] = await Promise.all([
+  /**
+   * `asOf`: the record as it stood when an earlier session closed (request 102), so that session's own
+   * report is coached and probed on what was there then, never on a later session. Without it, the
+   * record as it is now, as the main report reads it.
+   */
+  private async whatTheRecordHoldsFor(groundId: string, ground: any, asOf?: AsOfARound) {
+    const [detectionsNow, dependenciesNow, entriesNow, docsNow, sessionsNow] = await Promise.all([
       /* Not even read while patterns are not served. */
       PATTERNS_ARE_SERVED
         ? this.prisma.patternDetection.findMany({
@@ -5608,26 +5654,51 @@ happened, and what is in the way.`;
         })
         : Promise.resolve([] as APatternRow[]),
       this.prisma.groundDependency.findMany({
-        where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
+        /* As of an earlier session, a wait cleared since then was still open then. */
+        where: asOf ? { groundId } : { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
         select: {
           fromParticipantId: true, onParticipantId: true, onLabel: true,
           what: true, createdAt: true, escalatedAt: true, triedSaid: true,
           /* What kind of thing is in the way, and therefore who can move it. The row has carried
              this all along and both coaching surfaces said "waiting on X" without reading it. */
           blockerKind: true,
+          ...(asOf ? { status: true, clearedAt: true } : {}),
         },
       }),
       this.prisma.recordEntry.findMany({
         where: { disputedAt: null, participant: { groundId } },
-        select: { participantId: true, type: true, text: true, recallBased: true, saidWordForWord: true },
+        select: { participantId: true, type: true, text: true, recallBased: true, saidWordForWord: true, ...(asOf ? { checkIn: { select: { sessionNumber: true } } } : {}) },
       }),
-      this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true } }),
+      this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true, ...(asOf ? { createdAt: true } : {}) } }),
       this.prisma.checkIn.findMany({
         where: { groundId, status: CheckInStatus.COMPLETED },
         select: { participantId: true, sessionNumber: true },
       }),
     ]);
-    const wholeDays = (d: Date) => Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 86400000));
+    /*
+     * THE RECORD AS IT STOOD WHEN THAT SESSION CLOSED (request 102). Its own sessions and lines, the
+     * waits raised by then and not cleared by then (taken further only if that was by then), documents
+     * added by then, and each pattern counted only over the periods it had been seen in by then. How
+     * long somebody had been waiting is counted to the day it closed, not to today.
+     */
+    const cut = asOf ? new Date(asOf.at).getTime() : null;
+    const by = (d: unknown) => cut === null || (!!d && new Date(d as any).getTime() <= cut);
+    const sessions = asOf ? sessionsNow.filter((c) => c.sessionNumber <= asOf.sessionNumber) : sessionsNow;
+    const entries = asOf
+      ? (entriesNow as any[]).filter((e) => typeof e.checkIn?.sessionNumber !== 'number' || e.checkIn.sessionNumber <= asOf.sessionNumber) as typeof entriesNow
+      : entriesNow;
+    const docs = asOf ? (docsNow as any[]).filter((d) => !d.createdAt || by(d.createdAt)) as typeof docsNow : docsNow;
+    const dependencies = asOf
+      ? (dependenciesNow as any[])
+        .filter((d) => by(d.createdAt))
+        .filter((d) => ['WAITING', 'BLOCKING'].includes(String(d.status)) ? true : !!d.clearedAt && !by(d.clearedAt))
+        .map((d) => ({ ...d, escalatedAt: d.escalatedAt && by(d.escalatedAt) ? d.escalatedAt : null })) as typeof dependenciesNow
+      : dependenciesNow;
+    const detections = asOf
+      ? (detectionsNow as APatternRow[]).map((r) => patternRowAsOfSession(r, asOf.period))
+      : detectionsNow;
+    const now = cut ?? Date.now();
+    const wholeDays = (d: Date) => Math.max(0, Math.floor((now - new Date(d).getTime()) / 86400000));
     /* Every row, for the two builders to narrow to their reader: the coaching note to the person's own,
        the probe list to what the lead may read. See patterns/who-reads-a-pattern. */
     return { detections, dependencies, entries, docs, sessions, wholeDays, ground };
@@ -5702,16 +5773,19 @@ happened, and what is in the way.`;
     ground: any,
     participant: { id: string; roleAsDescribed?: string | null; partyType?: string | null },
     nameOf: (participantId: string | null, fallback: string | null) => string | null,
+    /* That session's record only, for the report of a session that has closed (request 102). */
+    asOf?: AsOfARound,
   ) {
     /* No coaching note for a discovery participant: they were asked as experts, not people being developed. */
     if (ground.scenario === 'DISCOVERY') return null;
-    const held = await this.whatTheRecordHoldsFor(groundId, ground);
+    const held = await this.whatTheRecordHoldsFor(groundId, ground, asOf);
     const mine = held.entries.filter((e) => e.participantId === participant.id);
     const mySessions = held.sessions.filter((c) => c.participantId === participant.id);
     /* Office work has documents; a tractor, a cold store and a rice mill do not. See TheirOwnRecord.documentsExpected. */
     const documentsExpected = !['COHORT_CHECK', 'DISCOVERY', 'SNAPSHOT'].includes(String(ground.scenario));
     /* The product's finding about this person, from the report: the first thing the note says. */
-    const myFinding = (Array.isArray(ground.report?.findings) ? (ground.report.findings as any[]) : []).find((f) => f.participantId === participant.id);
+    /* The findings are the latest report's, so a closed session's own note does not read them. */
+    const myFinding = asOf ? undefined : (Array.isArray(ground.report?.findings) ? (ground.report.findings as any[]) : []).find((f) => f.participantId === participant.id);
     const findingLines: string[] = myFinding?.hasGap && myFinding.text
       ? String(myFinding.text).split(/(?<=[.!?])\s+/).filter((l: string) => /count moved|two numbers|Nothing they have reported since|is in the way|The lead set/.test(l)).slice(0, 2).map((l: string) => l.replace(/^Nothing they have reported since/, 'Nothing you have reported since').replace(/^The lead set ([^ ]+) for them/, 'The lead set $1 for you').replace(/their own number/, 'your own number'))
       : [];
@@ -5903,6 +5977,76 @@ happened, and what is in the way.`;
   }
 
   /**
+   * THE COACHING NOTE, THE PROBE LIST AND THE INFERENCES OF ONE SESSION, FOR ITS OWN REPORT (request 102).
+   *
+   * For the session the report holds now, the same as `GET /report` serves. For an earlier session,
+   * built from the record as it stood when that session closed (see whatTheRecordHoldsFor), and the
+   * inferences that session's synthesis kept (see each-sessions-inferences-are-its-own). Who is sent
+   * what is the same as `GET /report`: the coaching note to a person who takes part, about themselves;
+   * the probe list to whoever runs the check-in (the lead, or the admin who set it up); the inferences
+   * to the lead and an admin who reads the report as the lead does. A field a reader is not given is
+   * not sent at all.
+   */
+  private async thisSessionsOwnCoaching(
+    groundId: string,
+    ground: any,
+    sessionNumber: number,
+    me: { id: string } | null,
+    requestingUserId: string,
+    viewerIsLead: boolean,
+    closedAt: Date | null,
+    period: number,
+  ): Promise<{ coaching?: any; probes?: any; inferences?: any[] }> {
+    const holds = await theSessionTheReportHolds(this.prisma, groundId);
+    let asOf: AsOfARound | undefined;
+    if (sessionNumber < holds) {
+      /* When the session closed: its kept round, or else the last answer given in it. */
+      const lastAnswer = closedAt ? null : await (this.prisma.checkIn?.findFirst?.({
+        where: { groundId, sessionNumber, status: CheckInStatus.COMPLETED },
+        orderBy: { completedAt: 'desc' },
+        select: { completedAt: true },
+      }) ?? Promise.resolve(null)).catch(() => null);
+      asOf = { sessionNumber, at: closedAt ?? (lastAnswer as any)?.completedAt ?? new Date(), period };
+    }
+    const labels = labelsForParties(ground.participants as any);
+    const names = namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any, me?.id ?? null));
+    const plainNameOf = (id: string): string | null => {
+      const label = labels.get(id);
+      return (label ? names.get(label) : undefined) ?? label ?? null;
+    };
+    const nameOf = (id: string | null, fallback: string | null): string | null => {
+      if (!id) return fallback;
+      if (me && id === me.id) return 'you';
+      const label = labels.get(id);
+      return (label ? names.get(label) : undefined) ?? label ?? fallback;
+    };
+    const runsIt = runsItForAPattern(ground as any, requestingUserId);
+    const [note, probes, stored] = await Promise.all([
+      me
+        ? this.coachingNoteFor(groundId, ground, me as any, nameOf, asOf).catch((err) => {
+          this.logger.warn(`Could not build session ${sessionNumber}'s coaching note for ${me.id}: ${err?.message}`);
+          return null;
+        })
+        : Promise.resolve(null),
+      runsIt && ground.cadence !== Cadence.ONE_TIME
+        ? this.whatToProbeOn(groundId, ground, true, nameOf, plainNameOf, asOf).catch((err) => {
+          this.logger.warn(`Could not build session ${sessionNumber}'s probe list for ${groundId}: ${err?.message}`);
+          return null;
+        })
+        : Promise.resolve(null),
+      viewerIsLead
+        ? (this.prisma.report?.findUnique?.({ where: { groundId }, select: { inferences: true } }) ?? Promise.resolve(null)).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+    const quotable = (note || probes) ? await theRecordAQuoteMayComeFrom(this.prisma as any, groundId) : [];
+    return {
+      ...(me ? { coaching: this.readAsItWillBeRead(note, groundId, 'the coaching note', quotable) ?? null } : {}),
+      ...(runsIt ? { probes: this.readAsItWillBeRead(probes, groundId, 'the probe list', quotable) ?? null } : {}),
+      ...(viewerIsLead ? { inferences: theInferencesOfSession((stored as any)?.inferences, sessionNumber, holds) } : {}),
+    };
+  }
+
+  /**
    * WHAT TO PROBE EACH PERSON ON. THE LEAD, AND NOBODY ELSE.
    *
    * Guarded here rather than in the shape: a surface that is lead-only because a caller remembered
@@ -5915,9 +6059,11 @@ happened, and what is in the way.`;
     nameOf: (participantId: string | null, fallback: string | null) => string | null,
     /** The same resolver without the second-person substitution, for headings. */
     nameOf2: (participantId: string) => string | null,
+    /* That session's record only, for the report of a session that has closed (request 102). */
+    asOf?: AsOfARound,
   ) {
     if (!viewerIsLead) return null;
-    const held = await this.whatTheRecordHoldsFor(groundId, ground);
+    const held = await this.whatTheRecordHoldsFor(groundId, ground, asOf);
     /*
      * WHICH ROUND THIS IS, FROM THE READ THAT ALWAYS HAS IT.
      *
@@ -5930,10 +6076,23 @@ happened, and what is in the way.`;
     const fromTheRecord = Math.max(0, ...held.sessions.map((c: any) => c.sessionNumber ?? 0));
     const fromTheGround = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
     const planned = Math.max(fromTheRecord, fromTheGround);
-    const thisRound = planned > 0 ? planned : 1;
+    /* The round a closed session's own report is about is that session, whatever came after it. */
+    const thisRound = asOf ? asOf.sessionNumber : planned > 0 ? planned : 1;
 
+    /*
+     * NOBODY THE ORGANISATION HAS NOT LET IN (request 85, request 101 b). Faraji Odhiambo, whom an
+     * admin had not let in, was listed with "has not answered this session", which asks the lead to
+     * chase somebody who cannot check in. The board says what happened to him instead.
+     */
+    const notInYet = new Set(
+      ((await (this.prisma.user?.findMany?.({
+        where: { id: { in: (ground.participants ?? []).map((p: any) => p.userId).filter(Boolean) }, awaitingOrgApproval: true } as any,
+        select: { id: true },
+      }) ?? Promise.resolve([])).catch(() => [])) as any[]).map((u) => u.id),
+    );
     const reads = (ground.participants ?? [])
       .filter((p: any) => !p.managingOnly)
+      .filter((p: any) => !(p.userId && notInYet.has(p.userId)))
       /* "What to ask each person" is about the others: it listed Rukia, who runs the sales board, to Rukia
          herself (request 111 e). The reader's own row is the one the resolver says as "you". */
       .filter((p: any) => (nameOf(p.id, null) ?? '').trim().toLowerCase() !== 'you')
@@ -6906,6 +7065,12 @@ happened, and what is in the way.`;
      * way on both run 19 and goals-1, and stays for Tobi; a private phrase found nowhere shareable
      * still comes out. See theShareableTextFor and withoutTheLeadsDescriptionOfAnyone.
      */
+    /* The working copy's inferences are the latest session's only; an earlier session's are on its own
+       report (request 102). */
+    if (Array.isArray(base.inferences)) {
+      const holds = await theSessionTheReportHolds(this.prisma, groundId);
+      base.inferences = theInferencesOfSession(base.inferences, holds, holds);
+    }
     if (isInitiator && base.theJudgement) {
       base.theJudgement = theJudgementWithItsConversationPoints(base.theJudgement, await this.goalsNotToldByName(groundId, ground.participants as any[]));
     }
