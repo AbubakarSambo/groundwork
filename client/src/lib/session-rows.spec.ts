@@ -47,3 +47,49 @@ describe('buildSessionRows: when a session really opened', () => {
     expect(rows[0].opened).toBe('2026-09-20T09:00:00.000Z')
   })
 })
+
+/**
+ * DECISION 77: A ROW'S OWN "N of M checked in" AGREES WITH THE HEADLINE'S COUNT.
+ *
+ * Read live on "Sales team, Q3": "Session 1, 27 Sept / 4 of 6 checked in" and "Session 2, 30 Sept
+ * / 2 of 6 checked in" sat beside the headline's own "4 of 5 people have answered this round." -
+ * Faraji Odhiambo, held at the organisation's door (`notLetInYet: true`), was still in `total`
+ * (`whoIsInRound`'s own denominator), though the server's own count already left him out. Fixed in
+ * `who-is-in-this-round.ts`; this proves the fix reaches `buildSessionRows`'s rows too.
+ */
+describe('buildSessionRows: somebody not let in yet is not counted', () => {
+  const labelInASentence = (p: any) => p.name ?? 'a colleague'
+
+  it('reads "4 of 5" and "2 of 5", never "4 of 6" or "2 of 6", with one person held at the door', () => {
+    const ground = {
+      participants: [
+        { id: 'p-rukia', userId: 'u-rukia', name: 'Rukia Otieno', managingOnly: false },
+        { id: 'p-baraka', userId: 'u-baraka', name: 'Baraka Mwangi', managingOnly: false },
+        { id: 'p-amani', userId: 'u-amani', name: 'Amani Wekesa', managingOnly: false },
+        { id: 'p-neema', userId: 'u-neema', name: 'Neema Achieng', managingOnly: false },
+        { id: 'p-colleague', userId: 'u-colleague', name: null, managingOnly: false },
+        { id: 'p-faraji', userId: 'u-faraji', name: 'Faraji Odhiambo', managingOnly: false, notLetInYet: true },
+      ],
+      checkIns: [
+        { id: 'c1', participantId: 'p-rukia', sessionNumber: 1, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-27T17:32:00.000Z' },
+        { id: 'c2', participantId: 'p-baraka', sessionNumber: 1, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-27T17:39:00.000Z' },
+        { id: 'c3', participantId: 'p-amani', sessionNumber: 1, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-27T19:27:00.000Z' },
+        { id: 'c4', participantId: 'p-neema', sessionNumber: 1, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-27T17:43:00.000Z' },
+        { id: 'c5', participantId: 'p-colleague', sessionNumber: 1, status: 'NOT_STARTED', isSetup: false, completedAt: null },
+        { id: 'c6', participantId: 'p-faraji', sessionNumber: 1, status: 'NOT_STARTED', isSetup: false, completedAt: null },
+        { id: 'c7', participantId: 'p-rukia', sessionNumber: 2, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-30T12:30:00.000Z' },
+        { id: 'c8', participantId: 'p-amani', sessionNumber: 2, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-30T12:30:00.000Z' },
+      ],
+      roundCompletions: [],
+    }
+    const rows = buildSessionRows(ground, 'u-rukia', labelInASentence)
+    const session1 = rows.find((r) => r.sessionNumber === 1)
+    const session2 = rows.find((r) => r.sessionNumber === 2)
+    expect(session1?.answered).toBe(4)
+    expect(session1?.total).toBe(5)
+    expect(session2?.answered).toBe(2)
+    expect(session2?.total).toBe(5)
+    /* Never named as somebody the round is waiting on, either - he was never going to answer. */
+    expect(session1?.waitingOn).not.toContain('Faraji Odhiambo')
+  })
+})
