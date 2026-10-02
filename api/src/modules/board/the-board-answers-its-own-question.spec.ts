@@ -24,7 +24,9 @@ const BOARD = strip(
 
 describe('where accounts differ', () => {
   it('prints what each account said', () => {
-    expect(BOARD).toContain('d.positions.map(');
+    /* Since request 109 the board draws only the sides that have words of their own, so the
+       positions are filtered before they are mapped; each one printed still shows who and the view. */
+    expect(BOARD).toMatch(/d\.positions(\.filter\(.+?\))?\.map\(/);
     /* `who`, not `.participantLabel`, which must never be printed (docs/answers-from-engine.md, U.10). */
     expect(BOARD).toContain('pos.who');
     expect(BOARD).not.toContain('pos.participantLabel');
