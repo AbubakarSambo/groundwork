@@ -319,17 +319,17 @@ export class WhatsAppForAnOrganisationService {
      * decides: yes hands it to Ask Groundwork through its own entry, which says it back and asks before
      * anything is sent; no puts it in the check-in, as it would have gone before.
      */
-    const pending = this.aRequestAskedAbout(organizationId, from);
+    const pending = await this.aRequestAskedAbout(organizationId, from, thread);
     if (pending) {
       if (A_YES.test(text) && who.personId) {
-        this.forgetTheRequest(organizationId, from);
+        await this.forgetTheRequest(organizationId, from);
         await this.rememberAsking(organizationId, from, current.id);
         const answered = asATextMessage(await this.assistant.respondOnWhatsApp(organizationId, who.personId, pending.text)) || 'Noted.';
         await say(`${answered}\n\nWrite "back" to return to your check-in.`);
         return;
       }
       if (A_NO.test(text)) {
-        this.forgetTheRequest(organizationId, from);
+        await this.forgetTheRequest(organizationId, from);
         text = pending.text;
       } else {
         await say(YES_OR_NO(pending.kind));
@@ -348,7 +348,7 @@ export class WhatsAppForAnOrganisationService {
     } else if (who.personId) {
       const kind = looksLikeARequest(text);
       if (kind) {
-        this.askAboutTheRequest(organizationId, from, text, kind);
+        await this.askAboutTheRequest(organizationId, from, text, kind);
         await say(shallITreatThisAs(kind));
         return;
       }
@@ -562,24 +562,46 @@ export class WhatsAppForAnOrganisationService {
   }
 
   /*
-   * THE REQUEST WAITING FOR A YES OR A NO. Held here for ten minutes, by organisation and number. It
-   * is the person's own words, so it is never written anywhere until they answer. Kept in this copy
-   * of the API only: if the answer reaches another copy, or this one restarted, the person is asked
-   * to say it again rather than anything being guessed.
+   * THE REQUEST WAITING FOR A YES OR A NO, for ten minutes, on the person's WhatsApp thread (by
+   * organisation and number). It was held in this copy of the API's memory, so after a restart, or
+   * on another copy, the yes or no went into the check-in as an answer. The words are kept because
+   * the answer needs them: a yes hands them to Ask Groundwork, which reads the days or the amount
+   * from them, and a no puts them in the check-in as they would have gone. They are cleared on the
+   * answer, and once ten minutes have passed, by the next message anybody sends on WhatsApp.
    */
-  private readonly requestsAskedAbout = new Map<string, { text: string; kind: ARequest; at: number }>();
   private static readonly A_REQUEST_WAITS_MS = 10 * 60 * 1000;
-  private requestKey(organizationId: string, from: string) { return `${organizationId}:${WhatsAppService.normalize(from)}`; }
-  private askAboutTheRequest(organizationId: string, from: string, text: string, kind: ARequest) {
-    this.requestsAskedAbout.set(this.requestKey(organizationId, from), { text, kind, at: Date.now() });
+  private static readonly NO_REQUEST = { requestKind: null, requestWords: null, requestAskedAt: null };
+  private async askAboutTheRequest(organizationId: string, from: string, text: string, kind: ARequest) {
+    const phone = WhatsAppService.normalize(from);
+    const asked = { requestKind: kind, requestWords: text, requestAskedAt: new Date() };
+    await this.prisma.whatsAppThread.upsert({
+      where: { organizationId_phone: { organizationId, phone } },
+      create: { organizationId, phone, ...asked },
+      update: asked,
+    }).catch(() => undefined);
   }
-  private aRequestAskedAbout(organizationId: string, from: string) {
-    const key = this.requestKey(organizationId, from);
-    const got = this.requestsAskedAbout.get(key);
-    if (got && Date.now() - got.at > WhatsAppForAnOrganisationService.A_REQUEST_WAITS_MS) { this.requestsAskedAbout.delete(key); return null; }
-    return got ?? null;
+  private async aRequestAskedAbout(
+    organizationId: string,
+    from: string,
+    thread: { requestKind?: string | null; requestWords?: string | null; requestAskedAt?: Date | string | null } | null,
+  ): Promise<{ text: string; kind: ARequest } | null> {
+    const cutoff = new Date(Date.now() - WhatsAppForAnOrganisationService.A_REQUEST_WAITS_MS);
+    /* Every request left unanswered past its ten minutes, this person's or anybody's, is forgotten. */
+    await this.prisma.whatsAppThread.updateMany({
+      where: { requestAskedAt: { lt: cutoff } },
+      data: WhatsAppForAnOrganisationService.NO_REQUEST,
+    }).catch(() => undefined);
+    if (!thread?.requestAskedAt || !thread.requestKind || thread.requestWords == null) return null;
+    if (new Date(thread.requestAskedAt).getTime() < cutoff.getTime()) return null;
+    return { text: thread.requestWords, kind: thread.requestKind as ARequest };
   }
-  private forgetTheRequest(organizationId: string, from: string) { this.requestsAskedAbout.delete(this.requestKey(organizationId, from)); }
+  private async forgetTheRequest(organizationId: string, from: string) {
+    const phone = WhatsAppService.normalize(from);
+    await this.prisma.whatsAppThread.updateMany({
+      where: { organizationId, phone },
+      data: WhatsAppForAnOrganisationService.NO_REQUEST,
+    }).catch(() => undefined);
+  }
 
   /** The question was asked now; a typed number is an answer to it only while that is fresh. */
   private async askWhichOne(organizationId: string, from: string) {

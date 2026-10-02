@@ -3150,9 +3150,18 @@ model WhatsAppThread {
   checkInId      String?   @map("check_in_id")
   /// When the "which one?" list was sent. A typed number is a pick only while this is fresh (a-whatsapp-message-is-routed.ts).
   pickPendingAt  DateTime? @map("pick_pending_at")
+  /// A leave, hours or spending request asked about during a check-in ("Shall I treat this as a leave
+  /// request?"), waiting for the person's yes or no (decision 82, item 2). Kept here, not in one copy
+  /// of the API's memory, so the answer finds it after a restart or on another copy. The kind
+  /// (`leave`, `hours`, `spending`), the words (the yes hands them to Ask Groundwork, the no puts them
+  /// in the check-in), and when it was asked. All three are cleared on the answer, and after ten minutes.
+  requestKind    String?   @map("request_kind")
+  requestWords   String?   @map("request_words")
+  requestAskedAt DateTime? @map("request_asked_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   @@unique([organizationId, phone])
+  @@index([requestAskedAt])
   @@map("whatsapp_threads")
 }
 
