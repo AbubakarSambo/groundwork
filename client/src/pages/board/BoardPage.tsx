@@ -1137,14 +1137,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           information with no prototype equivalent, so it keeps its place, in plain text; the
           summary sentence itself moves into "Everything else from this check-in", as plain text
           too - see where `FoldEverythingElseUnless` opens, below.
+
+          BOARD REVIEW, SALES PIECE D, ITEM 4: THE GLANCE LINE, ONLY ONCE. While there is no
+          answer to the headline question, `HeadlineSection` itself now draws the glance line
+          inside the question's own box, rather than leaving that box empty with the same
+          sentence repeated just below it - so it is passed in here, and the separate block below
+          is left out in exactly that case (no answer, a glance to show).
         */}
         {(b as any).headline && (
           <Stack gap={12}>
-            <HeadlineSection headline={(b as any).headline} objectives={b.objectives} />
+            <HeadlineSection headline={(b as any).headline} objectives={b.objectives} glance={(b as any).howItIsGoing?.glance ?? null} />
           </Stack>
         )}
 
-        {(b as any).howItIsGoing?.glance && (
+        {(b as any).howItIsGoing?.glance && !((b as any).headline && !(b as any).headline.answer) && (
           <div className="gwui-mt-16">
             <HowItIsGoing glance={(b as any).howItIsGoing.glance} />
           </div>
