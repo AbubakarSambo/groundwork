@@ -26,7 +26,8 @@
 export type NeedKind =
   /* The manager is the blocker. First, because it is the only bucket that is their own work. */
   | 'WAITING_ON_YOU'
-  /* Somebody is stuck on something the company has not cleared, and has already raised it. */
+  /* Somebody is stuck on something the company has not cleared, and it has been taken further: by Groundwork's
+     overnight check after a fortnight, or by the person, in their own words. Read only by whoever runs that check-in. */
   | 'STUCK_AND_RAISED'
   /* The ordinary cycle has been tried on the same thing and has not moved it. */
   | 'CYCLE_RAN_OUT'
@@ -57,7 +58,8 @@ export interface Need {
  */
 export const WHAT_IT_ASKS: Record<NeedKind, string> = {
   WAITING_ON_YOU: 'This is yours to clear. Nobody else can.',
-  STUCK_AND_RAISED: 'Somebody raised this and it is still open. Either clear it or tell them it is not being cleared.',
+  /* "Somebody raised this" was not true: most are raised by Groundwork's own overnight check, not by the person. */
+  STUCK_AND_RAISED: 'This has been taken further and is still open, in a check-in you run. Either clear it, or tell the person it is not being cleared.',
   CYCLE_RAN_OUT: 'Spend twenty minutes with them on what is behind it, rather than asking another check-in question.',
   ASKED_TO_BE_SHOWN: 'They have asked to be shown. That is an hour of somebody\'s time, not a conversation about performance.',
 };

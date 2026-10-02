@@ -198,7 +198,7 @@ const stamp = (d?: Date | number) => (d instanceof Date ? d.getTime() : (d ?? 0)
  * The newest row wins, because a handoff someone has stopped describing as
  * blocking is no longer blocking.
  */
-export function dedupeDependencies<T extends ReadDependency>(deps: T[]): T[] {
+export function dedupeDependencies<T extends ReadDependency>(deps: T[], alsoKeep?: (kept: T, said: T) => void): T[] {
   const norm = (t: string) =>
     (t ?? '')
       .toLowerCase()
@@ -234,6 +234,8 @@ export function dedupeDependencies<T extends ReadDependency>(deps: T[]): T[] {
       (hit as any).onLabel = d.onLabel ?? hit.onLabel;
       /* Each time it was said, kept so the board can say how often it was raised (request 107 c). */
       (hit as any).raisedAt = [...((hit as any).raisedAt ?? []), { at: d.createdAt ?? null, checkInId: (d as any).sourceCheckInId ?? null }];
+      /* Anything else a caller needs kept from a later mention. No caller passes it, nothing changes. */
+      alsoKeep?.(hit, d);
       continue;
     }
     out.push({ ...d, raisedAt: [{ at: d.createdAt ?? null, checkInId: (d as any).sourceCheckInId ?? null }] } as T);

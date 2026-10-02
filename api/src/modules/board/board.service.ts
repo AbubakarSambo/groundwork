@@ -154,7 +154,9 @@ import { eachLineInTheirName, inTheirOwnWords } from './what-each-person-said-is
 import { theRecordAQuoteMayComeFromByParticipant } from '../reports/a-quote-built-at-the-read';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
-import { aNameFor, thePersonWaitingAsTheyRead, atTheStartOfASentence } from './the-person-waiting-by-name';
+import { aNameFor, thePersonWaitingAsTheyRead, atTheStartOfASentence, somebodyIn } from './the-person-waiting-by-name';
+import { itWasTakenFurther } from '../reports/what-they-said-they-did-about-it';
+import { ESCALATE_AFTER_DAYS } from '../webhooks/a-handoff-that-has-sat-too-long';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
 import { WHAT_EACH_MARK_SAYS } from '../reports/the-mark-on-every-line';
 
@@ -3490,10 +3492,16 @@ export class BoardService {
       select: {
         fromParticipantId: true, onParticipantId: true, onLabel: true, what: true,
         status: true, createdAt: true, groundId: true,
+        /*
+         * WHETHER IT WAS TAKEN FURTHER (3 October 2026). Never selected before, so "where am I needed" could
+         * never show the people whose wait was taken further. `escalatedAt` is the product's own overnight
+         * stamp (a wait still open after ESCALATE_AFTER_DAYS); `triedSaid` is what the person said they did.
+         */
+        escalatedAt: true, triedSaid: true,
         /* Who runs it and whether its people are named to each other, so each reader is told a name only where they may be. */
         ground: { select: { label: true, scenario: true, initiatorId: true, peersVisibleToEachOther: true, participants: { select: { id: true, userId: true, email: true, partyType: true, managingOnly: true, createdAt: true } } } },
         fromParticipant: { select: { email: true, userId: true, partyType: true, nameGiven: true, organisationGiven: true, user: { select: { firstName: true, lastName: true } } } },
-        onParticipant: { select: { email: true } },
+        onParticipant: { select: { email: true, userId: true, partyType: true, nameGiven: true, organisationGiven: true, user: { select: { firstName: true, lastName: true } } } },
       },
     });
 
@@ -3501,7 +3509,7 @@ export class BoardService {
      * THE ROSTER'S NAME, for somebody who has not signed in and gave no name. Never the address: the
      * address is only the key the two sides are matched by (the-person-waiting-by-name.ts).
      */
-    const addresses = [...new Set(rows.map((r: any) => r.fromParticipant?.email?.toLowerCase()).filter(Boolean))] as string[];
+    const addresses = [...new Set(rows.flatMap((r: any) => [r.fromParticipant?.email?.toLowerCase(), r.onParticipant?.email?.toLowerCase()]).filter(Boolean))] as string[];
     const people = (this.prisma as any).person;
     const roster: any[] = addresses.length && typeof people?.findMany === 'function'
       ? await Promise.resolve(people.findMany({
@@ -3536,8 +3544,12 @@ export class BoardService {
         fromParticipantId: r.fromParticipantId,
         onParticipantId: r.onParticipantId,
         onLabel: r.onLabel,
+        /* Said only to whoever runs the check-in (whoNeedsYouThisWeek). Never an address. */
+        onName: r.onParticipant ? aNameFor(r.onParticipant, rosterName.get(r.onParticipant?.email?.toLowerCase() ?? '')) : null,
         what: r.what,
         status: r.status,
+        escalatedAt: r.escalatedAt ?? null,
+        triedSaid: r.triedSaid ?? null,
         createdAt: r.createdAt,
         groundId: r.groundId,
         groundLabel: r.ground?.label ?? '',
@@ -3596,17 +3608,47 @@ export class BoardService {
         });
         continue;
       }
-      /* Raised, still open, and not theirs to clear. Long waits sort themselves to the top. */
-      if (w.escalatedAt) {
-        needs.push({
-          kind: 'STUCK_AND_RAISED',
-          who,
-          says: `raised that they are stuck on ${w.what}${w.onLabel ? ` with ${w.onLabel}` : ''}`,
-          waitingDays: w.waitingDays,
-          sinceSays: day ? `since ${day}` : null,
-          sentence: `${atTheStartOfASentence(who)} has raised that they are stuck on ${w.what}${w.onLabel ? ` with ${w.onLabel}` : ''}${day ? `, and has been waiting since ${day}` : ''}.`,
-        });
-      }
+      /*
+       * TAKEN FURTHER, STILL OPEN, AND NOT THIS READER'S TO CLEAR (3 October 2026). Long waits sort themselves
+       * to the top of the group, and the group comes second, after the reader's own queue (WHAT_IT_ASKS order).
+       *
+       * WHO RAISED IT. Nobody presses a button to raise a wait. `escalatedAt` is the product's own overnight
+       * stamp, put on a wait still open after ESCALATE_AFTER_DAYS (webhooks.cron.ts), so it is said as
+       * Groundwork raising it, never as the person having raised it. The person raised it only where they
+       * said so themselves (`triedSaid`, read by `itWasTakenFurther`, the one reader of those words).
+       *
+       * WHO READS IT. Only whoever runs the check-in it was said in: that is who can clear it, or tell them
+       * it is not being cleared. A colleague, the person a performance plan is about, and an admin who does
+       * not run that check-in are told nothing of it, not even "somebody", because what is waited for is
+       * that check-in's own content. And nobody is told about their own wait as somebody needing them.
+       */
+      if (w.fromPersonKey === key) continue;
+      const theReader = ((w.naming?.participants ?? []) as any[]).find((p) => p.key === key);
+      if (!theReader?.runsIt) continue;
+      const theySaidSo = itWasTakenFurther({ triedSaid: w.triedSaid ?? null });
+      const groundworkRaisedIt = !!w.escalatedAt;
+      if (!theySaidSo && !groundworkRaisedIt) continue;
+      const Who = atTheStartOfASentence(who);
+      const on = (w.onName ?? '').trim() || (w.onLabel ?? '').trim() || null;
+      const since = day ? ` since ${day}` : '';
+      const where = who === somebodyIn(w.groundLabel) || !w.groundLabel?.trim() ? '' : `, in the check-in ${w.groundLabel.trim()}`;
+      const waited = w.status === DependencyStatus.BLOCKING
+        ? `${Who} says they cannot go on without ${w.what}, and has been waiting${on ? ` on ${on}` : ''} for it${since}${where}.`
+        : `${Who} has been waiting${on ? ` on ${on}` : ''} for ${w.what}${since}${where}.`;
+      const raised = [
+        theySaidSo ? 'They have said they took it higher.' : null,
+        groundworkRaisedIt
+          ? `It was still open after ${ESCALATE_AFTER_DAYS} days, so Groundwork raised it on ${theDayItBegan(w.escalatedAt, clock)}.`
+          : null,
+      ].filter(Boolean).join(' ');
+      needs.push({
+        kind: 'STUCK_AND_RAISED',
+        who,
+        says: `waiting${on ? ` on ${on}` : ''} for ${w.what}, and it has been taken further`,
+        waitingDays: w.waitingDays,
+        sinceSays: day ? `since ${day}` : null,
+        sentence: `${waited} ${raised}`,
+      });
     }
 
     /*

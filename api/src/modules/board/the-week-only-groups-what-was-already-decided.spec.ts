@@ -34,7 +34,18 @@ describe('the manager\'s week groups what was already decided', () => {
   });
 
   it('only calls something stuck when somebody actually raised it', () => {
-    expect(WEEK).toContain('if (w.escalatedAt)');
+    /*
+     * Raised by Groundwork's own overnight stamp, or by the person in their own words, read by the one
+     * reader of those words. Nothing new is decided here (3 October 2026: this pinned "if (w.escalatedAt)",
+     * the one condition there was before the person's own words were read too).
+     */
+    expect(WEEK).toContain('const groundworkRaisedIt = !!w.escalatedAt;');
+    expect(WEEK).toContain('itWasTakenFurther({ triedSaid: w.triedSaid ?? null })');
+    expect(WEEK).toContain('if (!theySaidSo && !groundworkRaisedIt) continue;');
+  });
+
+  it('says a wait was taken further only to whoever runs the check-in it was said in', () => {
+    expect(WEEK).toContain('if (!theReader?.runsIt) continue;');
   });
 
   it('reaches asked-to-be-shown only from what the person said about themselves', () => {

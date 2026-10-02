@@ -672,6 +672,11 @@ export class AssistantService {
 
     const mine = key ? waiting.filter((w) => w.fromPersonKey === key) : [];
     const onMe = key ? (waitedOn.find((p) => p.personKey === key)?.waiting ?? []) : [];
+    /*
+     * `escalatedAt` and `triedSaid` ride on each wait now (3 October 2026) and are left out of this answer
+     * on purpose: it says who waits on whom and for what. Whether a wait was taken further is said only to
+     * whoever runs that check-in, in "where am I needed" (whoNeedsYouThisWeek).
+     */
 
     if (!mine.length && !onMe.length) {
       return rules('what_is_stuck', text(
