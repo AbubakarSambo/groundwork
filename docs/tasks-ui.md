@@ -69,6 +69,16 @@ Rebuilt from the shared parts in four groups, each with a picture check per scre
 - [ ] **Group 3, check-ins and signing in:** the rest of GroundAdminPage, ChatPage, CreateGroundPage, EntryChatPage and SaveCard, ReportPage and SessionReportPage, the sign-in pages (AuthPage, auth-kit, MagicVerifyPage), JoinPage.
 - [ ] **Group 4, the back office:** AdminPage, AdminDashboardPage, the ops pages, the prompt pages.
 
+## The order from here (Hafsah, 2 October, evening; this replaces the order below)
+
+1. The boards for all eleven kinds of work: finish the sales board (its sixth review), then the other ten, one at a time, each matched and reviewed before the next.
+2. The Company page, once the engine sends the company-wide picture.
+3. Plan and billing: a one-month free trial for teams under 20, and WhatsApp as a paid add-on charged monthly after the trial at about 80% of the plan price, with a monthly limit. Never write a price or a limit into the screens; the engine sends them.
+4. The rest of batch C, the one-off clean-up, and the Context tab when the engine is ready.
+5. Group 4, the back office, last of everything.
+
+Where things stand now: `docs/screens-handover.md`.
+
 ## The order from here (Hafsah, 1 October, night)
 1. [x] Group 3's batch C, the check-in pages: the drift on the lead's and the participant's check-in pages, and the team report's 46 classes. Done 1 October.
 2. The board for all eleven kinds of work (below).
