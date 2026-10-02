@@ -156,3 +156,8 @@ It says, for example, "Yemi is on leave until Friday 2 October, so this round do
 - The misleading "No patterns have surfaced yet…" is fixed while patterns are off.
 - The two sidebar tests that fail without any code change are fixed.
 - The screens for weeks 5, 6, 7, 8, 11, 13, 14, 15 and 16 are built, each after its engine week.
+
+**Later. Strategy history (decision 80, item 68).** Keep versions of the organisation's strategy, with the date each was active and which version each check-in ran under, so the Company page can say "Strategy v2, since 1 September" and show how the strategy changed. A change to what is stored.
+
+**Later. Linked organisations (decision 80, item 67).** Organisations that work together, with a privacy rule for what one may read of another.
+
