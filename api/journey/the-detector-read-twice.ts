@@ -60,6 +60,8 @@ import { theReadsWereSplit, couldChangeWhatIsShown, whatCountsThisPeriod, votesO
 import { PERIODS_BEFORE_A_PATTERN_IS_SHOWN } from '../src/modules/patterns/who-reads-a-pattern';
 import { READS_THAT_MUST_AGREE } from '../src/modules/patterns/patterns.service';
 import { jaccard } from './pattern-steadiness';
+import { JUDGED_ONCE_CODES, whereEachCodeShows, theirPeriodsAfterTheJudgement, thePeriodsItCanSee } from '../src/modules/patterns/a-pattern-over-time-is-judged-once-on-all-its-periods';
+import { theEarlierPeriodsItShows } from '../src/modules/patterns/the-detector-reads-their-own-earlier-record';
 
 if (!/localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL ?? '') || !/gw_/.test(process.env.DATABASE_URL ?? '')) {
   console.error('Refusing: a local gw_ test database only.');
@@ -127,6 +129,82 @@ async function main() {
     const file = path.join(folder, `shown${process.env.TAG ?? ''}.json`);
     fs.writeFileSync(file, JSON.stringify({ arrangements: process.env.ARRANGEMENTS ?? '0+1/2+3', rows: out, moreTaken, checkInReadings }));
     console.log(`Walked ${people.size} people in ${arrangements.length} arrangements; five more reads were taken on ${moreTaken} of ${checkInReadings} check-in readings. Kept in ${file}.`);
+    process.exit(0);
+  }
+
+  if (process.env.JUDGED_WALK === '1') {
+    /*
+     * E2, B2, K3 AND B11 JUDGED ONCE ACROSS THEIR PERIODS, WALKED THROUGH THE PRODUCT'S OWN RULES (decision 75,
+     * item 42, 2 October 2026). No model call. It reads the detector's stored reads (READS, copies of five, as
+     * for MORE=1) and the judgement's stored reads (judged-reads<JTAG>.json, written by JUDGE=1, copies of five),
+     * and walks each person's periods in order the way analyzeCheckIn now does:
+     *   before  as committed before the change: three of five, a split period on a pattern not yet shown read
+     *           five more times (the MORE=1 "after");
+     *   after   the same, except that E2, B2, K3 and B11, while not yet shown and in play (raised by this
+     *           period's reads, or counted in a period the judgement decides), are set over the periods it can
+     *           see by the majority of five judgement reads (whereEachCodeShows, theirPeriodsAfterTheJudgement).
+     * ARRANGEMENTS as for MORE=1; JUDGE_PAIRS says which judgement copies the two readings of each arrangement
+     * use ("0/1;2/3;..."), never the same copy on both sides. DECIDES=2 lets the judgement decide only the two
+     * newest periods it can see (the product decides all it can see). Written to shown-judged<TAG>.json for
+     * journey/what-each-person-is-shown-judged-once.py.
+     */
+    const files = (process.env.READS ?? 'product-reads-5-four.json,product-reads-5-extra.json').split(',');
+    const byId = new Map<string, any>();
+    for (const f of files) for (const d of JSON.parse(fs.readFileSync(path.join(folder, f), 'utf8'))) {
+      const had = byId.get(d.checkInId);
+      if (had) had.reads.push(...d.reads); else byId.set(d.checkInId, { ...d, reads: [...d.reads] });
+    }
+    const judgedFile = JSON.parse(fs.readFileSync(path.join(folder, `judged-reads${process.env.JTAG ?? ''}.json`), 'utf8'));
+    const judgedById = new Map<string, any>(judgedFile.map((d: any) => [d.checkInId, d]));
+    const PER = 5;
+    const DECIDES = Number(process.env.DECIDES ?? 3);
+    const rows = [...byId.values()].filter((d) => judgedById.has(d.checkInId));
+    const missing = [...byId.keys()].filter((id) => !judgedById.has(id)).length;
+    const copy = (d: any, c: number) => d.reads.slice(c * PER, (c + 1) * PER).map((codes: string[]) => codes.map((code) => ({ code, observation: '' })));
+    const judgementCopy = (d: any, c: number) => judgedById.get(d.checkInId).reads.slice(c * PER, (c + 1) * PER)
+      .map((r: Record<string, number[]>) => new Map(Object.entries(r).map(([code, periods]) => [code, { periods, observation: '' }])));
+    const people = new Map<string, any[]>();
+    for (const d of rows) { const k = `${d.scenario}::${d.person}`; (people.get(k) ?? people.set(k, []).get(k)!).push(d); }
+    const tally = { before: { more: 0 }, after: { more: 0, judged: 0 }, readings: 0 };
+    const walk = (list: any[], first: number, more: number, judgement: number | null) => {
+      const counted = new Map<string, number[]>();
+      for (const d of [...list].sort((a, b) => a.period - b.period)) {
+        const j = judgedById.get(d.checkInId);
+        const window: number[] = j.window.slice(0, DECIDES);
+        const firstReads = copy(d, first);
+        const firstVotes = votesOf(firstReads);
+        const shown = (code: string) => new Set(counted.get(code) ?? []).size >= PERIODS_BEFORE_A_PATTERN_IS_SHOWN;
+        const judged = judgement === null ? [] : (JUDGED_ONCE_CODES as readonly string[]).filter((code) =>
+          (firstVotes.has(code) || (counted.get(code) ?? []).some((p) => window.includes(p))) && !shown(code) && !(j.waiting ?? []).includes(code));
+        const toSettle = (code: string, n: number) => !judged.includes(code) && theReadsWereSplit(n, READS_THAT_MUST_AGREE) && couldChangeWhatIsShown(counted.get(code) ?? [], d.period, PERIODS_BEFORE_A_PATTERN_IS_SHOWN);
+        const anySplit = [...firstVotes].some(([code, { count }]) => toSettle(code, count));
+        if (judgement === null) { tally.readings++; if (anySplit) tally.before.more++; }
+        else { if (anySplit) tally.after.more++; if (judged.length) tally.after.judged++; }
+        const counts = whatCountsThisPeriod(firstReads, anySplit ? copy(d, more) : [], toSettle, READS_THAT_MUST_AGREE);
+        for (const code of counts.keys()) if (!judged.includes(code)) counted.set(code, [...new Set([...(counted.get(code) ?? []), d.period])]);
+        if (judged.length) {
+          const where = whereEachCodeShows(judgementCopy(d, judgement!), window, judged, counted);
+          for (const code of judged) counted.set(code, theirPeriodsAfterTheJudgement(counted.get(code) ?? [], window, where.get(code)!.showsIn));
+        }
+      }
+      return Object.fromEntries([...counted].map(([code, ps]) => [code, new Set(ps).size]));
+    };
+    const arrangements = (process.env.ARRANGEMENTS ?? '0+1/2+3;2+3/4+5;4+5/0+1;1+0/3+2;3+2/5+4;5+4/1+0').split(';').map((a) => a.split('/').map((r) => r.split('+').map(Number)));
+    const judgePairs = (process.env.JUDGE_PAIRS ?? '0/1;2/3;0/2;1/3;0/3;1/2').split(';').map((p) => p.split('/').map(Number));
+    const out: any[] = [];
+    arrangements.forEach((pair, i) => {
+      const jp = judgePairs[i % judgePairs.length];
+      for (const [key, list] of people) {
+        out.push({
+          arrangement: i, person: key,
+          before: pair.map(([f, m]) => walk(list, f, m, null)),
+          after: pair.map(([f, m], side) => walk(list, f, m, jp[side])),
+        });
+      }
+    });
+    const file = path.join(folder, `shown-judged${process.env.TAG ?? ''}.json`);
+    fs.writeFileSync(file, JSON.stringify({ arrangements: process.env.ARRANGEMENTS ?? '0+1/2+3;2+3/4+5;4+5/0+1;1+0/3+2;3+2/5+4;5+4/1+0', rows: out, tally, missing }));
+    console.log(`Walked ${people.size} people in ${arrangements.length} arrangements (${missing} check-ins had no judgement reads). Before: five more reads on ${tally.before.more} of ${tally.readings} check-in readings. After: five more reads on ${tally.after.more}, a judgement on ${tally.after.judged}. Kept in ${file}.`);
     process.exit(0);
   }
 
@@ -350,6 +428,58 @@ async function main() {
       process.stderr.write(`rules-read ${s.name}\n`);
     }));
     console.log(`Ten reads of ${dump.length} check-ins, kept in ${out}.`);
+    await app.close();
+    process.exit(0);
+  }
+
+  if (process.env.JUDGE === '1') {
+    /*
+     * THE JUDGEMENT ACROSS THEIR PERIODS, READ THROUGH THE PRODUCT'S OWN CODE (decision 75, item 42, 2 October 2026).
+     * For every check-in in the stored detector reads (READS, as for MORE=1), the same text analyzeCheckIn builds,
+     * the periods it can see, and COPIES copies of five reads of patterns.whatOneJudgementKeeps, asked about all
+     * four codes as the product asks. Also kept: which of K3 and B11 the chaser guard keeps from this person. A read
+     * the model did not answer is asked again (up to four times). Nothing is written. ONLY_MISSING=1 keeps what an
+     * earlier run read. JUDGED_WALK=1 then walks them.
+     *   JUDGE=1 COPIES=4 LIMIT=10 GEMINI_LOCATION=global EMAIL_SENDS_FOR_REAL=false DATABASE_URL=... npx ts-node -T journey/the-detector-read-twice.ts all-24/six-a
+     */
+    const COPIES = Number(process.env.COPIES ?? 4), PER = 5;
+    const files = (process.env.READS ?? 'product-reads-5-four.json').split(',');
+    const wanted = new Set<string>();
+    for (const f of files) for (const d of JSON.parse(fs.readFileSync(path.join(folder, f), 'utf8'))) wanted.add(d.checkInId);
+    const out = path.join(folder, `judged-reads${process.env.JTAG ?? ''}.json`);
+    const dump: any[] = process.env.ONLY_MISSING === '1' && fs.existsSync(out) ? JSON.parse(fs.readFileSync(out, 'utf8')) : [];
+    const already = new Set(dump.map((d) => d.checkInId));
+    const { shouldThisCodeBeAboutThem: aboutThem } = require('../src/modules/patterns/a-chaser-is-not-the-blocker');
+    const oneRead = async (checkIn: any, ctx: any, window: number[]): Promise<Record<string, number[]> | null> => {
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        try {
+          const r = await limited(() => Promise.race([
+            patterns.whatOneJudgementKeeps(checkIn.id, ctx.content, window, [...JUDGED_ONCE_CODES], ctx.whatThePersonSaid),
+            new Promise((_, no) => setTimeout(() => no(new Error('the read took more than five minutes')), 300000)),
+          ])) as Map<string, { periods: number[] }>;
+          return Object.fromEntries([...r].map(([code, v]) => [code, v.periods]));
+        } catch (e: any) { process.stderr.write(`judgement read failed (attempt ${attempt}): ${String(e?.message ?? e).slice(0, 160)}\n`); }
+        await new Promise((r) => setTimeout(r, 10000 * attempt));
+      }
+      return null;
+    };
+    for (const s of scenarios) {
+      const checkIns = (await checkInsOf(s.groundId)).filter((c: any) => wanted.has(c.id) && !already.has(c.id));
+      await Promise.all(checkIns.map(async (checkIn: any) => {
+        const ctx = await contextFor(checkIn);
+        if (!ctx) return;
+        const window = thePeriodsItCanSee(ctx.period, theEarlierPeriodsItShows(ctx.earlier as any, ctx.period));
+        const reads = await Promise.all(Array.from({ length: COPIES * PER }, () => oneRead(checkIn, ctx, window)));
+        if (reads.some((r) => !r)) { process.stderr.write(`check-in ${checkIn.id}: not all ${COPIES * PER} judgement reads came back\n`); return; }
+        const waiting = (JUDGED_ONCE_CODES as readonly string[]).filter((code) => !aboutThem(code, ctx.deps).keep);
+        dump.push({ scenario: s.name, checkInId: checkIn.id, period: ctx.period, person: personOf(checkIn), window, waiting, reads });
+        process.stderr.write(`judged ${s.name} ${personOf(checkIn)} period ${ctx.period}\n`);
+      }));
+      fs.writeFileSync(out, JSON.stringify(dump));
+      process.stderr.write(`judge-read ${s.name}\n`);
+    }
+    fs.writeFileSync(out, JSON.stringify(dump));
+    console.log(`The judgement across their periods: ${dump.length} check-ins, ${COPIES} copies of ${PER} reads each, kept in ${out}.`);
     await app.close();
     process.exit(0);
   }
