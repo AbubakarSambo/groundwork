@@ -1179,7 +1179,7 @@ export class GroundsService {
      * month four, onto a ground that was CLOSED, and gave them a session on it. The reason it
      * refuses is the real one - ended, or held - not an expiry the link never had.
      */
-    const refused = whyItRefuses(ground.status, ground.endState);
+    const refused = whyItRefuses(ground.status, ground.endState, 'anybody else', ground.scenario);
     if (refused) throw new BadRequestException(refused);
     return {
       groundId: ground.id,
@@ -4563,7 +4563,7 @@ export class GroundsService {
     line = { ...line, text: withoutBankDetails(line?.text) as string };
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true, status: true, endState: true },
+      select: { initiatorId: true, organizationId: true, status: true, endState: true, scenario: true },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
@@ -4571,7 +4571,7 @@ export class GroundsService {
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
     const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     /* The same door every other writer goes through: ended, held or out of time refuses alike. */
-    const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else');
+    const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else', ground.scenario);
     if (refused) throw new BadRequestException(refused);
 
     const text = (line.text ?? '').trim();
@@ -4724,10 +4724,10 @@ export class GroundsService {
     requestingUserId: string,
     dto: { participantId: string; leadWords: string; exactQuestion: string },
   ) {
-    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, status: true, endState: true } });
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, status: true, endState: true, scenario: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
-    const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else');
+    const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else', ground.scenario);
     if (refused) throw new BadRequestException(refused);
     const person = await this.prisma.groundParticipant.findFirst({ where: { id: dto.participantId, groundId }, select: { id: true } });
     if (!person) throw new NotFoundException('That person is not on this check-in.');
@@ -4764,14 +4764,14 @@ export class GroundsService {
     itemId: string,
     dto: { exactQuestion?: string | null } = {},
   ): Promise<AQuestionForAPerson & { say: string }> {
-    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, status: true, endState: true } });
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, status: true, endState: true, scenario: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
     /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
        in for them. See mayConfirmSetupOn and who-may-confirm-setup.ts. */
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
     const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     /* The same door every other writer goes through: ended, held or out of time refuses alike. */
-    const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else');
+    const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else', ground.scenario);
     if (refused) throw new BadRequestException(refused);
     const line = await this.prisma.groundContextItem.findFirst({
       where: { id: itemId, groundId, kind: ContextItemKind.QUESTION_FOR_PERSON },

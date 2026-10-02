@@ -211,8 +211,8 @@ describe('What Groundwork noticed, written from the record when Wairimu says yes
     const { svc, as, id } = await started();
     const r: any = await svc.one(as('u-wairimu'), id);
     expect(r.noticed.map((x: any) => x.says)).toEqual([
-      'Wairimu decided on “Extend evaluation period” at the end of “Kwame, first 90 days” on 20 September 2026, and said why, “He needs another month on the supermarket accounts”.',
-      'Wairimu decided on “Performance concern resolved” at the end of “Kwame, the next six weeks” on 21 September 2026, and said why, “The stock delay was not his doing”.',
+      'Wairimu made the decision at the end of “Kwame, first 90 days” on 20 September 2026, and said why, “He needs another month on the supermarket accounts”. The outcome is that the time to decide is made longer.',
+      'Wairimu made the decision at the end of “Kwame, the next six weeks” on 21 September 2026, and said why, “The stock delay was not his doing”. The outcome is that the concern about the work has been resolved.',
     ]);
     expect(r.noticed.every((x: any) => x.mark === 'proven')).toBe(true);
     expect(JSON.stringify(r)).not.toMatch(LABELS);

@@ -1627,3 +1627,24 @@ The Movement tile's line now says "changed", not "moved", because a target that 
 - A colleague who may not read that number, and an admin outside the check-in: "No target changed this session." (before: "No target moved this session.").
 
 The report's tile is built by the same function and reads the same. `TheSessionsReport.tsx` matches the old words in a case-sensitive pattern that never matched; please match "No target changed this session." if you keep that branch.
+
+## Decision 75, item 48: the endings are plain sentences, on both panels (2 October)
+
+Every ending in `END_STATES` (`api/src/modules/resolution/end-states.ts`) is now one plain, full sentence that says what happened. That file is the one place they live. The resolution panel's `options` (`GET /grounds/:id/resolution`) and the board's `whereThisIsHeading.outcomes` both read from it, so both panels read the same sentence. The values are unchanged, so nothing stored changes.
+
+Some of the new sentences, with what they replace:
+- "OKRs aligned to company direction" is now "The team's goals match where the company is going."
+- "Gaps identified - revision needed" is now "Gaps were found, and the goals need to be changed."
+- "Not yet - more sessions needed" is now "It is not settled yet, and more sessions are needed."
+- "Keep the hire", "Restructure the role", "Let them go" and "Extend evaluation period" are now "The new person stays in the role.", "The role is set up differently.", "The new person leaves the role." and "The time to decide is made longer."
+- "Descope" is now "The project carries on with less in it."
+- "Separation agreed" is now "Both sides agreed that the person will leave."
+
+Once decided, the board says "You recorded the decision on 30 September. The outcome is that it is not settled yet, and more sessions are needed." (before: `The outcome is "Not yet, more sessions needed".`).
+
+Fixed on the way, in the same places:
+- A door that refuses someone after the end (the join link, the preview, a new person, a plan) said "This check-in ended: keep.", the stored value after a colon. It now says "This check-in has ended. The new person stays in the role."
+- The review's line now reads "Wairimu made the decision at the end of “Kwame, first 90 days” on 20 September 2026, and said why, “He needs another month on the supermarket accounts”. The outcome is that the time to decide is made longer."
+- The closing emails kept their own drifted copy of the labels ("Part ways"). They now read the same list: "Kwame, first 90 days has been closed. The outcome is that the new person stays in the role." and "Wairimu Kamau suggested how this ends." followed by the ending.
+
+For the screens: `client/src/lib/end-states.ts` mirrors the server file and is imported by nothing but its tripwire spec. I updated its labels, and the tripwire's sanity line, so `end-state-mirror.spec.ts` still passes. Please keep the server's wording if this touches your own changes there. If the panel adds its own full stop to a label, please stop, because each one now ends with one.

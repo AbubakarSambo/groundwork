@@ -32,9 +32,9 @@ describe('request 108 (d): where this is heading, as Bisi, who runs it, reads it
       heading: 'Where this is heading',
       about: 'Set goals and keep the team on track',
       outcomes: [
-        { value: 'ALIGNED', says: 'OKRs aligned to company direction.', more: null },
-        { value: 'GAPS_IDENTIFIED', says: 'Gaps identified, revision needed.', more: null },
-        { value: 'NOT_YET', says: 'Not yet, more sessions needed.', more: null },
+        { value: 'ALIGNED', says: 'The team\'s goals match where the company is going.', more: null },
+        { value: 'GAPS_IDENTIFIED', says: 'Gaps were found, and the goals need to be changed.', more: null },
+        { value: 'NOT_YET', says: 'It is not settled yet, and more sessions are needed.', more: null },
       ],
       outcomesSays: null,
       signals: [
@@ -67,13 +67,13 @@ describe('request 108 (d): where this is heading, as Bisi, who runs it, reads it
 
   it('once she has recorded it, says which ending and when, and offers nothing more to record', async () => {
     const b = await boardAs({ ...RUN, status: 'CLOSED', endState: 'NOT_YET', resolvedAt: new Date('2026-09-30T10:00:00Z') }, ...BISI);
-    expect(b.whereThisIsHeading.decided).toBe('You recorded the decision on 30 September. The outcome is "Not yet, more sessions needed".');
+    expect(b.whereThisIsHeading.decided).toBe('You recorded the decision on 30 September. The outcome is that it is not settled yet, and more sessions are needed.');
     expect(b.whereThisIsHeading.recordTheDecision).toBeNull();
   });
 
   it('read the next year, the same board writes the year out', async () => {
     const b = await boardAs({ ...RUN, status: 'CLOSED', endState: 'NOT_YET', resolvedAt: new Date('2026-09-30T10:00:00Z'), clock: { ...RUN.clock, now: new Date('2027-01-15T12:00:00Z') } }, ...BISI);
-    expect(b.whereThisIsHeading.decided).toBe('You recorded the decision on 30 September 2026. The outcome is "Not yet, more sessions needed".');
+    expect(b.whereThisIsHeading.decided).toBe('You recorded the decision on 30 September 2026. The outcome is that it is not settled yet, and more sessions are needed.');
   });
 });
 

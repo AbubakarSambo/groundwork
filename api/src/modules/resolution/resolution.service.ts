@@ -278,7 +278,7 @@ export class ResolutionService {
     const others = active.filter((p) => p.id !== participant.id);
     for (const p of others) {
       await this.email
-        .sendResolutionProposal(p.email, proposerLabel, proposedEndState, groundUrl)
+        .sendResolutionProposal(p.email, proposerLabel, proposedEndState, groundUrl, ground.scenario)
         .catch((err: any) =>
           this.logger.error(`Counter-proposal email failed for participant ${p.id}: ${err.message}`),
         );
@@ -322,7 +322,7 @@ export class ResolutionService {
     // GW-50: close-confirmation email to all parties simultaneously.
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { label: true, participants: { select: { email: true } } },
+      select: { label: true, scenario: true, participants: { select: { email: true } } },
     });
     if (ground) {
       const frontend = this.config.get<string>('resend.frontendUrl') || '';
@@ -330,7 +330,7 @@ export class ResolutionService {
       await Promise.all(
         ground.participants.map((p) =>
           this.email
-            .sendGroundClosed(p.email, ground.label, endState, groundUrl)
+            .sendGroundClosed(p.email, ground.label, endState, groundUrl, ground.scenario)
             .catch((err: any) => this.logger.error(`Close email failed for ground ${groundId}: ${err.message}`)),
         ),
       );

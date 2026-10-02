@@ -1,3 +1,4 @@
+import { theEndingSaid, theOutcomeIsThat } from '../resolution/end-states';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
@@ -1253,13 +1254,13 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Someone proposed an end state and the recipient has not yet confirmed. (GW-22) */
-  async sendResolutionProposal(email: string, proposerLabel: string, endState: string, groundUrl: string): Promise<void> {
-    const endStateLabel = this.endStateLabel(endState);
+  async sendResolutionProposal(email: string, proposerLabel: string, endState: string, groundUrl: string, scenario?: string | null): Promise<void> {
+    const endStateLabel = this.endStateLabel(endState, scenario);
     await this.sendEmail({
       to: email,
       subject: `${proposerLabel} suggested how to wrap this up`,
       html: this.layout(
-        `<p><strong>${escapeHtml(proposerLabel)}</strong> thinks this is where it lands: <em>${escapeHtml(endStateLabel)}</em>.</p>
+        `<p><strong>${escapeHtml(proposerLabel)}</strong> suggested how this ends.${endStateLabel ? ` <em>${escapeHtml(endStateLabel)}</em>` : ''}</p>
          <p>Whoever runs the check-in decides how it ends. Have a look, and if you see it differently, say so in your own check-in - what you said stays on the record beside what they decided.</p>
          <p><a href="${groundUrl}">Have a look</a></p>`,
       ),
@@ -1267,13 +1268,13 @@ export class EmailService implements OnModuleInit {
   }
 
   /** Ground closed. All parties confirmed the same end state. (GW-50) */
-  async sendGroundClosed(email: string, groundLabel: string, endState: string, groundUrl: string): Promise<void> {
-    const endStateLabel = this.endStateLabel(endState);
+  async sendGroundClosed(email: string, groundLabel: string, endState: string, groundUrl: string, scenario?: string | null): Promise<void> {
+    const endStateLabel = this.endStateLabel(endState, scenario);
     await this.sendEmail({
       to: email,
       subject: `"${groundLabel}" is now closed`,
       html: this.layout(
-        `<p>All parties have confirmed. <strong>${escapeHtml(groundLabel)}</strong> has been closed with the agreed outcome: <em>${escapeHtml(endStateLabel)}</em>.</p>
+        `<p><strong>${escapeHtml(groundLabel)}</strong> has been closed.${endStateLabel ? ` ${escapeHtml(theOutcomeIsThat(endStateLabel))}` : ''}</p>
          <p>Your record is permanent and both parties retain access to everything that was on the check-in.</p>
          <p><a href="${groundUrl}">View the check-in</a></p>`,
       ),
@@ -1509,37 +1510,13 @@ export class EmailService implements OnModuleInit {
     }, undefined, 'sendAbsenceReminder');
   }
 
-  private endStateLabel(value: string): string {
-    const labels: Record<string, string> = {
-      KEEP: 'Keep the hire',
-      EXTEND: 'Extend evaluation period',
-      RESTRUCTURE: 'Restructure',
-      EXIT: 'Part ways',
-      NOT_YET: 'Not yet - revisit with a named gap',
-      SEPARATE: 'Separate',
-      CONTINUE: 'Continue',
-      END: 'End the engagement',
-      RENEW: 'Renew',
-      RENEGOTIATE: 'Renew on revised terms',
-      COMPLETE: 'Mark complete',
-      DESCOPE: 'Descope',
-      STOP: 'Stop',
-      YES: 'Grant the ask',
-      NO: 'Decline',
-      ALIGNED: 'Shared picture established - aligned',
-      ESCALATE: 'Requires escalation or external decision',
-      GAPS_IDENTIFIED: 'Gaps identified - revision needed',
-      APPROVED: 'Workplan and budget approved',
-      REVISION_NEEDED: 'Revision needed before approval',
-      ON_TRACK: 'On track',
-      ATTENTION_NEEDED: 'Attention needed on named items',
-      REALIGNED: 'Team realigned on shared direction',
-      GAPS_REMAIN: 'Gaps remain - further conversation needed',
-      RESOLVED: 'Performance concern resolved',
-      EXTENDED: 'Plan extended with named conditions',
-      SEPARATED: 'Separation agreed',
-    };
-    return labels[value] ?? value;
+  /**
+   * The ending's own sentence, from the one list every screen reads (resolution/end-states.ts, decision
+   * 75 item 48). This file used to keep its own copy of the labels by value alone, which had drifted
+   * ("Part ways" where the panel said "Let them go"). Null where the value is not one of this kind's.
+   */
+  private endStateLabel(value: string, scenario?: string | null): string | null {
+    return theEndingSaid(scenario ?? null, value);
   }
 
   async sendCodeExpiryReminder(

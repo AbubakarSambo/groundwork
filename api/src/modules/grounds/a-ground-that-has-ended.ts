@@ -1,4 +1,5 @@
-import { GroundStatus } from '@prisma/client';
+import { theEndingSaid } from '../resolution/end-states';
+import { GroundStatus, GroundScenario } from '@prisma/client';
 
 /**
  * A GROUND THAT HAS ENDED HAS ENDED.
@@ -87,7 +88,10 @@ export function mayChangeOnItsOwn(status: GroundStatus | string | null | undefin
 /** What to say about a ground that is over, in the words of the decision that ended it. */
 export function howItEnded(status: GroundStatus | string | null | undefined, endStateLabel?: string | null): string | null {
   if (!hasEnded(status)) return null;
-  return endStateLabel ? `This check-in ended: ${endStateLabel.toLowerCase()}.` : 'This check-in has ended.';
+  /* The ending is its own plain sentence (resolution/end-states.ts), never a piece after a colon. */
+  if (!endStateLabel?.trim()) return 'This check-in has ended.';
+  const said = endStateLabel.trim();
+  return `This check-in has ended. ${said.endsWith('.') ? said : `${said}.`}`;
 }
 
 /**
@@ -115,8 +119,14 @@ export function whyItRefuses(
   status: GroundStatus | string | null | undefined,
   endStateLabel?: string | null,
   whoIsAsking: 'the lead' | 'anybody else' = 'anybody else',
+  /**
+   * The check-in's kind. With it, `endStateLabel` is the stored ending (`Ground.endState`, a value such
+   * as "KEEP") and is read as its own sentence from end-states.ts; a person used to read "This check-in
+   * ended: keep." An ending that is not one of this kind's is not said at all, never as the raw value.
+   */
+  scenario?: GroundScenario | string | null,
 ): string | null {
   if (isHeld(status)) return WHILE_IT_IS_HELD;
   if (hasStalled(status)) return whoIsAsking === 'the lead' ? IT_RAN_OUT_OF_TIME : IT_RAN_OUT_OF_TIME_ASK_THE_LEAD;
-  return howItEnded(status, endStateLabel);
+  return howItEnded(status, scenario !== undefined ? theEndingSaid(scenario, endStateLabel) : endStateLabel);
 }

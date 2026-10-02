@@ -1,5 +1,5 @@
 import type { PrismaService } from '../prisma/prisma.service';
-import { endStatesFor } from '../resolution/end-states';
+import { theEndingSaid, theOutcomeIsThat } from '../resolution/end-states';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 
@@ -42,10 +42,11 @@ export async function whatGroundworkNoticed(
     const g = r.ground;
     if (!g || !r.closedAt) continue;
     const lead = (g.participants ?? []).find((p: any) => p.userId === g.initiatorId)?.user?.firstName?.trim() || 'The person who ran it';
-    const outcome = endStatesFor(g.scenario).find((s) => s.value === r.endState)?.label ?? null;
+    const outcome = theEndingSaid(g.scenario, r.endState);
     if (!outcome) continue;
     const why = (r.reason ?? '').trim().replace(/[.!?\s]+$/, '');
-    const says = `${lead} decided on “${outcome}” at the end of “${g.label}” on ${DAYS_IN_WORDS(new Date(r.closedAt))}${why ? `, and said why, “${why}”` : ''}.`;
+    /* The ending is its own plain sentence (decision 75, item 48), so it is said as one, not quoted as a label. */
+    const says = `${lead} made the decision at the end of “${g.label}” on ${DAYS_IN_WORDS(new Date(r.closedAt))}${why ? `, and said why, “${why}”` : ''}. ${theOutcomeIsThat(outcome)}`;
     lines.push({ says, mark: 'proven', ...(isEvaluationCheckIn(g.scenario) ? { private: true as const } : {}) });
   }
   return lines;
