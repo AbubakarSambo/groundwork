@@ -2672,10 +2672,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     </div>
                   ) : (
                     <>
-                      {/* A position is never shown without its reason. */}
-                      <div className="gwui-mt-7 gwui-fs-15" style={{lineHeight: 1.45}}>
-                        {c.reason}
-                      </div>
+                      {/*
+                        PRIVACY (board review, third pass, item 1): when `c.nothingCheckable` is
+                        true, `c.reason` itself is the sentence about how checkable this person's
+                        answers are ("Nothing Faraji Odhiambo has said so far is checkable,
+                        because nobody else can check it yet..."), which CLAUDE.md's "Leads never
+                        see how a person's answers were rated" forbids just as much as `c.basis`
+                        below. A position is never shown without its reason, so when there is no
+                        reason fit to show, none is drawn.
+                      */}
+                      {!c.nothingCheckable && (
+                        <div className="gwui-mt-7 gwui-fs-15" style={{lineHeight: 1.45}}>
+                          {c.reason}
+                        </div>
+                      )}
                       {/*
                         PRIVACY (board review, second pass, item 9): `c.basis` is how much and how
                         checkable the record behind this read is - "Based on 1 check-in, 0

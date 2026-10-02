@@ -66,6 +66,25 @@ const BOARD_WITH_BASIS = {
   },
 }
 
+/*
+ * THIRD BOARD REVIEW, ITEM 1, PRIVACY: `contribution[].reason` itself can BE the sentence about
+ * how checkable a person's answers are, when `nothingCheckable` is true - "Nothing Faraji
+ * Odhiambo has said so far is checkable, because nobody else can check it yet. A number, a date
+ * or a document for what moved would change that." CLAUDE.md's "Leads never see how a person's
+ * answers were rated" forbids this exactly as much as `basis` above. This fixture carries the
+ * real sentence seen on the sales board's third review, and the lead's own render must never show
+ * it, while the rest of the card (the name, the tag, their own words) still draws.
+ */
+const BOARD_WITH_NOTHING_CHECKABLE = {
+  ...BOARD,
+  contribution: [{
+    ...BOARD.contribution[0],
+    name: 'Faraji Odhiambo', participantId: 'p-faraji',
+    reason: 'Nothing Faraji Odhiambo has said so far is checkable, because nobody else can check it yet. A number, a date or a document for what moved would change that.',
+    nothingCheckable: true,
+  }],
+}
+
 function renderBoard(board: any = BOARD) {
   ;(boardApi.get as any).mockResolvedValue(board)
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -103,5 +122,12 @@ describe('contribution and coverage are lead only, pending 0f', () => {
     expect(screen.getByText('Rukia said she closed the Nyali Fresh account this week.')).toBeTruthy()
     expect(screen.queryByText(/Based on 1 check-in, 0 checkable things named/)).toBeNull()
     expect(screen.queryByText(/Based on 2 check-ins, 0 checkable things named/)).toBeNull()
+  })
+
+  it('never draws how checkable a person’s answers are when the reason itself says so, for the lead', async () => {
+    me = { id: 'u-lead', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard(BOARD_WITH_NOTHING_CHECKABLE)
+    await screen.findByText('Faraji Odhiambo')
+    expect(screen.queryByText(/Nothing Faraji Odhiambo has said so far is checkable/)).toBeNull()
   })
 })
