@@ -133,6 +133,28 @@ describe('the switchboard’s 22 sections: the 13 now served, as the lead reads 
   })
 })
 
+/**
+ * SECOND BOARD REVIEW: BLOCKERS NEVER DRAWS ON SIX KINDS OF WORK WHOSE PROTOTYPE HAS THEM.
+ *
+ * The test above uses a scenario the switchboard has no row for at all, so it could not have
+ * caught this: `OKR_ALIGNMENT` ("Set goals and keep the team on track" - ops and sales both run on
+ * it) is a real row, and until this fix it did not name "Blocker check" as on or optional, so
+ * `BlockersSection` drew nothing however much `blockerCheck` and `whoWaitedOnWhom` data the engine
+ * sent - exactly what distribution operations' own served board showed in the second board review.
+ * This renders a real scenario to prove the card now draws.
+ */
+describe('Blockers now draws for a real situation whose own row used to leave "Blocker check" out', () => {
+  beforeEach(() => { vi.clearAllMocks(); me = { id: 'u-bisi', firstName: 'Bisi', role: 'MEMBER' } })
+
+  it('draws the full blocker card for OKR_ALIGNMENT (ops, sales)', async () => {
+    renderBoard({ ...AS_THE_LEAD, scenario: 'OKR_ALIGNMENT' })
+    await screen.findByRole('heading', { name: 'Sales org, Q3' })
+    expect(screen.getByText('Blockers')).toBeTruthy()
+    expect(screen.getByText(blockerCheck[0].says)).toBeTruthy()
+    cleanup()
+  })
+})
+
 describe('the switchboard’s 22 sections: as a participant reads them', () => {
   beforeEach(() => { vi.clearAllMocks(); me = { id: 'u-kwame', firstName: 'Kwame', role: 'MEMBER' } })
 

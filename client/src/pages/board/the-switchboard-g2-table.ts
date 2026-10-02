@@ -235,7 +235,7 @@ export const SWITCHBOARD_MATRIX: SwitchboardRow[] = [
   },
   {
     group: 'Something is starting', situation: 'Get a new project off to a good start', scenario: 'NEW_PROJECT',
-    sectionsOn: ['Targets', 'Work plan', 'Deal grid', 'Forecast', 'Starting agreement', 'Blockers', 'Risks', 'Patterns', 'Lead actions'],
+    sectionsOn: ['Targets', 'Work plan', 'Deal grid', 'Forecast', 'Starting agreement', 'Blockers', 'Blocker check', 'Risks', 'Patterns', 'Lead actions'],
     optional: ['Timeline', 'Change since last', 'Coaching', 'Check-in grades'], offOnPurpose: [], backendHasIt: true,
   },
   {
@@ -260,7 +260,7 @@ export const SWITCHBOARD_MATRIX: SwitchboardRow[] = [
   },
   {
     group: 'Planning and goals', situation: 'Set goals and keep the team on track', scenario: 'OKR_ALIGNMENT',
-    sectionsOn: ['Targets', 'Work plan', 'Deal grid', 'Forecast', 'Blockers', 'Risks', 'Patterns', 'Coaching', 'Lead actions', 'Check-in grades'],
+    sectionsOn: ['Targets', 'Work plan', 'Deal grid', 'Forecast', 'Blockers', 'Blocker check', 'Risks', 'Patterns', 'Coaching', 'Lead actions', 'Check-in grades'],
     optional: ['Starting agreement', 'Accounts side by side', 'Change since last'], offOnPurpose: [], backendHasIt: true,
   },
   {
@@ -280,7 +280,7 @@ export const SWITCHBOARD_MATRIX: SwitchboardRow[] = [
   },
   {
     group: 'Keeping a read', situation: 'Keep a read on live work', scenario: 'PULSE_CHECK',
-    sectionsOn: ['Change since last', 'Blockers', 'Patterns'],
+    sectionsOn: ['Change since last', 'Blockers', 'Blocker check', 'Patterns'],
     optional: ['Targets', 'Work plan', 'Deal grid', 'Starting agreement', 'Risks', 'Coaching', 'Lead actions', 'Check-in grades'], offOnPurpose: [], backendHasIt: true,
   },
   {
@@ -300,7 +300,7 @@ export const SWITCHBOARD_MATRIX: SwitchboardRow[] = [
   },
   {
     group: 'Keeping a read', situation: 'Check how the same role is going', scenario: 'COHORT_CHECK',
-    sectionsOn: ['Targets', 'Themes', 'Blockers', 'Patterns'],
+    sectionsOn: ['Targets', 'Themes', 'Blockers', 'Blocker check', 'Patterns'],
     optional: ['Deal grid', 'Person history', 'Change since last', 'Coaching', 'Lead actions', 'Check-in grades'], offOnPurpose: [], backendHasIt: true,
   },
   {

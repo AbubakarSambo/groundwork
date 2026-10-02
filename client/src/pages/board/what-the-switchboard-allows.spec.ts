@@ -41,6 +41,26 @@ describe('switchboardAllows', () => {
     expect(switchboardAllows('NOT_A_REAL_SCENARIO', 'objectives')).toBe(true)
     expect(switchboardAllows(null, 'objectives')).toBe(true)
   })
+
+  /*
+   * SECOND BOARD REVIEW: BLOCKERS NEVER DRAWS ON SIX KINDS OF WORK WHOSE PROTOTYPE HAS THEM.
+   *
+   * `BlockersSection` (the prototype's full blocker card: "Waiting on", "Raised", "Affects", "What
+   * the proof shows", "Would clear it") draws from `blockerCheck` and `whoWaitedOnWhom`, gated on
+   * `allowed('blockerCheck') || allowed('whoWaitedOnWhom')`. The engine sends real `blockerCheck`
+   * rows for every one of these situations whenever a blocker exists - there is no scenario gate on
+   * the server at all - and the prototype's own example boards for them
+   * (docs/prototype/screens/G1-example-check-ins: eng.txt, ops.txt, programme.txt, salesorg.txt)
+   * draw exactly that card. The G2 table had "Blocker check" missing from these four scenario rows
+   * (sales and ops both run on OKR_ALIGNMENT; gov and matter both run on PULSE_CHECK), so the data
+   * arrived and nothing drew it. docs/modules.md's own table is corrected alongside this.
+   */
+  it('allows "Blocker check" for the six kinds of work whose prototype draws a full blocker card', () => {
+    expect(switchboardAllows('NEW_PROJECT', 'blockerCheck')).toBe(true) // eng
+    expect(switchboardAllows('OKR_ALIGNMENT', 'blockerCheck')).toBe(true) // ops, sales
+    expect(switchboardAllows('COHORT_CHECK', 'blockerCheck')).toBe(true) // programme
+    expect(switchboardAllows('PULSE_CHECK', 'blockerCheck')).toBe(true) // gov, matter
+  })
 })
 
 describe('orderedSwitchboardSections', () => {
