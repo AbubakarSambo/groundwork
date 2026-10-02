@@ -17,8 +17,8 @@ import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-in
  * THE ONE READ OF "WHAT NEEDS YOU" (C1, U.5), for Today and for "Choose an organisation".
  *
  * Built only from what this reader is already given: `GroundsService.list()`, which applies the one
- * rule for who reads which check-in, and the approvals queue, which is asked for only when the reader
- * is an admin of that organisation. See what-needs-you.ts.
+ * rule for who reads which check-in, the approvals queue, which is asked for only when the reader
+ * is an admin of that organisation, and what each suite board serves this reader. See what-needs-you.ts.
  */
 @Injectable()
 export class WhatNeedsYouService {
@@ -34,28 +34,31 @@ export class WhatNeedsYouService {
   /**
    * PERFORMANCE REVIEWS ON TODAY (item 16), from the reviews suite's own reads as this reader: their own
    * reviews once somebody has started them (`mine`), and the reviews ready for them to start (the
-   * board's `mayStart`, only ever an admin's or a lead's). A suite that is off refuses, which is
-   * "nothing here", never an error on Today. See a-review-on-today.ts.
+   * board's `mayStart`). The board is asked for every reader, because the rules can name a member to
+   * write a review (decision 85), and the board itself decides who may open it: a member nobody names,
+   * or a suite that is off, is refused, which is "nothing here", never an error on Today. See
+   * a-review-on-today.ts.
    */
-  private async reviewsFor(userId: string, organizationId: string, role: string): Promise<Need[]> {
+  private async reviewsFor(userId: string, organizationId: string): Promise<Need[]> {
     if (!this.reviews) return [];
     const reader = { userId, organizationId };
     const now = new Date();
     const [mine, next] = await Promise.all([
       this.reviews.mine(reader).catch(() => []),
-      role === 'ADMIN' || role === 'LEAD' ? this.reviews.board(reader, now).then((b) => b.next).catch(() => []) : Promise.resolve([]),
+      this.reviews.board(reader, now).then((b) => b.next).catch(() => []),
     ]);
     return [...yourReviewsOnToday(mine, organizationId, now), ...reviewsToStartOnToday(next, organizationId, now)];
   }
 
   /**
    * WHAT IS WAITING FOR THIS READER TO APPROVE (week 21): leave, hours and spending, from each
-   * board's own read, which says row by row whether this reader is the one who approves it. Only an
-   * admin or a lead can open those boards, and a board that is switched off refuses, so a refusal
-   * here is "nothing waiting", never an error on Today.
+   * board's own read, which says row by row whether this reader is the one who approves it. Every
+   * reader's boards are asked, because the rules can name a member to decide (decisions 85 and 86),
+   * as Ask Groundwork, WhatsApp and the daily summary already tell them. Each board decides who may
+   * open it: a member nobody names, or a board that is switched off, is refused, and a refusal here
+   * is "nothing waiting", never an error on Today.
    */
-  private async toApprove(userId: string, organizationId: string, role: string) {
-    if (role !== 'ADMIN' && role !== 'LEAD') return [];
+  private async toApprove(userId: string, organizationId: string) {
     const reader = { userId, organizationId };
     const [leave, time, spend] = await Promise.all([
       this.leave?.board(reader).then((b) => b.waiting).catch(() => []),
@@ -77,8 +80,8 @@ export class WhatNeedsYouService {
        * exactly the word CLAUDE.md's privacy rule uses for who gets to read a shared report.
        */
       this.prisma.user.findUnique({ where: { id: userId }, select: { awaitingOrgApproval: true } }),
-      this.toApprove(userId, organizationId, role),
-      this.reviewsFor(userId, organizationId, role),
+      this.toApprove(userId, organizationId),
+      this.reviewsFor(userId, organizationId),
     ]);
     /*
      * ONLY THIS ORGANISATION'S (U.5 review). The list also carries check-ins in other organisations
