@@ -26,7 +26,7 @@ export function anInboundHarness(opts: {
   const prisma: any = {
     whatsAppInboundMessage: { create: jest.fn(async () => ({})), findFirst: jest.fn(async () => null) },
     whatsAppConnection: { update: jest.fn(async () => ({})), findUnique: jest.fn(async () => null) },
-    person: { update: jest.fn(async () => ({})), findFirst: jest.fn(async () => (opts.personPhone === null ? null : { phone: opts.personPhone ?? '+2348012345678', email: 'amina@example.com' })) },
+    person: { update: jest.fn(async () => ({})), findUnique: jest.fn(async () => ({ whatsappStoppedAt: null })), findFirst: jest.fn(async () => (opts.personPhone === null ? null : { phone: opts.personPhone ?? '+2348012345678', email: 'amina@example.com' })) },
     groundParticipant: { findFirst: jest.fn(async () => null), update: jest.fn(async () => ({})) },
     checkIn: {
       findMany: jest.fn(async () => (opts.open ?? []).map((r) => ({
@@ -56,6 +56,7 @@ export function anInboundHarness(opts: {
     fetchMediaFor: jest.fn(async () => null),
     fetchMediaOn: jest.fn(async () => null),
     lastWroteTo: jest.fn(async () => null),
+    notNow: jest.fn(async () => undefined),
   };
   const conversation: any = {
     open: jest.fn(async () => ({ reply: 'What moved since last time?' })),

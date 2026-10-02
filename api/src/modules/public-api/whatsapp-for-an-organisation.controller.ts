@@ -4,7 +4,7 @@ import { MachineTokenGuard, RequiresScope, type MachineCaller } from './machine-
 import { A_MESSAGE_MAX } from '../../common/dto';
 import { ConfigService } from '@nestjs/config';
 import { LANGUAGES_WE_CONVERSE_IN } from './a-whatsapp-message-is-routed';
-import { TEMPLATES } from '../whatsapp/a-message-outside-the-window';
+import { THE_NAMES_TO_SUBMIT } from '../whatsapp/a-message-outside-the-window';
 import { ApiExcludeEndpoint, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
@@ -62,8 +62,8 @@ export class WhatsAppForAnOrganisationController {
     private readonly config: ConfigService,
   ) {}
 
-  /* The three the product starts. Every other send is a reply, which needs no template. */
-  private static readonly THE_ONES_WE_START = [TEMPLATES['session-ready'].name, TEMPLATES.opening.name, TEMPLATES.report.name];
+  /* Every template the product starts (THE_NAMES_TO_SUBMIT). Every other send is a reply, which needs no template. */
+  private static readonly THE_ONES_WE_START = THE_NAMES_TO_SUBMIT;
 
   /* ---------------- the admin half ---------------- */
 

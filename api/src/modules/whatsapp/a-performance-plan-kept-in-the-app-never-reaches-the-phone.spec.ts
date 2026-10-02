@@ -69,16 +69,18 @@ describe('the report when a session of a performance plan kept in the app closes
 });
 
 describe('the notices that start a conversation', () => {
-  it('the session-ready message asks the setting before it sends', () => {
+  it('the session-ready sweep sends nothing on WhatsApp at all; the opening notice is the one, and it asks the setting', () => {
+    /* Changed with survey item 7: the sweep's own WhatsApp message went, so it has nothing left to ask. */
     const cron = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.cron.ts'), 'utf8'));
     const at = cron.indexOf('const newlyOpen');
-    const block = cron.slice(at, cron.indexOf('private async sendRemindersInner', at));
-    expect(block).toMatch(/ground: \{ select: \{[^}]*overWhatsApp: true/);
-    expect(block).toMatch(/!keptOffThePhone\(p\.ground\)/);
+    expect(cron.slice(at, cron.indexOf('async sendWhatsAppReminders(', at))).not.toMatch(/this\.whatsapp\.send/);
+    const listener = strip(readFileSync(join(__dirname, '..', 'webhooks', 'webhooks.listener.ts'), 'utf8'));
+    expect(listener).toMatch(/if \(ground\.overWhatsApp === false\) return;/);
   });
 
-  it('the opening notice asks it too', () => {
-    const listener = strip(readFileSync(join(__dirname, '..', 'webhooks', 'webhooks.listener.ts'), 'utf8'));
-    expect(listener).toMatch(/overWhatsApp/);
+  it('and the morning reminders and nudges ask it before anything else', () => {
+    const cron = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.cron.ts'), 'utf8'));
+    const at = cron.indexOf('async sendWhatsAppRemindersInner(');
+    expect(cron.slice(at, at + 2500)).toMatch(/if \(keptOffThePhone\(ci\.ground\)\) continue;/);
   });
 });

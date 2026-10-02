@@ -5,7 +5,12 @@ import { ConfigService } from '@nestjs/config';
 /** Did it go. One shape from both numbers; see sendMessage. */
 export type SendResult = { sent: boolean; status?: number; error?: string };
 /** What a send was for, so the row can be found later. Both optional: a notice has no check-in. */
-export type SendContext = { checkInId?: string | null; kind?: string };
+export type SendContext = {
+  checkInId?: string | null;
+  kind?: string;
+  /** The product's own words for the template's {{1}}, {{2}}, used when the message has to go as a template. */
+  params?: string[];
+};
 
 /**
  * WHAT META REFUSED, WITHOUT WHAT WE SENT IT (G4).
@@ -29,7 +34,7 @@ import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
 import { aLocalForm, callingCodeOf, formsOfTheSameNumber, tidyANumber } from './a-number-whatsapp-can-reach';
 import { theCountryCodeOf, tidyANumberFor } from './the-organisations-country';
 import { WhichNumber, inboundKeysFrom, whichNumberOf } from './one-number-per-conversation';
-import { ATemplate, insideTheServiceWindow, isBusinessInitiated, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP } from './a-message-outside-the-window';
+import { ATemplate, insideTheServiceWindow, isBusinessInitiated, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW } from './a-message-outside-the-window';
 
 /**
  * Single Groundwork-owned WhatsApp Business number, shared across every org -
@@ -224,6 +229,7 @@ export class WhatsAppService {
   private async sendOnOurNumber(org: string | null, to: string, text: string, context: SendContext): Promise<SendResult> {
     const gate = await this.mayInitiate(org, to, context, 'ours');
     if (!gate.free) {
+      if (gate.quiet) return { sent: false, error: gate.because };
       if (gate.template) return this.sendTemplate(this.config.get<string>('whatsapp.phoneNumberId') ?? '', this.config.get<string>('whatsapp.accessToken') ?? '', org, to, text, gate.template, context);
       const result: SendResult = { sent: false, error: gate.because };
       this.writeItDown(org, to, result, context);
@@ -320,6 +326,7 @@ export class WhatsAppService {
     if (!own || !own.enabled) return this.sendOnOurNumber(organizationId, to, text, context);
     const gate = await this.mayInitiate(organizationId, to, context, 'theirs');
     if (!gate.free) {
+      if (gate.quiet) return { sent: false, error: gate.because };
       if (gate.template) return this.sendTemplate(own.phoneNumberId, own.accessToken, organizationId, to, text, gate.template, context);
       const result: SendResult = { sent: false, error: gate.because };
       this.writeItDown(organizationId, to, result, context);
@@ -444,7 +451,7 @@ export class WhatsAppService {
    * approved template or is recorded as not sent, with the reason - checked before anything is
    * composed or paid for. See a-message-outside-the-window.ts.
    */
-  private async mayInitiate(organizationId: string | null, to: string, context: SendContext, via: WhichNumber): Promise<{ free: true } | { free: false; template: ATemplate | null; because: string }> {
+  private async mayInitiate(organizationId: string | null, to: string, context: SendContext, via: WhichNumber): Promise<{ free: true } | { free: false; template: ATemplate | null; because: string; quiet?: boolean }> {
     if (!isBusinessInitiated(context.kind)) return { free: true };
     const person = await this.prisma.person
       .findFirst({
@@ -454,6 +461,8 @@ export class WhatsAppService {
       })
       .catch(() => null);
     if (person?.whatsappStoppedAt) return { free: false, template: null, because: THEY_SAID_STOP };
+    const often = await this.howOftenToday(to, context.kind);
+    if (often) return { free: false, template: null, because: often, quiet: true };
     /*
      * THE WINDOW IS PER BUSINESS NUMBER (survey item 8). When the organisation has a number of its
      * own, two numbers are in play, and a message the person wrote to one does not open the window
@@ -467,6 +476,36 @@ export class WhatsAppService {
     const lastWrote = ownNumber?.enabled ? onThisNumber : (onThisNumber ?? person?.whatsappLastInboundAt);
     if (insideTheServiceWindow(lastWrote)) return { free: true };
     return { free: false, template: templateFor(context.kind, await this.approvedFor(organizationId)), because: OUTSIDE_THE_WINDOW };
+  }
+
+  /**
+   * HOW OFTEN GROUNDWORK HAS WRITTEN FIRST TODAY (decision 83, alongside decision 13). The one place
+   * every first message goes through: at most one a day to a person, or two on a day one of their
+   * check-ins opens or closes, and none after they replied "Not now" today. Null when this one may go.
+   * Read from the send record, by the person's number in every form it is kept in. The day is the
+   * UTC day. A message held back here is not written down: it was not attempted, and the sweep that
+   * wanted it tries again another day.
+   */
+  private async howOftenToday(to: string, kind: string | undefined): Promise<string | null> {
+    if (!kind || !FIRST_MESSAGES.has(kind)) return null;
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const rows: { kind: string | null }[] = await (this.prisma.whatsAppSend as any)
+      ?.findMany?.({
+        where: { phone: { in: formsOfTheSameNumber(to) }, createdAt: { gte: today }, OR: [{ sentAt: { not: null } }, { kind: 'not-now' }] },
+        select: { kind: true },
+      })
+      ?.catch?.(() => []) ?? [];
+    if ((rows ?? []).some((r) => r.kind === 'not-now')) return THEY_SAID_NOT_NOW;
+    const went = (rows ?? []).filter((r) => r.kind && FIRST_MESSAGES.has(r.kind.split(':')[0])).length;
+    return went >= (OPENING_OR_CLOSING.has(kind) ? 2 : 1) ? NOT_TODAY : null;
+  }
+
+  /** "Not now": nothing more is written first to this person today. Kept in the send record, which the rule above reads. */
+  async notNow(organizationId: string | null, phoneNumber: string): Promise<void> {
+    await this.prisma.whatsAppSend
+      .create({ data: { organizationId, phone: WhatsAppService.normalize(phoneNumber), kind: 'not-now', checkInId: null, sentAt: null, failedAt: null, status: null, error: null } })
+      .catch((err: any) => this.logger.warn(`Could not record "Not now" from ${phoneNumber}: ${err?.message}`));
   }
 
   /**
@@ -500,7 +539,7 @@ export class WhatsAppService {
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messaging_product: 'whatsapp', to: to.replace('+', ''), type: 'template',
-          template: { name: template.name, language: { code: template.language }, components: template.components(text) },
+          template: { name: template.name, language: { code: template.language }, components: template.components(text, context.params) },
         }),
       });
       result = res.ok ? { sent: true, status: res.status } : { sent: false, status: res.status, error: (await res.text().catch(() => '')).slice(0, 500) };

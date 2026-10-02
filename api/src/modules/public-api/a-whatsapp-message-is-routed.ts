@@ -53,6 +53,8 @@ export function pickedOne(said: string, open: AnOpenCheckIn[]): AnOpenCheckIn | 
 export function whatArrived(message: any): { kind: 'text'; text: string } | { kind: 'pick'; id: string } | { kind: 'media'; mediaId: string; mimeType: string; fileName: string; caption: string } | { kind: 'other' } {
   if (!message) return { kind: 'other' };
   if (message.type === 'text') return { kind: 'text', text: (message.text?.body ?? '').trim() };
+  /* A template's quick-reply button ("Start", "Not now") arrives as its own type, with the words on it. */
+  if (message.type === 'button' && (message.button?.text || message.button?.payload)) return { kind: 'text', text: String(message.button.text ?? message.button.payload).trim() };
   if (message.type === 'interactive') {
     const id = message.interactive?.list_reply?.id ?? message.interactive?.button_reply?.id;
     return id ? { kind: 'pick', id } : { kind: 'other' };
@@ -114,6 +116,10 @@ export function pickedFromText(text: string, open: AnOpenCheckIn[], pickPendingA
 
 /** A greeting and nothing else. The only text that opens a session without being handed in as an answer. */
 export const A_GREETING_ALONE = /^\s*((hi|hello|hey|hiya|yo)(\s+there)?|good\s+(morning|afternoon|evening))\s*[.!]*\s*$/i;
+
+/** "Not now" (the quick reply on checkin_open, or typed): nothing more is written first today (decision 83). */
+export const A_NOT_NOW = /^\s*(not\s+now|later|not\s+today)\s*[.!]?\s*$/i;
+export const NOT_NOW_SAYING = 'All right. I will not write to you first again today. Your check-in is still open, and you can answer here whenever you are ready.';
 
 /** The words that close a session. Matched before the status is looked at, so "finish" on a session not yet opened gets an honest answer. */
 export const A_FINISH_WORD = /^\s*(finish|complete|done|close)\s*[.!]?\s*$/i;

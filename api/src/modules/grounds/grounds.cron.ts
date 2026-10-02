@@ -14,6 +14,12 @@ import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { keptOffThePhone } from '../whatsapp/a-check-in-kept-off-the-phone';
+import { whatToSendThisMorning, whichChase, whenItIsDue, itIsOverdue, itIsDueTomorrow, theTeamIsAlmostIn, yourViewMatters, itOpensSoon, MORNING_ORDER } from '../whatsapp/what-goes-to-a-phone';
+import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { isNotLetInYet } from './who-an-admin-did-not-let-in';
+
+/* Every kind a morning message is recorded under, sent, held or as a template. */
+const MORNING_KINDS = ['overdue', 'due-tomorrow', 'team-almost-in', 'your-view-matters'].flatMap((k) => [k, `${k}:template`, `${k}:held`]);
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { GroundStatus, CheckInStatus, TurnRole, PartyType, ReportActivationStatus } from '@prisma/client';
 import { PatternsService } from '../patterns/patterns.service';
@@ -643,7 +649,7 @@ export class GroundsCron implements OnApplicationBootstrap {
           select: {
             id: true,
             email: true,
-            ground: { select: { label: true, overWhatsApp: true, organizationId: true } },
+            ground: { select: { label: true } },
             /* No recordEntries here, structurally (NL-007): this sweep used to put the person's last
                private record line into the mail and the WhatsApp body as "Last time: ...". The product's
                central promise is that nothing they wrote reaches a mailbox; the reminder never needed it. */
@@ -664,41 +670,172 @@ export class GroundsCron implements OnApplicationBootstrap {
       const checkInUrl = this.email.buildCheckInUrl(ci.id);
       try {
         /**
-         * WHATSAPP IS IN ADDITION TO EMAIL, NOT INSTEAD OF IT. Her decision.
-         *
-         * This was `if (whatsapp) ... else email`, so the moment somebody added a phone number they
-         * STOPPED getting check-in emails. Nobody chose that: adding a number is opting IN to a second
-         * reminder, not opting out of the first, and the person who typed it in had no way to know it
-         * had silenced their inbox. It also put every reminder for that person behind one channel that
-         * is not even live yet - WhatsApp is key-gated and off - so on a production account with a
-         * number saved and the toggle later switched on, reminders would have quietly narrowed to a
-         * single dependency.
-         *
-         * EMAIL GOES FIRST AND IS AWAITED. It is the channel that works, and the one the
-         * `sessionReadyNotifiedAt` stamp is really promising. WhatsApp follows in its own try, so a
-         * failure there cannot lose the email, cannot leave the stamp unwritten, and cannot cause the
-         * next cron pass to email the same person twice.
+         * THE EMAIL. WhatsApp is in addition to email, never instead of it (her decision): this sends
+         * the email whatever number the person has, and the WhatsApp notice for the same session is
+         * the opening notice (webhooks.listener.ts, `announceOpenedSessions` below), which now goes for
+         * every session on whichever number the organisation uses. This sweep used to send its own
+         * WhatsApp message as well, so a person got two for one session (survey items 7 and 8).
          */
         await this.email.sendSessionReady(p.email, p.ground.label, checkInUrl);
-
-        /* A check-in the lead keeps in the app is never announced on a phone (survey item 5). */
-        /* And never a second notice on Groundwork's number for an organisation with its own: the opening
-           notice already went from theirs (survey item 8). */
-        const theirOwnNumber = await this.prisma.whatsAppConnection.findUnique({ where: { organizationId: p.ground.organizationId }, select: { enabled: true } }).catch(() => null);
-        if (p.user?.phoneNumber && !keptOffThePhone(p.ground) && !theirOwnNumber?.enabled && (await this.whatsapp.isEnabled())) {
-          try {
-            await this.whatsapp.sendMessage(p.user.phoneNumber, `Your next check-in for ${p.ground.label} is open.\n${checkInUrl}`, { checkInId: ci.id, kind: 'session-ready' });
-          } catch (waErr: any) {
-            // The email is already out. A second channel failing is worth knowing about, not retrying.
-            this.logger.warn(`WhatsApp session-ready failed for check-in ${ci.id}, email was sent: ${waErr.message}`);
-          }
-        }
 
         await this.prisma.checkIn.update({ where: { id: ci.id }, data: { sessionReadyNotifiedAt: now } });
       } catch (err: any) {
         this.logger.error(`Session-ready notification failed for check-in ${ci.id}: ${err.message}`);
       }
     }
+  }
+
+  /**
+   * WHATSAPP REMINDERS AND NUDGES, IN HAFSAH'S WORDS (survey item 7, decisions 82 and 83).
+   *
+   * Nothing reminded anybody on WhatsApp. Every morning, half an hour after the email reminders, each
+   * person with a check-in not yet answered gets at most ONE of these, the most useful first:
+   *   - checkin_overdue, once, and only while the check-in is still open (late answers are taken);
+   *   - checkin_due_tomorrow, once;
+   *   - on the lead's chase days, by the email reminder's own rule: checkin_team_almost_in when at
+   *     least half of the people who can answer have, checkin_your_view_matters when fewer have.
+   * Never to somebody on approved leave, never about a check-in the lead keeps in the app, never to a
+   * guest through an entry on the host's list. STOP, "Not now", how often Groundwork may write first
+   * and the 24-hour window are the sender's (whatsapp.service.ts): outside the window it goes as the
+   * approved template, and while that is not approved it is recorded as not sent, with the reason.
+   */
+  @Cron('30 8 * * *', { timeZone: 'UTC' })
+  async sendWhatsAppReminders() {
+    await onceAcrossCopies(this.prisma, 'send-whatsapp-reminders', theDay(), () => this.sendWhatsAppRemindersInner());
+  }
+
+  async sendWhatsAppRemindersInner(now: Date = new Date()): Promise<{ sent: number }> {
+    const waiting: any[] = await this.prisma.checkIn.findMany({
+      where: {
+        status: CheckInStatus.NOT_STARTED,
+        OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
+        participant: { userId: { not: null }, ground: { status: { notIn: [...TERMINAL, ...HELD] } } },
+      },
+      select: {
+        id: true, groundId: true, sessionNumber: true, createdAt: true, availableFrom: true, participantId: true,
+        ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, initiator: { select: { firstName: true } } } },
+        participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
+      },
+      take: 500,
+    });
+    const leave = await leaveOfThePeopleOn(this.prisma, [...new Set(waiting.map((c) => c.groundId))]);
+    const hoursSince = (d: Date | null | undefined) => (d ? (now.getTime() - new Date(d).getTime()) / 3_600_000 : null);
+
+    /* What each person could be sent, kept to the one most useful per person. */
+    const best = new Map<string, { rank: number; go: () => Promise<unknown> }>();
+    for (const ci of waiting) {
+      try {
+        if (keptOffThePhone(ci.ground)) continue;
+        if (awayUntilOn(leave.get(ci.participantId), now)) continue;
+        const user = ci.participant.user;
+        if (user && (user.isActive === false || user.deletedAt)) continue;
+        const before: { kind: string | null; createdAt: Date }[] = await this.prisma.whatsAppSend.findMany({
+          where: { checkInId: ci.id, kind: { in: MORNING_KINDS } },
+          orderBy: { createdAt: 'desc' },
+          select: { kind: true, createdAt: true },
+        });
+        const had = new Set(before.map((b) => (b.kind ?? '').split(':')[0]));
+        const lastChase = before.find((b) => /^(team-almost-in|your-view-matters)/.test(b.kind ?? ''));
+        const dueAt = whenItIsDue(ci.availableFrom ?? ci.createdAt, ci.ground.cadence);
+        const what = whatToSendThisMorning({
+          policy: { days: ci.ground.chaseAfterDays, stopped: ci.ground.chasingStopped, tellTheLead: ci.ground.tellTheLead },
+          daysOpen: Math.floor((now.getTime() - new Date(ci.createdAt).getTime()) / 86_400_000),
+          dueAt, now, alreadyHad: had, hoursSinceLastChase: hoursSince(lastChase?.createdAt),
+        });
+        if (!what) continue;
+        if (await isAGuestIn(this.prisma, ci.ground.organizationId, { userId: ci.participant.userId, email: ci.participant.email, userEmail: user?.email })) continue;
+        const person = ci.participant.email
+          ? await this.prisma.person.findFirst({ where: { organizationId: ci.ground.organizationId, email: ci.participant.email, active: true }, select: { phone: true } })
+          : null;
+        const phone = person?.phone ?? user?.phoneNumber ?? null;
+        if (!phone) continue;
+        const who = { firstName: user?.firstName, label: ci.ground.label };
+        let said;
+        if (what === 'overdue') said = itIsOverdue(who);
+        else if (what === 'due-tomorrow') said = itIsDueTomorrow(who, dueAt!);
+        else {
+          const counts = await this.whoHasAnswered(ci.groundId, ci.sessionNumber);
+          const chase = whichChase({ ...counts, aboutOnePerson: isEvaluationCheckIn(ci.ground.scenario) });
+          said = chase === 'team-almost-in' ? theTeamIsAlmostIn(who, counts.answered, counts.ofHowMany) : yourViewMatters(who, ci.ground.initiator?.firstName);
+        }
+        const rank = MORNING_ORDER.indexOf(what);
+        const key = ci.participant.userId ?? phone;
+        const kept = best.get(key);
+        if (kept && kept.rank <= rank) continue;
+        const message = said;
+        best.set(key, { rank, go: () => this.whatsapp.sendFor(ci.ground.organizationId, phone, message.text, { checkInId: ci.id, kind: message.kind, params: message.params }) });
+      } catch (err: any) {
+        this.logger.warn(`WhatsApp reminder failed for check-in ${ci.id}: ${err?.message}`);
+      }
+    }
+    let sent = 0;
+    for (const { go } of best.values()) {
+      try { await go(); sent++; } catch (err: any) { this.logger.warn(`WhatsApp reminder could not be sent: ${err?.message}`); }
+    }
+    if (sent) this.logger.log(`WhatsApp: ${sent} morning reminder(s) tried.`);
+    return { sent };
+  }
+
+  /**
+   * HOW MANY OF A SESSION'S PEOPLE HAVE CHECKED IN, for checkin_team_almost_in. Counts leave out
+   * anybody not yet let in (decision 77) and anybody only managing; never anything anybody said.
+   */
+  private async whoHasAnswered(groundId: string, sessionNumber: number): Promise<{ answered: number; ofHowMany: number }> {
+    const rows: any[] = await this.prisma.checkIn.findMany({
+      where: { groundId, sessionNumber },
+      select: { status: true, participant: { select: { managingOnly: true, user: { select: { awaitingOrgApproval: true } } } } },
+    });
+    const counted = rows.filter((r) => !r.participant?.managingOnly && !isNotLetInYet(r.participant));
+    return { answered: counted.filter((r) => r.status === CheckInStatus.COMPLETED).length, ofHowMany: counted.length };
+  }
+
+  /**
+   * checkin_opens_soon: an hour before a session opens at a set time, once. Every quarter of an hour,
+   * for sessions opening between 45 and 60 minutes from now, with the same rules as the morning.
+   */
+  @Cron('*/15 * * * *', { timeZone: 'UTC' })
+  async sendWhatsAppOpensSoon() {
+    await this.sendWhatsAppOpensSoonInner().catch((err) => this.logger.warn(`WhatsApp opens-soon sweep failed: ${err?.message}`));
+  }
+
+  async sendWhatsAppOpensSoonInner(now: Date = new Date()): Promise<{ sent: number }> {
+    const soon: any[] = await this.prisma.checkIn.findMany({
+      where: {
+        status: CheckInStatus.NOT_STARTED,
+        availableFrom: { gt: new Date(now.getTime() + 45 * 60_000), lte: new Date(now.getTime() + 60 * 60_000) },
+        participant: { userId: { not: null }, ground: { status: { notIn: [...TERMINAL, ...HELD] } } },
+      },
+      select: {
+        id: true, groundId: true, availableFrom: true, participantId: true,
+        ground: { select: { label: true, organizationId: true, overWhatsApp: true } },
+        participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
+      },
+      take: 200,
+    });
+    const leave = await leaveOfThePeopleOn(this.prisma, [...new Set(soon.map((c) => c.groundId))]);
+    let sent = 0;
+    for (const ci of soon) {
+      try {
+        if (keptOffThePhone(ci.ground)) continue;
+        if (awayUntilOn(leave.get(ci.participantId), new Date(ci.availableFrom))) continue;
+        const user = ci.participant.user;
+        if (user && (user.isActive === false || user.deletedAt)) continue;
+        const before = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: ci.id, kind: { in: ['opens-soon', 'opens-soon:template'] } }, select: { id: true } });
+        if (before) continue;
+        if (await isAGuestIn(this.prisma, ci.ground.organizationId, { userId: ci.participant.userId, email: ci.participant.email, userEmail: user?.email })) continue;
+        const person = ci.participant.email
+          ? await this.prisma.person.findFirst({ where: { organizationId: ci.ground.organizationId, email: ci.participant.email, active: true }, select: { phone: true } })
+          : null;
+        const phone = person?.phone ?? user?.phoneNumber ?? null;
+        if (!phone) continue;
+        const said = itOpensSoon({ firstName: user?.firstName, label: ci.ground.label }, new Date(ci.availableFrom));
+        await this.whatsapp.sendFor(ci.ground.organizationId, phone, said.text, { checkInId: ci.id, kind: said.kind, params: said.params });
+        sent++;
+      } catch (err: any) {
+        this.logger.warn(`WhatsApp opens-soon failed for check-in ${ci.id}: ${err?.message}`);
+      }
+    }
+    return { sent };
   }
 
   /**

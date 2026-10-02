@@ -20,12 +20,13 @@ describe('the window', () => {
   it('a reply is never business-initiated; a notice the product starts is', () => {
     expect(isBusinessInitiated('reply')).toBe(false);
     expect(isBusinessInitiated(undefined)).toBe(false);
-    for (const k of ['session-ready', 'opening', 'report']) expect(isBusinessInitiated(k)).toBe(true);
+    /* Changed 2 October: the kinds are Hafsah's messages now (decision 83). */
+    for (const k of ['checkin-open', 'overdue', 'your-view-matters', 'report']) expect(isBusinessInitiated(k)).toBe(true);
   });
   it('a template is used only once its name is approved', () => {
-    expect(templateFor('session-ready', [])).toBeNull();
-    expect(templateFor('session-ready', [TEMPLATES['session-ready'].name])?.name).toBe('groundwork_session_ready');
-    expect(templateFor('reply', ['groundwork_session_ready'])).toBeNull();
+    expect(templateFor('checkin-open', [])).toBeNull();
+    expect(templateFor('checkin-open', [TEMPLATES['checkin-open'].name])?.name).toBe('checkin_open');
+    expect(templateFor('reply', ['checkin_open'])).toBeNull();
   });
 });
 
@@ -40,7 +41,10 @@ describe('the service', () => {
     expect(service).toMatch(/type: 'template'/);
   });
   it('the callers that start a conversation say which kind of message they are sending', () => {
-    expect(strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.cron.ts'), 'utf8'))).toMatch(/kind: 'session-ready'/);
-    expect(strip(readFileSync(join(__dirname, '..', 'webhooks', 'webhooks.listener.ts'), 'utf8'))).toMatch(/kind: 'opening'/);
+    /* Changed 2 October (survey item 7): the kind comes with the words, from what-goes-to-a-phone.ts. */
+    expect(strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.cron.ts'), 'utf8'))).toMatch(/kind: said\.kind, params: said\.params/);
+    expect(strip(readFileSync(join(__dirname, '..', 'webhooks', 'webhooks.listener.ts'), 'utf8'))).toMatch(/kind: said\.kind, params: said\.params/);
+    const phone = strip(readFileSync(join(__dirname, 'what-goes-to-a-phone.ts'), 'utf8'));
+    for (const k of ["'checkin-open'", "'due-tomorrow'", "'opens-soon'", "'overdue'", "'team-almost-in'", "'your-view-matters'"]) expect(phone).toContain(k);
   });
 });

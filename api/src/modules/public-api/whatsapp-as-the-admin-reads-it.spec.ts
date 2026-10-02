@@ -2,7 +2,7 @@ import { ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { WhatsAppForAnOrganisationController } from './whatsapp-for-an-organisation.controller';
-import { TEMPLATES } from '../whatsapp/a-message-outside-the-window';
+import { TEMPLATES, THE_NAMES_TO_SUBMIT } from '../whatsapp/a-message-outside-the-window';
 
 /**
  * WHATSAPP ON THE CONNECTIONS PAGE, AS EACH READER IS SERVED IT (F1).
@@ -138,8 +138,10 @@ describe('Grace, the admin of Baridi Appliances, reads WhatsApp on the Connectio
     holdsNoSecret(got);
   });
 
-  it('says the reminders can go once Meta has approved all three on Baridi’s own app', async () => {
-    const { c } = setup({ own: { approvedTemplates: [TEMPLATES['session-ready'].name, TEMPLATES.opening.name, TEMPLATES.report.name] } });
+  /* Changed 2 October (survey item 7): the product starts more than three messages now (the first
+     session, reminders and nudges), so "approved" means every name the product starts. */
+  it('says the reminders can go once Meta has approved every one of them on Baridi’s own app', async () => {
+    const { c } = setup({ own: { approvedTemplates: [...THE_NAMES_TO_SUBMIT] } });
     const got: any = await c.connection('org-baridi');
     expect(got.canStartAConversation).toBe(true);
     expect(got.reminders).toEqual({ approved: true, saying: 'Meta has approved the reminder messages, so Groundwork can send the first message, such as a reminder that a check-in is open.' });

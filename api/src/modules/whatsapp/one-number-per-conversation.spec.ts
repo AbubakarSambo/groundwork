@@ -89,15 +89,15 @@ describe('a reply goes from the number the person wrote to', () => {
 describe('the 24-hour window is per business number', () => {
   it("writing to Groundwork's number does not open the window on the organisation's own", async () => {
     const { wa, prisma } = aService({ ownNumber: true, lastClaim: { via: 'ours', at: new Date() }, personWroteAt: new Date() });
-    const got = await wa.sendFor('org-1', '+2348012345678', 'Your check-in is open.', { checkInId: 'ci-1', kind: 'opening' });
+    const got = await wa.sendFor('org-1', '+2348012345678', 'Your check-in is open.', { checkInId: 'ci-1', kind: 'checkin-open' });
     expect(got).toEqual({ sent: false, error: OUTSIDE_THE_WINDOW });
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(prisma.whatsAppSend.create).toHaveBeenCalledWith({ data: expect.objectContaining({ organizationId: 'org-1', kind: 'opening', error: OUTSIDE_THE_WINDOW }) });
+    expect(prisma.whatsAppSend.create).toHaveBeenCalledWith({ data: expect.objectContaining({ organizationId: 'org-1', kind: 'checkin-open', error: OUTSIDE_THE_WINDOW }) });
   });
 
   it("writing to the organisation's own number opens it there", async () => {
     const { wa } = aService({ ownNumber: true, lastClaim: { via: 'theirs', at: new Date() } });
-    const got = await wa.sendFor('org-1', '+2348012345678', 'Your check-in is open.', { checkInId: 'ci-1', kind: 'opening' });
+    const got = await wa.sendFor('org-1', '+2348012345678', 'Your check-in is open.', { checkInId: 'ci-1', kind: 'checkin-open' });
     expect(got.sent).toBe(true);
     expect(sentFrom()).toEqual([THEIRS]);
   });
@@ -110,10 +110,12 @@ describe('the 24-hour window is per business number', () => {
 });
 
 describe("an organisation with its own number gets its notices only from that number", () => {
-  it("the session-ready sweep sends nothing on Groundwork's number for it", () => {
+  it("the session-ready sweep sends nothing on Groundwork's number for it: the one notice goes by sendFor, from their own number when they have one", () => {
+    /* Changed with survey item 7: the sweep sends no WhatsApp at all now. */
     const cron = strip(readFileSync(join(__dirname, '..', 'grounds', 'grounds.cron.ts'), 'utf8'));
     const at = cron.indexOf('const newlyOpen');
-    const block = cron.slice(at, cron.indexOf('private async sendRemindersInner', at));
-    expect(block).toMatch(/!theirOwnNumber\?\.enabled/);
+    expect(cron.slice(at, cron.indexOf('async sendWhatsAppReminders(', at))).not.toMatch(/this\.whatsapp\.send/);
+    const listener = strip(readFileSync(join(__dirname, '..', 'webhooks', 'webhooks.listener.ts'), 'utf8'));
+    expect(listener).not.toMatch(/this\.whatsapp\.sendMessage\(/);
   });
 });

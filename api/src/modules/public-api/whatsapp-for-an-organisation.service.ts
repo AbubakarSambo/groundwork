@@ -16,7 +16,7 @@ import { validateSync } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { asATextMessage } from './a-reply-reads-as-a-text-message';
-import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE } from './a-whatsapp-message-is-routed';
+import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING } from '../whatsapp/a-message-outside-the-window';
 import { keptOffThePhone, answerItInTheApp } from '../whatsapp/a-check-in-kept-off-the-phone';
 import { WhichNumber, anInboundKey } from '../whatsapp/one-number-per-conversation';
@@ -143,6 +143,8 @@ export class WhatsAppForAnOrganisationService {
     }
 
     const who = await this.whatsapp.whoIsWritingTo(organizationId, from);
+    /* START said to begin the check-in, not to resume after STOP. */
+    let beginning = false;
     if (!who.personId && !who.userId) {
       await say("This number is not on your organisation's roster yet. Ask your admin to add it, or add it yourself under Settings in Groundwork, then message again.");
       return;
@@ -155,11 +157,25 @@ export class WhatsAppForAnOrganisationService {
         await say(STOPPED_SAYING);
         return;
       }
+      /*
+       * START: after STOP it resumes; otherwise it is the "Reply START to begin" of checkin_open
+       * (decision 83), and begins the check-in like a greeting rather than becoming an answer.
+       */
       if (arrived.kind === 'text' && A_START_WORD.test(arrived.text)) {
-        await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: null, whatsappConsentAt: new Date() } }).catch(() => undefined);
-        await say(RESUMED_SAYING);
-        return;
+        const me = await this.prisma.person.findUnique({ where: { id: who.personId }, select: { whatsappStoppedAt: true } }).catch(() => null);
+        if (me?.whatsappStoppedAt) {
+          await this.prisma.person.update({ where: { id: who.personId }, data: { whatsappStoppedAt: null, whatsappConsentAt: new Date() } }).catch(() => undefined);
+          await say(RESUMED_SAYING);
+          return;
+        }
+        beginning = true;
       }
+    }
+    /* "Not now" always works (decision 83): nothing more is written first to this person today. */
+    if (arrived.kind === 'text' && A_NOT_NOW.test(arrived.text)) {
+      await this.whatsapp.notNow(organizationId, from);
+      await say(NOT_NOW_SAYING);
+      return;
     }
     let userId = who.userId;
     if (!userId && who.personId) {
@@ -272,6 +288,7 @@ export class WhatsAppForAnOrganisationService {
      * them went to the controller's log-only catch. The person got silence, which on a phone reads as
      * the product being dead. One try, and say() the sentence. The highest-harm line in the slice.
      */
+    if (beginning && current.status !== 'NOT_STARTED') { await say(`${sessionHeader(current)} Carry on where you left off.`); return; }
     try {
       let reply = '';
       if (current.status === 'NOT_STARTED') {
@@ -280,7 +297,7 @@ export class WhatsAppForAnOrganisationService {
         /* A short first answer is still an answer. "Not much yet", "It's blocked", "Behind again" are
            twelve characters or fewer and were thrown away. Only a greeting and nothing else is not
            handed in - matched by a list, not by a length. */
-        if (A_GREETING_ALONE.test(text)) { await say(reply); return; }
+        if (A_GREETING_ALONE.test(text) || beginning) { await say(reply); return; }
       }
       const r = await this.conversation.sendMessage(current.id, userId!, text, { door: 'whatsapp' });
       reply = reply ? `${reply}\n\n${r.reply}` : r.reply;

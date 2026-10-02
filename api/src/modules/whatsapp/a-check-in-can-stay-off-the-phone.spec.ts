@@ -32,10 +32,11 @@ describe('a check-in can stay off the phone', () => {
       behaviour is what the two conditions beside it already test. Written as `=== true` this would
       have silently switched WhatsApp OFF for every existing check-in.
     */
-    expect(LISTENER).toMatch(/overWhatsApp !== false/);
+    expect(LISTENER).toMatch(/if \(ground\.overWhatsApp === false\) return;/);
     expect(LISTENER).not.toMatch(/overWhatsApp === true/);
-    /* And it still asks the two things it asked before: a number to send to, and a live connection. */
-    expect(LISTENER).toMatch(/person\?\.phone && connected\?\.enabled/);
+    /* And it still needs a number to send to. Changed 2 October (survey item 7): it no longer needs
+       the organisation's own number connected, because Groundwork's number announces too. */
+    expect(LISTENER).toMatch(/if \(!phone\) return;/);
   });
 
   it('the ground has to be loaded with the field, or the check above is always undefined', () => {
