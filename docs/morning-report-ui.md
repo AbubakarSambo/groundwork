@@ -256,6 +256,18 @@ Batch 2 is next: the prototype's own sections where their data is already sent, 
 
 A mistake of mine with the pictures: my "before" pictures of the six u7 boards as their lead show the sign-in page, because that sign-in did not get through. The comparison for those six is therefore with the "after" set only, which is real. The after pictures, at both widths, are in the scratchpad's `pictures/boards-after3a/`, and they are now the baseline for the remaining files.
 
+**Board batch 3, third part: four more files are built from shared parts.**
+- The lead's judgement: "The gap" is now a callout, and "What to do" is a list of rows. Every word is kept, and it is still the lead's alone.
+- The targets band: whose each target is is a tag.
+- The resolution panel: "Decide how it ends" is the shared navy button.
+- The record tables.
+
+Two things were not forced, for good reasons:
+- The record table's grid keeps its own classes, because its tablet and phone behaviour would break as a plain row.
+- The "ringed is someone's word, filled is proven" mark on each record waits on the engine (request 108).
+
+All the tests pass, the button test passes on every board, and no picture showed the sign-in page. The pictures are in the scratchpad's `pictures/boards-after3b/`. The board page itself, about 640 one-off uses, is now being done section by section.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
