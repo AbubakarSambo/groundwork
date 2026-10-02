@@ -106,7 +106,13 @@ The rest of request 117 on the sales board is stored rows on the screens workspa
 
 **Also done:** on WhatsApp, a kept check-in's waits are left out before alike waits are merged (`6cac17d6`), and a performance review now shows on Today, for the person and for whoever writes it (`073dd64b`).
 
-Now running: run-25 on `4090223b`, and the plural grammar slip. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**The WhatsApp merge gap, in detail** (`6cac17d6`): before, Wairimu asking "who is waiting on me" on WhatsApp could read words from a check-in kept in the app ("…before my Westgate review in the plan"). Now she reads only the team's wait. In the app nothing changes. **Grammar** (`44c18570`): "Their own direct reports holds it." now reads "hold it."
+
+**Reviews on Today** (`073dd64b`): Aisha reads "Wairimu has started your review. You can read it and add your own view before you meet."; Wairimu reads "Miriam's review is ready for you to start." A review Groundwork only proposed is never shown to the person.
+
+**For Hafsah:** a writer sees a review on Today only when it is due within two weeks or overdue, and a decided one stays two weeks. Without a limit, a six-monthly review would sit on everybody's Today all the time. Confirm or change the two weeks.
+
+Now running: run-25 on `4090223b`, and an older fault found on the way: Ask Groundwork names people by their email ("femi@baridi.test: waiting on you for …") and answers in clipped lines. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
