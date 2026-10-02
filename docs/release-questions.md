@@ -153,6 +153,15 @@ After the migrations, every existing record line and commitment is marked "not t
 | No tunnel is possible. | Run it with `--hosted-database` first, read the dry run, then with `--hosted-database --write`, typing the host name back. |
 | Do not run it. | Old reports keep working, without quotation marks. New check-ins are not affected. Hafsah decides if that is acceptable. |
 
+### 12b. How should the one-off script that brings the checkability read up to date run on a hosted database? (request 103)
+
+Sessions read before 29 September undercount how checkable each person's own answers were, so their Done page and session report say a date or a wait was "not picked up" when it was said. `api/journey/bring-the-checkability-read-up-to-date.ts` raises those reads (never lowers one, never changes anybody's words), and is a release step only whoever runs the release may take, with explicit confirmation: `--hosted-database` alone is a dry run that prints what would change; with `--write` it asks for the database's host name to be typed back and writes nothing unless it matches. The engine work never runs it on anything but its own machine.
+
+| Answer | What we would do |
+| --- | --- |
+| Run it, once on each database, after the migrations and after the word-for-word script. | Read the dry run, then run it with `--hosted-database --write`, typing the host name back, and check one person's Done page from before 29 September. |
+| Do not run it. | Sessions read before 29 September keep undercounting on the person's own Done page and report. New check-ins are not affected. Hafsah decides if that is acceptable. |
+
 ### 13. Which of the two histories goes first?
 
 This branch was started before pull requests 295 to 317 reached the remote `main`. Their changes are all on this branch under other commit hashes, but the two histories have not been joined. The release needs one join of this branch onto the remote `main`, and whoever does it should expect conflicts in files both sides touched. `docs/ready-to-deploy.md` also asked whether an earlier pull request of Hafsah's had been taken in first.

@@ -187,3 +187,4 @@ These are settled. Do not change them. If one seems to block the work, stop and 
     2. **Item 51:** yes. **Item 53:** yes.
     3. **Item 52:** yes for a restated aim (the team's one aim). But a record added on the board with nobody's name becomes somebody's deal only once the lead confirms it, because a claim is checked first.
     4. **Item 54:** build the more private option: each session's team picture is released on its own, with the change to what is stored, so a participant never reads a later session's picture before it is released.
+77. **A person an admin has not let in yet is not counted** (decided 2 October, item 64). In Hafsah's words: "A person an admin hasn't let in yet is left out of both the 'N of M have answered' count and the count that decides when a session closes. They are shown separately as waiting to be let in." Tested.

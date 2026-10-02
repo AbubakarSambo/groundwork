@@ -186,6 +186,15 @@ For reference, the production start-up check (unchanged since the remote `main`)
 
 Without `--hosted-database` it refuses any database that is not on the machine it runs on, and reads nothing. On a database on the same machine it writes by default, as it always has, and `--dry-run` only reads. It writes only the marks that change. A dry run on the local test database read 42,495 record lines and 1,626 commitments and would change none. The engine work never runs it on anything but a local database.
 
+**Must run once on each database after the migrations: bringing the checkability read up to date (request 103).** Sessions read before 29 September keep an older read of how checkable each person's own answers were, which misses a date, a number or a document that was said, and who they were waiting on. Until the script runs, the person's Done page and session report undercount ("One date, number or document. Groundwork did not pick this up this time."). The script is `api/journey/bring-the-checkability-read-up-to-date.ts`. It writes only `specificityDimensions`, the person's own read, which is served to them alone; it only raises a part of the read and never lowers one; it never changes the overall level or anybody's words.
+
+**How to run it (decision 74, item 5, the same as the word-for-word script).** Only whoever runs the release runs it, once on each database, after the migrations, and only with their explicit confirmation:
+
+1. **A dry run first.** `DATABASE_URL=<the hosted database> npx ts-node -T journey/bring-the-checkability-read-up-to-date.ts --hosted-database`. It reads, prints how many check-ins would be raised and in which part, and writes nothing.
+2. **Then the run that writes.** The same command with `--hosted-database --write`. It prints the same counts, then asks for the database's host name to be typed back, and writes only when the typed name is exactly the host in `DATABASE_URL`. Anything else writes nothing.
+
+Without `--hosted-database` it refuses any database that is not on the machine it runs on. On the local test database a dry run read 6,325 check-ins and found 4,506 to raise; after the write, a second dry run found none left. The engine work never runs it on anything but a local database.
+
 **Must never run on a hosted database:**
 
 | Script | Why not |
