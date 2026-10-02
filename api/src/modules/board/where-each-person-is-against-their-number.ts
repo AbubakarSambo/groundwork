@@ -97,11 +97,12 @@ export type Reason =
   | 'stuck and not chasing'
   | 'behind the pace'
   | 'nothing checkable'
+  | 'waiting on someone'
   | 'nothing to do'
   | 'not let in';
 
 /** Ordered worst first. The order IS the product; a manager reads down until it stops mattering. */
-const ORDER: Reason[] = ['has not answered', 'stuck and not chasing', 'behind the pace', 'nothing checkable', 'nothing to do', 'not let in'];
+const ORDER: Reason[] = ['has not answered', 'stuck and not chasing', 'behind the pace', 'nothing checkable', 'waiting on someone', 'nothing to do', 'not let in'];
 
 /**
  * A NUMBER, A DATE OR A DOCUMENT, READ OFF ONE LINE OF THE RECORD.
@@ -152,6 +153,13 @@ export function whyThisRow(row: PersonRow, roundsPlanned: number | null): Reason
   if (sittingUnchased(row).length) return 'stuck and not chasing';
   if (behindThePace(row, roundsPlanned)) return 'behind the pace';
   if (!row.saidAnythingCheckable) return 'nothing checkable';
+  /*
+   * SOMEBODY WAITING ON A COLLEAGUE IS NOT "NOTHING TO DO" (request 115 d). Neema, Amani and Baraka were
+   * each waiting on Rukia, recently and already chased, and the lead's board sent "nothing to do" beside
+   * them while the same row said they still had something in the way. A wait on the reader keeps its own
+   * sentence below ("is waiting on you"), so this is only a wait on somebody else.
+   */
+  if (row.inTheWay.length && !row.inTheWay.some((b) => b.onTheReader)) return 'waiting on someone';
   return 'nothing to do';
 }
 
@@ -213,6 +221,15 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
       const n = row.nothingCheckableInARow ?? 1;
       const again = n >= 2 ? ` This is the ${ORDINAL[n] ?? `${n}th`} ${row.roundIsA ?? 'check-in'} in a row.` : '';
       return `Nothing ${mid} said this round can be checked yet.${again} A number, a date or a document for what moved would change that.`;
+    }
+    case 'waiting on someone': {
+      const w = [...row.inTheWay].sort((a, b) => b.days - a.days)[0];
+      const what = w.what.trim().replace(/[.!?]+$/, '').replace(/^(The|A|An|Whether|What|How|Which|Who|When|If)\b/, (x) => x.toLowerCase());
+      const forWhat = /^(whether|what|how|which|who|when|if)\b/.test(what) ? `a decision on ${what}` : what;
+      const owner = (w.owner ?? '').trim();
+      return owner
+        ? `${start} has checked in, and is waiting on ${owner} for ${forWhat}.`
+        : `${start} has checked in, and is waiting for ${forWhat}.`;
     }
     case 'nothing to do':
     default: {

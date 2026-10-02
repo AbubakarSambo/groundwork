@@ -36,7 +36,9 @@ describe('where each person is against their number', () => {
   it('carries the whole story where the row is there for another reason', () => {
     /* Nothing tried and only five days: not the row's reason, so the ask says what it is about. */
     const [row] = whereEachPersonIs([rep({ inTheWay: [{ what: 'the price list from Kofi', owner: 'Kofi', days: 5, tried: 'nothing' }] })], 12);
-    expect(row.reason).toBe('nothing to do');
+    /* Changed 2 Oct 2026 (request 115 d): somebody waiting on a colleague is not "nothing to do". */
+    expect(row.reason).toBe('waiting on someone');
+    expect(row.says).toBe('Musa has checked in, and is waiting on Kofi for the price list from Kofi.');
     /* Changed 27 Sep 2026: no quotation marks round the blocker, which is not his words. */
     expect(row.ask).toBe('Musa has been waiting 5 days on the price list from Kofi, and nobody has said yet what was tried. Ask Musa to speak to Kofi rather than write to them.');
   });
@@ -53,7 +55,8 @@ describe('where each person is against their number', () => {
 
   it('and says nothing about somebody who actually pushed', () => {
     const r = rep({ inTheWay: [{ what: 'the lease', owner: 'Adeola', days: 30, tried: 'escalated' }] });
-    expect(whyThisRow(r, 12)).toBe('nothing to do');
+    /* Changed 2 Oct 2026 (request 115 d): still waiting, so not "nothing to do"; and still nothing to ask. */
+    expect(whyThisRow(r, 12)).toBe('waiting on someone');
     expect(whatToAskFor(r)).toBeNull();
   });
 
@@ -190,8 +193,9 @@ describe('the ask reads as something a lead can do', () => {
 
   it('and a row with something to ask never says nothing here needs you', () => {
     const [r] = whereEachPersonIs([row({ inTheWay: [{ what: 'credit review', owner: null, days: 0, tried: 'nothing' }] })], 12);
-    expect(r.reason).toBe('nothing to do');
-    expect(r.says).toBe('Jide Sanusi has checked in.');
+    /* Changed 2 Oct 2026 (request 115 d): the reason is the wait, said in full. */
+    expect(r.reason).toBe('waiting on someone');
+    expect(r.says).toBe('Jide Sanusi has checked in, and is waiting for credit review.');
     expect(r.ask).toBeTruthy();
   });
 });

@@ -19,7 +19,7 @@ import { initialsOf } from '@/pages/org/people-here'
  * could read off the board. What a manager can act on is how long something has sat against what
  * has actually been tried, and one move to put to them.
  */
-export type Reason = 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do' | 'not let in'
+export type Reason = 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'waiting on someone' | 'nothing to do' | 'not let in'
 
 export interface Row {
   participantId: string
@@ -64,6 +64,8 @@ const LABEL: Record<Reason, string> = {
   'stuck and not chasing': 'Stuck and not chasing',
   'behind the pace': 'Behind the pace',
   'nothing checkable': 'Nothing checkable',
+  /* Engine request 115 (d): somebody waiting on a colleague is no longer sent as "nothing to do". */
+  'waiting on someone': 'Waiting on someone',
   'nothing to do': 'Nothing to do',
   'not let in': '',
 }
@@ -73,6 +75,7 @@ const TONE: Record<Reason, TagTone> = {
   'stuck and not chasing': 'concern',
   'behind the pace': 'attention',
   'nothing checkable': 'attention',
+  'waiting on someone': 'attention',
   'nothing to do': 'plain',
   'not let in': 'plain',
 }
