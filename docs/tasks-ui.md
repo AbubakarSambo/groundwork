@@ -79,6 +79,8 @@ Hafsah's client needs these first:
 5. **The other eight boards.**
 6. **The back office.** It stays as it is for Groundwork's staff; its rebuild comes last.
 
+**Straight after the onboarding board's screen fixes (Hafsah, 3 October):** check every place the screen hides or narrows a field the engine sends. Keep what her decisions or the prototype require, draw the rest, and ask her where neither says. Start with the admin's To-dos board and the "role, as described" column.
+
 Plan and billing keeps Hafsah's decisions of 2 October (a one-month free trial for teams under 20; WhatsApp as a paid add-on at about 80% of the plan price, with a monthly limit; no prices or limits written into the screens). It has no place in the client's list, so it comes after item 5.
 
 `docs/screens-handover.md` is updated after every finished piece.

@@ -6,6 +6,13 @@ same file.
 
 ## This morning, 2 October: in short
 
+**A new standing rule (3 October), and what it changes.** You withdrew "when unsure, choose the more private option". Three things I restricted under it are now on the list to put right or to ask you about:
+- **The admin's To-dos board** leaves out to-dos from check-ins the admin may not read. The prototype shows an admin the list. It goes into the check below.
+- **The "role, as described" column** on a check-in's people is shown only to the lead, on the grounds that it reads like the lead's private note. The prototype does not say. Should admins and the people in the check-in see it?
+- **An admin on a check-in where "Hide email addresses between participants" is on** does not get participants' addresses there. This one is an existing privacy test, which I never weaken, so it is your question. Should they?
+
+Next, after the onboarding board's screen fixes: a check of every place the screen hides a field the engine sends. Each one is kept if your decisions or the prototype say so, drawn if they do, and asked about if they say nothing.
+
 **The sales board is done (3 October).** After thirteen reviews, the last one, on the engine's newest code, says Rukia's and Amani's boards match the prototype at both widths, apart from what the engine still sends wrong. On the way:
 - I ran the engine's own script that brings a check-in's stored records up to its current rules, on the local test database only, for this check-in alone, after a dry run. It wrote six changes: the false "Met" and the three repeated targets are now one team aim, 0 of 12, due 20 December, and Rukia is asked whether two deals are hers.
 - For a while the engine's newest code did not start (request 120). The local API ran on the last code that did, until the engine fixed it.
@@ -558,6 +565,8 @@ nothing about today's billing has changed. Nobody already on the free plan is cu
 U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
+
+**3 October: no privacy restriction beyond Hafsah's decisions or the prototype.** Never add a privacy restriction that is not in her own decisions or the prototype. When unsure, follow the prototype. If the prototype does not say, ask her instead of restricting. The old rule, "when unsure, choose the more private option", is withdrawn and must not be acted on again. The engine is reversing several restrictions: patterns reach the lead after the person, suggestions show counts, and admins see the figures. The screen draws whatever the engine sends. Every helper's brief says this. Existing privacy tests are still never deleted or weakened; where one pins a restriction that is not in her decisions or the prototype, it goes to her as a question.
 
 **2 October, late evening: the client's order.** Hafsah's client needs three boards first, in this order, each matched against its prototype example and reviewed: the sales team, onboarding, and project. Project means both "Get a new project off to a good start" and "Get a project back on track". Then the three suites the client uses, each matched against the prototype: leave, finance requests and performance reviews. "Performance management" means the reviews suite. Then the Company page with the company-wide picture, then the Ask Groundwork chat, then the other eight boards. The existing back office stays as it is for Groundwork's staff, and its rebuild comes last. `docs/screens-handover.md` is kept up to date after every finished piece.
 

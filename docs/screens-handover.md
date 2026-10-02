@@ -80,6 +80,12 @@ Once a check-in's tests are done, also:
 
 ## Needs Hafsah
 
+- **Three restrictions made under the withdrawn rule:**
+  - the admin's To-dos board;
+  - the "role, as described" column, shown only to the lead;
+  - admins' access to email addresses where they are hidden between participants, which is an existing privacy test.
+
+  See the top of the morning report. A check of every place the screen hides a field the engine sends comes straight after the onboarding board's screen fixes.
 - **Her decisions still to confirm** are under "Decided for Hafsah to confirm" at the top of `docs/morning-report-ui.md`. The newest:
   - the developer page's two missing sections;
   - the example console;
@@ -139,6 +145,7 @@ One more test in `e2e/` counts buttons against the prototype and allows at most 
 
 ## Rules to keep (from Hafsah)
 
+- **Privacy (3 October):** never add a privacy restriction that is not in Hafsah's decisions or the prototype. When unsure, follow the prototype; if it does not say, ask her. The old "more private option when unsure" is withdrawn. Draw whatever the engine sends. Never delete or weaken an existing privacy test; if one pins a restriction she never decided, ask her. Tell every helper.
 - **Pushing:** the only push is `git push mine wip/prototype-ui`, run on its own, with no `cd … &&` or anything else chained to it.
 - **Merging:** the only merge is `git merge mine/wip/plain-reports`, run on its own.
 - **When the safety guard refuses something,** nobody reaches it another way. Write it down and move on.
