@@ -2211,8 +2211,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             fragments strung together rather than something said to a reader.
                           */}
                           <div className="gwui-fs-15 gwui-ink-sub" style={{minWidth: 96, textAlign: 'right'}}>
-                            {o.journey?.start != null
-                              ? (<><b className="gwui-ink-dark">{o.count}</b>{` now, up from ${o.journey.start}. The aim is ${o.target}.`}</>)
+                            {/*
+                              RE-REVIEW: "0 NOW, UP FROM 0." IS NOT A MOVE. Read live on "You are
+                              aiming for 4 shops.", with nothing counted yet: `journey.start` (0)
+                              equalling `o.count` (0) still drew "up from 0", claiming a rise that
+                              never happened. "Up"/"down" is only true when the count has actually
+                              moved from where it started; unmoved reads the same plain "X of Y."
+                              the line below already uses when there is no start to compare against.
+                            */}
+                            {o.journey?.start != null && o.journey.start !== o.count
+                              ? (<><b className="gwui-ink-dark">{o.count}</b>{` now, ${o.count > o.journey.start ? 'up' : 'down'} from ${o.journey.start}. The aim is ${o.target}.`}</>)
                               : (<><b className="gwui-ink-dark">{o.count}</b>{` of ${o.target}.`}</>)}
                           </div>
                           <div className={`gwui-fs-13 ${o.delta > 0 ? 'gwui-ink-green' : 'gwui-ink-muted'}`} style={{fontWeight: 700, minWidth: 92, textAlign: 'right'}}>
