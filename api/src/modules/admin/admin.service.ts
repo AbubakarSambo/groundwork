@@ -12,7 +12,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { SEAT_RELATION_COUNT } from '../../common/seats';
-import { isCovered } from '../../common/subscription';
+import { isCovered, ACTIVE } from '../../common/subscription';
 import { A_CUSTOMER, A_REAL_CHECK_IN } from '../prompts/what-the-platform-has-actually-done';
 import { COACHING_LIVE_KEY } from '../conversation/conversation.service';
 import {
@@ -371,7 +371,9 @@ export class AdminService implements OnApplicationBootstrap {
       this.getAllCodes(),
       this.getFeedback(),
       this.getUsagePatterns(),
-      this.prisma.organization.count({ where: { ...A_CUSTOMER, subscriptionPlan: { not: null } } }),
+      /* PAYING NOW, as isSubscribed reads it (item 19). A paused or past-due subscription keeps its
+         plan, and was counted as subscribed. */
+      this.prisma.organization.count({ where: { ...A_CUSTOMER, subscriptionPlan: { not: null }, subscriptionStatus: ACTIVE } }),
       this.prisma.ground.aggregate({ where: A_REAL_CHECK_IN, _sum: { sessionsBalance: true } }),
     ]);
 
