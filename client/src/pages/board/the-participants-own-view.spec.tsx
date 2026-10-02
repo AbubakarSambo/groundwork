@@ -39,6 +39,16 @@ const workRecords = [
       { id: 'd-aisha-1', kind: 'deal', name: 'Greenhill Mart', stage: 'Signed', owner: 'Aisha Otieno', ownerParticipantId: 'p-aisha', due: null, fields: {}, from: 'said' as const, said: 'Signed last week.', saidBy: 'Aisha' },
     ],
   },
+  /*
+   * BOARD REVIEW, SALES PIECE D, ITEM 5: "Forecast" IS ABOUT THE WHOLE TEAM, NOT ONE PERSON'S OWN
+   * RECORDS, SO A PARTICIPANT READS IT TOO - see the fixed gate in BoardPage.tsx.
+   */
+  {
+    section: 'Forecast', holds: 'where the sales numbers are likely to end up', state: 'filled' as const,
+    rows: [
+      { id: 'f-1', kind: 'forecast', name: 'This quarter', stage: null, owner: null, ownerParticipantId: null, due: null, fields: { Likely: 'KES 9.4M' }, from: 'lead' as const },
+    ],
+  },
 ]
 
 /*
@@ -151,6 +161,13 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     expect(within(whole).queryByText('Greenhill Mart')).toBeNull()
     expect(within(whole).queryByText('Westgate Deli')).toBeNull()
     expect(within(whole).queryByText('Every deal, day by day')).toBeNull()
+
+    /*
+     * BOARD REVIEW, SALES PIECE D, ITEM 5: "FORECAST" IS ABOUT THE WHOLE TEAM, SO SHE READS IT
+     * TOO, INSIDE THE FOLD, BESIDE "BY AREA" - it used to be sent to her and drawn nowhere at all.
+     */
+    expect(within(whole).getByText('Where the sales numbers are likely to end up')).toBeTruthy()
+    expect(within(whole).getByText('This quarter')).toBeTruthy()
   })
 
   it('says the picture is shared once the server itself says `teamPicture.shared`, not from a round count, and links to it', async () => {

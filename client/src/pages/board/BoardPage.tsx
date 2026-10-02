@@ -1742,11 +1742,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {/*
           BOARD REVIEW, SALES PIECE C, ITEMS 4 AND 5: A SALES GROUND'S OWN "FORECAST", AND "BY
-          AREA" - NEITHER IN THE PROTOTYPE'S OWN SALES BOARD. Not drawn at all for a participant
-          (item 4: her own records are already shown, above, and a sales ground's "Forecast" is
-          about the whole team, not hers alone). See the comment on `dealGridSections`.
+          AREA" - NEITHER IN THE PROTOTYPE'S OWN SALES BOARD. The deal grid is not drawn again for
+          a participant (item 4: her own records are already shown, above), but "Forecast" is about
+          the whole team, not hers alone, and nothing else on the board gives a participant that
+          reading - see the comment on `dealGridSections`.
+
+          BOARD REVIEW, SALES PIECE D, ITEM 5: DRAWN FOR A PARTICIPANT TOO, NOT ONLY THE LEAD. This
+          used to gate on `!isParticipantView` as well, so a sales org's "Forecast" (sent to every
+          reader - see request 28/board.service.ts) was served to a participant and drawn nowhere:
+          this whole block sits inside the participant's own fold ("The whole check-in", opened by
+          `MaybeFolded` above), beside "By area", exactly where the lead reads it, so there is
+          nothing left to withhold.
         */}
-        {!isParticipantView && isSalesOrg && restOfWorkRecordSections.length > 0 && (
+        {isSalesOrg && restOfWorkRecordSections.length > 0 && (
           <WorkRecordsSections
             groundId={id!}
             kindOfWork={(b as any).kindOfWork ?? null}
