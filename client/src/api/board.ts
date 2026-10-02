@@ -518,9 +518,10 @@ export interface AServedWorkRow {
   nextKnown?: 'proof' | 'said' | 'lead' | null
   nextSays?: string
   /**
-   * DECISION 76, ITEM 3: a record with nobody's name on it that somebody says is theirs. Sent to the
-   * lead alone, with the claim already said as a full sentence; her yes or no is
-   * `boardApi.answerOwnerClaim`. Nobody else is ever sent a claim.
+   * DECISION 76, ITEM 3: a record with nobody's name on it that somebody says is theirs. Sent to
+   * the lead alone, with the claim already said as a full sentence; her yes or no goes to
+   * `POST .../work-items/:itemId/claim` with `{ yes }`. Nobody else is ever sent a claim. Not yet
+   * drawn on the deal grid - see the note beside `deleteWorkItem`, below.
    */
   ownerClaim?: { participantId: string; who: string; says: string } | null
   /** REQUEST 115 (b): what somebody said it is worth, where they said - and the sentence where nobody has. */
@@ -601,17 +602,13 @@ export const boardApi = {
   deleteWorkItem: (groundId: string, itemId: string) =>
     apiClient.delete<{ deleted: true }>(`/grounds/${groundId}/board/work-items/${itemId}`).then((r) => r.data),
 
-  /** DECISION 76, ITEM 3: the lead's yes or no to a claim that a record with nobody's name on it is somebody's. Only a yes sets the owner. */
-  answerOwnerClaim: (groundId: string, itemId: string, yes: boolean) =>
-    apiClient
-      .post<{ record: { id: string; ownerParticipantId: string | null }; saidBack: string }>(`/grounds/${groundId}/board/work-items/${itemId}/claim`, { yes })
-      .then((r) => r.data),
-
-  /** REQUEST 112 (b): the lead's yes or no to a question they wrote down as still to decide. Goes in how we work; the question then closes. */
-  answerADecision: (groundId: string, itemId: string, yes: boolean) =>
-    apiClient
-      .post<{ answered: { id: string; yes: boolean }; saidBack: string }>(`/grounds/${groundId}/board/decisions/${itemId}/answer`, { yes })
-      .then((r) => r.data),
+  /*
+   * REQUEST 112 (b): an item's own `AnAction.choices[].route` (the exact call the engine built to
+   * keep that answer - today, `PATCH .../commitments/:id` and `POST .../decisions/:itemId/answer`)
+   * is run generically, by `ActionButtons` in BoardPage.tsx, rather than through a named wrapper
+   * per route here. Decision 76 item 3's `POST .../work-items/:itemId/claim` runs the same way once
+   * a deal row's own `ownerClaim` is drawn with its yes/no - not yet done, so it has no caller yet.
+   */
 
   /** Initiator only: set the availability question and the times. */
   upsertPoll: (groundId: string, dto: { question: string; options: string[] }) =>
