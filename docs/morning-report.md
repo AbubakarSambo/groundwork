@@ -64,7 +64,25 @@ The recognise suggestion is built and **off** (`reviews.recognise`). The proposa
 
 **Reviews now find their person by email too** (`4d22feea`): an unlinked roster entry with the same email as a sign-in finds, reads and answers their own review, and is told on WhatsApp. **The failing audit of checks that can never be true passes again** (`16e147ee`): one check removed, one field renamed, nothing served changed. Its note to the screens landed in the board helper's commit `8bc65639` rather than its own; the text is in the file, and no history was rewritten.
 
-Now running: request 118 then item 18 (the board helper), and the back office's usage numbers (item 19). Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**The back office's usage numbers, item 19, are checked and fixed** (`aeb8d414` to `bf6bd58f`, pushed; 1,121 of 1,122 tests pass in those parts, and the one failure is a date format being fixed now). Every number was compared with the local test database. Eight were wrong:
+
+| Number | Served | Now |
+| --- | --- | --- |
+| The System tab | An error, so no numbers at all | 1,412 organisations, 1,589 check-ins, 6,596 sessions |
+| Average minutes per session, 1 / 2 / 3 | 110.3 / 105.3 / 189 | 13.9 / 7.7 / 12.7 (sessions the clock closed are no longer timed) |
+| Usage events, check-ins completed | Missing | 6,325 |
+| People per organisation | 4,721 | 4,723, by the People page's seat rule |
+| Check-ins per prompt version | Counted outcomes (0 on the version that runs) | Counted check-ins (89 on v44) |
+| Subscribed organisations | Any plan, paused or past due included | Active plans only |
+| Check-ins that were Paid | 193 | 166, and 27 free with no reason recorded |
+| Feedback total | Never more than 50, our own organisations included | Every customer's answer |
+
+**For Hafsah:**
+- Should "Sessions completed" and the drop-off counts include the 470 sessions the clock closed? They are no longer timed, but still counted.
+- **Privacy question:** the platform admin reads people's outcome feedback notes word for word, on the dashboard and the Feedback tab. Is that allowed, given the console should show counts, never what people said? Nothing was changed; this needs your decision.
+- For the rebuild (item 22): the console shows no WhatsApp sends and no Ask Groundwork use; "Sessions in balance" means nothing under subscriptions; the drop-off chart stops at session 7.
+
+Now running: request 118 then item 18 (the board helper), and the Connections page's WhatsApp numbers (Ask Groundwork threads counted as people, held messages counted as failures) with the billing date format. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
