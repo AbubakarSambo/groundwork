@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { boardApi, KIND_OF_WORK_OPTIONS, type AServedWorkSection, type AServedWorkRow, type KindOfWork, type WorkItemInput } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
-import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack } from '@/components/gw/ui'
+import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack } from '@/components/gw/ui'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -273,6 +273,17 @@ function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow
   )
 }
 
+/**
+ * REQUEST 107 (c), part 1: THE RECORD'S OWN "NEXT" (board-as-lead.txt: "Next: Send the quote,
+ * with a photo"). Only an open commitment whose words name this exact record - drawn as the
+ * server's own sentence (`nextSays`), never a bare "Next:" label with nothing behind it.
+ */
+function WhatsNext({ row }: { row: AServedWorkRow }) {
+  const says = (row as any).nextSays as string | undefined
+  if (!says) return null
+  return <p className="gwui-panel-text-muted">{says}</p>
+}
+
 /** One row's add-or-change form: a record's name, kind, stage, owner and due date. Remove sits inside it, behind a confirmation. */
 function WorkItemForm({ section, participants, editing, onClose, onSaved, onRemove, removing }: {
   section: Extract<AServedWorkSection, { state: 'filled' | 'none-yet' }>
@@ -421,7 +432,14 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
       aria-label={row.name}
     >
       <div>
-        <div className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{row.name}</div>
+        <div className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>
+          {/* REQUEST 108 (c): the line's own mark - filled for proven, ringed for the rest,
+              nothing for a record added on the board with nothing behind it ("none"). */}
+          {(row as any).mark && (row as any).mark !== 'none' && (
+            <><ProofMark mark={(row as any).mark} />{' '}</>
+          )}
+          {row.name}
+        </div>
         {fieldEntries.map(([label, value]) => (
           /* Board review, 30 September, item 3: a detail read as a label and a bare value stuck
              together ("Amount KES 45,000") - now a sentence ("The amount is KES 45,000."). */
@@ -455,7 +473,10 @@ function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn,
           )
       )}
       <div>
-        <WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
+        <Stack gap={4}>
+          <WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
+          <WhatsNext row={row} />
+        </Stack>
       </div>
       {canEdit && (
         <div>

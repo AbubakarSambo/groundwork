@@ -58,3 +58,36 @@ describe('a work record says whose words it is, by name', () => {
     expect(screen.getByText('Wairimu added it.')).toBeTruthy()
   })
 })
+
+/**
+ * REQUEST 108 (c): EACH RECORD ROW CARRIES ITS MARK, drawn with the shared `ProofMark` - filled
+ * for `proven`, ringed for `confirmed`/`said`/`memory`, nothing for `none` (a record added on the
+ * board with nothing behind it).
+ */
+describe('a work record carries its own mark', () => {
+  it('draws the shared ProofMark for a proven line', () => {
+    renderSections([dealGrid({ mark: 'proven' })])
+    expect(screen.getByRole('img', { name: 'Proven' })).toBeTruthy()
+  })
+
+  it('draws nothing for a record added on the board, with mark "none"', () => {
+    renderSections([dealGrid({ from: 'lead', said: undefined, saidBy: null, mark: 'none' })])
+    expect(screen.queryByRole('img', { name: 'Not reached' })).toBeNull()
+  })
+})
+
+/**
+ * REQUEST 107 (c), part 1: THE RECORD'S OWN "NEXT" - only an open commitment whose words name
+ * this exact record, drawn as the server's own sentence, never invented from nothing.
+ */
+describe('a work record says what happens next', () => {
+  it('draws the server\'s own sentence for an open commitment about this record', () => {
+    renderSections([dealGrid({ nextSays: 'You committed to visit Naivas Karen on Wednesday 30 September to show them the fridges.' })])
+    expect(screen.getByText('You committed to visit Naivas Karen on Wednesday 30 September to show them the fridges.')).toBeTruthy()
+  })
+
+  it('draws nothing when nobody has said what happens next', () => {
+    renderSections([dealGrid({ nextSays: undefined })])
+    expect(screen.queryByText(/committed to/)).toBeNull()
+  })
+})
