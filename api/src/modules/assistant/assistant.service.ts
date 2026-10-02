@@ -2847,7 +2847,13 @@ export class AssistantService {
       select: { id: true, label: true, initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
     });
     const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
-    const candidates = grounds.filter((g) => runsIt(userId, viewer, g));
+    /* Only the check-ins this person may set up (decisions 63 and 72), the same as the setup conversation:
+       a context line is setup, a private note is the lead's own, and a question for a person is the lead's to
+       ask. The lead, or an admin only once the lead has left the organisation. */
+    const candidates = [] as typeof grounds;
+    for (const g of grounds.filter((x) => runsIt(userId, viewer, x))) {
+      if (g.initiatorId === userId || (await this.grounds.mayOpenSetupChatFor(g.id, userId, organizationId).catch(() => false))) candidates.push(g);
+    }
 
     if (!candidates.length) {
       const { line, options } = whatICanDoWith(message);

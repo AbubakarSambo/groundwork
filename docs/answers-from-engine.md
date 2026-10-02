@@ -2168,3 +2168,17 @@ With this, `SHOW_THE_COUNT` in `TheDonePage.tsx` no longer has to wait on reques
 **A hosted database** is brought up to date as a release step, by whoever runs the release, with the same guard as the word-for-word script (decision 74, item 5). `DATABASE_URL=<hosted> npx ts-node -T journey/bring-the-checkability-read-up-to-date.ts --hosted-database` is a dry run that prints the counts above and writes nothing. Adding `--write` prints the same, then asks for the database's host name to be typed back, and writes only when it matches exactly; a wrong name, no answer, or no keyboard writes nothing. Without `--hosted-database`, any database not on this machine is refused before anything is read. The engine work never runs it anywhere but a local `gw_` database.
 
 Tests: `api/journey/bring-the-checkability-read-up-to-date.spec.ts` (8 cases: the rule, the dry run's words, only that column written, never lowered, what each reader is sent after it, and the hosted guard). Changed, because the lines they pinned moved unchanged into `the-specificity-read.ts`: `a-worse-session-scores-lower`, `one-checkable-turn-is-not-nothing-checkable`.
+
+## Context lines, private notes and questions for people follow decisions 63 and 72 (2 October)
+
+A context line is setup, a lead's private note is the lead's own, and a question for a person is the lead's to ask. Each is now written only by the lead, or by an admin of the organisation once the lead has left. Anybody else is refused with the same sentence as every setup change: "Only Wanjiru Mwangi, who runs this check-in, can change how it is set up. An admin can only do that once Wanjiru has left the organisation. Nothing was changed." Who may read a private note does not change: only the lead.
+
+**The writers, behind their own routes and Ask Groundwork's doors:**
+- These already refused under this rule, and a test now proves it for each reader: adding and changing a context line (`POST` and `PATCH /grounds/:id/context`), keeping and sharing a private note (`POST /grounds/:id/lead-context`, `.../share`), and keeping, confirming and leaving out a question for a person (`.../questions-for-people/:itemId/confirm` and `/decline`).
+- One did not: the step that works out the exact question before the lead's yes (`theQuestionForAPerson`) let any admin of the organisation in. Before, Otieno (an admin) and Neema (the admin who set it up) got the sentence while Wanjiru was still there. Now both are refused, and Aisha's refusal is in the shared sentence instead of "Only the person who runs this check-in can ask people things through it. Nothing was asked."
+
+**Ask Groundwork's doors** (a context line, a private note, a question for a person) list only the check-ins this person may set up. Before, an admin was offered every check-in in the organisation while its lead was still there, and was refused only after saying yes. Now that admin, and the admin who set it up, get Ask Groundwork's ordinary answer, as somebody with nothing to set up does.
+
+**As each reader, on each writer and each door:** Wanjiru, the lead, may. Otieno and Neema may not while Wanjiru is there, and may once she has left. Aisha, who checks in, may not, before or after.
+
+Reading the list of questions waiting for people (`GET /grounds/:id/questions-for-people`) is a read, and is unchanged: the lead and an admin with access to the check-in.

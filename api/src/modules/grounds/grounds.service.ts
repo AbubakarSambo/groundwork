@@ -4769,13 +4769,9 @@ export class GroundsService {
   ): Promise<{ participantId: string; who: string; exactQuestion: string }> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } });
     if (!ground) throw new NotFoundException('Check-in not found');
-    const viewer = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { role: true, organizationId: true },
-    });
-    if (ground.initiatorId !== requestingUserId && !adminsThisOrg({ ...viewer, userId: requestingUserId }, ground)) {
-      throw new ForbiddenException('Only the person who runs this check-in can ask people things through it. Nothing was asked.');
-    }
+    /* Decisions 63 and 72: the lead, or an admin only once the lead has left, as at the yes that keeps it
+       (keepAQuestionForAPerson). Was any admin of the organisation, at any time. */
+    await this.mayConfirmSetupOn(ground, requestingUserId);
     const people = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } },
