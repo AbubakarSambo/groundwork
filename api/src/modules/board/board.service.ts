@@ -3,6 +3,7 @@ import { aPartyOutside, aWaitOnOneself } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
 import { whoSeesThisDifferently } from './who-sees-this-differently';
 import { whatEachSessionSays } from './one-count-for-the-sessions';
+import { aWaitSaidInFull } from './a-wait-said-in-full';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
 import { aParticipantsOwnBoard } from './a-participants-board-is-their-own';
@@ -1591,6 +1592,10 @@ export class BoardService {
         then: d.then,
         /* How often it was raised, and over which days (request 107 c; the prototype's "Raised: 3 times, 1 Sep to 23 Sep"). */
         raised: howOftenItWasRaised((d as any).raisedAt),
+      })).map((d) => ({
+        ...d,
+        /* Who waits on whom, in one sentence for this reader, in place of "Waiting on: <on>" (request 115 h). */
+        waitingSays: aWaitSaidInFull(d, me?.id ?? null),
       }));
     }
 
