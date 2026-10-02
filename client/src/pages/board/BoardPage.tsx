@@ -510,22 +510,28 @@ function ActionButtons({ groundId, action }: { groundId: string; action?: AnActi
     const choices = action.choices.filter((c) => c.route || action.says)
     if (!choices.length) return null
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-        <div className="gwui-gap-7" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          {choices.map((c) => (
-            <UIButton
-              key={c.label}
-              kind="secondary"
-              size="small"
-              disabled={run.isPending}
-              onClick={c.route ? () => { setNotYetSaid(null); run.mutate(c.route) } : () => setNotYetSaid(action.says ?? null)}
-            >
-              {c.label}
-            </UIButton>
-          ))}
-        </div>
-        {notYetSaid && <div className="gwui-fs-13-5 gwui-ink-muted">{notYetSaid}</div>}
-      </div>
+      <>
+        {choices.map((c) => (
+          <UIButton
+            key={c.label}
+            kind="secondary"
+            size="small"
+            disabled={run.isPending}
+            onClick={c.route ? () => { setNotYetSaid(null); run.mutate(c.route) } : () => setNotYetSaid(action.says ?? null)}
+          >
+            {c.label}
+          </UIButton>
+        ))}
+        {/*
+          `flexBasis: '100%'` on this one child, inside the parent's own flex-wrap row
+          (`gwui-edge-acts`), is what pushes it onto a line of its own under the buttons, the same
+          way a row of buttons already wraps onto a new line when it runs out of room - not a new
+          gap or margin of its own. The shared `Note` part's own `tone="muted"` (13.5px,
+          `--gw-muted`) is what several other rows on this board already use for a line exactly
+          like this one.
+        */}
+        {notYetSaid && <div style={{ flexBasis: '100%' }}><Note tone="muted">{notYetSaid}</Note></div>}
+      </>
     )
   }
   return (
