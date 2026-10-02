@@ -8,6 +8,10 @@ import { monthsToDrawOn, theFirstCheckInOf, theOpenDecisionsAbout, whereItStands
 import { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForTheLead } from '../suggestions/a-suggestion-told-like-a-signal';
 import { AReviewToldOnWhatsApp } from './a-review-told-on-whatsapp.service';
+import {
+  recogniseForThePerson, recogniseForTheWriter, theRecordForRecognising, theWriterMayReadIt,
+  type RecogniseForThePerson, type RecogniseForTheWriter,
+} from './a-review-may-suggest-recognising';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const REVIEW_REFUSED = {
@@ -88,6 +92,12 @@ export interface ForTheWriter {
    * and the person has had their turn. No count, no verdict, never a rating. Null for anybody else.
    */
   suggestion: ForTheLead | null;
+  /**
+   * "Groundwork suggests recognising Aisha’s work", for the writer alone, with no number behind it, once
+   * Aisha has had her turn (a-review-may-suggest-recognising.ts). Null for a lead or an admin who does
+   * not write it, while the setting is off, and when the record does not reach the line.
+   */
+  recognise: RecogniseForTheWriter | null;
 }
 
 /** The person's own review: the facts, their own view, and the decision with its reasons. */
@@ -100,6 +110,8 @@ export interface ForThePerson {
   noticed: Noticed[];
   theirView: string | null;
   decision: { says: string; reasons: string } | null;
+  /** Their own count, the line, and who decides, when Groundwork suggests recognising their work. Absent otherwise. */
+  recognise?: RecogniseForThePerson;
 }
 
 const dayOf = (d: Date): Day => d.toISOString().slice(0, 10);
@@ -244,10 +256,15 @@ export class ReviewsService {
     const decision = row.decision && row.decisionReasons ? { says: row.decision, reasons: row.decisionReasons } : null;
     const dueOn = dayOf(row.due.dueOn);
 
+    /* Read up to the day the review started, so it says the same whenever it is opened. */
+    const recognising = await theRecordForRecognising(this.prisma, {
+      organizationId: reader.organizationId, personUserId: person.linkedUserId, writerUserId: row.startedById, startedAt: (row as any).startedAt,
+    }).catch(() => null);
     if (person.linkedUserId === reader.userId) {
       return {
         reader: 'person', id: row.id, firstName: this.firstOf(person), writtenWithFirstName: manager ? this.firstOf(manager) : null,
         dueOn, noticed: this.noticedOf(row.noticed, true), theirView: row.theirView ?? null, decision,
+        ...(recognising ? { recognise: recogniseForThePerson(recognising, manager ? this.firstOf(manager) : null) } : {}),
       };
     }
     const writes = await this.writes(reader, role, person, answers.writer);
@@ -262,6 +279,7 @@ export class ReviewsService {
       id: row.id, name: this.nameOf(person), firstName: this.firstOf(person),
       writtenWith: manager ? this.nameOf(manager) : null, writtenWithFirstName: manager ? this.firstOf(manager) : null,
       dueOn, noticed: this.noticedOf(row.noticed, writes), managersWords: row.managersWords ?? null, theirView: row.theirView ?? null, decision, mayWrite: writes, suggestion,
+      recognise: writes && recognising && theWriterMayReadIt({ theirView: row.theirView ?? null, startedAt: (row as any).startedAt }) ? recogniseForTheWriter(this.firstOf(person)) : null,
     };
   }
 
