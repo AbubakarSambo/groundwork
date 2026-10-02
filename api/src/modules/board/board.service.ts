@@ -1,5 +1,6 @@
 import { wholeDaysTo, theDayItBegan } from './a-wait-is-dated-not-counted';
 import { aFindingThatDoesNotSayTheWaitAgain } from './where-each-person-is-against-their-number';
+import { eachRepeatedSentenceSaidOnce } from './each-repeated-sentence-said-once';
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
 import { aPartyOutside, aWaitOnOneself } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
@@ -2626,7 +2627,8 @@ export class BoardService {
         walled.openIssues = { state: 'not-known', why: NO_OPEN_ISSUES_ON_RECORD };
       }
       /* And no number that rates a person leaves on any section, whoever reads it (request 111 a). */
-      return withNoRatingNumber(walled);
+      /* A sentence true of several people is said once for the section (request 117, part 8). */
+      return withNoRatingNumber(eachRepeatedSentenceSaidOnce(walled));
     }
   }
 
