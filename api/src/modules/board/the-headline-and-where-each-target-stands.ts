@@ -213,7 +213,9 @@ function aPhraseFor(aim: ATeamAim): APhrase | null {
   const raw = (aim.name ?? '').trim().replace(/[.!?;:]+$/, '').replace(/\s+/g, ' ');
   if (!raw || raw.split(' ').length > 14 || SAID_AS_A_SENTENCE.test(aim.name.trim())) return null;
   const tailMatch = raw.match(A_TIME_AT_THE_END);
-  const tail = tailMatch ? tailMatch[1] : null;
+  /* The aim's own day, where the lead gave one, before the check-in's: the board asked "by 13 December" of an
+     aim the lead had said was due by 20 December (request 111 b). */
+  const tail = tailMatch ? tailMatch[1] : (aim.dueDay ? `by ${aim.dueDay}` : null);
   const body = tailMatch ? raw.slice(0, tailMatch.index).trim() : raw;
   if (!body) return null;
   if (aim.direction === 'DEADLINE') {

@@ -48,6 +48,7 @@ import { asksForAShapeWithoutShowingOne, SHOW_WHAT_ONE_LOOKS_LIKE } from './a-qu
 import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
 import { theCheckInItWaitsOn } from './which-check-in-it-waits-on';
 import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
+import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { BLOCKER_TRACE_PROMPT, BLOCKER_TRACE_PROMPT_KEY, BLOCKER_TRACE_SCHEMA, theChainFrom, theInputKey, theRecordForTheModel, theTraceTheRecordSupports, type TheModelsTrace } from './where-the-blocker-started';
 import { buildScenarioPackForParty, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent, CommitmentsSettledEvent } from '../../common';
@@ -9472,12 +9473,39 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     setByParticipantId: string,
   ): Promise<{ participantId: string; name: string; target: number }[]> {
     if (!rows.length) return [];
-    const owned = await this.prisma.groundObjective.findMany({
-      where: { groundId, ownerParticipantId: { not: null } },
-      select: { name: true, ownerParticipantId: true },
-    });
-    const held = new Set(owned.map((o) => `${o.ownerParticipantId}::${o.name.trim().toLowerCase()}`));
-    const fresh = rows.filter((t) => !held.has(`${t.participantId}::${t.name.trim().toLowerCase()}`));
+    const [owned, team] = await Promise.all([
+      this.prisma.groundObjective.findMany({
+        where: { groundId, ownerParticipantId: { not: null } },
+        select: { name: true, target: true, ownerParticipantId: true },
+      }),
+      this.prisma.groundObjective.findMany({
+        where: { groundId, ownerParticipantId: null },
+        select: { id: true, name: true, target: true, dueOn: true },
+      }),
+    ]);
+    /*
+     * ONE AIM IS ONE TARGET, WHOEVER RESTATES IT (screens requests 109 b and 111 b). The sales board listed
+     * "Sign 12 shops for kitchen appliances in Nairobi.", "You want us to sign 12 shops by 20 December." and
+     * "You want to get 12 shops onboarded." to its lead: the team's aim, and the lead saying it again twice,
+     * each written as the lead's own target because it was matched on its exact name. A number somebody
+     * says that is the team's aim said again (the same figure, about the same thing) is that aim, and the
+     * same goes for one of their own they already hold. Where the restatement gives the day the team's aim
+     * is due by, and the aim has none, the day is kept on the aim, so the board asks by the lead's own date.
+     */
+    const fresh: typeof rows = [];
+    for (const t of rows) {
+      const theirOwn = owned.filter((o) => o.ownerParticipantId === t.participantId).map((o) => ({ name: o.name, target: o.target }));
+      const aim = { name: t.name, target: t.target };
+      if (!theAimsThatAreNew([aim], theirOwn).length) continue;
+      const theTeams = team.find((a) => !theAimsThatAreNew([aim], [{ name: a.name, target: a.target }]).length);
+      if (theTeams) {
+        const by = /\bby\s+(.+?)[.!]?$/i.exec(t.name)?.[1] ?? null;
+        const day = by && !theTeams.dueOn ? theDayTheyMeant(by, new Date()) : null;
+        if (day) await this.prisma.groundObjective.update({ where: { id: theTeams.id }, data: { dueOn: day } }).catch(() => undefined);
+        continue;
+      }
+      fresh.push(t);
+    }
     if (!fresh.length) return [];
     const wrote = await this.prisma.groundObjective.createMany({
       data: fresh.map((t, i) => ({
@@ -9889,6 +9917,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         ? (d.status as DependencyStatus)
         : DependencyStatus.WAITING;
       const onLabel = onParticipantId ? null : (d.onLabel?.trim() || d.onName?.trim() || null);
+      /* Nobody waits on themselves: what is their own to do is not a wait (request 111 e). */
+      if (aWaitOnOneself({ fromParticipantId: participantId, onParticipantId, onLabel })) continue;
       const key = normalise(d.what);
 
       // Same person waiting on the same party for roughly the same thing.

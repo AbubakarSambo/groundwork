@@ -127,6 +127,8 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     user: model({ findUnique: jest.fn(async () => ({ role, organizationId: 'org-1' })) }),
     checkIn: model({ findMany: jest.fn(async () => clone(checkIns)) }),
     groundObjectiveSnapshot: model({ findMany: jest.fn(async () => clone(setup.snapshots ?? [])) }),
+    /* The targets, read on their own too (what this session holds), as the database would give them. */
+    groundObjective: model({ findMany: jest.fn(async () => clone(setup.objectives ?? [])) }),
     conversationTurn: model({ findMany: jest.fn(async (args: any) => clone((setup.turns ?? []).filter((t) => (args?.where?.checkInId?.in ?? []).includes(t.checkInId)))) }),
     personObjective: model({ findMany: jest.fn(async (args: any) => clone((setup.personObjectives ?? []).filter((o: any) => !args?.where?.awareness || o.awareness === args.where.awareness))) }),
     groundCommitment: model({ findMany: jest.fn(async () => clone(setup.commitments ?? [])) }),

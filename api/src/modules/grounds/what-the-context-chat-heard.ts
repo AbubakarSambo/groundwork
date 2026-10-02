@@ -1,6 +1,7 @@
 import { worthRecording, verbatimQuote, verbatimExpectation, readablePhrase } from './what-setup-agreed';
 import { whoTheyMeant } from './who-they-meant';
 import { saidUntilIEndIt } from './nothing-proposed-that-nobody-said';
+import { theFigureInTheName } from '../conversation/an-aim-said-twice-is-one-aim';
 import { whatTheWordsSuggest, whichWayItIsSaid, THE_FIVE_KINDS_SAID, type TargetDirection } from '../board/an-aim-or-a-limit';
 /**
  * THE HALF THE CONTEXT CHAT WAS MISSING: what it heard, and what may be done with it. Stage 3.
@@ -143,7 +144,10 @@ function theMeasuresTheyNamed(heard: Heard): { name: string; target: number | nu
     if (seen.has(key)) continue;
     seen.add(key);
     const n = r?.target;
-    const target = Number.isFinite(n) && (n as number) >= 0 ? Math.round(n as number) : null;
+    /* The figure in the lead's own name of the measure is its number: "Sign 12 shops for kitchen appliances in
+       Nairobi." was kept with no number, so the board's headline had no answer and no bar (request 111 b). It is
+       said back with the number before anything is saved, so the lead's yes confirms it. */
+    const target = Number.isFinite(n) && (n as number) >= 0 ? Math.round(n as number) : theFigureInTheName(name);
     out.push({ name, target });
   }
   /* Eight is already more than a board reads at a glance, and a longer list is a plan pasted in. */

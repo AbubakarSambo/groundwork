@@ -216,6 +216,8 @@ export interface SessionReportInputs {
   movedOnTargets: number | null;
   /** How many targets exist, so the Movement tile says "none moved" rather than "none set". */
   targetsSet?: number;
+  /** Of those, how many have a number (request 109 c). */
+  targetsWithANumber?: number;
   /** How many went up, so two targets are never added together on the tile. */
   targetsMoved?: number;
   /** How many things are recorded as hard-blocked and waiting on somebody else. */
@@ -518,6 +520,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
   const atAGlance: AGlanceRead[] = atAGlanceTiles({
     agreed, stillOpen, movedOnTargets: input.movedOnTargets, blocked: input.blocked, waiting: input.waiting ?? 0,
     targetsSet: input.targetsSet ?? 0,
+    targetsWithANumber: input.targetsWithANumber ?? input.targetsSet ?? 0,
     targetsMoved: input.targetsMoved,
     backedPct, numberWasSaid: aNumberWasSaid(input),
     /* So the Differences tile stops saying somebody has not answered when everybody has. */

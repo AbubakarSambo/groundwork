@@ -70,7 +70,7 @@ export class BoardListener {
       );
       const kept = onlyRecordsTheLinesSay(kind, answer?.records ?? [], lines, ground?.workStages);
       if (!kept.length) return;
-      const already = await (this.prisma as any).workItem.findMany({ where: { groundId: e.groundId }, select: { id: true, kind: true, name: true, fields: true } });
+      const already = await (this.prisma as any).workItem.findMany({ where: { groundId: e.groundId }, select: { id: true, kind: true, name: true, fields: true, ownerParticipantId: true } });
       for (const r of kept) {
         const same = (already as any[]).find((a) => a.kind === r.kind && a.name.trim().toLowerCase() === r.name.trim().toLowerCase());
         if (same) {
@@ -81,6 +81,9 @@ export class BoardListener {
               ...(r.dueAt ? { dueAt: r.dueAt } : {}),
               fields: { ...((same.fields as any) ?? {}), ...r.fields },
               sourceEntryId: r.sourceEntryId,
+              /* A record added on the board with nobody's name on it is the deal of whoever then says it is
+                 theirs ("I have signed Tuskys Westgate already"); one with a name keeps it (request 111 c). */
+              ...(!same.ownerParticipantId && r.ownerParticipantId ? { ownerParticipantId: r.ownerParticipantId } : {}),
             },
           });
         } else {

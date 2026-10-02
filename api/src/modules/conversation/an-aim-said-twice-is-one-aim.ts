@@ -43,6 +43,16 @@ const WHAT_IS_LEFT = (name: string): string =>
      * programme", identical on both.
      */
     .replace(/\b(get|getting|secure|securing|obtain|obtaining|achieve|achieving|deliver|delivering|reach|reaching|complete|completing|finish|finishing|close|closing|win|winning|sign|signing|land|landing|bring|bringing|drive|driving|generate|generating|build|building|set up|setting up|make|making|move|moving|ensure|ensuring|establish|establishing)\b/g, ' ')
+    /*
+     * AND WHO WANTS IT, AND BY WHEN, ARE NOT WHAT IT IS ABOUT (screens requests 109 b and 111 b). One sales
+     * board listed one aim three times: "Sign 12 shops for kitchen appliances in Nairobi.", "I want us to sign
+     * 12 shops by 20 December." and "They want to get 12 shops onboarded.". Each said 12 shops; what kept
+     * them apart was "want", "December" and "onboarded", none of which says WHICH shops. Taken out, each is
+     * "shops", inside the first one's name, and the figure is the same: one aim.
+     */
+    .replace(/\b(i|we|us|you|they|he|she|it|me|my|our|your|their|his|her|want|wants|wanted|wanting|would|like|aim|aims|aiming|hope|hoping|plan|plans|planning|intend|need|needs|to|by|be|is|are|am|was|were|will|shall|should|must|have|has|had|end|start)\b/g, ' ')
+    .replace(/\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|next)\b/g, ' ')
+    .replace(/\b(onboard|onboarded|onboarding|signed|closed|sold|won|got|done|achieved|reached|delivered|completed)\b/g, ' ')
     .replace(/[^a-z]+/g, ' ')
     .trim();
 

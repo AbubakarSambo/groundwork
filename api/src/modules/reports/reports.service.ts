@@ -3245,6 +3245,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       movedOnTargets: held.movedOnTargets,
       /* And how many exist, so "no target set" is only ever said where none is. */
       targetsSet: held.targetsSet,
+      targetsWithANumber: held.targetsWithANumber,
       targetsMoved: held.targetsMoved,
       blocked: held.blocked,
       waiting: held.waiting,

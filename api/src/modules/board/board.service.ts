@@ -1,5 +1,5 @@
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
-import { aPartyOutside } from './a-thing-is-not-somebody';
+import { aPartyOutside, aWaitOnOneself } from './a-thing-is-not-somebody';
 import { whatEachSessionSays } from './one-count-for-the-sessions';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
@@ -321,6 +321,8 @@ export class BoardService {
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* A wait on oneself is not a wait, even where one is already on record (request 111 e, a-thing-is-not-somebody). */
+    (ground as any).dependencies = ((ground as any).dependencies ?? []).filter((d: any) => !aWaitOnOneself(d));
 
     /**
      * "THERE IS NO BOARD" IS ANSWERED BEFORE "WHO ARE YOU", AND THAT ORDER IS THE FIX.
@@ -1637,6 +1639,7 @@ export class BoardService {
           agreed: agreedCount, stillOpen: divCount, movedOnTargets: held.movedOnTargets, blocked: held.blocked, waiting: held.waiting,
           /* How many exist, so "no target set" is only said where none is - see whatThisSessionHolds. */
           targetsSet: held.targetsSet,
+          targetsWithANumber: held.targetsWithANumber,
           targetsMoved: held.targetsMoved,
           /* How many have still to answer, from the one counter - the tile said "not everybody has
              answered yet" on every board because this was never passed and undefined is not zero. */
@@ -2606,7 +2609,7 @@ export class BoardService {
         verifiability: (e as any).verifiability ?? null,
       })),
       mentions,
-      dependencies,
+      dependencies: dependencies.filter((d: any) => !aWaitOnOneself(d)),
     };
   }
 
@@ -3307,6 +3310,7 @@ export class BoardService {
       /* From the one owner, over the round in play - not a lifetime delta and not every dependency ever raised. */
       movedOnTargets: held.movedOnTargets,
       targetsSet: held.targetsSet,
+      targetsWithANumber: held.targetsWithANumber,
       targetsMoved: held.targetsMoved,
       blocked: held.blocked,
       waiting: held.waiting,

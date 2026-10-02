@@ -105,7 +105,9 @@ describe('a number said about one person is that person\'s', () => {
   });
 
   it('does not duplicate one they restate, and never overwrites a number already on the board', () => {
-    expect(owned).toMatch(/held\.has\(`\$\{t\.participantId\}::\$\{t\.name\.trim\(\)\.toLowerCase\(\)\}`\)/);
+    /* Matched by owner and by what the aim is about, not only its exact name (requests 109 b, 111 b): see
+       one-aim-said-three-times-is-one-target.spec.ts for what a person reads. */
+    expect(owned).toMatch(/theAimsThatAreNew\(\[aim\], theirOwn\)/);
     expect(owned).toMatch(/data: fresh\.map/);
   });
 

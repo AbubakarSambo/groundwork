@@ -30,3 +30,16 @@ export function aPartyOutside(d: { onLabel?: string | null; what?: string | null
   if (/^(?:a|an)\s/i.test(on)) return false;
   return !A_THING.test(head);
 }
+
+/**
+ * A WAIT ON ONESELF IS NOT A WAIT (screens request 111 e). Read by Rukia, who runs the sales board: "You are
+ * waiting on themselves to approve a discount for Baraka Mwangi." The extraction wrote what she still had to
+ * do herself as a wait, with "themselves" where the person waited on goes. Nobody waits on themselves: it
+ * is their own thing to do, and Baraka's wait on her for the discount is already its own wait. So it is
+ * never written, and one already on record is not read as a wait.
+ */
+const ONESELF = /^(?:themselves|themself|himself|herself|myself|yourself|yourselves|ourselves|itself|oneself|self|me|myself alone)$/i;
+export function aWaitOnOneself(d: { fromParticipantId?: string | null; onParticipantId?: string | null; onLabel?: string | null }): boolean {
+  if (d.onParticipantId && d.fromParticipantId && d.onParticipantId === d.fromParticipantId) return true;
+  return ONESELF.test((d.onLabel ?? '').trim().replace(/[.!?]+$/, ''));
+}

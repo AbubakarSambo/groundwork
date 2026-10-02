@@ -1,4 +1,5 @@
 import { targetsFor } from '../board/whose-number-is-whose-business';
+import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { labelsForParties, namesVisibleTo } from './party-labels';
 import { peopleSaidDifferentThingsAbout } from './what-people-said-differently-about';
 import { cleanText } from './what-the-record-actually-holds';
@@ -112,6 +113,8 @@ export interface WhatThisSessionHolds {
    * is null before there are two snapshots to subtract, and null was being read as "none exist".
    */
   targetsSet: number;
+  /** Of those, how many carry a number, which is what movement is measured on (request 109 c). */
+  targetsWithANumber?: number;
   /**
    * HOW MANY TARGETS MOVED, because a sum across them is not a number anybody can read. Run re-d,
    * sales, session 3: 11 approved facilities and 31 million naira moved, and the tile read "+31000000".
@@ -237,7 +240,8 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     .map((w: any) => ({ who: w.participantId as string | null, line: theFirstSentenceThatFits(w?.text ? cleanText(w.text) : null) }))
     .filter((w): w is { who: string | null; line: string } => !!w.line && !/["“”]/.test(w.line) && quotesBuiltAtTheRead(w.line, quotable) === w.line)
     .map((w) => `${whoSaid(w.who)} said, "${/[.!?]$/.test(w.line) ? w.line : `${w.line}.`}"`)[0] ?? null;
-  const real = deps.filter((d) => !(d.onParticipantId && d.onParticipantId === d.fromParticipantId));
+  /* A wait on oneself, by id or as "themselves", is not a wait (request 111 e). */
+  const real = deps.filter((d) => !aWaitOnOneself(d));
   const blocked = real.filter((d) => d.status === 'BLOCKING').length;
   const waiting = real.filter((d) => d.status === 'WAITING').length;
   /* The hard one first, because that is the one a lead acts on. */
@@ -263,7 +267,11 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
       if (to !== from) targetsMoved += 1;
     }
   }
-  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, targetsSet: objectives.filter((o) => o.target != null).length, targetsMoved };
+  /*
+   * EVERY TARGET THIS READER IS LISTED, and how many of them have a number (request 109 c). The tile read "1
+   * target is set" above a list of three, because it counted only the ones with a number. Both are said.
+   */
+  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, targetsSet: objectives.length, targetsWithANumber: objectives.filter((o) => o.target != null).length, targetsMoved };
 }
 
 /** The four tiles, from the counts. The one builder both the report and the board call. */
@@ -271,6 +279,8 @@ export function atAGlanceTiles(a: {
   agreed: number; stillOpen: number; movedOnTargets: number | null; blocked: number; waiting: number;
   /** How many targets this check-in holds. Nought is "none set"; anything else is "none moved yet". */
   targetsSet?: number;
+  /** Of those, how many have a number. Where a caller does not pass it, every target is taken to have one. */
+  targetsWithANumber?: number;
   /**
    * How many targets moved this session, up or down. The tile says how many, never a sum and never one
    * target's own change: "+96" from one target was a number with nothing to say what it counted
@@ -372,7 +382,7 @@ export function atAGlanceTiles(a: {
       sub: a.movedOnTargets == null
         ? (a.targetsSet ?? 0) > 0
           /* Set, and nothing to subtract from yet: a round has to close before movement exists. */
-          ? `${a.targetsSet} ${a.targetsSet === 1 ? 'target is' : 'targets are'} set, and no round has closed to measure from.`
+          ? theTargetsThatAreSet(a.targetsSet ?? 0, a.targetsWithANumber ?? a.targetsSet ?? 0)
           : a.numberWasSaid
             ? 'Somebody named a number, and nothing is tracking it.'
             : 'Nobody has set anything to measure this against.'
@@ -443,4 +453,16 @@ export function theBlockersTileNamesThis(tiles: AGlanceRead[], blocker: string |
     if (/^\d+ waiting$/.test(String(t.value))) return { ...t, sub: `${blockerAsASentence(name)} Nothing is hard-blocked.` };
     return t;
   });
+}
+
+/**
+ * HOW MANY TARGETS ARE SET, AND HOW MANY CAN BE MEASURED (request 109 c). Every target the reader is listed
+ * is counted, so the tile never says one where the list shows three; and where some have no number, it says
+ * so, because movement is measured on the number.
+ */
+export function theTargetsThatAreSet(set: number, withANumber: number): string {
+  const are = set === 1 ? '1 target is set' : `${set} targets are set`;
+  if (withANumber >= set) return `${are}, and no round has closed to measure from.`;
+  if (withANumber === 0) return set === 1 ? `${are}, and it has no number to measure from.` : `${are}, and none of them has a number to measure from.`;
+  return `${are}, and ${withANumber} of them ${withANumber === 1 ? 'has' : 'have'} a number. No round has closed to measure from.`;
 }
