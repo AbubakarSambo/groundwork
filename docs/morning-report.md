@@ -6,6 +6,11 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
+
+- **Decision 75 recorded** (`9922dd9d`): yes to all 49, except items 2, 5, 13, 14, 17, 24, 25, 29, 33, 35/36/45, 37, 42, 46, 48 and 49, each written in `docs/decisions-merged.md`. Being built now, two helpers at a time.
+- **Needs Hafsah: the guard proposal is written but not committed.** `docs/guard-change-proposal.md` says exactly what change to `.claude/hooks/guard.py` would let commands that only mention a person's name, the pre-release environment or the words for a code review request through, while every real push, merge, remote change and deploy stays refused, with commands to check it after applying. Its commit was refused because the commit message itself contained those words; under the rule I did not retry or reword it, so the file is on this computer, uncommitted. Hafsah can commit it with the guard change, or read it there.
+
 ## SUMMARY OF THE NIGHT, 1 TO 2 OCTOBER (read this first)
 
 **What I finished.**
