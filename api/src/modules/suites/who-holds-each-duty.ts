@@ -17,9 +17,10 @@ import type { PrismaService } from '../prisma/prisma.service';
  * suite's own read never see it. `answers` holds the duties, and `changedById` and `changedAt` say who
  * last changed them and when. No migration was needed. Only an admin sets them (`SuitesService`).
  *
- * WHERE IT IS USED. Only one place so far: spending over the limit goes to the budget owner of the
- * requester's team, or else to finance, and falls back to the person the admin named
- * (`SpendingService.approverOf`). The three approval rules are not replaced yet (step 3).
+ * WHERE IT IS USED. The one approval resolver (who-may-decide.ts) reads it for the rules "the budget
+ * owner", "the department head", "finance", "HR" and "the chief executive". Today only spending over
+ * the limit uses any of them: the budget owner of the requester's team, then finance, then the person
+ * the admin named.
  */
 export const DUTIES_ROW = 'duties';
 

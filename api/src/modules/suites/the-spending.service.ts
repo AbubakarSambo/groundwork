@@ -2,10 +2,9 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException,
 import { PrismaService } from '../prisma/prisma.service';
 import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
-import { whoApprovesFor } from './who-approves';
+import { couldBeNamed, everyStepFor, theOneWhoDecides, theStepsFor } from './who-may-decide';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { aSpendRequest } from './a-request-in-words';
-import { readDuties, whoHolds } from './who-holds-each-duty';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const SPEND_REFUSED = {
@@ -279,38 +278,29 @@ export class SpendingService {
   // ---------------------------------------------------------------------------------------------
 
   /**
-   * Who approves one request. Over the limit: whoever holds the budget of the requester's team, then
-   * whoever looks after finance (who-holds-each-duty.ts), then the person the admin named, then an
-   * admin; never the requester, and never somebody who is no longer in the organisation or is a guest.
-   * Up to the limit: the requester's line manager, or an admin (who-approves.ts).
+   * Who approves one request, by the one approval resolver (who-may-decide.ts). Over the limit:
+   * whoever holds the budget of the requester's team, then whoever looks after finance, then the
+   * person the admin named, then an admin. Up to the limit: the requester's line manager, or an admin.
+   * Never the requester, and never a guest or somebody no longer in the organisation.
    */
   private async approverOf(
     organizationId: string, r: { userId: string; amount: unknown; team?: string | null },
     answers: { limit: number | null; above: string | null },
-    byUser: Map<string, Dir>, dir: Map<string, Dir>,
+    byUser: Map<string, Dir>, _dir: Map<string, Dir>,
   ): Promise<{ kind: 'manager' | 'person'; userId: string } | { kind: 'admin' }> {
-    if (answers.limit != null && n(r.amount) > answers.limit) {
-      const duties = await readDuties(this.prisma, organizationId);
-      const team = r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null;
-      for (const holder of [whoHolds(duties, 'budgetOwners', team), whoHolds(duties, 'finance')]) {
-        if (!holder || holder === r.userId) continue;
-        const role = await this.roleOf({ userId: holder, organizationId });
-        if (role && role !== 'GUEST') return { kind: 'person', userId: holder };
-      }
-      if (answers.above && answers.above !== r.userId) return { kind: 'person', userId: answers.above };
-      return { kind: 'admin' };
-    }
-    const lead = await whoApprovesFor(this.prisma, { organizationId, personUserId: r.userId, managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null });
-    if (lead.kind === 'manager') return { kind: 'manager', userId: lead.userId };
-    return { kind: 'admin' };
+    const who = await theOneWhoDecides(this.prisma, theStepsFor('spend', answers, n(r.amount)), {
+      organizationId, requesterUserId: r.userId,
+      managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null,
+      team: r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null,
+    });
+    return who.kind === 'admin' ? { kind: 'admin' } : { kind: who.kind, userId: who.userId };
   }
 
   /** Whether this person is named for requests over the limit: by the admin, or by holding a team's budget or finance. */
   private async approvesOverTheLimit(organizationId: string, userId: string, answers: { limit: number | null; above: string | null }): Promise<boolean> {
     if (answers.limit == null) return false;
-    if (answers.above === userId) return true;
-    const duties = await readDuties(this.prisma, organizationId);
-    return duties.finance === userId || Object.values(duties.budgetOwners ?? {}).includes(userId);
+    const role = await this.roleOf({ userId, organizationId });
+    return couldBeNamed(this.prisma, everyStepFor('spend', answers).filter((s) => s !== 'admin' && s !== 'manager'), organizationId, { userId, role });
   }
 
   private mayDecide(reader: Reader, role: string | null, r: { userId: string }, who: { kind: string; userId?: string }): boolean {

@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
-import { mayApprove, whoApprovesFor } from './who-approves';
+import { decidesIt, theOneWhoDecides, theStepsFor, type WhoDecides } from './who-may-decide';
 import { withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { isProposedByGroundwork, theProposalSentence } from './a-review-falls-due';
 import { whatGroundworkNoticed } from './the-review-noticed-from-the-record';
@@ -352,22 +352,25 @@ export class ReviewsService {
     return { row: { ...row, due }, person, directory };
   }
 
-  /** Whether this reader writes the review with this person, by the organisation's answer. */
-  private writes(reader: Reader, role: string | null, p: Person, writer: string | null): Promise<boolean> {
-    return mayApprove(this.prisma, {
-      organizationId: reader.organizationId, readerId: reader.userId, readerRole: role,
-      personUserId: p.userId ?? `person:${p.externalId}`, approver: writer, managerExternalId: p.managerExternalId,
+  /** Whether this reader writes the review with this person, by the organisation's answer (who-may-decide.ts). */
+  private async writes(reader: Reader, role: string | null, p: Person, writer: string | null): Promise<boolean> {
+    return decidesIt(await this.theWriter(reader.organizationId, p, writer), { userId: reader.userId, role }, p.userId ?? `person:${p.externalId}`);
+  }
+
+  /** Who writes this person's review, by rule: "Their manager" is their manager, else an admin; "An admin" is an admin. */
+  private theWriter(organizationId: string, p: Person, writer: string | null): Promise<WhoDecides> {
+    return theOneWhoDecides(this.prisma, theStepsFor('reviews', { writer }), {
+      organizationId, requesterUserId: p.userId ?? `person:${p.externalId}`, managerExternalId: p.managerExternalId, team: p.department,
     });
   }
 
   /**
-   * Who would write a review not started yet, by the organisation's answer: for "Their manager", the
-   * person's manager when they can write it (who-approves.ts); otherwise any admin, so nobody is named.
+   * Who would write a review not started yet: the one person the rule names, or nobody when any admin
+   * may write it.
    */
   private async whoWouldWrite(organizationId: string, p: Person, writer: string | null, directory: Map<string, Person>): Promise<string | null> {
-    if (writer !== 'Their manager') return null;
-    const who = await whoApprovesFor(this.prisma, { organizationId, personUserId: p.userId ?? `person:${p.externalId}`, managerExternalId: p.managerExternalId }).catch(() => null);
-    return who?.kind === 'manager' ? this.fullNameOf(who.userId, directory) : null;
+    const who = await this.theWriter(organizationId, p, writer).catch(() => null);
+    return who && who.kind !== 'admin' ? this.fullNameOf(who.userId, directory) : null;
   }
 
   /** A sign-in's first name, from the staff directory, or else from the sign-in itself. Never an address. */

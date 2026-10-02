@@ -2765,3 +2765,19 @@ Tests: `api/src/modules/suites/who-holds-each-duty-as-each-reader-reads-it.spec.
 - **Unchanged:** where the answer is "Their manager" and Wairimu starts it, everybody reads "Wairimu" as before. Who may read and write a review is unchanged.
 
 Tests: `api/src/modules/suites/a-review-names-who-wrote-it-as-each-reader-reads-it.spec.ts` (Aisha the person in the app, on Today and on WhatsApp; Grace and Omar the admins who start and decide; Wairimu her lead who does not write it; Kamau a lead of another team and Miriam a colleague, still refused). Four fail on the old code. No existing test changed.
+
+## One rule for who may decide a request (3 October, decision 85, build step 3)
+
+**Nothing you read changes, except in two cases where nobody could decide before** (this commit). Who may decide leave, time sheets, reviews and spending is now worked out in one place, `api/src/modules/suites/who-may-decide.ts` (`whoMayDecide`, `theOneWhoDecides`, `theStepsFor`). It names approvers by rule: the requester's manager, the budget owner, the department head, finance, HR, the chief executive, or an admin. Each suite's answers are read as a list of these rules, tried in order:
+
+- leave and time sheets: the manager, else an admin (as decided on 1 October; the admin's "Who approves?" answer is still not read);
+- reviews: "Their manager" is the manager, else an admin; "An admin" is any admin;
+- spending up to the limit: the manager, else an admin;
+- spending over the limit: the team's budget owner, then finance, then the person named on the suite, then an admin.
+
+A table test (`one-approval-resolver-changes-no-answer.spec.ts`) checks every answer, every kind of requester and every reader against the three old rules, and the same people may decide. The two changes, both to `mayDecide` / `mayStart` / `mayWrite` and to who is told on WhatsApp:
+
+- **A review of a lead whom the staff directory names as their own manager**, with the answer "Their manager": before, nobody could start it (not even an admin). Now any admin can, and `mayStart` is true for an admin on the board.
+- **Spending over the limit, where the person named on the suite is now a guest or has left the organisation:** before, the request waited on that person, who could not open the board. Now it goes to an admin: the board's `approver` is `{ kind: 'admin' }`, `mayDecide` is true for an admin, and the say-back no longer names that person.
+
+No field is added or removed.
