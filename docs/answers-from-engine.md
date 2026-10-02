@@ -1591,3 +1591,14 @@ Tests: `board/request-108-d-where-this-is-heading.spec.ts` (9 cases, as every re
 ## Request 108: the year in the board's dates follows the board's own clock (2 October)
 
 The headline's deadline and "Where this is heading"'s recorded date leave out the year only where it is the year of the clock the board is read at, never the machine's own clock. In the product that is the moment the board is served; in tests it is the clock the test gives (`THE_BOARDS_CLOCK` in the board harness, 2 October 2026, unless a spec sets its own), so a test reads the same every year. Read in January 2027, the same board says "Will we reach 40 approved facilities by 30 November 2026?" and "You recorded the decision on 30 September 2026."
+
+## Decision 75, items 2 and 25: who reads an evaluation check-in, and a probation is one (2 October)
+
+**A probation or a first 90 days is now an evaluation check-in (item 25).** The list in request 78's answer above grows from three to four: `PIP`, `RECOGNITION`, `CONTRACT_RENEWAL` and now `NEW_HIRE`. `EVALUATION_SCENARIOS` in `api/src/modules/reports/is-this-an-evaluation-check-in.ts` already carries it. If the screens keep their own copy of the three (for example to leave the admins line out of an invitation), please read `NEW_HIRE` as one of them. What changes on a `NEW_HIRE` check-in, served by the engine:
+- An admin who was not given access (does not run it, did not set it up, does not take part, and was not asked to approve it) cannot open it or see it listed, and is refused its board, reports, outcome and weekly report, as on a performance plan.
+- A suggestion can be reached there (the ending page, the review, the You board, as for Kwame in the prototype).
+- The person reviewed is never named a colleague who gave a view, whatever the lead switched, and `whyThePersonReviewedIsNotTold` now carries "On a check-in about one person, that person is never told who else gave a view." for these check-ins. By default nobody on it is named to each other (`peersDefaultVisible` is false).
+- The person reviewed reads no one else's exact words on the board and in reports, as on a performance plan.
+- The board keeps the shape it had for a new person starting. Nothing on the screens needs to change for that.
+
+**The admin asked to approve an evaluation check-in reads it (item 2).** While a performance plan, promotion, renewal or probation waits for an admin to accept it (`status: AWAITING_APPROVAL`), every admin of the organisation now sees it in `GET /grounds/awaiting-approval`, can open it, its board and its outcome, and can approve or decline it. Once it is decided, only the admin who decided keeps reading it. They read it as an admin with access does, but cannot change its setup. Nothing new to send.

@@ -32,7 +32,9 @@ function build(ground: Record<string, any>, viewer: Record<string, any> = { role
 const aTeamCheckIn = () => ({
   initiatorId: 'lead',
   organizationId: 'org1',
-  scenario: 'NEW_HIRE',
+  /* A team check-in. It was NEW_HIRE until decision 75, item 25 made a new hire's first 90 days an evaluation
+     check-in, where an admin without access is refused (proved in the last test here). */
+  scenario: 'NEW_PROJECT',
   createdByUserId: 'lead',
   participants: [{ userId: 'rukia' }],
   label: 'Help a new hire get started, from 27 September',

@@ -252,31 +252,49 @@ describe('Grace, an admin who is not in the check-in', () => {
 });
 
 /**
- * ON AN ORDINARY CHECK-IN, NOTHING (decision 6, clarified 29 September). "Kwame, first 90 days" is a
- * new hire's check-in, not an evaluation one. Nothing can be reached on it, and a row that exists on
- * it anyway (written before this rule, or by hand) is served to nobody, decided and appealed with it.
+ * KWAME'S FIRST 90 DAYS IS AN EVALUATION CHECK-IN (decision 75, item 25). This block used to prove that nothing
+ * was reached on a new hire's first 90 days. Hafsah decided on 2 October that a probation or a first 90 days is
+ * an evaluation check-in, as the prototype shows ("Groundwork suggests keeping Kwame on"), so it now proves the
+ * opposite, for every reader: the engine reaches a suggestion there, Wairimu reads it with no count, Kwame reads
+ * his own facts, Aisha reads nothing about Kwame, and Grace, an admin who was not given access, reads nothing.
  */
-describe('on a first-90-days check-in, which is not an evaluation check-in', () => {
-  async function aRowThatShouldNotBeThere() {
-    const w = world({ scenario: GroundScenario.NEW_HIRE });
-    await expect(withASuggestion(w)).rejects.toThrow('A suggestion is only reached on a performance plan, a recognition or a contract renewal.');
-    const made = aSuggestionFromTheRecord('g1', {
-      aboutParticipantId: 'p-kwame', aboutLabel: labelsForParties(participants as any).get('p-kwame')!,
-      commitmentsSettledRecently: { kept: 2, of: 8 }, ownWords: null,
-    }, DEFAULT_SUGGESTION_THRESHOLDS)!;
-    w.suggestions.push({
-      ...made, id: 's-old', organizationId: ORG, decision: 'Extra support', decisionReason: 'Stock was late.', decidedById: WAIRIMU, decidedAt: new Date('2026-08-05'),
-      theirSide: 'Stock took three weeks.', theirSideAt: new Date('2026-08-02'), appeal: 'I did not get the stock.', appealedAt: new Date('2026-08-06'),
-      appealOutcome: null, appealReason: null, appealDecidedById: null, appealDecidedAt: null, createdAt: new Date('2026-08-01T00:00:00Z'),
-    });
-    return w;
-  }
+describe("on Kwame's first 90 days, which is an evaluation check-in", () => {
+  const probation = () => world({ scenario: GroundScenario.NEW_HIRE });
 
-  it.each([['Wairimu', WAIRIMU], ['Kwame', KWAME], ['Aisha', AISHA], ['Grace', GRACE]])('%s reads no suggestion, count or what would change it', async (_who, userId) => {
-    const w = await aRowThatShouldNotBeThere();
-    const page = (await w.resolution.get('g1', userId) as any).theEndingPage;
+  it('Wairimu reads the suggestion for Kwame, with no count in anything she reads', async () => {
+    const w = probation();
+    await withASuggestion(w);
+    const page = (await w.resolution.get('g1', WAIRIMU) as any).theEndingPage;
+    expect(page.suggestions).toHaveLength(1);
+    expect(page.suggestions[0].headline).toBe('Groundwork suggests extra support for Kwame');
+    expect(page.suggestions[0].why).toBe('In the last four weeks, Kwame has kept fewer of the commitments made in this check-in than Groundwork looks for.');
+    expect(served(page)).not.toMatch(/\d+ of \d+|\d+ in 100|\d+%/);
+    expect(served(page)).not.toMatch(LABELS);
+  });
+
+  it('Kwame reads his own facts and what would change them, never the suggestion', async () => {
+    const w = probation();
+    await withASuggestion(w);
+    const page = (await w.resolution.get('g1', KWAME) as any).theEndingPage;
+    expect(page.suggestions).toEqual([]);
+    expect(page.aboutYou[0].facts).toBe(
+      'In the last four weeks, you kept two of your eight commitments in this check-in. When fewer than half are kept, Groundwork suggests extra help to Wairimu.',
+    );
+    expect(served(page)).not.toMatch(/Groundwork suggests extra support for/);
+  });
+
+  it('Aisha, a colleague, reads nothing about Kwame', async () => {
+    const w = probation();
+    await withASuggestion(w, true);
+    const page = (await w.resolution.get('g1', AISHA) as any).theEndingPage;
     expect(page).toMatchObject({ suggestions: [], aboutYou: [], appealed: [] });
-    expect(served(page)).not.toMatch(/Groundwork suggests|commitments|What would change|kept/i);
+    expect(served(page)).not.toMatch(/Kwame/);
+  });
+
+  it('Grace, an admin who was not given access, reads nothing at all', async () => {
+    const w = probation();
+    await withASuggestion(w, true);
+    await expect(w.resolution.get('g1', GRACE)).rejects.toThrow('You are not part of this check-in.');
   });
 });
 

@@ -106,7 +106,7 @@ function resolutionService(scenario: string, st: State) {
   return svc as ResolutionService;
 }
 
-const SCENARIOS = [['a performance plan', 'PIP'], ['a promotion', 'RECOGNITION'], ['a renewal', 'CONTRACT_RENEWAL']];
+const SCENARIOS = [['a performance plan', 'PIP'], ['a promotion', 'RECOGNITION'], ['a renewal', 'CONTRACT_RENEWAL'], ['a probation', 'NEW_HIRE']];
 
 describe.each(SCENARIOS)('%s waiting for an admin to accept it', (_l, scenario) => {
   const st = WAITING;

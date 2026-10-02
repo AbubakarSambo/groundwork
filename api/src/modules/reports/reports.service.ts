@@ -2328,8 +2328,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
       peopleAnswered: answered,
       peopleExpected: expected,
       differenceTopics,
-      /* PIP, RECOGNITION and CONTRACT_RENEWAL are about one person, who reads this. */
-      aboutOnePerson: familyFor((ground as any).scenario) === BoardFamily.EVALUATION,
+      /* An evaluation check-in is about one person, who reads this: a performance plan, a promotion, a renewal
+         and a probation (decision 75, item 25). */
+      aboutOnePerson: isEvaluationCheckIn((ground as any).scenario),
     });
 
     /*

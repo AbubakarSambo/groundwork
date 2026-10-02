@@ -142,8 +142,12 @@ function boardFor(requestingUserId: string) {
 describe('seniorhire: the Blockers tile, as Amina and as Tobi read it', () => {
   const quotable = RECORD.filter((r) => r.saidWordForWord).map((r) => r.text).concat([GROUND.brief, TOBI.roleAsDescribed]);
 
-  /* The worry is Amina's, said as hers: "You said, ..." to her, her name to Tobi (review of 1 October 2026). */
-  for (const [who, userId, saidBy] of [['Amina, who runs it', 'u-amina', 'You'], ['Tobi', 'u-tobi', 'Amina Bello']] as const) {
+  /* The worry is Amina's, said as hers: "You said, ..." to her (review of 1 October 2026). Changed with decision
+     75, item 25: seniorhire is a new hire's first 90 days, an evaluation check-in now, so Tobi, the person it is
+     about, reads no one else's exact words, and his tile quotes his own worry instead of Amina's. */
+  const AMINAS = `You said, "I'm just not sure the brief was clear enough on that one point." There are 3 more worries on record, and nobody is waiting on anybody.`;
+  const TOBIS = `You said, "If client satisfaction declines, or if issues arise that I cannot resolve, that would indicate things are off track." There are 3 more worries on record, and nobody is waiting on anybody.`;
+  for (const [who, userId, expected] of [['Amina, who runs it', 'u-amina', AMINAS], ['Tobi', 'u-tobi', TOBIS]] as const) {
     it(`${who} reads no quote that is not the record's words, and the tile is still there`, async () => {
       const b = await boardFor(userId).board;
       const tile = (b.quickRead ?? []).find((t: any) => t.label === 'Blockers');
@@ -152,7 +156,7 @@ describe('seniorhire: the Blockers tile, as Amina and as Tobi read it', () => {
       /* Amina's first worry quotes words she typed in other marks, so the tile passes over it for the
          next one, which stands whole, and says the count as a sentence of its own. See
          what-this-session-holds (a tile shows a whole sentence, or none). */
-      expect(tile.sub).toBe(`${saidBy} said, "I'm just not sure the brief was clear enough on that one point." There are 3 more worries on record, and nobody is waiting on anybody.`);
+      expect(tile.sub).toBe(expected);
       expect(tile.sub).not.toContain('get me out of these meetings');
       expect(notInTheRecord(b.quickRead, quotable)).toEqual([]);
     });

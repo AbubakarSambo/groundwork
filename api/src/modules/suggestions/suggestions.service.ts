@@ -47,7 +47,7 @@ export interface Reader { userId: string; organizationId: string }
 /**
  * ONLY ON AN EVALUATION CHECK-IN (decision 6, clarified 29 September: "the check-ins where a verdict
  * is reached are the evaluation check-ins of decision 17" - a performance plan, a recognition or
- * promotion, a contract renewal). The list is the reading rule's own (`isEvaluationCheckIn`, which
+ * promotion, a contract renewal, and since decision 75 item 25 a probation or first 90 days). The list is the reading rule's own (`isEvaluationCheckIn`, which
  * who-may-read-this-check-in.ts uses too), never a second one. Nothing is reached anywhere else, and
  * a row that somehow exists on any other check-in is never served, decided, answered or appealed.
  */
@@ -120,7 +120,7 @@ export class SuggestionsService {
     const ground = await this.prisma.ground.findUnique({ where: { id: input.groundId }, select: { id: true, organizationId: true, scenario: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
     if (!aVerdictIsReachedOn(ground)) {
-      throw new BadRequestException('A suggestion is only reached on a performance plan, a recognition or a contract renewal.');
+      throw new BadRequestException('A suggestion is only reached on a performance plan, a recognition, a contract renewal or a probation.');
     }
     const about = await this.prisma.groundParticipant.findFirst({
       where: { id: input.aboutParticipantId, groundId: input.groundId },

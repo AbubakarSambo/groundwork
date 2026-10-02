@@ -79,7 +79,8 @@ describe('an admin and the three evaluation check-ins', () => {
   }
 
   it('on every other check-in an admin of the organisation still reads everything', () => {
-    for (const scenario of ['NEW_HIRE', 'NEW_PROJECT', 'NEW_MANAGER', 'PULSE_CHECK', 'COHORT_CHECK', 'DRIFT'] as const) {
+    /* NEW_HIRE left this list with decision 75, item 25: a probation is an evaluation check-in now. */
+    for (const scenario of ['NEW_PROJECT', 'NEW_MANAGER', 'PULSE_CHECK', 'COHORT_CHECK', 'DRIFT'] as const) {
       const ci = { organizationId: 'org', scenario, initiatorId: 'lead', participants: [] };
       expect(whatTheyMayRead('any-admin', admin('any-admin'), ci)).toBe('lead');
     }
@@ -96,12 +97,13 @@ describe('an admin and the three evaluation check-ins', () => {
       { status: 'AWAITING_APPROVAL' },
       { approvedById: 'a1' },
     ]);
-    expect(list.OR[0].scenario.notIn).toHaveLength(3);
+    /* Four since decision 75, item 25 added a probation (NEW_HIRE). */
+    expect(list.OR[0].scenario.notIn).toHaveLength(4);
   });
 
   it('the list of three is the one isEvaluationCheckIn uses', () => {
     const { EVALUATION_SCENARIOS, isEvaluationCheckIn } = require('../reports/is-this-an-evaluation-check-in');
     for (const s of EVALUATION_SCENARIOS) expect(isEvaluationCheckIn(s)).toBe(true);
-    expect([...EVALUATION_SCENARIOS].sort()).toEqual(['CONTRACT_RENEWAL', 'PIP', 'RECOGNITION']);
+    expect([...EVALUATION_SCENARIOS].sort()).toEqual(['CONTRACT_RENEWAL', 'NEW_HIRE', 'PIP', 'RECOGNITION']);
   });
 });

@@ -17,6 +17,7 @@ const WAIRIMU = 'u-wairimu';
 const KWAME = 'u-kwame';
 const GRACE = 'u-grace';
 const OMAR = 'u-omar';
+const HANA = 'u-hana';
 
 const REASON =
   'He brought in 5 new accounts against a goal of 4, and he has raised problems the same day since week 8.';
@@ -44,6 +45,9 @@ function world(opts: { closed: boolean; storedReason?: string | null }) {
     ground: {
       findUnique: jest.fn(async () => ({
         id: 'g1', organizationId: 'org1', initiatorId: WAIRIMU, scenario: GroundScenario.NEW_HIRE,
+        /* Changed with decision 75, item 25: a first 90 days is an evaluation check-in now, so Grace reads it
+           because she set it up (given access, decision 5). Hana, an admin who was not, reads nothing. */
+        createdByUserId: GRACE,
         label: 'Kwame, first 90 days', participants,
         status: opts.closed ? GroundStatus.CLOSED : GroundStatus.ACTIVE,
       })),
@@ -57,7 +61,7 @@ function world(opts: { closed: boolean; storedReason?: string | null }) {
       findMany: jest.fn(async () => participants),
     },
     user: {
-      findFirst: jest.fn(async ({ where }: any) => (where.id === GRACE ? { id: GRACE, role: 'ADMIN', organizationId: 'org1' } : null)),
+      findFirst: jest.fn(async ({ where }: any) => ([GRACE, HANA].includes(where.id) ? { id: where.id, role: 'ADMIN', organizationId: 'org1' } : null)),
     },
     resolution: {
       findUnique: jest.fn(async () => resolution),
@@ -134,7 +138,12 @@ describe('Kwame, the person it is about, reads the decision with its reason', ()
   });
 });
 
-describe('Grace, an admin who is not in the check-in, reads it; nobody else does', () => {
+describe('Grace, the admin who set it up and is not in it, reads it; nobody else does', () => {
+  it('Hana, an admin who was not given access to this first 90 days, is refused', async () => {
+    const { svc } = world({ closed: true });
+    await expect(svc.get('g1', HANA)).rejects.toThrow('You are not part of this check-in.');
+  });
+
   it('Grace reads the outcome and the reason, and is told she is not in it', async () => {
     const { svc } = world({ closed: true });
     const state: any = await svc.get('g1', GRACE);

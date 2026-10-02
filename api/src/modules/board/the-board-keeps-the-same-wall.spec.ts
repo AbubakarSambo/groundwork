@@ -75,7 +75,10 @@ describe('the board applies it, and says so', () => {
     /* A PIP hides peers from each other; an ordinary check-in does not; the lead's answer wins either way. */
     expect(peersAreNamedOn({ scenario: GroundScenario.PIP, peersVisibleToEachOther: null })).toBe(false);
     expect(peersAreNamedOn({ scenario: GroundScenario.COHORT_CHECK, peersVisibleToEachOther: null })).toBe(false);
-    expect(peersAreNamedOn({ scenario: GroundScenario.NEW_HIRE, peersVisibleToEachOther: null })).toBe(true);
+    /* Changed with decision 75, item 25: a probation (NEW_HIRE) is an evaluation check-in, so nobody is named
+       to each other there by default. An ordinary delivery check-in still names everybody. */
+    expect(peersAreNamedOn({ scenario: GroundScenario.NEW_HIRE, peersVisibleToEachOther: null })).toBe(false);
+    expect(peersAreNamedOn({ scenario: GroundScenario.NEW_PROJECT, peersVisibleToEachOther: null })).toBe(true);
     /*
      * DECISION 17 WINS OVER THE SWITCH (1 October 2026). This line used to expect a PIP with the switch
      * on to name everybody to everybody, the person on the plan included; that is the defect decision 17

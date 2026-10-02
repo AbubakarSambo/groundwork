@@ -164,7 +164,9 @@ describe('Tobi, the participant, reads the same check-in about Amina by name', (
 
 describe('an admin reads the judgement with every name, and nobody is "you"', () => {
   it('Amina is named, and the step about her is kept', async () => {
-    const r: any = await makeService(makeGround(), 'ADMIN').get('g1', 'user-admin', 'org-1');
+    /* Changed with decision 75, item 25: this is a new hire's first 90 days, an evaluation check-in now, so the
+       admin reading it is the one who set it up (given access, decision 5). An admin without access reads nothing. */
+    const r: any = await makeService({ ...makeGround(), createdByUserId: 'user-admin' }, 'ADMIN').get('g1', 'user-admin', 'org-1');
     expect(served(r.theJudgement)).toContain('Ask Amina for her account of her role in the meetings.');
     expect(served(r.theJudgement)).not.toMatch(/\bAsk you\b/i);
   });
