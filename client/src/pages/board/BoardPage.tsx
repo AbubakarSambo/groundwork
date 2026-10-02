@@ -1249,6 +1249,29 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
 
         {/*
+          REQUEST 115 (c): "TO CLOSE THE GAP, TWO OF THESE THREE" (board-as-lead.txt), beside the
+          headline. Sent only to whoever is served the headline (the lead, the admin who set it
+          up) - never a participant, never on a performance plan - and built only from the open
+          deals this reader is already served and the team's own aim, so it tells nobody anything
+          they could not already read row by row on the deal grid below.
+        */}
+        {(b as any).toCloseTheGap && (
+          <Panel>
+            <Stack gap={8}>
+              <SubHeading>To close the gap</SubHeading>
+              <p className="gwui-panel-text">{(b as any).toCloseTheGap.says}</p>
+              {!!(b as any).toCloseTheGap.deals.length && (
+                <Stack gap={6}>
+                  {(b as any).toCloseTheGap.deals.map((d: { id: string; says: string }) => (
+                    <Note key={d.id} tone="muted">{d.says}</Note>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          </Panel>
+        )}
+
+        {/*
           WHAT THE TARGET ASSUMES (board-as-lead.txt), right after the headline - the lead's own
           lines from Context (U.7), gathered across every target that has any, under one heading.
           This used to render once per target, nested inside "What we are aiming for" (now folded
@@ -1256,18 +1279,32 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           under the headline, so it is pulled out here rather than left where a reader folding away
           "What we are aiming for" would never see it.
         */}
-        {shown.objectives && (b.objectives ?? []).some((o) => (o.assumes ?? []).length > 0) && (
-          <Stack gap={12}>
-            {(b.objectives ?? []).filter((o) => (o.assumes ?? []).length > 0).map((o) => (
-              <WhatTheTargetAssumes
-                key={o.id}
-                figure={o.target != null ? o.target.toLocaleString('en-GB') : null}
-                name={o.name}
-                assumes={o.assumes ?? []}
-              />
-            ))}
-          </Stack>
-        )}
+        {/*
+          REQUEST 115 (c): "WHAT THE TARGET OF 25 ASSUMES" ALSO WHEN NOTHING IS WRITTEN DOWN YET.
+          The engine's own `assumesSays` says so plainly rather than the section just vanishing -
+          only for the headline's own target(s), so a target with no bearing on the headline
+          question does not gain a new empty-looking card nobody asked to see here.
+        */}
+        {(() => {
+          const headlineObjectiveIds = new Set(((b as any).headline?.bars ?? []).map((x: any) => x.objectiveId))
+          const worthShowing = (o: BoardPresent['objectives'] extends (infer T)[] | undefined ? T : never) =>
+            (o.assumes ?? []).length > 0 || (headlineObjectiveIds.has(o.id) && (o as any).assumesSays)
+          const toShow = (b.objectives ?? []).filter(worthShowing)
+          if (!shown.objectives || !toShow.length) return null
+          return (
+            <Stack gap={12}>
+              {toShow.map((o) => (
+                <WhatTheTargetAssumes
+                  key={o.id}
+                  figure={o.target != null ? o.target.toLocaleString('en-GB') : null}
+                  name={o.name}
+                  assumes={o.assumes ?? []}
+                  assumesSays={(o as any).assumesSays ?? null}
+                />
+              ))}
+            </Stack>
+          )
+        })()}
 
         {/*
           WHAT NEEDS YOU IN THIS CHECK-IN (board-as-lead.txt), for whoever runs it - ONE section,

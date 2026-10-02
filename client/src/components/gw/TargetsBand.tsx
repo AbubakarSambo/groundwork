@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { boardApi } from '@/api/board'
 import { firstNameOrLabel, atTheStart } from '@/lib/utils'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
-import { Panel, RowList, Row, Tag, FieldLabel, TextArea } from '@/components/gw/ui'
+import { Panel, RowList, Row, Tag, FieldLabel, TextArea, Note } from '@/components/gw/ui'
 
 /**
  * TARGETS, AS THE PROTOTYPE'S CONTEXT PAGE DRAWS THEM (U.7, B2).
@@ -216,20 +216,36 @@ export function TargetsBand({
  * the target's whole sentence dropped into a heading (U.7 review). It is "What this target assumes".
  * `name` is still taken, so the board's call does not change, and is not printed.
  */
-export function WhatTheTargetAssumes({ figure, assumes }: { figure: string | null; name?: string; assumes: string[] }) {
-  if (!assumes.length) return null
+export function WhatTheTargetAssumes({ figure, assumes, assumesSays }: {
+  figure: string | null
+  name?: string
+  assumes: string[]
+  /**
+   * REQUEST 115 (c): where nothing is written down yet, the engine's own plain sentence rather
+   * than an empty section - to the lead, an invitation to write it; to anybody else who may read
+   * the target, that nobody has yet. Shown only when `assumes` is empty.
+   */
+  assumesSays?: string | null
+}) {
+  if (!assumes.length && !assumesSays) return null
   return (
     <div className="gwui-mt-8 gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14" style={{ background: 'var(--gw-bg)', borderRadius: 8, maxWidth: 560 }}>
       {/* Picture-check round 6, item H: named directly as the prototype's own card-title example - 18px/700/near-black, not 12.5px. */}
       <div className="gwui-fs-18 gwui-ink-text gwui-mb-6" style={{ fontWeight: 700 }}>
         {figure ? `What the target of ${figure} assumes` : 'What this target assumes'}
       </div>
-      <ul className="gwui-m-0 gwui-pl-18 gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6 }}>
-        {assumes.map((a, k) => <li key={k}>{a}</li>)}
-      </ul>
-      <div className="gwui-fs-13 gwui-ink-sub gwui-mt-6">
-        If one of these stops being true, the target needs a second look.
-      </div>
+      {assumes.length ? (
+        <>
+          <ul className="gwui-m-0 gwui-pl-18 gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6 }}>
+            {assumes.map((a, k) => <li key={k}>{a}</li>)}
+          </ul>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mt-6">
+            If one of these stops being true, the target needs a second look.
+          </div>
+        </>
+      ) : (
+        <Note tone="muted">{assumesSays}</Note>
+      )}
     </div>
   )
 }
