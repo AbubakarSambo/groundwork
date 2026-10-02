@@ -44,7 +44,6 @@ import { stillRaised, notRaisedAgain, sayingWhatWentQuiet } from '../board/a-blo
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
 import { sentenceWithANumber } from './where-you-are-against-what-you-named';
 import { COUNTS_AS_A_SOURCE, whatThisDocumentIs } from '../documents/what-kind-of-thing-a-document-is';
-import { buildCoverage } from '../board/reads';
 import { roleMapFor } from '../board/role-maps';
 import { BoardFamily, familyFor } from '../board/board-families';
 import { peersAreNamedOn } from './peers-are-named';
@@ -3522,8 +3521,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(patternRowsForPage as any, patternsForPage));
     /* Rows the picture draft and the question read. Each starts inside a promise: see myOwnSoftSpots. */
     const started = <T,>(f: () => Promise<T>, fallback: T): Promise<T> => Promise.resolve().then(f).catch(() => fallback);
-    const [mentionRows, depRows] = await Promise.all([
-      started(() => this.prisma.workMention.findMany({ where: { groundId }, select: { sourceParticipantId: true, aboutParticipantId: true, kind: true, sessionNumber: true } }), [] as any[]),
+    const [depRows] = await Promise.all([
       started(() => this.prisma.groundDependency.findMany({
         where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
         select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, escalatedAt: true, triedSaid: true, blockerKind: true, sourceCheckInId: true },
@@ -3672,69 +3670,22 @@ Close the report by framing - neutrally, without recommending one - the choice n
         /* The reader is 'you' in the picture, whatever whoOf calls them in a cite. */
         const nameFor = (pid: string) => (me && pid === me.id ? 'You' : whoOf(pid) ?? null);
         /*
-         * THE READ IS ABOUT THE RECORD, SO IT IS GIVEN THE RECORD. This passed only the session in
-         * hand, so the coverage read said "1 check-in on record" to somebody on their fourth, and
-         * the shape-over-time read had one point to draw a shape from. Read live on the closing
-         * report of a four-session ground. The whole run, with each entry under the session it was
-         * said in.
+         * NO READING ABOUT ANY PERSON IN THE PICTURE (request 101 a and b, 2 October 2026).
+         *
+         * The picture is read by everybody in the check-in. It carried the coverage read of each
+         * person, grouped by what it said, so Amani was sent "Rukia Otieno, Baraka Mwangi, You and
+         * Neema Achieng: the role was never clearly defined, so there is no boundary to measure work
+         * against. Define what this role owns before reading anything into where work is landing."
+         * That is a reading about each person and advice to the lead, sent to every participant, as
+         * pieces joined by a colon. Before it, the contribution read did the same ("Faraji Odhiambo:
+         * 0 check-ins on record, nothing specific named yet.", about a man an admin had not let in),
+         * and request 111 (a) took that one out. A reading about a person reaches only that person
+         * and the lead (decision 74, decisions 58 and 67), and the lead reads both on the board, so
+         * neither comes into the shared picture at all. The engine still makes both reads; only this
+         * shared page no longer carries them.
          */
-        const [everyAnswered, everyEntry] = await Promise.all([
-          this.prisma.checkIn.findMany({
-            where: { groundId, status: CheckInStatus.COMPLETED },
-            select: { participantId: true, sessionNumber: true },
-          }),
-          this.prisma.recordEntry.findMany({
-            /* A line somebody has disputed counts toward nothing. See a-disputed-row-counts-toward-nothing. */
-            where: { disputedAt: null, checkIn: { groundId } },
-            select: { participantId: true, text: true, checkIn: { select: { sessionNumber: true } } },
-          }),
-        ]);
-        const readInput = {
-          participants: ground.participants.map((p: any) => ({
-            id: p.id, roleAsDescribed: p.roleAsDescribed ?? null, managingOnly: !!p.managingOnly,
-            detectedFunction: p.detectedFunction ?? null, detectedFunctionConfidence: p.detectedFunctionConfidence ?? null,
-          })),
-          checkIns: everyAnswered.map((c) => ({ participantId: c.participantId, sessionNumber: c.sessionNumber, status: CheckInStatus.COMPLETED })),
-          /*
-           * THE RAW TEXT, MARKER AND ALL, AND THIS WAS A REAL FAULT.
-           *
-           * `cleanText` strips the `[VERIFIABILITY:HIGH]` prefix the extraction stamps on every
-           * row. These reads decide how checkable somebody's account is by reading exactly that
-           * prefix, so stripping it first made every entry unverifiable, for everybody, always.
-           *
-           * Read live on 11 September: a person who had given five dates, three names, a count of
-           * twenty three items and two documents was told on the shared picture "1 check-in on
-           * record. Nothing named so far could be checked by anyone else - no named people,
-           * organisations, numbers or dates." The board says the opposite about the same rows,
-           * because the board passes them through untouched.
-           *
-           * The reads strip the marker themselves before showing anything (see `body` in
-           * reads.ts), so nothing reaches a reader with machinery on the front of it.
-           */
-          entries: everyEntry.map((e) => ({ participantId: e.participantId, sessionNumber: e.checkIn?.sessionNumber ?? sessionNumber, text: e.text })),
-          mentions: mentionRows,
-          dependencies: currentDeps.map((d: any) => ({
-            fromParticipantId: d.fromParticipantId, onParticipantId: d.onParticipantId, onLabel: d.onLabel,
-            what: d.what, status: d.status, createdAt: d.createdAt,
-          })),
-        };
-        let coverage: { name: string; reasonText: string }[] = [];
+        const coverage: { name: string; reasonText: string }[] = [];
         const contribution: { name: string; reason: string }[] = [];
-        try {
-          coverage = buildCoverage(readInput as any, nameFor).reads
-            .filter((r) => r.reasonText?.trim() && r.name)
-            .map((r) => ({ name: r.name!, reasonText: r.reasonText }));
-          /*
-           * NOT THE CONTRIBUTION READ. Its sentence is how checkable each named person's answers were
-           * ("1 check-in on record. 3 lines taken from what they said, 1 with a name, a number or a
-           * date in it"), and the picture is read by everybody in the check-in. That is a rating of a
-           * person's answers, sent to the lead and to their colleagues (decision 38, request 111 a).
-           * The engine still uses it on the board, where only the person reads their own. So
-           * `contribution` above stays empty.
-           */
-        } catch (err: any) {
-          this.logger.warn(`Board reads unavailable for the picture on ${groundId}: ${err?.message}`);
-        }
         const oneTime = (ground as any).cadence === Cadence.ONE_TIME;
         const directionForThePicture = oneTime ? await this.theDirectionAsLines(ground, me ? (labels.get(me.id) ?? null) : null) : null;
         const drafts = draftThePicture({
@@ -6477,6 +6428,8 @@ happened, and what is in the way.`;
       viewerParticipantId: me?.id ?? null,
       viewerIsLead: isInitiator || isOrgAdmin,
       peersAreNamed: this.peersAreNamed(ground as any, me?.id ?? null),
+      /* The reader is "you" about themselves in every report read (request 101 d). */
+      readerIsYou: true,
     });
     /* Labels become names FIRST: the hidden-target read looks for a person's name, and a line still
        saying "Participant B" hid nothing (read live, 28 Sep 2026). */

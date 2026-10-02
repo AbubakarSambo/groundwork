@@ -246,7 +246,8 @@ export function draftThePicture(i: PictureInput): Drafted[] {
       key: `pattern-${p.who}-${p.signal.slice(0, 16)}`,
       /* Three endings, because there are three kinds of pattern and the middle one is neither
          praise nor a problem with the person. See CARRYING_CODES. */
-      text: `${p.who}: ${p.signal} Seen across ${p.periodsObserved} sessions${
+      /* A sentence, never the person and the signal joined by a colon (request 101 a). */
+      text: `${p.signal} This has come up for ${p.who === 'You' ? 'you' : p.who} across ${p.periodsObserved} sessions${
         p.positive ? ', which is a good sign' : p.carrying ? ', and that is worth somebody looking at' : ''
       }.`,
       mustKeep: [p.signal],
@@ -274,12 +275,17 @@ export function draftThePicture(i: PictureInput): Drafted[] {
       byText.set(text, [...(byText.get(text) ?? []), r.name]);
     }
     for (const [text, names] of byText) {
+      const claim = `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
       const all = names.length === i.ofPeople && i.ofPeople > 1;
       out.push({
         /* The whole text keys the line, so two lines that begin the same way never share one wording. */
         key: `${prefix}-${text.slice(0, 24)}-${[...text].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36)}`,
-        text: all ? `For everybody here: ${lower(text)}` : `${andList(names)}: ${lower(text)}`,
-        mustKeep: [lower(text)],
+        /* Two sentences, never the names and the claim joined by a colon (request 101 a). The reader is
+           "you" mid-sentence. */
+        text: all
+          ? `This is true of everybody here. ${claim}`
+          : `This is true of ${andList(names.map((n) => (n === 'You' ? 'you' : n)))}. ${claim}`,
+        mustKeep: [claim],
       });
     }
   };
