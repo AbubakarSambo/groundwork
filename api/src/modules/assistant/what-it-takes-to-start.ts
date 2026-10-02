@@ -21,8 +21,8 @@
 export interface WaitingOnThem {
   /** Grounds they are the named lead of, not yet begun. */
   toStart: { groundId: string; label: string }[];
-  /** Sessions open to them now. */
-  open: { checkInId: string; label: string }[];
+  /** Sessions open to them now. `aboutOnePerson`: a performance plan, a probation or a review, with nobody else's answers. */
+  open: { checkInId: string; label: string; aboutOnePerson?: boolean }[];
   /** Sessions that exist and are not theirs to open yet. */
   notAccepted: { label: string }[];
 }
@@ -58,7 +58,7 @@ export function whatItTakesToStart(waiting: WaitingOnThem): WhatToSay {
     const [first, ...rest] = waiting.open;
     return {
       line:
-        `Your check-in on "${first.label}" is open. It takes about ten minutes, and what you say is released with everybody else's, not before.`
+        `Your check-in on "${first.label}" is open. ${itTakesAboutTenMinutes(first.aboutOnePerson)}`
         + andTheRest(rest.map((c) => c.label), 'also open to you'),
       act: { kind: 'open_a_check_in', id: first.checkInId, label: 'Open it' },
     };
@@ -79,6 +79,18 @@ export function whatItTakesToStart(waiting: WaitingOnThem): WhatToSay {
       + 'and I will tell you the moment there is.',
     act: null,
   };
+}
+
+/**
+ * HOW LONG IT TAKES, AND WHEN WHAT THEY SAY IS RELEASED, ONLY WHERE THAT IS TRUE (decision 82, item 5).
+ * A check-in with a team releases what each person says with everybody else's. A check-in about one
+ * person has nobody else's to release it with, so it says only how long it takes, as the WhatsApp
+ * opening notice does.
+ */
+export function itTakesAboutTenMinutes(aboutOnePerson: boolean | undefined): string {
+  return aboutOnePerson
+    ? 'It takes about ten minutes.'
+    : "It takes about ten minutes, and what you say is released with everybody else's, not before.";
 }
 
 /** Named, not offered. See the note above. */

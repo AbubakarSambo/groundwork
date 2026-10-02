@@ -1438,7 +1438,7 @@ export class AssistantService {
         .map((x) => ({ groundId: x.groundId, label: x.label })),
       open: sessions
         .filter((x) => x.standing === 'open to you')
-        .map((x) => ({ checkInId: x.checkInId as string, label: x.label })),
+        .map((x) => ({ checkInId: x.checkInId as string, label: x.label, aboutOnePerson: x.aboutOnePerson })),
       notAccepted: sessions
         .filter((x) => x.standing === 'invitation not accepted')
         .map((x) => ({ label: x.label })),

@@ -8,6 +8,7 @@ import {
   whatIsTrueFor,
 } from './what-is-true-for-this-person';
 import { keptInTheApp, notFromAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
+import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 
 /**
  * THE ONE READ.
@@ -104,7 +105,7 @@ export class WhatIsTrueService {
       person.linkedUserId
         ? this.prisma.ground.findMany({
             where: { organizationId, initiatorId: person.linkedUserId, status: 'AWAITING_LEAD' },
-            select: { id: true, label: true },
+            select: { id: true, label: true, scenario: true },
           })
         : Promise.resolve([]),
       this.prisma.checkIn.findMany({
@@ -118,7 +119,7 @@ export class WhatIsTrueService {
           },
           status: { in: [CheckInStatus.NOT_STARTED, CheckInStatus.IN_PROGRESS] },
         },
-        include: { participant: { include: { ground: { select: { id: true, label: true } } } } },
+        include: { participant: { include: { ground: { select: { id: true, label: true, scenario: true } } } } },
         orderBy: { availableFrom: 'asc' },
       }),
     ]);
@@ -131,6 +132,7 @@ export class WhatIsTrueService {
         groundId: g.id,
         label: g.label,
         standing: 'waiting on you to start',
+        aboutOnePerson: isEvaluationCheckIn((g as any).scenario),
       })),
       ...checkIns
         /* Not yet open is not the same as nothing, and it is not something to
@@ -142,6 +144,7 @@ export class WhatIsTrueService {
           groundId: c.participant.ground.id,
           label: c.participant.ground.label,
           standing: c.participant.userId === null ? 'invitation not accepted' : 'open to you',
+          aboutOnePerson: isEvaluationCheckIn((c.participant.ground as any).scenario),
         })),
     ];
   }
