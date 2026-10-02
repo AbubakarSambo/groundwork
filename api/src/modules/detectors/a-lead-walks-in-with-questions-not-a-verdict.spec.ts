@@ -246,3 +246,63 @@ describe('a lead walks in with questions, not a verdict', () => {
     });
   });
 });
+
+/*
+ * EVERY OTHER LINE OF THE READ, EXACTLY AS THE LEAD READS IT (3 October 2026). These read "Send the
+ * migration plan - due 9 days ago, still open.", "... - said 30 days ago with no date, so ...", "A stalled
+ * objective finding, 5 days old." and bare objective titles: dash joins, counts that changed on every
+ * opening, and no name. Now each is a full sentence with Priya's name and the dates.
+ */
+describe('the rest of the read, line by line', () => {
+  const read = theReadFor(material({
+    commitments: [
+      { text: 'Send the migration plan.', state: 'OPEN', dueAt: daysAgo(9), statedAt: daysAgo(30) },
+      { text: 'Finish the vendor review', state: 'OPEN', dueAt: null, statedAt: daysAgo(30) },
+    ],
+    findings: [{ key: 'STALLED_OBJECTIVE', says: null, subjectExternalId: null, firstSeenAt: daysAgo(5) }],
+    carrying: [{ externalId: 's1', title: 'Launch the Lagos warehouse', measure: '3 sites', lastSeenAt: daysAgo(2) }],
+    howItHasGone: [{ what: 'send the pricing over to Dele', periods: 3, seen: true, blockers: 0, stepsOffered: 2, stepsManaged: 0 }],
+  }));
+  const linesOf = (heading: string) => read.sections.find((x) => x.heading === heading)?.lines;
+
+  it('says a late promise with her name and the day it was due', () => {
+    expect(linesOf('What they said they would do')?.[0]).toBe('Priya promised "Send the migration plan" by 23 May, and it is still open.');
+  });
+
+  it('says an undated promise with her name and the day she made it', () => {
+    expect(linesOf('What they said they would do')?.[1]).toBe(
+      'Priya promised "Finish the vendor review" on 2 May, with no date, so neither of you can tell whether it is late.'
+      + " Priya's next check-in asks them to put a date on it. Agreeing one in the room is faster.",
+    );
+  });
+
+  it('says a finding with no wording as a sentence with the day it was first raised', () => {
+    expect(linesOf('What the record raised')).toEqual(['Groundwork first raised "stalled objective" on 27 May, and nothing more was written about it.']);
+  });
+
+  it('says what she carries as a sentence, not a bare title', () => {
+    expect(linesOf('What they are carrying')).toEqual(['Priya has been seen working on "Launch the Lagos warehouse".']);
+  });
+
+  it('says where the normal cycle ran out with her name and no dash', () => {
+    expect(linesOf('Where the normal cycle has been tried and has not moved it')).toEqual([
+      '"send the pricing over to Dele" has been outstanding across 3 check-ins. Priya has seen it, nothing has been recorded as blocking it,'
+      + ' and 2 smaller steps were suggested without moving it. That is the ordinary cycle having been tried, which is worth twenty minutes'
+      + ' with them rather than another check-in question. What is behind it is still an open question. This says the conversation is yours now, not what the answer is.',
+    ]);
+  });
+
+  it('says an empty record and an empty picture with no dash', () => {
+    expect(NOTHING_ON_RECORD).toBe('The record holds nothing about this person that is worth taking into a conversation. That is not a finding about them.'
+      + ' It means they have not been in a check-in that has finished, or nothing has been sent about the work they carry. Go in and ask.');
+    expect(howCompleteThePictureIs(material({ finishedCheckIns: 0 })).line).toBe(
+      'Nothing has been built here yet. This is not a thin picture of them. It is the absence of one, and it is about the record rather than about them.',
+    );
+  });
+
+  it('has no dash join and no count of days anywhere in what is served', () => {
+    for (const l of [...read.sections.flatMap((x) => x.lines), read.completeness.line, ...read.completeness.gaps]) {
+      expect(l).not.toMatch(/ - |\b\d+ days? (?:ago|old)\b/);
+    }
+  });
+});

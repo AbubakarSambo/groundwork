@@ -47,7 +47,7 @@ export type Escalation =
   | { recommend: false; because: string }
   | { recommend: true; says: string };
 
-export function hasCoachingRunOut(how: HowItHasGone): Escalation {
+export function hasCoachingRunOut(how: HowItHasGone, who?: string | null): Escalation {
   if (how.periods < PERIODS_BEFORE_A_CONVERSATION) {
     return { recommend: false, because: 'this has not been outstanding long enough to be a pattern.' };
   }
@@ -70,10 +70,11 @@ export function hasCoachingRunOut(how: HowItHasGone): Escalation {
 
   return {
     recommend: true,
-    says: `"${how.what}" has been outstanding across ${how.periods} check-ins. They have seen it, `
+    /* With their name where the caller has it, and no dash join (3 October 2026). */
+    says: `"${how.what}" has been outstanding across ${how.periods} check-ins. ${who?.trim() || 'They'} ${who?.trim() ? 'has' : 'have'} seen it, `
       + `nothing has been recorded as blocking it, and ${how.stepsOffered === 1 ? 'a smaller step was' : `${how.stepsOffered} smaller steps were`} `
       + 'suggested without moving it. That is the ordinary cycle having been tried, which is worth '
       + 'twenty minutes with them rather than another check-in question. What is behind it is still '
-      + 'an open question - this says the conversation is yours now, not what the answer is.',
+      + 'an open question. This says the conversation is yours now, not what the answer is.',
   };
 }

@@ -2688,3 +2688,16 @@ Each line joined pieces with dashes around a count of days that changed every ti
 - **Others waiting on the person.** These read "Somebody has been waiting on Priya for ..." (who waits is not in this read), where they used to read "... with somebody not named".
 
 Tests: `api/src/modules/detectors/a-lead-walks-in-with-questions-not-a-verdict.spec.ts`, one test per branch with the exact sentence, and one through the whole read in both directions; all five fail on the old code. Two tests there changed because they pinned the old wording ("Tom has been told", "has not been told yet", "in 2 days").
+
+## The rest of the read before a conversation is plain too (3 October)
+
+**A wording change in the public API's read before a conversation** (this commit), `beforeAConversation`, `sections[].lines`, `completeness.line`, and the empty answer. No field is added, moved or renamed. The rules are in `api/src/modules/detectors/what-a-lead-should-read-first.ts` (`theReadFor`, `howCompleteThePictureIs`, `NOTHING_ON_RECORD`) and `api/src/modules/detectors/when-coaching-has-stopped-being-enough.ts` (`hasCoachingRunOut`, which now takes the person's name). Each line joined pieces with a dash, counted days from the moment the read was opened, or was a bare title with nobody in it. Priya is the person the read is about.
+
+- **A late promise.** Was: "Send the migration plan. - due 9 days ago, still open." Now: "Priya promised "Send the migration plan" by 23 May, and it is still open."
+- **A promise with no date.** Was: "Finish the vendor review - said 30 days ago with no date, so neither of you can tell whether it is late. Their next check-in asks them to put a date on it. Agreeing one in the room is faster." Now: "Priya promised "Finish the vendor review" on 2 May, with no date, so neither of you can tell whether it is late. Priya's next check-in asks them to put a date on it. Agreeing one in the room is faster."
+- **A finding with no wording.** Was: "A STALLED OBJECTIVE finding, 5 days old." Now: "Groundwork first raised "stalled objective" on 27 May, and nothing more was written about it." A finding that has its own wording is served as before.
+- **What they are carrying.** Was the bare title, "Launch the Lagos warehouse". Now: "Priya has been seen working on "Launch the Lagos warehouse"."
+- **Where the normal cycle ran out.** "... They have seen it, ..." is now "... Priya has seen it, ...", and "What is behind it is still an open question - this says the conversation is yours now, not what the answer is." is now "What is behind it is still an open question. This says the conversation is yours now, not what the answer is."
+- **An empty record.** "That is not a finding about them - it means they have not been ..." is now "That is not a finding about them. It means they have not been ...". The picture's line "This is not a thin picture of them - it is the absence of one, ..." is now "This is not a thin picture of them. It is the absence of one, ...".
+
+Tests: `api/src/modules/detectors/a-lead-walks-in-with-questions-not-a-verdict.spec.ts`, "the rest of the read, line by line": one test per line with the exact sentence, and one that no served line has a dash join or a count of days. All seven fail on the old code. No existing test changed.

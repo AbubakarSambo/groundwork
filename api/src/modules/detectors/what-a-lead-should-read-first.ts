@@ -113,10 +113,17 @@ export const REFUSAL =
   + 'so you can ask about it rather than remember it. Nothing here has been weighed, scored or ranked, '
   + 'and none of it knows why anything happened.';
 
+/** Their words inside quotation marks, without the full stop they ended on. */
+const bareText = (t: string) => (t ?? '').trim().replace(/[.!]+$/, '');
+
 /** Late only where a real date was given. Words with no date are what somebody said, never a miss. */
 const isLate = (c: CommitmentRow, now: Date) => c.dueAt !== null && c.dueAt < now;
 
-const days = (from: Date, now: Date) => Math.max(0, Math.floor((now.getTime() - from.getTime()) / 86_400_000));
+/*
+ * DATES, NEVER A COUNT FROM THE READING (3 October 2026). Every line here said "N days ago" or "N days old",
+ * which changes each time the read is opened with nothing new on the record (request 117, part 9).
+ */
+const onDay = (d: Date | string, now: Date) => theDayInWords(new Date(d as any), now);
 
 /**
  * A HANDOFF IS FLAGGED AND ADVISED ON. IT IS NOT A NOTE.
@@ -222,7 +229,7 @@ export function howCompleteThePictureIs(m: Material): Completeness {
   if (m.finishedCheckIns === 0 && !m.carrying.length && !m.commitments.length) {
     return {
       band: 'nothing yet',
-      line: 'Nothing has been built here yet. This is not a thin picture of them - it is the absence of one, and it is about the record rather than about them.',
+      line: 'Nothing has been built here yet. This is not a thin picture of them. It is the absence of one, and it is about the record rather than about them.',
       gaps,
     };
   }
@@ -256,7 +263,7 @@ export function theReadFor(m: Material): TheRead {
    * not have one - every condition in `hasCoachingRunOut` has to hold, and they rarely all do.
    */
   const ranOut = (m.howItHasGone ?? [])
-    .map(hasCoachingRunOut)
+    .map((h) => hasCoachingRunOut(h, m.personLabel))
     .filter((e): e is Extract<Escalation, { recommend: true }> => e.recommend);
   if (ranOut.length) {
     sections.push({
@@ -274,7 +281,12 @@ export function theReadFor(m: Material): TheRead {
     sections.push({
       heading: 'What they said they would do',
       lines: [
-        ...late.map((c) => `${c.text} - due ${days(c.dueAt!, m.now)} days ago, still open.`),
+        /*
+         * FULL SENTENCES, WITH THEIR NAME AND THE DATES (3 October 2026). These read "Send the migration
+         * plan - due 9 days ago, still open." and "... - said 30 days ago with no date, so ...": pieces
+         * joined with a dash around a count that changed on every opening.
+         */
+        ...late.map((c) => `${m.personLabel} promised "${bareText(c.text)}" by ${onDay(c.dueAt!, m.now)}, and it is still open.`),
         /*
          * Undated commitments are still never called late - that would invent a deadline nobody
          * agreed to, and the invented one is what a person gets judged on.
@@ -285,9 +297,9 @@ export function theReadFor(m: Material): TheRead {
          * is, on both sides, and the next check-in asks for the date rather than this read
          * quietly holding it against them.
          */
-        ...undated.map((c) => `${c.text} - said ${days(c.statedAt, m.now)} days ago with no date, so`
-          + ` neither of you can tell whether it is late. Their next check-in asks them to put a date`
-          + ` on it. Agreeing one in the room is faster.`),
+        ...undated.map((c) => `${m.personLabel} promised "${bareText(c.text)}" on ${onDay(c.statedAt, m.now)}, with no date,`
+          + ` so neither of you can tell whether it is late. ${m.personLabel}'s next check-in asks them to put a date`
+          + ' on it. Agreeing one in the room is faster.'),
       ],
       source: 'Their own words in a check-in, written down at the time.',
     });
@@ -317,7 +329,9 @@ export function theReadFor(m: Material): TheRead {
   if (m.findings.length) {
     sections.push({
       heading: 'What the record raised',
-      lines: m.findings.map((f) => f.says?.trim() || `A ${f.key.replace(/_/g, ' ')} finding, ${days(f.firstSeenAt, m.now)} days old.`),
+      /* Where the finding wrote nothing, a sentence with the day it was first raised, never "N days old". */
+      lines: m.findings.map((f) => f.says?.trim()
+        || `Groundwork first raised "${f.key.replace(/_/g, ' ').toLowerCase()}" on ${onDay(f.firstSeenAt, m.now)}, and nothing more was written about it.`),
       source: 'Detectors reading what was pushed and what was said. Each one is a question, not a conclusion.',
     });
   }
@@ -327,7 +341,8 @@ export function theReadFor(m: Material): TheRead {
     sections.push({
       heading: 'What they are carrying',
       lines: [
-        ...m.carrying.map((c) => c.title),
+        /* A sentence with their name, not a bare title (3 October 2026). */
+        ...m.carrying.map((c) => `${m.personLabel} has been seen working on "${bareText(c.title)}".`),
         ...(noMeasure.length
           ? [`${noMeasure.length === 1 ? 'One of these has' : `${noMeasure.length} of these have`} no measure on the record, so there is nothing to be doing well or badly against.`]
           : []),
@@ -360,5 +375,5 @@ export function theReadFor(m: Material): TheRead {
  */
 export const NOTHING_ON_RECORD =
   'The record holds nothing about this person that is worth taking into a conversation. That is not '
-  + 'a finding about them - it means they have not been in a check-in that has finished, or nothing '
+  + 'a finding about them. It means they have not been in a check-in that has finished, or nothing '
   + 'has been sent about the work they carry. Go in and ask.';
