@@ -20,7 +20,7 @@ From now on, every change to what the board, reports or Today page send is writt
 6. Never silence when WhatsApp is held by the add-on or the limit. *Done* (`f66363a0`).
 7. The opening notice on one-to-one check-ins never says "released with everybody else's". *Done* everywhere (`ee0ac236`, `23b05cdd`).
 8. Leave, hours and spending for people matched to their sign-in by email. *Done* (`1b77ebda`).
-9. Ask Groundwork never answers from a check-in kept in the app. *Done* on WhatsApp (`477aae60`); in the app it is unchanged. One rare gap is left, below. (Nothing about such a check-in reaches a phone already: `937c1c6b`.)
+9. Ask Groundwork never answers from a check-in kept in the app. *Done* on WhatsApp (`477aae60`); in the app it is unchanged. The rare merge gap is closed too (`6cac17d6`). (Nothing about such a check-in reaches a phone already: `937c1c6b`.)
 10. The roster import tidies numbers the same way. *Done* (`e02ed275`, `96e6ba5c`).
 11. The lead's daily summary on WhatsApp, Groundwork's one message of the day for the lead. *Done* (`74698e8a`), at 07:00 Lagos time; the template's last line needs Hafsah's yes before Meta will accept it.
 12. Hafsah's eight templates in `docs/whatsapp-templates.md`, word for word, wired up, with the two-messages-on-the-day rule and a check against WhatsApp's rules. *Done* (`045f5a5f`, `3c318354`), apart from the three wording questions for Hafsah in the templates file.
@@ -31,7 +31,7 @@ From now on, every change to what the board, reports or Today page send is writt
 **d. The three suites, end to end, including over WhatsApp**
 14. Leave requests. Said back and confirmed in chat: *done*; approval and telling people: item 3.
 15. Finance (spending) requests. As item 14.
-16. Performance reviews, as the prototype's suite shows it, on evaluation check-ins and judging, with a proposed threshold for a "recognise" suggestion for Hafsah to confirm. *Done* (`2a8e77eb` to `cdf5e3ee`); the recognise suggestion is off until Hafsah confirms it. Matching by email for reviews is *done* (`4d22feea`); reviews on Today wait until request 118 frees the Today code.
+16. Performance reviews, as the prototype's suite shows it, on evaluation check-ins and judging, with a proposed threshold for a "recognise" suggestion for Hafsah to confirm. *Done* (`2a8e77eb` to `cdf5e3ee`); the recognise suggestion is off until Hafsah confirms it. Matching by email for reviews is *done* (`4d22feea`); reviews on Today are *done* (`073dd64b`).
 
 **e. The boards the client needs, from the engine**
 17. Request 117 (item 1). *Done*, as item 1.
@@ -47,6 +47,10 @@ From now on, every change to what the board, reports or Today page send is writt
 - On WhatsApp, the board merges two alike waits from different check-ins before Ask Groundwork leaves out the ones kept in the app, so in a rare case a wait from such a check-in could be said. The fix is an option in the board's own reads (`waitingAcrossTheOrg`, `whoNeedsYouThisWeek`) to leave them out before merging. *Done* (`6cac17d6`); reviews on Today too (`073dd64b`).
 
 - WhatsApp's waiting yes-or-no answers and parked approvals kept in the database, so a restart or a second copy of the server does not lose them. *Done* (`12b132b7`, migration 72). Approvals were already stored.
+- The API did not start from `4baeb646` (two files importing each other). *Done* (`4090223b`), with a test that builds the whole app.
+- Ask Groundwork named people by email and answered in clipped lines. *Done* (`856d0cbd`, `bc7aa385`).
+- Waits taken further could never show in "where am I needed". *Done* (`72e9b0a6`), shown only to whoever runs that check-in.
+- The lead's "<who> has been told" sentence is untrue. *In progress.*
 - A scenario run (run-25) to measure requests 117 and 118's model-written changes against the baseline. *In progress.*
 
 **h. Then everything else**
