@@ -282,6 +282,14 @@ Those are done.
 
 But the builder again reused two old one-off classes. So a fourth guard now freezes how many one-off uses each file has (33 files, 1,300 uses), and any file that uses one more fails. Those counts can only go down from here.
 
+**Board batch 3, the board page's sections, so far.**
+- The team today was already clean.
+- "What keeps coming up" is now rows, with its two parts' labels as the shared sub-heading. Every piece of patterns and coaching is kept.
+- "Waiting on" is a shared stack.
+- The board page's one-off uses went from 638 to 596.
+
+The rest is a long tail: no combination of classes repeats more than eight times. At 4:44 I paused the board's class clean-up. The new guard keeps that count from growing. I moved on to the board review that Hafsah's rule needs before any kind can be marked done. Finishing the board page's clean-up is listed as a task for after the review.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
