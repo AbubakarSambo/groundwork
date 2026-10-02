@@ -306,7 +306,12 @@ export function aCommitmentSaid(
     else out.push(`${who} committed to ${clause}.`);
   } else if (stated !== null) out.push(`In session ${stated}, ${mid} made a commitment, which is in the record.`);
   else out.push(`${who} made a commitment, which is in the record.`);
-  if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was "${c.when}".`);
+  /* The time once: "In session 1, you said, "I will deliver the Tuskys cookers on 9 October." The time you gave
+     for it was "on 9 October"." said it twice (request 111 e). Where the words already say it, it is not repeated. */
+  const flat = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const whenAlreadySaid = !!c.when && !!flat(c.when) && ` ${flat(c.what ?? '')} `.includes(` ${flat(c.when)} `) && (quoteWhat || !!clause);
+  if (whenAlreadySaid) { /* said in the words above */ }
+  else if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was "${c.when}".`);
   else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was ${c.when}.`);
   if (c.restatedIn.length) {
     out.push(`${who} said it again in ${c.restatedIn.length === 1 ? `session ${c.restatedIn[0]}` : `sessions ${listed(c.restatedIn)}`}.`);
@@ -460,11 +465,12 @@ export function patternsOverTime(
       const seen = [...(p.seenInSessions ?? [])].sort((a, b) => a - b);
       const howMany = seen.length || p.periodsObserved || 1;
       const surfaced = String(p.status).toUpperCase() === 'SURFACED';
-      const where = seen.length ? `sessions ${seen.join(', ')}` : `${howMany} ${howMany === 1 ? 'session' : 'sessions'}`;
+      /* "Seen in sessions 1 of 2" was one session (request 109 f). */
+      const where = seen.length === 1 ? `session ${seen[0]}` : seen.length ? `sessions ${seen.join(', ')}` : `${howMany} ${howMany === 1 ? 'session' : 'sessions'}`;
       const consecutive = p.periodsObserved >= 3 ? ', consecutively' : seen.length >= 3 ? ', not consecutively' : '';
       const say = surfaced
-        ? `Seen in ${where} of ${sessionsSoFar}${consecutive}. Enough sessions to be a pattern rather than an incident.`
-        : `Seen in ${where} of ${sessionsSoFar}. One or two sessions of something is not yet a pattern, and it is here so a reader can see what it was.`;
+        ? `It was seen in ${where} of ${sessionsSoFar}${consecutive}. Enough sessions to be a pattern rather than an incident.`
+        : `It was seen in ${where} of ${sessionsSoFar}. One or two sessions of something is not yet a pattern, and it is here so a reader can see what it was.`;
       return {
         participantId: p.participantId,
         who: labelOf(p.participantId),
@@ -769,7 +775,9 @@ export function toSettleFirst(o: {
 
   const surfaced = o.patterns.filter((p) => String(p.status).toUpperCase() === 'SURFACED');
   for (const p of surfaced.slice(0, 2)) {
-    out.push(`${p.observation} Seen in ${p.seenInSessions.length} sessions. Ask ${p.who}${A_QUESTION_BUILT_FROM_A_PATTERN_ENDS}`);
+    /* "Seen in 1 sessions." (request 109 f): the count and its noun agree. */
+    const n = p.seenInSessions.length;
+    out.push(`${p.observation} It was seen in ${n === 1 ? 'one session' : `${n} sessions`}. Ask ${p.who}${A_QUESTION_BUILT_FROM_A_PATTERN_ENDS}`);
   }
 
   const noRole = o.commitments.length === 0;

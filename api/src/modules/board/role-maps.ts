@@ -130,8 +130,10 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
       'It went quiet, then what did you try?',
       'What is the next action on that, and by when?',
     ],
+    /* Plain words, and what happens rather than how somebody feels (request 111 e): it reached a rep as "You are
+       made to feel like a failure by a broken internal clock", which is jargon and a read on her feelings. */
     protectAgainst:
-      'A rep is made to feel like a failure by a broken internal clock: the buyer-side process takes weeks and none of it is visible to them. Silence is usually a stage, not a rejection.',
+      'Buyers take weeks to decide, and the person selling cannot see most of that time. A week of silence usually means the buyer is still deciding, not that they said no.',
     commonModes: [UniversalMode.AVOIDANCE, UniversalMode.UNDER_PERSISTENCE, UniversalMode.VAGUENESS],
     // Paired by index, so the coach always knows what it is coaching TOWARD.
     // Sales is where the coaching is most valuable and most dangerous, because

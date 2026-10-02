@@ -9,7 +9,7 @@ import { BISI, FEMI, JUMA, KWAME, SALES_RUN, SETUP_ADMIN, boardAs, type Setup } 
  */
 const sides = (b: any) => (b.obligations ?? []).map((s: any) => s.who);
 const side = (b: any, who: string) => (b.obligations ?? []).find((s: any) => s.who === who);
-const FEMIS = 'In session 2, Femi Okonkwo said, "I will visit a few of them again this week to see if I can collect the statements myself." The time Femi Okonkwo gave for it was "this week". Nobody has said yet whether it happened.';
+const FEMIS = 'In session 2, Femi Okonkwo said, "I will visit a few of them again this week to see if I can collect the statements myself." Nobody has said yet whether it happened.';
 
 describe('Obligations, as each person reads them', () => {
   it('Bisi, who runs it, reads every side, her own as "You", and the party outside the check-in', async () => {

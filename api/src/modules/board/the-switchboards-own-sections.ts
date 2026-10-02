@@ -184,8 +184,13 @@ export function thatWaitsOn(d: { what: string; onLabel?: string | null; onPartic
   return ` That waits on ${inASentence(on)}.`;
 }
 
+/*
+ * THE SESSIONS SO FAR ARE THE ONES SOMEBODY FINISHED, as the report counts them (request 111 d). The board
+ * counted every session row, opened or not, so a session opened early made the work plan say "open for 2
+ * sessions" where the report said "open for 1 session" about the same commitment.
+ */
 const theSessionsSoFar = (sessions: ASession[], commitments: ACommitment[]): number =>
-  Math.max(1, ...sessions.filter((s) => !s.isSetup).map((s) => s.sessionNumber), ...commitments.map((c) => c.statedInSession ?? 0));
+  Math.max(1, ...sessions.filter((s) => !s.isSetup && String(s.status).toUpperCase() === 'COMPLETED').map((s) => s.sessionNumber), ...commitments.map((c) => c.statedInSession ?? 0));
 
 /** What a person committed to, as the end of a sentence, or null when it cannot be said in our voice. */
 const clauseOf = (c: ACommitment): string | null => inOurVoice(c.text);
