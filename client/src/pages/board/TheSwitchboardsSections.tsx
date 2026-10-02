@@ -72,12 +72,16 @@ export function TimelineSection({ rows }: { rows: BoardPresent['timeline'] }) {
   )
 }
 
-export function PersonHistorySection({ rows }: { rows: BoardPresent['personHistory'] }) {
+export function PersonHistorySection({ rows, heading }: { rows: BoardPresent['personHistory']; heading?: string }) {
   if (!rows?.length) return null
   /* Board review, 1 October, item 6: "Person history" is a label, not a sentence saying what is
-     here. The plain heading says what the section shows. */
+     here. The plain heading says what the section shows.
+
+     ONBOARDING BOARD (day-30-and-60.txt): the prototype's own heading for this family is "{first
+     name}'s history" - "His history" in the prototype's own words, which names no pronoun, so the
+     caller passes the new hire's first name instead. Every other family is unchanged. */
   return (
-    <Section heading="What each person has done so far" note="One person’s record over time.">
+    <Section heading={heading ?? 'What each person has done so far'} note="One person’s record over time.">
       <Panel pad={false}>
         {rows.map((p) => (
           <div key={p.participantId} className="gwui-panel-row">
