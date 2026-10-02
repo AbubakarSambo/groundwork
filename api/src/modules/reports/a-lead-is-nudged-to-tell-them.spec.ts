@@ -33,7 +33,9 @@ describe('the lead is nudged to tell them (decision 56)', () => {
   it('within the first week: nudges the lead, using the name, never a pronoun', async () => {
     const ground = groundWith({
       id: 'o-not-told', participantId: 'p-tobi', text: 'Take over the scheduling.',
-      authoredBy: 'lead', awareness: 'NOT_TOLD', createdAt: new Date('2026-09-25'),
+      /* Two days ago, by the clock the code reads: a fixed date here stopped being "within the first
+         week" once a week had passed in real time (1 October 2026). */
+      authoredBy: 'lead', awareness: 'NOT_TOLD', createdAt: new Date(Date.now() - 2 * 24 * 3600 * 1000),
     });
     const out = await forTheLeadFrom(prisma, 'g1', { ground, participants: ground.participants, checkIns: [], nameOf: (pid: string) => (pid === 'p-tobi' ? 'Tobi' : 'Wanjiru') } as any, reader);
     const item = out!.find((x) => x.id === 'not-told-o-not-told');
