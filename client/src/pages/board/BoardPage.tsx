@@ -1176,8 +1176,25 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   actions={<UIButton kind="secondary" size="small" to={n.action.to}>{n.action.label}</UIButton>}
                 />
               ))}
+              {/*
+                BOARD FIX (sales B, item 2): EVERY ITEM GETS ITS OWN ACTION. `needsHere` above
+                already carries a real one from Today's own API (`n.action`); `leadActions` and
+                `decisions` carried none at all - a reader could see what needed them but had
+                nothing to press. Neither field sends a choice or a target to act on directly
+                (no "Yes, it counts" / "No" the server built, no record id to jump to), so rather
+                than invent a control that does something nobody asked for, each gets the same
+                quiet "Open" text action (never navy - `.gwui-plain-link` is not counted as a
+                button at all, see e2e/the-prototype-count-of-buttons.spec.ts) to the Check-in tab,
+                where the lead actually settles this kind of thing, in conversation.
+              */}
               {shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan) && b.leadActions!.map((r) => (
-                <EdgeRow key={r.id} kind="look" title={r.says} detail={r.because ?? undefined} />
+                <EdgeRow
+                  key={r.id}
+                  kind="look"
+                  title={r.says}
+                  detail={r.because ?? undefined}
+                  actions={<Link to={`/grounds/${id}`} className="gwui-plain-link">Open</Link>}
+                />
               ))}
               {shown.decisions && b.decisions!.map((d, i) => (
                 <EdgeRow
@@ -1200,6 +1217,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       {d.owner && <span className="gwui-fs-13-5 gwui-ink-sub gwui-ml-7">{decisionOwnerTag(d.owner, b.participants, myName)}</span>}
                     </>
                   )}
+                  actions={<Link to={`/grounds/${id}`} className="gwui-plain-link">Open</Link>}
                 />
               ))}
             </EdgeList>
