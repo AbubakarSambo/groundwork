@@ -124,8 +124,7 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     // No "Your share" box: this fixture sends no `yourShare` field, so nothing is drawn.
     expect(screen.queryByText(/Your share/)).toBeNull()
 
-    // Everything else is still there, just folded under one name - including Aisha's deal, which
-    // is never part of Miriam's own personal section above.
+    // Everything else this reader may read is still there, just folded under one name.
     expect(screen.getByText('The whole check-in')).toBeTruthy()
     /*
      * SECOND BOARD REVIEW, WORDING: "Everything from this check-in, as before." did not say who it
@@ -135,8 +134,23 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     expect(screen.getByText('Everything else from this check-in, for everyone in it.')).toBeTruthy()
     const whole = screen.getByText('The whole check-in').closest('details') as HTMLElement
     expect(whole).toBeTruthy()
-    expect(within(whole).getByText('Greenhill Mart')).toBeTruthy()
-    expect(within(whole).getByText('Westgate Deli')).toBeTruthy()
+
+    /*
+     * BOARD REVIEW, SALES PIECE C, ITEM 4: NOT AISHA'S DEAL AGAIN, ANYWHERE ON THIS BOARD.
+     *
+     * This used to assert the opposite - that the whole deal grid, Aisha's row included, was still
+     * there inside the fold. It was wrong to assert, not just wrong to draw: the fold held the
+     * whole team's "Every deal, day by day" grid under its own heading, which for a sales ground
+     * reads "No deals have come up yet" when a reader's own section (just above) already showed
+     * deals - Miriam's own. `TheParticipantsOwnView`'s "Your deals, day by day" is her complete
+     * record of her own work; the team grid added nothing she may read that was not already there,
+     * and the sentence under it was untrue of her own work. A sales ground's participant now gets
+     * no second copy of `workRecords` at all, deal grid or forecast - this is the fix, not a
+     * regression, so the old assertion is replaced rather than kept.
+     */
+    expect(within(whole).queryByText('Greenhill Mart')).toBeNull()
+    expect(within(whole).queryByText('Westgate Deli')).toBeNull()
+    expect(within(whole).queryByText('Every deal, day by day')).toBeNull()
   })
 
   it('says the picture is ready once the server itself says `teamPicture.shared`, not from a round count', async () => {

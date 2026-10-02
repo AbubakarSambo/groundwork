@@ -715,6 +715,27 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* THE PARTICIPANT'S OWN BOARD (B5): a true participant, never the lead and never a read-only
      admin who merely has access - see `TheParticipantsOwnView` and `MaybeFolded`, below. */
   const isParticipantView = isAParty && !viewerRunsThisCheckIn
+  /*
+   * BOARD REVIEW, SALES PIECE C, ITEMS 4 AND 5: THE DEAL GRID IN ITS PROTOTYPE PLACE, THE REST OF
+   * THIS KIND OF WORK'S RECORDS IN THE END FOLD.
+   *
+   * `workRecords` sends every section this kind of work keeps, in one array - for a sales ground
+   * that is "Deal grid" (board-as-lead.txt's own "Every deal, day by day") and "Forecast" (no
+   * prototype screen shows it). Only the deal grid is drawn where the prototype draws it; a sales
+   * ground's own "Forecast" section moves into "Everything else from this check-in" instead,
+   * alongside `ByAreaSection` (same reason - "board-as-lead.txt doesn't show this one"). Every
+   * other kind of work is unaffected: it still gets every section it always did, in one place.
+   *
+   * ITEM 4: A PARTICIPANT'S OWN DEALS, NEVER THE WHOLE GRID AGAIN. `TheParticipantsOwnView` already
+   * draws Amani's own rows ("Your deals, day by day"); the full `workRecords` grid repeated the
+   * same kind of work under "No deals have come up yet." - true of the GRID, which the server
+   * fills from every participant's own rows and only shows to the lead, but read by Amani as a
+   * false claim about her own deals, which she had just read above. A participant now gets none of
+   * `workRecords` here, deal grid or forecast - only her own records, already shown.
+   */
+  const isSalesOrg = ((b as any).kindOfWork ?? null) === 'sales org'
+  const dealGridSections = isSalesOrg ? (b.workRecords ?? []).filter((s) => s.section === 'Deal grid') : (b.workRecords ?? [])
+  const restOfWorkRecordSections = isSalesOrg ? (b.workRecords ?? []).filter((s) => s.section !== 'Deal grid') : []
   const myWorkTab = viewerRunsThisCheckIn ? 'sessions' : 'record'
   const headerTabs = [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
@@ -1292,16 +1313,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           server sends it: which sections exist, and whether each is filled, has none yet, or is not
           something Groundwork keeps for this kind of work, are all already decided server-side -
           this only draws what it is given. Only the lead may add, change or remove a record.
+
+          ITEM 4: NOT FOR A PARTICIPANT ON A SALES GROUND. `TheParticipantsOwnView` already drew
+          her own deals, above; the whole grid, lead-filled, read as untrue of her own work when
+          she had rows of her own already shown. Scoped to `isSalesOrg`, since every other kind of
+          work's participant still reads its records here exactly as before - see the comment on
+          `dealGridSections`, above.
         */}
-        <WorkRecordsSections
-          groundId={id!}
-          kindOfWork={(b as any).kindOfWork ?? null}
-          sections={b.workRecords}
-          participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
-          leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
-          readerIsLead={viewerRunsThisCheckIn}
-          canEdit={b.canEditFrame}
-        />
+        {(!isParticipantView || !isSalesOrg) && (
+          <WorkRecordsSections
+            groundId={id!}
+            kindOfWork={(b as any).kindOfWork ?? null}
+            sections={dealGridSections}
+            participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
+            leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+            readerIsLead={viewerRunsThisCheckIn}
+            canEdit={b.canEditFrame}
+          />
+        )}
 
         {shown.eachPerson && (
           <Section heading="The team today" note="Each person’s line, their last 10 check-ins, and what keeps coming up.">
@@ -1395,12 +1424,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
-          REQUEST 107 (c), PARTS 3 AND 4: "BY AREA" AND "REPORTED, STAGE BY STAGE" (board-as-
-          lead.txt: "Reported vs criteria met, stage by stage"). Built from the records this
-          reader is already served, right after the kind of work's own records, same as the
-          prototype's own placement.
+          REQUEST 107 (c), PART 4: "REPORTED, STAGE BY STAGE" (board-as-lead.txt: "Reported vs
+          criteria met, stage by stage"). Built from the records this reader is already served,
+          right after the kind of work's own records, same as the prototype's own placement.
+
+          "BY AREA" (part 3) MOVED (board review, sales piece C, item 5): board-as-lead.txt doesn't
+          show this one, so it now sits in "Everything else from this check-in" instead of here,
+          beside the sales ground's own "Forecast" section - see the comment on `dealGridSections`.
         */}
-        <ByAreaSection data={(b as any).byArea} />
         <ReportedAgainstCriteriaSection data={(b as any).reportedAgainstCriteria} />
 
         {shown.checkInGrid && b.checkInGrid && (() => {
@@ -1610,6 +1641,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           legend.
         */}
         <FoldEverythingElseUnless alreadyFolded={isParticipantView}>
+        {/*
+          BOARD REVIEW, SALES PIECE C, ITEMS 4 AND 5: A SALES GROUND'S OWN "FORECAST", AND "BY
+          AREA" - NEITHER IN THE PROTOTYPE'S OWN SALES BOARD. Not drawn at all for a participant
+          (item 4: her own records are already shown, above, and a sales ground's "Forecast" is
+          about the whole team, not hers alone). See the comment on `dealGridSections`.
+        */}
+        {!isParticipantView && isSalesOrg && restOfWorkRecordSections.length > 0 && (
+          <WorkRecordsSections
+            groundId={id!}
+            kindOfWork={(b as any).kindOfWork ?? null}
+            sections={restOfWorkRecordSections}
+            participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
+            leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+            readerIsLead={viewerRunsThisCheckIn}
+            canEdit={b.canEditFrame}
+          />
+        )}
+        <ByAreaSection data={(b as any).byArea} />
         {/*
           REQUEST 70: THE SWITCHBOARD'S OWN SECTIONS, THE 13 THAT NOW HAVE A SERVED FIELD. Each
           component draws nothing when its own rows are empty, so there is no heading-with-nothing-
