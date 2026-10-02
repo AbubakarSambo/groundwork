@@ -163,7 +163,9 @@ Run-25 was stopped: decision 86's reversals change what the engine writes, so it
 - A decision about a person (decision 46) stays the lead's alone, hidden from admins. Right?
 - Suggestions already stored keep their old wording without a count. Fine, with no live users?
 
-Now running: run-25 on `a7e0f76f`, and Today showing a named member what waits for them. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Today now shows a member what waits for them** (`2d6d9e51`): Omar, a member named for spending over the limit, reads "Lina asked to spend KES 95,000 on a new laptop. It is waiting for you to approve." on Today; a member who heads a team reads its leave, hours and reviews to start. A member nobody names still reads nothing. One existing test changed, because it pinned the old fault.
+
+Now running: run-25 on `a7e0f76f`, and approval steps, escalation and one record of who did what (decision 85, steps 4 and 5). Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
