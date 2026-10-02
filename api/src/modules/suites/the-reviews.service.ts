@@ -5,8 +5,9 @@ import { mayApprove } from './who-approves';
 import { isProposedByGroundwork, theProposalSentence } from './a-review-falls-due';
 import { whatGroundworkNoticed } from './the-review-noticed-from-the-record';
 import { monthsToDrawOn, theFirstCheckInOf, theOpenDecisionsAbout, whereItStandsSaid, type Stands } from './where-a-review-stands';
-import type { SuggestionsService } from '../suggestions/suggestions.service';
+import { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForTheLead } from '../suggestions/a-suggestion-told-like-a-signal';
+import { AReviewToldOnWhatsApp } from './a-review-told-on-whatsapp.service';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const REVIEW_REFUSED = {
@@ -124,7 +125,12 @@ type Person = { externalId: string; linkedUserId: string | null; displayName: st
  */
 @Injectable()
 export class ReviewsService {
-  constructor(private readonly prisma: PrismaService, @Optional() private readonly suggestions?: SuggestionsService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly suggestions?: SuggestionsService,
+    /* Last and optional, so the specs that build this with one argument keep working. */
+    @Optional() private readonly toldOnWhatsApp?: AReviewToldOnWhatsApp,
+  ) {}
 
   async board(reader: Reader, today = new Date()): Promise<{ every: string | null; next: NextReview[] }> {
     const answers = await this.suiteAnswers(reader.organizationId);
@@ -198,6 +204,8 @@ export class ReviewsService {
       },
       select: { id: true },
     });
+    /* The person is told it waits for them in the app; nothing of it goes to the phone. */
+    await this.toldOnWhatsApp?.toThePerson(reader.organizationId, p.linkedUserId, reader.userId, 'started').catch(() => false);
     return { id: r.id };
   }
 
@@ -291,6 +299,8 @@ export class ReviewsService {
       where: { id: row.id },
       data: { decision: says.slice(0, 1000), decisionReasons: reasons.slice(0, 2000), decidedById: reader.userId, decidedAt: new Date() },
     });
+    /* Told once, the first time it is decided; a reason corrected later is not a second message. */
+    if (!row.decidedAt) await this.toldOnWhatsApp?.toThePerson(reader.organizationId, person.linkedUserId, reader.userId, 'decided').catch(() => false);
     return this.one(reader, id);
   }
 

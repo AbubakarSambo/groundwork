@@ -77,7 +77,7 @@ export class ARequestToldOnWhatsApp {
   }
 
   /** Their WhatsApp number and first name: the roster's number first, then the one they typed into Settings. */
-  private async reach(organizationId: string, userId: string): Promise<{ phone: string | null; firstName: string | null }> {
+  async reach(organizationId: string, userId: string): Promise<{ phone: string | null; firstName: string | null }> {
     const entry = await theirRosterEntry(this.prisma, organizationId, userId, { phone: true, givenName: true }).catch(() => null);
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, phoneNumber: true, deletedAt: true } }).catch(() => null);
     if (user?.deletedAt) return { phone: null, firstName: null };

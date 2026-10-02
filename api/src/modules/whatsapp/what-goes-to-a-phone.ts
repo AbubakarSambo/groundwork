@@ -100,3 +100,12 @@ export const aRequestIsWaiting = (approverFirstName: string | null | undefined, 
 /** groundwork_request_decided: the person is told what was decided about their own request, and by whom. */
 export const aRequestWasDecided = (personFirstName: string | null | undefined, what: string, outcome: 'approved' | 'declined', deciderFirstName: string | null | undefined) =>
   notice('request-decided', [personFirstName?.trim() || 'there', what, outcome, deciderFirstName?.trim() || 'the person who approves it']);
+
+/**
+ * groundwork_review_started and groundwork_review_decided (item 16): the person's review waits for them
+ * in the app. Only who started or decided it is said, never a word of the review itself.
+ */
+export const aReviewWasStarted = (personFirstName: string | null | undefined, writerFirstName: string | null | undefined) =>
+  notice('review-started', [personFirstName?.trim() || 'there', writerFirstName?.trim() || 'The person who writes it with you']);
+export const aReviewWasDecided = (personFirstName: string | null | undefined, writerFirstName: string | null | undefined) =>
+  notice('review-decided', [personFirstName?.trim() || 'there', writerFirstName?.trim() || 'The person who writes it with you']);

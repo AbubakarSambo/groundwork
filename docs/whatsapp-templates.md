@@ -115,6 +115,22 @@ All three are now on the list the Connections page asks an admin to submit (`the
 - **Why:** to tell the person what was decided, whether it was decided in the app or by a reply on WhatsApp. It is not counted as Groundwork writing first, because it answers the person's own request, the same as the report; it still never goes after STOP. Hours cannot be declined in Groundwork, so for hours {{3}} is only ever "approved". Wired on 2 October.
 - **Checked against WhatsApp's rules:** passes.
 
+### `groundwork_review_started` (item 16: a review waits for the person)
+
+- **Category:** Utility. **Language:** en.
+- **Body:** Hi {{1}}, {{2}} has started your review. Open Groundwork to read it and add your own view before you meet.
+- **Examples:** {{1}} Aisha. {{2}} Wairimu.
+- **Why:** to tell the person a review is about that the person who writes it with them has started it, so they can read it and add their own view before they meet, as the prototype says ("Aisha sees it before the meeting"). Nothing of the review is in it. It goes only to the person the review is about, only once somebody has said yes and started it, never for a review Groundwork only proposed. It counts as Groundwork writing first. Proposed by the engine on 2 October, for Hafsah to confirm.
+- **Checked against WhatsApp's rules:** passes.
+
+### `groundwork_review_decided` (item 16: the person is told their review is decided)
+
+- **Category:** Utility. **Language:** en.
+- **Body:** Hi {{1}}, {{2}} has decided your review. Open Groundwork to read the decision and the reasons.
+- **Examples:** {{1}} Aisha. {{2}} Wairimu.
+- **Why:** to tell the person that the decision and its reasons are written and waiting in the app. The decision itself is never sent. It goes once, the first time the review is decided. It counts as Groundwork writing first. Proposed by the engine on 2 October, for Hafsah to confirm.
+- **Checked against WhatsApp's rules:** passes.
+
 ## Names no longer used
 
 `groundwork_session_ready`, `groundwork_check_in_opened` and `groundwork_check_in_nudge` were names in the code before decision 83. `checkin_open` replaces the first two. The third was for a check-in started and left, and is not needed: Groundwork already finishes a started check-in after 12 hours of quiet. None of the three needs submitting.

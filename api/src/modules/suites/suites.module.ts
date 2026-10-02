@@ -16,12 +16,13 @@ import { ReviewsProposedService } from './the-reviews-proposed.service';
 import { ReviewsProposedCron } from './the-reviews-proposed.cron';
 import { SuggestionsModule } from '../suggestions/suggestions.module';
 import { AnthropicService } from '../conversation/anthropic.service';
+import { AReviewToldOnWhatsApp } from './a-review-told-on-whatsapp.service';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 
 @Module({
   imports: [SuggestionsModule],
   controllers: [SuitesController],
-  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, AnthropicService, ReviewsProposedService, ReviewsProposedCron, ARequestToldOnWhatsApp],
+  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, AnthropicService, ReviewsProposedService, ReviewsProposedCron, ARequestToldOnWhatsApp, AReviewToldOnWhatsApp],
   exports: [SuitesService, LeaveBoardService, TimeSheetsService, ReviewsService, ReviewsProposedService, SpendingService, EquipmentService, ARequestToldOnWhatsApp],
 })
 export class SuitesModule {}

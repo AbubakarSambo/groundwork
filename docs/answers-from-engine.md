@@ -2505,3 +2505,14 @@ New. Before this, the person a review is about had no way to find it: a review w
 - Once decided: "Wairimu has decided your review. You can read the decision and the reasons."
 
 An admin and a lead are sent only reviews about themselves here. While the suite is off, it is refused with "The performance reviews suite is not switched on." Today does not show these yet: the Today service is being changed by another builder, so this list is the place to read them for now.
+
+### A review told on WhatsApp (this commit)
+
+Only the person a review is about is told, and only that it waits for them in the app. Nothing of the review reaches a phone. Aisha reads:
+
+- When Wairimu starts it: "Hi Aisha, Wairimu has started your review. Open Groundwork to read it and add your own view before you meet."
+- When Wairimu decides it, once: "Hi Aisha, Wairimu has decided your review. Open Groundwork to read the decision and the reasons."
+
+Both count as Groundwork writing first (one message a day; "not now" and "stop" hold them back), and outside the 24 hours they go as two new templates of ours, `groundwork_review_started` and `groundwork_review_decided`, written in `docs/whatsapp-templates.md` for Hafsah to confirm and submit. Until they are approved, a message outside the 24 hours is recorded as not sent, and the review still waits on `GET /suites/reviews/mine`. The Connections page's list of names to submit (`THE_NAMES_TO_SUBMIT`) now has these two as well.
+
+A fault found on the way: the reviews service was given Groundwork's suggestion about the person as a type only, so in the running server it was never given at all, and `suggestion` on a review was always null for the writer. It is now given properly, so the writer reads a check-in's suggestion about the person on the review, under the same rules as before (only once the person has had their turn, never a count).
