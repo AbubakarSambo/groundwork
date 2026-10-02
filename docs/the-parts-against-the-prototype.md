@@ -544,3 +544,18 @@ so it touches nothing else that already relies on `Row`'s own stretch. Checked a
 picture of the sales board (`boards-after3e`, rukia and amani) and both u7lead founder's-own-targets
 boards: "Change" now sits under the target's name exactly as the prototype and the pre-change
 product both draw it.
+
+## Board task, batch 3, part 9 (Hafsah: "The team today" checked against the shared parts)
+
+`BoardPage.tsx`'s "The team today" section (`Section heading="The team today"`, around
+`WhereEachPersonIs`) was already rebuilt from the shared parts in an earlier pass (commit
+`1e7a8108`, "Board (c1): the insides, top down to `The team today`, from the shared parts") - it is
+only a `Section` wrapping `WhereEachPersonIs` (`components/gw/where-each-person-is.tsx`), with no
+one-off class of its own anywhere in `BoardPage.tsx`. Checked again for this batch, against
+`board-as-lead.txt`'s own "The team today / Each person's line, their last 10 check-ins, and what
+keeps coming up": the heading, the note and the row-by-row content (name, summary, reason tag, last
+ten squares, "what keeps coming up") all match. Nothing in `BoardPage.tsx` changed - the section
+already has nothing left for this task to do. (`where-each-person-is.tsx` itself still carries a
+handful of one-off classes of its own - out of scope here, since that file is not `BoardPage.tsx`
+and this task's count only tracks `BoardPage.tsx`.)
+
