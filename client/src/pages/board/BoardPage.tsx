@@ -1694,6 +1694,32 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
+          REQUEST 115 (c): "HELP NOBODY MENTIONED" (board-as-lead.txt: "You see the help, not who
+          said it."), right after "Reports", in the prototype's own place for it. Sent only to
+          whoever runs the check-in - one person's work, read across other people's check-ins, so
+          no colleague and no read-only admin reads it. Never who said it, and never what they said.
+        */}
+        {(b as any).helpNobodyMentioned && (
+          <Section heading="Help nobody mentioned" note={(b as any).helpNobodyMentioned.why}>
+            <Stack gap={6}>
+              {(b as any).helpNobodyMentioned.lines.map((l: string, i: number) => <Note key={i} tone="muted">{l}</Note>)}
+            </Stack>
+          </Section>
+        )}
+
+        {/*
+          REQUEST 115 (c): "OPEN ISSUES" (board-as-lead.txt: "Each one moving towards a decision.").
+          Nothing on record follows an issue from unclear to decided to done and checked, so this is
+          always the engine's one "not-known" sentence, to whoever runs the check-in, not on a
+          performance plan - the lead's actual open questions are already under "What needs you".
+        */}
+        {(b as any).openIssues && (
+          <Section heading="Open issues">
+            <Note tone="muted">{(b as any).openIssues.why}</Note>
+          </Section>
+        )}
+
+        {/*
           HOW IT ENDS, AT THE TOP (U.11, day-30-and-60.txt and ending-and-probation-review.txt).
           Once it has ended, everyone reads the outcome, who decided, when, and why. Near the end,
           the lead reads "It’s yours to decide how this ends." with the way to the ending page.
