@@ -62,6 +62,16 @@ What waits on the engine: requests 105, 107, 108 and 109.
 - On the sales board, the engine's fields for the headline question, where each target stands, the record marks, "Where this is heading", blockers and the participant's own board are now sent, but the screen does not draw them yet.
 - Following your new approach, the sales board alone is being made exactly right, section by section, as the lead and as a participant. The other ten follow one at a time.
 
+**The sales board, second pass (2 October, afternoon).** The review of the first pass said the board did not match, so two builders fixed the screen's part:
+- On Rukia's board, the sections now run in the prototype's order. Every section the prototype does not have is kept, in one closed fold at the end called "Everything else from this check-in". Coaching ("What to work on next" and "What to ask each person") stays open, straight after "What keeps coming up".
+- "Where each target stands" now sits beside the headline question, and a summary no longer fills the big answer.
+- The broken sentence under "The team today" now reads, for example, "Baraka Mwangi has none of their 4 shops in Westlands yet."
+- The deal grid is headed "Every deal, day by day", with the prototype's key, filled and ringed marks, and a "Next step" column that says "Nothing booked" where there is none.
+- Each item under "What needs you in this check-in" says where it comes from and has one quiet "Open".
+- Amani's board shows "Your deals, day by day", marked "Only yours", then "Every session" outside the fold.
+- What still differs because of the engine: the deal grid's groups ("Likely by 30 September", "Possible" and so on), each item's own choices under "What needs you", Amani's deals and share, and a team picture that is said to be shared when it is not. These are requests 111 and 112.
+- I merged the engine's latest work (decision 75's items), applied its database change to the local database only, and restarted the local API. A second review of the sales board comes after the tests.
+
 **The sales board, first pass.** It now draws the engine's new fields:
 - the headline question, "Will we sign 12 shops for kitchen appliances in Nairobi by 13 December?";
 - a word for where each target stands;
