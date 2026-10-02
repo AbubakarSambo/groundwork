@@ -1,6 +1,7 @@
 import { whoExistsTwice, howItReads } from './whose-roster-is-this';
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { tidyANumberFor } from '../whatsapp/the-organisations-country';
 import { Prisma } from '@prisma/client';
 
 /** The SCIM 2.0 user shape, as much of it as we take in. */
@@ -153,6 +154,16 @@ export class ScimService {
     const deactivatedAt = active ? null : (prior?.deactivatedAt ?? new Date());
 
     const data: any = { ...this.fields(dto), active, deactivatedAt, syncedAt: new Date() };
+    /*
+     * THE NUMBER IN THE ONE FORM WHATSAPP SENDS (decision 82, item 8). `fields` took out spaces and
+     * dashes only, so a local "0801 234 5678" was kept as "+08012345678" and never matched the
+     * number WhatsApp sends. The same function Settings and an admin's roster entry use: a local
+     * number takes the organisation's country, or the push is refused with a sentence saying what to send.
+     */
+    if (typeof data.phone === 'string' && data.phone) {
+      const raw = dto.phoneNumbers?.find((p) => p.primary)?.value ?? dto.phoneNumbers?.[0]?.value ?? data.phone;
+      data.phone = await tidyANumberFor(this.prisma as any, organizationId, raw);
+    }
 
     /* See the note on the push above. A fill, only into an empty field. */
     const haveNoEmail = data.email == null && prior?.email == null;
