@@ -51,6 +51,30 @@ function nameOnTheBoard(b: { participants?: { id: string; name: string | null }[
   const words = plainWordsByPerson(b?.participants ?? [], { named: (p) => !!p.name?.trim() })
   return atTheStart(words.get(participantId) ?? 'a colleague')
 }
+
+/**
+ * A DECISION'S OWNER, SAID AS WORDS RATHER THAN STAPLED ON AS A BARE FRAGMENT.
+ *
+ * SECOND BOARD REVIEW, WORDING. `board.service.ts`'s `deriveDecisions` sends `owner` as a real
+ * person's name when one is on record, and otherwise as one of a handful of fixed stand-ins for
+ * "nobody is named for this" - 'Lead and team' (a divergence, or something the lead wrote down),
+ * 'Nobody has been named to decide this.', or a dependency's own non-person label (its `onLabel`,
+ * such as "the pipeline"). Read raw after the row's own sentence, each of those reads as a label
+ * stuck on the end, not a sentence - and there is no fixed list of every label a dependency might
+ * carry. The one fact the client can check is whether `owner` is a name actually on this check-in's
+ * roster: when it is, this reads "This comes from {person}." (or "You" for the reader's own), the
+ * prototype's own words (G1-example-check-ins); when it is not a person at all, it reads the
+ * prototype's own tag for that case instead - "Decision needed" (eng.txt, ops.txt).
+ */
+function decisionOwnerTag(
+  owner: string,
+  participants: { name: string | null }[] | undefined,
+  myName: string | null,
+): string {
+  if (myName && owner === myName) return 'You'
+  const isPerson = (participants ?? []).some((p) => p.name && p.name === owner)
+  return isPerson ? `This comes from ${owner}.` : 'Decision needed'
+}
 import { WhereEachPersonIs } from '@/components/gw/where-each-person-is'
 import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-across-people'
 import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
@@ -1084,8 +1108,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <>
                       {d.why}
                       {/* U.10 re-review, item 1: a name, not a verdict - "You" to the reader
-                          themselves, kept from the old standalone "Decisions needed" section. */}
-                      {d.owner && <span className="gwui-fs-13-5 gwui-ink-sub gwui-ml-7">{myName && d.owner === myName ? 'You' : d.owner}</span>}
+                          themselves, kept from the old standalone "Decisions needed" section.
+
+                          SECOND BOARD REVIEW, WORDING: `d.owner` is not always a person. The
+                          engine sends it as a real name, or one of a handful of stuck-on fragments
+                          for a decision nobody is named for - "Lead and team" (a divergence, or one
+                          the lead wrote down), "Nobody has been named to decide this.", or a
+                          dependency's own non-person label such as "the pipeline". Stapled after
+                          the sentence as a bare fragment, all three read as a label, not words -
+                          see `decisionOwnerTag`. */}
+                      {d.owner && <span className="gwui-fs-13-5 gwui-ink-sub gwui-ml-7">{decisionOwnerTag(d.owner, b.participants, myName)}</span>}
                     </>
                   )}
                 />
