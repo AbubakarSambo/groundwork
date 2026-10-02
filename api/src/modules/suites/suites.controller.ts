@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Param, Post, Put, Query, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
 import { CurrentUser, CurrentUserData } from '../../common';
@@ -10,6 +11,7 @@ import { ReviewsService } from './the-reviews.service';
 import { LeavingBoardService } from './the-leaving-board.service';
 import { RoleMapService } from './the-role-map.service';
 import { SpendingService } from './the-spending.service';
+import { SpendingForFinanceService } from './the-spending-for-finance.service';
 import { TodosService } from './the-todos.service';
 import { CustomersService } from './the-customers.service';
 import { EquipmentService } from './the-equipment.service';
@@ -93,6 +95,18 @@ class SpendRulesDto {
   @IsOptional() @IsArray() thresholds?: Record<string, unknown>[] | null;
 }
 
+class FinanceCodeDto {
+  @IsString() @MaxLength(80) code!: string;
+}
+
+class FinanceEvidenceDto {
+  @IsString() @MaxLength(16) what!: string;
+}
+
+class FinancePaidDto {
+  @IsString() @MaxLength(10) on!: string;
+}
+
 class AgreementsDto {
   @IsArray() agreements!: unknown[];
 }
@@ -117,6 +131,7 @@ export class SuitesController {
     private readonly todos: TodosService,
     private readonly customers: CustomersService,
     private readonly equipment: EquipmentService,
+    private readonly finance: SpendingForFinanceService,
   ) {}
 
   @Get()
@@ -399,6 +414,46 @@ export class SuitesController {
   @ApiOperation({ summary: 'An admin sets the spending rules. A part given as null is cleared; one left out is kept.' })
   setSpendRules(@CurrentUser() user: CurrentUserData, @Body() dto: SpendRulesDto) {
     return this.suites.setSpendRules({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('spend/finance')
+  @ApiOperation({ summary: 'Approved requests to spend, for whoever looks after finance or an admin: only what is on each request, to check, code and mark paid' })
+  financeView(@CurrentUser() user: CurrentUserData) {
+    return this.finance.view({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Get('spend/finance/export')
+  @ApiOperation({ summary: 'Approved requests to spend not yet paid, as a CSV or Excel file (format=csv or format=xlsx). For whoever looks after finance or an admin.' })
+  async financeExport(@CurrentUser() user: CurrentUserData, @Query('format') format: string, @Res() res: Response) {
+    const file = await this.finance.export({ userId: user.id, organizationId: user.organizationId }, format || 'csv');
+    res.status(HttpStatus.OK)
+      .setHeader('Content-Type', file.contentType)
+      .setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`)
+      .send(file.body);
+  }
+
+  @Post('spend/requests/:id/check')
+  @ApiOperation({ summary: 'Finance checks an approved request to spend' })
+  financeCheck(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.finance.verify({ userId: user.id, organizationId: user.organizationId }, id);
+  }
+
+  @Put('spend/requests/:id/code')
+  @ApiOperation({ summary: 'Finance records the budget line or category an approved request is paid from' })
+  financeCode(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: FinanceCodeDto) {
+    return this.finance.code({ userId: user.id, organizationId: user.organizationId }, id, dto.code);
+  }
+
+  @Post('spend/requests/:id/evidence')
+  @ApiOperation({ summary: 'Finance records that it has had the receipt or the quote (what: receipt or quote). No file is kept.' })
+  financeEvidence(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: FinanceEvidenceDto) {
+    return this.finance.evidenceGiven({ userId: user.id, organizationId: user.organizationId }, id, dto.what);
+  }
+
+  @Post('spend/requests/:id/paid')
+  @ApiOperation({ summary: 'Finance marks a checked request to spend paid, with the day it was paid (on: YYYY-MM-DD)' })
+  financePaid(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: FinancePaidDto) {
+    return this.finance.paid({ userId: user.id, organizationId: user.organizationId }, id, dto.on);
   }
 
   @Get('spend/mine')

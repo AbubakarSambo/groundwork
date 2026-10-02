@@ -7,6 +7,7 @@ import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { whoIsAwayOn } from '../suites/who-is-away';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
+import { SpendingForFinanceService } from '../suites/the-spending-for-finance.service';
 import { waitingForYouToApprove } from './waiting-for-you-to-approve';
 import { ReviewsService } from '../suites/the-reviews.service';
 import { reviewsToStartOnToday, yourReviewsOnToday } from './a-review-on-today';
@@ -31,6 +32,7 @@ export class WhatNeedsYouService {
     @Optional() private time?: TimeSheetsService,
     @Optional() private spend?: SpendingService,
     @Optional() private reviews?: ReviewsService,
+    @Optional() private finance?: SpendingForFinanceService,
   ) {}
 
   /**
@@ -92,6 +94,34 @@ export class WhatNeedsYouService {
   }
 
   /**
+   * APPROVED REQUESTS TO SPEND WAITING FOR FINANCE (build step 10), for whoever looks after finance
+   * only: how many, never whose. "Three approved requests to spend are waiting for you in finance."
+   */
+  private async financeFor(userId: string, organizationId: string): Promise<Need[]> {
+    if (!this.finance) return [];
+    const w = await Promise.resolve().then(() => this.finance!.waitingFor({ userId, organizationId })).catch(() => null);
+    if (!w || w.toCheck + w.toPay === 0) return [];
+    const word = (k: number) => (k <= 10 ? ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][k] : String(k));
+    const Word = (k: number) => `${word(k).charAt(0).toUpperCase()}${word(k).slice(1)}`;
+    const all = w.toCheck + w.toPay;
+    const parts: string[] = [];
+    if (w.toCheck) parts.push(`${word(w.toCheck)} ${w.toCheck === 1 ? 'has' : 'have'} not been checked yet`);
+    if (w.toPay) parts.push(`${word(w.toPay)} ${w.toPay === 1 ? 'is' : 'are'} checked and waiting to be paid`);
+    const detail = all === 1
+      ? (w.toCheck ? 'It has not been checked yet.' : 'It is checked and waiting to be paid.')
+      : `${parts.join(', and ').replace(/^./, (c) => c.toUpperCase())}.`;
+    return [{
+      key: 'spend-finance',
+      kind: 'decide' as const,
+      title: all === 1 ? 'One approved request to spend is waiting for you in finance.' : `${Word(all)} approved requests to spend are waiting for you in finance.`,
+      detail,
+      action: { label: 'Open them', to: '/suite/spend' },
+      groundId: '',
+      organizationId,
+    }];
+  }
+
+  /**
    * WHAT IS WAITING FOR THIS READER TO APPROVE (week 21): leave, hours and spending, from each
    * board's own read, which says row by row whether this reader is the one who approves it. Every
    * reader's boards are asked, because the rules can name a member to decide (decisions 85 and 86),
@@ -110,7 +140,7 @@ export class WhatNeedsYouService {
   }
 
   async forReader(userId: string, email: string, organizationId: string, role: string): Promise<WhatNeedsYou> {
-    const [list, waiting, me, toApprove, reviews, leaveQuestions, spendQuestions] = await Promise.all([
+    const [list, waiting, me, toApprove, reviews, leaveQuestions, spendQuestions, finance] = await Promise.all([
       this.grounds.list(organizationId, userId, email, role),
       role === 'ADMIN' ? this.grounds.listAwaitingApproval(organizationId, userId) : Promise.resolve([]),
       /**
@@ -125,6 +155,7 @@ export class WhatNeedsYouService {
       this.reviewsFor(userId, organizationId),
       this.leaveQuestionsFor(userId, organizationId),
       this.spendQuestionsFor(userId, organizationId),
+      this.financeFor(userId, organizationId),
     ]);
     /*
      * ONLY THIS ORGANISATION'S (U.5 review). The list also carries check-ins in other organisations
@@ -145,7 +176,7 @@ export class WhatNeedsYouService {
     }
     /* On approved leave today (week 23): their own check-in says the round does not wait for them. Dates only. */
     const awayUntil = (await whoIsAwayOn(this.prisma, [userId], organizationId).catch(() => new Map<string, string>())).get(userId) ?? null;
-    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove]);
+    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance]);
     /* A net: no address stands in for a name in any sentence on Today (week 12c). */
     const called = new Map<string, string>();
     for (const g of here as any[]) {

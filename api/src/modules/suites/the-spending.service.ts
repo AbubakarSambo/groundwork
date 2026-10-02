@@ -4,7 +4,8 @@ import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sig
 import { inTheLeadsTeam } from './a-leads-team';
 import { couldBeNamed, decidesIt, everyStepFor, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
-import { aRequestsHistory, recordIt } from './a-request-is-recorded';
+import { aRequestsHistory, recordIt, saidAsADate } from './a-request-is-recorded';
+import { readDuties } from './who-holds-each-duty';
 import type { PassedOn } from './the-leave-board.service';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { LEAVE_QUESTION_KIND, QUESTION_REFUSED, aQuestionSaid, aReasonSaid, wordsGiven, type AQuestion } from './a-question-about-a-request';
@@ -75,6 +76,8 @@ export interface MySpending {
     questionWaiting: { id: string; question: string; askedBy: string } | null;
     /** What the person who declined it said: "Fatuma said, “The van is being sold.”" Null when they said nothing. */
     declinedBecause: string | null;
+    /** The day finance marked it paid (build step 10), or null. */
+    paidOn: string | null;
     /** Where it is, in a full sentence: "Your request to spend KES 12,000 for fuel is approved by Wairimu and is now waiting for Omar in finance." */
     where: string;
   }[];
@@ -106,6 +109,8 @@ type Row = {
   category?: string | null; evidenceNeeded?: string[] | null;
   /* The reason a decline was given with. */
   declineReason?: string | null;
+  /* Finance's part (build step 10). */
+  verifiedById?: string | null; paidOn?: Date | null;
 };
 type Answers = { currency: string | null; limit: number | null; above: string | null; workflow?: AWorkflow; thresholds?: AThreshold[]; rules?: SpendRules };
 
@@ -362,7 +367,8 @@ export class SpendingService {
         declinedBecause: r.status === 'declined' && r.declineReason?.trim()
           ? aReasonSaid(r.decidedById ? (firsts.get(r.decidedById) || 'The person who decided it') : 'The person who decided it', r.declineReason)
           : null,
-        where: whereYourRequestIs(`Your request to spend ${spendInWords(n(r.amount), answers.currency, r.what)}`, await this.whereItStands(r, now, false, reader.userId)),
+        where: await this.whereYoursIs(r, now, answers, reader.userId),
+        paidOn: r.paidOn ? r.paidOn.toISOString().slice(0, 10) : null,
       });
     }
     return { currency: answers.currency, requests };
@@ -383,7 +389,9 @@ export class SpendingService {
     const me = byUser.get(reader.userId);
     const mayRead = r.userId === reader.userId || role === 'ADMIN'
       || (role === 'LEAD' && !!me && !!byUser.get(r.userId) && inTheLeadsTeam(me, byUser.get(r.userId)!))
-      || (r.status === 'waiting' && decidesIt((await this.now(reader.organizationId, r, answers, byUser)).who, { userId: reader.userId, role }, r.userId));
+      || (r.status === 'waiting' && decidesIt((await this.now(reader.organizationId, r, answers, byUser)).who, { userId: reader.userId, role }, r.userId))
+      /* Whoever looks after finance reads the record of an approved request, which finance works on (build step 10). */
+      || (r.status === 'approved' && (await readDuties(this.prisma, reader.organizationId).catch(() => ({} as any))).finance === reader.userId);
     if (!mayRead) throw new NotFoundException(SPEND_REFUSED.notFound);
     return aRequestsHistory(this.prisma, reader.organizationId, 'spend', id, reader.userId);
   }
@@ -616,6 +624,22 @@ export class SpendingService {
   private async approvesOverTheLimit(organizationId: string, userId: string, answers: Answers): Promise<boolean> {
     const role = await this.roleOf({ userId, organizationId });
     return couldBeNamed(this.prisma, everyStepFor('spend', answers).filter((s) => s !== 'admin' && s !== 'manager'), organizationId, { userId, role });
+  }
+
+  /**
+   * Where the person's own request is, in a full sentence. Once finance has paid it: "Your request to
+   * spend KES 12,000 for fuel was paid on 6 October." Once finance has checked it: "... is approved by
+   * Fatuma. Omar in finance has checked it, and it is waiting to be paid." Otherwise as before.
+   */
+  private async whereYoursIs(r: Row, now: DecidesNow | null, answers: Answers, readerUserId: string): Promise<string> {
+    const thing = `Your request to spend ${spendInWords(n(r.amount), answers.currency, r.what)}`;
+    if (r.status === 'approved' && r.paidOn) return `${thing} was paid on ${saidAsADate(new Date(`${r.paidOn.toISOString().slice(0, 10)}T12:00:00.000Z`))}.`;
+    const where = whereYourRequestIs(thing, await this.whereItStands(r, now, false, readerUserId));
+    if (r.status === 'approved' && r.verifiedById) {
+      const by = (await firstNamesOf(this.prisma, [r.verifiedById], readerUserId))[0];
+      return `${where} ${by ? `${by.charAt(0).toUpperCase()}${by.slice(1)} in finance has` : 'Finance has'} checked it, and it is waiting to be paid.`;
+    }
+    return where;
   }
 
   /** The questions asked on these requests, oldest first. A test built by hand may have no table. */

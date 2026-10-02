@@ -2618,6 +2618,19 @@ model SpendRequest {
   /// The reason the person who declined it gave, in their words, told to the person who asked
   /// (decision 85, build step 9, as leave has). Empty when none was given, and on every request before.
   declineReason  String?   @map("decline_reason") @db.Text
+  /// FINANCE'S PART, after the last approval (decision 85, build step 10). Whoever looks after finance
+  /// checks it (verified), records the budget line it is paid from (code), and marks it paid with the
+  /// day it was paid. Each step is also in `suite_events`, with who and when. All empty on every request
+  /// kept before, and on any request finance has not touched.
+  verifiedById   String?   @map("verified_by_id")
+  verifiedAt     DateTime? @map("verified_at")
+  /// The budget line or category finance records it under, in finance's own words.
+  code           String?   @db.VarChar(80)
+  /// The day it was paid, as finance says it.
+  paidOn         DateTime? @map("paid_on") @db.Date
+  paidById       String?   @map("paid_by_id")
+  /// The evidence finance has had: "receipt", "quote". Only that it was given; no file is kept.
+  evidenceGiven  String[]  @default([]) @map("evidence_given")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -2845,7 +2858,8 @@ model SuiteEvent {
   suite          String   @db.VarChar(16)
   /// The request: a leave or spending request's id, a review's id, or for hours the person's sign-in and the week's Monday joined by "|".
   ref            String   @db.VarChar(200)
-  /// asked, told, approved, declined, escalated, started, decided, questioned or answered.
+  /// asked, told, approved, declined, escalated, started, decided, questioned, answered, and for
+  /// spending finance's verified, coded, evidence, exported and paid.
   kind           String   @db.VarChar(16)
   /// Who did it, by sign-in. Empty when Groundwork did it (telling, passing on).
   byUserId       String?  @map("by_user_id")

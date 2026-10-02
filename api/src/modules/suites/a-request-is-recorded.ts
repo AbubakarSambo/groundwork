@@ -20,7 +20,9 @@ import type { PrismaService } from '../prisma/prisma.service';
  */
 
 export type SuiteOfARecord = 'leave' | 'spend' | 'time' | 'reviews';
-export type WhatHappened = 'asked' | 'told' | 'approved' | 'declined' | 'escalated' | 'started' | 'decided' | 'questioned' | 'answered';
+export type WhatHappened = 'asked' | 'told' | 'approved' | 'declined' | 'escalated' | 'started' | 'decided' | 'questioned' | 'answered'
+  /* Finance's part of a request to spend (build step 10). */
+  | 'verified' | 'coded' | 'evidence' | 'exported' | 'paid';
 
 export interface ARecord {
   organizationId: string;
@@ -122,6 +124,26 @@ export function theRecordInWords(records: ARecord[], names: Map<string, string>,
       case 'started':
         out.push(`${capital(by)} started the review on ${on}.`);
         break;
+      case 'verified':
+        out.push(`${capital(by)} checked ${it} for finance on ${on}.`);
+        break;
+      case 'coded':
+        out.push(`${capital(by)} recorded the budget line it is paid from on ${on}.`);
+        break;
+      case 'evidence': {
+        const what = (r.basis as any)?.what === 'quote' ? 'quote' : 'receipt';
+        out.push(`${capital(by)} recorded that finance has the ${what} on ${on}.`);
+        break;
+      }
+      case 'exported':
+        out.push(`${capital(by)} put ${it} in a file of requests to pay on ${on}.`);
+        break;
+      case 'paid': {
+        const paidOn = (r.basis as any)?.paidOn as string | undefined;
+        const day = paidOn ? saidAsADate(new Date(`${paidOn}T12:00:00.000Z`)) : null;
+        out.push(day && day !== on ? `${capital(by)} marked ${it} paid on ${on}. It was paid on ${day}.` : `${capital(by)} marked ${it} paid on ${on}.`);
+        break;
+      }
       case 'decided':
         out.push(`${capital(by)} decided the review on ${on}.`);
         break;

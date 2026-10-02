@@ -110,7 +110,7 @@ export function aSpendingOrganisation(opts: { rules?: unknown; duties?: unknown;
       create: jest.fn(async ({ data }: any) => { created.push(data); const r = req(data.userId, data.amount, data.what, data.team, 'waiting', TODAY, { category: data.category ?? null, evidenceNeeded: data.evidenceNeeded ?? [] }); return { id: r.id }; }),
     },
     teamBudget: {
-      findMany: jest.fn(async ({ where }: any) => budgets.filter((b) => b.month.getTime() === where.month.getTime())),
+      findMany: jest.fn(async ({ where }: any) => budgets.filter((b) => !where?.month || b.month.getTime() === where.month.getTime())),
       findUnique: jest.fn(async ({ where }: any) => {
         const k = where.organizationId_team_month;
         return budgets.find((b) => b.team === k.team && b.month.getTime() === k.month.getTime()) ?? null;

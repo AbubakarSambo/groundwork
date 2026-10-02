@@ -28,7 +28,7 @@ The local `main` on this computer is old (11 August, pull request 130), so compa
 
 ## 2. The database migrations, in the order they run
 
-There are **78 new migrations** since the remote `main` (67 listed in the table below, and eleven added on 2 and 3 October, listed after it). They run in name order. The last one the remote `main` has is `20260923140000_what_we_have_so_far`; these come after it.
+There are **79 new migrations** since the remote `main` (67 listed in the table below, and twelve added on 2 and 3 October, listed after it). They run in name order. The last one the remote `main` has is `20260923140000_what_we_have_so_far`; these come after it.
 
 **Read this first: six of the 67 in the table do something to existing rows, and two of the four added on 2 October do too (see below). The rest only add new tables, new empty columns, new types or new indexes.**
 
@@ -128,6 +128,7 @@ Every migration, in order, in one sentence each:
 | 76 | `20261003180000_a_question_answered_on_whatsapp_during_a_check_in` | Decision 85, build step 7. Adds one empty column to WhatsApp threads, the question about the person's own request they were already asked about ("Is this your answer to Wairimu's question about your leave?"), so a reply during a check-in is asked about once only. | Untouched |
 | 77 | `20261003200000_spending_rules_categories_and_evidence` | Decision 85, build step 9. Adds two columns to requests to spend: the category it is for, when an admin has named categories, and which evidence (a receipt, a quote) the spending rules asked for. Only that it is needed; no file. Both empty on every request already kept. | Untouched |
 | 78 | `20261003210000_a_question_about_spending_and_a_reason_for_a_decline` | Decision 85, build step 9. Adds an empty column `decline_reason` on requests to spend, for the reason given with a decline, told to the person. A question about a request to spend goes in the existing `suite_questions` table. | Untouched |
+| 79 | `20261003220000_finance_checks_codes_and_pays_a_request_to_spend` | Decision 85, build step 10. Adds six empty columns to requests to spend for finance's part after the last approval: who checked it and when, the budget line it is paid from, the receipt or quote finance has had (only that; no file), the day it was paid and who marked it. Who did each step is also kept in the existing `suite_events`. | Untouched |
 
 The prices and limits migration 71 writes, all editable afterwards at Admin, System, Pricing (`PATCH /admin/pricing/:plan` with `whatsappAddOnCents` and `whatsappMonthlyLimit`):
 
@@ -146,7 +147,7 @@ Things worth knowing about how they run:
 - Columns added with a fixed default (`false`, an empty list) do not rewrite the table on Postgres 11 or later, so none of these should lock a table for long.
 - The new unique indexes on existing tables (`organizations.join_domain`, `organizations.invite_link_code`) are on new columns that start empty, so they cannot fail on existing data.
 - Two pairs of migrations share a timestamp (`20260927180000_*` and `20260927190000_*`). Prisma runs them in full name order, which is the order above.
-- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261003210000_a_question_about_spending_and_a_reason_for_a_decline`.
+- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261003220000_finance_checks_codes_and_pays_a_request_to_spend`.
 
 ## 3. Settings and environment variables
 
@@ -287,7 +288,7 @@ Every report updated after the release should name the newest `report_synthesis`
 ## 7. The checks to run after deploy
 
 **Before any person reads anything:**
-1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 80;` shows all 78 new migrations finished, and none failed.
+1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 80;` shows all 79 new migrations finished, and none failed.
 2. The API answers `/health`.
 3. The active prompt versions match section 6.
 4. The script in section 5 has run, and a report built after it shows quotation marks around people's words again.
@@ -315,7 +316,7 @@ None of these files were changed. This is what they say.
 
 | File | What triggers it | What it would do |
 | --- | --- | --- |
-| `api/railway.toml` | Whatever branch the API's hosting project is connected to. That is set in the hosting dashboard, not in the repository. | On every start: marks one old failed migration (`20260627000000_contributor_code_system`) as rolled back, then **runs `prisma migrate deploy`, which applies all 78 migrations with no backup step**, and then starts the API. If a migration fails, the API does not start, and the host retries three times. |
+| `api/railway.toml` | Whatever branch the API's hosting project is connected to. That is set in the hosting dashboard, not in the repository. | On every start: marks one old failed migration (`20260627000000_contributor_code_system`) as rolled back, then **runs `prisma migrate deploy`, which applies all 79 migrations with no backup step**, and then starts the API. If a migration fails, the API does not start, and the host retries three times. |
 | `client/vercel.json` | A push to `main` or to the other long-lived branch, through the hosting provider's own link to the repository. | Builds and publishes the screens. Every other branch is switched off. |
 | `.github/workflows/staging-deploy.yml` | A push to the other long-lived branch that changes `client/`. | Builds the screens with the hosting provider's command-line tool and points the fixed preview address at the new build. Not triggered by `main`. |
 | `.github/workflows/preview-deploy.yml` | A pull request that changes `client/`. | Builds a preview of the screens and comments the address on the pull request. |
