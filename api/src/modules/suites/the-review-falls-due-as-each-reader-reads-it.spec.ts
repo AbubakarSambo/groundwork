@@ -228,13 +228,14 @@ describe('What Groundwork noticed, written from the record when Wairimu says yes
     expect(r).not.toHaveProperty('managersWords');
   });
 
-  it('Grace, an admin not given access to the plan, reads the line from the ordinary check-in and not from the plan', async () => {
+  /* Changed with decision 75, item 25: Kwame's first 90 days is an evaluation check-in now, like the plan, so
+     Grace, who was given access to neither, reads neither line. Before, she read the first 90 days' line. */
+  it('Grace, an admin not given access to the plan or the first 90 days, reads no line from either', async () => {
     const { svc, as, id } = await started();
     const r: any = await svc.one(as('u-grace'), id);
     expect(r.reader).toBe('admin');
-    expect(r.noticed.map((x: any) => x.says)).toEqual([
-      'Wairimu decided on “Extend evaluation period” at the end of “Kwame, first 90 days” on 20 September 2026, and said why, “He needs another month on the supermarket accounts”.',
-    ]);
+    expect(r.noticed.map((x: any) => x.says)).toEqual([]);
+    expect(JSON.stringify(r)).not.toContain('He needs another month on the supermarket accounts');
     expect(JSON.stringify(r)).not.toContain('The stock delay was not his doing');
   });
 
@@ -256,10 +257,8 @@ describe('What Groundwork noticed, written from the record when Wairimu says yes
       decision: null, decisionReason: null, decidedById: null, decidedAt: null, theirSide: null, theirSideAt: null, appeal: null, appealedAt: null,
       appealOutcome: null, appealReason: null, appealDecidedById: null, appealDecidedAt: null, createdAt: new Date('2026-09-01T00:00:00Z'),
     });
-    /* CHANGED 1 October: a suggestion lives only on an evaluation check-in (decision 6, clarified 29
-       September). On Kwame's first 90 days, which is not one, the review serves none at all. */
-    expect((await w.svc.one(w.as('u-wairimu'), w.id) as any).suggestion).toBeNull();
-    w.ground.scenario = 'PIP';
+    /* CHANGED 2 October: Kwame's first 90 days is an evaluation check-in (decision 75, item 25), so the review
+       serves the suggestion reached there, as the prototype does. On 1 October it served none on it. */
     const w1: any = await w.svc.one(w.as('u-wairimu'), w.id);
     expect(w1.suggestion).toMatchObject({ headline: 'Groundwork suggests extra support for Kwame', why: 'In the last four weeks, Kwame has kept fewer of the commitments made in this check-in than Groundwork looks for.' });
     expect(JSON.stringify(w1)).not.toMatch(/\d+ of \d+|\d+ in 100|\d+%/);

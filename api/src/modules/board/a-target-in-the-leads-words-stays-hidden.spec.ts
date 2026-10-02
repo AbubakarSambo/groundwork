@@ -109,15 +109,17 @@ describe('each person\'s target from the lead\'s words about them, on a check-in
         expect(got).toMatch(has14);
         expect(got).toMatch(has12);
       });
+      /* Changed with decision 75, item 13: on the Context page a participant read their own figure only through
+         the lead's brief, which is no longer quoted to anybody but the lead. They still never read a colleague's. */
       it('Ngozi reads her own and not Femi\'s', async () => {
         const got = await text(read(NGOZI));
-        expect(got).toMatch(has14);
+        if (where !== 'the Context page') expect(got).toMatch(has14);
         expect(got).not.toMatch(has12);
       });
       it('Femi, a colleague, reads his own and not Ngozi\'s', async () => {
         const got = await text(read(FEMI));
         expect(got).not.toMatch(has14);
-        expect(got).toMatch(has12);
+        if (where !== 'the Context page') expect(got).toMatch(has12);
         /* The team's target is everybody's, and stays. (The Context page gives a participant the brief
            as everyone reads it, which already leaves the lead's figures out; that rule is not this one.) */
         if (where !== 'the Context page') expect(got).toContain(TEAM);

@@ -61,11 +61,13 @@ describe('what the product wrote is what the About block reads', () => {
     expect(src).toMatch(/told: \(ground as any\)\.toldToParticipants/);
     const grounds = strip(require('fs').readFileSync(require('path').join(__dirname, 'grounds.service.ts'), 'utf8'));
     /* U.7 third review: the rule moved into one helper that the list and the single read both use. */
-    expect(grounds).toMatch(/whatSomeoneWhoDoesNotRunItReads\(\{ brief, toldToParticipants: \(ground as any\)\.toldToParticipants \}\)/);
+    /* And the scenario, since decision 75, item 13: a team update's one line is the question everybody is sent. */
+    expect(grounds).toMatch(/whatSomeoneWhoDoesNotRunItReads\(\{ brief, toldToParticipants: \(ground as any\)\.toldToParticipants, scenario: \(ground as any\)\.scenario \}\)/);
     const { whatSomeoneWhoDoesNotRunItReads } = require('./what-someone-who-does-not-run-it-reads');
     const brief = 'Tunde has just joined us as Engagement Director. Help the person develop clarity.';
     expect(whatSomeoneWhoDoesNotRunItReads({ brief, toldToParticipants: '  This check-in is about your first year.  ' })).toBe('This check-in is about your first year.');
-    expect(whatSomeoneWhoDoesNotRunItReads({ brief, toldToParticipants: null })).toBe(theSituationIn(brief));
+    /* Decision 75, item 13: no short version means nothing of the brief, where it used to be its situation sentences. */
+    expect(whatSomeoneWhoDoesNotRunItReads({ brief, toldToParticipants: null })).toBeNull();
   });
 });
 

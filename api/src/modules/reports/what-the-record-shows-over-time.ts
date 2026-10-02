@@ -1,3 +1,5 @@
+import { aPartyOutside, theSameThing } from '../board/a-thing-is-not-somebody';
+import { someOfThemHave } from './some-of-them-has-or-have';
 /**
  * THE LONGITUDINAL READ: WHAT THE RECORD SHOWS ACROSS EVERY SESSION, WRITTEN BY THE PRODUCT.
  *
@@ -364,7 +366,9 @@ export function dependenciesOverTime(
   return (rows ?? [])
     .filter((d) => String(d.status).toUpperCase() !== 'CLEARED')
     .map((d) => {
-      const on = d.onParticipantId ? labelOf(d.onParticipantId) : (d.onLabel ?? null);
+      /* A thing is not somebody: "the data structure decision" is what is waited for, not who holds it (request 107 b). */
+      const on = d.onParticipantId ? labelOf(d.onParticipantId) : (aPartyOutside(d) ? (d.onLabel ?? null) : null);
+      const aThingItWaitsOn = !d.onParticipantId && d.onLabel?.trim() && !aPartyOutside(d) && !theSameThing(d.onLabel, d.what) ? d.onLabel.trim() : null;
       const from = labelOf(d.fromParticipantId);
       const stated = d.statedInSession ?? null;
       const sessionsWaiting = stated !== null ? Math.max(0, sessionsSoFar - stated) : null;
@@ -405,7 +409,11 @@ export function dependenciesOverTime(
               : tried === 'asked-once' ? 'it has been asked about once since'
                 : 'nothing on record says anybody has chased it since';
       const sentences = [
-        `${from} is waiting on ${on ?? 'somebody outside this check-in'} for "${d.what}"${howLong}, and ${since}.`,
+        aThingItWaitsOn
+          ? `${from} is waiting for "${d.what}"${howLong}, and ${since}. That waits on ${aThingItWaitsOn}.`
+          : !on && d.onLabel?.trim()
+            ? `${from} is waiting for "${d.what}"${howLong}, and ${since}.`
+            : `${from} is waiting on ${on ?? 'somebody outside this check-in'} for "${d.what}"${howLong}, and ${since}.`,
       ];
       /*
        * THE DIRECTION IS THE FINDING, AND IT IS SAID PLAINLY BECAUSE IT KEEPS BEING READ BACKWARDS.
@@ -701,7 +709,7 @@ export function whatThisCannotTellYou(o: {
     out.push('Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.');
   }
   if (o.peopleWhoAnswered < o.peopleInvited) {
-    out.push(`${o.peopleInvited - o.peopleWhoAnswered} of ${o.peopleInvited} people have not answered yet, so anything about them is missing rather than absent.`);
+    out.push(someOfThemHave(o.peopleInvited - o.peopleWhoAnswered, o.peopleInvited, 'not answered yet, so anything about them is missing rather than absent.'));
   }
   if (!o.anybodyAskedWhoArrangedThings) {
     out.push('Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.');

@@ -89,7 +89,31 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
   const answering = whoIsExpected(withRows, session, i.scenario, now);
   const done = new Set(answering.filter((p) => !counted.waitingOn.includes(p.id)).map((p) => p.id));
 
-  const real = oneBlockerPerThingWaitedOn(dedupeDependencies(i.dependencies))
+  return {
+    progress: {
+      roundsDone: i.roundsDone,
+      roundsPlanned: i.roundsPlanned,
+      /* The two numbers people read count who is in the round by the header's rule. See whoIsInTheRound. */
+      answeredThisRound: shown.answered,
+      ofPeople: shown.ofPeople,
+      waitingOn: counted.waitingOn,
+      ...(i.forTheList ? {
+        openRound: session,
+        whereItIs: whereTheTeamIs(i.sessionNumber ? session : 0, i.roundsPlanned, i.roundsDone),
+        howManyAreDone: howManyAreDone(i.roundsDone, i.roundsPlanned),
+      } : {}),
+    },
+    inTheWay: whatIsInTheWay(i.dependencies, now, !!i.forTheList),
+  };
+}
+
+/**
+ * WHAT IS IN THE WAY, COUNTED AS THE BOARD COUNTS IT, with the longest-standing named one. Given every
+ * wait on the check-in for whoever runs it; given only the reader's own waits for a reader walled from
+ * their colleagues (see theGlanceAsThisReaderMayReadIt).
+ */
+export function whatIsInTheWay(dependencies: GlanceInput['dependencies'], now: Date = new Date(), forTheList = false): AtAGlance['inTheWay'] {
+  const real = oneBlockerPerThingWaitedOn(dedupeDependencies(dependencies))
     .filter((d) => d.status === DependencyStatus.BLOCKING || d.status === DependencyStatus.WAITING)
     .filter(blockerHasSubstance);
 
@@ -114,26 +138,33 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
   const oldest = byAge.find(theyNamedWhatTheyAreWaitingOn) ?? null;
 
   return {
-    progress: {
-      roundsDone: i.roundsDone,
-      roundsPlanned: i.roundsPlanned,
-      /* The two numbers people read count who is in the round by the header's rule. See whoIsInTheRound. */
-      answeredThisRound: shown.answered,
-      ofPeople: shown.ofPeople,
-      waitingOn: counted.waitingOn,
-      ...(i.forTheList ? {
-        openRound: session,
-        whereItIs: whereTheTeamIs(i.sessionNumber ? session : 0, i.roundsPlanned, i.roundsDone),
-        howManyAreDone: howManyAreDone(i.roundsDone, i.roundsPlanned),
-      } : {}),
-    },
-    inTheWay: {
-      count: real.length,
-      oldest: oldest?.what ? (startsWithAPronoun(oldest.what) ? whoseIsIt(oldest.what) : oldest.what) : null,
-      ...(i.forTheList && oldest && startsWithAPronoun(oldest.what) ? { oldestOnParticipantId: (oldest as any).onParticipantId ?? null } : {}),
-      daysWaiting: oldest?.createdAt
-        ? Math.max(0, Math.floor((now.getTime() - oldest.createdAt.getTime()) / A_DAY))
-        : null,
-    },
+    count: real.length,
+    oldest: oldest?.what ? (startsWithAPronoun(oldest.what) ? whoseIsIt(oldest.what) : oldest.what) : null,
+    ...(forTheList && oldest && startsWithAPronoun(oldest.what) ? { oldestOnParticipantId: (oldest as any).onParticipantId ?? null } : {}),
+    daysWaiting: oldest?.createdAt
+      ? Math.max(0, Math.floor((now.getTime() - oldest.createdAt.getTime()) / A_DAY))
+      : null,
+  };
+}
+
+/**
+ * THE GLANCE FOR A READER WHO MAY NOT READ THEIR COLLEAGUES (request 105, the more private choice): a
+ * participant where people see only themselves, anybody on an evaluation check-in who does not run it
+ * (the person reviewed, a colleague giving a view), and an admin without access to it. The rounds and how
+ * many have answered stay, because they name nobody. Who has not answered is cut to the reader alone, and
+ * what is in the way is counted and named from the reader's own waits only, never a colleague's.
+ */
+export function theGlanceAsThisReaderMayReadIt(
+  glance: AtAGlance,
+  reader: { participantId: string | null },
+  dependencies: GlanceInput['dependencies'],
+  now: Date = new Date(),
+): AtAGlance {
+  const me = reader.participantId;
+  const theirOwn = me ? (dependencies ?? []).filter((d: any) => d.fromParticipantId === me || d.onParticipantId === me) : [];
+  return {
+    ...glance,
+    progress: { ...glance.progress, waitingOn: (glance.progress.waitingOn ?? []).filter((id) => !!me && id === me) },
+    inTheWay: whatIsInTheWay(theirOwn, now, false),
   };
 }

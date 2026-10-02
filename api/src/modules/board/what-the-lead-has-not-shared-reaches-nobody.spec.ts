@@ -129,8 +129,11 @@ describe('and in who owns what, where the line was found live', () => {
 
   it.each(READERS)('%s', async (_who, userId, role, may) => {
     const served = await whoOwnsWhatAs(userId, role);
-    /* The row itself is served, so the test is reading a real line. */
-    expect(served).toContain('Kisumu shops');
+    /* The row itself is served, so the test is reading a real line. Except to Miriam: since request 105 a person
+       who checks in is served only their own row (the prototype's B5, "Only yours"), so Aisha's line is not on
+       Miriam's board at all, and neither is the file's name. */
+    if (userId === 'u-miriam') expect(served).not.toContain('Kisumu shops');
+    else expect(served).toContain('Kisumu shops');
     expect(served.includes(FILE)).toBe(may.file);
   });
 });

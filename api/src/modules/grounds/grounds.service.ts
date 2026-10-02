@@ -49,6 +49,7 @@ import { endStatesFor } from '../resolution/end-states';
 import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
+import { theGlanceAsThisReaderMayReadIt, whatIsInTheWay } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
@@ -83,8 +84,8 @@ import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-sec
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { theLeadsWordsAbout } from './the-leads-words-about-someone';
 import { timelineDaysForAChosenEnd } from './session-count';
-import { adminsThisOrg, maySee, groundsAViewerMayList, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from './who-may-read-this-check-in';
-import { EVALUATION_SCENARIOS } from '../reports/is-this-an-evaluation-check-in';
+import { adminsThisOrg, askedToApproveIt, readsAsAnAdmin, maySee, groundsAViewerMayList, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from './who-may-read-this-check-in';
+import { EVALUATION_SCENARIOS, isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, briefChangedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -1594,6 +1595,18 @@ export class GroundsService {
              answered, nor what is holding them up. Their own turn still shows from their own rows. */
           glance: (() => {
             const { oldestOnParticipantId, ...inTheWay } = (glance.inTheWay ?? {}) as any;
+            /*
+             * WHAT IS IN THE WAY NAMES NOBODY THIS READER MAY NOT READ (request 105, the more private choice):
+             * where people see only themselves, and on an evaluation check-in for anybody but its lead and the
+             * admin who set it up, it is counted and named from the reader's own waits only. The same rule as
+             * the board's header (theGlanceAsThisReaderMayReadIt). Today reads this list, so it follows.
+             */
+            const me = ((allParticipants ?? []) as any[]).find(isMe);
+            const runsTheEvaluation = isInitiator || (!!userId && (rest as any).createdByUserId === userId);
+            const walledFromColleagues = hidePeers || (isEvaluationCheckIn((rest as any).scenario) && !runsTheEvaluation);
+            const theirOwn = walledFromColleagues
+              ? theGlanceAsThisReaderMayReadIt(glance as any, { participantId: me?.id ?? null }, (allDependencies ?? []) as any[])
+              : null;
             if (hidePeers) {
               /* What the reader may say of themselves, in place of numbers about people they are not shown
                  (request 97d): "Just started" was read from those zeroes and was untrue of a check-in
@@ -1604,17 +1617,31 @@ export class GroundsService {
               return {
                 ...glance,
                 progress: { ...glance.progress, answeredThisRound: 0, ofPeople: 0, waitingOn: [], youHaveAnswered: answered, standsSaid: answered ? 'You have answered.' : 'You have not answered yet.' },
-                inTheWay: { count: 0, oldest: null, daysWaiting: null },
+                inTheWay: theirOwn!.inTheWay,
               };
             }
+            if (theirOwn) return theirOwn;
+            /*
+             * DECISION 75, ITEM 46: A PARTICIPANT'S ONE LINE IS THEIR OWN WAITS, ON EVERY CHECK-IN. Even where people
+             * see each other, somebody who takes part and does not run it is counted and named only what they wait
+             * on or what waits on them, to match their own board. Who has answered stays as it was, since people
+             * see each other here. Whoever runs it, and an admin reading it, read the team's waits as before.
+             */
+            const onlyTheirOwn = !!me && !runsTheEvaluation && !runsIt;
+            const ownWays = onlyTheirOwn
+              ? whatIsInTheWay(((allDependencies ?? []) as any[]).filter((d: any) => d.fromParticipantId === me.id || d.onParticipantId === me.id), new Date(), true) as any
+              : null;
+            const { oldestOnParticipantId: ownOnId, ...ownInTheWay } = (ownWays ?? {}) as any;
+            const theWay = onlyTheirOwn ? ownInTheWay : inTheWay;
+            const onWhom = onlyTheirOwn ? ownOnId : oldestOnParticipantId;
             /* A thing waited on that starts with "her" says "A colleague's"; a reader who may name people is told whose. */
-            let oldest: string | null = inTheWay.oldest;
-            if (oldest && oldestOnParticipantId && oldest.startsWith("A colleague's")) {
-              const who = ((allParticipants ?? []) as any[]).find((p) => p.id === oldestOnParticipantId);
+            let oldest: string | null = theWay.oldest;
+            if (oldest && onWhom && oldest.startsWith("A colleague's")) {
+              const who = ((allParticipants ?? []) as any[]).find((p) => p.id === onWhom);
               const name = (who?.user?.firstName ?? '').trim() || (who?.nameGiven ?? '').trim().split(/\s+/)[0] || null;
               if (name && (runsIt || peersVisibleEffective)) oldest = whoseIsIt(oldest.replace(/^A colleague's/, 'her'), name);
             }
-            return { ...glance, inTheWay: { ...inTheWay, oldest } };
+            return { ...glance, inTheWay: { ...theWay, oldest } };
           })(),
           /* Who runs it, for a reader who is shown nobody else on the row (request 97d). Not a peer: the person
              who invited them. Never their private description of anybody, only a name they gave or have. */
@@ -1857,7 +1884,7 @@ export class GroundsService {
       : null;
 
     /* What the people in it read about what this is for, and whose words those are (U.7 review). */
-    const briefAsEveryoneReadsIt: string | null = whatSomeoneWhoDoesNotRunItReads({ brief, toldToParticipants: (ground as any).toldToParticipants });
+    const briefAsEveryoneReadsIt: string | null = whatSomeoneWhoDoesNotRunItReads({ brief, toldToParticipants: (ground as any).toldToParticipants, scenario: (ground as any).scenario });
     const briefChange = rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).briefChangedBy ?? null : null;
     const changedBySomebodyElse = !!briefChange?.userId && briefChange.userId !== ground.initiatorId;
     /*
@@ -1974,7 +2001,10 @@ export class GroundsService {
       : null;
     /* An admin of a DIFFERENT organisation is a stranger, and this is not the rule to hand them. */
     const viewerAdminsThisOrg = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any);
-    const viewerRunsThisGround = viewerIsInitiator || !!viewerAdminsThisOrg;
+    /* Decision 75, item 2: the admin asked to approve an evaluation check-in reads it as an admin with access
+       does. Reading only: the join link below, a write power, still asks `viewerAdminsThisOrg`. */
+    const viewerReadsAsAnAdmin = viewerAdminsThisOrg || askedToApproveIt({ ...viewer, userId: requestingUserId }, ground as any);
+    const viewerRunsThisGround = viewerIsInitiator || !!viewerReadsAsAnAdmin;
 
     /* Whether this organisation has a number of its own, for the "where people answer this" setting. */
     const orgHasWhatsApp = !!(ground as any).organization?.whatsappConnection?.enabled;
@@ -2166,7 +2196,7 @@ export class GroundsService {
         if (r.status === 'DECLINED') notLetInByUser.set(r.userId, { decidedByUserId: r.decidedByUserId, decidedAt: r.decidedAt });
       }
     }
-    const canReadWhoDecided = viewerIsInitiator || !!viewerAdminsThisOrg;
+    const canReadWhoDecided = viewerIsInitiator || !!viewerReadsAsAnAdmin;
     const decidersById = new Map<string, string | null>();
     if (canReadWhoDecided && notLetInByUser.size) {
       const deciderIds = [...new Set([...notLetInByUser.values()].map((d) => d.decidedByUserId).filter((x): x is string => !!x))];
@@ -2377,7 +2407,7 @@ export class GroundsService {
       select: { id: true, kind: true, text: true, saidAs: true, audience: true, aboutParticipantId: true, closedAt: true, createdAt: true, exactQuestion: true, questionConfirmedAt: true, confirmedByAdminNote: true },
       orderBy: { createdAt: 'asc' },
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
-    const theLeadReadsThese = isInitiatorViewer || viewerAdminsThisOrg;
+    const theLeadReadsThese = isInitiatorViewer || viewerReadsAsAnAdmin;
     /* A file only its owner can open is not named on a line everybody reads, including a note already
        stored with the name in it (request 46; see documents/a-private-file-is-not-named). */
     const privateFileNamesHere = theLeadReadsThese ? [] : namesNotEverybodyMayOpen(
@@ -2386,7 +2416,7 @@ export class GroundsService {
     const contextItems = theLinesFor(contextLines as any, { isTheLead: theLeadReadsThese })
       .map((l: any) => (privateFileNamesHere.length ? { ...l, text: withoutPrivateFileNames(l.text ?? '', privateFileNamesHere) } : l));
     /* The lead's questions for people, one card each: never built for anybody else. See questionsForPeople. */
-    const questionsForPeople = (isInitiatorViewer || viewerAdminsThisOrg) ? await this.theQuestionsForPeople(id).catch(() => []) : undefined;
+    const questionsForPeople = (isInitiatorViewer || viewerReadsAsAnAdmin) ? await this.theQuestionsForPeople(id).catch(() => []) : undefined;
     /*
      * AND WHAT THE LEAD SAYS IS NOT SETTLED ABOUT A TARGET, BESIDE THE TARGET.
      *
@@ -4643,7 +4673,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    if (ground.initiatorId !== requestingUserId && !adminsThisOrg({ ...viewer, userId: requestingUserId }, ground)) {
+    if (ground.initiatorId !== requestingUserId && !readsAsAnAdmin({ ...viewer, userId: requestingUserId }, ground)) {
       throw new ForbiddenException('Only the person who runs this check-in can see or change the questions for people. Nothing was changed.');
     }
     return this.theQuestionsForPeople(groundId);
@@ -5992,7 +6022,7 @@ export class GroundsService {
   private async assertMaySeeGround(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { organizationId: true, initiatorId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
+      select: { organizationId: true, initiatorId: true, scenario: true, createdByUserId: true, status: true, approvedById: true, participants: { select: { userId: true } } },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     const user = await this.prisma.user.findUnique({
@@ -6960,7 +6990,8 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg({ ...asker, userId: requestingUserId }, ground);
+    /* Reading only, so the admin asked to approve it reads it too (decision 75, item 2). */
+    const isOrgAdmin = readsAsAnAdmin({ ...asker, userId: requestingUserId }, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('Recording where this stood at the start belongs to whoever runs this check-in.');
     }
@@ -7050,7 +7081,8 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg({ ...asker, userId: requestingUserId }, ground);
+    /* Reading only, so the admin asked to approve it reads it too (decision 75, item 2). */
+    const isOrgAdmin = readsAsAnAdmin({ ...asker, userId: requestingUserId }, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
@@ -7177,7 +7209,8 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg({ ...asker, userId: requestingUserId }, ground);
+    /* Reading only, so the admin asked to approve it reads it too (decision 75, item 2). */
+    const isOrgAdmin = readsAsAnAdmin({ ...asker, userId: requestingUserId }, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }

@@ -166,3 +166,19 @@ These are settled. Do not change them. If one seems to block the work, stop and 
     6. **A start never overwrites a prompt somebody activated by hand.** It only adds new versions. Tested.
     7. **The first night:** no "time running out" email for anything that reached that point before release; only check-ins reaching it after release get one. The per-organisation model calls are spread out. Nightly jobs run once even if two copies of the API run. Tested.
     Joining this branch with the live main line stays a release step, and `docs/ready-to-deploy.md` is brought in line with all of this.
+75. **The 49 items decided for Hafsah to confirm, 1 to 2 October** (decided 2 October). Yes to all 49 as written in the morning report, except these:
+    - **Item 2.** The admin asked to approve an evaluation check-in gets access to that check-in, so they can see what they are approving.
+    - **Item 5.** The lead sees only their own team's steps of a blocker, but always sees which team it is waiting on and since when.
+    - **Item 13.** The lead's setup brief is never quoted into a participant's check-in. It may guide the conversation as context, like the organisation's rules.
+    - **Item 14.** In a check-in where people do not see each other, one person's circumstances never reach another.
+    - **Item 17.** All five target kinds from the prototype are built: Up, Lower is better, Rate, Deadline and Zero.
+    - **Item 24.** An undecided suggestion keeps its original facts, but if the person recovers before anyone decides, it is clearly marked that they have recovered since.
+    - **Item 25.** A probation or first-90-days check-in is an evaluation check-in, so a verdict can be reached there, as the prototype shows for Kwame.
+    - **Item 29.** When the lead says a company rule during setup, Groundwork offers once to keep it for the whole organisation.
+    - **Item 33.** The Movement tile says "changed", not "moved".
+    - **Items 35, 36 and 45.** No new setup questions for now.
+    - **Item 37.** A participant's own aim shows on the board as their own aim, not as a number the lead set.
+    - **Item 42.** E2, B2, K3 and B11 are judged once across all their periods, not period by period. Then steadiness is measured again.
+    - **Item 46.** A participant's one-line summary is narrowed to their own waits.
+    - **Item 48.** The ending labels are changed to plain words, on both panels.
+    - **Item 49.** The work record stays visible to the person reviewed.

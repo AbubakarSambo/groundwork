@@ -1,3 +1,4 @@
+import { someOfThemHave } from './some-of-them-has-or-have';
 /**
  * "ALL OF US ARE LISTING GOALS TOO LOW TO MEET THE OBJECTIVE."
  *
@@ -123,7 +124,7 @@ export function howTheNumbersSit(targets: ATarget[], peopleInTheCheckIn: number)
       says: `${head} - ${short.toLocaleString('en-US')} short. ${
         everybodyHasOne
           ? 'Everybody has a number and together they do not reach it.'
-          : `${peopleWithATarget} of ${peopleInTheCheckIn} people have a number of their own, so part of the gap may simply be nobody carrying it yet.`
+          : someOfThemHave(peopleWithATarget, peopleInTheCheckIn, 'a number of their own, so part of the gap may simply be nobody carrying it yet.')
       } Lead with this: it is arithmetic, it is not a judgement about anybody, and the thing to do next is to agree who carries the ${short.toLocaleString('en-US')} that nobody is carrying.`,
       whole: theWhole.target!, partsTotal, peopleWithATarget, peopleInTheCheckIn, comparable: true,
     };

@@ -1,3 +1,4 @@
+import { theSameThing } from '../board/a-thing-is-not-somebody';
 import { plainWordsByPerson, atTheStart, labelsForParties, namesVisibleTo, withNames, eachSideGetsSomebody } from './party-labels';
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { notToldYet, theLeadIsNudgedToTell, aWeekHasPassedSinceNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
@@ -271,7 +272,8 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
       why = `${andList(waiting)} ${are3} waiting on you for it.`;
     } else {
       decide = QUESTION_WORD.test(what) ? `Decide ${what}.` : `Decide what to do about ${what}.`;
-      const onWho = d.onParticipantId ? nameOf(d.onParticipantId) : (d.onLabel ?? '').trim();
+      /* A thing the same as what is waited for is not said twice (request 107 b). */
+      const onWho = d.onParticipantId ? nameOf(d.onParticipantId) : (theSameThing(d.onLabel, d.what) ? '' : (d.onLabel ?? '').trim());
       why = `${andList(waiting)} cannot move until it is settled${onWho ? `, and it is waiting on ${onWho}` : ''}.`;
     }
     const then = rows.map((r) => (r.then ?? '').trim()).find(Boolean);

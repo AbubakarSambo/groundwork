@@ -67,8 +67,12 @@ describe('who owns what: only words a person said go inside quotation marks', ()
     ]);
   });
 
-  it('Femi, a colleague, reads Kwame\'s lines the same way the lead does', async () => {
-    expect((await whoOwnsWhatAs('u-femi'))['Kwame Mensah']).toEqual(KWAME_TO_OTHERS);
+  /* Request 105 (the prototype's B5, "Only yours"): a person who checks in is served only their own row. Before,
+     Femi read Kwame's lines the same way the lead does. */
+  it('Femi, a colleague, is served only his own row, and none of Kwame\'s lines', async () => {
+    const seen = await whoOwnsWhatAs('u-femi');
+    expect(seen['Kwame Mensah']).toBeUndefined();
+    expect(JSON.stringify(seen)).not.toMatch(/22 of my applications|documents submitted/);
   });
 
   it('an admin outside the check-in reads them the same way', async () => {

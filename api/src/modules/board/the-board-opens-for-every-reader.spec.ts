@@ -1,4 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
+import { EVALUATION_SCENARIOS } from '../reports/is-this-an-evaluation-check-in';
 import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
 import { BoardService } from './board.service';
 import { ReportsService } from '../reports/reports.service';
@@ -137,7 +138,8 @@ describe('the board opens for every reader, on every kind of check-in', () => {
               if (!inIt && !(viewer.role === 'ADMIN' && viewer.organizationId === 'org-1')) continue;
               /* Changed with request 78: an admin who is not in a performance plan, a promotion or a renewal is
                  refused its board (proved in an-admin-does-not-read-an-evaluation-check-in-in-grounds-or-on-the-board). */
-              if (!inIt && ['PIP', 'RECOGNITION', 'CONTRACT_RENEWAL'].includes(scenario)) continue;
+              /* And with decision 75, item 25: a probation (NEW_HIRE) is one of them, from the one list. */
+              if (!inIt && EVALUATION_SCENARIOS.includes(scenario)) continue;
               try {
                 const b = await openTheBoard(ground, userId, viewer);
                 if (typeof b?.renders !== 'boolean') failures.push(`${reader}, peers ${peers}, ${variant}: no board came back`);

@@ -17,7 +17,7 @@ import {
   type SuggestionRow,
   type WhoIsWho,
 } from './a-suggestion-told-like-a-signal';
-import { aSuggestionFromTheRecord, type TheRecordForOnePerson } from './a-suggestion-reached-from-the-record';
+import { aSuggestionFromTheRecord, backAtTheLine, type TheRecordForOnePerson } from './a-suggestion-reached-from-the-record';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { thresholdsInForce, SUGGESTION_THRESHOLDS_KEY, type SuggestionThresholds } from './thresholds';
 
@@ -47,7 +47,7 @@ export interface Reader { userId: string; organizationId: string }
 /**
  * ONLY ON AN EVALUATION CHECK-IN (decision 6, clarified 29 September: "the check-ins where a verdict
  * is reached are the evaluation check-ins of decision 17" - a performance plan, a recognition or
- * promotion, a contract renewal). The list is the reading rule's own (`isEvaluationCheckIn`, which
+ * promotion, a contract renewal, and since decision 75 item 25 a probation or first 90 days). The list is the reading rule's own (`isEvaluationCheckIn`, which
  * who-may-read-this-check-in.ts uses too), never a second one. Nothing is reached anywhere else, and
  * a row that somehow exists on any other check-in is never served, decided, answered or appealed.
  */
@@ -120,7 +120,7 @@ export class SuggestionsService {
     const ground = await this.prisma.ground.findUnique({ where: { id: input.groundId }, select: { id: true, organizationId: true, scenario: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
     if (!aVerdictIsReachedOn(ground)) {
-      throw new BadRequestException('A suggestion is only reached on a performance plan, a recognition or a contract renewal.');
+      throw new BadRequestException('A suggestion is only reached on a performance plan, a recognition, a contract renewal or a probation.');
     }
     const about = await this.prisma.groundParticipant.findFirst({
       where: { id: input.aboutParticipantId, groundId: input.groundId },
@@ -180,13 +180,33 @@ export class SuggestionsService {
    * reached - no threshold set, or the record does not cross the one that is. Whatever is reached
    * still goes through `record`, so it never replaces a suggestion nobody has decided (item 4).
    */
-  async reachFromTheRecord(groundId: string, record: TheRecordForOnePerson) {
+  async reachFromTheRecord(groundId: string, record: TheRecordForOnePerson, now: Date = new Date()) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
     if (!aVerdictIsReachedOn(ground)) return null;
     const thresholds = await this.thresholds();
+    await this.markWhetherTheyCaughtUp(groundId, record, thresholds, now);
     const suggestion = aSuggestionFromTheRecord(groundId, record, thresholds);
     if (!suggestion) return null;
     return this.record(suggestion);
+  }
+
+  /**
+   * DECISION 75, ITEM 24: A SUGGESTION NOBODY HAS DECIDED IS MARKED WHEN THE PERSON CATCHES UP. Its facts stay as
+   * they were reached (confirmed item 17: it is never replaced). If, before anyone decides, the person is back at or
+   * above the line that reached it, the day is kept, and every reader is told so; if they fall below it again
+   * before anyone decides, the mark is taken off. A decided suggestion is never changed here. Written only when
+   * something new comes in (decision 7), never when a page is opened.
+   */
+  private async markWhetherTheyCaughtUp(groundId: string, record: TheRecordForOnePerson, thresholds: SuggestionThresholds, now: Date): Promise<void> {
+    const back = backAtTheLine(record, thresholds);
+    if (back === null) return;
+    const open = await this.prisma.suggestion.findFirst({
+      where: { groundId, aboutParticipantId: record.aboutParticipantId, decision: null },
+      select: { id: true, caughtUpAt: true },
+    });
+    if (!open) return;
+    if (back && !open.caughtUpAt) await this.prisma.suggestion.update({ where: { id: open.id }, data: { caughtUpAt: now } });
+    if (!back && open.caughtUpAt) await this.prisma.suggestion.update({ where: { id: open.id }, data: { caughtUpAt: null } });
   }
 
   /**

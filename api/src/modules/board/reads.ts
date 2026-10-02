@@ -232,9 +232,11 @@ export function dedupeDependencies<T extends ReadDependency>(deps: T[]): T[] {
       if ((d.what ?? '').trim().length > ((hit as any).what ?? '').trim().length) (hit as any).what = d.what;
       (hit as any).onParticipantId = d.onParticipantId ?? hit.onParticipantId;
       (hit as any).onLabel = d.onLabel ?? hit.onLabel;
+      /* Each time it was said, kept so the board can say how often it was raised (request 107 c). */
+      (hit as any).raisedAt = [...((hit as any).raisedAt ?? []), { at: d.createdAt ?? null, checkInId: (d as any).sourceCheckInId ?? null }];
       continue;
     }
-    out.push({ ...d });
+    out.push({ ...d, raisedAt: [{ at: d.createdAt ?? null, checkInId: (d as any).sourceCheckInId ?? null }] } as T);
   }
   return out;
 }
@@ -650,7 +652,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         );
         if (thatOneIsWaiting) {
           reasonParts.push(
-            `That person is also waiting on them for ${waitingOnThem.length} ${waitingOnThem.length === 1 ? 'thing' : 'things'}, so read it as what one person said rather than as confirmation that the work arrived.`,
+            `That person is also waiting on ${nameOf(p.id) ?? 'this person'} for ${waitingOnThem.length} ${waitingOnThem.length === 1 ? 'thing' : 'things'}, so read it as what one person said rather than as confirmation that the work arrived.`,
           );
         } else if (!allFromOne) {
           reasonParts.push('Separate people naming the same work is worth more than the count of what anybody said.');

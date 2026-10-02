@@ -19,16 +19,30 @@ import { BoardFamily, familyFor, SCENARIO_FAMILY } from '../board/board-families
  * against one shared bar, not one person under review with colleagues giving views about them.
  */
 /**
- * THE THREE SCENARIOS, AS A LIST, for a database query that cannot call the function above (the list of
+ * THE SCENARIOS, AS A LIST, for a database query that cannot call the function above (the list of
  * check-ins an admin may see, request 78) and for the screens, which are told the same list in
  * `docs/answers-from-engine.md`. Built from the same family, so it cannot drift from `isEvaluationCheckIn`.
  */
-export const EVALUATION_SCENARIOS: GroundScenario[] = (Object.keys(SCENARIO_FAMILY) as GroundScenario[])
-  .filter((s) => SCENARIO_FAMILY[s] === BoardFamily.EVALUATION);
+/**
+ * A PROBATION, OR A NEW PERSON'S FIRST 90 DAYS, IS AN EVALUATION CHECK-IN TOO (decision 75, item 25). The
+ * prototype reaches a verdict on Kwame's "first 90 days" ("Groundwork suggests keeping Kwame on"), and Hafsah
+ * decided that is right: whether a new person is kept at the end of their probation is a decision about one
+ * person. A probation and a first 90 days are NEW_HIRE (entry/which-situation-this-is.ts sends both there).
+ *
+ * Its board keeps the onboarding shape (board-families.ts is unchanged): this list decides who reads it, who is
+ * named to whom, and whether a verdict is reached, never the shape of the board. NEW_MANAGER and NEW_ADVISOR
+ * are not on it: nobody decided that a manager's or an advisor's first weeks end in a verdict.
+ */
+const ALSO_AN_EVALUATION: GroundScenario[] = ['NEW_HIRE' as GroundScenario];
+
+export const EVALUATION_SCENARIOS: GroundScenario[] = [
+  ...(Object.keys(SCENARIO_FAMILY) as GroundScenario[]).filter((s) => SCENARIO_FAMILY[s] === BoardFamily.EVALUATION),
+  ...ALSO_AN_EVALUATION,
+];
 
 export function isEvaluationCheckIn(scenario: GroundScenario | null | undefined): boolean {
   if (!scenario) return false;
-  return familyFor(scenario) === BoardFamily.EVALUATION;
+  return familyFor(scenario) === BoardFamily.EVALUATION || ALSO_AN_EVALUATION.includes(scenario);
 }
 
 /** A participant, as far as picking out the subject of an evaluation check-in needs to know one. */

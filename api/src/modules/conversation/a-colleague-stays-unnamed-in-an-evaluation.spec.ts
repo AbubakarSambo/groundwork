@@ -187,13 +187,21 @@ describe('a colleague stays unnamed to the person being reviewed', () => {
     expect(prompt).toMatch(/on (?:a|one|another) colleague/);
   });
 
+  /* Was NEW_HIRE until decision 75, item 25 made a new hire's first 90 days an evaluation check-in, where the
+     colleague stays unnamed (the test below proves that). An ordinary delivery check-in is the control now. */
   it('on an ordinary check-in the colleague is named, which is what the interview lost', async () => {
-    const { prompt } = await whatTheyRead({ scenario: GroundScenario.NEW_HIRE, theyCalledThem: null });
+    const { prompt } = await whatTheyRead({ scenario: GroundScenario.NEW_PROJECT, theyCalledThem: null });
     // eslint-disable-next-line no-console
-    console.log('\n===== WHAT THE ENGINE IS TOLD, NEW_HIRE =====\n'
+    console.log('\n===== WHAT THE ENGINE IS TOLD, NEW_PROJECT =====\n'
       + (prompt.split('\n').find((l) => l.includes('Sign-off on the six credit files')) ?? '(missing)')
       + '\n===== END =====\n');
     expect(prompt).toContain('on Ngozi Balogun');
     expect(prompt).not.toMatch(/Participant [A-Z]/);
+  });
+
+  it('on a probation or first 90 days the colleague stays unnamed too (decision 75, item 25)', async () => {
+    const { prompt } = await whatTheyRead({ scenario: GroundScenario.NEW_HIRE, theyCalledThem: null });
+    expect(prompt).not.toContain('Ngozi');
+    expect(prompt).toMatch(/on (?:a|one|another) colleague/);
   });
 });

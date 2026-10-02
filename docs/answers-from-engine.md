@@ -1274,3 +1274,347 @@ Done (`7d7c98e6`, `39bdd374`). `stillUnanswered` no longer carries the engine's 
 - Please draw `says` on its own, in place of "who — what" and the "open since session" note, so no dash joins two pieces.
 
 A test now serves the board as every reader, with a gap open for every owed line in every situation, and finds none of the working notes. The rest of request 107 and request 105 are next; I will write here as each is done.
+
+## Request 107 (b): every sentence the review found, fixed where it is made (2 October)
+
+Each sentence is fixed at its source, and the same shape is fixed wherever else it was made. What each reader now reads:
+
+- **A wait whose "on" is a thing, not somebody.** The extraction sometimes writes the thing itself, or a decision, where the person waited on goes. A new rule (`board/a-thing-is-not-somebody.ts`) tells a body of people ("the credit committee", "the Head of Credit", "the customers") from a thing ("the data structure decision", "a decision on who owns them", "the pipeline fix"). A thing is never said as who something comes from. Where it is a different thing, it is said in a sentence of its own after the wait. Risks, Blocker check, Timeline, Obligations, Who waited on whom, What you need to do, and the report's waits all follow it.
+  - Before, to Rukia: "You cannot move on the data structure decision until it comes from the data structure decision."
+  - Now, to Rukia: "You cannot move on the data structure decision, and nobody has been named to provide it." To the lead: "Rukia Mwangi cannot move on the data structure decision, and nobody has been named to provide it."
+  - Before: "... waiting on a decision on who owns them for owners with dates for the API format."
+  - Now: "Baraka Otieno is waiting for owners with dates for the API format. That waits on a decision on who owns them." To Baraka: "You are waiting for owners with dates for the API format. That waits on a decision on who owns them."
+- **Decisions needed name the person waiting.** Before: "Somebody is waiting on the pipeline fix, so it needs deciding." Now, to the lead: "Rukia Mwangi is waiting on the pipeline fix, so it needs deciding." The reason under it: "Rukia Mwangi cannot move until this is decided." To Rukia: "You are waiting on the pipeline fix, so it needs deciding." and "You cannot move until this is decided." A wait in this list now follows the same wall as every other wait on the board. Where people see only themselves, a participant reads only the waits they are in. An admin with no access to an evaluation check-in reads none. Nobody but the people running it reads a wait of the lead's that names somebody.
+- **A difference whose topic is a whole sentence.** Before: "... said different things about There is no shared understanding ...". Now: "People in this check-in said different things. There is no shared understanding of who owns the release. This needs settling." The names are given where the reader may read every side, as before.
+- **The "Lead and team" label.** The Owner of a difference, and of a decision the lead wrote down, is now the person running the check-in by name ("Amina Wanjiru"), and "You" to that person. The reason under the lead's own: "You wrote this down as still to decide." to the lead, and "Amina Wanjiru wrote this down as still to decide." to anyone else. This follows the prototype's "The operations lead needs to decide."
+- **"their own" after "you".** The report is written about each person's label, and when the label became "you", "their own" stayed. Before: "Wanjiku's progress depends on you completing their own open actions." and "you have not closed their own commitment". Now: "... on you completing your own open actions." and "you have not closed your own commitment". The rule is narrow on purpose: "you have not given each person their own target" is about other people's targets, and stays as it is.
+- **"Nobody has said what success looks like yet - not the person running this ..." said to the person running it, with a dash.** Now, to the person running it: "Nobody has said what success looks like yet. You have not said it, and nobody answering this check-in has said it either. Until somebody does, the report can say where people said different things, but not whether things are going well." To an admin who reads everyone: the same, with "Amina Wanjiru has not said it". To a participant who reads only their own: "Nothing has been said yet about what success looks like. Amina Wanjiru has not said it, and you have not said it either. It appears here as soon as either of you does." The lead also reads "No standard is set. You have not said what success looks like, so nobody is being measured against anything yet." in place of "The person running this has not said ...".
+- **"They want to get 12 shops onboarded." as a target's name.** A name that starts with "They" now names whoever holds the target, then goes through the naming every reader gets: "Amani Wekesa wants to get 12 shops onboarded." to the lead, and "You want to get 12 shops onboarded." to Amani. Without a holder, it is whoever set it. A verb in the past stays as it was ("needed", not "neededs").
+- **Coaching saying "Baraka Mwangi and Amani Wekesa are waiting on them" to Rukia.** The probe now names the person, and says "you" to the reader about their own row: "Baraka Mwangi and Amani Wekesa are waiting on you for 3 days for the plan for the launch and the shop list. Ask what that is waiting on." To the lead about Tobi (re-f, seniorhire): "You are waiting on Tobi Adewale for commercial ownership." in place of "You are waiting on them for commercial ownership." The same lines that had no person in them now do: "Rukia Otieno has not answered this session, so nothing below is from this round." and "Rukia Otieno has been waiting for 4 days on Juma for the budget, and nothing on record says it was raised higher. Ask what has stopped Rukia Otieno raising it." in place of "Waiting 4 days on Juma for the budget, with no escalation on record. Ask what has stopped them raising it." The probes are the lead's only, as before.
+- **The contribution reason.** "That person is also waiting on them for 2 things" now names the person: "That person is also waiting on Tobi Adewale for 2 things".
+
+Tests: `board/request-107-b-every-sentence-for-its-reader.spec.ts` serves the board as Amina (the lead), Rukia and Baraka (participants, with and without seeing each other), Juma (an admin who only reads, on a team check-in and on a performance plan) and the admin who set it up, and reads the sentences above. 18 of its 21 cases fail on the code before this change. Two older tests asserted "them" ("waiting on them", "showing them", "stopped them raising it"), which was the defect; they now expect the name.
+
+Decided for Hafsah to confirm: the Owner of a difference, and of a decision the lead wrote down, is the person running the check-in by name, where it said "Lead and team". The prototype's own line is "The operations lead needs to decide."
+
+## Request 107 (d): the Movement tile says how many targets moved (2 October)
+
+The quick read's Movement tile served one target's own change as its value ("+96"), a number with nothing to say what it counted. It now serves how many targets moved, up or down, for the targets this reader may read (the rule fixed on 1 October is unchanged). What each reader reads, with Kwame's target moving from 4 to 100 and the team's staying where it was:
+
+- The lead (Bisi) and Kwame: value "1 target", line "1 target moved this session." Before: "+96" and "Targets moved this session."
+- Ngozi, who may not read Kwame's number, and an admin outside the check-in: "None" and "No target moved this session.", as before.
+- Two targets that moved, one up and one down: "2 targets" and "2 targets moved this session." A target that went down was not counted before.
+
+How far each one moved is said once, in "Since the last round", in the reader's own words ("Your approved facilities went from 4 to 100."), so the tile and that sentence tell one story. The report's tile is built by the same function and reads the same.
+
+Four tests asserted the sum ("+5", "+31 million", "+14", "+2"), which was the defect; they now expect the count. Decided for Hafsah to confirm: the tile counts a target that went down as one that moved.
+
+## Request 107 (e): one count for the sessions, from the board's own clock (2 October)
+
+The header was counted from the open round (`whichRoundIsOpen`: the lowest round somebody has started and not finished), and the screen wrote "Session 2 opened on 30 September" from `date`, which is the day somebody first finished session 2. Two clocks on one board. Also, the board never read `availableFrom`, so `opensOn` was always empty.
+
+Now, in `phaseSpine`:
+- `currentSession` is the open round, capped at the last planned session, as the list and Today are since request 97 (a). `plannedSessions` is served beside it. Please draw the header from these two with the prototype's words, "Session 1 of 12." (the engine's own sentence for it is `theHeaderSays` in `board/one-count-for-the-sessions.ts`, and it ends "Session 12 of 12, finished." at the end). I did not serve the header as a sentence on the board, because a privacy test reads the board for a hidden target of 4 and "Session 3 of 4" would have matched it; the numbers carry the same count.
+- Each session has `says`, a full sentence from the same open round, and `openedOn`, the day it opened (the earliest day it was made available that has come, or else the earliest day anybody started it, never the day somebody finished it). Please draw `says` in place of building "Session N opened on ...".
+
+What every reader reads (the lead, Rukia and Baraka, an admin who only reads, and the admin who set it up; the lines name nobody), on a weekly check-in of 4 sessions where Baraka has not finished session 1 and Rukia has done session 2:
+- Header: "Session 1 of 4."
+- "Session 1 opened on 15 September, and it is still open."
+- "Session 2 has started for some people, while session 1 is still open."
+
+Once Baraka finishes session 1: header "Session 2 of 4.", then "Session 1 finished on 18 September." and "Session 2 opened on 29 September, and it is still open." A later session reads "Session 3 opens on 7 October." where a day is set, and "Session 3 has not opened yet." where none is.
+
+Decided for Hafsah to confirm: the header follows the open round, so while one person has not finished session 1 the header stays on session 1, and the line for session 2 says it has started for some people.
+
+## Request 107 (c): the fields the boards need (2 October)
+
+Every field below is built from what the record already holds, after the same walls as the rest of the board, so it shows no reader anything they could not already read row by row. Nothing is made up to fill a column.
+
+**1. Each record's "Next", and how it is known.** Each row in `workRecords` now has:
+- `known` and `knownSays`: "proof" with "Proof shows it." where a document is behind the line it came from (the same mark every line carries), "said" with "Someone said it." otherwise, and "lead" for a record added on the board: "You added it on the board." to whoever added it, and "It was added on the board, not said in a check-in." to anyone else.
+- `next`, `nextKnown` and `nextSays`: only what somebody said they would do about it, which is an open commitment whose words name the record. To the lead and to an admin who only reads: "Baraka Otieno committed to send Eastside Foods the quote with a photo on Friday." To Baraka: "You committed to send Eastside Foods the quote with a photo on Friday." Where nobody has said: `next` is null and `nextSays` is "Nobody has said what happens next." Someone who does not run the check-in reads only their own commitments and those of the person the record belongs to, never the lead's. Where people see only themselves, Rukia reads no row of Baraka's and none of his next steps, as before.
+
+**2. How often a blocker was raised.** Each row in `dependencies` has `raised`: `times`, `firstRaisedAt`, `lastRaisedAt` (days), and `says`. "This has been raised 3 times, from 1 September to 23 September." or "This was raised once, on 3 September." It is counted in the check-ins it was said in, so saying it twice in one check-in counts once. The rows are walled as before: where people see only themselves, Baraka reads only his own.
+
+**3. By area of work.** `byArea`, on a board whose kind of work is known, read from the records this reader is served:
+- Where records name an area (a detail said about the record names its site, county, team, queue, branch, region or location, or the record is a county), it is `{ state: "filled", heading: "By team", areas: [{ area: "Westlands", records: 1, says: "Westlands has 1 deal on record." }] }`. The heading is "By site", "By county", "By team", "By queue", or "By area".
+- Where none does, it is `{ state: "not-known", why: "Nothing on record says which site, county, team or queue each piece of work belongs to, so the work cannot be shown by area yet." }`.
+- Said plainly: **Groundwork keeps no area for a person.** No participant, team or check-in row holds a site, county, team or queue. So "By team" can only come from what people said about each record. The prototype's "By team" counts each team's sales and people "on pace", and that needs a team for each person, which nothing on record holds.
+
+**4. Reported against criteria met, for sales.** `reportedAgainstCriteria`, on a sales board only. **The record holds no criteria.** Nothing says what a deal must show to be at each stage. So it is always `state: "not-known"`, with `why`: "Nothing on record says what a deal must show to be at each stage, so the board counts what people reported and how much of it has a document behind it, but not how many meet the rules." Each stage says what was reported: "1 deal was reported at Won, and it has a document behind it.", "1 deal was reported at Qualified, and it has no document behind it.", "Nobody has reported a deal at Pitched." It never says "criteria met".
+
+**5. Your share, on a participant's board.** `yourShare`, for a participant only: each of their own targets, from the targets they may already read, as `{ objectiveId, says, whoSees }`. To Rukia: "You are aiming for 3 shops in Kilimani. You have 1 of the 3 so far." and "Only you and Amina Wanjiru see your share." Where the lead chose that everybody sees every number: "Everybody in this check-in sees your share." A limit reads "You are at 120,000 so far."; a target with nothing counted yet reads "Nothing has been counted against it yet." The person running the check-in, an admin who only reads, and the admin who set it up get no field. A decision the lead holds about the person is not their share, and the person reviewed on a performance plan reads only their own.
+
+**6. Amani's own aim.** Why it was missed: a participant's check-in went only to the prompt for their own promises, which keeps them as that person's promises, and then returned. The only path that puts a target on the board with somebody's name on it read the lead's check-in alone, so a number a participant set for themselves never reached the board. Now a participant's own counted aim (a target with a plain number and what it counts) is also put on the board as theirs, set by them, in their own words. Rukia reads "Amani Wekesa is aiming for 3 shops in Kilimani." and Amani reads "You are aiming for 3 shops in Kilimani.", where the lead's setting lets them. The prompt for their own promises now also says that an aim for your own number is a target ("I am aiming for 3 shops in Kilimani" is target 3, measure "shops in Kilimani"), because "a wish is not a promise" could have read it as a wish. That prompt is read from the file; no stored version overrides it. It has not been run against the model here (no live keys), so the next scenario run should confirm it.
+
+**Decided for Hafsah to confirm:**
+- "By team" comes only from what people said about each record, because no person has a team on record. Should Setup ask for each person's site, county, team or queue?
+- "Criteria met" is never claimed. Should the lead set the rules for each sales stage, so the board can count them?
+- A participant's own number goes on the board with their name on it, and is read like a number the lead set for them.
+
+Tests: `board/request-107-c-the-fields-the-boards-need.spec.ts` (10 cases), `board/your-share-as-each-reader-reads-it.spec.ts` (10), and `conversation/an-aim-they-set-for-themselves-is-on-the-board.spec.ts` (5). One older test, `each-kind-of-work-has-its-records.spec.ts`, compared whole rows, so it now expects the new fields as well. Nothing in it was taken out.
+
+## Request 105, part 2: blockers get one section (2 October)
+
+Yes, a field is served now, so the screen does not need to put it together from `whoWaitedOnWhom` and `risks`. `blockers` is on `GET /grounds/:id/board`. It has one entry for each open blocker, shown under the same wall as every other wait (`handoffMayBeRead`). A cleared blocker is not in it. Each entry is `{ id, who, name, state, says, raised, proof, timeGiven, wouldClearIt, wouldClearItSays, holdingUp }`:
+- `name` is what is waited for, as it was said, for a heading ("the bank statements").
+- `state` is "blocking" where the work is stopped and "waiting" where it can carry on in the meantime.
+- `raised` holds `times`, `firstRaisedAt`, `lastRaisedAt` and `sessions`, plus two sentences. `says` is "This has been raised 3 times, from 1 September to 23 September." and `inSessions` is "It was raised in sessions 1, 2 and 3."
+- `proof.says` is "A document backs what Rukia Mwangi said about it." where a line about the same thing has a document behind it. It is "A colleague confirmed what ... said about it." where a colleague confirmed it. Otherwise it is "Nothing on record proves it yet. It rests on what Femi Okonkwo said."
+- `timeGiven` is "The time given for it was "by Friday"." or "No time has been given for it.". Where it was raised again after the day it was due, it adds "It was raised again after 5 September, the day it was due."
+- `wouldClearIt` is filled only where somebody made an open commitment about the same thing, and only from somebody this reader may read about. Otherwise it is null, and `wouldClearItSays` is "Nobody has said what would clear it yet." Groundwork never suggests an action here, because a suggestion is not something the record holds.
+- `holdingUp` is "Once it is cleared, the reporting system can restart.", only where that was said with the blocker.
+The ones raised most often come first, then the oldest. Please draw each sentence as it is. Do not use "Raised:" or "Would clear it:" labels.
+
+What each reader reads on the sales run (re-f):
+- Bisi, who runs it: "Femi Okonkwo is waiting for the bank statements." "This was raised once, on 16 September." "It was raised in session 2." "Nothing on record proves it yet. It rests on what Femi Okonkwo said." "No time has been given for it." "Femi Okonkwo said, "I will visit a few of them again this week to see if I can collect the statements myself."" Also "Ngozi Eze is waiting on Mr. Adebayo for a date for the credit decision." with "Nobody has said what would clear it yet.", and "Kwame Mensah is waiting on you for the approval of five applications."
+- Femi: "You are waiting for the bank statements." "Nothing on record proves it yet. It rests on what you said." "You said, "I will visit a few of them again this week to see if I can collect the statements myself.""
+- Kwame: "You are waiting on Bisi Adeyemi for the approval of five applications."
+- Ngozi, where people see only themselves: only her own blocker. Nothing about Femi or Kwame reaches her.
+- An admin who only reads, and the admin who set it up: the same as Bisi, with names ("Kwame Mensah is waiting on Bisi Adeyemi for the approval of five applications.").
+- An admin with no access to a performance plan is not served that board at all, as before.
+
+Tests: `board/request-105-blockers-as-each-reader-reads-them.spec.ts` (13 cases). All of them fail without this change.
+
+## Request 105, part 3: a participant's board is their own (2 October)
+
+`GET /grounds/:id/board` now sends a person who checks in a narrower board, as in the prototype's B5. It is also the more private choice. Decided for Hafsah to confirm.
+
+**Who it is for.** Anybody who checks in and does not run the check-in. That includes a colleague giving a view on an evaluation check-in. The lead, the admin who set it up and an admin of the organisation read the board as before. The person reviewed on an evaluation check-in keeps the board they had, which their own rules had already narrowed.
+
+**What they are sent.** The board is built from a list of what a participant may have, so a field added to the board later reaches a participant only when somebody adds it to that list (`board/a-participants-board-is-their-own.ts`).
+- The frame: the title, the sessions, the list of people, `howItIsGoing`, who is away, when the board last changed, and the poll.
+- Their own work, row by row. `workRecords` holds only the records that are theirs, and each section has `onlyYours: "Only yours."`. Please draw it under "Your deals, day by day". `objectives` holds their own targets and the team's (a target with nobody's name on it), and never anybody else's. `yourShare` is as before.
+- Their own commitments, waits and history. Before these sections are built, the board's reader is set to "only you" for a participant, so `workPlan`, `risks`, `timeline`, `personHistory`, `blockerCheck`, `whoWaitedOnWhom`, `obligations`, `evidenceIndex` and `contradictions` hold only their own rows. `blockers` holds the waits they are in, whichever side they are on. `whoOwnsWhat`, `contribution`, `coverage` and `stillUnanswered` hold only their own row.
+- The team's picture, only once the report has been released. That means `divergence`, `quickRead`, `forecast`, `whatTheAnswersSay`, `whatTheRoomIsAbout` and the opening in `howItIsGoing.latestSummary`. Before release they are not sent, and `teamPicture` is `{ shared: false, says: "Today's team picture is not shared yet.", yourOwnReport: "Your own report is ready now." }`. The `yourOwnReport` line is sent only when they have finished a check-in. Once the report is released, `teamPicture` is `{ shared: true }`.
+- `theJudgement`, `theTable` and `overTime` are sent as null, as before.
+- They are no longer sent `decisions`, `checkInGrid` or `cascade`. They never got `eachPerson`, `leadActions` or `questionsForTheLead`.
+
+What Femi reads on the sales run (re-f), before the team picture is shared, where people see each other:
+- "Today's team picture is not shared yet." and "Your own report is ready now."
+- His own deal only, under "Only yours."
+- "Only you and Bisi Adeyemi see your share."
+- "In session 2, you said, "I will visit a few of them again this week to see if I can collect the statements myself." The time you gave for it was "this week". Nobody has said yet whether it happened."
+- "You are waiting for the bank statements."
+- Nothing of Kwame's or Ngozi's: not their deals, numbers, waits or words. Their names are only in the list of people.
+
+Where people see only themselves, Ngozi reads "You are waiting on Mr. Adebayo for a date for the credit decision." and nothing about Femi or Kwame. On a performance plan, Kwame, a colleague giving a view, reads only his own deal and is told the team picture is not shared yet. Femi, the person reviewed, reads what he read before.
+
+A blocker's `wouldClearIt` is still shown to both people in the wait: Rukia, who is waiting on Baraka, reads "Baraka Otieno committed to ship the pipeline fix on Monday." A promise from anybody else, the lead included, is not on her board.
+
+**Tests changed, and why.** These tests read a participant's board for sections a lead gets, which was the behaviour this changes. Each now checks the narrower board, and that nothing of anybody else reaches the participant. No privacy check was removed: where a test said a participant reads something without a hidden thing in it, it now says the participant is not served it at all.
+- `the-movement-tile-tells-the-same-story` and `a-worry-on-the-tile-is-said-as-theirs`: a participant gets no tile before release. Their own report still tells them what moved.
+- `a-forecast-on-the-board`: a participant reads the team's forecast only once the report is released.
+- `obligations-on-the-board`, `a-work-plan-on-the-board`, `a-goal-the-lead-has-not-told...` and `the-handoff-quote-is-their-words`: only their own side, own lines and own waits. The lead's commitments are not on their board.
+- `each-kind-of-work-has-its-records`, `who-said-a-record...` and `request-107-c`: only their own records.
+- `their-own-words-stay`, `what-each-person-said-is-in-their-name`, `what-the-lead-has-not-shared-reaches-nobody` and `reports/the-four-marks-as-each-reader-is-served`: only their own row of who owns what.
+- `request-107-b`: a participant is not sent the lead's list of decisions. Their wait is in their blockers.
+- `reports/decision-17-wins-over-the-leads-switch`: who is on the check-in is read from the list of people, not from the grid of who checked in.
+- `__fixtures__/a-page-that-contradicts-itself`: both reports are marked released, as they were on the run, so the participant checks there still read the team picture.
+
+Decided for Hafsah to confirm:
+- Records with nobody's name on them, such as a matter's parties or a deal the lead added, are not on a participant's board. Only theirs are.
+- The quick read and the forecast count as the team's picture, so a participant gets them only once the report is released.
+- `howItIsGoing.glance` (rounds, how many have answered, how many things are in the way) stays for everybody, as on the list of check-ins.
+
+Tests: `board/request-105-a-participants-board-is-their-own.spec.ts` (13 cases).
+
+## Request 105, part 1: five kinds of work get their own board shape (2 October)
+
+Yes, these five are meant to have their own board, and they have it now. The other six kinds keep the switchboard, which is what their own examples show. The engine knows a check-in's kind from `Ground.kindOfWork` (`board/the-kind-of-work.ts`), and the board already sends it as `kindOfWork`. For these five, `GET /grounds/:id/board` now sends extra fields, under the prototype's headings. They are built from the board this reader is already sent, after every wall, so they show nothing a reader could not already read row by row. Nothing is made up: where the record holds nothing for a section, it says so in a sentence. The fields go only to whoever runs the check-in, meaning the lead, the admin who set it up, and an admin of the organisation on a check-in that is not an evaluation. A person who checks in reads their own board (part 3). The person reviewed on an evaluation check-in is never told how many others answered or are waiting (decision 17). Code: `board/each-kind-gets-its-own-board.ts`.
+
+Each section is `{ heading, state, ... }`. `state` is "filled", or "none-yet" with `says`, or "not-known" with `why`. Please draw the heading, and then the sentences as they are.
+
+**(a) A government programme** (`kindOfWork: "a government programme"`):
+- `whatEachLevelUnderstood`: the aim that was set comes first, then each person's own words for what the aim is, from what they said. `levels: [{ participantId, who, said: [...] }]`. To Stephen, who runs the rollout run (run-21, implementation): "You" with "The system is deployed in all four branches.", then "Ngozi Duru said, "My team understood that we were supposed to integrate the new system into our daily operations."" and "Musa Ibrahim said, "My understanding was that we were meant to get the new system installed and start using it for our daily operations."" `note`: "Groundwork does not keep which level each person works at, so each person's own words are shown in the order they joined, after the aim that was set." Where nobody has said: "Nobody has said yet what the aim means to them."
+- `theCounties`: each county record, with the project records that name it. "The project on record for Enugu is Receipts on the new system." Or "Kiambu has no project on record yet.", or "No county is on record yet."
+- `whatTheVisitLogShows`: the numbers brought in from another system for what this check-in is about. These are `ProductMetric` rows whose `subjectExternalId` is the check-in's own. For example: "The visit log shows 412 for extension visits this month, as of 30 September." The three sentences about what a number is not come with them, as in the report. Where none are attached: "No numbers from another system are attached to this check-in yet, so the board cannot say what they show. They appear here once they are brought in from the system that keeps them."
+
+**(b) Asset loans:**
+- `whereTheCohortStands`: on the loan cohort (re-f), to Amaka, who runs it: "4 people are in this cohort." Then "The loan records show 2 loans being repaid." (Sunday Eze, Hauwa Ibrahim), "The loan records show 1 loan behind on repayment." (Yakubu Sani), "1 person is waiting on something that stops them, and it has not been cleared." (Musa Danjuma), and "1 person has not checked in yet." (Yakubu Sani). The names are in `who`. They come from the loan records' stages, the open blockers and who has finished a check-in. Without loan records: "No loan record says who is repaying or who is behind yet."
+- `supportGiven`: always "not-known", with "Nothing on record says what support each person was given, or whether it helped, so this cannot be shown yet."
+
+**(c) A law firm matter:**
+- `whereTheMatterStands`: on the contract review (run-21): "The reply to the supplier is due on 2 October." "Nothing is in the way that has not been cleared." "1 thing is waiting for a decision."
+- `whatYouNeedToDecide`: the board's own decisions under this heading. The heading is "What you need to decide" to the lead and "What needs deciding" to anyone else. For example: "People in this check-in said different things about what the service agreement means, so it needs settling."
+- `whatChangedThisWeek`: what was said in the newest session, as served in who owns what, with its mark. "In session 1, 2 things were said about the matter." Then "Frank Mbeki said, "The supplier has acknowledged every ticket within two hours so far."" and "Frank Mbeki said, "Three fixes have taken over a week."" `cannotTell`: "Nothing on record links each change to what it changed, so this shows what was said in the newest session and how each line is known."
+- The handover page: there is no handover page for a check-in today. The handover brief belongs to a role that is changing hands across the organisation, not to a check-in. So no link is sent, and nothing is made up to stand in for one.
+
+**(d) MarketView where next:**
+- `byWhoTheyAre`: "not-known", with "Groundwork does not keep which group each person belongs to, such as processors, distributors or researchers, so the answers cannot be shown by group yet." and `says`: "1 of 2 people have answered."
+- `whereTheyDisagree`: the board's own `divergence` items, under this heading. Or: "Nobody has said anything that differs from what somebody else said yet."
+
+**(e) MarketView Q4:**
+- `whatTheSystemsShow`: the same numbers as (a). On the sales run with a number brought in: "The loan system shows 11 for approved facilities this quarter, as of 30 September." With none, the same "not-known" sentence as (a). **No system data exists in the record today unless it is brought in.** Groundwork does not connect to Paystack or MarketView itself. Numbers reach a check-in only as `ProductMetric` rows for the check-in's `subjectExternalId`, so on our test check-ins this section says that nothing is attached. No number is made up.
+- `whereWhatWasSaidAndTheSystemsDiffer`: each line somebody said where a document on the check-in says it differently. This is the record's own `documentSays`, and it is shown only where this reader may open that document. "Kwame Mensah said, "I've also had follow-up conversations with all 22 of my applications."" with "A document on this check-in says it differently. It says, "14 applications were followed up in September."" A document only Kwame may open is quoted to nobody else. With none: "Nothing anybody said differs from a document or a number on record yet."
+
+Not built, and why: "Where next, ranked" (mvnext) would rank the priorities by how many people named each. The records keep one row per priority, with no count of who named it, so it is left out rather than ranked on nothing. "The meaning changed here" (gov) is a judgement about two people's words, and nothing on record makes it. The lead reads the words side by side.
+
+Decided for Hafsah to confirm:
+- These fields go only to whoever runs the check-in.
+- The visit log and the systems are only the numbers brought in for the check-in's subject.
+- Should Setup ask for each person's level (gov) and group (mvnext), so the board can show them? Today nothing on record holds either.
+
+Tests: `board/request-105-each-kind-gets-its-own-board.spec.ts` (23 cases, on the real run text named above, as every reader). This includes a walk of every sentence in the five through the plain-sentence rules.
+
+## Request 105: the glance names nobody a reader may not read (2 October)
+
+`howItIsGoing.glance` is the header line ("N things are in the way, the oldest being ..."). It used to be worked out once for the whole team and sent to every reader. It is now cut to what each reader may read (`theGlanceAsThisReaderMayReadIt` in `grounds/what-a-manager-needs-at-a-glance.ts`). The cut applies to three kinds of reader:
+- a participant on a check-in where people see only themselves;
+- anybody on an evaluation check-in who does not run it: the person reviewed, a colleague giving a view, and an admin without access;
+- that admin also on the list (the board already refuses them).
+
+For those readers, `inTheWay` is counted and named from their own waits only: the ones they wait on, and the ones waiting on them. `progress.waitingOn` holds only themselves. The rounds and the answered counts stay, because they name nobody. The lead, the admin who set it up, and an admin of the organisation on a check-in that is not an evaluation read the whole team, as before. The check-ins list follows the same rule (`grounds.service`, `list`). Today is built from that list, so it follows too.
+
+Before and after, on the sales run (re-f), where Femi's wait for the bank statements is the oldest:
+- Ngozi, where people see only themselves. Before, she read 3 things in the way, the oldest being "the bank statements", and `waitingOn` ["Bisi Adeyemi", ...]. Now she reads 1 thing, the oldest being "a date for the credit decision", and `waitingOn` [].
+- Kwame, where people see only themselves, and as a colleague giving a view on a performance plan. Before, 3 and "the bank statements". Now, 1 and "the approval of five applications".
+- Femi, the person reviewed on a performance plan, where Ngozi's wait is the oldest. Before, 3 and "a date for the credit decision". Now, 1 and "the bank statements".
+- Bisi, Juma (an admin who only reads) and the admin who set it up: 3 and "the bank statements", unchanged.
+- On the list, where people see only themselves, Miriam used to be given 0 things in the way, her own included. Now she is given 1, "the delivery van". On a performance plan the list used to give her and Omar the whole team, 2 things, the oldest being Omar's "the new price list". Now each is given only their own. An admin without access is given 0 and no name.
+
+Tests: `board/request-105-the-glance-names-nobody-walled.spec.ts` (10 cases) and `grounds/request-105-the-list-glance-names-nobody-walled.spec.ts` (6 cases). One older list test expected a walled participant to be given no blocker at all, her own included. It now expects her own wait, still with no name: "A colleague's login for the order system".
+
+## Request 105: "1 of 2 people has answered" (2 October)
+
+In "N of M people ...", the verb now goes with N and the noun with M. Every sentence of that shape on the board and in the reports is said through one helper, `someOfThemHave` (`reports/some-of-them-has-or-have.ts`).
+- By who they are (mvnext): "1 of 2 people have answered." is now "1 of 2 people has answered."
+- The report's basis line: "1 of 3 people have answered this session." is now "1 of 3 people has answered this session." It used to say "has" only when M was 1.
+- Over time: "1 of 4 people have not answered yet, so anything about them is missing rather than absent." is now "1 of 4 people has not answered yet, so ...". It used to always say "have".
+- Do the parts add up: "1 of 3 people have a number of their own, so ..." is now "1 of 3 people has a number of their own, so ...". It used to always say "have".
+- How much there is to go on: it was already right ("1 of 4 people has not answered yet."), and it now goes through the same helper.
+The opening's "One of the 5 people has answered so far." was already right and is unchanged.
+
+Tests: `reports/some-of-them-has-or-have.spec.ts`. The mvnext case in `board/request-105-each-kind-gets-its-own-board.spec.ts` now expects "1 of 2 people has answered.".
+
+## Request 106: the kind of work can be set back to none (2 October)
+
+The route already takes it, so nothing on the server had to change, and a test now holds it. Send `{ "kind": null }` to `PATCH /grounds/:id/kind-of-work`. The check-in then has no kind of work, and the board sends `kindOfWork: null` and the records say "Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind." The client's `setKindOfWork(id, { kind: null })` already sends it.
+
+- Who may clear it is exactly who may set it: the lead, or an admin of the organisation (on an evaluation check-in, only an admin with access). Anybody else is refused with "Only the lead of this check-in, or an admin in this organisation, can change this.", and nothing changes.
+- A none the lead chose is the lead's own choice, like a kind they chose. A later read of the setup words never puts a kind back over it.
+- Sending only `stages` leaves the kind as it is.
+- A word that is not one of the eleven, "none" included, is still refused in a plain sentence. Please send `null` for "None of these".
+
+Tests: `grounds/request-106-the-kind-of-work-can-be-cleared.spec.ts` (6 cases), including one that passes `{ "kind": null }` through the app's own validation, as the route receives it. They pass on the code before this test, because the route already allowed it.
+
+## Request 108 (c): each record row carries its mark (2 October)
+
+Each row in `workRecords[].rows` now has `mark`, in the shape `ProofMark` already reads: `proven`, `confirmed`, `said`, `memory` or `none`. It is the mark of the line the record came from, by the same rule that marks every line on the board and in the reports (`reports/how-a-line-is-known.ts`):
+- `proven`: a document or photo the person themselves added is behind the line.
+- `confirmed`: the colleague who received the work said it arrived.
+- `memory`: a line about what happened, with a figure, and nothing of the person's own attached.
+- `said`: anything else somebody said.
+- `none`: a record added on the board, which no line is behind.
+
+Nothing upgrades it. A line backed by somebody else's document is not proof of it: Femi's "I have 31 applications that I've taken from businesses." with the lead's pipeline sheet behind it is `memory`, never `proven`. `known` and `knownSays` are as before ("Proof shows it." or "Someone said it."), so the prototype's key, "Ringed is someone's word; filled is proven", can be drawn from `mark`: filled for `proven`, ringed for the rest, and nothing for `none`. The rows are walled as before: a participant reads only their own rows with their marks.
+
+What each reader reads on the sales run (re-f): Bisi, Juma (an admin who only reads) and the admin who set it up read every row with its mark, "Ikeja Bakery" `proven`, "Jos Grain Traders" `memory` (Kwame's "That N8 million disbursed represents three approved facilities."), "Lekki Cold Rooms" `confirmed`, and the deal Bisi added on the board `none`. Femi reads only his two rows. Ngozi, where people see only themselves, reads only hers.
+
+Tests: `board/request-108-c-each-record-row-carries-its-mark.spec.ts` (8 cases; all fail without this change). `each-kind-of-work-has-its-records.spec.ts` compares whole rows, so it now expects `mark` as well; nothing in it was taken out.
+
+## Request 108 (a): the headline question, with its answer and its bar (2 October)
+
+`GET /grounds/:id/board` now sends `headline`: `{ question, answer, bars }`. Please draw `question` above everything else in the largest type, `answer` under it, then one bar for each entry in `bars`, and then `howItIsGoing.latestSummary` as now.
+
+**How it is built.** Only from the check-in's own team aims, meaning the targets with nobody's name on them, in the lead's own words for what is counted, with their number. Up to two are asked together, as in the prototype's "Will MarketView reach 40 paying subscribers and 200 weekly users this quarter?". A time in the aim's own words ("this quarter") is kept. Otherwise the check-in's own deadline is added ("by 30 November"). Where no team aim has a number, an aim with no number is asked only where it is said as something to do and the check-in has a deadline ("Will we replace the payments integration by 31 October?"). An aim stored as a sentence about somebody ("They want to get 12 shops onboarded.") is never turned into a question. Where nothing qualifies, no `headline` is sent, and nothing is made up. A limit is asked as a limit (decision 69).
+
+- `answer` is one or two plain sentences from the counts the board already serves, or null for an aim with no number.
+- Each bar is `{ objectiveId, kind: "aim" | "limit", now, target, filled (0 to 100), word }`. `word` is the target's word from part (b).
+
+**What each reader reads on the sales run (re-f).** Bisi said "We're aiming for 40 approved facilities and N120 million disbursed this quarter."; the team was at 11 and 31 million after session 2.
+- Bisi, who runs it, and the admin who set it up: "Will we reach 40 approved facilities and 120 million naira disbursed this quarter?" and "So far it is 11 of the 40 approved facilities. 29 more are needed. So far it is 31 million of the 120 million naira disbursed. 89 million more are needed." Bars: 11 of 40 (15%), 31 million of 120 million (12%), both "Behind".
+- With one aim and no time in its words: "Will we reach 40 approved facilities by 30 November?" and "So far it is 11 of the 40 approved facilities. 29 more are needed by 30 November."
+- A limit, from the workplan run: "Will we keep spending within 180,000 this quarter?" and "So far it is 254,000, which is 74,000 over the limit of 180,000."
+- Femi, Ngozi and Kwame, who check in: only where everybody sees the targets (decision 73), and only once the team picture is shared (request 105, part 3). Then they read the same question, about the team's aims only, never a colleague's number. Where each person sees only their own numbers, or before the picture is shared, it is not sent.
+- Juma, an admin who only reads: not sent, as he is not sent the aims and limits (decisions 58 and 73), the same as the forecast.
+- On an evaluation check-in nobody is sent it: not the lead, not the person reviewed, not a colleague giving a view.
+
+## Request 108 (b): a word for where each target stands (2 October)
+
+Each row of `objectives` now has `stands`: `{ word, says }`, or null. Please draw `word` as the short chip and `says` where the reader opens it. `word` is one of the prototype's own words: "Met", "On time", "Close", "Behind", "Within", "Over limit", "Not settled", or null with `says` saying why there is none.
+
+**The thresholds** (`board/the-headline-and-where-each-target-stands.ts`, `CLOSE_MEANS_AT_LEAST = 0.9`):
+- For an aim to reach, the pace between the first and the latest count stored when sessions closed is carried forward to the check-in's last session, in a straight line, exactly as the forecast does.
+  - "Met": the count has reached the aim.
+  - "On time": at that pace it reaches the aim by the last session.
+  - "Close": at that pace it covers at least 90% of the way from where it started to the aim.
+  - "Behind": at that pace it covers less than 90% of the way.
+  - Once the last session has been counted, the count itself is where it ends: 90% of the way or more is "Close", less is "Behind".
+- For a limit not to go over: "Within" at or under the limit, "Over limit" above it.
+- "Not settled": the lead wrote down that what this number counts is not settled.
+- No word: fewer than two sessions counted ("It needs a count from two sessions before its pace can be read, so how it stands cannot be said yet."), no planned last session ("This check-in has no planned last session, so its pace cannot be read against one."), or nobody has said which way the number goes ("Nobody has said whether 40 is something to reach or a limit not to go over, so how it stands cannot be said.").
+
+**About a target, never a person.** Only a team target gets a word. A target with somebody's name on it, or a decision about a person, has `stands: null`, the same reason the forecast leaves it out. Nothing is built on an evaluation check-in. Who reads it is the same as part (a): whoever runs it, a participant only where everybody sees the targets and only once the team picture is shared (before that, `stands` is null), and not an admin who only reads.
+
+To Bisi, on the sales run: approved facilities "Behind", "At the pace it has kept since session 1, it would be about 31 by the last session, short of the aim of 40."; disbursed "Behind", "At the pace it has kept since session 1, it would be about 79 million by the last session, short of the aim of 120 million."; Femi's and Kwame's own targets have no word. Where Bisi wrote "Whether the 120m counts what was approved or what was disbursed.", disbursed reads "Not settled", "What this number counts is not settled yet, so how it stands cannot be said."
+
+Decided for Hafsah to confirm:
+- "On time" is used for a target on pace but not yet reached. The prototype's examples show no such target; in eng.txt "On time" is the name of a target, not a word.
+- A person's own target gets no word, as the forecast gets none.
+- The headline goes to the same readers as the forecast: not to an admin who only reads.
+- Up to two team aims are asked in one question; the others are under "Where each target stands".
+
+Tests: `board/request-108-the-headline-and-where-each-target-stands.spec.ts` (22 cases, as every reader). The board cases fail without this change.
+
+## Request 108 (d): "Where this is heading" and "Record the decision" (2 October)
+
+Yes, it survives, built only from what the product already records. `GET /grounds/:id/board` now sends `whereThisIsHeading` to whoever runs the check-in.
+
+**What the product already had.** The lead closes a check-in by recording one of the endings its situation offers, with a reason (`POST /grounds/:id/resolution`, `END_STATES` in `resolution/end-states.ts`, decision 6). The lead also writes down what is still to decide, which the board serves in `decisions`. Nothing new is stored. Code: `board/where-this-is-heading.ts`.
+
+The field is `{ heading, about, outcomes, outcomesSays, signals, signalsSays, whatWouldSettleIt, whatWouldSettleItSays, whoDecides, groundworkDoesNotChoose, recordTheDecision, decided }`:
+- `heading`: "Where this is heading". `about`: the situation's own name, for example "Set goals and keep the team on track".
+- `outcomes`: exactly the endings "Record the decision" offers for this check-in, as `{ value, says, more }`. Nothing else is listed, and none is ranked or chosen. Where there are none, `outcomesSays` is "Nothing on record names the possible outcomes for this check-in yet."
+- `signals`: sentences this reader is already served on the board, each with where it comes from: the forecast of a team number, the blockers, and how many things people said different things about. They are not tied to one outcome, because nothing on record ties them. With none: "Nothing on record points towards one outcome or another yet."
+- `whatWouldSettleIt`: what the lead wrote down as still to decide, in the lead's own words. With none: "Nothing on record says yet what would settle it."
+- `whoDecides`: the lead. `groundworkDoesNotChoose`: the prototype's own sentence.
+- `recordTheDecision`: "Record the decision", to the lead only, the one person the resolution route lets record it, and only while nothing is recorded. Please open the existing ResolutionPanel from it. Once recorded, `decided` says which ending and when.
+
+**What Bisi reads on the sales run (re-f):**
+- "Where this is heading". "Set goals and keep the team on track".
+- The possible outcomes: "OKRs aligned to company direction.", "Gaps identified, revision needed.", "Not yet, more sessions needed."
+- The signals: "The team is aiming for 40 approved facilities this quarter. If it keeps moving at the pace it has since session 1, it would be about 31 by session 6, against an aim of 40." with "It was 6 in session 1 and 11 in session 2, and this check-in runs for 6 sessions."; "Femi Okonkwo is waiting for the bank statements." with "This was raised once, on 16 September."; "Ngozi Eze is waiting on Mr. Adebayo for a date for the credit decision." with "This was raised once, on 16 September."
+- What would settle it: "Whether to take the credit committee delays to the Head of Credit." with "You wrote this down as still to decide."
+- "You decide." "Groundwork lays out the outcomes and the proof. It doesn’t choose." "Record the decision".
+- Once recorded: "You recorded the decision on 30 September. The outcome is "Not yet, more sessions needed"."
+
+The admin who set it up reads the same with "Bisi Adeyemi decides." and "Bisi Adeyemi wrote this down as still to decide.", and no "Record the decision". Juma, an admin who only reads, is not sent it (decision 58: not the lead's list, not the aims). Femi, Ngozi and Kwame are not sent it, before or after the team picture is shared, as in the prototype's participant board. On an evaluation check-in nobody is sent it: the endings there are about a person ("Separation agreed"), and the suggestion, its reasons and the decision already have their own way (decision 6).
+
+Decided for Hafsah to confirm:
+- The possible outcomes are the endings the resolution flow offers, said with a comma where the stored label has a dash. Some of those labels are not plain words ("OKRs aligned to company direction"). They are shown on the resolution panel too, so changing them is a separate decision.
+- It is sent all through the check-in, as in the prototype, not only near the end. Decision 70 still decides when the resolution panel itself opens.
+- Not on an evaluation check-in, and not to an admin who only reads.
+
+Tests: `board/request-108-d-where-this-is-heading.spec.ts` (9 cases, as every reader). The board cases fail without this change.
+
+## Request 108: the year in the board's dates follows the board's own clock (2 October)
+
+The headline's deadline and "Where this is heading"'s recorded date leave out the year only where it is the year of the clock the board is read at, never the machine's own clock. In the product that is the moment the board is served; in tests it is the clock the test gives (`THE_BOARDS_CLOCK` in the board harness, 2 October 2026, unless a spec sets its own), so a test reads the same every year. Read in January 2027, the same board says "Will we reach 40 approved facilities by 30 November 2026?" and "You recorded the decision on 30 September 2026."
+
+## Decision 75, items 2 and 25: who reads an evaluation check-in, and a probation is one (2 October)
+
+**A probation or a first 90 days is now an evaluation check-in (item 25).** The list in request 78's answer above grows from three to four: `PIP`, `RECOGNITION`, `CONTRACT_RENEWAL` and now `NEW_HIRE`. `EVALUATION_SCENARIOS` in `api/src/modules/reports/is-this-an-evaluation-check-in.ts` already carries it. If the screens keep their own copy of the three (for example to leave the admins line out of an invitation), please read `NEW_HIRE` as one of them. What changes on a `NEW_HIRE` check-in, served by the engine:
+- An admin who was not given access (does not run it, did not set it up, does not take part, and was not asked to approve it) cannot open it or see it listed, and is refused its board, reports, outcome and weekly report, as on a performance plan.
+- A suggestion can be reached there (the ending page, the review, the You board, as for Kwame in the prototype).
+- The person reviewed is never named a colleague who gave a view, whatever the lead switched, and `whyThePersonReviewedIsNotTold` now carries "On a check-in about one person, that person is never told who else gave a view." for these check-ins. By default nobody on it is named to each other (`peersDefaultVisible` is false).
+- The person reviewed reads no one else's exact words on the board and in reports, as on a performance plan.
+- The board keeps the shape it had for a new person starting. Nothing on the screens needs to change for that.
+
+**The admin asked to approve an evaluation check-in reads it (item 2).** While a performance plan, promotion, renewal or probation waits for an admin to accept it (`status: AWAITING_APPROVAL`), every admin of the organisation now sees it in `GET /grounds/awaiting-approval`, can open it, its board and its outcome, and can approve or decline it. Once it is decided, only the admin who decided keeps reading it. They read it as an admin with access does, but cannot change its setup. Nothing new to send.
+
+## Decision 75, item 24: a suggestion says when the person caught up (2 October)
+
+Every suggestion shape now carries `caughtUp`: null, or one sentence to show under the suggestion, for every reader of it. A suggestion nobody has decided keeps the facts it was reached on; if, before anyone decides, the person is back at or above the line that reached it, the lead (and an admin deciding an appeal) reads "Kwame has caught up since this was suggested. Since Thursday 1 October, Kwame has kept as many of the commitments made in this check-in as Groundwork looks for.", and the person reads "You have caught up since this was suggested. Since Thursday 1 October, you have kept as many of your commitments in this check-in as Groundwork looks for." It is on `GET /grounds/:id/suggestions`, the ending page (`theEndingPage.suggestions`, `aboutYou`, `appealed`), the review's `suggestion`, the You board's suggestions about you, and an admin's appeals. Please show it as it comes, beside the original facts, never in their place.
+
+## Decision 75, item 46: a participant's one line is their own waits (2 October)
+
+`howItIsGoing.glance.inTheWay` on the board, and `glance.inTheWay` on the check-ins list (which Today reads), are now counted and named from the reader's own waits for every participant who does not run the check-in, also where people see each other. A wait the reader has on a named colleague still says whose ("Omar's login for the order system") where people see each other. Whoever runs it, the admin who set it up, and an admin who only reads still get the team's. Nothing new to send; the fields are the same.
+
+## Decision 75, item 13: the lead's brief is never quoted to a participant (2 October)
+
+A participant (and anybody else who does not run the check-in) is no longer served any sentence of the lead's brief. `brief` on the check-ins list, `briefAsEveryoneReadsIt` on `GET /grounds/:id`, and `brief.says` in a session now carry only the short version the lead confirmed (`toldToParticipants`), and are `null` where there is none, where they used to fall back to the brief's own situation sentences. The goals they may see still come with it. On a team update the lead's one line is still served, because it is the question everybody is asked. Please show nothing in "About this check-in" where it is `null`, rather than an empty box. The lead still reads the whole brief as before.
+
+## Decision 75, item 14: where people do not see each other, one person's circumstances stay their own (2 October)
+
+On a check-in where people do not see each other (a cohort, or the lead's switch off), a participant's report and board (everything that comes through the report: `sharedPicture`, `theOpening`, `sharedPictureLines`, `agreements`, `divergences`, `whatTheAnswersSay` and the rest) no longer carry any sentence about one colleague. They keep the counts ("All nine people have answered."), the patterns across people ("A common experience was a delay between receiving the asset and generating income."), the lead's sentences, and the reader's own ("Your goal was ..."). A list item about one colleague is dropped whole, not half-emptied, so a list can be shorter or empty. The lead and an admin read it whole. Evaluation check-ins keep their own rule (decision 17). Nothing new to send.

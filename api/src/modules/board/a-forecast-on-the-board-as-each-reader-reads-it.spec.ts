@@ -1,5 +1,5 @@
 import { GroundScenario } from '@prisma/client';
-import { BISI, FEMI, JUMA, KWAME, SALES_RUN, SETUP_ADMIN, boardAs, type Setup } from './the-switchboards-sections-harness';
+import { BISI, FEMI, JUMA, KWAME, SALES_RUN, SETUP_ADMIN, A_RELEASED_REPORT, boardAs, type Setup } from './the-switchboards-sections-harness';
 import { WHAT_A_FORECAST_CANNOT_TELL_YOU } from './the-switchboards-own-sections';
 
 /**
@@ -33,7 +33,8 @@ describe('A forecast, as each person reads it', () => {
   for (const [who, reader, setup] of [
     ['Bisi, who runs it', BISI, WITH_TARGETS],
     ['the admin who set it up', SETUP_ADMIN, { ...WITH_TARGETS, createdByUserId: 'u-setup' }],
-    ['Femi, taking part where everybody sees the targets', FEMI, { ...WITH_TARGETS, whoSeesTargets: 'EVERYBODY' }],
+    /* A person who checks in reads the forecast as part of the team's picture, once it is shared (request 105). */
+    ['Femi, taking part where everybody sees the targets, once the report is shared', FEMI, { ...WITH_TARGETS, whoSeesTargets: 'EVERYBODY', report: A_RELEASED_REPORT }],
   ] as const) {
     it(`${who} reads the team's forecast, and never one about Kwame alone`, async () => {
       const b = await boardAs(setup, reader[0], reader[1]);
@@ -45,8 +46,13 @@ describe('A forecast, as each person reads it', () => {
   }
 
   it('Kwame does not read a forecast of his own number either', async () => {
-    const b = await boardAs({ ...WITH_TARGETS, whoSeesTargets: 'EVERYBODY' }, ...KWAME);
+    const b = await boardAs({ ...WITH_TARGETS, whoSeesTargets: 'EVERYBODY', report: A_RELEASED_REPORT }, ...KWAME);
     expect(b.forecast.map((f: any) => f.objectiveId)).toEqual(['o-team']);
+  });
+
+  it('before the team picture is shared, a person who checks in reads no forecast (request 105)', async () => {
+    expect((await boardAs({ ...WITH_TARGETS, whoSeesTargets: 'EVERYBODY' }, ...FEMI)).forecast).toBeUndefined();
+    expect((await boardAs({ ...WITH_TARGETS, whoSeesTargets: 'EVERYBODY' }, ...KWAME)).forecast).toBeUndefined();
   });
 
   it('where people see only their own targets, a person reads no forecast, because it says the aim (decision 73)', async () => {

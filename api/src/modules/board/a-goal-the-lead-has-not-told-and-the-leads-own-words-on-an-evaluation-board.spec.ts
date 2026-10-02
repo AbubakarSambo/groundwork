@@ -100,11 +100,16 @@ describe('The lead\'s commitment about a named person, on an ordinary check-in',
       commitment('k-3', 'p-amina', 'I will review the pricing.'),
     ],
   };
-  it('Rukia does not read the one that names her, and reads the one that names nobody', async () => {
+  /*
+   * Request 105 (the prototype's B5, "Only yours"): a person who checks in reads only their own commitments,
+   * so Rukia now reads neither of the lead's. Before, she read the one that names nobody. The one that names
+   * her is still read nowhere on her board.
+   */
+  it('Rukia does not read the one that names her, nor, since her board is her own, the one that names nobody', async () => {
     const b = await boardAs(ordinary, ...RUKIA);
-    const all = JSON.stringify([b.workPlan, b.timeline, b.risks]);
+    const all = JSON.stringify(b);
     expect(all).not.toContain('performance improvement plan');
-    expect(all).toContain('review the pricing');
+    expect(all).not.toContain('review the pricing');
   });
   it('Amina reads both', async () => {
     const b = await boardAs(ordinary, ...AMINA);

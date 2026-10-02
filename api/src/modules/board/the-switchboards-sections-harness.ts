@@ -55,7 +55,35 @@ export interface Setup {
   snapshots?: { objectiveId: string; count: number }[];
   /** Rows of checkInGap: what a check-in asked twice and did not get (request 107 a). */
   gaps?: any[];
+  /** The kind of work (request 76), and its records (WorkItem rows). */
+  kindOfWork?: string | null;
+  items?: any[];
+  /** Numbers from another system about what this check-in is about (ProductMetric rows), and its subject. */
+  metrics?: any[];
+  subjectExternalId?: string | null;
+  /** The documents on the check-in (GroundDocument rows). */
+  documents?: any[];
+  /** The check-in's clock (request 108): when it was made, starts and ends, how long it runs and how often. */
+  clock?: { now?: Date; createdAt?: Date; startsAt?: Date | null; endsAt?: Date | null; timelineDays?: number; cadence?: string; runsUntilEnded?: boolean };
+  /** Whether the lead has recorded how it ended (request 108 d). */
+  status?: string;
+  endState?: string | null;
+  resolvedAt?: Date | null;
+  /** The lines a record came from, read by id (RecordEntry rows with their mark's fields), where a spec reads each record's mark. */
+  recordLines?: any[];
+  /** What the lead wrote down on the Context page (GroundContextItem rows: kind, audience, text). */
+  contextItems?: { kind: string; audience?: string; text: string; closedAt?: Date | null }[];
 }
+
+/**
+ * A REPORT THAT HAS BEEN RELEASED TO THE PEOPLE IN THE CHECK-IN. A person who checks in reads the team's
+ * picture (the quick read, where people differ, the forecast) only once it is shared (request 105).
+ */
+export const A_RELEASED_REPORT = {
+  releasedAt: new Date('2026-09-23T17:00:00Z'), sharedAs: null, theOpening: 'Everybody has checked in.', networkPicture: null,
+  sharedPicture: 'Everybody has checked in.', agreements: [], divergences: [], centralQuestion: null, engagement: {}, findings: [],
+  createdAt: new Date('2026-09-20T09:00:00Z'), updatedAt: new Date('2026-09-23T15:02:00Z'),
+};
 
 export const commitment = (id: string, participantId: string | null, text: string, more: Record<string, any> = {}) => ({
   id, groundId: 'g-1', participantId, text, outcome: null, whenSaid: null, explicit: true, status: 'UNKNOWN', source: 'CHECK_IN',
@@ -82,7 +110,11 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     peopleWorkTogether: true, peersVisibleToEachOther: setup.peersVisibleToEachOther ?? true, timelineDays: 28, cadence: 'WEEKLY',
     whoSeesTargets: setup.whoSeesTargets ?? 'THEIR_OWN', label: setup.label ?? 'The team, Q3', participants: setup.people ?? PEOPLE, checkIns, report: setup.report ?? null,
     dependencies: setup.dependencies ?? [], poll: null, objectives: setup.objectives ?? [], closedAt: setup.closedAt ?? null,
-    kindOfWork: null, workStages: null,
+    kindOfWork: setup.kindOfWork ?? null, workStages: null, subjectExternalId: setup.subjectExternalId ?? null,
+    ...(({ now: _now, ...rest }) => rest)(setup.clock ?? {}),
+    ...(setup.status ? { status: setup.status } : {}),
+    ...(setup.endState !== undefined ? { endState: setup.endState } : {}),
+    ...(setup.resolvedAt !== undefined ? { resolvedAt: setup.resolvedAt } : {}),
   };
   const reads = {
     findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null), findUnique: jest.fn(async () => null),
@@ -99,8 +131,16 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     personObjective: model({ findMany: jest.fn(async (args: any) => clone((setup.personObjectives ?? []).filter((o: any) => !args?.where?.awareness || o.awareness === args.where.awareness))) }),
     groundCommitment: model({ findMany: jest.fn(async () => clone(setup.commitments ?? [])) }),
     checkInGap: model({ findMany: jest.fn(async () => clone(setup.gaps ?? [])) }),
+    workItem: model({ findMany: jest.fn(async () => clone(setup.items ?? [])) }),
+    groundDocument: model({ findMany: jest.fn(async (args: any) => clone((setup.documents ?? []).filter((d: any) => !args?.where?.id?.in || args.where.id.in.includes(d.id)))) }),
+    productMetric: model({ findMany: jest.fn(async (args: any) => clone((setup.metrics ?? []).filter((m: any) => !args?.where?.subjectExternalId || m.subjectExternalId === args.where.subjectExternalId))) }),
+    groundContextItem: model({ findMany: jest.fn(async (args: any) => clone((setup.contextItems ?? [])
+      .filter((c) => !c.closedAt)
+      .filter((c) => !args?.where?.kind || c.kind === args.where.kind)
+      .filter((c) => !args?.where?.audience || (c.audience ?? 'EVERYONE') === args.where.audience)
+      .map((c) => ({ text: c.text })))) }),
     recordEntry: model({ findMany: jest.fn(async (args: any) => {
-      if (args?.where?.id?.in) return [];
+      if (args?.where?.id?.in) return clone((setup.recordLines ?? []).filter((l: any) => args.where.id.in.includes(l.id)).map((l: any) => ({ disputedAt: null, type: 'PROGRESS', ...l })));
       return clone(setup.lines ?? []);
     }) }),
   } as any, {
@@ -111,8 +151,11 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
   });
   const reports = Object.create(ReportsService.prototype) as ReportsService;
   return new BoardService(prisma, { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, reports)
-    .get('g-1', userId) as Promise<any>;
+    .get('g-1', userId, undefined, { now: setup.clock?.now ?? THE_BOARDS_CLOCK }) as Promise<any>;
 }
+
+/** The clock every board in these tests is read at, unless a spec gives its own, so a date reads the same every year. */
+export const THE_BOARDS_CLOCK = new Date('2026-10-02T12:00:00Z');
 
 /*
  * THE SALES RUN (api/journey/all-24/re-f/sales.json, "Credit sales against this quarter target"). Bisi

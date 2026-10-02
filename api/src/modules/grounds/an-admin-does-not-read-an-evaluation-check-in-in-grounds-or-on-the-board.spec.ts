@@ -89,7 +89,7 @@ function resolutionService(scenario: string) {
   return svc as ResolutionService;
 }
 
-describe.each([['a performance plan', 'PIP'], ['a promotion', 'RECOGNITION'], ['a renewal', 'CONTRACT_RENEWAL']])('%s', (_l, scenario) => {
+describe.each([['a performance plan', 'PIP'], ['a promotion', 'RECOGNITION'], ['a renewal', 'CONTRACT_RENEWAL'], ['a probation (decision 75, item 25)', 'NEW_HIRE']])('%s', (_l, scenario) => {
   it('is not listed to an admin who was not given access, and is to the admin who set it up', async () => {
     const calls: any = {};
     await groundsService(scenario, calls).list('org1', OTHER_ADMIN, undefined, 'ADMIN');

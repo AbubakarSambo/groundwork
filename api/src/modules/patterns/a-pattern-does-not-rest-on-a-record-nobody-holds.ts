@@ -36,3 +36,24 @@ export function restsOnARecordNobodyHolds(observation: string, whatThePersonSaid
   if (!A_RECORD_CLAIM.test(observation ?? '')) return false;
   return !whatThePersonSaid.some((t) => THEY_MENTIONED_A_RECORD.test(t));
 }
+
+/**
+ * WHAT THE RULE TOOK OUT OF A CHECK-IN, so a run's log shows it (2 October 2026). The rule above runs once
+ * per read, so it cannot say on its own whether it changed what counts. This is said once per check-in,
+ * for each code some read left out because of it and that does not count for the period: how many reads
+ * left it out, of how many were taken. A code that counts anyway is not listed, because the rule changed
+ * nothing about it. No observation is in the line, so no name can be.
+ */
+export function whatTheRecordRuleTookOut(
+  leftOut: { code: string }[][],
+  countsThisPeriod: Iterable<string>,
+): { code: string; reads: number }[] {
+  const counts = new Set(countsThisPeriod);
+  const reads = new Map<string, number>();
+  for (const read of leftOut) for (const code of new Set(read.map((d) => d.code))) reads.set(code, (reads.get(code) ?? 0) + 1);
+  return [...reads].filter(([code]) => !counts.has(code)).map(([code, n]) => ({ code, reads: n }));
+}
+
+export function aLineForWhatTheRecordRuleTookOut(checkInId: string, period: number, took: { code: string; reads: number }, readsTaken: number): string {
+  return `Check-in ${checkInId}: ${took.code} does not count for period ${period}. In ${took.reads} of ${readsTaken} reads it rested on a record this person never mentioned, so those reads left it out.`;
+}

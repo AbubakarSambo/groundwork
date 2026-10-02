@@ -1,4 +1,3 @@
-import { aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { labelsForParties, namesVisibleTo } from './party-labels';
 import { peopleSaidDifferentThingsAbout } from './what-people-said-differently-about';
@@ -260,7 +259,8 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     movedOnTargets = 0;
     for (const { from, to } of moves.values()) {
       movedOnTargets += to - from;
-      if (to - from > 0) targetsMoved += 1;
+      /* Every target whose count changed, up or down: the tile says how many moved (request 107 d). */
+      if (to !== from) targetsMoved += 1;
     }
   }
   return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, targetsSet: objectives.filter((o) => o.target != null).length, targetsMoved };
@@ -271,7 +271,11 @@ export function atAGlanceTiles(a: {
   agreed: number; stillOpen: number; movedOnTargets: number | null; blocked: number; waiting: number;
   /** How many targets this check-in holds. Nought is "none set"; anything else is "none moved yet". */
   targetsSet?: number;
-  /** How many targets went up this session. More than one is said as how many, never as their sum. */
+  /**
+   * How many targets moved this session, up or down. The tile says how many, never a sum and never one
+   * target's own change: "+96" from one target was a number with nothing to say what it counted
+   * (request 107 d). Where a caller does not pass it, a total that moved is read as one target.
+   */
   targetsMoved?: number;
   backedPct: number | null; numberWasSaid: boolean;
   /**
@@ -322,6 +326,7 @@ export function atAGlanceTiles(a: {
     ? 'It is the only worry on record, and nobody is waiting on anybody.'
     : `There ${n === 1 ? 'is 1 more worry' : `are ${n} more worries`} on record, and nobody is waiting on anybody.`);
   const worries = a.worries ?? 0;
+  const moved = a.movedOnTargets == null ? 0 : (a.targetsMoved ?? (a.movedOnTargets !== 0 ? 1 : 0));
   return [
     {
       label: 'Differences',
@@ -363,7 +368,7 @@ export function atAGlanceTiles(a: {
       value: a.movedOnTargets == null
         ? (a.targetsSet ?? 0) > 0 ? 'Nothing yet'
           : a.numberWasSaid ? 'Not tracked' : 'No target set'
-        : a.movedOnTargets > 0 ? ((a.targetsMoved ?? 0) > 1 ? `${a.targetsMoved} targets` : `+${aNumberPeopleCanRead(a.movedOnTargets)}`) : 'None',
+        : moved > 0 ? `${moved} ${moved === 1 ? 'target' : 'targets'}` : 'None',
       sub: a.movedOnTargets == null
         ? (a.targetsSet ?? 0) > 0
           /* Set, and nothing to subtract from yet: a round has to close before movement exists. */
@@ -371,7 +376,7 @@ export function atAGlanceTiles(a: {
           : a.numberWasSaid
             ? 'Somebody named a number, and nothing is tracking it.'
             : 'Nobody has set anything to measure this against.'
-        : a.movedOnTargets > 0 ? ((a.targetsMoved ?? 0) > 1 ? `${a.targetsMoved} targets went up this session.` : 'Targets moved this session.') : 'No target moved this session.',
+        : moved > 0 ? `${moved === 1 ? '1 target' : `${moved} targets`} moved this session.` : 'No target moved this session.',
       tone: a.movedOnTargets == null
         ? a.numberWasSaid && !(a.targetsSet ?? 0) ? 'warn' : 'flat'
         : a.movedOnTargets > 0 ? 'good' : 'flat',

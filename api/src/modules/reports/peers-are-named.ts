@@ -22,7 +22,7 @@
  * nobody has said, so the family decides.
  *
  * DECISION 17 WINS OVER THE SWITCH. In an evaluation check-in (a performance plan, a promotion or
- * recognition round, a contract renewal) the person being reviewed is never told a colleague's
+ * recognition round, a contract renewal, and a probation or first 90 days, decision 75 item 25) the person being reviewed is never told a colleague's
  * name, whatever the lead has switched. The review of 1 October found a lead's "people see each
  * other" on a renewal naming a colleague to the person reviewed.
  *
@@ -36,7 +36,7 @@
  */
 
 import { BoardFamily, familyFor } from '../board/board-families';
-import { theSubjectOfAnEvaluationCheckIn, type AParticipantForTellingTheSubject } from './is-this-an-evaluation-check-in';
+import { isEvaluationCheckIn, theSubjectOfAnEvaluationCheckIn, type AParticipantForTellingTheSubject } from './is-this-an-evaluation-check-in';
 
 /** Who is reading. `participantId` is their row on this check-in, or null where they have none. */
 export interface TheReader {
@@ -59,7 +59,8 @@ export function peersAreNamedOn(
 ): boolean {
   const family = familyFor((ground as any)?.scenario);
   const switched = (ground as any)?.peersVisibleToEachOther as boolean | null | undefined;
-  if (family === BoardFamily.EVALUATION) {
+  /* The one evaluation list, so a probation (decision 75, item 25) is held to decision 17 too. */
+  if (isEvaluationCheckIn((ground as any)?.scenario)) {
     /* Not switched on: nobody is named to each other, as before. */
     if (switched !== true) return false;
     /* Decision 17: the person reviewed is never named a colleague. A caller that does not say who
@@ -81,7 +82,7 @@ export function peersAreNamedOn(
  * this". Both answers come from here, so the page cannot show a default this file does not use.
  */
 export function peersAreNamedByDefaultOn(ground: { scenario?: any } | null | undefined): boolean {
-  return ![BoardFamily.EVALUATION, BoardFamily.COHORT].includes(familyFor((ground as any)?.scenario));
+  return !isEvaluationCheckIn((ground as any)?.scenario) && familyFor((ground as any)?.scenario) !== BoardFamily.COHORT;
 }
 
 /**
@@ -110,5 +111,5 @@ export const WHY_THE_PERSON_REVIEWED_IS_NOT_TOLD =
   'On a check-in about one person, that person is never told who else gave a view.';
 
 export function whyThePersonReviewedIsNotTold(ground: { scenario?: any } | null | undefined): string | null {
-  return familyFor((ground as any)?.scenario) === BoardFamily.EVALUATION ? WHY_THE_PERSON_REVIEWED_IS_NOT_TOLD : null;
+  return isEvaluationCheckIn((ground as any)?.scenario) ? WHY_THE_PERSON_REVIEWED_IS_NOT_TOLD : null;
 }

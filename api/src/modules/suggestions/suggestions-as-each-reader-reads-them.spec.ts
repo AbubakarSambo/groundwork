@@ -363,7 +363,7 @@ describe('on the team check-in, which is not an evaluation check-in', () => {
   it('the engine cannot write one there', async () => {
     const { svc } = setup();
     await expect(svc.record(aSuggestion({ groundId: 'g-sales', aboutParticipantId: 'p-d2' })))
-      .rejects.toThrow('A suggestion is only reached on a performance plan, a recognition or a contract renewal.');
+      .rejects.toThrow('A suggestion is only reached on a performance plan, a recognition, a contract renewal or a probation.');
   });
 
   it('a row already there is served to no reader, anywhere', async () => {

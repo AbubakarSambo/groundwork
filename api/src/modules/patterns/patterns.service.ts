@@ -1,4 +1,4 @@
-import { restsOnARecordNobodyHolds } from './a-pattern-does-not-rest-on-a-record-nobody-holds';
+import { restsOnARecordNobodyHolds, whatTheRecordRuleTookOut, aLineForWhatTheRecordRuleTookOut } from './a-pattern-does-not-rest-on-a-record-nobody-holds';
 import { Injectable, Optional, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
@@ -6,7 +6,29 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LEARNING_SIGNAL } from '../learning/learning-signal';
 import { shouldThisCodeBeAboutThem } from './a-chaser-is-not-the-blocker';
-import { theirOwnEarlierRecord, earlierRecordQuery } from './the-detector-reads-their-own-earlier-record';
+import { theirOwnEarlierRecord, earlierRecordQuery, theEarlierPeriodsItShows } from './the-detector-reads-their-own-earlier-record';
+import {
+  JUDGED_ONCE_CODES,
+  JUDGEMENT_READS,
+  JUDGEMENTS_THAT_MUST_COME_BACK,
+  thePeriodsItCanSee,
+  thePeriodsItDecides,
+  whereEachCodeShows,
+  theirPeriodsAfterTheJudgement,
+  aLineForTheJudgement,
+  type AJudgementRead,
+  type WhereACodeShows,
+} from './a-pattern-over-time-is-judged-once-on-all-its-periods';
+import { JUDGED_ONCE_PROMPT, PERIOD_LABELS, judgedOnceSchema, theJudgementReads, whatOneJudgementSays, theRunEndingAtTheNewest } from './a-pattern-over-time-is-judged-once-on-all-its-periods';
+import {
+  theReadsWereSplit,
+  couldChangeWhatIsShown,
+  whatCountsThisPeriod,
+  MORE_READS_WHEN_SPLIT,
+  votesOf,
+  whatTheSettlingLetGo,
+  aLineForWhatTheSettlingLetGo,
+} from './a-period-at-the-line-is-settled-on-all-the-evidence';
 import { whatWasSeenLastPeriod, lastPeriodBlockFor, evidenceBorrowedFromAnotherCode, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
 import { AnthropicService } from '../conversation';
 import { runIntake } from '../conversation/intake';
@@ -237,10 +259,14 @@ export class PatternsService {
      * call and every filter in the same order, and only decides what a single read would keep,
      * without writing anything. The five run in parallel, at the steadiest setting the model has.
      */
+    /* What each read left out because it rested on a record nobody holds, for one line at the end. */
+    const leftOutForARecord: { code: string; observation: string }[][] = [];
     const attempts = await Promise.allSettled(
-      Array.from({ length: READS_PER_CHECK_IN }, () =>
-        this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, getDetectionInput, whatThePersonSaid),
-      ),
+      Array.from({ length: READS_PER_CHECK_IN }, () => {
+        const leftOut: { code: string; observation: string }[] = [];
+        leftOutForARecord.push(leftOut);
+        return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, getDetectionInput, whatThePersonSaid, leftOut);
+      }),
     );
 
     const succeeded: { code: string; observation: string }[][] = [];
@@ -260,22 +286,108 @@ export class PatternsService {
       return;
     }
 
-    /* Count how many of the successful reads kept each code, keeping the observation from the
-       first of the five (in order) that kept it - the Map below only ever sets it once. */
-    const votes = new Map<string, { count: number; observation: string }>();
-    for (const kept of succeeded) {
-      const codesThisRead = new Set<string>();
-      for (const { code, observation } of kept) {
-        if (codesThisRead.has(code)) continue; // one vote per read, even if a read named a code twice
-        codesThisRead.add(code);
-        const entry = votes.get(code);
-        if (entry) entry.count += 1;
-        else votes.set(code, { count: 1, observation });
-      }
+    /* Count how many of the successful reads kept each code (one vote per read), keeping the
+       observation from the first of the five, in order, that kept it. */
+    const firstVotes = votesOf(succeeded);
+
+    /*
+     * A PERIOD THE READS WERE SPLIT ON IS SETTLED ONCE, ON MORE OF THE SAME EVIDENCE. Where two or
+     * three of the five kept a code on a pattern not yet shown, the check-in is read five more times,
+     * the same way, and that code is decided on all ten by majority, a tie going the way the first
+     * five went. See
+     * a-period-at-the-line-is-settled-on-all-the-evidence.
+     */
+    /* Every pattern row this person has, as it stands before this check-in: what each code has been counted in. */
+    const theirRows = await this.prisma.patternDetection
+      .findMany({ where: { participantId: checkIn.participantId }, select: { code: true, seenInSessions: true, periodsObserved: true, readyAt: true, status: true } })
+      .catch(() => [] as { code: string; seenInSessions: number[]; periodsObserved?: number; readyAt?: Date | null; status?: PatternStatus }[]);
+    const countedSoFar = new Map<string, number[]>();
+    const alreadyShown = new Set<string>();
+    for (const r of theirRows ?? []) {
+      countedSoFar.set(r.code, r.seenInSessions ?? []);
+      if (periodsSeen(r as any) >= PERIODS_BEFORE_A_PATTERN_IS_SHOWN || r.readyAt || r.status === PatternStatus.SURFACED) alreadyShown.add(r.code);
     }
 
-    for (const [code, { count, observation }] of votes) {
-      if (count < READS_THAT_MUST_AGREE) continue;
+    /*
+     * FOUR PATTERNS THAT CAN ONLY SHOW OVER TIME ARE JUDGED ONCE, ACROSS THEIR PERIODS (decision 75,
+     * item 42). E2, B2, K3 and B11, while not yet shown, are decided by one judgement over the
+     * periods the detector can see, read five times, instead of period by period. A code is judged
+     * when this period's reads raised it or it is counted in a period the judgement decides, so the
+     * judgement can confirm a period or drop one. See a-pattern-over-time-is-judged-once-on-all-its-periods.
+     */
+    const window = thePeriodsItCanSee(period, theEarlierPeriodsItShows(earlierLines as any, period));
+    const decides = thePeriodsItDecides(window);
+    const notJudged = new Map<string, 'shown' | 'waiting' | 'no reads'>();
+    const toJudge: string[] = [];
+    for (const code of JUDGED_ONCE_CODES) {
+      const inPlay = firstVotes.has(code) || (countedSoFar.get(code) ?? []).some((p) => decides.includes(p));
+      if (!inPlay) continue;
+      if (alreadyShown.has(code)) { notJudged.set(code, 'shown'); continue; }
+      if (!shouldThisCodeBeAboutThem(code, theirDependencies as any[]).keep) { notJudged.set(code, 'waiting'); continue; }
+      toJudge.push(code);
+    }
+    const judgementReads: AJudgementRead[] = [];
+    if (toJudge.length) {
+      const judgements = await Promise.allSettled(
+        /* Always asked about all four, so the call is the same whatever is already counted; only the codes in play are used. */
+        Array.from({ length: JUDGEMENT_READS }, () => this.whatOneJudgementKeeps(checkInId, content, window, [...JUDGED_ONCE_CODES], whatThePersonSaid)),
+      );
+      judgements.forEach((j, i) => {
+        if (j.status === 'fulfilled') judgementReads.push(j.value);
+        else this.logger.warn(`Pattern judgement failed for check-in ${checkInId}, read ${i + 1} of ${JUDGEMENT_READS}: ${j.reason?.message}`);
+      });
+    }
+    /* Too few judgement reads came back: these codes are decided period by period, as before. */
+    const judged = judgementReads.length >= JUDGEMENTS_THAT_MUST_COME_BACK ? toJudge : [];
+    for (const code of toJudge) if (!judged.includes(code)) notJudged.set(code, 'no reads');
+    const decidedByTheJudgement = (code: string) => judged.includes(code);
+
+    const toSettle = (code: string, count: number) =>
+      !decidedByTheJudgement(code) &&
+      theReadsWereSplit(count, READS_THAT_MUST_AGREE) && couldChangeWhatIsShown(countedSoFar.get(code) ?? [], period, PERIODS_BEFORE_A_PATTERN_IS_SHOWN);
+    const more: { code: string; observation: string }[][] = [];
+    if ([...firstVotes].some(([code, { count }]) => toSettle(code, count))) {
+      const moreAttempts = await Promise.allSettled(
+        Array.from({ length: MORE_READS_WHEN_SPLIT }, () => {
+          const leftOut: { code: string; observation: string }[] = [];
+          leftOutForARecord.push(leftOut);
+          return this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, getDetectionInput, whatThePersonSaid, leftOut);
+        }),
+      );
+      moreAttempts.forEach((attempt, i) => {
+        if (attempt.status === 'fulfilled') more.push(attempt.value);
+        else this.logger.warn(`Pattern extraction failed for check-in ${checkInId}, extra read ${i + 1} of ${MORE_READS_WHEN_SPLIT}: ${attempt.reason?.message}`);
+      });
+    }
+
+    const countsThisPeriod = whatCountsThisPeriod(succeeded, more, toSettle, READS_THAT_MUST_AGREE);
+    /* The four judged once are written below from the judgement, never from this period's reads alone. */
+    for (const code of [...countsThisPeriod.keys()]) if (decidedByTheJudgement(code)) countsThisPeriod.delete(code);
+    /* One line for each code either rule kept from counting, so a run shows what each one drops (2 October 2026). */
+    for (const letGo of whatTheSettlingLetGo(succeeded, more, toSettle, READS_THAT_MUST_AGREE)) {
+      this.logger.log(aLineForWhatTheSettlingLetGo(checkInId, period, letGo, succeeded.length));
+    }
+    for (const took of whatTheRecordRuleTookOut(leftOutForARecord, countsThisPeriod.keys())) {
+      if (decidedByTheJudgement(took.code)) continue;
+      this.logger.log(aLineForWhatTheRecordRuleTookOut(checkInId, period, took, succeeded.length + more.length));
+    }
+    if (judged.length) {
+      const where = whereEachCodeShows(judgementReads, window, judged, countedSoFar);
+      const decided = new Map<string, WhereACodeShows & { before: number[]; after: number[] }>();
+      for (const code of judged) {
+        const w = where.get(code)!;
+        const before = countedSoFar.get(code) ?? [];
+        const after = theirPeriodsAfterTheJudgement(before, window, w.showsIn);
+        decided.set(code, { ...w, before, after });
+        await this.settleAcrossPeriods(checkIn.groundId, checkIn.participantId, code, after, period, w.showsIn.includes(period) ? w.observation : '', w.showsIn.length ? await evidenceSourceFor(code) : undefined);
+      }
+      /* Once per check-in, with no name and no observation in it: what the judgement decided for each of the four. */
+      this.logger.log(aLineForTheJudgement(checkInId, period, window, decided, notJudged));
+    } else if (notJudged.size) {
+      this.logger.log(aLineForTheJudgement(checkInId, period, window, new Map(), notJudged));
+    }
+    for (const [code, { observation, votes, reads, settled }] of countsThisPeriod) {
+      if (settled) this.logger.log(`Check-in ${checkInId}: ${code} was kept by ${votes} of ${reads} reads after the first five were split, so it counts for period ${period}.`);
       if (isPositiveCode(code)) {
         await this.observePositive(checkIn.groundId, checkIn.participantId, code, observation, period, await evidenceSourceFor(code));
       } else {
@@ -302,6 +414,90 @@ export class PatternsService {
   }
 
   /**
+   * WHAT ONE READ OF THE JUDGEMENT ACROSS THEIR PERIODS SAYS, without writing anything (decision 75,
+   * item 42). One call at the steady setting, over the same text the detector reads, with the periods
+   * it can see named at the top. A code whose observation rests on a record this person's record does
+   * not hold is left out of this read, as a detection would be. Five calls to this, in parallel, are
+   * how analyzeCheckIn judges E2, B2, K3 and B11 once across their periods.
+   */
+  async whatOneJudgementKeeps(
+    checkInId: string,
+    content: string,
+    window: number[],
+    codes: string[],
+    whatThePersonSaid: string[] = [],
+  ): Promise<AJudgementRead> {
+    const labels = PERIOD_LABELS.slice(0, window.length) as unknown as string[];
+    const result = await this.anthropic.extract<{ patterns: { code: string; showsIn: string[]; observation: string }[] }>(
+      JUDGED_ONCE_PROMPT,
+      [{ role: 'user', content: theJudgementReads(content, window) }],
+      judgedOnceSchema(labels),
+      PATTERN_DETECTION_STEADY_OPTIONS,
+    );
+    const said = whatOneJudgementSays(result, window, codes);
+    for (const [code, { observation }] of [...said]) {
+      if (!observation || restsOnARecordNobodyHolds(observation, whatThePersonSaid)) {
+        this.logger.log(`Check-in ${checkInId}: ${code} left out of one judgement read; ${observation ? 'it rests on a record this person\'s record does not hold' : 'it came with no observation'}.`);
+        said.delete(code);
+      }
+    }
+    return said;
+  }
+
+  /**
+   * WRITE WHAT THE JUDGEMENT DECIDED for one of the four codes: every period it now counts in. The
+   * periods the judgement did not decide stay as they were. It can add a period or drop one, and the
+   * three-period rule is the same as in observe(): three periods and it may be read. A pattern already
+   * shown never reaches here.
+   */
+  async settleAcrossPeriods(
+    groundId: string,
+    participantId: string,
+    code: string,
+    periods: number[],
+    thisPeriod: number,
+    rawObservation: string,
+    evidenceSource?: AnEvidenceSource,
+  ) {
+    const seenInSessions = [...new Set(periods)].sort((a, b) => a - b);
+    const existing = await this.prisma.patternDetection.findUnique({ where: { participantId_code: { participantId, code } } });
+    const observationText = rawObservation ? plainVoice(rawObservation) : null;
+    const enough = seenInSessions.length >= THREE_PERIOD_RULE;
+    const newest = seenInSessions.length ? seenInSessions[seenInSessions.length - 1] : null;
+    if (!existing) {
+      if (!seenInSessions.length) return null;
+      return this.createAndMirror({
+        groundId,
+        participantId,
+        code,
+        observationText: observationText ?? '',
+        periodsObserved: theRunEndingAtTheNewest(seenInSessions),
+        lastPeriodNumber: newest,
+        seenInSessions,
+        status: enough ? PatternStatus.SURFACED : PatternStatus.CANDIDATE,
+        evidenceSource: evidenceSource ?? null,
+        ...(seenInSessions.length >= PERIODS_BEFORE_A_PATTERN_IS_SHOWN ? { readyAt: new Date() } : {}),
+      });
+    }
+    if (existing.readyAt || existing.status === PatternStatus.SURFACED) return existing;
+    const same = seenInSessions.length === (existing.seenInSessions ?? []).length && seenInSessions.every((p, i) => p === [...existing.seenInSessions].sort((a, b) => a - b)[i]);
+    if (same && !observationText) return existing;
+    return this.prisma.patternDetection.update({
+      where: { id: existing.id },
+      data: {
+        periodsObserved: theRunEndingAtTheNewest(seenInSessions),
+        seenInSessions,
+        lastPeriodNumber: newest,
+        ...(seenInSessions.includes(thisPeriod) ? { lastSeenAt: new Date() } : {}),
+        ...(observationText ? { observationText } : {}),
+        status: enough ? PatternStatus.SURFACED : PatternStatus.CANDIDATE,
+        evidenceSource: mergedEvidenceSource(existing.evidenceSource as AnEvidenceSource | null, evidenceSource),
+        ...(seenInSessions.length >= PERIODS_BEFORE_A_PATTERN_IS_SHOWN ? { readyAt: new Date() } : {}),
+      },
+    });
+  }
+
+  /**
    * WHAT ONE READ OF THIS CHECK-IN WOULD KEEP, without writing anything.
    *
    * One extraction call at the steady setting, then the same filters in the same order this method
@@ -320,6 +516,7 @@ export class PatternsService {
     theirDependencies: any[],
     getDetectionInput: () => Promise<DetectionInput>,
     whatThePersonSaid: string[] = [],
+    leftOutForARecord: { code: string; observation: string }[] = [],
   ): Promise<{ code: string; observation: string }[]> {
     const kept: { code: string; observation: string }[] = [];
 
@@ -338,6 +535,7 @@ export class PatternsService {
          pattern rests only on what the record holds. See a-pattern-does-not-rest-on-a-record-nobody-holds. */
       if (restsOnARecordNobodyHolds(d.observation, whatThePersonSaid)) {
         this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; it rests on a record this person's record does not hold.`);
+        leftOutForARecord.push({ code: d.code, observation: d.observation.trim() });
         continue;
       }
 

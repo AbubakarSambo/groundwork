@@ -370,7 +370,7 @@ export class AskService {
     if (question === 'purpose' || question === 'who_reads') {
       const g: any = await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { brief: true, toldToParticipants: true, scenario: true } });
       if (question === 'who_reads') return whoReadsWhatTheySay(ground.label, g?.scenario ?? null);
-      return whatTheCheckInIsFor(ground.label, whatAParticipantIsToldAboutThis(g?.brief ?? null, [], { told: g?.toldToParticipants ?? null, readerParticipantId: participantId }));
+      return whatTheCheckInIsFor(ground.label, whatAParticipantIsToldAboutThis(g?.brief ?? null, [], { told: g?.toldToParticipants ?? null, readerParticipantId: participantId, scenario: g?.scenario ?? null }));
     }
 
     const own = await this.theirOwnOpenCommitments(ground.id, participantId);

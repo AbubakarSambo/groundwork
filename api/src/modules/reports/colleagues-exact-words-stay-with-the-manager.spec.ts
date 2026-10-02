@@ -20,9 +20,12 @@ describe('isEvaluationCheckIn: the one place a check-in is known to be one', () 
     expect(isEvaluationCheckIn('CONTRACT_RENEWAL' as any)).toBe(true);
   });
 
-  it('is false for onboarding, which involves a new person but is not deciding whether they keep their job', () => {
-    expect(isEvaluationCheckIn('NEW_HIRE' as any)).toBe(false);
+  /* Changed with decision 75, item 25: a probation or a new person's first 90 days (NEW_HIRE) is an evaluation
+     check-in, as the prototype shows for Kwame. A new manager's first weeks are still not one. */
+  it('is true for a probation or first 90 days, and false for a new manager', () => {
+    expect(isEvaluationCheckIn('NEW_HIRE' as any)).toBe(true);
     expect(isEvaluationCheckIn('NEW_MANAGER' as any)).toBe(false);
+    expect(isEvaluationCheckIn('NEW_ADVISOR' as any)).toBe(false);
   });
 
   it('is false for an ordinary team check-in, and for a cohort (which has no single subject)', () => {

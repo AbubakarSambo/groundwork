@@ -56,10 +56,12 @@ describe('what this check-in is for, as each reader is sent it', () => {
     expect(got.briefChangedBy).toBeNull();
   });
 
-  it('where nothing was rewritten, what everyone reads is her own words', async () => {
+  /* Changed with decision 75, item 13: the brief is never quoted into a participant's check-in, so where nothing
+     was rewritten, the people in it read nothing of it, and it is not said that they read her own words. */
+  it('where nothing was rewritten, the people in it read nothing of her brief', async () => {
     const got = await getAs(WANJIRU, { toldToParticipants: null, brief: 'Twenty-five water pumps this quarter.' });
-    expect(got.briefAsEveryoneReadsIt).toBe('Twenty-five water pumps this quarter.');
-    expect(got.briefIsTheLeadsOwnWords).toBe(true);
+    expect(got.briefAsEveryoneReadsIt).toBeNull();
+    expect(got.briefIsTheLeadsOwnWords).toBe(false);
   });
 
   it('Aisha gets only what everyone reads, and not who changed it', async () => {
@@ -180,9 +182,10 @@ describe('what the lead typed in setup, as each reader is sent it', () => {
     const got = await getAs(WANJIRU, {}, { authorUserId: 'u-earlier-lead', text: JUMA });
     expect(got.leadsOwnSetupWords).toBeUndefined();
   });
-  it('and a brief setup put together is not called the lead’s own words, even where everyone reads it as it is', async () => {
+  /* Changed with decision 75, item 13: the people in it no longer read the brief as it is. */
+  it('and a brief setup put together is not called the lead’s own words, and nobody else reads it', async () => {
     const got = await getAs(WANJIRU, { toldToParticipants: null, brief: 'Juma’s probation needs review.' }, hers);
-    expect(got.briefAsEveryoneReadsIt).toBe('Juma’s probation needs review.');
+    expect(got.briefAsEveryoneReadsIt).toBeNull();
     expect(got.briefIsTheLeadsOwnWords).toBe(false);
   });
 });
@@ -273,9 +276,10 @@ describe('what the check-ins list sends about what a check-in is for', () => {
     expect(JSON.stringify(row)).not.toContain('often late with stock counts');
     expect(JSON.stringify(row)).not.toContain('Decide whether to confirm');
   });
-  it('and where that version is missing, only the situation, never the answers', async () => {
+  /* Changed with decision 75, item 13: where that version is missing, nothing of the brief, not even its situation. */
+  it('and where that version is missing, nothing of the brief, never the answers', async () => {
     const row = await listAs(AISHA, 'MEMBER', null);
-    expect(row.brief).toBe('Aisha’s probation in the warehouse team needs a decision.');
+    expect(row.brief).toBeNull();
     expect(JSON.stringify(row)).not.toContain('often late with stock counts');
   });
   it('Baraka, another participant, gets the same', async () => {

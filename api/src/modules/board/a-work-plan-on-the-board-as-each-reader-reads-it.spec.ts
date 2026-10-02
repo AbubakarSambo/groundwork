@@ -28,12 +28,14 @@ describe('The work plan, as each person reads it', () => {
     expect(first).toMatchObject({ participantId: 'p-rukia', who: 'Rukia Mwangi', when: 'by Friday', state: 'open', statedInSession: 1 });
   });
 
-  it('Rukia, where people do not see each other, reads her own line and the lead\'s, and nobody else\'s', async () => {
+  /* Request 105 (the prototype's B5, "Only yours"): a person who checks in reads only their own line. Before,
+     Rukia also read the lead's. */
+  it('Rukia, where people do not see each other, reads only her own line', async () => {
     const b = await boardAs({ ...RECORD, peersVisibleToEachOther: false }, ...RUKIA);
     expect(lines(b)).toEqual([
       'In session 1, you committed to send the Westgate quote. The time you gave for it was by Friday. Nobody has said yet whether it happened.',
-      'In session 1, Amina Wanjiru committed to review the pricing. Nobody has said yet whether it happened.',
     ]);
+    expect(JSON.stringify(b.workPlan)).not.toContain('pricing');
     expect(JSON.stringify(b.workPlan)).not.toContain('Kisumu');
     expect(JSON.stringify(b.workPlan)).not.toContain('Baraka');
   });

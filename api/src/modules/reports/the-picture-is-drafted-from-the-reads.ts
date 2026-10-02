@@ -1,4 +1,5 @@
 import type { Drafted } from './the-engine-drafts-it-the-model-words-it';
+import { someOfThemHave } from './some-of-them-has-or-have';
 import { roleMapFor, MIN_COACHING_CONFIDENCE } from '../board/role-maps';
 import { WHO_CAN_MOVE_IT, WHAT_IT_MEANS, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
 
@@ -145,7 +146,7 @@ export function draftThePicture(i: PictureInput): Drafted[] {
   /* Who this rests on, and how much there is to go on. Both are counts. */
   out.push({
     key: 'basis',
-    text: `${i.answered} of ${i.ofPeople} ${i.ofPeople === 1 ? 'person has' : 'people have'} answered this session. ${i.confidence.saying}`,
+    text: `${someOfThemHave(i.answered, i.ofPeople, 'answered this session.')} ${i.confidence.saying}`,
     mustKeep: [i.confidence.saying],
   });
 

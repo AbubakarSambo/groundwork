@@ -64,7 +64,10 @@ const MODALS = new Set(['will', 'would', 'can', 'could', 'should', 'must', 'may'
 function forOnePerson(verb: string): string {
   const w = verb.toLowerCase();
   if (MODALS.has(w)) return verb;
-  if (w === 'am') return 'is';
+  if (w === 'am' || w === 'are') return 'is';
+  if (w === 'were') return 'was';
+  /* A verb in the past is the same for one person: "needed", "said", "wanted". */
+  if ((/ed$/.test(w) && !/^(?:need|feed|speed|proceed|succeed|exceed|seed|heed|bleed|breed|plead|lead|read|spread|head|shed|embed)$/.test(w)) || ['said', 'had', 'did', 'got', 'made', 'set', 'sent', 'met', 'kept', 'told', 'thought', 'felt', 'went', 'took', 'gave'].includes(w)) return verb;
   if (w === 'have') return 'has';
   if (w === 'do') return 'does';
   if (w === "don't") return "doesn't";
@@ -91,6 +94,12 @@ export function aboutTheSpeaker(text: string, speaker: string): string {
     .replace(/\bthe speaker(?:'|’)s\b/gi, `${S}'s`)
     .replace(/\bthe speaker\b/gi, S)
     .replace(/^The person\b/, S)
+    /* "They want to get 12 shops onboarded." has nobody for "they" to be: it is the person who set it (request 107 b). */
+    .replace(/^They(?:'|’)re\b/, `${S} is`)
+    .replace(/^They are\b/, `${S} is`)
+    .replace(/^They(?:'|’)ve\b/, `${S} has`)
+    .replace(/^They(?:'|’)ll\b/, `${S} will`)
+    .replace(/^They ([a-z][a-z'’]*)\b/u, (_m, verb: string) => `${S} ${forOnePerson(verb)}`)
     .replace(/(^|[.!?]\s+)My\b/g, `$1${S}'s`)
     .replace(/\bmy\b/g, `${S}'s`)
     .replace(/\bme\b/g, S);
@@ -163,6 +172,9 @@ export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {
     t = who.target != null && who.direction === 'LIMIT'
       ? `${holder} is keeping ${what} to no more than ${aNumberPeopleCanRead(who.target)}.`
       : who.target != null ? `${holder} is aiming for ${howMany}${what}.` : `${holder} is working on ${what}.`;
+  } else if (who.holder && /^They\b/.test(t)) {
+    /* "They" with nobody before it is whoever holds the number, where somebody does (request 107 b). */
+    t = aboutTheSpeaker(t, who.holder);
   } else if (who.speaker) {
     t = aboutTheSpeaker(t, who.speaker);
   }

@@ -224,6 +224,10 @@ import { withoutWhatTheLeadHasNotToldThemAbout, type AnUntoldGoalRow } from '../
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-set-it';
 import { withoutOurInstructions } from './our-instructions-never-reach-them';
+import { withoutTheLeadsBrief, aSentenceThatQuotesTheBrief } from './the-leads-brief-is-never-quoted-to-them';
+import { withoutSentencesAboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
+import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { aQuestionNotYetAsked, WHAT_ELSE } from './nobody-is-left-looking-at-a-paragraph';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargets } from '../board/a-hidden-target-stays-hidden';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
@@ -426,6 +430,16 @@ const THE_END_CARD_WAITS_MS = 90_000;
 
 /** How long finishing, or the screen asking for the card, waits for the card still being built. The live reads took 10 to 47 seconds. */
 const FINISHING_WAITS_FOR_THE_CARD_MS = 50_000;
+
+/** "3", "150k", "1.5m", "12,000" as a number, or null where it is not one plainly (request 107 c). */
+export function aNumberTheySaid(said: string | null | undefined): number | null {
+  const m = /^\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(k|m|million|thousand)?\s*$/i.exec(said ?? '');
+  if (!m) return null;
+  const n = Number(m[1].replace(/,/g, ''));
+  const times = /^k|thousand/i.test(m[2] ?? '') ? 1_000 : /^m/i.test(m[2] ?? '') ? 1_000_000 : 1;
+  const v = Math.round(n * times);
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
 
 @Injectable()
 export class ConversationService {
@@ -926,7 +940,7 @@ export class ConversationService {
          never the lead's instructions to the product. See what-a-participant-is-told-about-this. */
       says: reader?.isLead
         ? ground.brief?.trim() || null
-        : whatAParticipantIsToldAboutThis(ground.brief, maySee.shown as any, { told: (ground as any).toldToParticipants ?? null, readerParticipantId: reader?.participantId ?? null }),
+        : whatAParticipantIsToldAboutThis(ground.brief, maySee.shown as any, { told: (ground as any).toldToParticipants ?? null, readerParticipantId: reader?.participantId ?? null, scenario: (ground as any).scenario ?? null }),
       /* Each as a sentence about whoever set it, and only the fields a reader is shown: never the row as stored. */
       objectives: this.theTargetsAsSentences(maySee.shown as any[], ground as any, reader?.participantId ?? null),
       alsoSay: maySee.alsoSay,
@@ -1313,13 +1327,44 @@ export class ConversationService {
      * wrong asset: the brief lists four, and the model took the first. See a-thing-the-lead-listed-is-not-theirs.
      */
     if ((checkIn as any)?.id && (checkIn as any)?.participant?.partyType !== PartyType.INITIATOR && checkIn?.groundId) {
-      const brief = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true } }) ?? Promise.resolve(null)).then((g: any) => g?.brief ?? null).catch(() => null);
+      const setUp = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true, toldToParticipants: true, scenario: true, peersVisibleToEachOther: true, initiatorId: true, initiator: { select: { firstName: true } }, participants: { select: { id: true, userId: true, partyType: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } as any }) ?? Promise.resolve(null)).catch(() => null);
+      const brief: string | null = (setUp as any)?.brief ?? null;
       if (brief) {
         const theirs = await (this.prisma.conversationTurn?.findMany?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: (checkIn as any).participantId } }, select: { content: true } }) ?? Promise.resolve([]))
           .then((rows: any[]) => rows.map((r) => r.content ?? '')).catch(() => [] as string[]);
         const notTheirs = withoutAThingTheLeadListedAsTheirs(raw, brief, theirs, saidHereBefore);
         if (notTheirs.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${notTheirs.cut.length} sentence(s) naming something from the lead's list as this person's.`);
         raw = notTheirs.text;
+        /*
+         * AND THE LEAD'S BRIEF IS NEVER QUOTED TO THEM (decision 75, item 13). It guides the conversation as
+         * context; a sentence that copies six or more words of it in a row is cut. Their own words, and what the
+         * check-in tells them it is for (the lead confirmed it, and they already read it), are not a quote.
+         * Not on a team update: there the lead's one line IS the question their team is sent, word for word.
+         */
+        const theLineIsTheQuestion = (setUp as any)?.scenario === 'TEAM_UPDATES';
+        const notTheBrief = theLineIsTheQuestion
+          ? { text: raw, cut: [] as string[] }
+          : withoutTheLeadsBrief(raw, brief, [...theirs, (setUp as any)?.toldToParticipants ?? ''], saidHereBefore, (setUp as any)?.initiator?.firstName ?? null);
+        for (const c of notTheBrief.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence that quoted the lead's brief: "${c.slice(0, 160)}"`);
+        raw = notTheBrief.text;
+      }
+      /*
+       * AND, WHERE PEOPLE DO NOT SEE EACH OTHER, NOBODY ELSE'S CIRCUMSTANCES (decision 75, item 14). A sentence that
+       * names another person in the check-in, other than the lead and anybody this person named themselves, is cut.
+       * Not on an evaluation check-in, which has its own rule (decision 17).
+       */
+      if (setUp && !peersAreNamedOn(setUp as any, { participantId: (checkIn as any).participantId ?? null }) && !isEvaluationCheckIn((setUp as any).scenario)) {
+        const theirOwn = await (this.prisma.conversationTurn?.findMany?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: (checkIn as any).participantId } }, select: { content: true } }) ?? Promise.resolve([]))
+          .then((rows: any[]) => rows.map((r) => r.content ?? '').join(' ')).catch(() => '');
+        const others = (((setUp as any).participants ?? []) as any[])
+          .filter((p) => p.id !== (checkIn as any).participantId && p.partyType !== PartyType.INITIATOR && p.userId !== (setUp as any).initiatorId)
+          .flatMap((p) => [[p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim(), (p.user?.firstName ?? '').trim(), (p.nameGiven ?? '').trim()])
+          .filter((n) => n.length > 2 && !new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(theirOwn));
+        if (others.length) {
+          const kept = withoutSentencesAboutOneOfThem(raw, { names: [...new Set(others)] }, { namesOnly: true });
+          if (kept !== raw.trim()) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence naming somebody else in a check-in where people do not see each other.`);
+          raw = kept || (aQuestionNotYetAsked(WHAT_ELSE, saidHereBefore) ?? WHAT_ELSE);
+        }
       }
     }
     /*
@@ -3061,6 +3106,17 @@ export class ConversationService {
     };
   }
 
+  /** For a participant's own check-in, the test for a sentence that quotes the lead's brief; null for the lead, or a team update. */
+  private async aSentenceThatQuotesTheBriefFor(
+    checkIn: { groundId?: string; participantId?: string; participant?: { partyType?: PartyType | string | null } | null },
+    theirWords: string[],
+  ): Promise<((sentence: string) => boolean) | null> {
+    if (!checkIn?.groundId || checkIn.participant?.partyType === PartyType.INITIATOR) return null;
+    const g: any = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true, toldToParticipants: true, scenario: true, initiator: { select: { firstName: true } } } as any }) ?? Promise.resolve(null)).catch(() => null);
+    if (!g?.brief || g.scenario === 'TEAM_UPDATES') return null;
+    return aSentenceThatQuotesTheBrief(g.brief, [...theirWords, g.toldToParticipants ?? ''], g.initiator?.firstName ?? null);
+  }
+
   /**
    * The first draft, streamed to the screen as it is written, and returned whole for the plain
    * route's own checks. What is shown live goes through the same sentence gate the stream always
@@ -3078,11 +3134,15 @@ export class ConversationService {
     const personWords = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '').concat(message);
     const known = personWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
     const readerName = theFirstNameFrom(checkIn.participant?.user?.firstName, checkIn.participant?.user?.lastName);
+    /* Decision 75, item 13: a sentence quoting the lead's brief is not shown to a participant while it streams
+       either, the same test the saved turn is held to (theTurnAsItIsSaved). */
+    const quotesTheBrief = await this.aSentenceThatQuotesTheBriefFor(checkIn as any, personWords);
     const gate = new SentenceGate(
       known,
       readerName,
       turns.map((t) => t.content ?? ''),
       [...personWords, ...(this.theirEarlierWordsForThisTurn.get(checkIn.id) ?? [])],
+      quotesTheBrief ?? undefined,
     );
     let raw = '';
     let emitted = 0;
@@ -8838,11 +8898,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     transcript: string,
     saidOn: Date,
     participants: { id: string; managingOnly: boolean; email: string | null; roleAsDescribed: string | null; user: { firstName: string | null; lastName: string | null } | null }[],
-  ) {
+  ): Promise<{ participantId: string; name: string; target: number }[]> {
+    /* Their own counted aims, returned so a participant's can be put on the board as theirs (request 107 c). */
+    const counted: { participantId: string; name: string; target: number }[] = [];
     const result = await this.anthropic.extract<{
       promises: { promise: string; kind?: string; check?: string; dueKind?: string; dueSaid?: string; owedTo?: string; target?: string; measure?: string }[];
     }>(OWN_PROMISE_PROMPT, [{ role: 'user', content: transcript }], OWN_PROMISE_SCHEMA);
-    if (!result?.promises?.length) return;
+    if (!result?.promises?.length) return counted;
 
     /* Same resolver as everywhere else: a name matching nobody is dropped, never guessed. */
     const others = participants.filter((p) => p.id !== participantId && !p.managingOnly);
@@ -8905,7 +8967,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       } else {
         await this.prisma.personObjective.create({ data: { ...data, groundId, participantId } });
       }
+      const asANumber = aNumberTheySaid(data.target);
+      if (data.kind === 'TARGET' && data.measure && asANumber != null) counted.push({ participantId, name: text, target: asANumber });
     }
+    return counted;
   }
 
   /**
@@ -9024,7 +9089,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * promises have their own prompt, their own schema, and one target: themselves.
      */
     if (me.partyType !== PartyType.INITIATOR) {
-      await this.writeTheirOwnPromises(participantId, groundId, transcript, saidOn, ground.participants as any);
+      const theirAims = await this.writeTheirOwnPromises(participantId, groundId, transcript, saidOn, ground.participants as any);
+      /*
+       * AND A NUMBER THEY SET FOR THEMSELVES IS A TARGET ON THE BOARD, AS THEIRS (request 107 c).
+       *
+       * "I am aiming for 3 shops in Kilimani" was kept as a promise of Amani's and went nowhere else:
+       * this branch returned before the only path that puts an owned target on the board, which
+       * read the lead's session alone. It is now hers, set by her, in her own words, and read like
+       * every owned target: by her and the person running it, or by everybody where the lead chose
+       * that. A number already on the board for her is never overwritten from here.
+       */
+      if (theirAims.length) await this.putOwnedTargetsOnTheRecord(groundId, theirAims, participantId);
       return;
     }
 

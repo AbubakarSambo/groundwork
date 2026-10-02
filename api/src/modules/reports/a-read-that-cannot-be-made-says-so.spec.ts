@@ -118,8 +118,8 @@ describe('the Movement read when a number has been said but nothing tracks it', 
 
   /** Where a target genuinely exists, the tile reports movement as it always did. */
   it('and steps aside once there is a real target', () => {
-    const g = theSessionReport(base({ movedOnTargets: 2, entries: [] })).atAGlance.find((x) => x.label === 'Movement')!;
-    expect(g.value).toBe('+2');
+    const g = theSessionReport(base({ movedOnTargets: 2, targetsMoved: 1, entries: [] })).atAGlance.find((x) => x.label === 'Movement')!;
+    expect(g.value).toBe('1 target');
   });
 });
 

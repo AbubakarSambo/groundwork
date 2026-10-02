@@ -1,5 +1,6 @@
 import { aCommitmentSaid, looksLikeATimeOrADate, inOurVoice } from '../reports/what-the-record-shows-over-time';
 import { aNumberPeopleCanRead } from './an-aim-is-a-sentence-about-somebody';
+import { aPartyOutside, theSameThing } from './a-thing-is-not-somebody';
 
 /**
  * THE SWITCHBOARD'S OWN SECTIONS: THE ONES NO OTHER FIELD OF THE BOARD CARRIES (request 70).
@@ -156,20 +157,31 @@ const midSentence = (who: string) => (who === 'You' ? 'you' : who);
 const possessive = (who: string) => (who === 'You' ? 'Your' : `${who}'s`);
 
 /** Who, as a sentence starts with them: the reader's own name is 'You', somebody they may not name is 'A colleague'. */
-function whoIs(r: WhoIsReading, participantId: string | null | undefined): string {
+export function whoIs(r: WhoIsReading, participantId: string | null | undefined): string {
   if (!participantId) return 'Somebody';
   if (r.meId && participantId === r.meId) return 'You';
   return r.nameOf(participantId) ?? r.aColleague(participantId);
 }
 
-/** Who a handoff waits on, said inside a sentence: "you", a name, "a colleague", or the team or thing outside named for it. */
-function whoIsWaitedOn(r: WhoIsReading, d: { onParticipantId?: string | null; onLabel?: string | null }): string | null {
+/** Who a handoff waits on, said inside a sentence: "you", a name, "a colleague", or the team outside named for it. A thing is not somebody (request 107 b). */
+export function whoIsWaitedOn(r: WhoIsReading, d: { onParticipantId?: string | null; onLabel?: string | null; what?: string | null }): string | null {
   if (d.onParticipantId) {
     if (d.onParticipantId === r.meId) return 'you';
     const n = r.nameOf(d.onParticipantId) ?? r.aColleague(d.onParticipantId);
     return /^(A|Another|One) colleague/.test(n) ? n.charAt(0).toLowerCase() + n.slice(1) : n;
   }
-  return d.onLabel?.trim() || null;
+  return aPartyOutside(d) ? d.onLabel!.trim() : null;
+}
+
+/**
+ * WHAT A WAIT IN TURN WAITS ON, AS ITS OWN SENTENCE, where that was said and is a thing rather than
+ * somebody: " That waits on a decision on who owns them." Nothing where it is somebody, or the same
+ * thing as what is waited for (request 107 b). Put after the sentence about the wait, never inside it.
+ */
+export function thatWaitsOn(d: { what: string; onLabel?: string | null; onParticipantId?: string | null }): string {
+  const on = (d.onLabel ?? '').trim();
+  if (d.onParticipantId || !on || aPartyOutside(d) || theSameThing(on, d.what)) return '';
+  return ` That waits on ${inASentence(on)}.`;
 }
 
 const theSessionsSoFar = (sessions: ASession[], commitments: ACommitment[]): number =>
@@ -277,7 +289,7 @@ export function theRisks(
     const says = blocking
       ? (on ? `${who} cannot move on ${what} until it comes from ${on}.` : `${who} cannot move on ${what}, and nobody has been named to provide it.`)
       : (on ? `${who} ${isAre(who)} waiting on ${on} for ${what}.` : `${who} ${isAre(who)} waiting for ${what}, and nobody has been named to provide it.`);
-    out.push({ id: `handoff-${d.id}`, says, because: theFactsOfAWait(d, who) });
+    out.push({ id: `handoff-${d.id}`, says: `${says}${thatWaitsOn(d)}`, because: theFactsOfAWait(d, who) });
   }
 
   /* 2. Commitments still open with no time, and ones said again and again and still open. */
@@ -366,8 +378,8 @@ export function theTimeline(
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
     const what = inASentence(d.what);
-    push(d.createdAt, on ? `${who} said the work was waiting on ${on} for ${what}.` : `${who} said the work was waiting for ${what}.`);
-    if (d.clearedAt) push(d.clearedAt, `The wait for ${what} was cleared.`);
+    push(d.createdAt, `${on ? `${who} said the work was waiting on ${on} for ${what}.` : `${who} said the work was waiting for ${what}.`}${thatWaitsOn(d)}`);
+    if (d.clearedAt) push(d.clearedAt, `The wait for ${inASentence(d.what)} was cleared.`);
   }
   if (closedAt) push(closedAt, 'The check-in was closed.');
 
@@ -458,16 +470,15 @@ export function theBlockerCheck(handoffs: AHandoff[], r: WhoIsReading): ABlocker
     if (String(d.status).toUpperCase() === 'CLEARED' || d.clearedAt) continue;
     if (!r.handoffMayBeRead(d)) continue;
     const who = whoIs(r, d.fromParticipantId);
-    const onName = d.onParticipantId ? whoIsWaitedOn(r, d) : null;
-    const on = onName ?? (d.onLabel?.trim() || null);
+    const on = whoIsWaitedOn(r, d);
     const what = inASentence(d.what);
-    const named = !!(d.onParticipantId || d.onLabel?.trim());
+    const named = !!(d.onParticipantId || aPartyOutside(d));
     const wentBack = !!d.triedSaid?.trim();
     const timeGiven = !!d.dueSaid?.trim();
     out.push({
       id: d.id,
       who,
-      says: on ? `${who} ${isAre(who)} waiting on ${on} for ${what}.` : `${who} ${isAre(who)} waiting for ${what}.`,
+      says: `${on ? `${who} ${isAre(who)} waiting on ${on} for ${what}.` : `${who} ${isAre(who)} waiting for ${what}.`}${thatWaitsOn(d)}`,
       namesWhoHoldsIt: named,
       saidWhatWasTried: wentBack,
       timeGiven,
@@ -607,15 +618,15 @@ export function theLeadActions(
 
   /* 2. Somebody is waiting and nobody has been named to provide it. */
   for (const d of handoffs) {
-    if (!isOpen(d) || d.onParticipantId || d.onLabel?.trim()) continue;
+    if (!isOpen(d) || d.onParticipantId || aPartyOutside(d)) continue;
     if (!r.handoffMayBeRead(d)) continue;
     const who = whoIs(r, d.fromParticipantId);
     const what = inASentence(d.what);
     out.push({
       id: `nobody-named-${d.id}`,
       says: d.fromParticipantId === r.theLeadsId
-        ? `${needs} to find out who can provide ${what}, because nobody has been named yet.`
-        : `${needs} to find out who can provide ${what} ${midSentence(who)} ${isAre(who)} waiting for, because nobody has been named yet.`,
+        ? `${needs} to find out who can provide ${what}, because nobody has been named yet.${thatWaitsOn(d)}`
+        : `${needs} to find out who can provide ${what} ${midSentence(who)} ${isAre(who)} waiting for, because nobody has been named yet.${thatWaitsOn(d)}`,
       because: theFactsOfAWait(d, who),
     });
   }
@@ -673,7 +684,7 @@ export function theObligations(
   const waitSaid = (d: AHandoff) => {
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
-    return `${who} ${isAre(who)} waiting on ${on} for ${inASentence(d.what)}.`;
+    return `${on ? `${who} ${isAre(who)} waiting on ${on} for ${inASentence(d.what)}.` : `${who} ${isAre(who)} waiting for ${inASentence(d.what)}.`}${thatWaitsOn(d)}`;
   };
   const out: AnObligationSide[] = [];
   for (const p of people) {
@@ -789,7 +800,7 @@ export function whoWaitedOnWhom(handoffs: AHandoff[], r: WhoIsReading): AWait[] 
         : (since
           ? `${who} ${hasHave(who)} been waiting${onWhom} for ${what} since ${saidAsDate(since)}, and it has not been cleared.`
           : `${who} ${isAre(who)} waiting${onWhom} for ${what}, and it has not been cleared.`);
-      return { id: d.id, says, startedAt: since, clearedAt: cleared ? clearedOn : null, days: cleared ? days : null };
+      return { id: d.id, says: `${says}${thatWaitsOn(d)}`, startedAt: since, clearedAt: cleared ? clearedOn : null, days: cleared ? days : null };
     });
 }
 
@@ -922,12 +933,12 @@ export function theQuestionsForTheLead(
 
   /* 4. A wait on somebody outside the check-in that nobody has chased. */
   for (const d of handoffs) {
-    if (!isOpen(d) || d.triedSaid?.trim() || d.onParticipantId || !d.onLabel?.trim()) continue;
+    if (!isOpen(d) || d.triedSaid?.trim() || d.onParticipantId || !aPartyOutside(d)) continue;
     if (!r.handoffMayBeRead(d)) continue;
     const who = whoIs(r, d.fromParticipantId);
     out.push({
       id: `chased-${d.id}`,
-      question: `What has been tried to get ${inASentence(d.what)} from ${d.onLabel.trim()}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
+      question: `What has been tried to get ${inASentence(d.what)} from ${(d.onLabel ?? '').trim()}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
       because: `Nothing on record says anybody has chased it, so ${onlyTheLead} what was done outside the check-in.`,
     });
   }

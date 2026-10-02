@@ -85,18 +85,20 @@ describe('the Blockers tile says whose worry it is', () => {
   it('Bisi, who runs it, reads Kwame\'s words after his name', async () => {
     expect((await readAs(w, 'u-bisi')).blockers).toEqual({ value: '2 worries', sub: `Kwame Mensah said, "I still set up the meetings." ${REST}` });
   });
-  it('Kwame reads them as his own', async () => {
-    expect((await readAs(w, 'u-kwame')).blockers).toEqual({ value: '2 worries', sub: `You said, "I still set up the meetings." ${REST}` });
+  /* Request 105 (the prototype's B5): the tiles are the team's picture, so a person who checks in is served
+     none of them until it is shared, and no report is released on this board. */
+  it('Kwame, who checks in, is served no tile before the team picture is shared', async () => {
+    expect((await readAs(w, 'u-kwame')).blockers).toEqual({ value: undefined, sub: undefined });
   });
-  it('Ngozi, a colleague, reads them after his name', async () => {
-    expect((await readAs(w, 'u-ngozi')).blockers.sub).toBe(`Kwame Mensah said, "I still set up the meetings." ${REST}`);
+  it('Ngozi, a colleague, is served no tile with Kwame\'s words before the team picture is shared', async () => {
+    expect((await readAs(w, 'u-ngozi')).blockers).toEqual({ value: undefined, sub: undefined });
   });
   it('an admin outside the check-in reads them after his name', async () => {
     expect((await readAs(w, 'u-grace', 'ADMIN')).blockers.sub).toBe(`Kwame Mensah said, "I still set up the meetings." ${REST}`);
   });
   it('no reader is served the bare first-person line', async () => {
     for (const [u, r] of [['u-bisi', 'MEMBER'], ['u-kwame', 'MEMBER'], ['u-ngozi', 'MEMBER'], ['u-grace', 'ADMIN']] as const) {
-      expect((await readAs(w, u, r)).blockers.sub).not.toMatch(/^I still/);
+      expect(String((await readAs(w, u, r)).blockers.sub)).not.toMatch(/^I still/);
     }
   });
 });

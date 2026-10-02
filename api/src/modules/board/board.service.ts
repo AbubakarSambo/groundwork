@@ -1,3 +1,17 @@
+import { isAWholeSentence } from '../reports/what-people-said-differently-about';
+import { aPartyOutside } from './a-thing-is-not-somebody';
+import { whatEachSessionSays } from './one-count-for-the-sessions';
+import { howOftenItWasRaised } from './how-often-it-was-raised';
+import { theBlockers } from './the-blockers';
+import { aParticipantsOwnBoard } from './a-participants-board-is-their-own';
+import { theBoardForThisKind } from './each-kind-gets-its-own-board';
+import { theGlanceAsThisReaderMayReadIt } from '../grounds/what-a-manager-needs-at-a-glance';
+import { howARecordIsKnown, theRecordsMark, whatHappensNext } from './what-happens-next-to-a-record';
+import { whereThisTargetStands, theHeadlineQuestion, theDirectionToReadIn, type ATeamAim } from './the-headline-and-where-each-target-stands';
+import { whereThisIsHeading } from './where-this-is-heading';
+import { deadlineOf } from '../grounds/when-the-clock-starts';
+import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
+import { theShareSays } from './your-share';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
@@ -89,7 +103,7 @@ import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { isFromOutside, leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
-import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
+import { adminsThisOrg, askedToApproveIt } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument, notNothingWhereThePageSaysSomething } from './where-each-person-is-against-their-number';
@@ -268,8 +282,10 @@ export class BoardService {
     groundId: string,
     requestingUserId: string,
     variant: CoverageVariant = DEFAULT_COVERAGE_VARIANT,
-    opts: { mayWordNewLines?: boolean } = {},
+    /* `now`: the board's clock. Dates it writes leave out the year only where it is this clock's year. */
+    opts: { mayWordNewLines?: boolean; now?: Date } = {},
   ) {
+    const now = opts.now ?? new Date();
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: {
@@ -370,7 +386,9 @@ export class BoardService {
       : null;
     /* Nobody held for a seat reads the board, its report's story or its names (request 49). */
     if ((viewer as any)?.awaitingOrgApproval === true) throw new ForbiddenException(CANNOT_OPEN_THE_BOARD_YET);
-    const adminHere = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any);
+    /* The board is read only, so the admin asked to approve an evaluation check-in reads it too (decision 75,
+       item 2). Patterns and colleagues' exact words still go only to whoever runs it or set it up. */
+    const adminHere = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any) || askedToApproveIt({ ...viewer, userId: requestingUserId }, ground as any);
     if (!me && !isInitiator && !isSetupAdmin && !adminHere) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
@@ -492,6 +510,8 @@ export class BoardService {
         /* The check-in's read of how checkable the answers were, for "Nothing checkable" on the rows
            only whoever runs the check-in reads. See saidAnythingCheckable. */
         completedAt: true, specificityLevel: true, specificityDimensions: true,
+        /* When each session opened, for the session lines (request 107 e). */
+        availableFrom: true, startedAt: true,
       },
       orderBy: { sessionNumber: 'asc' },
     });
@@ -519,6 +539,19 @@ export class BoardService {
       participants: ground.participants as any,
     }) || (adminHere && !runsItForAPattern(ground as any, requestingUserId) && isEvaluationCheckIn((ground as any).scenario));
     const theMovementsReader = { participantId: me?.id ?? null, isLead: isInitiator, colleaguesWordsWalled };
+    /*
+     * WHETHER THIS READER IS A PARTICIPANT WHOSE BOARD IS THEIR OWN (request 105; the prototype's B5): somebody
+     * who checks in and does not run the check-in. Not the lead, the admin who set it up, or an admin of the
+     * organisation; and not the person reviewed on an evaluation check-in, whose board its own rules already
+     * narrowed. See a-participants-board-is-their-own.
+     */
+    const aParticipantOnly = !!me?.id && !runsThisGround && !runsItForAPattern(ground as any, requestingUserId)
+      && !viewerIsTheSubjectOfAnEvaluationCheckIn({
+        scenario: ground.scenario,
+        isLead: isInitiator || runsItForAPattern(ground as any, requestingUserId),
+        viewerParticipantId: me?.id ?? null,
+        participants: ground.participants as any,
+      });
     const sessionShape: any = await this.everySessionThroughTheReportEngines(groundId, ground as any, checkIns as any[], openRound, theMovementsReader).catch((err: any) => {
       this.logger.warn(`Board could not run the report engines over ${groundId}: ${err?.message}`);
       return null;
@@ -814,23 +847,61 @@ export class BoardService {
       ),
     };
 
+    /*
+     * THE GLANCE NAMES NOBODY THIS READER MAY NOT READ (request 105, the more private choice). Where people
+     * see only themselves, and for anybody on an evaluation check-in who does not run it (the person
+     * reviewed, a colleague giving a view, an admin without access), the header counts and names only the
+     * reader's own waits, and says only whether they themselves have answered. The list of check-ins and
+     * Today apply the same rule (grounds.service, list). See theGlanceAsThisReaderMayReadIt.
+     */
+    if (out.howItIsGoing?.glance && (whoMaySee.peersHidden || (isEvaluationCheckIn(ground.scenario) && !isInitiator && !runsItForAPattern(ground as any, requestingUserId)))) {
+      out.howItIsGoing = {
+        ...out.howItIsGoing,
+        glance: theGlanceAsThisReaderMayReadIt(out.howItIsGoing.glance, { participantId: me?.id ?? null }, ((ground as any).dependencies ?? []) as any[]),
+      };
+    }
+    /*
+     * DECISION 75, ITEM 46: AND A PARTICIPANT'S ONE LINE IS THEIR OWN WAITS ON EVERY CHECK-IN. Where people see each
+     * other, somebody who takes part and does not run it still reads only what they wait on or what waits on them,
+     * to match their own board. Who has answered stays, since people see each other here.
+     */
+    else if (out.howItIsGoing?.glance && me && !isInitiator && !isSetupAdmin && !adminHere) {
+      const theirOwn = theGlanceAsThisReaderMayReadIt(out.howItIsGoing.glance, { participantId: me.id }, ((ground as any).dependencies ?? []) as any[]);
+      out.howItIsGoing = { ...out.howItIsGoing, glance: { ...out.howItIsGoing.glance, inTheWay: theirOwn.inTheWay } };
+    }
+
     if (has('phaseSpine')) {
+      /*
+       * ONE COUNT, FROM THE BOARD'S OWN CLOCK (request 107 e). The header and every session's line are
+       * served as sentences from the same open round, capped at the last planned session as the list
+       * and Today are (request 97 a), so "Session 1 of 12" never sits beside "Session 2 opened on ...".
+       * See one-count-for-the-sessions.
+       */
+      const planned = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null;
+      const theRound = planned && planned > 0 ? Math.min(openRound, planned) : openRound;
+      const roundNumbers = Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b);
+      /* The header is drawn from these two numbers ("Session 1 of 12."); see theHeaderSays for its words. */
       out.phaseSpine = {
         startsAt: ground.startsAt,
         endsAt: ground.endsAt,
-        currentSession: openRound,
-        sessions: Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b).map((n) => {
+        currentSession: theRound,
+        plannedSessions: planned,
+        sessions: roundNumbers.map((n) => {
           const forSession = checkIns.filter((c) => c.sessionNumber === n);
           const allDone = forSession.length > 0 && forSession.every((c) => c.status === CheckInStatus.COMPLETED);
           /* WHEN IT OPENS, FOR A SESSION NOBODY HAS DONE. The team "complained about not knowing when the
              next sessions will start" (Hafsah, 22 Sep 2026); the pill said "Session 2" and nothing else.
              The earliest availableFrom across that session's check-ins is the day it opens. */
           const opens = forSession.map((c: any) => c.availableFrom).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
+          const line = whatEachSessionSays(n, mine as any[], theRound);
           return {
             n,
-            state: n < openRound || allDone ? 'done' : n === openRound ? 'current' : 'upcoming',
+            state: n < theRound || allDone ? 'done' : n === theRound ? 'current' : 'upcoming',
             date: forSession.find((c) => c.completedAt)?.completedAt ?? null,
             opensOn: opens,
+            /* The day it opened, never the day somebody finished it, and its line in a full sentence. */
+            openedOn: line.openedOn,
+            says: line.says,
           };
         }),
       };
@@ -1021,6 +1092,27 @@ export class BoardService {
         const named = withNames(inLabels, visibleNames, labels.values(), { viewerLabel: readerLabel });
         return { ...o, name: yourOwnWhereYouAreTheSubject(named, othersNames) };
       });
+    }
+
+    /*
+     * YOUR SHARE, ON A PARTICIPANT'S OWN BOARD (request 107 c; the prototype's B5: "Your share. 4 of
+     * your 5 sales so far; 3 paid. Only you and Wairimu see your share."). Only the reader's own
+     * targets, from the targets this reader may already read (targetsFor, above), so nothing new is
+     * shown: the person running the check-in and an admin get no field, and a goal the lead has not
+     * told them about is not here. Who else sees it is said by the check-in's own setting.
+     */
+    if (!isInitiator && me?.id && Array.isArray(out.objectives)) {
+      const mine = (out.objectives as any[]).filter((o) => o.ownerParticipantId === me.id && o.target != null);
+      if (mine.length) {
+        const leadName = theLeadsRow ? nameOf(theLeadsRow) : null;
+        out.yourShare = mine.map((o) => ({
+          objectiveId: o.id,
+          says: theShareSays(o.name, o.count, o.target, o.direction),
+          whoSees: (ground as any).whoSeesTargets === 'EVERYBODY'
+            ? 'Everybody in this check-in sees your share.'
+            : `Only you and ${leadName ?? 'the person running this check-in'} see your share.`,
+        }));
+      }
     }
 
     if (has('divergence') && reportSafe) {
@@ -1425,6 +1517,8 @@ export class BoardService {
         onParticipantId: d.onParticipantId,
         status: d.status,
         then: d.then,
+        /* How often it was raised, and over which days (request 107 c; the prototype's "Raised: 3 times, 1 Sep to 23 Sep"). */
+        raised: howOftenItWasRaised((d as any).raisedAt),
       }));
     }
 
@@ -1442,6 +1536,25 @@ export class BoardService {
          */
         await this.whatTheLeadSaysIsStillToDecide(groundId),
         (label: string) => visibleNames.get(label),
+        {
+          meId: me?.id ?? null,
+          leadId: theLeadsRow,
+          /* The same rule the switchboard's sections read a wait by (handoffMayBeRead, below). */
+          mayRead: (d) => {
+            const evaluation = isEvaluationCheckIn(ground.scenario);
+            const runsIt = isInitiator || runsItForAPattern(ground as any, requestingUserId);
+            if (adminHere && !runsIt && evaluation) return false;
+            if (runsIt || (runsThisGround && !evaluation)) return true;
+            const others = (ground.participants as any[])
+              .filter((p) => p.id !== theLeadsRow && !p.managingOnly)
+              .flatMap((p) => [`${p.user?.firstName ?? ''} ${p.user?.lastName ?? ''}`.trim(), (p.user?.firstName ?? '').trim(), (p.nameGiven ?? '').trim()])
+              .filter((n) => n.length > 1);
+            const namesSomebody = others.some((n) => new RegExp(`(?<![\\p{L}\\p{N}])${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'iu').test(d.what ?? ''));
+            if (d.fromParticipantId && d.fromParticipantId === theLeadsRow && (evaluation || namesSomebody)) return false;
+            if (!(whoMaySee.peersHidden || evaluation)) return true;
+            return !!me?.id && (d.fromParticipantId === me.id || d.onParticipantId === me.id);
+          },
+        },
       );
     }
 
@@ -1796,9 +1909,18 @@ export class BoardService {
         : [];
       const sourceIds = (items as any[]).map((i) => i.sourceEntryId).filter(Boolean);
       const sources = sourceIds.length
-        ? await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, id: { in: sourceIds } }, select: { id: true, text: true, disputedAt: true, participantId: true } }) as Promise<any[]>).catch(() => [] as any[])
+        ? await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, id: { in: sourceIds } }, select: { id: true, text: true, disputedAt: true, participantId: true, type: true, ...WHAT_A_MARK_READS } }) as Promise<any[]>).catch(() => [] as any[])
         : [];
       const lineOf = new Map((sources as any[]).map((l) => [l.id, l]));
+      /* How each record is known, by the same mark every line carries (request 107 c). */
+      const whoAddedTheirs = await whoAddedEachBackingDocument(this.prisma, sources as any[]).catch(() => new Map<string, string | null>());
+      /* What happens next: an open commitment that names the record, said by somebody this reader may read about it. */
+      const openPromises = items.length
+        ? ((await ((this.prisma as any).groundCommitment?.findMany?.({ where: { groundId }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => [])) as any[])
+          .filter((c) => String(c.status ?? '').toUpperCase() === 'UNKNOWN')
+        : [];
+      /* Whoever runs it reads every commitment about a record; anybody else only their own and the record holder's, never the lead's (decisions 4 and 30). */
+      const runsIt = isInitiator || runsItForAPattern(ground as any, requestingUserId) || (runsThisGround && !isEvaluationCheckIn(ground.scenario));
       /*
        * WHO SAID THE LINE A RECORD CAME FROM (screens request 89), under the rule every other name on
        * the board follows: a person this reader may not name is "a colleague" and their id is not
@@ -1829,6 +1951,16 @@ export class BoardService {
           from: i.sourceEntryId ? 'said' : 'lead',
           ...(line ? { said: cleanText(line.text) } : {}),
           ...(line ? whoSaidIt(line.participantId) : { saidBy: null, saidByParticipantId: null }),
+          ...howARecordIsKnown(
+            line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null,
+            !!i.addedByUserId && i.addedByUserId === requestingUserId,
+          ),
+          /* The proof mark the screens' ProofMark reads (request 108 c), from the line it came from, never upgraded. */
+          mark: theRecordsMark(line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null),
+          ...whatHappensNext(i, openPromises.filter((c) => runsIt || c.participantId === me?.id || (!!i.ownerParticipantId && c.participantId === i.ownerParticipantId && c.participantId !== theLeadsRow)), (pid) => {
+            if (pid && pid === me?.id) return 'You';
+            return pid ? (nameOf(pid) ?? aColleague(pid)) : 'Somebody';
+          }),
         });
       }
       out.workRecords = theRecordSections(kind, (ground as any).workStages, rows);
@@ -1916,11 +2048,19 @@ export class BoardService {
         .filter((n) => n.length > 1)
         .map((n) => new RegExp(`(?<![\\p{L}\\p{N}])${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'iu'));
       const namesAnyone = (text: string | null | undefined) => !!text && namesOfThePeople.some((re) => re.test(text));
+      /*
+       * A PARTICIPANT READS ONLY THEIR OWN HERE (request 105; the prototype's B5, "Only yours"). Somebody who
+       * checks in and does not run the check-in reads their own commitments, the waits they are in and their own
+       * history, and nobody else's, whether or not people see each other. The person reviewed on an evaluation
+       * check-in keeps the rules that already narrowed their board. See a-participants-board-is-their-own.
+       */
+      const onlyTheirOwn = aParticipantOnly;
       const reader: WhoIsReading = {
         meId: me?.id ?? null,
         mayReadEveryone,
         theLeadsId: theLeadsRow,
         personMayBeRead: (pid) => {
+          if (onlyTheirOwn) return !!pid && pid === me?.id;
           if (adminWithoutAccess) return false;
           if (mayReadEveryone) return true;
           if (!pid) return !peersWalled;
@@ -1928,6 +2068,7 @@ export class BoardService {
         },
         handoffMayBeRead: (d) => {
           if (adminWithoutAccess) return false;
+          if (onlyTheirOwn && !(!!me?.id && (d.fromParticipantId === me.id || d.onParticipantId === me.id))) return false;
           if (mayReadEveryone) return true;
           /* What the lead said they are waiting on, about people, is the lead's (decisions 4 and 30). */
           if (d.fromParticipantId && d.fromParticipantId === theLeadsRow && (evaluation || namesAnyone(d.what))) return false;
@@ -1935,6 +2076,7 @@ export class BoardService {
           return !!me?.id && (d.fromParticipantId === me.id || d.onParticipantId === me.id);
         },
         commitmentMayBeRead: (c) => {
+          if (onlyTheirOwn) return !!c.participantId && c.participantId === me?.id;
           if (adminWithoutAccess) return false;
           if (mayReadEveryone || !c.participantId || c.participantId === me?.id) return true;
           /* The lead's own commitments are the lead's intentions: never read by a person in an evaluation check-in, nor, anywhere, when they name somebody. */
@@ -1978,6 +2120,20 @@ export class BoardService {
       if (obligations.length) out.obligations = obligations;
       const waits = whoWaitedOnWhom(handoffs, reader);
       if (waits.length) out.whoWaitedOnWhom = waits;
+      /*
+       * BLOCKERS, ONE SECTION (request 105): each open blocker with every time it was raised, what the
+       * proof shows, the time given, and what would clear it only where somebody said so. Under the
+       * same wall as every other wait (`handoffMayBeRead`). See the-blockers.
+       */
+      const sessionOfCheckIn = new Map((checkIns as any[]).map((c) => [c.id, c.sessionNumber as number]));
+      const blockers = theBlockers(
+        handoffs,
+        mine.commitments,
+        mine.lines.map((l) => ({ ...l, wordsMayBeRead: mayReadEveryone || l.participantId === me?.id || !peersWalled })),
+        (id) => (id ? sessionOfCheckIn.get(id) ?? null : null),
+        reader,
+      );
+      if (blockers.length) out.blockers = blockers;
       const contradictions = theContradictions(mine.commitments, sessions, reader);
       if (contradictions.length) out.contradictions = contradictions;
       const questionsForTheLead = theQuestionsForTheLead(mine.commitments, handoffs, sessions, reader);
@@ -1997,6 +2153,51 @@ export class BoardService {
         const counts = await (this.prisma.groundObjectiveSnapshot.findMany({ where: { groundId }, select: { objectiveId: true, sessionNumber: true, count: true } }) as Promise<any[]>).catch(() => [] as any[]);
         const forecast = theForecast(served, (counts ?? []) as any[], totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null);
         if (forecast.length) out.forecast = forecast;
+        /*
+         * WHERE EACH TARGET STANDS, AND THE HEADLINE QUESTION (request 108, a and b). From the same targets and
+         * counts as the forecast, under the same gate, so nothing reaches a reader who could not already read the
+         * target and its number. A word only on a team target: on somebody's own target it would be a label on them.
+         * See the-headline-and-where-each-target-stands.
+         */
+        const totalSessions = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null;
+        const countsOf = (id: string) => ((counts ?? []) as any[]).filter((c) => c.objectiveId === id && typeof c.sessionNumber === 'number');
+        const aims: ATeamAim[] = [];
+        out.objectives = (out.objectives as any[]).map((o) => {
+          const row = stored.get(o.id);
+          if (!row || o.ownerParticipantId || row.isADecisionAboutAPerson) return { ...o, stands: null };
+          const direction = theDirectionToReadIn(asADirection(row.direction), row.name);
+          const journeyDirection = (o.journey?.direction ?? 'unknown') as 'up' | 'down' | 'unknown';
+          const start = typeof o.journey?.start === 'number' ? o.journey.start : null;
+          const stands = whereThisTargetStands(
+            { id: o.id, target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, notSettled: o.notSettled ?? null },
+            countsOf(o.id), totalSessions,
+          );
+          aims.push({ id: o.id, name: String(row.name ?? ''), target: typeof o.target === 'number' ? o.target : null, count: o.count, start, direction, journeyDirection, word: stands?.word ?? null });
+          return { ...o, stands };
+        });
+        const headline = theHeadlineQuestion(aims, deadlineOf(ground as any), now);
+        if (headline) out.headline = headline;
+      }
+      /*
+       * WHERE THIS IS HEADING (request 108 d). Only to whoever runs the check-in (the lead and the admin who set it
+       * up), never on an evaluation check-in, where the suggestion and the decision already have their own way
+       * (decision 6). Built from what this reader is already served and the endings the check-in's own way of
+       * recording a decision offers. See where-this-is-heading.
+       */
+      if (!evaluation && runsIt) {
+        const leadRow = (ground.participants as any[]).find((p) => p.id === theLeadsRow);
+        const leadName = [leadRow?.user?.firstName, leadRow?.user?.lastName].filter(Boolean).join(' ').trim() || (leadRow?.nameGiven ?? '').trim() || null;
+        out.whereThisIsHeading = whereThisIsHeading({
+          scenario: ground.scenario,
+          hadAnObjective: ((ground.objectives ?? []) as any[]).length > 0,
+          readerIsTheLead: isInitiator,
+          leadName,
+          board: out,
+          decided: (ground as any).status === 'CLOSED' || (ground as any).status === 'RESOLVED'
+            ? { endState: (ground as any).endState ?? null, on: (ground as any).resolvedAt ?? null }
+            : null,
+          now,
+        });
       }
     }
 
@@ -2119,6 +2320,79 @@ export class BoardService {
           })()
           : sec));
       }
+      /*
+       * FIVE KINDS OF WORK GET THEIR OWN BOARD SHAPE (request 105; the prototype's gov, loans, matter, mvnext
+       * and mvq4 examples). Built from the board as this reader is served it, after every wall above, plus the
+       * numbers from another system and the lines a document says differently, each read under the same
+       * walls. Nothing is invented: a section the record cannot fill says so. See each-kind-gets-its-own-board.
+       */
+      {
+        const kind = oneOfTheKinds((ground as any).kindOfWork);
+        const evaluationHere = isEvaluationCheckIn(ground.scenario);
+        const readerRunsIt = isInitiator || evaluationWordsRunsIt || (runsThisGround && !evaluationHere);
+        /* Only for whoever runs the check-in: a person who checks in reads their own board (part 3), and the person
+           reviewed on an evaluation check-in is never told how many others answered or are waiting (decision 17). */
+        if (kind && readerRunsIt) {
+          const answeredBy = new Set((checkIns as any[]).filter((c) => String(c.status).toUpperCase() === 'COMPLETED').map((c) => c.participantId));
+          const people = (ground.participants as any[]).map((p) => ({
+            id: p.id,
+            name: p.id === me?.id ? 'You' : (nameOf(p.id) ?? aColleague(p.id)),
+            managingOnly: !!p.managingOnly,
+            isLead: p.id === theLeadsRow,
+            answered: answeredBy.has(p.id),
+          }));
+          /* Numbers from another system about what this check-in is about: only whoever runs it reads them. */
+          const subject = (ground as any).subjectExternalId as string | null;
+          const metrics = readerRunsIt && subject && (kind === 'a government programme' || kind === 'MarketView Q4')
+            ? await ((this.prisma as any).productMetric?.findMany?.({
+              where: { organizationId: ground.organizationId, subjectExternalId: subject },
+              orderBy: { asOf: 'desc' },
+              take: 12,
+              select: { key: true, says: true, value: true, unit: true, asOf: true, sourceSystem: true, subjectExternalId: true },
+            }) ?? Promise.resolve([])).catch(() => [])
+            : [];
+          /* A line a document says differently, only where this reader may open that document. */
+          const documentSaysOf = new Map<string, string>();
+          if (kind === 'MarketView Q4') {
+            const differ = await ((this.prisma.recordEntry.findMany({
+              where: { disputedAt: null, participant: { groundId }, documentSays: { not: null } } as any,
+              select: { id: true, documentSays: true, documentSaysId: true } as any,
+            }) as Promise<any[]>).catch(() => [] as any[]));
+            const docIds = [...new Set((differ ?? []).map((d: any) => d.documentSaysId).filter(Boolean))];
+            const docs = docIds.length
+              ? await ((this.prisma as any).groundDocument?.findMany?.({ where: { id: { in: docIds } }, select: { id: true, visibility: true, participantId: true } }) ?? Promise.resolve([])).catch(() => [])
+              : [];
+            const mayOpen = new Set((docs as any[]).filter((d) => canSeeDocument(d as any, reader, true)).map((d) => d.id));
+            for (const d of differ ?? []) if (d.documentSays && d.documentSaysId && mayOpen.has(d.documentSaysId)) documentSaysOf.set(d.id, String(d.documentSays));
+          }
+          Object.assign(walled, theBoardForThisKind({
+            kind, board: walled, people, readerRunsIt, readerIsTheLead: isInitiator, metrics: metrics as any[], documentSaysOf,
+          }));
+        }
+      }
+      /*
+       * A PARTICIPANT'S BOARD IS THEIR OWN (request 105; the prototype's B5). After every wall above, so the
+       * walls have all run first: a person who checks in and does not run the check-in is served the frame,
+       * their own rows, and the team's picture once it is released, and nothing else a lead gets. See
+       * a-participants-board-is-their-own.
+       */
+      if (aParticipantOnly && me?.id) {
+        walled = aParticipantsOwnBoard(walled, {
+          meId: me.id,
+          released: !!(ground as any).report?.releasedAt,
+          hasOwnReport: (checkIns as any[]).some((c) => c.participantId === me.id && String(c.status).toUpperCase() === 'COMPLETED'),
+        });
+      }
+      /*
+       * BY AREA OF WORK, AND WHAT WAS REPORTED AT EACH SALES STAGE (request 107 c). Read last, from the
+       * records this reader is served after every wall above, so they count only rows the reader can
+       * already read. See the-work-by-area-and-by-stage.
+       */
+      if (Array.isArray(walled.workRecords) && oneOfTheKinds((ground as any).kindOfWork)) {
+        walled.byArea = theWorkByArea(walled.workRecords);
+        const atEachStage = reportedAgainstTheRules(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords);
+        if (atEachStage) walled.reportedAgainstCriteria = atEachStage;
+      }
       return walled;
     }
   }
@@ -2171,37 +2445,66 @@ export class BoardService {
   /* A topic said inside a sentence: its first word lower-cased only when it is an ordinary word, never a name. */
   private deriveDecisions(
     divergences: any[],
-    dependencies: { what: string; status: DependencyStatus; onParticipantId: string | null; onLabel: string | null }[],
+    dependencies: { what: string; status: DependencyStatus; fromParticipantId?: string | null; onParticipantId: string | null; onLabel: string | null }[],
     nameOf: (id: string) => string | null,
     stillToDecide: string[] = [],
     /** The name this reader may see for a report label, or undefined. Nothing else is printed. */
     nameForLabel: (label: string) => string | undefined = () => undefined,
+    /**
+     * WHO IS READING (request 107 b). The person waiting is named, or "You" to themselves, and a wait
+     * this reader may not read on the rest of the board is not read here either. The owner of what the
+     * lead must settle is the lead, by name, or "You" to the lead, never "Lead and team".
+     */
+    reader: { meId: string | null; leadId: string | null; mayRead: (d: { fromParticipantId?: string | null; onParticipantId?: string | null; what?: string | null }) => boolean } = { meId: null, leadId: null, mayRead: () => true },
   ) {
-    const fromDivergence = divergences.map((d) => ({
+    const someone = (pid: string | null | undefined): string | null => {
+      if (!pid) return null;
+      if (pid === reader.meId) return 'You';
+      return nameOf(pid);
+    };
+    const theLeadOwns = someone(reader.leadId) ?? 'The person running this check-in';
+    const fromDivergence = divergences.map((d) => {
       /* Full sentences, never a label and a colon (screens request 68, 28 Sep 2026). Said as what
-         each person said, never as "the accounts differ" (29 Sep 2026). */
-      question: `${whoSaidDifferentThings(d, nameForLabel)} said different things about ${d.topic ? inASentence(d.topic) : 'this'}, so it needs settling.`,
-      why: 'What people said about this does not match, so nobody can assume it is agreed.',
-      owner: 'Lead and team',
-      source: 'divergence' as const,
-    }));
+         each person said, never as "the accounts differ" (29 Sep 2026). A topic that is a whole
+         sentence is said as its own sentence, never after "about" (request 107 b). */
+      const who = whoSaidDifferentThings(d, nameForLabel);
+      const topic = String(d.topic ?? '').trim().replace(/[.!?]+$/, '');
+      return {
+        question: !topic
+          ? `${who} said different things about this, so it needs settling.`
+          : isAWholeSentence(topic)
+            ? `${who} said different things. ${topic.charAt(0).toUpperCase()}${topic.slice(1)}. This needs settling.`
+            : `${who} said different things about ${inASentence(topic)}, so it needs settling.`,
+        why: 'What people said about this does not match, so nobody can assume it is agreed.',
+        owner: theLeadOwns,
+        source: 'divergence' as const,
+      };
+    });
     const fromBlockers = dependencies
       // Only STILL-OPEN blockers. A cleared handoff is not a decision anyone
       // needs to make, and leaving them on grew this list to 15 items.
       .filter((d) => d.status === DependencyStatus.BLOCKING)
-      .map((d) => ({
-        question: `Somebody is waiting on ${inASentence(d.what)}, so it needs deciding.`,
-        why: 'Someone cannot move until this is decided.',
-        owner: d.onParticipantId ? (nameOf(d.onParticipantId) ?? NOBODY_NAMED_TO_DECIDE) : (d.onLabel ?? NOBODY_NAMED_TO_DECIDE),
-        source: 'blocker' as const,
-      }));
+      .filter((d) => reader.mayRead(d))
+      .map((d) => {
+        /* The person waiting is known: say who (request 107 b). */
+        const who = someone(d.fromParticipantId) ?? 'Somebody';
+        const owner = d.onParticipantId
+          ? (someone(d.onParticipantId) ?? NOBODY_NAMED_TO_DECIDE)
+          : (aPartyOutside(d) ? d.onLabel!.trim() : NOBODY_NAMED_TO_DECIDE);
+        return {
+          question: `${who} ${who === 'You' ? 'are' : 'is'} waiting on ${inASentence(d.what)}, so it needs deciding.`,
+          why: who === 'You' ? 'You cannot move until this is decided.' : `${who} cannot move until this is decided.`,
+          owner,
+          source: 'blocker' as const,
+        };
+      });
 
     // Same decision phrased slightly differently is one decision.
     /* The lead's own, said as theirs: nobody agreed these, one person wrote them down. */
     const fromTheLead = stillToDecide.map((q) => ({
       question: q,
-      why: 'The person running this check-in wrote this down as still to decide.',
-      owner: 'Lead and team',
+      why: theLeadOwns === 'You' ? 'You wrote this down as still to decide.' : `${theLeadOwns} wrote this down as still to decide.`,
+      owner: theLeadOwns,
       source: 'lead' as const,
     }));
 
