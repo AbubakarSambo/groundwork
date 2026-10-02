@@ -415,8 +415,14 @@ export function WhereThisIsHeadingSection({ data, onRecordTheDecision }: {
   return (
     <Section heading={data.heading} note={data.about}>
       <Stack gap={12}>
+        {/* Board review, sales piece C, item 7: the prototype labels this list "The possible
+            outcomes" (board-as-lead.txt), the same way the two lists under it are each labelled -
+            this had neither, so three outcomes read as an unheaded list above two headed ones. */}
         {data.outcomes.length > 0 ? (
-          <SentenceRows rows={data.outcomes.map((o) => ({ id: o.value, says: o.says }))} />
+          <Stack gap={6}>
+            <Note tone="muted">The possible outcomes</Note>
+            <SentenceRows rows={data.outcomes.map((o) => ({ id: o.value, says: o.says }))} />
+          </Stack>
         ) : (
           data.outcomesSays && <Note tone="muted">{data.outcomesSays}</Note>
         )}
