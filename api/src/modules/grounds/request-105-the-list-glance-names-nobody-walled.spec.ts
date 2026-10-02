@@ -68,3 +68,24 @@ describe('on an evaluation check-in (Miriam is the person reviewed)', () => {
     expect(await listAs(SETUP, 'ADMIN', pip)).toMatchObject({ count: 2, oldest: 'the new price list' });
   });
 });
+
+/* DECISION 75, ITEM 46: where people see each other, a participant's one line is their own waits too. The list,
+   and so Today, which reads it. */
+describe('where people see each other on an ordinary check-in', () => {
+  const together = { peersVisibleToEachOther: true };
+  it('Miriam reads only her own wait, never Omar\'s', async () => {
+    const got = await listAs(MIRIAM, 'MEMBER', together);
+    expect(got).toMatchObject({ count: 1, oldest: 'the delivery van' });
+    expect(JSON.stringify(got)).not.toContain('price list');
+  });
+  it('Omar reads only his own', async () => {
+    expect(await listAs(OMAR, 'MEMBER', together)).toMatchObject({ count: 1, oldest: 'the new price list' });
+  });
+  it('the lead and an admin who only reads read the whole team', async () => {
+    expect(await listAs(LEAD, 'MEMBER', together)).toMatchObject({ count: 2, oldest: 'the new price list' });
+    expect(await listAs(ADMIN, 'ADMIN', together)).toMatchObject({ count: 2, oldest: 'the new price list' });
+  });
+  it('a guest from another organisation who takes part reads only their own', async () => {
+    expect(await listAs(MIRIAM, 'GUEST', together)).toMatchObject({ count: 1, oldest: 'the delivery van' });
+  });
+});

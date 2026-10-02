@@ -49,7 +49,7 @@ import { endStatesFor } from '../resolution/end-states';
 import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
-import { theGlanceAsThisReaderMayReadIt } from './what-a-manager-needs-at-a-glance';
+import { theGlanceAsThisReaderMayReadIt, whatIsInTheWay } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
@@ -1621,14 +1621,27 @@ export class GroundsService {
               };
             }
             if (theirOwn) return theirOwn;
+            /*
+             * DECISION 75, ITEM 46: A PARTICIPANT'S ONE LINE IS THEIR OWN WAITS, ON EVERY CHECK-IN. Even where people
+             * see each other, somebody who takes part and does not run it is counted and named only what they wait
+             * on or what waits on them, to match their own board. Who has answered stays as it was, since people
+             * see each other here. Whoever runs it, and an admin reading it, read the team's waits as before.
+             */
+            const onlyTheirOwn = !!me && !runsTheEvaluation && !runsIt;
+            const ownWays = onlyTheirOwn
+              ? whatIsInTheWay(((allDependencies ?? []) as any[]).filter((d: any) => d.fromParticipantId === me.id || d.onParticipantId === me.id), new Date(), true) as any
+              : null;
+            const { oldestOnParticipantId: ownOnId, ...ownInTheWay } = (ownWays ?? {}) as any;
+            const theWay = onlyTheirOwn ? ownInTheWay : inTheWay;
+            const onWhom = onlyTheirOwn ? ownOnId : oldestOnParticipantId;
             /* A thing waited on that starts with "her" says "A colleague's"; a reader who may name people is told whose. */
-            let oldest: string | null = inTheWay.oldest;
-            if (oldest && oldestOnParticipantId && oldest.startsWith("A colleague's")) {
-              const who = ((allParticipants ?? []) as any[]).find((p) => p.id === oldestOnParticipantId);
+            let oldest: string | null = theWay.oldest;
+            if (oldest && onWhom && oldest.startsWith("A colleague's")) {
+              const who = ((allParticipants ?? []) as any[]).find((p) => p.id === onWhom);
               const name = (who?.user?.firstName ?? '').trim() || (who?.nameGiven ?? '').trim().split(/\s+/)[0] || null;
               if (name && (runsIt || peersVisibleEffective)) oldest = whoseIsIt(oldest.replace(/^A colleague's/, 'her'), name);
             }
-            return { ...glance, inTheWay: { ...inTheWay, oldest } };
+            return { ...glance, inTheWay: { ...theWay, oldest } };
           })(),
           /* Who runs it, for a reader who is shown nobody else on the row (request 97d). Not a peer: the person
              who invited them. Never their private description of anybody, only a name they gave or have. */

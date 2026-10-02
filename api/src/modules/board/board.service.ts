@@ -860,6 +860,15 @@ export class BoardService {
         glance: theGlanceAsThisReaderMayReadIt(out.howItIsGoing.glance, { participantId: me?.id ?? null }, ((ground as any).dependencies ?? []) as any[]),
       };
     }
+    /*
+     * DECISION 75, ITEM 46: AND A PARTICIPANT'S ONE LINE IS THEIR OWN WAITS ON EVERY CHECK-IN. Where people see each
+     * other, somebody who takes part and does not run it still reads only what they wait on or what waits on them,
+     * to match their own board. Who has answered stays, since people see each other here.
+     */
+    else if (out.howItIsGoing?.glance && me && !isInitiator && !isSetupAdmin && !adminHere) {
+      const theirOwn = theGlanceAsThisReaderMayReadIt(out.howItIsGoing.glance, { participantId: me.id }, ((ground as any).dependencies ?? []) as any[]);
+      out.howItIsGoing = { ...out.howItIsGoing, glance: { ...out.howItIsGoing.glance, inTheWay: theirOwn.inTheWay } };
+    }
 
     if (has('phaseSpine')) {
       /*

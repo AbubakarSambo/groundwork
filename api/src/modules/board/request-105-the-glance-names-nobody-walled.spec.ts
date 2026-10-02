@@ -59,8 +59,22 @@ describe('on an evaluation check-in (Femi is the person reviewed)', () => {
   });
 });
 
+/*
+ * DECISION 75, ITEM 46: where people see each other, a participant's one line is narrowed to their own waits too,
+ * to match their own board. This used to expect Ngozi to read the team's count and Femi's wait; Hafsah decided
+ * on 2 October that it is narrowed. Whoever runs it, and an admin who only reads, still read the whole team's.
+ */
 describe('where people see each other on an ordinary check-in', () => {
-  it('a participant reads the team\'s count, as before', async () => {
-    expect(await inTheWay(RUN, NGOZI)).toMatchObject({ count: 3, oldest: 'the bank statements' });
+  it('Ngozi, a participant, reads only her own wait, never Femi\'s', async () => {
+    const got = await inTheWay(RUN, NGOZI);
+    expect(got).toMatchObject({ count: 1, oldest: 'a date for the credit decision' });
+    expect(JSON.stringify(got)).not.toContain('bank statements');
+  });
+  it('Kwame reads only his own wait on Bisi', async () => {
+    expect(await inTheWay(RUN, KWAME)).toMatchObject({ count: 1, oldest: 'the approval of five applications' });
+  });
+  it('Bisi, who runs it, and Juma, an admin who only reads, read the whole team, with Femi\'s wait as the oldest', async () => {
+    expect(await inTheWay(RUN, BISI)).toMatchObject({ count: 3, oldest: 'the bank statements' });
+    expect(await inTheWay(RUN, JUMA)).toMatchObject({ count: 3, oldest: 'the bank statements' });
   });
 });
