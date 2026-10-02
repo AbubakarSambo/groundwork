@@ -23,7 +23,7 @@
  * pattern never rests on a record nobody holds, and K3 and B11 are never written about somebody who
  * is waiting on another person here.
  */
-import { BAD_FAITH_CODES, WHAT_COUNTS_BY_CODE } from './pattern-library';
+import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, PATTERN_DETECTION_PROMPT } from './pattern-library';
 
 /** The four codes decided once across their periods. */
 export const JUDGED_ONCE_CODES = ['E2', 'B2', 'K3', 'B11'] as const;
@@ -52,30 +52,30 @@ export function thePeriodsItDecides(window: number[]): number[] {
   return window.slice(0, PERIODS_THE_JUDGEMENT_DECIDES);
 }
 
-const describe = (code: string) => {
-  const c = BAD_FAITH_CODES.find((x) => x.code === code);
-  return `- ${code} (${c?.name ?? code}): ${c?.signal ?? ''}${WHAT_COUNTS_BY_CODE[code] ? ` ${WHAT_COUNTS_BY_CODE[code]}` : ''}`;
-};
+/*
+ * A model instruction, read by the detector only. It is the detector's own instruction, every code and
+ * every rule on what counts, so the line of what counts is the detector's line. Only the task differs:
+ * the detector sees the periods together and says, for each code, in which of them it shows. A first
+ * version asked about the four codes alone, and it found them far more often than the detector's own
+ * reads did, on the same record (2 October 2026, see the morning report).
+ */
+const THE_DETECTORS_RULES_AND_CODES = PATTERN_DETECTION_PROMPT.slice(PATTERN_DETECTION_PROMPT.indexOf('Hard rules:'));
 
-/* A model instruction, read by the detector only. */
-export const JUDGED_ONCE_PROMPT = `You read ONE person's own record across the periods you can see, and decide, for each pattern below, in which of those periods it shows. You are looking at the record, not judging the person.
+export const JUDGED_ONCE_PROMPT = `You analyse ONE party's own record across the periods you can see, and identify whether any behavioural pattern signals are present in it, and in which periods. You are looking at the record, not judging the person. Some of these signals are good news and some are not, and both matter equally.
 
-The text names the periods you can see. THIS_PERIOD has the whole check-in. ONE_PERIOD_BEFORE and TWO_PERIODS_BEFORE, when they are there, have the lines this person recorded then. Judge them together, once, as one picture of the same person over time: use the earlier periods to tell a repeat from a first time, and use the later ones to tell whether something was ever done or fixed.
+The text names the periods you can see. THIS_PERIOD has the whole check-in. ONE_PERIOD_BEFORE and TWO_PERIODS_BEFORE, when they are there, are the lines this person recorded then, in the section headed "WHAT THIS PERSON THEMSELVES RECORDED IN THE LAST TWO PERIODS". Judge the periods together, once, as one picture of the same person over time: use the earlier periods to tell a repeat from a first time, and the later ones to tell whether something was ever done or fixed. Every rule below applies to each period on its own terms: a code shows in a period only when its signal is genuinely present in that period's evidence. The earliest period you can see may repeat something from before it that you cannot see; judge it only on what you can see.
 
-Hard rules:
-- A pattern shows in a period only when that period's own evidence holds it, read with the other periods in view. Name a period only when you can point to what in that period shows it.
-- Follow the lines on what counts for each pattern. A first promise, a problem raised for the first time, one period of confident talk, or one outside cause named fairly does not count.
-- The earliest period you can see may repeat something from before it that you cannot see. Judge it only on what you can see, and do not count it as a repeat unless something you can see shows it was one.
-- Leave out any pattern that shows in no period. That is the commonest answer, and a normal record.
-- Do not infer intent. Never name the person. For each pattern you return, write one plain sentence about what happened in the latest period it shows in. Say the thing directly, without opening with "The record shows".
+${THE_DETECTORS_RULES_AND_CODES}
 
-The patterns:
-${JUDGED_ONCE_CODES.map(describe).join('\n')}`;
+For each code you return, say in which of the periods you can see it shows (showsIn), and write the one-sentence observation about the latest of those periods.`;
 
-export function judgedOnceSchema(codes: string[], labels: string[]) {
+/** Every code the detector may name, as in its own schema; only the four judged once are used. */
+const EVERY_CODE = [...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => c.code);
+
+export function judgedOnceSchema(labels: string[]) {
   return {
     name: 'say_where_each_pattern_shows',
-    description: 'For each pattern that shows in at least one of the periods, say which periods it shows in. Leave out patterns that show in none.',
+    description: 'Emit the behavioural pattern signals present in these periods, good and bad, each with the periods it shows in. Empty is a normal record and the commonest answer.',
     input_schema: {
       type: 'object',
       properties: {
@@ -84,9 +84,9 @@ export function judgedOnceSchema(codes: string[], labels: string[]) {
           items: {
             type: 'object',
             properties: {
-              code: { type: 'string', enum: codes },
-              showsIn: { type: 'array', items: { type: 'string', enum: labels } },
-              observation: { type: 'string', description: 'One plain sentence about what happened in the latest period it shows in. Never names the person; never a verdict.' },
+              code: { type: 'string', enum: EVERY_CODE, description: 'The pattern code. M, C and R3 are good news; A codes say somebody is carrying something; the rest are not.' },
+              showsIn: { type: 'array', items: { type: 'string', enum: labels }, description: 'Every period you can see in which this signal is genuinely present in that period\'s own evidence.' },
+              observation: { type: 'string', description: 'Plain-language, pattern-level description of what happened in the latest period it shows in. Do NOT open with "The record shows/describes/contains". Never names the person; never a verdict.' },
             },
             required: ['code', 'showsIn', 'observation'],
           },

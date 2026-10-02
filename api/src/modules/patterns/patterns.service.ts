@@ -329,7 +329,8 @@ export class PatternsService {
     const judgementReads: AJudgementRead[] = [];
     if (toJudge.length) {
       const judgements = await Promise.allSettled(
-        Array.from({ length: JUDGEMENT_READS }, () => this.whatOneJudgementKeeps(checkInId, content, window, toJudge, whatThePersonSaid)),
+        /* Always asked about all four, so the call is the same whatever is already counted; only the codes in play are used. */
+        Array.from({ length: JUDGEMENT_READS }, () => this.whatOneJudgementKeeps(checkInId, content, window, [...JUDGED_ONCE_CODES], whatThePersonSaid)),
       );
       judgements.forEach((j, i) => {
         if (j.status === 'fulfilled') judgementReads.push(j.value);
@@ -430,7 +431,7 @@ export class PatternsService {
     const result = await this.anthropic.extract<{ patterns: { code: string; showsIn: string[]; observation: string }[] }>(
       JUDGED_ONCE_PROMPT,
       [{ role: 'user', content: theJudgementReads(content, window) }],
-      judgedOnceSchema(codes, labels),
+      judgedOnceSchema(labels),
       PATTERN_DETECTION_STEADY_OPTIONS,
     );
     const said = whatOneJudgementSays(result, window, codes);
