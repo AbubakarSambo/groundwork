@@ -875,14 +875,14 @@ export class BoardService {
       /*
        * WHO IS WAITING TO BE LET IN, APART FROM THE COUNT (decision 77). Not in "N of M" and not waited on;
        * said here instead. Whoever runs it, the admin who set it up and an admin read each by name ("Faraji
-       * Odhiambo is waiting to be let in."), or as a count where no name is known. A person who checks in
-       * reads it only about somebody they may already read by name, and never that an admin said no.
+       * Odhiambo is waiting to be let in."), or as a count where no name is known. Never a person who checks
+       * in, whether or not people see each other: whether somebody has been let in is the organisation's business.
        */
       waitingToBeLetIn: theWaitingToBeLetInLine(
         [...(await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId)).entries()]
           .filter(([pid]) => !checkIns.some((c) => c.participantId === pid && c.sessionNumber === openRound && (c.status === CheckInStatus.COMPLETED || c.status === CheckInStatus.DECLINED)))
           .map(([pid, d]) => ({ pid, name: hiddenFromThisReader(pid) ? null : nameOf(pid), declined: d.declined }))
-          .filter((w) => isInitiator || isSetupAdmin || adminHere || (!!w.name && !w.declined && !hiddenFromThisReader(w.pid)))
+          .filter(() => isInitiator || isSetupAdmin || adminHere)
           .map(({ name, declined }) => ({ name, declined })),
       ),
       /* WHO IS AWAY AND NOT WAITED ON THIS ROUND (week 23). Dates only. The lead reads it for each person;

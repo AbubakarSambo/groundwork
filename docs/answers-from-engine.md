@@ -2197,10 +2197,9 @@ Hafsah decided item 64: "A person an admin hasn't let in yet is left out of both
 - The weekly report: his check-in is not one of those due ("Both check-ins due this week were made.") and he is not written up as not having checked in.
 - The session closes, and its report is written and released, once everybody let in has answered.
 
-**The separate line, `waitingToBeLetIn`** (a sentence, or null), on the session report, the board, `GET /grounds/:id` and each row of the check-ins list. Please draw it beside the count, never inside it:
+**The separate line, `waitingToBeLetIn`** (a sentence, or null), on the session report, the board, `GET /grounds/:id` and each row of the check-ins list. Please draw it beside the count, never inside it. It goes only to whoever runs the check-in, the admin who set it up and an admin with access, because whether somebody has been let in is the organisation's business:
 - Rukia, Grace (who set it up) and Juma (an admin): "Faraji Odhiambo is waiting to be let in." After an admin said no: "Faraji Odhiambo was not let in." Where no name is known: "1 person is waiting to be let in."
-- Amani and Baraka, who read everybody on this check-in: "Faraji Odhiambo is waiting to be let in." After a decline: null, because a person who checks in is never told that an admin said no.
-- Somebody who checks in where people see only themselves: null, and nothing about him anywhere.
+- Amani, Baraka and anybody else who checks in: null, before and after a decline, whether or not people see each other. Their counts still leave him out.
 - With nobody held at the door: null for everybody.
 
 **For your own count.** Each row of `GET /grounds/:id` `participants` now carries `notLetInYet` (true or false); `user.awaitingOrgApproval` was already there. `whoIsInRound` in `client/src/lib/who-is-in-this-round.ts` still counts every row, so a header drawn from it would read "4 of 5" beside the engine's "4 of 4". Please leave out a row with `notLetInYet: true` that has not answered, or draw the count from the served numbers.

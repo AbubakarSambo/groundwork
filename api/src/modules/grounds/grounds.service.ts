@@ -1601,9 +1601,8 @@ export class GroundsService {
           report: fullReport ? { releasedAt: fullReport.releasedAt ?? null, releasedSessions: releasedSessionsOf(fullReport as any) ?? [] } : null,
           alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName,
           /*
-           * WHO IS WAITING TO BE LET IN, APART FROM "N OF M" (decision 77). Whoever runs it reads every such
-           * person; somebody who checks in reads only a person already on their roster, and never that an
-           * admin said no.
+           * WHO IS WAITING TO BE LET IN, APART FROM "N OF M" (decision 77). Only whoever runs it, or an admin
+           * here, reads it; never a person who checks in.
            */
           waitingToBeLetIn: theWaitingToBeLetInLine(
             [...(notLetInOnTheList.get(g.id) ?? new Map<string, { declined: boolean }>()).entries()]
@@ -1611,7 +1610,7 @@ export class GroundsService {
                 const p = ((allParticipants ?? []) as any[]).find((x) => x.id === pid);
                 return { p, declined: d.declined, name: [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim() || null };
               })
-              .filter((w) => !!w.p && !w.p.managingOnly && (runsIt || (shown.has(w.p.id) && !!w.name && !w.declined)))
+              .filter((w) => !!w.p && !w.p.managingOnly && runsIt)
               .map(({ name, declined }) => ({ name, declined })),
           ),
           /* Through the report's own door, for every reader, so no label is ever served (U.5 re-review). */
@@ -2716,8 +2715,8 @@ export class GroundsService {
       /*
        * WHO IS WAITING TO BE LET IN, APART FROM THE COUNT (decision 77): "Faraji Odhiambo is waiting to be
        * let in." To whoever runs it and an admin, every such person, by name or as a count where no name is
-       * known. To a person who checks in, only somebody already on the roster they read, and never that an
-       * admin said no. Nobody where people see only themselves.
+       * known. Never to a person who checks in, whether or not people see each other: whether somebody has
+       * been let in is the organisation's business.
        */
       waitingToBeLetIn: theWaitingToBeLetInLine(
         ((ground.participants ?? []) as any[])
@@ -2726,7 +2725,7 @@ export class GroundsService {
             name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() || null,
             declined: !!(p.userId && notLetInByUser.has(p.userId)),
           }))
-          .filter((w) => canReadWhoDecided || (!hidePeers && !!w.name && !w.declined)),
+          .filter(() => canReadWhoDecided),
       ),
       /* The lead and the organisation's admins read the brief they wrote. A participant reads the
          situation and nothing that tells the product how to interview them. See

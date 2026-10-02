@@ -3445,10 +3445,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     /*
      * WHO IS WAITING TO BE LET IN, SAID APART FROM THE COUNT (decision 77). Somebody an admin has not let
-     * in yet is not in `counting` or in "N of M"; they are said here instead, to whoever may read the
-     * roster: the lead and an admin read each by name, or as a count where no name is known. A person
-     * who checks in reads it only about somebody they may already read by name, and never that an
-     * admin said no.
+     * in yet is not in `counting` or in "N of M"; they are said here instead, to whoever runs the
+     * check-in and an admin with access: each by name, or as a count where no name is known. Never to a
+     * person who checks in, whether or not people see each other: whether somebody has been let in is
+     * the organisation's business.
      */
     const waitingToBeLetIn = theWaitingToBeLetInLine(
       [...(await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId)).entries()]
@@ -3457,7 +3457,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           const label = labels.get(id);
           return { name: (label ? nameByLabel.get(label) : undefined) ?? null, declined: d.declined };
         })
-        .filter((w) => viewerIsLead || (!!w.name && !w.declined)),
+        .filter(() => viewerIsLead),
     );
 
     /*

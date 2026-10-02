@@ -186,10 +186,12 @@ describe('decision 77 on the board: Faraji is not counted, and is said apart', (
     },
   );
 
-  it('still waiting, Miriam reads the same where people see each other, and nothing where they see only themselves', async () => {
+  it('still waiting, Miriam reads nothing about it, whether people see each other or only themselves', async () => {
     const seen = boardFor('u-miriam', 'MEMBER', {}, withFaraji);
     pending(seen);
-    expect((await seen.board).waitingToBeLetIn).toBe('Faraji Odhiambo is waiting to be let in.');
+    const s = await seen.board;
+    expect(s.waitingToBeLetIn ?? null).toBeNull();
+    expect(JSON.stringify(s)).not.toContain('let in');
     const hidden = boardFor('u-miriam', 'MEMBER', {}, { ...withFaraji, peersVisibleToEachOther: false, peopleWorkTogether: false });
     pending(hidden);
     const b = await hidden.board;

@@ -74,8 +74,10 @@ describe('decision 77 on the check-in page: who is waiting to be let in, per rea
     expect((await pageFor('userJuma', { role: 'ADMIN' })).waitingToBeLetIn).toBe('Faraji Odhiambo is waiting to be let in.');
   });
 
-  it('Amani, who reads everybody on it, reads the same; where people see only themselves she reads nothing', async () => {
-    expect((await pageFor('userAmani')).waitingToBeLetIn).toBe('Faraji Odhiambo is waiting to be let in.');
+  it('Amani, who checks in, reads nothing about it, whether people see each other or only themselves', async () => {
+    const seen = await pageFor('userAmani');
+    expect(seen.waitingToBeLetIn).toBeNull();
+    expect(JSON.stringify(seen)).not.toContain('let in');
     const hidden = await pageFor('userAmani', { peers: false });
     expect(hidden.waitingToBeLetIn).toBeNull();
     expect(JSON.stringify(hidden)).not.toContain('Faraji');
