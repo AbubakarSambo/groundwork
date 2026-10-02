@@ -3016,16 +3016,32 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 reader chooses between them with one control, the same "Show"/"Hide" shape "Over
                 time" already uses below, rather than two chips that say the same thing twice.
               */}
-              <div className="gwui-mt-8 gwui-mb-4">
-                {/* Board review, 1 October, item 8: only switches how this is drawn (a fold, not a
-                    button), drawn with one-off classes instead of the shared `gwui-plain-link`. */}
-                <button
-                  onClick={() => setVariant(b.coverageVariant === 'bar' ? 'text' : 'bar')}
-                  className="gwui-plain-link gwui-fs-13"
-                >
-                  {b.coverageVariant === 'bar' ? 'Show as words only' : 'Show with a bar'}
-                </button>
-              </div>
+              <Stack gap={10}>
+                <div className="gwui-mt-8 gwui-mb-4">
+                  {/* Board review, 1 October, item 8: only switches how this is drawn (a fold, not a
+                      button), drawn with one-off classes instead of the shared `gwui-plain-link`. */}
+                  <button
+                    onClick={() => setVariant(b.coverageVariant === 'bar' ? 'text' : 'bar')}
+                    className="gwui-plain-link gwui-fs-13"
+                  >
+                    {b.coverageVariant === 'bar' ? 'Show as words only' : 'Show with a bar'}
+                  </button>
+                </div>
+
+                {/* THE SAME SENTENCE ACROSS SEVERAL ROWS IS SAID ONCE, HERE, NOT PER ROW. The
+                    engine moves a repeated "What people said" or "Which of these this is" sentence
+                    into `coverage.saysOnce` (an array - one entry per distinct sentence that was
+                    repeated), and nulls it out of the rows it came from (see the comment above each
+                    heading, below). Drawn once, above every row, in the reader's own words from the
+                    server - never rewritten on screen. */}
+                {b.coverage.saysOnce && b.coverage.saysOnce.length > 0 && (
+                  <Stack gap={8}>
+                    {b.coverage.saysOnce.map((s, i) => (
+                      <Callout key={i} tone="info">{s}</Callout>
+                    ))}
+                  </Stack>
+                )}
+              </Stack>
 
               {b.coverage.reads.filter((r) => r.shown !== false).map((r) => {
                 /* Re-review, 2 October: "Staying with them" and the "No note" fallback both still
@@ -3065,20 +3081,30 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     </div>
                   )}
 
-                  {/* "WHAT PEOPLE SAID The role..." read live as one run-on line, the same bug as
-                      "Why it matters" above. Its own line now. */}
-                  <div className="gwui-mt-8 gwui-fs-15" style={{lineHeight: 1.45}}>
-                    <span className="gwui-fs-13 gwui-ink-subd gwui-mb-2" style={{letterSpacing: '.1px', fontWeight: 700, display: 'block'}}>What people said</span>
-                    {r.what}
-                  </div>
+                  {/*
+                    After the engine's merge of 2 October, a row whose "What people said" or
+                    "Which of these this is" text was repeated across several rows now carries
+                    `what: null` / `reasonText: null` and `saidOnceAbove: true`, with the text
+                    itself moved once into `b.coverage.saysOnce`, drawn above the rows. Read live,
+                    this card still drew both headings with nothing under them. Each heading is now
+                    drawn only when its own text is there.
+                  */}
+                  {r.what && (
+                    <div className="gwui-mt-8 gwui-fs-15" style={{lineHeight: 1.45}}>
+                      <span className="gwui-fs-13 gwui-ink-subd gwui-mb-2" style={{letterSpacing: '.1px', fontWeight: 700, display: 'block'}}>What people said</span>
+                      {r.what}
+                    </div>
+                  )}
 
                   {/* The signal is ALWAYS coupled to the reason it cannot self-determine. */}
-                  <div className="gwui-mt-7 gwui-fs-15 gwui-rule gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10" style={{lineHeight: 1.4, background: 'white', borderRadius: 9}}>
-                    <span className="gwui-fs-13 gwui-ink-subd gwui-mb-2" style={{letterSpacing: '.1px', fontWeight: 700, display: 'block'}}>
-                      Which of these this is
-                    </span>
-                    {r.reasonText}
-                  </div>
+                  {r.reasonText && (
+                    <div className="gwui-mt-7 gwui-fs-15 gwui-rule gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10" style={{lineHeight: 1.4, background: 'white', borderRadius: 9}}>
+                      <span className="gwui-fs-13 gwui-ink-subd gwui-mb-2" style={{letterSpacing: '.1px', fontWeight: 700, display: 'block'}}>
+                        Which of these this is
+                      </span>
+                      {r.reasonText}
+                    </div>
+                  )}
 
                   {/*
                     HAFSAH'S DECISION, 2 OCTOBER: THE CHECKABILITY RATING STAYS (see the matching

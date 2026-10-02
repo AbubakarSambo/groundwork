@@ -300,11 +300,17 @@ export type BoardPresent = {
       /** Request 111 (a): a score of where a person's work lands stays removed - the engine does
           not always send this any more, so the bar variant only draws when it is a real number. */
       participantId: string; name: string | null; scope: string; pct?: number
-      kind: 'LEAKING' | 'ABSORBING' | 'STABLE'; trend: string; what: string
-      reason: string; reasonText: string; ownVoice: string | null
+      kind: 'LEAKING' | 'ABSORBING' | 'STABLE'; trend: string; what: string | null
+      reason: string; reasonText: string | null; ownVoice: string | null
       coupledToBlocker: boolean; remitDefined: boolean
       confidence?: number; evidenceCount?: number; shown?: boolean; basis?: string
+      /** Engine merge, 2 October: true once `what` and/or `reasonText` were the same as another
+          row's and have been nulled out here, their words moved once into `coverage.saysOnce`. */
+      saidOnceAbove?: boolean
     }[]
+    /** Request 117 (8): one entry per sentence repeated across several `reads` rows, said once
+        above them instead of under each - see `reads[].saidOnceAbove`. */
+    saysOnce?: string[]
   }
   managerAlignment?: {
     managerParticipantId: string; managerName: string | null
