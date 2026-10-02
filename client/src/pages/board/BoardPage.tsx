@@ -541,6 +541,7 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
         )}
       </Panel>
       <YourOwnRecordsSections
+        groundId={groundId}
         kindOfWork={kindOfWork as any}
         sections={workRecords}
         myParticipantId={myParticipantId}

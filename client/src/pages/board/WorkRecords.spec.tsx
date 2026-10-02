@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WorkRecordsSections } from './WorkRecords'
 import type { AServedWorkSection } from '@/api/board'
@@ -10,20 +11,26 @@ import type { AServedWorkSection } from '@/api/board'
  * record the lead added or an older server. This was this screen's own stand-in for a field the
  * engine had not built yet ("In the words of someone in this check-in,") - now that the field
  * exists, the row says whose words they actually are.
+ *
+ * REQUEST 115 (b): wrapped in `MemoryRouter` now that a deal's own detail fold carries a `Link`
+ * ("Not right? Tell the check-in") - `WorkRecordsSections` is only ever mounted inside the app's
+ * own router, but this spec renders it standalone.
  */
 function renderSections(sections: AServedWorkSection[]) {
   return render(
-    <QueryClientProvider client={new QueryClient()}>
-      <WorkRecordsSections
-        groundId="g1"
-        kindOfWork="sales org"
-        sections={sections}
-        participants={[{ id: 'p-baraka', name: 'Baraka Otieno' }]}
-        leadFirstName="Wairimu"
-        readerIsLead={false}
-        canEdit={false}
-      />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={new QueryClient()}>
+        <WorkRecordsSections
+          groundId="g1"
+          kindOfWork="sales org"
+          sections={sections}
+          participants={[{ id: 'p-baraka', name: 'Baraka Otieno' }]}
+          leadFirstName="Wairimu"
+          readerIsLead={false}
+          canEdit={false}
+        />
+      </QueryClientProvider>
+    </MemoryRouter>,
   )
 }
 
