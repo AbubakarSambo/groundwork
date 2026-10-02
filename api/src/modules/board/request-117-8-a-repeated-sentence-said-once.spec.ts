@@ -18,7 +18,9 @@ describe('request 117 (8): a repeated sentence is said once', () => {
     const served = JSON.stringify(b);
     expect(count(served, /the role was never clearly defined/)).toBe(0);
     expect(count(served, /because nobody's role was clearly defined/)).toBe(1);
-    expect(b.contributionSaysOnce).toBe("No position is shown for Rukia Otieno, Amani Wekesa, Baraka Mwangi, Neema Achieng or Faraji Odhiambo, because nobody's role was clearly defined. Define what each role is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person.");
+    /* Rukia's own row is "you" (request 118, part 2); Grace, who does not check in, reads Rukia's name. */
+    const rukia = reader[0] === RUKIA_RUNS_IT[0] ? 'you' : 'Rukia Otieno';
+    expect(b.contributionSaysOnce).toBe(`No position is shown for ${rukia}, Amani Wekesa, Baraka Mwangi, Neema Achieng or Faraji Odhiambo, because nobody's role was clearly defined. Define what each role is responsible for before assessing anyone against it. An undefined role is often the real problem, not the person.`);
     expect((b.contribution as any[]).every((r) => r.note === null)).toBe(true);
   });
 
@@ -26,7 +28,8 @@ describe('request 117 (8): a repeated sentence is said once', () => {
     const b = await boardAs(review5(), ...RUKIA_RUNS_IT);
     const served = JSON.stringify(b.coverage);
     expect(count(served, /Their responsibilities are staying with them/)).toBe(1);
-    expect(b.coverage.saysOnce[0]).toBe('Nobody has said anything about the work of Rukia Otieno, Amani Wekesa, Baraka Mwangi and Neema Achieng moving elsewhere.');
+    /* Her own work is "your work" (request 118, part 2). */
+    expect(b.coverage.saysOnce[0]).toBe('Nobody has said anything about your work and the work of Amani Wekesa, Baraka Mwangi and Neema Achieng moving elsewhere.');
     expect((b.coverage.reads as any[]).every((r) => r.what === null && r.reasonText === null)).toBe(true);
   });
 

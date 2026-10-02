@@ -13,8 +13,11 @@
  */
 const andList = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 const orList = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}`);
-const nameOf = (r: any) => {
+/* The reader's own row is "you", never their own name (request 118, part 2): Rukia read "No position is shown for
+   Rukia Otieno, Baraka Mwangi, ..." about herself. */
+const nameOf = (r: any, me: string | null = null) => {
   const n = String(r?.name ?? '').trim();
+  if (me && r?.participantId === me) return 'you';
   return /^you$/i.test(n) ? 'you' : n || 'a colleague';
 };
 
@@ -30,20 +33,24 @@ export function theNoteSaidOnce(note: string, names: string[]): string {
 }
 
 export function theReadSaidOnce(what: string | null, reasonText: string | null, names: string[]): string[] {
-  const whose = `the work of ${andList(names)}`;
+  const others = names.filter((n) => n !== 'you');
+  const whose = names.includes('you')
+    ? (others.length ? `your work and the work of ${andList(others)}` : 'your work')
+    : `the work of ${andList(names)}`;
   const w = (what ?? '').replace(/\bthis person's work\b/g, whose).replace(/\bthis person\b/g, andList(names));
   return [w === (what ?? '') && w ? `${w} This is true of ${andList(names)}.` : w, reasonText ?? ''].filter((x) => x.trim());
 }
 
 export function eachRepeatedSentenceSaidOnce<T extends Record<string, any>>(board: T): T {
   const out: any = { ...board };
+  const me: string | null = typeof out.myParticipantId === 'string' ? out.myParticipantId : null;
   if (Array.isArray(out.contribution)) {
     const byNote = new Map<string, any[]>();
     for (const r of out.contribution) if (typeof r?.note === 'string' && r.note.trim()) byNote.set(r.note, [...(byNote.get(r.note) ?? []), r]);
     const repeated = [...byNote.entries()].filter(([, rows]) => rows.length >= 2);
     if (repeated.length) {
       const said = new Set(repeated.map(([note]) => note));
-      out.contributionSaysOnce = repeated.map(([note, rows]) => theNoteSaidOnce(note, rows.map(nameOf))).join(' ');
+      out.contributionSaysOnce = repeated.map(([note, rows]) => theNoteSaidOnce(note, rows.map((r) => nameOf(r, me)))).join(' ');
       out.contribution = out.contribution.map((r: any) => (said.has(r?.note) ? { ...r, note: null, saidOnceAbove: true } : r));
     }
   }
@@ -56,7 +63,7 @@ export function eachRepeatedSentenceSaidOnce<T extends Record<string, any>>(boar
       const said = new Set(repeated.map((rows) => key(rows[0])));
       out.coverage = {
         ...out.coverage,
-        saysOnce: repeated.flatMap((rows) => theReadSaidOnce(rows[0].what ?? null, rows[0].reasonText ?? null, rows.map(nameOf))),
+        saysOnce: repeated.flatMap((rows) => theReadSaidOnce(rows[0].what ?? null, rows[0].reasonText ?? null, rows.map((r: any) => nameOf(r, me)))),
         reads: out.coverage.reads.map((r: any) => (said.has(key(r)) ? { ...r, what: null, reasonText: null, saidOnceAbove: true } : r)),
       };
     }
