@@ -2893,3 +2893,25 @@ Tests: `api/src/modules/suites/who-did-what-as-each-reader-reads-it.spec.ts` (Ai
 - **Unchanged:** `GET /suites`, `PUT /suites/:key`, `GET/PUT /suites/duties` and `GET/PUT /suites/workflows` answer exactly as before.
 
 Tests: `api/src/modules/suites/the-suites-rules-history-as-each-reader-reads-it.spec.ts` (Grace the admin; Wairimu a lead, Omar a member and Tomas a guest, refused). All fail on the old code. No existing test changed.
+
+## What the person who decides a leave request reads (3 October, decision 85, build step 7)
+
+**Each waiting request on `GET /suites/leave/board` now carries two new fields, `owns` and `said`** (this commit). Nothing else on the route changes, and Today, Ask Groundwork and WhatsApp send what they did before.
+
+- **`owns: string[]`**, what the person owns that falls in the days they asked for, one full sentence each, sorted by the day it is due:
+  - "Aisha committed to “Send the Atlas price list”, due on Thursday 15 October." (an open commitment, from a check-in or the organisation's own system)
+  - "Aisha's target “Sign 12 shops” on Sales, Q3 is due on Friday 16 October." (a target that is hers on a check-in, with a date to meet)
+  - "Aisha owns “Project X milestone” on Sales, Q3, due on Thursday 15 October." (a work-plan item she owns on a check-in)
+  - "Aisha owns “Open the Nakuru shop”, due on Wednesday 14 October." (an objective or project the organisation's own system says she owns)
+  - When nothing is found: "Groundwork found nothing Aisha owns that is due on those days."
+- **Who reads which line.** Anything from a check-in is served only to a reader who may already read that check-in's board (the lead who runs it, an admin with reach over it, a lead of the same department), by the one rule every read uses. So an admin who was not given access to Aisha's performance plan does not read its targets, and Wairimu does not read an item on a check-in run in Operations. A target the lead marked as a decision about a person is never served here. When something was left out for this reader, the "found nothing" sentence is not said either, so it is never untrue. Nothing new is opened to anybody.
+- **`said: string[]`**, the whole request as the person who decides it reads it, in full sentences with names, for the screen to show as the request's body:
+  - "Aisha asked for leave from Monday 12 October to Friday 16 October, which is 5 working days."
+  - "Aisha has 18 days left." (only when the organisation said how many days each person has)
+  - "Nobody else in Sales is off those days." or, for one day, "that day"; with others off, "Brian and Neema are also off on some of those days, so Sales would be three short.", or for one day "Brian is also off that day, so Sales would be two short." (the prototype's words). Nothing is said when the directory gives the person no team.
+  - "Miriam Wanjiku will stand in for Aisha." (only when a stand-in was given)
+  - then each sentence of `owns`.
+- **Who is served it:** exactly who was served the request before: an admin, a lead of the person's team, and whoever decides it. The person reads their own request under `GET /suites/leave/mine` as before, and a colleague is refused the board as before.
+- **Please show** `said` as the request's text on the leave board, in place of building it from the fields, with the approve and decline buttons under it. The other fields stay for anything that needs them.
+
+Tests: `api/src/modules/suites/what-the-approver-reads-of-a-leave-request-as-each-reader-reads-it.spec.ts` (Wairimu who decides it, Grace an admin, Kamau a lead of another team, Miriam a colleague, Aisha who asked). The tests of what Wairimu and Grace read fail on the old code. Two existing tests changed, each only to add the two new fields to an exact board row they compare: `the-leave-board-as-each-reader-reads-it.spec.ts` and `whoever-the-rules-name-decides-as-each-reader-reads-it.spec.ts`.

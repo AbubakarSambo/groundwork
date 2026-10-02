@@ -8,6 +8,8 @@ import { aRequestsHistory, recordIt } from './a-request-is-recorded';
 import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { aLeaveRequest, leaveInWords, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
+import { ownedInWords, whatTheyOwnWhileAway } from './what-they-own-while-away';
+import { aLeaveRequestAsTheApproverReadsIt } from './a-leave-request-as-the-approver-reads-it';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const LEAVE_REFUSED = {
@@ -47,6 +49,17 @@ export interface Waiting {
   mayDecide: boolean;
   /** Where it is, in a full sentence for this reader: "Wairimu has approved it, and it is now waiting for you." */
   where: string;
+  /**
+   * What the person owns that falls in those days (decision 85, build step 7), each a full sentence:
+   * "Aisha owns “Project X milestone” on Sales, Q3, due on Thursday 1 October." Only what this reader
+   * may already read (what-they-own-while-away.ts).
+   */
+  owns: string[];
+  /**
+   * The whole request as the person who decides it reads it, in full sentences: who asked for which
+   * days, the days left, who else in the team is off, the stand-in and what the person owns then.
+   */
+  said: string[];
 }
 
 /**
@@ -163,18 +176,29 @@ export class LeaveBoardService {
         ? approved.filter((a) => a.userId !== r.userId && people.get(a.userId)?.department?.trim() === team && overlaps(a, r))
             .map((a) => names.get(a.userId)?.first).filter((n): n is string => !!n)
         : [];
+      const first = names.get(r.userId)?.first ?? '';
+      const days = workingDays(r.startsOn, r.endsOn);
+      const daysLeft = this.daysLeft(answers.perYear, approved.filter((a) => a.userId === r.userId), r.startsOn.getUTCFullYear());
+      const standIn = r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null;
+      /* What the person owns in those days, read for this reader (decision 85, build step 7). */
+      const owns = ownedInWords(first, await whatTheyOwnWhileAway(this.prisma, { ...reader, role }, r.userId, r.startsOn, r.endsOn).catch(() => ({ owned: [], hidden: 1 })));
       waiting.push({
         id: r.id,
         name: names.get(r.userId)?.full ?? '',
         startsOn: dayOf(r.startsOn),
         endsOn: dayOf(r.endsOn),
-        days: workingDays(r.startsOn, r.endsOn),
-        daysLeft: this.daysLeft(answers.perYear, approved.filter((a) => a.userId === r.userId), r.startsOn.getUTCFullYear()),
+        days,
+        daysLeft,
         team,
         alsoOff: [...new Set(alsoOff)],
-        standIn: r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null,
+        standIn,
         mayDecide: decides,
         where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides ? reader.userId : undefined, reader.userId)),
+        owns,
+        said: aLeaveRequestAsTheApproverReadsIt({
+          firstName: first, startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn), days, daysLeft, team,
+          alsoOff: [...new Set(alsoOff)], standIn, owns,
+        }),
       });
     }
 
