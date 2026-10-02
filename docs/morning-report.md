@@ -35,7 +35,22 @@ Groundwork writes first at most once a day, or twice on the day a check-in opens
 - **Part 5 is not fixed.** A rule for who a wait is on would have removed 310 stored waits, most of them real, so it was taken back out. Neema's shop and her invented wait "on the warehouse" stay until the model reads her check-in again.
 - **For Hafsah:** should a round's numbers be counted when one person's check-in closes, rather than when everybody has finished? Today Neema's shop waits on Faraji. And should a deal's "Cooling" be measured to the record's own clock, so it does not change with the day the board is read?
 
-Now running: the onboarding and project boards' engine faults (item 18), and approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Approvals, email matching, Ask Groundwork and the daily summary are done** (`1b77ebda` to `7ce68216`, pushed; 3,600 tests in those parts pass, none changed).
+- The approver, on WhatsApp: "Hi Wairimu, Amina has asked for leave from Monday 5 October to Friday 9 October, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first." Her "approve" is said back ("You are approving Amina's leave ... Is that right?") and acted on only after yes.
+- The person: "Hi Amina, your request for leave from Monday 5 October to Friday 9 October was approved by Wairimu. Open Groundwork to read it."
+- A roster entry with no sign-in linked is matched by email, trimmed and ignoring capitals; an email on two entries matches nobody.
+- On WhatsApp, Ask Groundwork leaves check-ins kept in the app out of every read, checked on the prompt the model is given. In the app it is unchanged.
+- The lead's summary at 07:00: "Good morning Wairimu. ... In "Sales team, Q3", 5 of 6 people have checked in, and Omar has not yet. Amina's leave ... is waiting for you to approve or decline."
+- A one-to-one check-in now says only "It takes about ten minutes.", never "released with everybody else's".
+
+**For Hafsah:**
+- Should an admin who approves, but runs no check-in, get a morning summary too? Today they are told about a waiting request on WhatsApp only if they have had no other message that day; otherwise only in the app.
+- The app says "about ten minutes" and the WhatsApp notice "about five minutes". Which?
+- Submit `groundwork_request_waiting` and `groundwork_request_decided` with the other templates.
+- Because the summary is the lead's one message of the day, a lead who also answers elsewhere does not get their own morning reminder that day (decision 13).
+- Hours can be approved but not declined, as on the board.
+
+Now running: the onboarding and project boards' engine faults (item 18), and the performance reviews suite (item 16). Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
