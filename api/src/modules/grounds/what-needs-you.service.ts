@@ -59,7 +59,8 @@ export class WhatNeedsYouService {
    */
   private async leaveQuestionsFor(userId: string, organizationId: string): Promise<Need[]> {
     if (!this.leave) return [];
-    const mine = await this.leave.mine({ userId, organizationId }).catch(() => null);
+    /* Never an error on Today: a board built without `mine`, or a suite that is off, is nothing here. */
+    const mine = await Promise.resolve().then(() => this.leave!.mine({ userId, organizationId })).catch(() => null);
     return (mine?.requests ?? []).filter((r) => r.questionWaiting).map((r) => ({
       key: `leave-question-${r.id}`,
       kind: 'decide' as const,
