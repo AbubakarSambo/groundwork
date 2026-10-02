@@ -9,6 +9,21 @@ export type BoardSection =
 export type BoardFamily = 'DELIVERY' | 'COHORT' | 'ONBOARDING' | 'EVALUATION' | 'SENSING' | 'AGREEMENT' | 'RECURRING' | 'SNAPSHOT' | 'UPDATE'
 export type CoverageVariant = 'text' | 'bar'
 
+/**
+ * REQUEST 112 (b): WHAT THE LEAD CAN DO ABOUT ONE ITEM UNDER "What needs you" (board-as-lead.txt:
+ * "Yes, it counts" / "No", "Share now" / "Hold it", "Ask him"). Sent to the lead alone - nobody
+ * else is ever sent an `action`, and the ids it is built from are sent to nobody. `goesTo` is
+ * where the one button leads ("check-in" or "context") where there are no `choices`; each choice
+ * carries the route that keeps that exact answer, or `null` where the answer changes nothing
+ * ("Not yet").
+ */
+export interface AnAction {
+  label: string
+  says: string
+  goesTo: 'check-in' | 'context' | null
+  choices?: { label: string; route: { method: 'PATCH' | 'POST'; path: string; body: Record<string, unknown> } | null }[]
+}
+
 /** A private-mode or sensing-family ground has no board, and says why. */
 export type BoardAbsent = {
   groundId: string
@@ -80,6 +95,11 @@ export type BoardPresent = {
    */
   yourShare?: { objectiveId: string; says: string; whoSees: string }[]
   /**
+   * REQUEST 110 (a): the sentence to show beside an empty `yourShare` ("There is no number of yours
+   * on this board yet, so there is no share to show."). Sent only when `yourShare` is `[]`.
+   */
+  yourShareSays?: string
+  /**
    * Somebody named in an account as doing work here who has no account of their own. Guarded on
    * the server: nothing that quotes anybody, names a party, or was inferred reaches this.
    */
@@ -105,6 +125,12 @@ export type BoardPresent = {
   objectives?: {
     /** What the target assumes, the lead's lines (U.7). */
     assumes?: string[]
+    /**
+     * REQUEST 115 (c): where nothing is written down, said plainly rather than left empty - to the
+     * lead, an invitation to write it; to anybody else who may read the target, a plain sentence
+     * that nobody has yet. Present only when `assumes` is empty.
+     */
+    assumesSays?: string | null
     /**
      * Where it started, where it is, and what was said. The direction is derived from those three
      * rather than set anywhere: a ceiling like "under four hours" reads as distance covered coming
@@ -269,7 +295,8 @@ export type BoardPresent = {
    * another person's pattern even if a future change to this file made the server send one.
    */
   patterns?: ServedPattern[]
-  decisions?: { question: string; why: string; owner: string; source: 'blocker' | 'divergence' }[]
+  /** `action` is sent to the lead alone - see `AnAction`. */
+  decisions?: { question: string; why: string; owner: string; source: 'blocker' | 'divergence'; action?: AnAction }[]
   poll?: { id: string; question: string; options: { id: string; label: string; who: (string | null)[]; whoIds: string[]; count: number }[] } | null
 
   /**
@@ -324,7 +351,8 @@ export type BoardPresent = {
     eachPerson: import('@/components/gw/WhatToProbeThemOn').ProbeRead[] | null
   }
   /** What the person who runs the check-in needs to do. At most 10, for that reader only. */
-  leadActions?: { id: string; says: string; because: string | null }[]
+  /** `action` is sent to the lead alone - see `AnAction`. */
+  leadActions?: { id: string; says: string; because: string | null; action?: AnAction }[]
   /** What each side promised, and what somebody here still waits on that side for. One per person, then each outside party named. */
   obligations?: { participantId: string | null; who: string; promised: string[]; othersWaitFor: string[] }[]
   /** Where a team's number would land by the last session at its current pace, against the aim or the limit. Never about one person. */
@@ -347,6 +375,32 @@ export type BoardPresent = {
     answer: string | null
     bars: { objectiveId: string; kind: 'aim' | 'limit'; now: number; target: number; filled: number; word: string | null }[]
   } | null
+
+  /**
+   * REQUEST 115 (c): "TO CLOSE THE GAP, TWO OF THESE THREE" (board-as-lead.txt), beside the
+   * headline. Sent only to whoever is served the headline (the lead, the admin who set it up) -
+   * never a participant, never on a performance plan. Built only from the open deals this reader
+   * is already served and the team's own aim.
+   */
+  toCloseTheGap?: {
+    gap: number
+    aim: string
+    says: string
+    deals: { id: string; name: string; owner: string | null; says: string }[]
+  } | null
+
+  /**
+   * REQUEST 115 (c): "HELP NOBODY MENTIONED" (board-as-lead.txt: "You see the help, not who said
+   * it."). Sent only to whoever runs the check-in - never who said it, and never what they said.
+   */
+  helpNobodyMentioned?: { lines: string[]; why: string } | null
+
+  /**
+   * REQUEST 115 (c): "OPEN ISSUES" (board-as-lead.txt). Nothing on record follows an issue through
+   * its stages, so this is always the one "not-known" sentence, to whoever runs the check-in, not
+   * on a performance plan.
+   */
+  openIssues?: { state: 'not-known'; why: string } | null
 
   /**
    * REQUEST 108 (d): "WHERE THIS IS HEADING" AND "RECORD THE DECISION" (board-as-lead.txt). Built
@@ -429,6 +483,15 @@ export interface AServedWorkRow {
   owner: string | null
   ownerParticipantId: string | null
   due: string | null
+  /** The day somebody last spoke about it in a check-in, "2026-09-30" - the day of the line it came from. Null for a row added on the board. */
+  lastSaidOn?: string | null
+  /**
+   * REQUEST 112 (a): ITS GROUP ON A SALES DEAL GRID ("likely", "possible", "next-quarter",
+   * "cooling", "cold", "won"), and why it is there, in full sentences from its own record. Sales
+   * deal rows only; absent on every other kind of work.
+   */
+  group?: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'won'
+  groupSays?: string
   fields: Record<string, string>
   /** "said": read from somebody's check-in, with `said` holding their words exactly. "lead": added by the lead. */
   from: 'said' | 'lead'
@@ -454,11 +517,35 @@ export interface AServedWorkRow {
   next?: string | null
   nextKnown?: 'proof' | 'said' | 'lead' | null
   nextSays?: string
+  /**
+   * DECISION 76, ITEM 3: a record with nobody's name on it that somebody says is theirs. Sent to the
+   * lead alone, with the claim already said as a full sentence; her yes or no is
+   * `boardApi.answerOwnerClaim`. Nobody else is ever sent a claim.
+   */
+  ownerClaim?: { participantId: string; who: string; says: string } | null
+  /** REQUEST 115 (b): what somebody said it is worth, where they said - and the sentence where nobody has. */
+  value?: string | null
+  valueSays?: string | null
+  /** Each day somebody spoke about it in a check-in, newest first - only lines this reader may read. */
+  contactHistory?: { on: string; how: 'with proof' | 'in their words'; says: string }[]
+  contactHistorySays?: string
+  /** The owner's own latest sentence that names it, word for word - null where they never named it, or this reader may not read their words. */
+  theirRead?: { who: string; words: string; says: string } | null
 }
 
 export type AServedWorkSection =
   | { section: string; holds: string; state: 'not-known'; why: string }
-  | { section: string; holds: string; state: 'none-yet' | 'filled'; stages?: string[]; rows: AServedWorkRow[] }
+  | {
+      section: string; holds: string; state: 'none-yet' | 'filled'; stages?: string[]; rows: AServedWorkRow[]
+      /**
+       * REQUEST 112 (a): EACH GROUP ON A SALES DEAL GRID, in the prototype's own order, only the
+       * groups that have a deal in them. `rowIds` are `AServedWorkRow.id`s in this section's own
+       * `rows`. Present only on the sales org's "Deal grid" section.
+       */
+      groups?: { group: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'won'; heading: string; reason: string; rowIds: string[] }[]
+      /** What the record cannot support, said plainly once under the grid - never claimed by a group. */
+      groupsNote?: string[]
+    }
 
 /** What the lead sends to add or change a record of the kind of work. */
 export interface WorkItemInput {
@@ -513,6 +600,18 @@ export const boardApi = {
   /** Lead only: remove a record. */
   deleteWorkItem: (groundId: string, itemId: string) =>
     apiClient.delete<{ deleted: true }>(`/grounds/${groundId}/board/work-items/${itemId}`).then((r) => r.data),
+
+  /** DECISION 76, ITEM 3: the lead's yes or no to a claim that a record with nobody's name on it is somebody's. Only a yes sets the owner. */
+  answerOwnerClaim: (groundId: string, itemId: string, yes: boolean) =>
+    apiClient
+      .post<{ record: { id: string; ownerParticipantId: string | null }; saidBack: string }>(`/grounds/${groundId}/board/work-items/${itemId}/claim`, { yes })
+      .then((r) => r.data),
+
+  /** REQUEST 112 (b): the lead's yes or no to a question they wrote down as still to decide. Goes in how we work; the question then closes. */
+  answerADecision: (groundId: string, itemId: string, yes: boolean) =>
+    apiClient
+      .post<{ answered: { id: string; yes: boolean }; saidBack: string }>(`/grounds/${groundId}/board/decisions/${itemId}/answer`, { yes })
+      .then((r) => r.data),
 
   /** Initiator only: set the availability question and the times. */
   upsertPoll: (groundId: string, dto: { question: string; options: string[] }) =>

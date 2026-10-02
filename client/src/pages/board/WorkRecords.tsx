@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { boardApi, KIND_OF_WORK_OPTIONS, type AServedWorkSection, type AServedWorkRow, type KindOfWork, type WorkItemInput } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
-import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack, Note } from '@/components/gw/ui'
+import { Section, Panel, RowList, Row, Tag, Button, Modal, FieldLabel, TextField, TextArea, Select, StageTrack, ProofMark, Stack, Note, SubHeading } from '@/components/gw/ui'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -803,17 +803,15 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 
   const heading = sectionHeading(kindOfWork, section)
   const isDealGrid = section.section === 'Deal grid'
-  /*
-   * BOARD REVIEW, SALES PIECE D, ITEM 2: "Grouped by what the proof says about closing this
-   * quarter." used to show above a flat list every time this was the sales org's deal grid, even
-   * when nothing on the grid actually carries a mark beyond "none" - every row added on the board
-   * by hand, with no proof and nothing said. A subtitle promising a grouping the grid is not
-   * actually showing is the same kind of over-claim the key below was fixed for (item 3), so this
-   * now reads only when some row's `mark` is something other than "none" or absent.
-   */
   const dealGridRows = section.state === 'filled' || section.state === 'none-yet' ? section.rows : []
-  const hasAGroup = dealGridRows.some((r) => r.mark && r.mark !== 'none')
-  const note = (isDealGrid && kindOfWork && hasAGroup ? DEAL_GRID_NOTE[kindOfWork] : undefined) ?? undefined
+  /*
+   * REQUEST 112 (a): "Grouped by what the proof says about closing this quarter." is the subtitle
+   * for the groups the engine now sends (`section.groups`) - it used to guess at whether a grouping
+   * was worth claiming from a row's proof mark, before any group existed to show. Now it reads only
+   * once the engine has actually put the rows into groups.
+   */
+  const dealGroups = section.state === 'filled' || section.state === 'none-yet' ? section.groups : undefined
+  const note = (isDealGrid && kindOfWork && dealGroups?.length ? DEAL_GRID_NOTE[kindOfWork] : undefined) ?? undefined
 
   if (section.state === 'not-known') {
     return (
@@ -877,16 +875,46 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
         <Panel pad={false}>
           <div role="table" aria-label={heading}>
             <SalesDealGridHead />
-            {section.rows.map((row) => (
-              <SalesDealGridRow
-                key={row.id}
-                row={row}
-                leadFirstName={leadFirstName}
-                readerIsLead={readerIsLead}
-                canEdit={canEdit}
-                onEdit={() => setEditingRow(row)}
-              />
-            ))}
+            {/*
+              REQUEST 112 (a): EACH DEAL IN ITS GROUP (board-as-lead.txt: "Likely by 30 September /
+              Every criterion proven or close, a date before the end, recent contact", then its
+              rows; then "Possible", "Next quarter", "Cooling", "Won"). `dealGroups` already carries
+              only the groups that have a deal in them, in the prototype's own order. A board whose
+              rows have not yet been grouped (an older server, or a kind of work this never applies
+              to) falls back to one flat list, as before.
+            */}
+            {dealGroups?.length
+              ? dealGroups.map((g) => (
+                <div key={g.group}>
+                  <div role="row">
+                    <SubHeading>{g.heading}</SubHeading>
+                    <Note tone="muted">{g.reason}</Note>
+                  </div>
+                  {g.rowIds.map((rowId) => {
+                    const row = section.rows.find((r) => r.id === rowId)
+                    return row ? (
+                      <SalesDealGridRow
+                        key={row.id}
+                        row={row}
+                        leadFirstName={leadFirstName}
+                        readerIsLead={readerIsLead}
+                        canEdit={canEdit}
+                        onEdit={() => setEditingRow(row)}
+                      />
+                    ) : null
+                  })}
+                </div>
+              ))
+              : section.rows.map((row) => (
+                <SalesDealGridRow
+                  key={row.id}
+                  row={row}
+                  leadFirstName={leadFirstName}
+                  readerIsLead={readerIsLead}
+                  canEdit={canEdit}
+                  onEdit={() => setEditingRow(row)}
+                />
+              ))}
           </div>
         </Panel>
       ) : (
@@ -912,6 +940,17 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   return (
     <Section heading={heading} note={note}>
       {isSalesDealGrid ? <Stack gap={12}><DealGridKey rows={dealGridRows} />{dealGridContent}</Stack> : dealGridContent}
+
+      {/*
+        REQUEST 112 (a): WHAT THE RECORD CANNOT SUPPORT, SAID PLAINLY ONCE UNDER THE GRID
+        ("Nothing on record says what a deal must show at each stage..."). Never claimed by a
+        group's own heading or reason - said once, here, so no group reads as more than it is.
+      */}
+      {isSalesDealGrid && !!section.groupsNote?.length && (
+        <Stack gap={4}>
+          {section.groupsNote.map((n, i) => <Note key={i} tone="muted">{n}</Note>)}
+        </Stack>
+      )}
 
       {/*
         BOARD REVIEW, SALES PIECE C, ITEM 3 (f): NOT HERE FOR THE SALES DEAL GRID. "The shape of

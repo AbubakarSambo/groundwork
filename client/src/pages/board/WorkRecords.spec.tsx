@@ -104,19 +104,26 @@ describe('the deal grid key only names marks a row actually carries', () => {
 })
 
 /**
- * BOARD REVIEW, SALES PIECE D, ITEM 2: "Grouped by what the proof says about closing this
- * quarter." is the deal grid's own subtitle, directly under its heading - but it used to show
- * even when every deal was added by hand, with nothing proven and nothing said, so there was
- * nothing the grid was actually grouping by. It now reads only when some row's mark is something
- * other than "none".
+ * BOARD REVIEW, SALES PIECE D, ITEM 2, UPDATED FOR REQUEST 112 (a): "Grouped by what the proof
+ * says about closing this quarter." is the deal grid's own subtitle, directly under its heading.
+ * It used to show whenever some row's mark was not "none" - a guess at whether a grouping was
+ * worth claiming, made before the engine ever grouped anything. Now the engine itself sends each
+ * deal's `group` and the section's own `groups`, so the subtitle reads only once those groups
+ * actually exist - changed here, with the reason above, rather than left pinned to the old guess.
  */
 describe('the deal grid only claims a grouping it actually shows', () => {
-  it('shows the subtitle when some row carries a mark', () => {
-    renderSections([dealGrid({ mark: 'proven' })])
+  it('shows the subtitle once the engine has put rows into groups', () => {
+    renderSections([{
+      ...dealGrid({ mark: 'proven', group: 'likely', groupSays: 'Proof shows it.' }),
+      groups: [{ group: 'likely', heading: 'Likely by 30 September', reason: 'Each of these has proof.', rowIds: ['row-1'] }],
+      groupsNote: ['Nothing on record says what a deal must show at each stage, so no group here says whether a criterion is met.'],
+    } as any])
     expect(screen.getByText('Grouped by what the proof says about closing this quarter.')).toBeTruthy()
+    expect(screen.getByText('Likely by 30 September')).toBeTruthy()
+    expect(screen.getByText('Each of these has proof.')).toBeTruthy()
   })
 
-  it('leaves the subtitle out when every row is mark "none"', () => {
+  it('leaves the subtitle out when the engine has sent no groups', () => {
     renderSections([dealGrid({ from: 'lead', said: undefined, saidBy: null, mark: 'none' })])
     expect(screen.queryByText('Grouped by what the proof says about closing this quarter.')).toBeNull()
   })
