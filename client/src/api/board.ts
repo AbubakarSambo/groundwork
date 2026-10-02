@@ -286,7 +286,14 @@ export type BoardPresent = {
      * true (board review, third pass, item 1).
      */
     nothingCheckable?: boolean
+    /** Engine merge, 2 October (`each-repeated-sentence-said-once.ts`): true once this row's
+        `note` was the same as another row's and has been nulled out here, its words moved once
+        into `contributionSaysOnce`, above every card. */
+    saidOnceAbove?: boolean
   }[]
+  /** Request 117 (8): a sentence repeated across several `contribution` rows, said once here
+      instead of under each row - see `contribution[].saidOnceAbove`. */
+  contributionSaysOnce?: string | null
   coverage?: {
     scope: string
     reads: {

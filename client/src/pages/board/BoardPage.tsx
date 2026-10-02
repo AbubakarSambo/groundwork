@@ -2888,12 +2888,23 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.contribution && b.contribution && (
           <Section heading="Contribution against role" note="Measured against each person’s own role.">
             <Panel>
-              <div className="gwui-fs-15 gwui-ink-sub gwui-pt-6 gwui-pr-0 gwui-pb-2 gwui-pl-0">
-                {/* Board review, 30 September, item 7: "Is the role clear, and what does the record
-                    actually hold..." opened as a question and trailed off into a noun phrase - not
-                    a question, and not a plain sentence either. */}
-                This shows whether each person's role is clear, and what the record actually holds for them, read in their own function's terms.
-              </div>
+              <Stack gap={10}>
+                <div className="gwui-fs-15 gwui-ink-sub gwui-pt-6 gwui-pr-0 gwui-pb-2 gwui-pl-0">
+                  {/* Board review, 30 September, item 7: "Is the role clear, and what does the record
+                      actually hold..." opened as a question and trailed off into a noun phrase - not
+                      a question, and not a plain sentence either. */}
+                  This shows whether each person's role is clear, and what the record actually holds for them, read in their own function's terms.
+                </div>
+
+                {/* THE SAME NOTE ACROSS SEVERAL CARDS IS SAID ONCE, HERE, UNDER THE HEADING -
+                    not per card. The engine moves a repeated "No position shown..." note into
+                    `contributionSaysOnce` and nulls it out of the rows it came from (`saidOnceAbove`).
+                    Drawn in both branches below, exactly as the server sends it: its words may name
+                    this reader by their own name (request 118 asks the engine not to), which is left
+                    as sent rather than rewritten on screen. */}
+                {b.contributionSaysOnce && <Callout tone="info">{b.contributionSaysOnce}</Callout>}
+              </Stack>
+
               {/*
                 THE SAME PARAGRAPH THREE TIMES IS A MAIL MERGE. When nobody's role is defined the note
                 is one fact about the check-in, said once; and a party with no name and nothing on
