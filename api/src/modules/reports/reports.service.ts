@@ -4,6 +4,7 @@ import { theJudgementWithItsConversationPoints } from './the-judgement-and-a-goa
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { whoIsInTheRound } from './how-many-have-answered';
+import { whoIsNotLetInYet, theWaitingToBeLetInLine } from '../grounds/who-an-admin-did-not-let-in';
 import { whoOnACheckInIsAway } from '../suites/who-is-away';
 import { AsyncLocalStorage } from 'async_hooks';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
@@ -2297,8 +2298,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
     );
     /* Somebody away, who has not answered, is not in the count (week 23). */
     const awayThisRound = await whoOnACheckInIsAway(this.prisma, groundId);
+    /* Nobody an admin has not let in yet is in the count (decision 77). */
+    const notLetInThisRound = await whoIsNotLetInYet(this.prisma, parties as any[]);
     const inTheRound = whoIsInTheRound(
-      (parties as any[]).map((p: any) => ({ ...p, awayUntil: awayThisRound.get(p.id) ?? null, checkIns: answeredThisRound.has(p.id) ? [{ status: 'COMPLETED', sessionNumber: roundNow }] : [] })),
+      (parties as any[]).map((p: any) => ({ ...p, notLetIn: notLetInThisRound.has(p.id), awayUntil: awayThisRound.get(p.id) ?? null, checkIns: answeredThisRound.has(p.id) ? [{ status: 'COMPLETED', sessionNumber: roundNow }] : [] })),
       roundNow,
       (ground as any).scenario,
     );
@@ -3210,8 +3213,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * reads (whoIsInTheRound): everybody on the check-in, and a lead who only asks only where the
      * round waits on them. Who the round WAITS on before it is written stays whoAnswered, above.
      */
+    const notLetInHere = new Set(whoAnswered.notLetInIds ?? []);
     const theRound = howManyInTheRoundAnswered(
-      (ground.participants as any[]).map((p: any) => ({ ...p, awayUntil: whoAnswered.awayUntil?.[p.id] ?? null, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
+      (ground.participants as any[]).map((p: any) => ({ ...p, notLetIn: notLetInHere.has(p.id), awayUntil: whoAnswered.awayUntil?.[p.id] ?? null, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
       sessionNumber,
       (ground as any).scenario,
     );
@@ -3416,7 +3420,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      */
     const awayNow = await whoOnACheckInIsAway(this.prisma, groundId);
     const counting = whoIsInTheRound(
-      ground.participants.map((p: any) => ({ ...p, awayUntil: awayNow.get(p.id) ?? null, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
+      ground.participants.map((p: any) => ({ ...p, notLetIn: notLetInHere.has(p.id), awayUntil: awayNow.get(p.id) ?? null, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
       sessionNumber,
       (ground as any).scenario,
     )
@@ -3438,6 +3442,23 @@ Close the report by framing - neutrally, without recommending one - the choice n
         answered: answeredIds.has(p.id),
         hasShownTheirs: shown.has(p.id),
       }));
+
+    /*
+     * WHO IS WAITING TO BE LET IN, SAID APART FROM THE COUNT (decision 77). Somebody an admin has not let
+     * in yet is not in `counting` or in "N of M"; they are said here instead, to whoever may read the
+     * roster: the lead and an admin read each by name, or as a count where no name is known. A person
+     * who checks in reads it only about somebody they may already read by name, and never that an
+     * admin said no.
+     */
+    const waitingToBeLetIn = theWaitingToBeLetInLine(
+      [...(await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId)).entries()]
+        .filter(([id]) => !answeredIds.has(id))
+        .map(([id, d]) => {
+          const label = labels.get(id);
+          return { name: (label ? nameByLabel.get(label) : undefined) ?? null, declined: d.declined };
+        })
+        .filter((w) => viewerIsLead || (!!w.name && !w.declined)),
+    );
 
     /*
      * AND WHETHER THIS IS STILL CORRECTABLE, said before somebody presses the button rather than
@@ -3669,6 +3690,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       correctable: canCorrect.allowed,
       whyNotCorrectable: canCorrect.allowed ? null : canCorrect.saying,
       counting,
+      /* "Faraji Odhiambo is waiting to be let in.", or null. Not in `counting` (decision 77). */
+      waitingToBeLetIn,
       everybodyHasShownTheirs: counting.every((c) => c.hasShownTheirs),
       /*
        * WHETHER THE SHARED REPORT HAS GONE OUT, AND WHETHER THIS READER HAS SHOWN THEIRS.
@@ -6114,15 +6137,10 @@ happened, and what is in the way.`;
      * admin had not let in, was listed with "has not answered this session", which asks the lead to
      * chase somebody who cannot check in. The board says what happened to him instead.
      */
-    const notInYet = new Set(
-      ((await (this.prisma.user?.findMany?.({
-        where: { id: { in: (ground.participants ?? []).map((p: any) => p.userId).filter(Boolean) }, awaitingOrgApproval: true } as any,
-        select: { id: true },
-      }) ?? Promise.resolve([])).catch(() => [])) as any[]).map((u) => u.id),
-    );
+    const notInYet = await whoIsNotLetInYet(this.prisma, (ground.participants ?? []) as any[]);
     const reads = (ground.participants ?? [])
       .filter((p: any) => !p.managingOnly)
-      .filter((p: any) => !(p.userId && notInYet.has(p.userId)))
+      .filter((p: any) => !notInYet.has(p.id))
       /* "What to ask each person" is about the others: it listed Rukia, who runs the sales board, to Rukia
          herself (request 111 e). The reader's own row is the one the resolver says as "you". */
       .filter((p: any) => (nameOf(p.id, null) ?? '').trim().toLowerCase() !== 'you')

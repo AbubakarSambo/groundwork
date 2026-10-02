@@ -13,6 +13,7 @@ import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words'
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
+import { isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from './who-an-admin-did-not-let-in';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException, Optional } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
@@ -1295,7 +1296,9 @@ export class GroundsService {
          * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
          * user field comes through.
          */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+        /* `awaitingOrgApproval`: whether an admin has let them in yet, which every count reads (decision 77). The
+           same yes or no the check-in's own read serves (SAFE_PARTICIPANT_SELECT). */
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
         checkIns: {
           /** `isSetup` so a setup conversation can be kept out of every session count. GW-EXP-6. */
           /**
@@ -1374,7 +1377,9 @@ export class GroundsService {
          * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
          * user field comes through.
          */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+        /* `awaitingOrgApproval`: whether an admin has let them in yet, which every count reads (decision 77). The
+           same yes or no the check-in's own read serves (SAFE_PARTICIPANT_SELECT). */
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } } } },
             checkIns: {
               /** Must match the sibling query above: both feed the same list. GW-EXP-6. */
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
@@ -1395,6 +1400,12 @@ export class GroundsService {
 
     /* Who is away today, for every check-in in the list at once (week 23). */
     const leaveOnTheList = await leaveOfThePeopleOn(this.prisma as any, [...orgGrounds, ...participantGrounds].map((g: any) => g.id));
+    /* Who an admin has not let in yet on each check-in, with who was declined, read once for the list (decision 77). */
+    const notLetInOnTheList = new Map<string, Map<string, { declined: boolean }>>();
+    for (const g of [...orgGrounds, ...participantGrounds] as any[]) {
+      if (!(g.participants ?? []).some(isNotLetInYet)) continue;
+      notLetInOnTheList.set(g.id, await whoIsNotLetInYet(this.prisma, g.participants ?? [], g.organizationId).catch(() => new Map()));
+    }
     return [...orgGrounds, ...participantGrounds]
       .map(g => {
         // Only set when the ground belongs to a different organisation than the one
@@ -1589,6 +1600,20 @@ export class GroundsService {
           ...(runsIt ? { joinToken } : {}),
           report: fullReport ? { releasedAt: fullReport.releasedAt ?? null, releasedSessions: releasedSessionsOf(fullReport as any) ?? [] } : null,
           alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName,
+          /*
+           * WHO IS WAITING TO BE LET IN, APART FROM "N OF M" (decision 77). Whoever runs it reads every such
+           * person; somebody who checks in reads only a person already on their roster, and never that an
+           * admin said no.
+           */
+          waitingToBeLetIn: theWaitingToBeLetInLine(
+            [...(notLetInOnTheList.get(g.id) ?? new Map<string, { declined: boolean }>()).entries()]
+              .map(([pid, d]) => {
+                const p = ((allParticipants ?? []) as any[]).find((x) => x.id === pid);
+                return { p, declined: d.declined, name: [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim() || null };
+              })
+              .filter((w) => !!w.p && !w.p.managingOnly && (runsIt || (shown.has(w.p.id) && !!w.name && !w.declined)))
+              .map(({ name, declined }) => ({ name, declined })),
+          ),
           /* Through the report's own door, for every reader, so no label is ever served (U.5 re-review). */
           ...(() => {
             if (!mayReadTheReport || (!latestFinding && !latestSummary)) return { latestFinding: null, latestSummary: null };
@@ -1799,7 +1824,8 @@ export class GroundsService {
      */
     const sessionClock = theSessionClock(
       (((ground as any).checkIns ?? []) as any[]).filter((c) => !c.isSetup),
-      new Set((((ground as any).participants ?? []) as any[]).filter((p) => !p.managingOnly).map((p) => p.id)),
+      /* Nobody an admin has not let in yet holds the clock back (decision 77). */
+      new Set((((ground as any).participants ?? []) as any[]).filter((p) => !p.managingOnly && !isNotLetInYet(p)).map((p) => p.id)),
       totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
     );
 
@@ -2254,6 +2280,8 @@ export class GroundsService {
       return {
         ...p,
         notLetIn: !!notLetInInfo,
+        /* Not let in yet, still waiting or declined: not counted in "N of M" nor waited on (decision 77). */
+        notLetInYet: isNotLetInYet(p),
         notLetInBy: notLetInInfo && canReadWhoDecided ? (decidersById.get(notLetInInfo.decidedByUserId ?? '') ?? null) : null,
         notLetInAt: notLetInInfo && canReadWhoDecided ? (notLetInInfo.decidedAt ?? null) : null,
         email: hideContact && !isSelf && !viewerIsInitiator ? null : p.email,
@@ -2685,6 +2713,21 @@ export class GroundsService {
       /* The header's count, from the board's own clock: "Session 1 of 12.", and the line for a later session
          somebody has started. Every reader gets the same sentences (request 101 f). */
       sessionClock,
+      /*
+       * WHO IS WAITING TO BE LET IN, APART FROM THE COUNT (decision 77): "Faraji Odhiambo is waiting to be
+       * let in." To whoever runs it and an admin, every such person, by name or as a count where no name is
+       * known. To a person who checks in, only somebody already on the roster they read, and never that an
+       * admin said no. Nobody where people see only themselves.
+       */
+      waitingToBeLetIn: theWaitingToBeLetInLine(
+        ((ground.participants ?? []) as any[])
+          .filter((p) => !p.managingOnly && isNotLetInYet(p))
+          .map((p) => ({
+            name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() || null,
+            declined: !!(p.userId && notLetInByUser.has(p.userId)),
+          }))
+          .filter((w) => canReadWhoDecided || (!hidePeers && !!w.name && !w.declined)),
+      ),
       /* The lead and the organisation's admins read the brief they wrote. A participant reads the
          situation and nothing that tells the product how to interview them. See
          what-a-participant-is-told-about-this. Goals are on the payload already, under objectives. */
@@ -7543,7 +7586,17 @@ export class GroundsService {
           },
         ],
       },
-      select: { id: true },
+      select: { id: true, userId: true },
+    }).then(async (rows: any[]) => {
+      /* Nobody an admin has not let in yet, unless they answered anyway (decision 77): the session
+         closes once everybody let in has answered. Same rule as recordRoundCompletion. */
+      const notLetIn = await whoIsNotLetInYet(this.prisma, rows ?? []);
+      if (!notLetIn.size) return rows;
+      const spoke = new Set(((await this.prisma.checkIn.findMany({
+        where: { sessionNumber, status: { in: AN_ANSWER }, participantId: { in: [...notLetIn.keys()] } },
+        select: { participantId: true },
+      }).catch(() => [])) ?? []).map((c: any) => c.participantId));
+      return rows.filter((p) => !notLetIn.has(p.id) || spoke.has(p.id));
     });
     if (active.length < 2) return false;
 

@@ -27,7 +27,7 @@
 const THE_FRAME = [
   'groundId', 'renders', 'mode', 'family', 'peopleWorkTogether', 'sections', 'title', 'scenario', 'kindOfWork',
   'groundStatus', 'endState', 'coverageVariant', 'startingState', 'myParticipantId', 'canEditFrame', 'readOnlyNote',
-  'lastChangedAt', 'participants', 'aTeamReportComes', 'whoIsAway', 'phaseSpine', 'whyYouOnlySeeYourself', 'poll',
+  'lastChangedAt', 'participants', 'aTeamReportComes', 'whoIsAway', 'waitingToBeLetIn', 'phaseSpine', 'whyYouOnlySeeYourself', 'poll',
   'withheldUntilYouCheckIn', 'saying', 'reason', 'howItIsGoing',
 ] as const;
 

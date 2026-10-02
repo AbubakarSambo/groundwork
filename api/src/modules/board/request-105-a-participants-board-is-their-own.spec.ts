@@ -43,7 +43,7 @@ const allButThePeople = (b: any) => JSON.stringify({ ...b, participants: undefin
 const A_PARTICIPANTS_FIELDS = new Set([
   'groundId', 'renders', 'mode', 'family', 'peopleWorkTogether', 'sections', 'title', 'scenario', 'kindOfWork', 'groundStatus',
   'endState', 'coverageVariant', 'startingState', 'myParticipantId', 'canEditFrame', 'readOnlyNote', 'lastChangedAt', 'participants',
-  'aTeamReportComes', 'whoIsAway', 'phaseSpine', 'whyYouOnlySeeYourself', 'poll', 'howItIsGoing', 'theJudgement', 'theTable', 'overTime',
+  'aTeamReportComes', 'whoIsAway', 'waitingToBeLetIn', 'phaseSpine', 'whyYouOnlySeeYourself', 'poll', 'howItIsGoing', 'theJudgement', 'theTable', 'overTime',
   'risks', 'workPlan', 'timeline', 'personHistory', 'blockerCheck', 'evidenceIndex', 'obligations', 'whoWaitedOnWhom', 'contradictions',
   'whoOwnsWhat', 'contribution', 'patterns', 'workRecords', 'objectives', 'yourShare', 'blockers', 'dependencies', 'stillUnanswered',
   'coverage', 'teamPicture', 'byArea', 'reportedAgainstCriteria',

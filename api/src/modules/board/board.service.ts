@@ -27,7 +27,7 @@ import { isTheTeamPictureNowShared } from '../reports/each-sessions-picture-is-r
 import { whatToDoAboutALeadAction, whatToDoAboutADecision, isAYesOrNoQuestion, theAnswerAsALine } from './what-needs-you-and-what-to-do';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
-import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
+import { whoAnAdminDidNotLetIn, isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from '../grounds/who-an-admin-did-not-let-in';
 import { theSharedReadWithoutTheLeadsJudgement } from './what-the-room-says-is-not-a-reading-of-the-lead';
 import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 import { withoutWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals } from './an-untold-goal-is-not-a-board-objective';
@@ -565,7 +565,8 @@ export class BoardService {
        `which-round-is-open.ts` had another, and the two disagreed: this one took the lowest
        unfinished session, which is next week's row written ahead of time, so every tile counted a
        round with nothing in it. The rule now lives in one function and both callers ask it. */
-    const givers = new Set(ground.participants.filter((p: any) => !p.managingOnly).map((p: any) => p.id));
+    /* Nobody an admin has not let in yet holds the round open (decision 77). */
+    const givers = new Set(ground.participants.filter((p: any) => !p.managingOnly && !isNotLetInYet(p)).map((p: any) => p.id));
     const mine = checkIns.filter((c) => givers.has(c.participantId));
     const openRound = mine.length ? whichRoundIsOpen(mine as any) : maxSession;
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
@@ -871,6 +872,19 @@ export class BoardService {
        * `aTeamReportComes` (grounds.service): a yes or no, never how many.
        */
       aTeamReportComes: ground.participants.filter((p) => !p.managingOnly).length > 1,
+      /*
+       * WHO IS WAITING TO BE LET IN, APART FROM THE COUNT (decision 77). Not in "N of M" and not waited on;
+       * said here instead. Whoever runs it, the admin who set it up and an admin read each by name ("Faraji
+       * Odhiambo is waiting to be let in."), or as a count where no name is known. A person who checks in
+       * reads it only about somebody they may already read by name, and never that an admin said no.
+       */
+      waitingToBeLetIn: theWaitingToBeLetInLine(
+        [...(await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId)).entries()]
+          .filter(([pid]) => !checkIns.some((c) => c.participantId === pid && c.sessionNumber === openRound && (c.status === CheckInStatus.COMPLETED || c.status === CheckInStatus.DECLINED)))
+          .map(([pid, d]) => ({ pid, name: hiddenFromThisReader(pid) ? null : nameOf(pid), declined: d.declined }))
+          .filter((w) => isInitiator || isSetupAdmin || adminHere || (!!w.name && !w.declined && !hiddenFromThisReader(w.pid)))
+          .map(({ name, declined }) => ({ name, declined })),
+      ),
       /* WHO IS AWAY AND NOT WAITED ON THIS ROUND (week 23). Dates only. The lead reads it for each person;
          a colleague only for a person the board already names to them; a person reads their own. */
       whoIsAway: theAwayLinesFor(
@@ -1324,7 +1338,10 @@ export class BoardService {
        * page of red on the morning the round begins, about a round nobody was late for. A round
        * nobody has touched is next week's.
        */
-      const openRound = whichRoundIsOpen(checkIns as any);
+      /* Not held back by somebody an admin has not let in yet (decision 77): the same givers as the header. */
+      const heldAtTheDoor = new Set(ground.participants.filter((p: any) => isNotLetInYet(p)).map((p: any) => p.id));
+      const roundRows = checkIns.filter((c) => !heldAtTheDoor.has(c.participantId) || c.status === CheckInStatus.COMPLETED || c.status === CheckInStatus.DECLINED);
+      const openRound = whichRoundIsOpen((roundRows.length ? roundRows : checkIns) as any);
       /*
        * WHAT THIS ROUND PUT ON THE RECORD, so the board can say whether it holds anything to count.
        * The record, not the rating: the lead may read what was written down, and never how anybody's
@@ -2507,7 +2524,8 @@ export class BoardService {
            reviewed on an evaluation check-in is never told how many others answered or are waiting (decision 17). */
         if (kind && readerRunsIt) {
           const answeredBy = new Set((checkIns as any[]).filter((c) => String(c.status).toUpperCase() === 'COMPLETED').map((c) => c.participantId));
-          const people = (ground.participants as any[]).map((p) => ({
+          /* Somebody an admin has not let in yet is not one of the cohort's count (decision 77). */
+          const people = (ground.participants as any[]).filter((p) => !isNotLetInYet(p) || answeredBy.has(p.id)).map((p) => ({
             id: p.id,
             name: p.id === me?.id ? 'You' : (nameOf(p.id) ?? aColleague(p.id)),
             managingOnly: !!p.managingOnly,
