@@ -538,7 +538,7 @@ function FoldEverythingElseUnless({ alreadyFolded, children }: { alreadyFolded: 
  * null when this reader has no report of their own yet), and "Read your own report" is drawn only
  * then, as the prototype shows it only once there is one to read.
  */
-function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords, myParticipantId, leadFirstName, yourShare }: {
+function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords, myParticipantId, leadFirstName, yourShare, yourShareSays }: {
   groundId: string
   teamPicture: BoardPresent['teamPicture']
   kindOfWork: string | null
@@ -546,6 +546,8 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
   myParticipantId: string | null
   leadFirstName: string | null
   yourShare: BoardPresent['yourShare']
+  /** REQUEST 110 (a): "There is no number of yours on this board yet, so there is no share to show." - sent only when `yourShare` is `[]`. */
+  yourShareSays?: string | null
 }) {
   const shared = teamPicture?.shared === true
   return (
@@ -619,6 +621,16 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
               </div>
             ))}
           </Stack>
+        </Section>
+      )}
+      {/*
+        REQUEST 110 (a): "YOUR SHARE" IS NOW ALWAYS SENT TO A PERSON WHO CHECKS IN, AS A LIST -
+        where they have no number of their own, `yourShare` is `[]` and `yourShareSays` says so in
+        a plain sentence, rather than the whole section just never appearing.
+      */}
+      {!yourShare?.length && yourShareSays && (
+        <Section heading="Your share">
+          <Note tone="muted">{yourShareSays}</Note>
         </Section>
       )}
     </>
@@ -1164,6 +1176,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             myParticipantId={b.myParticipantId}
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
             yourShare={b.yourShare}
+            yourShareSays={(b as any).yourShareSays ?? null}
           />
         )}
 
