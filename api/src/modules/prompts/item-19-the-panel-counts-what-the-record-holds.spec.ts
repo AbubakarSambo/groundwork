@@ -183,3 +183,26 @@ describe('the organisation list\'s people', () => {
     expect(served.map((o) => [o.name, o.userCount])).toEqual([['Ouma Agencies', 2], ['Baridi Foods', 3]]);
   });
 });
+
+describe('the Feedback tab', () => {
+  it('counts every customer\'s answer, not the latest fifty, and not our own', async () => {
+    /* 60 customers' answers, 45 of them fair, and 4 from our own organisation. */
+    const answers = [
+      ...Array.from({ length: 60 }, (_, i) => ({ id: `c${i}`, feltFair: i < 45, note: null, createdAt: new Date(2026, 8, 1 + (i % 28)), ours: false, ground: { label: 'Sales team, Q3', organization: { slug: 'baridi' } } })),
+      ...Array.from({ length: 4 }, (_, i) => ({ id: `o${i}`, feltFair: false, note: null, createdAt: new Date(2026, 9, 1), ours: true, ground: { label: 'Our own', organization: { slug: 'groundwork' } } })),
+    ];
+    const ofACustomer = (where: any) => (where?.ground?.organization?.isInternal === false ? answers.filter((a) => !a.ours) : answers);
+    const prisma: any = {
+      outcomeFeedback: {
+        count: jest.fn(async ({ where }: any) => ofACustomer(where).filter((a) => (where.feltFair === undefined ? true : a.feltFair === where.feltFair)).length),
+        findMany: jest.fn(async ({ where, take }: any) => ofACustomer(where).slice(0, take)),
+      },
+    };
+    const served = await new PromptsService(prisma, {} as any).feedbackSummary();
+    /* It served a total of 50 and a rate over those fifty alone, our own answers among them. */
+    expect(served.total).toBe(60);
+    expect(served.fairRate).toBe(75);
+    expect(served.recent).toHaveLength(50);
+    expect(served.recent.some((r) => r.orgSlug === 'groundwork')).toBe(false);
+  });
+});

@@ -648,7 +648,17 @@ Rules: No verdicts. No judgements of any person. No em dashes. Straight quotes. 
   }
 
   async feedbackSummary() {
+    /* EVERY ANSWER, AND ONLY CUSTOMERS' (item 19). `total` and `fairRate` were read off the fifty most
+       recent answers, so past fifty the total stopped at 50 and the rate covered only the latest; and
+       our own organisations' answers were counted. Both are counted over all customers' answers now;
+       the list still shows the latest fifty. */
+    const ofACustomer = { ground: A_REAL_CHECK_IN };
+    const [total, fairCount] = await Promise.all([
+      this.prisma.outcomeFeedback.count({ where: ofACustomer }),
+      this.prisma.outcomeFeedback.count({ where: { ...ofACustomer, feltFair: true } }),
+    ]);
     const feedback = await this.prisma.outcomeFeedback.findMany({
+      where: ofACustomer,
       orderBy: { createdAt: 'desc' },
       take: 50,
       select: {
@@ -659,9 +669,6 @@ Rules: No verdicts. No judgements of any person. No em dashes. Straight quotes. 
         ground: { select: { label: true, organization: { select: { slug: true } } } },
       },
     });
-
-    const total = feedback.length;
-    const fairCount = feedback.filter(f => f.feltFair).length;
 
     return {
       total,
