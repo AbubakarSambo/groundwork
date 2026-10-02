@@ -823,7 +823,11 @@ export class BoardService {
        * was entirely about them. See what-the-record-shows-over-time.
        */
       /* Without its patterns while they are not served, or the lines built from them. See patterns-are-served. */
-      overTime: isInitiator ? overTimeAsServed((ground as any).report?.overTime ?? null) : null,
+      /* Counted to the sessions somebody has finished, as the work plan counts them, so one commitment is open for the
+         same number of sessions in both (item 18). */
+      overTime: isInitiator ? overTimeAsServed((ground as any).report?.overTime ?? null, {
+        sessionsSoFar: Math.max(0, ...checkIns.filter((c: any) => !c.isSetup && c.status === CheckInStatus.COMPLETED).map((c: any) => c.sessionNumber ?? 0)),
+      }) : null,
       myParticipantId: me?.id ?? null,
       // Whether the caller may set the frame (targets, the poll question). The
       // board is otherwise read-only, so the client should not offer controls it

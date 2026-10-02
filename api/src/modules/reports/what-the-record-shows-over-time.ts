@@ -825,11 +825,21 @@ export function theThingIsNamed(line: unknown): boolean {
   return typeof line === 'string' && !!line.trim() && !A_LINE_THAT_LOST_ITS_SUBJECT.test(line);
 }
 
-export function overTimeAsServed(it: WhatTheRecordShowsOverTime | null | undefined): WhatTheRecordShowsOverTime | null {
+export function overTimeAsServed(
+  it: WhatTheRecordShowsOverTime | null | undefined,
+  /*
+   * THE SESSIONS SO FAR, FROM THE RECORD AS IT IS NOW, where the caller has it (item 18). The stored count is the
+   * one the report was written with, and on "Atlas delivery" it was 3 while two sessions had been finished, so
+   * Tunde read "It has been open for 2 sessions" here and "It has been open for 1 session" in the work plan, about
+   * the same commitment. The board passes its own count, the one the work plan uses.
+   */
+  opts: { sessionsSoFar?: number | null } = {},
+): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
+  const sessionsSoFar = opts.sessionsSoFar && opts.sessionsSoFar > 0 ? opts.sessionsSoFar : (it.sessions ?? 0);
   /* The sentence is rebuilt from the row, so a report stored before it was rewritten reads it too. */
   const commitments = (it.commitments ?? []).map((c) => (c && typeof c.what === 'string' && typeof c.who === 'string' && typeof c.theySaidIt === 'boolean'
-    ? { ...c, say: aCommitmentSaid({ ...c, restatedIn: c.restatedIn ?? [] }, it.sessions ?? 0) }
+    ? { ...c, say: aCommitmentSaid({ ...c, restatedIn: c.restatedIn ?? [] }, sessionsSoFar) }
     : c));
   /*
    * AND WHAT IS STILL OPEN IS BUILT FROM THE SAME ROWS, as it was when the report was written: what
@@ -842,7 +852,8 @@ export function overTimeAsServed(it: WhatTheRecordShowsOverTime | null | undefin
     : (it.stillOpen ?? []);
   return {
     ...it,
-    inSessions: inSessions(it.sessions),
+    sessions: sessionsSoFar,
+    inSessions: inSessions(sessionsSoFar),
     commitments,
     stillOpen: (rebuilt as unknown[]).filter(theThingIsNamed) as string[],
     patterns: [],

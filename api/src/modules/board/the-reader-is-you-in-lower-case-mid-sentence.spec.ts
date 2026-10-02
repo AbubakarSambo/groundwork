@@ -97,7 +97,7 @@ function boardFor(requestingUserId: string, viewerRole = 'MEMBER', opts: { mayWo
     membershipRequest: model('membershipRequest', {
       findMany: jest.fn(async () => [{ userId: 'u-faraji', status: 'DECLINED', decidedByUserId: 'u-juma', decidedAt: new Date('2026-09-29T10:00:00Z') }]),
     }),
-    checkIn: model('checkIn', { findMany: jest.fn(async () => JSON.parse(JSON.stringify(CHECK_INS))) }),
+    checkIn: model('checkIn', { findMany: jest.fn(async () => JSON.parse(JSON.stringify(theGround.checkIns ?? CHECK_INS))) }),
     groundDocument: model('groundDocument', {
       findMany: jest.fn(async () => [{ createdAt: new Date('2026-09-21T09:00:00Z') }]),
     }),
@@ -134,7 +134,9 @@ describe('the record over time, as the lead reads it on the board', () => {
   it('says "in 1 session" and "in 3 sessions" for the heading', async () => {
     const one = await boardFor('u-wairimu', 'MEMBER', {}, withOverTime('the initiator')).board;
     expect(one.overTime.inSessions).toBe('in 1 session');
-    const three = await boardFor('u-wairimu', 'MEMBER', {}, { ...withOverTime('the initiator'), report: { ...GROUND.report, overTime: { ...STORED('the initiator'), sessions: 3 } } }).board;
+    /* Three sessions finished on the record, not only a stored 3: the board counts what the record holds (item 18). */
+    const throughThree = [...CHECK_INS, ...[2, 3].map((n) => ({ ...CHECK_INS[1], id: `c-${n}`, sessionNumber: n }))];
+    const three = await boardFor('u-wairimu', 'MEMBER', {}, { ...withOverTime('the initiator'), checkIns: throughThree, report: { ...GROUND.report, overTime: { ...STORED('the initiator'), sessions: 3 } } }).board;
     expect(three.overTime.inSessions).toBe('in 3 sessions');
   });
 });
