@@ -104,7 +104,8 @@ export class ReportsListener {
       const g = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { organizationId: true, status: true } });
       if (g) {
         await this.reports.release(event.groundId, g.organizationId);
-        /* release() returns early once releasedAt is stamped, so a later round's mails go from here. Once per person per round. */
+        /* release() now releases this session's picture on its own and tells people itself (decision 76, item 4);
+           this stays as the backstop for anybody it missed. Once per person per round, so nobody is told twice. */
         await this.reports.tellThemTheReportIsReady(event.groundId, sessionNumber).catch((err: any) =>
           this.logger.warn(`Telling the round on ${event.groundId} failed: ${err?.message}`),
         );

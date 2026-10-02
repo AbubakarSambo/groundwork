@@ -191,6 +191,7 @@ import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-co
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
 import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
+import { asTheReleasedSessionHadIt, isThisSessionReleased, releasedSessionsOf, theLatestReleasedSession, theSessionTheReportHolds, thisSessionIsNotSharedYet, whatReleasingThisSessionDoes, withThisSessionReleased, youAreReadingAnEarlierSession } from './each-sessions-picture-is-released-on-its-own';
 import { aRoleInTheirOwnWords, withoutTheLeadsDescriptionOfAnyone, deeplyWithoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
@@ -2854,7 +2855,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             user: { select: { firstName: true, lastName: true } },
           },
         },
-        report: { select: { releasedAt: true } },
+        report: { select: { releasedAt: true, releasedSessions: true } },
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -2870,6 +2871,15 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const readableParticipantIds = released || viewerIsLead
       ? ground.participants.map((p) => p.id)
       : me ? [me.id] : [];
+    /*
+     * A COLLEAGUE'S LINES ONLY FROM A SESSION THAT HAS BEEN RELEASED (decision 76, item 4). Once the
+     * report had been released for session 1, a participant read every colleague's line from every
+     * later session here too. Their own lines are theirs, from every session.
+     */
+    const releasedSessions = viewerIsLead ? null : releasedSessionsOf(ground.report as any);
+    const whoseLines = releasedSessions === null || !me
+      ? { participantId: { in: readableParticipantIds } }
+      : { OR: [{ participantId: me.id }, { participantId: { in: readableParticipantIds.filter((id) => id !== me.id) }, checkIn: { sessionNumber: { in: releasedSessions } } }] };
 
     const labels = labelsForParties(ground.participants as any);
     /*
@@ -2902,7 +2912,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         select: { successLooksLike: true, version: true, conditions: true },
       }),
       this.prisma.recordEntry.findMany({
-        where: { disputedAt: null, participantId: { in: readableParticipantIds } },
+        where: { disputedAt: null, ...whoseLines } as any,
         orderBy: { createdAt: 'asc' },
         select: { type: true, text: true, participantId: true },
       }),
@@ -2950,7 +2960,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             user: { select: { firstName: true, lastName: true } },
           },
         },
-        report: { select: { agreements: true, divergences: true, centralQuestion: true, releasedAt: true, findings: true, direction: true, engagement: true } },
+        report: { select: { agreements: true, divergences: true, centralQuestion: true, releasedAt: true, releasedSessions: true, findings: true, direction: true, engagement: true } },
         brief: true,
         /* A one-time listening session is drafted differently from a run of work. See PictureInput.oneTime. */
         cadence: true, scenario: true, id: true,
@@ -2981,7 +2991,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
        them. NEVER every admin of the organisation, the same access rule decision 58 gave patterns.
        See patterns/who-reads-a-pattern, runsItForAPattern. */
     const evaluationWordsRunsIt = runsItForAPattern(ground as any, requestingUserId);
-    const released = !!ground.report?.releasedAt;
+    /* THIS SESSION'S picture, released on its own (decision 76, item 4): not the report's first release. */
+    const released = isThisSessionReleased(ground.report as any, sessionNumber);
 
     /*
      * NOT UNTIL YOU HAVE ANSWERED, AS ON THE MAIN REPORT. Screens request 51, 28 September 2026: this
@@ -3001,17 +3012,37 @@ Close the report by framing - neutrally, without recommending one - the choice n
     }
 
     /* The snapshot, when this round closed. Its presence IS what makes the report final. */
-    const snapshot = await this.prisma.reportRound.findUnique({
+    let snapshot = await this.prisma.reportRound.findUnique({
       where: { groundId_sessionNumber: { groundId, sessionNumber } },
       select: { sharedPicture: true, agreements: true, divergences: true, centralQuestion: true, takenAt: true, amendedAt: true, amendedNote: true },
     });
 
-    const previousSnapshot = sessionNumber > 1
+    let previousSnapshot = sessionNumber > 1
       ? await this.prisma.reportRound.findUnique({
         where: { groundId_sessionNumber: { groundId, sessionNumber: sessionNumber - 1 } },
         select: { sharedPicture: true },
       })
       : null;
+
+    /*
+     * THE TEAM'S PICTURE OF A SESSION NOT RELEASED IS NOT SENT (decision 76, item 4).
+     *
+     * Before, a participant who had answered read this session's agreements, differences, central
+     * question and written picture before it was shared, from the round's snapshot or the stored
+     * report, whichever there was; and once the report had been released for session 1 they read
+     * session 2's the same way. Somebody who reads only what is released now gets, for a session not
+     * released, the counts and their own words, as before, and none of the team's picture: it is
+     * emptied here, at the source every line below reads, so no line can bring it back. The previous
+     * session's picture is theirs only if that session is released.
+     */
+    const pictureWithheld = !!me && !viewerIsLead && !released;
+    if (pictureWithheld) {
+      (ground as any).report = ground.report
+        ? { ...ground.report, agreements: [], divergences: [], centralQuestion: '', findings: null, direction: null, engagement: null }
+        : ground.report;
+      if (snapshot) snapshot = { ...snapshot, sharedPicture: '', agreements: [], divergences: [], centralQuestion: '' };
+    }
+    if (!!me && !viewerIsLead && previousSnapshot && !isThisSessionReleased(ground.report as any, sessionNumber - 1)) previousSnapshot = null;
 
     const labels = labelsForParties(ground.participants as any);
     /*
@@ -3604,7 +3635,15 @@ Close the report by framing - neutrally, without recommending one - the choice n
        * It belongs on the report it gates rather than on either page, so both readers get it from
        * the same place. These two flags are all a screen needs to offer it.
        */
-      released: !!ground.report?.releasedAt,
+      released,
+      /* Which sessions' pictures are released, and, for a reader of only those, that this one is not
+         shared yet, in a plain sentence (decision 76, item 4). */
+      releasedSessions: releasedSessionsOf(ground.report as any) ?? [],
+      ...(pictureWithheld ? { teamPicture: { shared: false, sessionNumber, says: thisSessionIsNotSharedYet(sessionNumber) } } : {}),
+      ...(isInitiator && !released ? { releaseThisSession: await (async () => {
+        const now = await theSessionTheReportHolds(this.prisma, groundId);
+        return now === sessionNumber ? { sessionNumber, saying: whatReleasingThisSessionDoes(sessionNumber) } : null;
+      })() } : {}),
       iHaveShownMine: !!me && shown.has(me.id),
       /*
        * WHAT KEEPS SHOWING UP, AS A SECTION AND NOT A SUGGESTION.
@@ -3907,7 +3946,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         initiatorId: true,
         scenario: true,
         createdByUserId: true,
-        report: { select: { releasedAt: true } },
+        report: { select: { releasedAt: true, releasedSessions: true } },
         participants: { select: { userId: true } },
       },
     });
@@ -3915,6 +3954,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const isInitiator = ground.initiatorId === requestingUserId;
     const isParty = ground.participants.some((p) => p.userId === requestingUserId);
+    /* Somebody who reads only what is released reads only the rounds that have been (decision 76, item 4). */
+    const onlyReleased = isParty && !isInitiator;
     const isOrgAdmin = !isInitiator && !isParty && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId));
     /* NotFound, not Forbidden, for the reason in `sessionReport` above: a 403 confirms the
        check-in exists. This endpoint has had the leak since it was written. GW-PRI-04. */
@@ -3923,7 +3964,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     /* Nothing has been revealed yet, so there is nothing anybody may read. */
     if (!ground.report?.releasedAt) return { rounds: [] };
 
-    const kept = await this.prisma.reportRound.findMany({
+    const kept = (await this.prisma.reportRound.findMany({
       where: { groundId },
       orderBy: { sessionNumber: 'asc' },
       select: {
@@ -3936,7 +3977,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         amendedAt: true,
         amendedNote: true,
       },
-    });
+    })).filter((round: any) => !onlyReleased || isThisSessionReleased(ground.report as any, round.sessionNumber));
 
     /*
      * Named, not spread. The same rule the rest of this API follows, and the reason is the same:
@@ -4795,7 +4836,17 @@ happened, and what is in the way.`;
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     if (!ground.report) throw new NotFoundException('Report not generated yet');
-    if (ground.report.releasedAt) return ground.report; // already released
+    /*
+     * EACH SESSION'S PICTURE IS RELEASED ON ITS OWN (decision 76, item 4). This returned early once
+     * `releasedAt` was set, so the first release shared every later session too: a participant read
+     * the report as it grew into session 2 while session 2 had not been shared. Now a release is of
+     * the session the report holds now, and a session already released is left as it is.
+     */
+    const roundNow = await theSessionTheReportHolds(this.prisma, groundId);
+    if (ground.report.releasedAt) {
+      if (isThisSessionReleased(ground.report as any, roundNow)) return ground.report; // already released
+      return this.releaseALaterSession(ground, groundId, roundNow, sharedBecauseLeadLeft);
+    }
 
     // Send notification emails before stamping releasedAt so that if delivery
     // fails entirely, the report is not marked released without anyone being
@@ -4806,30 +4857,22 @@ happened, and what is in the way.`;
      * with a link to that round's report that signs them in. This used to mail everybody here and only
      * here, so session two's report told nobody and an open link's late answerers got nothing.
      */
-    const roundNow = await this.prisma.checkIn.aggregate({ where: { groundId, status: CheckInStatus.COMPLETED }, _max: { sessionNumber: true } }).then((r) => r._max.sessionNumber ?? 1).catch(() => 1);
     const told = await this.tellThemTheReportIsReady(groundId, roundNow, undefined, sharedBecauseLeadLeft?.sentence);
     if (told.attempted > 0 && told.failed === told.attempted) {
       throw new Error('All report notification emails failed - report not released. Retry to send notifications.');
     }
 
-    /* DECISION 53: KEPT ON THE GROUND'S OWN AUDIT LOG, an existing free-form JSON column, so this
-       needs no schema change. `getAsBuilt` reads this one key back out and serves it to every reader
-       of the report as `sharedByAnAdmin`, so the sentence outlives the one release email. */
-    if (sharedBecauseLeadLeft) {
-      const existingLog = ground.groundAuditLog && typeof ground.groundAuditLog === 'object' && !Array.isArray(ground.groundAuditLog)
-        ? (ground.groundAuditLog as Record<string, unknown>)
-        : {};
-      await this.prisma.ground.update({
-        where: { id: groundId },
-        data: { groundAuditLog: { ...existingLog, sharedBecauseLeadLeft: { ...sharedBecauseLeadLeft, at: new Date().toISOString() } } },
-      }).catch((err: any) => this.logger.warn(`Could not record who shared the report for ${groundId}: ${err?.message}`));
-    }
+    /* Who shared it, when the lead has left (decision 53). See keepWhoSharedIt. */
+    if (sharedBecauseLeadLeft) await this.keepWhoSharedIt(ground, groundId, sharedBecauseLeadLeft);
 
     /* A discovery session's direction is what its report IS; read it at release, once, and keep it. */
     if (ground.scenario === 'DISCOVERY') {
       await this.readAndKeepTheDirection(groundId).catch((err: any) => this.logger.warn(`Direction at release failed for ${groundId}: ${err?.message}`));
     }
-    const released = await this.prisma.report.update({ where: { groundId }, data: { releasedAt: new Date() } });
+    const released = await this.prisma.report.update({
+      where: { groundId },
+      data: { releasedAt: new Date(), releasedSessions: withThisSessionReleased(ground.report as any, roundNow) } as any,
+    });
     this.usage.emit(UsageEventType.REPORT_RELEASED, { groundId, organizationId }).catch(() => undefined);
 
     // Generate per-party post-report conversation guides (#99). Best-effort -
@@ -4843,6 +4886,41 @@ happened, and what is in the way.`;
     void this.wordTheReadsFor(groundId, roundNow).catch((err: any) => this.logger.warn(`Wording the reads after release failed for ${groundId}: ${err?.message}`));
 
     return released;
+  }
+
+  /**
+   * A LATER SESSION'S PICTURE, RELEASED ON ITS OWN (decision 76, item 4).
+   *
+   * `releasedAt` stays the moment the report was first shared. The session is added to the ones
+   * released, the people in it are told once (the same mail, once per person per session, that a
+   * later round always sent from the listener), and the reads are worded for it, because a release
+   * is something new (decision 7). Nothing is written again: the report is the one already kept.
+   */
+  private async releaseALaterSession(ground: any, groundId: string, sessionNumber: number, sharedBecauseLeadLeft?: Omit<SharedBecauseLeadLeft, 'at'>) {
+    const told = await this.tellThemTheReportIsReady(groundId, sessionNumber, undefined, sharedBecauseLeadLeft?.sentence);
+    if (told.attempted > 0 && told.failed === told.attempted) {
+      throw new Error('All report notification emails failed - report not released. Retry to send notifications.');
+    }
+    if (sharedBecauseLeadLeft) await this.keepWhoSharedIt(ground, groundId, sharedBecauseLeadLeft);
+    const released = await this.prisma.report.update({
+      where: { groundId },
+      data: { releasedSessions: withThisSessionReleased(ground.report, sessionNumber) } as any,
+    });
+    void this.wordTheReadsFor(groundId, sessionNumber).catch((err: any) => this.logger.warn(`Wording the reads after release failed for ${groundId}: ${err?.message}`));
+    return released;
+  }
+
+  /* DECISION 53: KEPT ON THE GROUND'S OWN AUDIT LOG, an existing free-form JSON column, so this
+     needs no schema change. `getAsBuilt` reads this one key back out and serves it to every reader
+     of the report as `sharedByAnAdmin`, so the sentence outlives the one release email. */
+  private async keepWhoSharedIt(ground: any, groundId: string, sharedBecauseLeadLeft: Omit<SharedBecauseLeadLeft, 'at'>) {
+    const existingLog = ground.groundAuditLog && typeof ground.groundAuditLog === 'object' && !Array.isArray(ground.groundAuditLog)
+      ? (ground.groundAuditLog as Record<string, unknown>)
+      : {};
+    await this.prisma.ground.update({
+      where: { id: groundId },
+      data: { groundAuditLog: { ...existingLog, sharedBecauseLeadLeft: { ...sharedBecauseLeadLeft, at: new Date().toISOString() } } },
+    }).catch((err: any) => this.logger.warn(`Could not record who shared the report for ${groundId}: ${err?.message}`));
   }
 
   /**
@@ -4918,7 +4996,8 @@ happened, and what is in the way.`;
     const completed = await this.prisma.checkIn.count({ where: { groundId, status: CheckInStatus.COMPLETED } });
     if (completed === 0) throw new BadRequestException('Nobody has answered yet, so there is no report to send.');
     if (!ground.report) await this.synthesize(groundId);
-    if (!ground.report?.releasedAt) await this.release(groundId, organizationId);
+    /* The session the report holds now, released if it is not yet (decision 76, item 4). */
+    await this.release(groundId, organizationId);
     /*
      * THE ORGANISER'S CHOICE, WRITTEN BEFORE A SINGLE MAIL GOES OUT.
      *
@@ -6317,10 +6396,14 @@ happened, and what is in the way.`;
     if (!served || typeof served !== 'object') return served;
     const ground = await (this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } } as any,
+      select: { initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } }, report: { select: { releasedAt: true, releasedSessions: true } } } as any,
     }) as Promise<any>).catch(() => null);
     if (!ground) return served;
     const isParty = ((ground.participants ?? []) as any[]).some((p) => p.userId === requestingUserId);
+    /* What moved in a session not released yet is that session's picture, so somebody who reads only
+       what is released is not told it (decision 76, item 4). */
+    if (isParty && ground.initiatorId !== requestingUserId
+      && !isThisSessionReleased(ground.report, await theSessionTheReportHolds(this.prisma, groundId))) return served;
     const isAdmin = ground.initiatorId !== requestingUserId && !isParty
       && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId).catch(() => false));
     const today = await whatTodayReads(this.prisma as any, groundId, { userId: requestingUserId, isAdmin }).catch(() => ({}));
@@ -6482,6 +6565,53 @@ happened, and what is in the way.`;
     const quotable = await theRecordAQuoteMayComeFrom(this.prisma as any, groundId);
     const quotesChecked = <T,>(value: T, what: string): T => this.quotesAsTheRecordHasThem(value, groundId, what, quotable);
 
+    /*
+     * EACH SESSION'S TEAM PICTURE IS RELEASED ON ITS OWN (decision 76, item 4).
+     *
+     * Somebody who reads only what is released - a participant, the person reviewed on an evaluation
+     * check-in included - reads the team's picture of a session only once that session has been
+     * released. The stored report is one row that every session's synthesis rewrites, so once it
+     * holds a session that is not released, it is not theirs to read: they read the picture of the
+     * latest released session, as it was kept when that session closed (`ReportRound`), or, where
+     * nothing is released yet, that the picture is not shared yet, with their own things. Whoever runs
+     * the check-in and an admin read as before.
+     */
+    const readsOnlyWhatIsReleased = !!participant && !isInitiator && !isOrgAdmin;
+    const heldSession = readsOnlyWhatIsReleased ? await theSessionTheReportHolds(this.prisma, groundId) : 0;
+    let readingAnEarlierSession: { sessionNumber: number; saying: string } | null = null;
+    if (readsOnlyWhatIsReleased && !isThisSessionReleased(ground.report as any, heldSession)) {
+      const sessionProgress = await this.grounds.getSessionProgress(groundId);
+      const requestingUserIsMissing = !!(sessionProgress && participant && sessionProgress.missingParticipantIds.includes(participant.id));
+      const earlier = theLatestReleasedSession(ground.report as any, heldSession);
+      const kept = earlier
+        ? await (this.prisma.reportRound?.findUnique?.({
+          where: { groundId_sessionNumber: { groundId, sessionNumber: earlier } },
+          select: { sharedPicture: true, agreements: true, divergences: true, centralQuestion: true },
+        }) ?? Promise.resolve(null)).catch(() => null)
+        : null;
+      if (!earlier || !kept) {
+        const saying = thisSessionIsNotSharedYet(heldSession);
+        return {
+          activated: true,
+          forming: true,
+          notSharedYet: true,
+          /* Before they have answered, the reason is that, as it always was. */
+          ...(requestingUserIsMissing ? { withheldUntilYouAnswer: true, saying: A_PICTURE_IS_FORMING } : { saying }),
+          teamPicture: { shared: false, sessionNumber: heldSession, says: saying },
+          releasedSessions: releasedSessionsOf(ground.report as any) ?? [],
+          soloArtifact: thePrivateSummaryAsRead(participant?.soloArtifact),
+          /* Their own rows, which do not wait on a release: see theirOwnRows. */
+          myRows: await this.theirOwnRows(participant?.id),
+          couldTry: quotesChecked(await this.whatTheyCouldTryNext(groundId, participant?.id), 'what they could try'),
+          sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+          declined: await this.declinedThisRound(groundId, ground.participants as any),
+        } as any;
+      }
+      /* The released session's picture, and nothing the report learned after it. */
+      (ground as any).report = asTheReleasedSessionHadIt(ground.report, kept);
+      readingAnEarlierSession = { sessionNumber: earlier, saying: youAreReadingAnEarlierSession(earlier, heldSession) };
+    }
+
     if (!ground.report.releasedAt) {
       // Before everyone has checked in, the report is a forming picture, not
       // a final one - show it as such rather than blocking anyone entirely.
@@ -6592,6 +6722,12 @@ happened, and what is in the way.`;
           (ground.report as any)?.builtFromAnswers ?? null,
         ),
         nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
+        /* What pressing Release would share, said plainly to whoever runs it (decision 76, item 4). */
+        releasedSessions: [],
+        ...(isInitiator ? await (async () => {
+          const now = await theSessionTheReportHolds(this.prisma, groundId);
+          return { releaseThisSession: { sessionNumber: now, saying: whatReleasingThisSessionDoes(now) } };
+        })() : {}),
         soloArtifact,
         myRows: await this.theirOwnRows(participant?.id),
         couldTry: quotesChecked(await this.whatTheyCouldTryNext(groundId, participant?.id), 'what they could try'),
@@ -6791,7 +6927,8 @@ happened, and what is in the way.`;
          and nothing else. Computed rather than asked of a model, so a document cannot vanish from the
          account of what happened. See what-this-record-rests-on.ts. */
       restsOn: await this.whatItRestsOn(groundId, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
-      ...(this.confidenceEnabled()
+      /* The whole record's marks read every session, so not while an earlier session is what they read. */
+      ...(this.confidenceEnabled() && !readingAnEarlierSession
         ? await this.whatTheRecordHolds(groundId, ground.participants as any, isInitiator || isOrgAdmin, { isTheLead: isInitiator, participantId: participant?.id ?? null })
         : {}),
     };
@@ -6915,6 +7052,23 @@ happened, and what is in the way.`;
      */
     const sharedByAnAdmin = sharedByAnAdminFrom((ground as any).groundAuditLog);
     if (sharedByAnAdmin) base.sharedByAnAdmin = sharedByAnAdmin;
+
+    /* Which sessions' pictures are released, for every reader, and for whoever runs the check-in the
+       one a release would share now, said plainly before they press it (decision 76, item 4). */
+    base.releasedSessions = releasedSessionsOf(ground.report as any) ?? [];
+    if (isInitiator) {
+      const now = await theSessionTheReportHolds(this.prisma, groundId);
+      if (!isThisSessionReleased(ground.report as any, now)) base.releaseThisSession = { sessionNumber: now, saying: whatReleasingThisSessionDoes(now) };
+    }
+    if (readingAnEarlierSession) {
+      base.teamPicture = { shared: false, sessionNumber: heldSession, says: thisSessionIsNotSharedYet(heldSession) };
+      base.readingSession = readingAnEarlierSession;
+      /* A colleague waiting on them comes from that colleague's account of a session not released yet. */
+      if (base.overTime && Array.isArray(base.overTime.dependencies)) {
+        base.overTime = { ...base.overTime, dependencies: base.overTime.dependencies.filter((d: any) => d?.fromParticipantId === participant?.id) };
+      }
+      delete base.updates;
+    }
 
     return base;
   }

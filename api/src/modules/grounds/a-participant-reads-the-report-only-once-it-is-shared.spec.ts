@@ -53,7 +53,7 @@ function serviceFor(opts: { released: boolean; peersVisible: boolean | null; vie
 describe('the report on the check-in read, as a participant', () => {
   it('before it is released: none of its text, and no agreements or differences', async () => {
     const res: any = await serviceFor({ released: false, peersVisible: true }).get('g1', 'org1', 'userA');
-    expect(res.report).toEqual({ id: 'r1', releasedAt: null, createdAt: expect.any(Date) });
+    expect(res.report).toEqual({ id: 'r1', releasedAt: null, releasedSessions: [], createdAt: expect.any(Date) });
     expect(JSON.stringify(res)).not.toContain('responsible for closing');
     expect(JSON.stringify(res)).not.toContain('forecasts');
     expect(JSON.stringify(res)).not.toContain('a difference between');

@@ -64,10 +64,18 @@ const TOKENS = ['NOTE', 'RECALL', 'CAUSE', 'SIGNAL', 'BAND', 'LABEL', 'CONF', 'T
 describe.each([['a forming report', false], ['a released report', true]])('%s, as served by get()', (_what, released) => {
   it.each(READERS)('%s is sent no rating of anybody else\'s answers', async (_who, userId, ownId) => {
     const served = JSON.stringify(await serviceFor(released as boolean).get('g1', userId, 'org1'));
-    /* The report itself was served, not a refusal. */
-    expect(served).toContain('stock count as late');
-    /* And the filter is not passing by stripping everything: a reader keeps their own. */
-    if (ownId) expect(served).toContain(`SIGNAL-${ownId}`);
+    /* Decision 76, item 4: a participant reads no team picture of a session not released yet, so
+       on a forming report they are told it is not shared yet instead, and the ratings check below
+       still runs on everything they are sent. Everybody else is served the report itself. */
+    if (!released && userId === 'amani-user') {
+      expect(served).toContain("The team's picture of session 1 is not shared yet.");
+      expect(served).not.toContain('stock count as late');
+    } else {
+      /* The report itself was served, not a refusal. */
+      expect(served).toContain('stock count as late');
+      /* And the filter is not passing by stripping everything: a reader keeps their own. */
+      if (ownId) expect(served).toContain(`SIGNAL-${ownId}`);
+    }
     for (const id of IDS.filter((x) => x !== ownId)) {
       for (const t of TOKENS) expect(served).not.toContain(`${t}-${id}`);
     }

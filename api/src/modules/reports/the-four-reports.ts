@@ -361,7 +361,7 @@ export const BEFORE_THE_DEAD_BODY_CAN_GO: { rule: string; spec: string }[] = [
  */
 export const NOT_REPORT_CONTENT = [
   'id', 'groundId', 'checkInId', 'sessionNumber', 'title', 'state', 'activated', 'allActivated',
-  'released', 'releasedAt', 'takenAt', 'amendedAt', 'amendedNote', 'answered', 'stillToAnswer',
+  'released', 'releasedAt', 'releasedSessions', 'releaseThisSession', 'teamPicture', 'readingSession', 'notSharedYet', 'takenAt', 'amendedAt', 'amendedNote', 'answered', 'stillToAnswer',
   'sessionReport', 'sections', 'items', 'get', 'saying', 'about', 'whyNoQuestion',
   'createdAt', 'updatedAt', 'promptVersionId', 'docStatus', 'note',
   /* Containers rather than content: their own keys are placed individually above. */

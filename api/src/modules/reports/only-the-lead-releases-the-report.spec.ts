@@ -36,7 +36,7 @@ function world(leadIsActive = true) {
       update: jest.fn(async ({ data }: any) => { Object.assign(ground, data); return ground; }),
     },
     user: { findUnique: jest.fn(async ({ where }: any) => users[where.id] ?? null) },
-    report: { update: jest.fn(async () => { report.releasedAt = new Date('2026-09-29T10:00:00Z'); return { ...report, sharedPicture: 'private rows', ratings: { daniel: 2 } }; }) },
+    report: { update: jest.fn(async ({ data }: any) => { Object.assign(report, data); report.releasedAt = new Date('2026-09-29T10:00:00Z'); return { ...report, sharedPicture: 'private rows', ratings: { daniel: 2 } }; }) },
     checkIn: { aggregate: jest.fn(async () => ({ _max: { sessionNumber: 1 } })) },
   };
   const service = new ReportsService(prisma, {} as any, {} as any, {} as any, { get: () => false } as any, {} as any, {} as any, { tell: async () => [] } as any);
@@ -76,7 +76,12 @@ describe('the lead', () => {
     const { controller, prisma } = world();
     const served = await controller.release('g1', 'rukia', 'org1');
     expect(prisma.report.update).toHaveBeenCalledTimes(1);
-    expect(served).toEqual({ groundId: 'g1', releasedAt: new Date('2026-09-29T10:00:00Z') });
+    expect(served).toEqual({
+      groundId: 'g1', releasedAt: new Date('2026-09-29T10:00:00Z'),
+      /* Decision 76, item 4: each session's picture is released on its own, and the lead is told which. */
+      releasedSessions: [1], sessionNumber: 1,
+      saying: "This shares the team's picture of session 1 with everyone in the check-in.",
+    });
   });
 });
 
@@ -91,7 +96,12 @@ describe('decision 53 (29 September 2026): the lead has left the organisation', 
     const { controller, prisma, ground } = world(false);
     const served = await controller.release('g1', 'grace', 'org1');
     expect(prisma.report.update).toHaveBeenCalledTimes(1);
-    expect(served).toEqual({ groundId: 'g1', releasedAt: new Date('2026-09-29T10:00:00Z') });
+    expect(served).toEqual({
+      groundId: 'g1', releasedAt: new Date('2026-09-29T10:00:00Z'),
+      /* Decision 76, item 4: each session's picture is released on its own, and the lead is told which. */
+      releasedSessions: [1], sessionNumber: 1,
+      saying: "This shares the team's picture of session 1 with everyone in the check-in.",
+    });
 
     /* Kept on the ground's own audit log (no schema change - see who-shared-it-because-the-lead-left.ts),
        so a later reader of the report is told the same thing this release just decided. */

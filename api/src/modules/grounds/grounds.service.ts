@@ -95,6 +95,7 @@ import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-hol
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
 import { howCheckableIsYoursAlone } from './how-checkable-is-yours-alone';
 import { writeADocumentsNumbers } from '../documents/write-a-documents-numbers';
+import { isThisSessionReleased, isTheTeamPictureNowShared, releasedSessionsOf } from '../reports/each-sessions-picture-is-released-on-its-own';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -1311,7 +1312,7 @@ export class GroundsService {
         },
         // A released report that nobody is told about is a report nobody reads.
         // Ten grounds released theirs and not one person ever activated.
-        report: { select: { releasedAt: true, agreements: true, divergences: true, sharedAs: true } },
+        report: { select: { releasedAt: true, releasedSessions: true, agreements: true, divergences: true, sharedAs: true } },
         /*
          * THE LATEST ROUND'S FINDING, for the card. One row per ground, newest first: the list is
          * read often and a whole history here would be paid for on every load for a single line.
@@ -1377,7 +1378,7 @@ export class GroundsService {
               /** Must match the sibling query above: both feed the same list. GW-EXP-6. */
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
             },
-            report: { select: { releasedAt: true, agreements: true, divergences: true, sharedAs: true } },
+            report: { select: { releasedAt: true, releasedSessions: true, agreements: true, divergences: true, sharedAs: true } },
             /* Must match the sibling query above: both feed the same list, and a card fed by this
                one would fall back to the brief for ever while its twin showed the finding. */
             reportRounds: { select: { sessionNumber: true, finding: true, sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
@@ -1562,7 +1563,11 @@ export class GroundsService {
          * themselves everywhere else on this row, so is given none of the team's picture here either.
          * Their own report is read on their own check-in, never through these two fields.
          */
-        const mayReadTheReport = runsIt || (!!fullReport?.releasedAt && peersVisibleEffective);
+        /* AND ONLY A SESSION THAT HAS BEEN RELEASED (decision 76, item 4): the latest round's summary is
+           that round's picture, and each session's picture is released on its own. */
+        const latestRound = ((rest as any).reportRounds?.[0]?.sessionNumber as number | undefined) ?? null;
+        const mayReadTheReport = runsIt || (!!fullReport?.releasedAt && peersVisibleEffective
+          && latestRound !== null && isThisSessionReleased(fullReport as any, latestRound));
         /* And no sentence with a colleague's hidden target, in the brief or the report's words (as get()). */
         return this.withoutTheTargetsHiddenFrom(g as any, userId, {
           ...safe,
@@ -1581,7 +1586,7 @@ export class GroundsService {
           /* Decision 17, said plainly: on a check-in about one person the switch never reaches them. */
           whyThePersonReviewedIsNotTold: whyThePersonReviewedIsNotTold(rest as any),
           ...(runsIt ? { joinToken } : {}),
-          report: fullReport ? { releasedAt: fullReport.releasedAt ?? null } : null,
+          report: fullReport ? { releasedAt: fullReport.releasedAt ?? null, releasedSessions: releasedSessionsOf(fullReport as any) ?? [] } : null,
           alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName,
           /* Through the report's own door, for every reader, so no label is ever served (U.5 re-review). */
           ...(() => {
@@ -1695,7 +1700,7 @@ export class GroundsService {
          * first attempt at the fix went into the fallback lookup below instead of this one: the
          * endpoint kept returning null, which is the only reason the mistake surfaced.
          */
-        report: { select: { id: true, releasedAt: true, sharedPicture: true, theOpening: true, createdAt: true, agreements: true, divergences: true, sharedAs: true } },
+        report: { select: { id: true, releasedAt: true, releasedSessions: true, sharedPicture: true, theOpening: true, createdAt: true, agreements: true, divergences: true, sharedAs: true } },
         /*
          * WHICH ROUNDS HAVE CLOSED, as recorded, so the page stops working it out.
          *
@@ -1751,7 +1756,7 @@ export class GroundsService {
              *
              * Found by reading both payloads for one ground rather than either page on its own.
              */
-            report: { select: { id: true, releasedAt: true, sharedPicture: true, theOpening: true, createdAt: true, agreements: true, divergences: true, sharedAs: true } },
+            report: { select: { id: true, releasedAt: true, releasedSessions: true, sharedPicture: true, theOpening: true, createdAt: true, agreements: true, divergences: true, sharedAs: true } },
             /* Same include as the primary query above. TypeScript refused the two shapes when this
                was added to only one of them, which is the check the comment above wishes it had. */
             roundCompletions: { select: { sessionNumber: true, completedAt: true }, orderBy: { sessionNumber: 'asc' } },
@@ -2005,6 +2010,8 @@ export class GroundsService {
        does. Reading only: the join link below, a write power, still asks `viewerAdminsThisOrg`. */
     const viewerReadsAsAnAdmin = viewerAdminsThisOrg || askedToApproveIt({ ...viewer, userId: requestingUserId }, ground as any);
     const viewerRunsThisGround = viewerIsInitiator || !!viewerReadsAsAnAdmin;
+    /* Whether the session the stored report holds now has been released (decision 76, item 4). */
+    const teamPictureNowShared = viewerRunsThisGround ? true : await isTheTeamPictureNowShared(this.prisma, id, (ground as any).report);
 
     /* Whether this organisation has a number of its own, for the "where people answer this" setting. */
     const orgHasWhatsApp = !!(ground as any).organization?.whatsappConnection?.enabled;
@@ -2559,8 +2566,10 @@ export class GroundsService {
         ? (() => {
             const r = (rest as any).report;
             const me = (ground.participants ?? []).find((p: any) => !!requestingUserId && p.userId === requestingUserId) as any;
-            /* The text only to whoever may read it yet, and always through the report's own door. */
-            const mayRead = viewerRunsThisGround || !!r.releasedAt;
+            /* The text only to whoever may read it yet, and always through the report's own door. The
+               stored text is the picture of the session the report holds now, so somebody who does
+               not run the check-in reads it only once that session is released (decision 76, item 4). */
+            const mayRead = viewerRunsThisGround || teamPictureNowShared;
             const text = mayRead
               ? this.reportTextAsItWasShared(ground as any, { sharedPicture: r.sharedPicture, theOpening: r.theOpening }, r.sharedAs, me?.id ?? null, viewerRunsThisGround)
               : null;
@@ -2571,8 +2580,9 @@ export class GroundsService {
             return {
               id: r.id,
               releasedAt: r.releasedAt ?? null,
+              releasedSessions: releasedSessionsOf(r) ?? [],
               createdAt: r.createdAt,
-              ...(r.releasedAt ? { sharedPicture: text?.sharedPicture ?? null, theOpening: text?.theOpening ?? null } : {}),
+              ...(mayRead ? { sharedPicture: text?.sharedPicture ?? null, theOpening: text?.theOpening ?? null } : {}),
             };
           })()
         : (rest as any).report,

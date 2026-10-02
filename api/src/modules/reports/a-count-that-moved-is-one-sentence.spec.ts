@@ -36,7 +36,10 @@ function groundWith(objectives: any[]): any {
     initiatorId: 'u-bisi', createdByUserId: 'u-bisi', organizationId: 'org-1',
     peopleWorkTogether: true, peersVisibleToEachOther: true, timelineDays: 90, cadence: 'FORTNIGHTLY',
     whoSeesTargets: 'EVERYBODY', label: 'Credit sales against this quarter target',
-    participants: [BISI, NGOZI, KWAME], checkIns: CHECK_INS, report: null,
+    participants: [BISI, NGOZI, KWAME], checkIns: CHECK_INS,
+    /* Both sessions' pictures released: what moved in a session is that session's picture, and a
+       participant reads it only once it is released (decision 76, item 4). */
+    report: { releasedAt: at('15'), releasedSessions: [1, 2] },
     objectives, dependencies: [], personObjectives: [], poll: null,
   };
 }

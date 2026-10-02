@@ -54,7 +54,7 @@ describe('the check-ins list, as each reader gets it', () => {
     expect(row.groundAuditLog).toBeUndefined();
     const emails = Object.fromEntries(row.participants.map((p: any) => [p.id, p.email]));
     expect(emails).toEqual({ 'p-lead': null, 'p-part': 'miriam@baridi.test', 'p-omar': null });
-    expect(row.report).toEqual({ releasedAt: null });
+    expect(row.report).toEqual({ releasedAt: null, releasedSessions: [] });
     expect(JSON.stringify(row)).not.toContain('Unreleased difference');
     /* Names stay: who is in the check-in is shown to the people in it. */
     expect(row.participants.map((p: any) => p.user?.firstName)).toEqual(['Wairimu', 'Miriam', 'Omar']);

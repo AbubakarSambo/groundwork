@@ -12,8 +12,17 @@ import { prismaFor } from './__fixtures__/today-sales-team';
  * Never a rating, never a label on a person, never an email address.
  */
 
-function reportFor(requestingUserId: string, viewerRole = 'MEMBER') {
+/* Both sessions' pictures released, as on the run this fixture comes from. What moved in a session is
+   that session's picture, and a participant reads it only once it is released (decision 76, item 4). */
+const BOTH_RELEASED = { releasedAt: new Date('2026-09-15T18:00:00Z'), releasedSessions: [1, 2] };
+
+function reportFor(requestingUserId: string, viewerRole = 'MEMBER', report: any = BOTH_RELEASED) {
   const { prisma, writes } = prismaFor(viewerRole);
+  const theGround = prisma.ground.findUnique;
+  prisma.ground.findUnique = jest.fn(async (args: any) => {
+    const g = await theGround(args);
+    return g ? { ...g, report } : g;
+  });
   const svc = Object.create(ReportsService.prototype) as any;
   svc.prisma = prisma;
   svc.logger = new Logger('test');
@@ -58,6 +67,15 @@ describe('week 16: what Today reads from the latest report', () => {
       also: 'You are no longer waiting on Finance for the price list. You are now waiting on Wairimu for a decision on whether a price range counts as a budget.',
     });
     expect(m).not.toHaveProperty('forTheLead');
+  });
+
+  it('a participant is told nothing of what moved in a session whose picture is not released yet (decision 76, item 4)', async () => {
+    const r = await reportFor('u-brian', 'MEMBER', { releasedAt: new Date('2026-09-15T18:00:00Z'), releasedSessions: [1] }).report;
+    expect(r).not.toHaveProperty('sinceLast');
+    expect(JSON.stringify(r)).not.toMatch(/went from 18 to 21|waiting on Wairimu/);
+    /* The lead still reads it, released or not. */
+    const lead = await reportFor('u-wairimu', 'MEMBER', { releasedAt: new Date('2026-09-15T18:00:00Z'), releasedSessions: [1] }).report;
+    expect(lead.sinceLast.says).toMatch(/went from 18 to 21/);
   });
 
   it('an admin who only reads reads what moved, with the team’s count and no one person’s, no number aimed for, and nothing for the lead', async () => {

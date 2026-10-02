@@ -210,7 +210,8 @@ describe('every part built at the read goes through the quote rule, by the code 
     expect(reports).toMatch(/probes: this\.readAsItWillBeRead\(probes, groundId, '[^']+', quotable\)/);
     expect(reports).toMatch(/coaching: this\.readAsItWillBeRead\(coaching, groundId, '[^']+', quotable\)/);
     expect(reports).toMatch(/postReportGuide: quotesChecked\(postReportGuide,/);
-    expect(reports.match(/couldTry: quotesChecked\(await this\.whatTheyCouldTryNext\(/g) ?? []).toHaveLength(3);
+    /* Four: the forming, released and withheld reads, and the read of a session not shared yet (decision 76, item 4). */
+    expect(reports.match(/couldTry: quotesChecked\(await this\.whatTheyCouldTryNext\(/g) ?? []).toHaveLength(4);
     expect(reports.match(/couldTry: await this\.whatTheyCouldTryNext\(/g) ?? []).toHaveLength(0);
     expect(reports).toMatch(/quotesChecked\(await this\.myOwnSoftSpots\(/);
     expect(reports).toMatch(/const quotable = await theRecordAQuoteMayComeFrom\(this\.prisma as any, groundId\)/);

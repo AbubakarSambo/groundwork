@@ -2312,6 +2312,12 @@ model Report {
   findings        Json?
   arcSignals      Json?     @map("arc_signals") // deterministic F1-F5 features per party (advisory surface reads this)
   releasedAt      DateTime? @map("released_at") // set once, atomically, for both
+  /// EACH SESSION'S TEAM PICTURE IS RELEASED ON ITS OWN (decision 76, item 4). `releasedAt` says when
+  /// the report was first shared, and it is set once. This says which sessions' pictures have been
+  /// shared since, so a participant reads the team's picture only of a session that has been
+  /// released, never a later one as the report grows into it. Empty until anything is released.
+  /// See reports/each-sessions-picture-is-released-on-its-own.ts.
+  releasedSessions Int[]    @default([]) @map("released_sessions")
   createdAt       DateTime  @default(now()) @map("created_at")
   /// WHEN THIS WAS LAST WRITTEN, WHICH IS NOT WHEN THE ROW WAS MADE.
   ///
