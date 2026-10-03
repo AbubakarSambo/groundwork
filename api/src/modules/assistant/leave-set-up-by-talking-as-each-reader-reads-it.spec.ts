@@ -32,7 +32,8 @@ const THE_RULES_SAID = [
   'If the person has no manager in Groundwork, it goes to the head of the person’s team instead.',
   'If nobody is named as the head of the person’s team, it goes to an admin instead.',
   'Wairimu heads Finance, Fatuma heads Operations, and Omar heads Sales.',
-  'Grace, who looks after HR, sees every leave request on the leave board, when it is asked for and when it is decided.',
+  /* Said to Grace, who looks after HR: she is "you", never "Grace". */
+  'You look after HR, so you see every leave request on the leave board, when it is asked for and when it is decided.',
   'If the manager has not answered after two working days, or is on leave that day, it goes to the head of the person’s team.',
   'If the head of the team has not answered after two working days, or is on leave that day, it goes to an admin.',
 ].join(' ');
@@ -109,7 +110,8 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
     const changed = await o.says('u-grace', 'make it three working days');
     expect(changed).toBe(`I have changed that. ${SAID_BACK.replace(/two working days/g, 'three working days')}`);
     const hr = await o.says('u-grace', 'HR only needs to see the approved ones');
-    expect(hr).toContain('Grace, who looks after HR, sees each approved leave request on the leave board.');
+    expect(hr).toContain('You look after HR, so you see each approved leave request on the leave board.');
+    expect(hr).not.toMatch(/Grace/);
     expect(o.writes).toEqual([]);
     expect(await o.says('u-grace', 'yes')).toContain('If the manager has not answered after three working days');
     expect((await o.suites.workflows(o.as('u-grace'))).suites.find((s) => s.key === 'leave')!.escalateAfter).toBe(3);
@@ -142,6 +144,24 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
     await o.says('u-grace', 'yes');
     expect((await o.suites.duties(o.as('u-grace'))).said).toContain('Omar Said looks after finance.');
     expect((await o.suites.workflows(o.as('u-grace'))).suites.find((s) => s.key === 'leave')!.steps).toEqual([['finance', 'admin']]);
+  });
+
+  it('Grace, who looks after HR, names herself as the approver and is asked and told as "you"', async () => {
+    const o = anOrganisationToSetUp({ suites: { duties: { isOn: false, answers: { departmentHeads: { Operations: 'u-fatuma' }, hr: 'u-grace' } } } });
+    const r = await o.talk('u-grace', ['Set up our employee leave process', '21', 'Grace', 'No', 'No', 'Three working days, then an admin']);
+    expect(r[2]).toBe('Does anybody approve it after you, for example the head of the person’s team? You can say no.');
+    expect(r[4]).toBe("What happens if you don't respond within two working days?");
+    expect(r[5]).toBe([
+      'Here is how leave requests will work. Leave requests will be switched on.',
+      'Each person has 21 days of leave a year.',
+      'A leave request goes to you.',
+      'If nobody is named to look after HR, it goes to an admin instead.',
+      'You look after HR, so that part comes to you.',
+      'HR is not shown leave requests.',
+      'If you have not answered after three working days, or are on leave that day, it goes to an admin.',
+      'Shall I set it up like this? Nothing changes until you say yes.',
+    ].join(' '));
+    expect(r.join(' ')).not.toMatch(/Grace/);
   });
 
   it('when the length of longer leave is said without who approves it, who is asked as a real question', async () => {
@@ -211,7 +231,8 @@ const LONGER_SAID = [
   'It is approved only when the head of the team approves it, and a no from anybody on the way ends it.',
   'If nobody is named as the head of the person’s team, it goes to an admin instead.',
   'Wairimu heads Finance, Fatuma heads Operations, and Omar heads Sales.',
-  'Grace, who looks after HR, sees every leave request on the leave board, when it is asked for and when it is decided.',
+  /* Said to Grace, who looks after HR: she is "you", never "Grace". */
+  'You look after HR, so you see every leave request on the leave board, when it is asked for and when it is decided.',
   'If somebody does not answer, it waits for them. Groundwork does not pass it on by itself.',
 ].join(' ');
 

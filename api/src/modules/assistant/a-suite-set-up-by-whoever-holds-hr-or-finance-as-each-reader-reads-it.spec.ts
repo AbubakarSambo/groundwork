@@ -24,7 +24,8 @@ const MIRIAMS_SAID = [
   'Fatuma heads Operations.',
   'Nobody is named as the head of Finance and Sales yet, so for people in those teams that part goes to the next person on the list.',
   'Only an admin can name who holds each job.',
-  'Miriam, who looks after HR, sees every leave request on the leave board, when it is asked for and when it is decided.',
+  /* Said to Miriam, who looks after HR: she is "you", never "Miriam". */
+  'You look after HR, so you see every leave request on the leave board, when it is asked for and when it is decided.',
   'If somebody does not answer, it waits for them. Groundwork does not pass it on by itself.',
 ].join(' ');
 
@@ -54,6 +55,17 @@ describe('Miriam, who looks after HR, sets up the leave process', () => {
       'Miriam changed the approval steps on 3 October.',
       'Miriam switched on leave requests on 3 October.',
     ]);
+  });
+
+  it('Grace, the admin, reads Miriam by name where Miriam reads "you"', async () => {
+    const o = anOrganisationToSetUp({ suites: DUTIES });
+    await o.talk('u-miriam', ['Set up our employee leave process', '21', 'Their manager', "If it's more than 10 working days, the department head also approves", 'Yes', 'It waits', 'yes']);
+    const toMiriam = (await o.assistant.theSetUpAsStored(o.as('u-miriam'), 'leave')).join(' ');
+    expect(toMiriam).toBe(MIRIAMS_SAID);
+    expect(toMiriam).not.toMatch(/Miriam/);
+    const toGrace = (await o.assistant.theSetUpAsStored(o.as('u-grace'), 'leave')).join(' ');
+    expect(toGrace).toContain('Miriam, who looks after HR, sees every leave request on the leave board, when it is asked for and when it is decided.');
+    expect(toGrace).not.toContain('You look after HR');
   });
 
   it('naming a person who holds no job is answered plainly: only an admin says who holds each job', async () => {

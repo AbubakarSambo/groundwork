@@ -29,15 +29,16 @@ const THE_RULES_SAID = [
   'If the person has no manager in Groundwork, it goes to an admin instead.',
   'If nobody is named to look after finance, it goes to an admin instead.',
   'A request to spend of more than KES 20,000 goes to the head of the person’s team first.',
-  'When the head of the team has approved it, it goes to Grace, the chief executive, to approve as well.',
-  'It is approved only when Grace approves it, and a no from anybody on the way ends it.',
+  'When the head of the team has approved it, it goes to you to approve as well.',
+  'It is approved only when you approve it, and a no from anybody on the way ends it.',
   'If nobody is named as the head of the person’s team, it goes to an admin instead.',
   'If nobody is named as the chief executive, it goes to an admin instead.',
   'Omar heads Finance, Fatuma heads Operations, and Wairimu heads Sales.',
+  'You are the chief executive, so that part comes to you.',
   'If the manager has not answered after three working days, or is on leave that day, it goes to an admin.',
   'If Omar has not answered after three working days, or is on leave that day, it goes to an admin.',
   'If the head of the team has not answered after three working days, or is on leave that day, it goes to an admin.',
-  'If Grace has not answered after three working days, or is on leave that day, it goes to an admin.',
+  'If you have not answered after three working days, or are on leave that day, it goes to an admin.',
 ].join(' ');
 
 const SAID_BACK = `Here is how spending requests will work. Spending requests will be switched on. ${THE_RULES_SAID} Shall I set it up like this? Nothing changes until you say yes.`;
@@ -82,6 +83,25 @@ describe('Grace, an admin, sets up spending approvals by talking', () => {
       'Grace changed who holds each duty on 3 October.',
       'Grace switched on spending and budgets on 3 October.',
     ]);
+  });
+
+  it('each reader reads themselves as "you" and everybody else by name', async () => {
+    const o = anOrganisationToSetUp();
+    await o.talk('u-grace', GRACES_ANSWERS);
+    await o.says('u-grace', 'yes');
+    /* Grace, the chief executive, is "you" to herself; Omar is named. */
+    const toGrace = (await o.assistant.theSetUpAsStored(o.as('u-grace'), 'spend')).join(' ');
+    expect(toGrace).not.toMatch(/Grace/);
+    expect(toGrace).toContain('it goes to Omar, who looks after finance, to approve as well.');
+    /* Omar, who looks after finance, is "you" to himself; Grace is named. */
+    const toOmar = (await o.assistant.theSetUpAsStored(o.as('u-omar'), 'spend')).join(' ');
+    expect(toOmar).not.toMatch(/Omar/);
+    expect(toOmar).toContain('When the manager has approved it, it goes to you to approve as well. It is approved only when you approve it,');
+    expect(toOmar).toContain('You head Finance, Fatuma heads Operations, and Wairimu heads Sales.');
+    expect(toOmar).toContain('You look after finance, so that part comes to you.');
+    expect(toOmar).toContain('If you have not answered after three working days, or are on leave that day, it goes to an admin.');
+    expect(toOmar).toContain('it goes to Grace, the chief executive, to approve as well. It is approved only when Grace approves it,');
+    expect(toOmar).toContain('If Grace has not answered after three working days, or is on leave that day, it goes to an admin.');
   });
 
   it('a no before the yes changes nothing', async () => {

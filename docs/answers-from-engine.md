@@ -3431,3 +3431,15 @@ Tests: `api/src/modules/suites/the-same-approver-twice-as-each-reader-reads-it.s
 - **With nobody named for HR**, the sentence is as before.
 
 Tests: `api/src/modules/suites/the-leave-rules-history-names-hr-as-each-reader-reads-it.spec.ts`, as Grace. No existing test changed.
+
+## Setting up a suite by talking says "you" to the person reading (3 October)
+
+**In Ask Groundwork, the said-back and the reply after the yes named the person reading in the third person: Grace, who looks after HR, read "Grace, who looks after HR, sees every leave request on the leave board". Wherever a sentence names the person reading, it now says "you". Everybody else is still named. No field changed; only the text of the reply** (this commit).
+
+- **HR on the leave board, said to whoever looks after HR:** "You look after HR, so you see every leave request on the leave board, when it is asked for and when it is decided." and "You look after HR, so you see each approved leave request on the leave board." Said to anybody else, as before: "Miriam, who looks after HR, sees every leave request on the leave board, when it is asked for and when it is decided."
+- **A step that comes to the person reading:** "When the head of the team has approved it, it goes to you to approve as well. It is approved only when you approve it, and a no from anybody on the way ends it." (was "it goes to Grace, the chief executive, to approve as well. It is approved only when Grace approves it"). With it, why: "You are the chief executive, so that part comes to you.", "You look after finance, so that part comes to you." or "You look after HR, so that part comes to you."
+- **Passing on:** "If you have not answered after three working days, or are on leave that day, it goes to an admin." (was "If Grace has not answered ..., or is on leave that day").
+- **Who heads each team:** "You head Finance, Fatuma heads Operations, and Wairimu heads Sales." (was "Omar heads Finance, ..." when Omar reads it).
+- **The questions:** "Does anybody approve it after you, ...?", "What happens if you don't respond within two working days?", "What is the most you may approve on your own?", and, naming yourself with no job or several: "Which job do you do here? For example, do you head a team, hold a team’s budget, look after HR, look after finance, or are you the chief executive?" and "You look after HR and head Sales. Which of these are you approving it as? ..."
+
+Tests: the four set-up-by-talking specs in `api/src/modules/assistant/` now pin the "you" text, because the text they pinned named the reader to herself (Grace in the leave and spending specs, Miriam in the HR-or-finance spec). New tests read the same set-up as two people: Grace and Omar for spending, Miriam and Grace for leave, and Grace naming herself as the approver.

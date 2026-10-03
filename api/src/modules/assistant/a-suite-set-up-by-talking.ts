@@ -258,6 +258,10 @@ function onePersonIn(t: string, known: WhatIsKnown): { id: string } | { unclear:
 }
 
 const first = (known: WhatIsKnown, id: string) => known.people.find((p) => p.id === id)?.name.split(/\s+/)[0] ?? 'somebody';
+/** Whether a job is held by the person reading, who is "you" in every sentence, never their own name. */
+const isMe = (known: WhatIsKnown, id: string | undefined) => !!id && id === known.me;
+/** The verb that agrees with who is said: "you have", "Omar has". */
+const agree = (who: string, forYou: string, forOthers: string) => (who === 'you' ? forYou : forOthers);
 const full = (known: WhatIsKnown, id: string) => known.people.find((p) => p.id === id)?.name ?? 'somebody';
 
 /** "A or B", "A, B or C", for people. */
@@ -287,6 +291,11 @@ function jobsOf(id: string, d: Duties): { rule: Rule; team?: string }[] {
 const JOB_NAMES: Record<Rule, string> = {
   manager: 'is their manager', departmentHead: 'heads a team', budgetOwner: 'holds a team’s budget', finance: 'looks after finance',
   hr: 'looks after HR', chiefExecutive: 'is the chief executive', admin: 'is an admin',
+};
+/** The same jobs, said to the person who holds them. */
+const YOUR_JOB_NAMES: Record<Rule, string> = {
+  manager: 'are their manager', departmentHead: 'head a team', budgetOwner: 'hold a team’s budget', finance: 'look after finance',
+  hr: 'look after HR', chiefExecutive: 'are the chief executive', admin: 'are an admin',
 };
 
 /**
@@ -334,6 +343,14 @@ const WHO_I_CAN_SET =
 function whichJobQuestion(id: string, plan: Plan, known: WhatIsKnown): string {
   const n = first(known, id);
   const jobs = jobsOf(id, dutiesNow(plan, known));
+  if (isMe(known, id)) {
+    /* The person reading named themselves: they are "you". */
+    if (jobs.length > 1) {
+      return `You ${andList(jobs.map((j) => (j.team ? (j.rule === 'departmentHead' ? `head ${j.team}` : `hold the ${j.team} budget`) : YOUR_JOB_NAMES[j.rule])))}. Which of these are you approving it as? I set who approves by their job, so it keeps working when people change jobs.`;
+    }
+    if (known.mayNameJobs === false) return ONLY_AN_ADMIN_NAMES_JOBS(n);
+    return 'I set who approves by their job, not by name, so it keeps working when people change jobs. Which job do you do here? For example, do you head a team, hold a team’s budget, look after HR, look after finance, or are you the chief executive?';
+  }
   if (jobs.length > 1) {
     return `${n} ${andList(jobs.map((j) => (j.team ? (j.rule === 'departmentHead' ? `heads ${j.team}` : `holds the ${j.team} budget`) : JOB_NAMES[j.rule])))}. Which of these is ${n} approving it as? I set who approves by their job, so it keeps working when people change jobs.`;
   }
@@ -453,8 +470,9 @@ export function longerSteps(plan: Plan): Rule[][] | null {
 
 // ---------------------------------------------- the questions ----------------------------------------------
 
-/** The rule as the admin reads it, with the holder's name where there is one. */
+/** The rule as the admin reads it, with the holder's name where there is one, or "you" when the holder is the person reading. */
 export function ruleSaid(r: Rule, d: Duties, known: WhatIsKnown): string {
+  if ((r === 'finance' || r === 'hr' || r === 'chiefExecutive') && isMe(known, d[r])) return 'you';
   switch (r) {
     case 'manager': return 'the person’s manager';
     case 'departmentHead': return 'the head of the person’s team';
@@ -466,8 +484,9 @@ export function ruleSaid(r: Rule, d: Duties, known: WhatIsKnown): string {
   }
 }
 
-/** The rule said again, shortly: "the manager", "Omar", "an admin". */
+/** The rule said again, shortly: "the manager", "Omar", "an admin", or "you" when the holder is the person reading. */
 function ruleShort(r: Rule, d: Duties, known: WhatIsKnown): string {
+  if ((r === 'finance' || r === 'hr' || r === 'chiefExecutive') && isMe(known, d[r])) return 'you';
   switch (r) {
     case 'manager': return 'the manager';
     case 'departmentHead': return 'the head of the team';
@@ -520,15 +539,15 @@ export function nextQuestion(plan: Plan, known: WhatIsKnown): AQuestion | null {
           : `Who approves leave of ${moreThanWorkingDays(plan.longer.above)}?` };
       }
       if (plan.tellHr === undefined) return { key: 'tellHr', ask: 'Does HR need to see all requests?' };
-      if (plan.escalateAfter === undefined) return { key: 'escalate', ask: `What happens if ${firstSaid} doesn't respond within two working days?` };
+      if (plan.escalateAfter === undefined) return { key: 'escalate', ask: `What happens if ${firstSaid} ${agree(firstSaid, "don't", "doesn't")} respond within two working days?` };
       break;
     case 'spend':
       if (!plan.currency) return { key: 'currency', ask: 'Which currency do people spend in?' };
       if (!plan.steps) return { key: 'approver', ask: 'Who approves a request to spend?' };
       if (!plan.after) return { key: 'after', ask: `Does anybody approve it after ${firstSaid}, for example finance? You can say no.` };
-      if (plan.limit === undefined) return { key: 'limit', ask: plan.steps.length > 1 ? 'Up to what amount does a request go this way? Above that amount, somebody else approves it.' : `What is the most ${firstSaid} may approve on their own?` };
+      if (plan.limit === undefined) return { key: 'limit', ask: plan.steps.length > 1 ? 'Up to what amount does a request go this way? Above that amount, somebody else approves it.' : `What is the most ${firstSaid} may approve on ${agree(firstSaid, 'your', 'their')} own?` };
       if (!plan.stepsAbove) return { key: 'above', ask: `Who approves anything above ${money(plan.currency, plan.limit)}?` };
-      if (plan.escalateAfter === undefined) return { key: 'escalate', ask: `What happens if ${firstSaid} doesn't respond within two working days?` };
+      if (plan.escalateAfter === undefined) return { key: 'escalate', ask: `What happens if ${firstSaid} ${agree(firstSaid, "don't", "doesn't")} respond within two working days?` };
       break;
     case 'time':
       if (!plan.clients?.length) return { key: 'clients', ask: 'Which clients or projects do people give their hours for? Write one on each line, or put commas between them.' };
@@ -536,7 +555,7 @@ export function nextQuestion(plan: Plan, known: WhatIsKnown): AQuestion | null {
       if (!plan.after) return { key: 'after', ask: `Does anybody approve the hours after ${firstSaid}, for example finance? You can say no.` };
       if (plan.hoursAWeek === undefined) return { key: 'hoursAWeek', ask: 'How many hours a week does each person need to give? You can say none.' };
       if (plan.cutOff === undefined) return { key: 'cutOff', ask: 'When are the hours due each week? For example, Friday at 17:00. You can say there is no cut-off.' };
-      if (plan.escalateAfter === undefined) return { key: 'escalate', ask: `What happens if ${firstSaid} doesn't respond within two working days?` };
+      if (plan.escalateAfter === undefined) return { key: 'escalate', ask: `What happens if ${firstSaid} ${agree(firstSaid, "don't", "doesn't")} respond within two working days?` };
       break;
     case 'reviews':
       if (!plan.every) return { key: 'every', ask: 'How often is each person reviewed, every 6 months or every 12 months?' };
@@ -813,9 +832,11 @@ function stepsSaid(what: string, steps: Rule[][], d: Duties, known: WhatIsKnown,
   const out: string[] = [];
   out.push(`${what} goes to ${steps.length > 1 ? `${inTheMiddle(ruleSaid(steps[0][0], d, known))} first` : ruleSaid(steps[0][0], d, known)}.`);
   for (let i = 1; i < steps.length; i++) {
-    out.push(`When ${ruleShort(steps[i - 1][0], d, known)} has approved it, it goes to ${inTheMiddle(ruleSaid(steps[i][0], d, known))} to approve as well.`);
+    const who = ruleShort(steps[i - 1][0], d, known);
+    out.push(`When ${who} ${agree(who, 'have', 'has')} approved it, it goes to ${inTheMiddle(ruleSaid(steps[i][0], d, known))} to approve as well.`);
   }
-  if (steps.length > 1) out.push(`It is approved only when ${ruleShort(steps[steps.length - 1][0], d, known)} approves it, and a no from anybody on the way ends it.`);
+  const last = ruleShort(steps[steps.length - 1][0], d, known);
+  if (steps.length > 1) out.push(`It is approved only when ${last} ${agree(last, 'approve', 'approves')} it, and a no from anybody on the way ends it.`);
   for (const s of steps) {
     if (s.length < 2 || s[0] === 'admin') continue;
     const line = `If ${nobodyFor(s[0])}, it goes to ${inTheMiddle(ruleSaid(s[1], d, known))} instead.`;
@@ -827,10 +848,14 @@ function stepsSaid(what: string, steps: Rule[][], d: Duties, known: WhatIsKnown,
 /** Who holds a team job, team by team: "Joseph heads Operations, and Wairimu heads Sales." */
 function teamJobsSaid(rule: 'departmentHead' | 'budgetOwner', d: Duties, known: WhatIsKnown): string[] {
   const key = rule === 'departmentHead' ? 'departmentHeads' : 'budgetOwners';
-  const held = known.teams.filter((t) => d[key]?.[t]).map((t) => (rule === 'departmentHead' ? `${first(known, d[key]![t])} heads ${t}` : `${first(known, d[key]![t])} holds the ${t} budget`));
+  const held = known.teams.filter((t) => d[key]?.[t]).map((t) => {
+    const me = isMe(known, d[key]![t]);
+    const who = me ? 'you' : first(known, d[key]![t]);
+    return rule === 'departmentHead' ? `${who} ${me ? 'head' : 'heads'} ${t}` : `${who} ${me ? 'hold' : 'holds'} the ${t} budget`;
+  });
   const none = known.teams.filter((t) => !d[key]?.[t]);
   const out: string[] = [];
-  if (held.length) out.push(`${held.length > 1 ? `${held.slice(0, -1).join(', ')}, and ${held[held.length - 1]}` : held[0]}.`);
+  if (held.length) out.push(`${capital(held.length > 1 ? `${held.slice(0, -1).join(', ')}, and ${held[held.length - 1]}` : held[0])}.`);
   if (none.length) out.push(`Nobody is named ${rule === 'departmentHead' ? `as the head of ${andList(none)}` : `as holding the ${andList(none)} budget`} yet, so for people in ${none.length > 1 ? 'those teams' : none[0]} that part goes to the next person on the list.`);
   return out;
 }
@@ -843,7 +868,8 @@ function escalationSaid(steps: Rule[][], days: number | null | undefined, d: Dut
   /* Each time a request is passed on, it waits the same number of days again, so one sentence says each pass. */
   for (const s of steps) {
     for (let i = 0; i + 1 < s.length; i++) {
-      const line = `If ${ruleShort(s[i], d, known)} has not answered after ${n}, or is on leave that day, it goes to ${ruleSaid(s[i + 1], d, known)}.`;
+      const who = ruleShort(s[i], d, known);
+      const line = `If ${who} ${agree(who, 'have', 'has')} not answered after ${n}, or ${agree(who, 'are', 'is')} on leave that day, it goes to ${ruleSaid(s[i + 1], d, known)}.`;
       if (!seen.has(line)) { seen.add(line); out.push(line); }
     }
   }
@@ -895,13 +921,21 @@ export function theSetUpSaid(plan: Plan, known: WhatIsKnown): string[] {
       out.push(`Nobody is named ${r === 'finance' ? 'to look after finance' : r === 'hr' ? 'to look after HR' : 'as the chief executive'} yet, so that part goes to the next person on the list.`);
     }
   }
+  /* A job the person reading holds, said to them as "you", with why it comes to them. HR on the leave board says so below. */
+  const tellsHr = plan.suite === 'leave' && !!plan.tellHr;
+  for (const r of ['chiefExecutive', 'finance', 'hr'] as const) {
+    if (!uses(r) || !isMe(known, d[r]) || (r === 'hr' && tellsHr)) continue;
+    out.push(`${r === 'chiefExecutive' ? 'You are the chief executive' : r === 'finance' ? 'You look after finance' : 'You look after HR'}, so that part comes to you.`);
+  }
   if (known.mayNameJobs === false && out.some((l) => /^Nobody is named /.test(l))) {
     out.push('Only an admin can name who holds each job.');
   }
   if (plan.suite === 'leave') {
     const hr = d.hr ? `${first(known, d.hr)}, who looks after HR,` : 'Whoever looks after HR';
-    if (plan.tellHr === 'every') out.push(`${hr} sees every leave request on the leave board, when it is asked for and when it is decided.`);
-    else if (plan.tellHr === 'approved') out.push(`${hr} sees each approved leave request on the leave board.`);
+    /* Said to whoever looks after HR: "You look after HR, so you see ...". */
+    const sees = isMe(known, d.hr) ? 'You look after HR, so you see' : `${hr} sees`;
+    if (plan.tellHr === 'every') out.push(`${sees} every leave request on the leave board, when it is asked for and when it is decided.`);
+    else if (plan.tellHr === 'approved') out.push(`${sees} each approved leave request on the leave board.`);
     else out.push('HR is not shown leave requests.');
   }
   out.push(...escalationSaid([...steps, ...(plan.stepsAbove ?? []), ...(longer ?? [])], plan.escalateAfter, d, known));
