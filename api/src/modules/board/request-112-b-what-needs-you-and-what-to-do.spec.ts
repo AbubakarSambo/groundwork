@@ -53,14 +53,15 @@ describe('request 112 (b): what Bisi, who runs it, can do about each item', () =
   it('a wait nobody has been named for: name who provides it', async () => {
     const b = await boardAs(RUN, ...BISI);
     expect(leadAction(b, 'nobody-named-d-femi')).toEqual({ label: 'Name who provides it', says: 'Say in your check-in who can provide it, so they can be asked.', goesTo: 'check-in' });
-    expect(decision(b, 'Femi Okonkwo is waiting on the bank statements')).toEqual({
+    /* The question says who it waits on now, and only a decision "needs deciding" (item 21). */
+    expect(decision(b, 'Femi Okonkwo is waiting for the bank statements')).toEqual({
       label: 'Name who provides it', says: 'Nobody has been named to provide it. Say in your check-in who can, so they can be asked.', goesTo: 'check-in',
     });
   });
 
   it('a wait on a colleague: "Ask Kwame", on the Context page, where a question for his next check-in is kept', async () => {
     const b = await boardAs(RUN, ...BISI);
-    expect(decision(b, 'Ngozi Eze is waiting on the signed forms')).toEqual({
+    expect(decision(b, 'Ngozi Eze is waiting on Kwame Mensah for the signed forms')).toEqual({
       label: 'Ask Kwame',
       says: "Tell Groundwork on the Context page what to ask Kwame Mensah, and it will ask in Kwame Mensah's next check-in.",
       goesTo: 'context',
