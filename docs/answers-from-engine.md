@@ -3577,6 +3577,18 @@ On the onboarding board `startingState` is an object, or null when nothing was a
 - Left out for every reader: a goal the lead has not told the person (or has not asked about), which is the lead's own note (decision 56); and the role the lead described the person by (decision 30). Rows go through `personMayBeRead` and `commitmentMayBeRead`, so a reader who may not read a person reads nothing of them. An admin with no access to the evaluation check-in is not let in at all.
 - Read by: the lead, the person it is about (their own and the goals told to them), and an admin who set the check-in up. Test: `request-123-what-was-agreed-at-the-start-as-each-reader-reads-it.spec.ts`.
 
+### `changeSinceLast`, "Change since last check-in"
+
+On the onboarding board only. Absent until two sessions are finished (there is no "last check-in" before that), and absent when the reader may read nothing in it.
+
+- `heading`: "Change since last check-in". `between`: "Between session 5 and session 6." (the last two finished sessions).
+- `rows[]`, one per area:
+  - `area`: "Commitments", "Waits", or the goal itself for each goal told to a person (the goal's words).
+  - `state`: "moved", "held" or "late". Moved means something was said or settled since the previous session (a commitment made in the latest session or marked done or not done since; a wait raised or cleared since; a goal marked met, dropped or changed since). Late means something is still open from before the previous session (a commitment said before it, a wait raised before it) or a goal's date has passed and it is still open. Held means neither. Late wins over moved.
+  - `says`: full sentences, for example "Tobi Adewale made 1 commitment in session 3. Of Tobi Adewale's commitments, 1 was marked done since session 2. Tobi Adewale still has 1 commitment open from before session 2." Tobi reads "You made 1 commitment in session 3." and "You still have 1 commitment open from before session 2." A wait reads "Tobi Adewale is waiting on you for the commercial terms for each client, and has been since 2 September." and a cleared one "The wait for access to the client folders was cleared on 15 September." A goal reads "This goal was due on 10 September and is still open." or "This goal was marked met between session 2 and session 3." or "Nothing has changed on this goal between session 2 and session 3."
+  - `kind`: "commitments", "waits" or "goal".
+- Nothing here says what a person is. Each row goes through the wall of the other rows (`personMayBeRead`, `commitmentMayBeRead`, `handoffMayBeRead`); a goal not told to the person is not sent. Test: `request-123-change-since-the-last-check-in-as-each-reader-reads-it.spec.ts`.
+
 ## Handover to the screens workspace: the onboarding and project boards (4 October)
 
 Hafsah has given the onboarding and project boards back to the screens workspace. What the engine workspace did on them while you were away:

@@ -154,6 +154,7 @@ import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
 import { whatWasAgreedAtTheStart, theGoalsSetForAnyone } from './what-was-agreed-at-the-start';
+import { changeSinceTheLastCheckIn } from './change-since-the-last-check-in';
 import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, theLeadActions, theObligations, theForecast, whoWaitedOnWhom, theContradictions, theQuestionsForTheLead, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject, theNewHireReadsTheLeadsWords } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { eachLineInTheirName, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
@@ -2479,6 +2480,8 @@ export class BoardService {
         const goals = await theGoalsSetForAnyone(this.prisma, groundId);
         const agreed = whatWasAgreedAtTheStart({ goals, commitments: mine.commitments, sessions, people, startsAt: (ground as any).startsAt ?? null, createdAt: (ground as any).createdAt ?? null, reader });
         (out as any).startingState = agreed;
+        const change = changeSinceTheLastCheckIn({ commitments: mine.commitments, handoffs, goals, sessions, people, reader, now });
+        if (change) (out as any).changeSinceLast = change;
       }
       /*
        * Built from the targets this reader is already served, so every wall on a target holds here too. Never on an
