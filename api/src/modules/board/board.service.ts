@@ -153,6 +153,7 @@ import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
+import { whatWasAgreedAtTheStart, theGoalsSetForAnyone } from './what-was-agreed-at-the-start';
 import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, theLeadActions, theObligations, theForecast, whoWaitedOnWhom, theContradictions, theQuestionsForTheLead, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject, theNewHireReadsTheLeadsWords } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { eachLineInTheirName, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
@@ -1666,7 +1667,8 @@ export class BoardService {
         .filter((p) => !p.managingOnly)
         .map((p) => ({
           participantId: p.id,
-          name: nameOf(p.id),
+          /* The reader's own heading is "You", never their own name (run-26, cofounder). */
+          name: p.id === me?.id ? 'You' : nameOf(p.id),
           role: theLeadsWordsAbout(p, isInitiator),
           /*
            * `cleanText`, NOT `e.text`. This panel is read by a person, and the stored text still
@@ -1697,10 +1699,10 @@ export class BoardService {
         .filter((d) => !(d.onParticipantId && d.onParticipantId === d.fromParticipantId))
         .map((d) => ({
         id: d.id,
-        from: nameOf(d.fromParticipantId),
+        from: d.fromParticipantId && d.fromParticipantId === me?.id ? 'You' : nameOf(d.fromParticipantId),
         fromParticipantId: d.fromParticipantId,
         what: d.what,
-        on: d.onParticipantId ? nameOf(d.onParticipantId) : d.onLabel,
+        on: d.onParticipantId ? (d.onParticipantId === me?.id ? 'You' : nameOf(d.onParticipantId)) : d.onLabel,
         onParticipantId: d.onParticipantId,
         status: d.status,
         then: d.then,
@@ -2378,6 +2380,11 @@ export class BoardService {
       const onlyTheirOwn = aParticipantOnly;
       const reader: WhoIsReading = {
         meId: me?.id ?? null,
+        myNames: me
+          ? [[me.user?.firstName, me.user?.lastName].filter(Boolean).join(' ').trim(), (me.user?.firstName ?? '').trim(), (me.user?.lastName ?? '').trim()]
+            /* A first or last name another person here shares is not only the reader's, so it stays a name. */
+            .filter((n, i) => n.length > 1 && (i === 0 || !(ground.participants as any[]).some((p) => p.id !== me.id && [p.user?.firstName, p.user?.lastName].some((x: string) => (x ?? '').trim().toLowerCase() === n.toLowerCase()))))
+          : [],
         mayReadEveryone,
         theLeadsId: theLeadsRow,
         personMayBeRead: (pid) => {
@@ -2467,6 +2474,12 @@ export class BoardService {
       if (contradictions.length) out.contradictions = contradictions;
       const questionsForTheLead = theQuestionsForTheLead(mine.commitments, handoffs, sessions, reader);
       if (questionsForTheLead.length) out.questionsForTheLead = questionsForTheLead;
+      /* The onboarding board's own sections (request 123), from the same rows and under the same wall. See what-was-agreed-at-the-start. A string on the other boards, an object or null here. */
+      if (family === BoardFamily.ONBOARDING) {
+        const goals = await theGoalsSetForAnyone(this.prisma, groundId);
+        const agreed = whatWasAgreedAtTheStart({ goals, commitments: mine.commitments, sessions, people, startsAt: (ground as any).startsAt ?? null, createdAt: (ground as any).createdAt ?? null, reader });
+        (out as any).startingState = agreed;
+      }
       /*
        * Built from the targets this reader is already served, so every wall on a target holds here too. Never on an
        * evaluation check-in. It says the aim or the limit, so it goes only to those who read aims and limits (decision

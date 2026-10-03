@@ -251,7 +251,7 @@ export const FAMILY_SECTIONS: Record<BoardFamily, BoardSection[]> = {
     // decision their manager owes them. A live run recorded two real handoffs on
     // a new-hire ground and the board had nowhere to put them, so the manager's
     // own slippage was the one thing invisible on a page about the new person.
-    'phaseSpine', 'objectives', 'dependencies', 'checkInGrid', 'divergence', 'contribution',
+    'phaseSpine', 'objectives', 'startingState', 'dependencies', 'checkInGrid', 'divergence', 'contribution',
   ],
   [BoardFamily.EVALUATION]: [
     'objectives', 'checkInGrid', 'divergence',
