@@ -709,8 +709,14 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
         REQUEST 110 (a): "YOUR SHARE" IS NOW ALWAYS SENT TO A PERSON WHO CHECKS IN, AS A LIST -
         where they have no number of their own, `yourShare` is `[]` and `yourShareSays` says so in
         a plain sentence, rather than the whole section just never appearing.
+
+        PROJECT BOARD REVIEW 1, FIX 11: DRAWN FOR A PARTICIPANT OF ANY KIND OF WORK, NOT ONLY
+        SALES. `yourShareSays` is the engine's own plain sentence for "nothing of yours yet" (the
+        engineering release's participant, Aisha, reads "There is no number of yours on this board
+        yet, so there is no share to show.") - sent, and true, whatever kind of work this is; gating
+        it to `isSalesKindOfWork` hid it from every other participant the engine sends it to.
       */}
-      {isSalesKindOfWork && !yourShare?.length && yourShareSays && (
+      {!yourShare?.length && yourShareSays && (
         <Section heading="Your share">
           <Note tone="muted">{yourShareSays}</Note>
         </Section>
@@ -1137,6 +1143,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    */
   const isSalesOrg = ((b as any).kindOfWork ?? null) === 'sales org'
   /*
+   * PROJECT BOARD REVIEW 1, FIX 11: THE TWO PROJECT SCENARIOS - "GET A NEW PROJECT OFF TO A GOOD
+   * START" (NEW_PROJECT, eng.txt's own check-in) AND "GET A PROJECT BACK ON TRACK" (DRIFT). Used
+   * to move "Open issues" into the end fold (eng.txt shows none) and to put "Who checked in"
+   * before "Blockers" (eng.txt's own order), both only for these two, leaving every other kind of
+   * work exactly where it already was.
+   */
+  const isProjectBoard = b.scenario === 'NEW_PROJECT' || b.scenario === 'DRIFT'
+  /*
    * ONBOARDING BOARD FIX 1 (SECOND REVIEW): THE WHOLE-CHECK-IN FOLD WAS BUILT FOR THE SALES
    * PARTICIPANT'S OWN VIEW, AND NOW ONLY SALES HAS ONE. `TheParticipantsOwnView` drew a short
    * personal view for every participant - whether today's team picture is shared, a way to their
@@ -1415,6 +1429,114 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * b.divergence`) so it is not the same literal text as the general case's own gate, further down
    * - see the note there.
    */
+  const whoCheckedIn = () => {
+    if (!shown.checkInGrid || !b.checkInGrid) return null
+          /** Does any row have a role worth a column of its own? */
+          const anyRoleToShow = b.checkInGrid.rows.some((r) => (r.role && r.role !== r.name) || r.managingOnly)
+          /*
+           * ITEM E: A SESSION THAT HAS NOT OPENED IS NOT THE SAME "-" AS ONE SOMEBODY WAS SIMPLY
+           * NOT ON. A bare dash read the same for both, and for a session with nothing to say about
+           * it yet at all. Cross-referenced against the phase spine's own state, so an unopened
+           * session's cell is blank with an accessible "Not open yet" rather than a dash.
+           */
+          const sessionState = new Map((b.phaseSpine?.sessions ?? []).map((ps) => [ps.n, ps.state]))
+          /*
+           * DECISION 77: SOMEBODY NOT LET IN YET IS NOT "HAS NOT STARTED SESSION 1". Read live,
+           * Faraji Odhiambo - held at the organisation's door, `notLetInYet` - was drawn here as
+           * an ordinary absence: "Faraji Odhiambo has not started session 1, and was not part of
+           * session 2." He cannot have started a session nobody let him into. The board's own
+           * `checkInGrid` row does not carry `notLetInYet` (it is a fact about the organisation,
+           * not this check-in's record), so it is read from the ground's own `participants`
+           * (`GET /grounds/:id`, already fetched as `groundForSignals` for `viewerRunsThisCheckIn`
+           * above) and matched back onto each row by participant id.
+           */
+          const notLetInYetIds = new Set(
+            (((groundForSignals as any)?.participants ?? []) as { id: string; notLetInYet?: boolean }[])
+              .filter((p) => p.notLetInYet)
+              .map((p) => p.id),
+          )
+          /*
+           * U.10: "WHO CHECKED IN", THE PROTOTYPE'S WORDING AND SHAPE (board-as-lead.txt: "Who
+           * checked in / The last 10 sessions, one row each"). The prototype draws this as a
+           * name and a row of ten navy squares - not a table with a "Session N" header per column.
+           * Squares come from `squaresFor`, the same helper "The team today" uses, so both read the
+           * same checkInGrid data the same way. The role column (not in the prototype, but real
+           * data this board already had - "managing only", or a role standing in for a name nobody
+           * gave) is kept so nothing here is lost, just moved beside the name instead of its own
+           * header.
+           */
+          return (
+            <Section heading="Who checked in" note="The last 10 sessions, one row each.">
+              {/*
+                A GRID OF PEOPLE BY SESSIONS IS THE RIGHT SHAPE UNTIL THE SCREEN IS NARROWER THAN
+                IT IS. Measured on the running board at 375px: 1088px of table inside a 301px box,
+                nine pills behind a scrollbar, names wrapping to two lines to make room for it.
+                The phone gets the same facts down the page instead - see the component.
+              */}
+              {onAPhone ? (
+                <NineColumnsIsNotAPhoneScreen
+                  rows={b.checkInGrid.rows.map((r) => ({
+                    ...r,
+                    name: nameOnTheBoard(b, r.participantId, r.name),
+                    notLetInYet: r.notLetInYet ?? notLetInYetIds.has(r.participantId),
+                  })) as any}
+                  sessions={b.checkInGrid.sessions}
+                  openSessions={b.checkInGrid.sessions.filter((s) => sessionState.get(s) !== 'upcoming')}
+                  myParticipantId={b.myParticipantId}
+                />
+              ) : (
+                /*
+                  U.10 (c2): FROM THE SHARED PARTS. A PeopleTable of PersonRows, the same shape
+                  "The team today" uses - name (and, where a role is worth its own column, the
+                  lead's note or "Managing only" as the level line), then the same ten squares
+                  "The team today" draws, from the same `squaresFor` helper, in their own
+                  fixed-width column so they line up across every row.
+                */
+                <PeopleTable>
+                  {b.checkInGrid.rows.map((r) => {
+                    /* Re-review, 2 October: the reader's own row headed with their own name -
+                       "Rukia Otieno" over her own row, on the board she herself was reading, the
+                       same mistake "Who owns what" was fixed for above. */
+                    const displayName = r.participantId === b.myParticipantId ? 'You' : nameOnTheBoard(b, r.participantId, r.name)
+                    const notYet = r.notLetInYet ?? notLetInYetIds.has(r.participantId)
+                    return (
+                    <PersonRow
+                      key={r.participantId}
+                      extraColumns="190px"
+                      person={{
+                        initials: initialsOf(displayName),
+                        name: displayName,
+                        level: anyRoleToShow && (r.role && r.role !== r.name || r.managingOnly)
+                          ? (r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : 'Managing only')
+                          : undefined,
+                      }}
+                    >
+                      {/* Decision 77: squares would have drawn every session as missed for
+                          somebody never let in to answer any of them - the sentence instead. */}
+                      {notYet ? (
+                        <Note tone="muted">{displayName} is waiting to be let in.</Note>
+                      ) : (
+                        <div className="gwui-gap-5" style={{display: 'flex', justifyContent: 'flex-end'}}>
+                          {squaresFor(r.participantId).map((sq) => (
+                            <span
+                              key={sq.key}
+                              aria-label={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
+                              title={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
+                              className={sq.state === 'empty' ? 'gwui-rule-square' : undefined}
+                              style={{display: 'inline-block', width: 14, height: 14, borderRadius: 3, flexShrink: 0, background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent'}}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </PersonRow>
+                    )
+                  })}
+                </PeopleTable>
+              )}
+            </Section>
+          )
+  }
+
   const divergenceBlock = (heading: string) => (
     <>
       {b.divergence && shown.divergence && (
@@ -1881,6 +2003,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           drawn from the server's own `blockers` field - every sentence built and ordered server
           side, so this file no longer joins `blockerCheck` and `whoWaitedOnWhom` by hand.
         */}
+        {isProjectBoard && whoCheckedIn()}
         <BlockersSection blockers={(b as any).blockers} />
         {shown.patterns && b.patterns && (
           <>
@@ -1967,112 +2090,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         <ReportedAgainstCriteriaSection data={(b as any).reportedAgainstCriteria} kindOfWork={(b as any).kindOfWork ?? null} />
 
-        {shown.checkInGrid && b.checkInGrid && (() => {
-          /** Does any row have a role worth a column of its own? */
-          const anyRoleToShow = b.checkInGrid.rows.some((r) => (r.role && r.role !== r.name) || r.managingOnly)
-          /*
-           * ITEM E: A SESSION THAT HAS NOT OPENED IS NOT THE SAME "-" AS ONE SOMEBODY WAS SIMPLY
-           * NOT ON. A bare dash read the same for both, and for a session with nothing to say about
-           * it yet at all. Cross-referenced against the phase spine's own state, so an unopened
-           * session's cell is blank with an accessible "Not open yet" rather than a dash.
-           */
-          const sessionState = new Map((b.phaseSpine?.sessions ?? []).map((ps) => [ps.n, ps.state]))
-          /*
-           * DECISION 77: SOMEBODY NOT LET IN YET IS NOT "HAS NOT STARTED SESSION 1". Read live,
-           * Faraji Odhiambo - held at the organisation's door, `notLetInYet` - was drawn here as
-           * an ordinary absence: "Faraji Odhiambo has not started session 1, and was not part of
-           * session 2." He cannot have started a session nobody let him into. The board's own
-           * `checkInGrid` row does not carry `notLetInYet` (it is a fact about the organisation,
-           * not this check-in's record), so it is read from the ground's own `participants`
-           * (`GET /grounds/:id`, already fetched as `groundForSignals` for `viewerRunsThisCheckIn`
-           * above) and matched back onto each row by participant id.
-           */
-          const notLetInYetIds = new Set(
-            (((groundForSignals as any)?.participants ?? []) as { id: string; notLetInYet?: boolean }[])
-              .filter((p) => p.notLetInYet)
-              .map((p) => p.id),
-          )
-          /*
-           * U.10: "WHO CHECKED IN", THE PROTOTYPE'S WORDING AND SHAPE (board-as-lead.txt: "Who
-           * checked in / The last 10 sessions, one row each"). The prototype draws this as a
-           * name and a row of ten navy squares - not a table with a "Session N" header per column.
-           * Squares come from `squaresFor`, the same helper "The team today" uses, so both read the
-           * same checkInGrid data the same way. The role column (not in the prototype, but real
-           * data this board already had - "managing only", or a role standing in for a name nobody
-           * gave) is kept so nothing here is lost, just moved beside the name instead of its own
-           * header.
-           */
-          return (
-            <Section heading="Who checked in" note="The last 10 sessions, one row each.">
-              {/*
-                A GRID OF PEOPLE BY SESSIONS IS THE RIGHT SHAPE UNTIL THE SCREEN IS NARROWER THAN
-                IT IS. Measured on the running board at 375px: 1088px of table inside a 301px box,
-                nine pills behind a scrollbar, names wrapping to two lines to make room for it.
-                The phone gets the same facts down the page instead - see the component.
-              */}
-              {onAPhone ? (
-                <NineColumnsIsNotAPhoneScreen
-                  rows={b.checkInGrid.rows.map((r) => ({
-                    ...r,
-                    name: nameOnTheBoard(b, r.participantId, r.name),
-                    notLetInYet: r.notLetInYet ?? notLetInYetIds.has(r.participantId),
-                  })) as any}
-                  sessions={b.checkInGrid.sessions}
-                  openSessions={b.checkInGrid.sessions.filter((s) => sessionState.get(s) !== 'upcoming')}
-                  myParticipantId={b.myParticipantId}
-                />
-              ) : (
-                /*
-                  U.10 (c2): FROM THE SHARED PARTS. A PeopleTable of PersonRows, the same shape
-                  "The team today" uses - name (and, where a role is worth its own column, the
-                  lead's note or "Managing only" as the level line), then the same ten squares
-                  "The team today" draws, from the same `squaresFor` helper, in their own
-                  fixed-width column so they line up across every row.
-                */
-                <PeopleTable>
-                  {b.checkInGrid.rows.map((r) => {
-                    /* Re-review, 2 October: the reader's own row headed with their own name -
-                       "Rukia Otieno" over her own row, on the board she herself was reading, the
-                       same mistake "Who owns what" was fixed for above. */
-                    const displayName = r.participantId === b.myParticipantId ? 'You' : nameOnTheBoard(b, r.participantId, r.name)
-                    const notYet = r.notLetInYet ?? notLetInYetIds.has(r.participantId)
-                    return (
-                    <PersonRow
-                      key={r.participantId}
-                      extraColumns="190px"
-                      person={{
-                        initials: initialsOf(displayName),
-                        name: displayName,
-                        level: anyRoleToShow && (r.role && r.role !== r.name || r.managingOnly)
-                          ? (r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : 'Managing only')
-                          : undefined,
-                      }}
-                    >
-                      {/* Decision 77: squares would have drawn every session as missed for
-                          somebody never let in to answer any of them - the sentence instead. */}
-                      {notYet ? (
-                        <Note tone="muted">{displayName} is waiting to be let in.</Note>
-                      ) : (
-                        <div className="gwui-gap-5" style={{display: 'flex', justifyContent: 'flex-end'}}>
-                          {squaresFor(r.participantId).map((sq) => (
-                            <span
-                              key={sq.key}
-                              aria-label={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
-                              title={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
-                              className={sq.state === 'empty' ? 'gwui-rule-square' : undefined}
-                              style={{display: 'inline-block', width: 14, height: 14, borderRadius: 3, flexShrink: 0, background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent'}}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </PersonRow>
-                    )
-                  })}
-                </PeopleTable>
-              )}
-            </Section>
-          )
-        })()}
+        {!isProjectBoard && whoCheckedIn()}
 
         {/*
           U.10 ITEM 7: "OVER TIME" MOVES OUT OF THE FOLD, TO THE PROTOTYPE'S OWN PLACE
@@ -2228,8 +2246,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           Nothing on record follows an issue from unclear to decided to done and checked, so this is
           always the engine's one "not-known" sentence, to whoever runs the check-in, not on a
           performance plan - the lead's actual open questions are already under "What needs you".
+
+          PROJECT BOARD REVIEW 1, FIX 11: MOVED INTO THE END FOLD ON THESE BOARDS. Neither of
+          eng.txt's own two example check-ins (NEW_PROJECT, DRIFT) shows "Open issues" anywhere -
+          it moves into "Everything else from this check-in" for those two, the same place every
+          other section the prototype's own project boards do not show already sits. Every other
+          kind of work keeps it exactly where it was.
         */}
-        {(b as any).openIssues && (
+        {!isProjectBoard && (b as any).openIssues && (
           <Section heading="Open issues">
             <Note tone="muted">{(b as any).openIssues.why}</Note>
           </Section>
@@ -2276,6 +2300,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           legend.
         */}
         <FoldEverythingElseUnless alreadyFolded={participantFoldsWhole}>
+        {/*
+          PROJECT BOARD REVIEW 1, FIX 11: "OPEN ISSUES", FOLDED HERE ON THESE BOARDS - see the
+          comment where it would otherwise have drawn, above.
+        */}
+        {isProjectBoard && (b as any).openIssues && (
+          <Section heading="Open issues">
+            <Note tone="muted">{(b as any).openIssues.why}</Note>
+          </Section>
+        )}
         {/*
           BOARD REVIEW, SALES PIECE C, ITEM 2 (c): THE KIND-OF-WORK LINE, THE SESSION PILLS, AND
           "BUILT FROM WHAT EACH PERSON SHARED…" - NONE OF THEM IN THE PROTOTYPE'S OWN HEADER. The
