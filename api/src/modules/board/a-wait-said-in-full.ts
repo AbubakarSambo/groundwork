@@ -19,14 +19,19 @@ const PLAIN_WORDS = /^(?:(?:a|an|one|another|the same)\s+(?:[a-z]+\s+)?colleague
 const midSentence = (who: string) => (PLAIN_WORDS.test(who) ? who.toLowerCase() : who);
 const atTheStart = (who: string) => (who ? `${who[0].toUpperCase()}${who.slice(1)}` : who);
 
+/*
+ * A WAIT THAT HAS BEEN CLEARED IS SAID IN THE PAST (item 21, the founder's board). Ada read "You are waiting on their
+ * lawyer." on a row whose status was CLEARED. It now reads "You were waiting on your lawyer, and that has been cleared."
+ */
 export function aWaitSaidInFull(
-  wait: { from: string | null; fromParticipantId: string | null; on: string | null; onParticipantId: string | null },
+  wait: { from: string | null; fromParticipantId: string | null; on: string | null; onParticipantId: string | null; status?: string | null },
   readerParticipantId: string | null,
 ): string {
   const readerWaits = !!readerParticipantId && wait.fromParticipantId === readerParticipantId;
   const readerIsWaitedOn = !!readerParticipantId && wait.onParticipantId === readerParticipantId;
   const on = readerIsWaitedOn ? 'you' : (wait.on ?? '').trim() ? midSentence((wait.on ?? '').trim()) : 'somebody outside this check-in';
-  if (readerWaits) return `You are waiting on ${on}.`;
+  const cleared = String(wait.status ?? '').toUpperCase() === 'CLEARED';
+  if (readerWaits) return cleared ? `You were waiting on ${on}, and that has been cleared.` : `You are waiting on ${on}.`;
   const from = (wait.from ?? '').trim() ? atTheStart((wait.from ?? '').trim()) : 'Somebody on this check-in';
-  return `${from} is waiting on ${on}.`;
+  return cleared ? `${from} was waiting on ${on}, and that has been cleared.` : `${from} is waiting on ${on}.`;
 }
