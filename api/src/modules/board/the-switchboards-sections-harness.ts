@@ -82,6 +82,8 @@ export interface Setup {
   contextItems?: { id?: string; kind: string; audience?: string; text: string; closedAt?: Date | null }[];
   /** A colleague naming somebody's work (WorkMention rows: sourceParticipantId, aboutParticipantId, kind, text). */
   mentions?: any[];
+  /** Stored patterns (PatternDetection rows), as the detector keeps them. */
+  patterns?: any[];
 }
 
 /**
@@ -154,6 +156,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     } : {}),
     checkInGap: model({ findMany: jest.fn(async () => clone(setup.gaps ?? [])) }),
     workMention: model({ findMany: jest.fn(async () => clone(setup.mentions ?? [])) }),
+    patternDetection: model({ findMany: jest.fn(async () => clone(setup.patterns ?? [])) }),
     workItem: model({ findMany: jest.fn(async () => clone(setup.items ?? [])) }),
     groundDocument: model({ findMany: jest.fn(async (args: any) => clone((setup.documents ?? []).filter((d: any) => !args?.where?.id?.in || args.where.id.in.includes(d.id)))) }),
     productMetric: model({ findMany: jest.fn(async (args: any) => clone((setup.metrics ?? []).filter((m: any) => !args?.where?.subjectExternalId || m.subjectExternalId === args.where.subjectExternalId))) }),

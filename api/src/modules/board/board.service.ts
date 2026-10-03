@@ -123,6 +123,7 @@ import {
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, readsHowTheLeadingIsLanding } from '../patterns/who-reads-a-pattern';
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
+import { patternQuestionsToSettleFirst } from './pattern-questions-to-settle-first';
 import { everyDivergenceReadable } from '../reports/a-field-name-is-not-a-heading';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { theFirstNameFrom, theShortNameOf } from '../reports/a-title-is-not-a-first-name';
@@ -716,6 +717,27 @@ export class BoardService {
      */
     const shareableText = isInitiator ? [] : await theShareableTextFor(this.prisma as any, ground as any).catch(() => [] as string[]);
 
+    /*
+     * WHAT KEEPS COMING UP, AS QUESTIONS TO SETTLE FIRST, FOR THE LEAD ONLY (decision 86, item 1). Built from the
+     * patterns the lead is served, so on the same timing: after the person's answer, or after 3 or 7 days. Nobody
+     * else reads `overTime`. See pattern-questions-to-settle-first.
+     */
+    const patternQuestions: string[] = isInitiator
+      ? await (async () => {
+          const rows = await (this.prisma as any).patternDetection.findMany({
+            where: { groundId },
+            select: PATTERN_ROW_SELECT,
+            orderBy: { lastSeenAt: 'desc' },
+            take: 60,
+          });
+          const served = servedPatterns(rows as any, { participantId: me?.id ?? null, runsIt: true }, {
+            ...whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence),
+            now,
+          });
+          return patternQuestionsToSettleFirst(served, (pid) => nameOf(pid));
+        })().catch(() => [] as string[])
+      : [];
+
     const out: Record<string, any> = {
       groundId,
       renders: true,
@@ -840,9 +862,12 @@ export class BoardService {
       /* Without its patterns while they are not served, or the lines built from them. See patterns-are-served. */
       /* Counted to the sessions somebody has finished, as the work plan counts them, so one commitment is open for the
          same number of sessions in both (item 18). */
-      overTime: isInitiator ? overTimeAsServed((ground as any).report?.overTime ?? null, {
-        sessionsSoFar: Math.max(0, ...checkIns.filter((c: any) => !c.isSetup && c.status === CheckInStatus.COMPLETED).map((c: any) => c.sessionNumber ?? 0)),
-      }) : null,
+      overTime: isInitiator ? (() => {
+        const served = overTimeAsServed((ground as any).report?.overTime ?? null, {
+          sessionsSoFar: Math.max(0, ...checkIns.filter((c: any) => !c.isSetup && c.status === CheckInStatus.COMPLETED).map((c: any) => c.sessionNumber ?? 0)),
+        });
+        return served && patternQuestions.length ? { ...served, toSettleFirst: [...(served.toSettleFirst ?? []), ...patternQuestions] } : served;
+      })() : null,
       myParticipantId: me?.id ?? null,
       // Whether the caller may set the frame (targets, the poll question). The
       // board is otherwise read-only, so the client should not offer controls it
