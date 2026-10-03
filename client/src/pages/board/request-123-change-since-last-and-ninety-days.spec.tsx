@@ -140,6 +140,29 @@ describe('"Change since last check-in" and "The 90 days, in three steps" (reques
     expect(screen.getByText(/This step comes on 30 October\./)).toBeTruthy()
   })
 
+  it('draws "You and Tobi Adewale see the same pictures." to the lead, not the prototype\'s own Wairimu and Kwame', async () => {
+    renderBoard(boardAsLead())
+    await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
+    expect(screen.getByText('You and Tobi Adewale see the same pictures.')).toBeTruthy()
+    expect(screen.queryByText(/Wairimu/)).toBeNull()
+    expect(screen.queryByText(/Kwame/)).toBeNull()
+  })
+
+  it('draws "You and Amina see the same pictures." to the new hire, with the lead\'s first name', async () => {
+    me.id = 'u-tobi'
+    renderBoard(boardAsLead({ myParticipantId: 'p-tobi' }))
+    await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
+    expect(screen.getByText('You and Amina see the same pictures.')).toBeTruthy()
+    me.id = 'u-amina'
+  })
+
+  it('leaves the line out, rather than guessing, when the other person\'s name is not to hand', async () => {
+    renderBoard(boardAsLead({ participants: [{ ...PARTICIPANTS[0] }] }))
+    await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
+    expect(screen.getByText('The 90 days, in three steps')).toBeTruthy()
+    expect(screen.queryByText(/see the same pictures/)).toBeNull()
+  })
+
   it('places "Change since last check-in" right after "What was agreed at the start" and "The 90 days" right after that, before the person\'s history', async () => {
     renderBoard(boardAsLead({ startingState: { heading: 'What was agreed at the start', rows: [] } }))
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })

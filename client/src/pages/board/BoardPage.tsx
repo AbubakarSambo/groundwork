@@ -816,10 +816,17 @@ function ChangeSinceLastBody({ changeSinceLast }: { changeSinceLast: ChangeSince
  * onboarding board only, right after "Change since last check-in", before the person's history.
  * A step not yet reached already says so in its own first sentence ("This step comes on 30
  * October…"), from the engine, so nothing further is drawn for that here.
+ *
+ * "Wairimu and Kwame see the same pictures" IS THE PROTOTYPE'S OWN MADE-UP NAMES, NOT WORDS TO
+ * COPY VERBATIM. `seeTheSamePictures` is built by the caller from the real people on this board,
+ * the same way `onboardingNamesLine` already does just above - the reader is always "you", the
+ * other person is named with whichever name the rest of this board already gives for them (the
+ * new hire's full name to the lead, the lead's first name to the new hire). Null when either name
+ * is not to hand, so the line is simply left out rather than guessed.
  */
-function NinetyDaysBody({ ninetyDays }: { ninetyDays: NinetyDays }) {
+function NinetyDaysBody({ ninetyDays, seeTheSamePictures }: { ninetyDays: NinetyDays; seeTheSamePictures: string | null }) {
   return (
-    <Section heading={ninetyDays.heading} note="Wairimu and Kwame see the same pictures.">
+    <Section heading={ninetyDays.heading} note={seeTheSamePictures ?? undefined}>
       <Panel>
         <Stack gap={18}>
           {ninetyDays.steps.map((step) => (
@@ -1155,6 +1162,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         : (!!b.myParticipantId ? `You and ${(groundForSignals as any)?.leadFirstName ?? 'your lead'}.` : null))
     : null
   const cadenceLine = endedSaying ?? [onboardingNamesLine, cadenceWords ? `${cadenceWords}.` : null, spineWords].filter(Boolean).join(' ')
+  /*
+   * "THE 90 DAYS, IN THREE STEPS" - "You and {the other person} see the same pictures." Built from
+   * the real people this board already names, never the prototype's own Wairimu and Kwame. The
+   * lead reads the new hire's full name; the new hire reads back the lead's first name, same as
+   * `onboardingNamesLine` above - but left out altogether, not a guessed fallback, when the name is
+   * not to hand.
+   */
+  const ninetyDaysSeeTheSamePictures = isOnboarding
+    ? (viewerRunsThisCheckIn
+        ? (newHireFullName ? `You and ${newHireFullName} see the same pictures.` : null)
+        : ((groundForSignals as any)?.leadFirstName ? `You and ${(groundForSignals as any).leadFirstName} see the same pictures.` : null))
+    : null
   /*
    * "Start my check-in" WHILE NOTHING IS OPEN (U.11-equivalent, onboarding board fix 6). A session
    * opens for both people at once on this kind of check-in, so the phase spine's own session rows
@@ -2004,7 +2023,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               <ChangeSinceLastBody changeSinceLast={b.changeSinceLast} />
             )}
             {b.ninetyDays && (
-              <NinetyDaysBody ninetyDays={b.ninetyDays} />
+              <NinetyDaysBody ninetyDays={b.ninetyDays} seeTheSamePictures={ninetyDaysSeeTheSamePictures} />
             )}
             {shown.personHistory && b.personHistory && (
               viewerRunsThisCheckIn ? (
