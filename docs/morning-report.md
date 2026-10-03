@@ -230,7 +230,23 @@ Not checked by the run: the admin's view, because the run keeps only the lead's 
 - A correction on a line from a check-in the writer is not in stays with the person, who is told to put it in their own view. Right?
 - The record knows only that a commitment was dropped, not that its scope changed. Is "dropped" enough?
 
-Now running: the run-25 faults (the loans privacy fault first), and "proof asked for": finding whether a change caused the drop or the model varies, with repeated runs of the affected scenarios. If it does not come back, it goes to Hafsah. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**The run-25 faults are fixed** (`867fc6b3` to `180d3a73`, nine commits).
+- **The loans privacy fault:** Sunday no longer reads "One participant's tricycle was stolen…" or another borrower's business and earnings. He keeps the counts, the shared pattern and his own grinding business, and his quick read no longer gives Musa's wait.
+- **Other fixes:**
+  - "Work is held up by the customers' documents" (not "a colleague's");
+  - "on-the-ground" is kept whole;
+  - Femi reads "You are trying to get twelve approved facilities…" on his own board;
+  - empty aim rows are gone;
+  - Kwame's own "I'm aiming" is no longer glued on;
+  - a promise is no longer listed as an aim;
+  - "Any change in them will show here after the next check-in." replaces "no round has closed".
+- **Names said twice:** by the builder's count, sentences with a name said twice fall from 459 to 275.
+
+**For Hafsah:** the rest of the names said twice ("Musa says Musa never received the grinding machine") can only be fixed with "they" or with "he" or "she". Groundwork never guesses "he" or "she". May it say "they" there?
+
+Six tests were already failing before this work, mostly expecting a date that has moved on; they are being fixed now. The builder also noticed that "what the room is about" carries names and might reach a borrower where people do not see each other; that is being checked now, against decision 75 item 14.
+
+Now running: that check and the failing tests, and "proof asked for": whether a change caused the drop or the model varies, with repeated runs. If it does not come back, it goes to Hafsah. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
