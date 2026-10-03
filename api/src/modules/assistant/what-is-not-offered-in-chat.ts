@@ -120,11 +120,6 @@ export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
     because: 'Signing up and setting an organisation up for the first time. It is already a guided conversation of its own, before this assistant exists for that person.',
   },
   {
-    area: 'suites',
-    why: 'the chat is the wrong shape',
-    because: 'Switching a suite on or off is an admin’s decision, made on the Suites page after answering its first questions. It changes what the whole organisation has, so it is not done by typing a sentence.',
-  },
-  {
     area: 'board',
     why: 'the chat is the wrong shape',
     because: 'A screen full of numbers that are read by scanning. There is a `board` block for showing one inside a reply; driving it by sentence is worse than looking.',
@@ -201,6 +196,10 @@ export const REACHABLE_IN_CHAT: Record<string, string> = {
   drafts: 'set_an_objective',
   detectors: 'what_should_we_talk_about',
   knowledge: 'how_we_work',
+  /* Moved off the not-offered list on 3 October (decision 85): an admin sets a suite up by
+     describing it, is asked only what is missing, reads it all back, and nothing is set until the
+     yes, which goes through the same SuitesService methods as the Suites page. */
+  suites: 'set_up_a_suite',
 };
 
 /**

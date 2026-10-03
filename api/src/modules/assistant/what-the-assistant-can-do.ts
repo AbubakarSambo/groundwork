@@ -54,6 +54,14 @@ export interface Capability {
  */
 export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   {
+    key: 'set_up_a_suite',
+    does: 'For an admin, set up how leave requests work by describing it. Only what is missing is asked, one question at a time, the whole of it is said back in plain sentences, and nothing is set until you say yes. Anybody else is told that an admin sets it up, and nothing changes.',
+    writes: 'after you confirm it',
+    ordered: 'First of all, because "set up our leave process" holds the word leave, which the leave lane would read as a request for time off. Narrow: a word for setting up, then only the suite and words such as process or rules to the end, and never a check-in.',
+    owns: ['Set up our employee leave process', 'set up leave requests', 'configure how leave works'],
+    refuses: ['set up a check-in', 'I want leave on 20 October', 'what is our leave policy', 'set up a check-in about our leave process'],
+  },
+  {
     key: 'tick_off_a_to_do',
     does: 'Mark one of your own to-dos or commitments as done by naming it. It is said back first.',
     writes: 'after you confirm it',

@@ -29,6 +29,15 @@ import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { LEAVE_NOT_SENT, LEAVE_NOTHING_WAITING, LEAVE_WHICH_DAYS, plainlyAsksForLeave, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
+import { SuitesService, type ForAnAdmin } from '../suites/suites.service';
+import type { Duties } from '../suites/who-holds-each-duty';
+import type { Weekday } from '../suites/the-time-sheet-rules';
+import {
+  SUITE_SETUP_KIND, SUITE_SETUP_CONFIRM_KIND, STOP as STOP_SETTING_UP, asksToSetUpASuite, startPlan, nextQuestion, takeAnswer, takeAChange,
+  theFirstQuestionSaid, theSayBack, theSetUpSaid, whatToWrite, planFromStored, onlyAnAdminSetsThisUp,
+  SET_UP_DONE, SET_UP_NOT_DONE, SET_UP_STOPPED, SET_UP_CHANGE_NOT_READ, SUITE_IN_WORDS,
+  type Plan as ASetUpPlan, type SetUpSuite, type WhatIsKnown as WhatIsKnownToSetUp,
+} from './a-suite-set-up-by-talking';
 import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
 import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
@@ -135,7 +144,7 @@ const ROUNDS_RECALLED = 3;
  * (inventory item 2). All four are setup-side administration of a check-in a lead runs, in the same
  * spirit as `add_context` itself, which decision 50 already settled this way - see `respond`.
  */
-const SETUP_LANES = new Set<string>(['add_context', 'context_line', 'lead_note', 'questions_for_people', 'ask_for_leave', 'log_hours', 'ask_to_spend', 'decide_a_request'] satisfies Lane[]);
+const SETUP_LANES = new Set<string>(['add_context', 'context_line', 'lead_note', 'questions_for_people', 'ask_for_leave', 'log_hours', 'ask_to_spend', 'decide_a_request', 'set_up_a_suite'] satisfies Lane[]);
 
 /**
  * SOMEBODY SAYING THEY JUST PUT A DOCUMENT IN, in the past tense - "I added the Q4 targets sheet",
@@ -196,6 +205,8 @@ export class AssistantService {
     /* The time sheets and spending suites, for hours and spending said in chat (weeks 21 and 22). Without them, each is answered as not switched on. */
     @Optional() private readonly timeSheets?: TimeSheetsService,
     @Optional() private readonly spending?: SpendingService,
+    /* The suites' own rules, for an admin setting a suite up by talking (decision 85). Written only through its methods, the same ones the Suites page uses. */
+    @Optional() private readonly suites?: SuitesService,
   ) {}
 
   /**
@@ -314,6 +325,16 @@ export class AssistantService {
     if (forceAddContext) return this.addContext(organizationId, who, userId ?? null, groundId, message);
 
     /*
+     * DECISION 85: AN ADMIN SETS A SUITE UP BY SAYING SO ("Set up our employee leave process"). Before
+     * the leave, hours and spending lanes, because the words hold "leave", "hours" or "spending". Asked
+     * one question at a time, said back, and written only on a yes. See a-suite-set-up-by-talking.ts.
+     */
+    if (who) {
+      const suite = asksToSetUpASuite(message);
+      if (suite) return this.setUpASuite(organizationId, who, userId ?? null, suite, message);
+    }
+
+    /*
      * AN APPROVER DECIDING BY SAYING SO (decision 82, item 1), on WhatsApp or here: "approve",
      * "decline Omar's spending". What they are deciding is said back and decided only on a yes,
      * through the same code the boards use, which checks again that they are the one who approves.
@@ -406,6 +427,9 @@ export class AssistantService {
         return this.addACommitmentByChat(organizationId, who, message);
       case 'think_it_through':
         return this.thinkItThrough(organizationId, personId, userId ?? null, message, routed.subject);
+      case 'set_up_a_suite':
+        /* Reached only by somebody with no entry of their own here, such as a guest: never an admin of this organisation. */
+        return rules('set_up_a_suite', text(onlyAnAdminSetsThisUp(asksToSetUpASuite(message) ?? 'leave', await this.adminsByFirstName(organizationId))));
       case 'what_you_can_see':
         return this.compose(await this.whatICanSee(organizationId));
       case 'what_am_i_on':
@@ -1678,6 +1702,188 @@ export class AssistantService {
     return rules('role_interview', text(say), { type: 'proposal', proposalId: proposal.id, summary: say });
   }
 
+  // ------------------------------------ a suite set up by talking ------------------------------------
+
+  /**
+   * DECISION 85: "Set up our employee leave process". Only an admin may: the server says so again on the
+   * yes, because every write goes through SuitesService, which refuses anybody else. Anybody else is
+   * told plainly who sets it up, and nothing is parked or changed.
+   */
+  private async setUpASuite(organizationId: string, who: string, userId: string | null, suite: SetUpSuite, message: string): Promise<Reply> {
+    if (!userId || !(await this.isAnAdminHere(organizationId, userId))) {
+      return rules('set_up_a_suite', text(onlyAnAdminSetsThisUp(suite, await this.adminsByFirstName(organizationId))));
+    }
+    if (!this.suites) return rules('set_up_a_suite', text(`I cannot set up ${SUITE_IN_WORDS[suite]} from here yet. You can set them up on the Suites page.`));
+    const known = await this.whatIsKnownToSetUp({ userId, organizationId }, suite);
+    return this.askOrSayBack(organizationId, who, startPlan(suite, message, known), known, { opening: true });
+  }
+
+  /** The next question, parked so the reply is read as its answer; or, with nothing missing, the whole of it said back and parked for a yes. */
+  private async askOrSayBack(
+    organizationId: string, who: string, plan: ASetUpPlan, known: WhatIsKnownToSetUp,
+    how: { opening?: boolean; parkedId?: string; lead?: string } = {},
+  ): Promise<Reply> {
+    const q = nextQuestion(plan, known);
+    if (q) {
+      const say = `${how.lead ?? ''}${how.opening ? theFirstQuestionSaid(plan.suite, q.ask) : q.ask}`;
+      const payload = { ...plan, asking: q.key } as never;
+      if (how.parkedId) await this.prisma.assistantProposal.update({ where: { id: how.parkedId }, data: { payload, summary: say } });
+      else await this.prisma.assistantProposal.create({ data: { organizationId, personExternalId: who, kind: SUITE_SETUP_KIND, summary: say, payload } });
+      return rules('set_up_a_suite', text(say));
+    }
+    if (how.parkedId) await this.prisma.assistantProposal.update({ where: { id: how.parkedId }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    const say = `${how.lead ?? ''}${theSayBack(plan, known)}`;
+    const proposal = await this.prisma.assistantProposal.create({
+      data: { organizationId, personExternalId: who, kind: SUITE_SETUP_CONFIRM_KIND, summary: say, payload: { ...plan, asking: null } as never },
+    });
+    return rules('set_up_a_suite', text(say), { type: 'proposal', proposalId: proposal.id, summary: say });
+  }
+
+  /** An answer to the question asked. Read by rules; anything they cannot read is asked again. Nothing is stored. */
+  private async resolveParkedSuiteSetUp(organizationId: string, personId: string, who: string, parked: any, message: string): Promise<Reply> {
+    const plan = parked.payload as ASetUpPlan;
+    const typed = tidy(message);
+    if (STOP_SETTING_UP.test(typed)) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('set_up_a_suite', text(SET_UP_STOPPED(plan.suite)));
+    }
+    const userId = await this.signedInAs(organizationId, who);
+    if (!userId || !this.suites || !(await this.isAnAdminHere(organizationId, userId))) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return rules('set_up_a_suite', text(onlyAnAdminSetsThisUp(plan.suite, await this.adminsByFirstName(organizationId))));
+    }
+    const known = await this.whatIsKnownToSetUp({ userId, organizationId }, plan.suite);
+    const read = takeAnswer(plan, plan.asking ?? '', typed, known);
+    if ('again' in read) {
+      /* They asked something else: the set-up stops, nothing is kept, and their question is answered. */
+      if (route(typed).lane !== 'unplaced' || aDecisionIn(typed)) return this.stopSettingUpAndAnswer(organizationId, personId, who, parked, plan, message);
+      return rules('set_up_a_suite', text(read.again));
+    }
+    return this.askOrSayBack(organizationId, who, read.plan, known, { parkedId: parked.id });
+  }
+
+  /** After the said-back: a yes writes it, a no writes nothing, and a change is said back again before anything is written. */
+  private async resolveParkedSuiteSetUpConfirm(organizationId: string, personId: string, who: string, parked: any, message: string): Promise<Reply> {
+    const plan = parked.payload as ASetUpPlan;
+    const decision = resolveConfirmation(message);
+    if (decision === 'decline') {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('set_up_a_suite', text(SET_UP_NOT_DONE(plan.suite)));
+    }
+    const userId = await this.signedInAs(organizationId, who);
+    if (!userId || !this.suites || !(await this.isAnAdminHere(organizationId, userId))) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return rules('set_up_a_suite', text(onlyAnAdminSetsThisUp(plan.suite, await this.adminsByFirstName(organizationId))));
+    }
+    if (decision === 'accept') return this.writeTheSetUp(organizationId, userId, parked, plan);
+    const known = await this.whatIsKnownToSetUp({ userId, organizationId }, plan.suite);
+    const changed = takeAChange(plan, message, known);
+    if (changed) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return this.askOrSayBack(organizationId, who, { ...changed, asking: null }, known, { lead: 'I have changed that. ' });
+    }
+    if (route(message).lane !== 'unplaced' || aDecisionIn(message)) return this.stopSettingUpAndAnswer(organizationId, personId, who, parked, plan, message, true);
+    return rules('set_up_a_suite', text(SET_UP_CHANGE_NOT_READ));
+  }
+
+  private async stopSettingUpAndAnswer(organizationId: string, personId: string, who: string, parked: any, plan: ASetUpPlan, message: string, saidBack = false): Promise<Reply> {
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+    const reply = await this.answer(organizationId, personId, who, message, true);
+    return { ...reply, blocks: [text(saidBack ? SET_UP_NOT_DONE(plan.suite) : SET_UP_STOPPED(plan.suite)), ...reply.blocks] };
+  }
+
+  /**
+   * THE YES. Written through the same SuitesService methods the Suites page and its routes use, as the
+   * admin, so each write checks again that they are an admin and the rules history keeps it as their
+   * change. Then read back through the same service, and said from what is stored.
+   */
+  private async writeTheSetUp(organizationId: string, userId: string, parked: any, plan: ASetUpPlan): Promise<Reply> {
+    const reader = { userId, organizationId };
+    const known = await this.whatIsKnownToSetUp(reader, plan.suite);
+    const w = whatToWrite(plan, known);
+    if (!w) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return rules('set_up_a_suite', text(`I could not set up ${SUITE_IN_WORDS[plan.suite]} as I said it, because something in it is no longer true in your organisation, for example somebody named in it has left. Nothing has changed. Say “set up ${SUITE_IN_WORDS[plan.suite]}” to go through it again.`));
+    }
+    const suites = this.suites!;
+    try {
+      await suites.switch(reader, plan.suite, { on: true, answers: w.answers });
+      if (w.duties) await suites.setDuties(reader, w.duties);
+      if (w.workflows) await suites.setWorkflows(reader, w.workflows);
+      if (w.leaveRules) await suites.setLeaveRules(reader, w.leaveRules);
+      if (w.timeRules) await suites.setTimeRules(reader, w.timeRules);
+    } catch (e: any) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      if (e?.status === 403) return rules('set_up_a_suite', text(onlyAnAdminSetsThisUp(plan.suite, await this.adminsByFirstName(organizationId))));
+      this.logger.warn(`A suite set up by talking stopped part way: ${e?.message ?? e}`);
+      return rules('set_up_a_suite', text(`I could not finish setting up ${SUITE_IN_WORDS[plan.suite]}. Some of it may already be set, so please look at the Suites page to see what is set now.`));
+    }
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    return rules('set_up_a_suite', text(SET_UP_DONE(plan.suite, await this.theSetUpAsStored(reader, plan.suite))));
+  }
+
+  /** What is stored now, read back through SuitesService and said by the same function as the said-back. */
+  async theSetUpAsStored(reader: { userId: string; organizationId: string }, suite: SetUpSuite): Promise<string[]> {
+    const suites = this.suites!;
+    const known = await this.whatIsKnownToSetUp(reader, suite);
+    const wf = suite === 'reviews' ? null : (await suites.workflows(reader)).suites.find((s) => s.key === suite) ?? null;
+    const leave = suite === 'leave' ? await suites.leaveRules(reader) : null;
+    const time = suite === 'time' ? await suites.timeRules(reader) : null;
+    const plan = planFromStored(suite, {
+      answers: known.answers,
+      steps: wf?.steps ?? null, stepsAbove: wf?.stepsAbove ?? null, escalateAfter: wf?.escalateAfter ?? null,
+      tellHr: leave?.rules.tellHr ?? null,
+      hoursAWeek: time?.rules.hoursAWeek ?? null,
+      cutOff: time?.rules.cutOff && typeof time.rules.cutOff.day === 'string' ? { day: time.rules.cutOff.day as Weekday, time: time.rules.cutOff.time } : null,
+    });
+    return theSetUpSaid(plan, known);
+  }
+
+  /** The organisation as the admin setting a suite up may read it, through SuitesService. */
+  private async whatIsKnownToSetUp(reader: { userId: string; organizationId: string }, suite: SetUpSuite): Promise<WhatIsKnownToSetUp> {
+    const suites = this.suites!;
+    const [duties, page, directory] = await Promise.all([
+      suites.duties(reader),
+      suites.forReader(reader) as Promise<ForAnAdmin>,
+      this.prisma.person.findMany({ where: { organizationId: reader.organizationId, active: true }, select: { linkedUserId: true, department: true } }).catch(() => [] as { linkedUserId: string | null; department: string | null }[]),
+    ]);
+    const teamOf = new Map(directory.filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p.department?.trim() || null]));
+    const d: Duties = {};
+    for (const o of duties.organisation) if (o.holder) d[o.key as 'finance' | 'hr' | 'chiefExecutive'] = o.holder.id;
+    for (const t of duties.teams) {
+      if (t.budgetOwner) d.budgetOwners = { ...(d.budgetOwners ?? {}), [t.team]: t.budgetOwner.id };
+      if (t.head) d.departmentHeads = { ...(d.departmentHeads ?? {}), [t.team]: t.head.id };
+    }
+    const row = (page.groups ?? []).flatMap((g) => g.suites).find((x) => x.key === suite);
+    return {
+      people: duties.people.map((p) => ({ ...p, team: teamOf.get(p.id) ?? null })),
+      teams: duties.teams.map((t) => t.team),
+      duties: d,
+      me: reader.userId,
+      answers: (row?.answers ?? {}) as Record<string, unknown>,
+      on: !!row?.on,
+    };
+  }
+
+  private async isAnAdminHere(organizationId: string, userId: string): Promise<boolean> {
+    const m = await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } }).catch(() => null);
+    return m?.role === 'ADMIN';
+  }
+
+  /** The admins here, by first name, for "you could ask Grace". */
+  private async adminsByFirstName(organizationId: string): Promise<string[]> {
+    const ms = await this.prisma.organizationMembership
+      .findMany({ where: { organizationId, role: 'ADMIN' }, select: { user: { select: { firstName: true } } } })
+      .catch(() => [] as { user: { firstName: string | null } | null }[]);
+    return [...new Set((ms ?? []).map((m: any) => m.user?.firstName?.trim()).filter((n: unknown): n is string => !!n))];
+  }
+
+  /** The sign-in behind a person's key, linked or matched by address. */
+  private async signedInAs(organizationId: string, who: string): Promise<string | null> {
+    const me = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true, email: true } }).catch(() => null);
+    return theirSignIn(this.prisma, organizationId, me).catch(() => me?.linkedUserId ?? null);
+  }
+
   /** The yes writes one row. The no writes nothing, and the interview can be started again. */
   private async resolveParkedInterviewConfirm(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     const p = parked.payload as ConfirmPayload;
@@ -1762,6 +1968,17 @@ export class AssistantService {
      */
     if (parked.kind === HOURS_WEEK_DRAFT_KIND) {
       return this.resolveParkedWeekDraft(organizationId, personId, who, parked, message);
+    }
+
+    /*
+     * A SUITE BEING SET UP BY TALKING (decision 85): what is typed answers the question asked, and
+     * after the said-back it may be a change as well as a yes or a no, so both are read here first.
+     */
+    if (parked.kind === SUITE_SETUP_KIND) {
+      return this.resolveParkedSuiteSetUp(organizationId, personId, who, parked, message);
+    }
+    if (parked.kind === SUITE_SETUP_CONFIRM_KIND) {
+      return this.resolveParkedSuiteSetUpConfirm(organizationId, personId, who, parked, message);
     }
 
     /* THE ROLE INTERVIEW (request 25): what is typed is an answer to its question, not a yes or a no. */
