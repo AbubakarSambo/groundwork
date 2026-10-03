@@ -658,7 +658,10 @@ export function aRoleWrittenAsATitle(label: string, description: string): string
      Inside quotation marks it is left as the lead wrote it. */
   const isTheirLabel = label.toLowerCase().startsWith(title.toLowerCase());
   const role = isTheirLabel ? `down as "${comma > 0 ? first.slice(0, comma) : first}"` : `${anArticleFor(title)}${title}`;
-  return [`${label} is ${role}${where}${withGoals}.`, ...more].join(' ');
+  /* "Finance operations" is where somebody works, not one of a kind: "works in finance operations", never "is a finance operations" (item 21). */
+  const aField = !isTheirLabel && /^\p{Ll}/u.test(title) && title.split(/\s+/).length <= 3
+    && /^(?:operations|logistics|communications|relations|analytics|partnerships|payments|admissions)$/i.test(title.split(/\s+/).pop() ?? '');
+  return [aField ? `${label} works in ${title}${where}${withGoals}.` : `${label} is ${role}${where}${withGoals}.`, ...more].join(' ');
 }
 
 /** What the record holds, in one list a sentence can end on. */
@@ -696,8 +699,11 @@ export function gapsOverTime(people: APersonsRecord[]): AGapOverTime[] {
        * goes, so the read puts the name in (or "you", for the lead's own row).
        */
       const expected = p.expected.trim();
+      /* A title alone is one short piece. "Finance operations. Owns daily reconciliation." and "Senior engineer, doing
+         the build" are five words each and say what the role covers, so they are not read as a title alone (item 21). */
+      const onePiece = !/[,;]|[.!?]\s+\S/.test(expected.replace(/[.\s]+$/, ''));
       const titleOnly = expected.toLowerCase().replace(/[.\s]+$/, '') === p.label.toLowerCase().replace(/[.\s]+$/, '')
-        || expected.split(/\s+/).length <= 5;
+        || (onePiece && expected.split(/\s+/).length <= 5);
       return {
         participantId: p.participantId,
         who: p.label,
