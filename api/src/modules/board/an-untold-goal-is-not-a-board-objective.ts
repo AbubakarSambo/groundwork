@@ -1,4 +1,4 @@
-import { notToldYet, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { notToldYet, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek, theNumberAndWorkOfAGoal } from '../grounds/a-goal-not-told-stays-with-the-lead';
 
 /**
  * A GOAL THE LEAD HAS NOT TOLD THE PERSON ABOUT IS NOT ON THE BOARD'S OBJECTIVES (decision 56).
@@ -19,6 +19,7 @@ import { notToldYet, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } 
  */
 
 export interface AnUntoldGoalRow {
+  id?: string | null;
   participantId: string | null;
   text: string | null;
   awareness?: string | null;
@@ -33,7 +34,9 @@ export interface ABoardPerson {
 }
 
 export interface AnObjectiveRow {
+  id?: string | null;
   name: string;
+  target?: number | string | null;
   ownerParticipantId?: string | null;
   setByParticipantId?: string | null;
 }
@@ -46,6 +49,36 @@ function namesOf(p: ABoardPerson | undefined): string[] {
   const last = (p.user?.lastName ?? '').trim();
   return [`${first} ${last}`.trim(), first, (p.nameGiven ?? '').trim()].filter((n) => n.length > 1);
 }
+
+/**
+ * IS THIS OBJECTIVE THE GOAL THE LEAD HAS NOT TOLD THEM ABOUT? By its id where the two share one; otherwise by the
+ * goal's own words appearing in it, or by the same number beside words about the same work, or (a goal with no
+ * number) by at least one word of the work they share. People's names are not the work. A goal with no word of
+ * work in it at all cannot be told apart from the person's other objectives, so every one the lead set for them
+ * is read as it (the more private way, as before). Never by a guess at the topic beyond that.
+ */
+export function isThisTheUntoldGoal(
+  o: { id?: string | null; name?: string | null; target?: number | string | null },
+  goal: AnUntoldGoalRow,
+  namesToIgnore: ReadonlySet<string> = new Set(),
+): boolean {
+  if (o.id && goal.id && o.id === goal.id) return true;
+  const said = String(goal.text ?? '');
+  const name = String(o.name ?? '');
+  if (!said.trim()) return false;
+  const p = plainWords(name);
+  const g = plainWords(said);
+  if (g.length >= 12 && p.length >= 12 && (p.includes(g) || g.includes(p))) return true;
+  const want = theNumberAndWorkOfAGoal(said);
+  const have = theNumberAndWorkOfAGoal(`${name} ${o.target ?? ''}`);
+  const work = [...want.work].filter((w) => !namesToIgnore.has(w));
+  if (!work.length) return !want.numbers.size;
+  const sharesWork = work.some((w) => have.work.has(w));
+  if (want.numbers.size) return sharesWork && [...want.numbers].some((n) => have.numbers.has(n));
+  return sharesWork;
+}
+
+const plainWords = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N} ]+/gu, ' ').replace(/\s+/g, ' ').trim();
 
 export function withoutWhatTheLeadHasNotToldThemAbout<T extends AnObjectiveRow>(
   objectives: readonly T[],
@@ -61,12 +94,16 @@ export function withoutWhatTheLeadHasNotToldThemAbout<T extends AnObjectiveRow>(
   for (const id of untoldFor) {
     aboutThem.set(id, namesOf(people.find((p) => p.id === id)).map((n) => new RegExp(`(?<![\\p{L}\\p{N}])${escape(n)}(?![\\p{L}\\p{N}])`, 'iu')));
   }
+  const ignore = new Map<string, Set<string>>();
+  for (const id of untoldFor) ignore.set(id, new Set(people.flatMap((p) => namesOf(p)).flatMap((n) => [...theNumberAndWorkOfAGoal(n).work])));
   const kept = objectives.filter((o) => {
     for (const id of untoldFor) {
       /* What the person set themselves is theirs. */
       if (o.setByParticipantId && o.setByParticipantId === id) continue;
-      if (o.ownerParticipantId === id) return false;
-      if ((aboutThem.get(id) ?? []).some((re) => re.test(o.name ?? ''))) return false;
+      const theirs = o.ownerParticipantId === id || (aboutThem.get(id) ?? []).some((re) => re.test(o.name ?? ''));
+      if (!theirs) continue;
+      /* Only the untold goal itself goes (request 125): their other objectives, which they were told, stay. */
+      if (untold.some((g) => g.participantId === id && notToldYet(g) && isThisTheUntoldGoal(o, g, ignore.get(id)))) return false;
     }
     return true;
   });
