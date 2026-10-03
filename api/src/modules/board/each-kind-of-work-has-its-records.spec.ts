@@ -115,7 +115,7 @@ describe('a sales check-in: deals and their stages', () => {
         {
           id: 'w-1', kind: 'deal', name: 'Nyama Choma Palace', stage: 'Won', owner: 'Rukia Mwangi', ownerParticipantId: 'p-rukia',
           due: null, fields: { Value: 'KES 90K' }, from: 'said', said: 'Nyama Choma Palace paid KES 90K on 22 September, so that one is won.',
-          saidBy: 'Rukia', saidByParticipantId: 'p-rukia',
+          saidBy: 'Rukia', saidByParticipantId: 'p-rukia', saidByLine: "In Rukia's words,",
           known: 'said', knownSays: 'Someone said it.', mark: 'memory', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
           lastSaidOn: null, group: 'won', groupSays: 'It rests on what somebody said, with no proof yet. No date has been given for it. Nobody has spoken about it in a check-in yet. Nobody has said what happens next.',
           /* Request 115 (b): its value as said, the days it was spoken about, and the owner's own read where there is one. */
@@ -124,13 +124,13 @@ describe('a sales check-in: deals and their stages', () => {
         {
           id: 'w-2', kind: 'deal', name: 'Eastside Foods', stage: 'Qualified', owner: 'Baraka Otieno', ownerParticipantId: 'p-baraka',
           due: null, fields: {}, from: 'said', said: 'Eastside Foods wants a second freezer and the owner has agreed the budget.',
-          saidBy: 'Baraka', saidByParticipantId: 'p-baraka',
+          saidBy: 'Baraka', saidByParticipantId: 'p-baraka', saidByLine: "In Baraka's words,",
           known: 'said', knownSays: 'Someone said it.', mark: 'said', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
           lastSaidOn: null, group: 'possible', groupSays: 'It rests on what somebody said, with no proof yet. No date has been given for it. Nobody has spoken about it in a check-in yet. Nobody has said what happens next.',
           value: null, valueSays: 'Nobody has said what this deal is worth yet.', contactHistory: [], contactHistorySays: 'Each date is a day somebody spoke about this deal in a check-in. Nothing on record holds each contact with the customer.', theirRead: null,
         },
         {
-          id: 'w-3', kind: 'deal', name: 'Karen Butchery', stage: 'Contacted', owner: null, ownerParticipantId: null, due: null, fields: {}, from: 'lead', saidBy: null, saidByParticipantId: null,
+          id: 'w-3', kind: 'deal', name: 'Karen Butchery', stage: 'Contacted', owner: null, ownerParticipantId: null, due: null, fields: {}, from: 'lead', saidBy: null, saidByParticipantId: null, saidByLine: null,
           known: 'lead', knownSays: 'You added it on the board.', mark: 'none', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
           lastSaidOn: null, group: 'possible', groupSays: 'It was added on the board, not said in a check-in. No date has been given for it. Nobody has spoken about it in a check-in yet. Nobody has said what happens next.',
           value: null, valueSays: 'Nobody has said what this deal is worth yet.', contactHistory: [], contactHistorySays: 'Each date is a day somebody spoke about this deal in a check-in. Nothing on record holds each contact with the customer.', theirRead: null,
@@ -226,7 +226,7 @@ describe('an engineering check-in: releases and tasks', () => {
       rows: [{
         id: 'w-1', kind: 'release', name: 'Release 2.4', stage: 'Reviewed', owner: 'Rukia Mwangi', ownerParticipantId: 'p-rukia',
         due: '2026-09-24', fields: {}, from: 'said', said: 'Release 2.4 is reviewed and waits for the production test on 24 September.',
-        saidBy: 'Rukia', saidByParticipantId: 'p-rukia',
+        saidBy: 'Rukia', saidByParticipantId: 'p-rukia', saidByLine: "In Rukia's words,",
         known: 'said', knownSays: 'Someone said it.', mark: 'memory', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.',
         lastSaidOn: null,
       }],
@@ -264,7 +264,7 @@ describe('a law firm matter: deadlines and parties', () => {
     ]);
     expect(section(board, 'Obligations')).toEqual({
       section: 'Obligations', holds: 'the parties', state: 'filled',
-      rows: [{ id: 'w-3', kind: 'party', name: 'Pwani Mills', stage: null, owner: null, ownerParticipantId: null, due: null, fields: { Side: 'The other side' }, from: 'lead', saidBy: null, saidByParticipantId: null, known: 'lead', knownSays: 'You added it on the board.', mark: 'none', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.', lastSaidOn: null }],
+      rows: [{ id: 'w-3', kind: 'party', name: 'Pwani Mills', stage: null, owner: null, ownerParticipantId: null, due: null, fields: { Side: 'The other side' }, from: 'lead', saidBy: null, saidByParticipantId: null, saidByLine: null, known: 'lead', knownSays: 'You added it on the board.', mark: 'none', next: null, nextKnown: null, nextSays: 'Nobody has said what happens next.', lastSaidOn: null }],
     });
   });
 

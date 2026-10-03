@@ -2140,14 +2140,17 @@ export class BoardService {
        * the board follows: a person this reader may not name is "a colleague" and their id is not
        * served. The first name only, the way the board says a person in a sentence.
        */
-      const whoSaidIt = (pid: string | null | undefined): { saidBy: string | null; saidByParticipantId: string | null } => {
+      const whoSaidIt = (pid: string | null | undefined): { saidBy: string | null; saidByParticipantId: string | null; saidByLine: string | null } => {
         const p = pid ? ground.participants.find((x: any) => x.id === pid) : null;
-        if (!p) return { saidBy: null, saidByParticipantId: null };
+        if (!p) return { saidBy: null, saidByParticipantId: null, saidByLine: null };
+        /* The reader's own line is "In your words,", never their own first name. */
+        if (me?.id && p.id === me.id) return { saidBy: 'You', saidByParticipantId: p.id, saidByLine: 'In your words,' };
         /* In lower case: the screen puts it inside "In ...'s words", so it is not the start of a sentence. */
         const aColleagueMidSentence = noName.get(p.id) ?? 'a colleague';
-        if (hiddenFromThisReader(p.id)) return { saidBy: aColleagueMidSentence, saidByParticipantId: null };
+        if (hiddenFromThisReader(p.id)) return { saidBy: aColleagueMidSentence, saidByParticipantId: null, saidByLine: `In ${aColleagueMidSentence}'s words,` };
         const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim();
-        return full ? { saidBy: theShortNameOf(full), saidByParticipantId: p.id } : { saidBy: aColleagueMidSentence, saidByParticipantId: p.id };
+        const by = full ? theShortNameOf(full) : aColleagueMidSentence;
+        return { saidBy: by, saidByParticipantId: p.id, saidByLine: `In ${by}'s words,` };
       };
       const rows: AServedRecord[] = [];
       for (const i of items as any[]) {
@@ -2180,7 +2183,7 @@ export class BoardService {
           fields: plainFields(i.fields),
           from: i.sourceEntryId ? 'said' : 'lead',
           ...(line ? { said: cleanText(line.text) } : {}),
-          ...(line ? whoSaidIt(line.participantId) : { saidBy: null, saidByParticipantId: null }),
+          ...(line ? whoSaidIt(line.participantId) : { saidBy: null, saidByParticipantId: null, saidByLine: null }),
           ...howARecordIsKnown(
             line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null,
             !!i.addedByUserId && i.addedByUserId === requestingUserId,

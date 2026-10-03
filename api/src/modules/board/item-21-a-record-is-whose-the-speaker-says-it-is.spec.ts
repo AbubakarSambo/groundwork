@@ -116,14 +116,14 @@ describe('the founders\' work plan, as each person reads it (a record is always 
   it('Ada reads engineering as hers, because she said it, even where an older row stored Tunde', async () => {
     const rows = rowsOf(await boardAs(FOUNDERS as any, ...ADA));
     expect(rows.map((r) => [r.name, r.owner, r.saidBy])).toEqual([
-      ['taking on everything engineering', 'Ada Nwosu', 'Ada'],
+      ['taking on everything engineering', 'Ada Nwosu', 'You'],
       ['covering the operational and business development aspects', 'Tunde Bakare', 'Tunde'],
     ]);
   });
 
   it('Tunde reads only the record he said, and not the one Ada said', async () => {
     const rows = rowsOf(await boardAs(FOUNDERS as any, ...TUNDE));
-    expect(rows.map((r) => [r.name, r.owner, r.saidBy])).toEqual([['covering the operational and business development aspects', 'Tunde Bakare', 'Tunde']]);
+    expect(rows.map((r) => [r.name, r.owner, r.saidBy])).toEqual([['covering the operational and business development aspects', 'Tunde Bakare', 'You']]);
   });
 
   it('Juma, an admin who only reads, reads the same owners as Ada', async () => {

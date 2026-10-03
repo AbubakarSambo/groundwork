@@ -111,11 +111,22 @@ describe('who said a record, where people see each other', () => {
     expect(rowsOf(await boardAs(NAMED_BY_ANOTHER, ...RUKIA)).map((r: any) => r.name)).toEqual([]);
   });
 
-  it.each<[string, readonly [string, string]]>([['Baraka, who said it', BARAKA], ['Amina, who runs it', AMINA], ['Juma, an admin who only reads', JUMA]])('%s reads that Baraka said it and that it is Baraka\'s', async (_who, reader) => {
+  it.each<[string, readonly [string, string]]>([['Amina, who runs it', AMINA], ['Juma, an admin who only reads', JUMA]])('%s reads that Baraka said it and that it is Baraka\'s', async (_who, reader) => {
     const row = rowsOf(await boardAs(NAMED_BY_ANOTHER, reader[0], reader[1])).find((r: any) => r.name === 'Nyama Choma Palace');
     expect(row.owner).toBe('Baraka Otieno');
     expect(row.saidBy).toBe('Baraka');
+    expect(row.saidByLine).toBe('In Baraka\'s words,');
     expect(row.saidByParticipantId).toBe('p-baraka');
+  });
+
+  /* Changed with the run-26 review: this case expected Baraka to be told "Baraka" for his own line. It is "In your words,". */
+  it('Baraka, who said it, reads that it is his, and that it is in your words, never his own first name', async () => {
+    const row = rowsOf(await boardAs(NAMED_BY_ANOTHER, ...BARAKA)).find((r: any) => r.name === 'Nyama Choma Palace');
+    expect(row.owner).toBe('Baraka Otieno');
+    expect(row.saidBy).toBe('You');
+    expect(row.saidByLine).toBe('In your words,');
+    expect(row.saidByParticipantId).toBe('p-baraka');
+    expect(JSON.stringify(row.saidByLine)).not.toMatch(/Baraka/);
   });
 
   it('a record the lead added was said by nobody', async () => {
