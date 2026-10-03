@@ -1,3 +1,4 @@
+import { runsOrSetItUp } from '../grounds/who-may-read-this-check-in';
 import { notToldYet, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek, theNumberAndWorkOfAGoal } from '../grounds/a-goal-not-told-stays-with-the-lead';
 
 /**
@@ -39,6 +40,15 @@ export interface AnObjectiveRow {
   target?: number | string | null;
   ownerParticipantId?: string | null;
   setByParticipantId?: string | null;
+}
+
+/**
+ * WHO READS A GOAL THE LEAD HAS NOT TOLD THEM ABOUT: whoever runs the check-in (decisions 5 and 86), which is the
+ * lead and the admin who set it up. Every caller asks this and passes the answer as `isTheLead`, so nobody
+ * answers it from `initiatorId` alone. An admin who only reads, and a lead of the same department, do not run it.
+ */
+export function theyRunThisCheckIn(userId: string | null | undefined, checkIn: { initiatorId?: string | null; createdByUserId?: string | null }): boolean {
+  return runsOrSetItUp(userId, checkIn);
 }
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

@@ -52,3 +52,12 @@ describe('on the check-in page only the goal not told is left out', () => {
     expect(names(await pageFor(AMINA, 'MEMBER')).join(' | ')).toContain('8 renewals');
   });
 });
+
+describe('the admin who set the check-in up runs it, so she reads the goal not told', () => {
+  it('reads both goals on the check-in page when she created it, and one when she only reads', async () => {
+    const setUp = await pageFor(ADMIN, 'ADMIN', ADMIN);
+    expect(names(setUp).join(' | ')).toContain('Lead the client conversations fully.');
+    expect(names(setUp).join(' | ')).toContain('8 renewals');
+    expect(names(await pageFor(ADMIN, 'ADMIN', AMINA)).join(' | ')).not.toContain('8 renewals');
+  });
+});

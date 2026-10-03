@@ -32,7 +32,7 @@ import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfT
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
 import { targetsFor } from '../board/whose-number-is-whose-business';
-import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
+import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting } from './the-context-chat';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
@@ -2023,6 +2023,8 @@ export class GroundsService {
     // not the ground's owner from the people they invited.
     const hideContact = !!(ground as any).restrictExternalVisibility;
     const viewerIsInitiator = !!requestingUserId && ground.initiatorId === requestingUserId;
+    /* Whoever runs it reads a goal not told: the lead, and the admin who set it up (decisions 5 and 86; board/an-untold-goal-is-not-a-board-objective). */
+    const viewerRunsIt = theyRunThisCheckIn(requestingUserId, ground as any);
     /**
      * AND AN ADMIN OF THIS ORGANISATION RUNS IT TOO, WHICH THE PEER RULE DID NOT KNOW.
      *
@@ -2130,14 +2132,14 @@ export class GroundsService {
         dueDate: true, status: true, createdAt: true,
       },
     });
-    let objectiveRows = goalsThisReaderMaySee(objectiveRowsAsStored, viewerIsInitiator);
+    let objectiveRows = goalsThisReaderMaySee(objectiveRowsAsStored, viewerRunsIt);
     /*
      * A goal past its week (item 4 below) is no longer scrubbed out of every other sentence: the
      * person is now told, plainly, that it exists - so its words stop needing to be kept out of the
      * rest of what they read. Still never its full raw sentence, only the area-of-work placeholder
      * built below.
      */
-    const goalsNotToldHere = viewerIsInitiator
+    const goalsNotToldHere = viewerRunsIt
       ? []
       : objectiveRowsAsStored.filter((o: any) => notToldYet(o) && !aWeekHasPassedSinceNotTold(o)).map((o) => o.text ?? '');
     /*
@@ -2145,7 +2147,7 @@ export class GroundsService {
      * too, on their own check-in page, not only on their You board: who set it, and the worded area
      * - never the number, never the raw sentence.
      */
-    if (!viewerIsInitiator && requestingUserId) {
+    if (!viewerRunsIt && requestingUserId) {
       const viewerParticipantId = (ground.participants ?? []).find((p: any) => p.userId === requestingUserId)?.id ?? null;
       const dueAWeek = objectiveRowsAsStored.filter((o: any) => o.participantId === viewerParticipantId && aWeekHasPassedSinceNotTold(o));
       if (dueAWeek.length) {
@@ -2566,7 +2568,7 @@ export class GroundsService {
        field added later is covered by being served. See board/a-hidden-target-stays-hidden. */
     /* And no sentence carrying a goal the lead has not told its person about (a-goal-not-told-stays-with-the-lead). */
     const objectivesNotToldHere = new Set(
-      ((ground as any).objectives ?? []).filter((o: any) => !withoutWhatTheLeadHasNotToldThemAbout([o], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], viewerIsInitiator).kept.length).map((o: any) => o.id),
+      ((ground as any).objectives ?? []).filter((o: any) => !withoutWhatTheLeadHasNotToldThemAbout([o], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], viewerRunsIt).kept.length).map((o: any) => o.id),
     );
     return withoutGoalsNotToldIn(this.withoutTheTargetsHiddenFrom(ground as any, requestingUserId, {
       ...rest,
@@ -2840,7 +2842,7 @@ export class GroundsService {
     }), [
       ...goalsNotToldHere,
       /* And the objectives the engine wrote from them, in its own words (decisions 48 and 56). A goal past its week is said as the area sentence, so its stored words are not kept out again. */
-      ...theWordsOfWhatTheLeadHasNotToldThemAbout(((ground as any).objectives ?? []) as any[], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], viewerIsInitiator)
+      ...theWordsOfWhatTheLeadHasNotToldThemAbout(((ground as any).objectives ?? []) as any[], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], viewerRunsIt)
         .filter((t) => !objectiveRowsAsStored.some((o: any) => aWeekHasPassedSinceNotTold(o) && (o.text ?? '') === t)),
     ]);
   }

@@ -2,7 +2,7 @@ import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-na
 import { theSameThing } from '../board/a-thing-is-not-somebody';
 import { plainWordsByPerson, atTheStart, labelsForParties, namesVisibleTo, withNames, eachSideGetsSomebody } from './party-labels';
 import { targetsFor } from '../board/whose-number-is-whose-business';
-import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
+import { withoutWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
 import { notToldYet, theLeadIsNudgedToTell, aWeekHasPassedSinceNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 import { aCountThatMovedSaid } from './a-count-that-moved-is-one-sentence';
@@ -90,6 +90,7 @@ async function load(prisma: any, groundId: string) {
     where: { id: groundId },
     select: {
       initiatorId: true,
+      createdByUserId: true,
       whoSeesTargets: true,
       peersVisibleToEachOther: true,
       cadence: true,
@@ -168,7 +169,7 @@ export async function sinceLastFrom(prisma: any, groundId: string, l: Loaded, re
     me?.id ?? null,
     ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
     { isLead: runsIt },
-  ).shown as any[], (ground.personObjectives ?? []) as any[], participants as any[], runsIt).kept as any[];
+  ).shown as any[], (ground.personObjectives ?? []) as any[], participants as any[], theyRunThisCheckIn(reader.userId, ground)).kept as any[];
   /*
    * WHAT MOVED IS READ ONE WAY, FOR EVERY SURFACE (review of 1 October 2026, re-d, sales, session 2).
    * This read `count` against `prevCount`, and the Movement tile on the same page read the snapshots:

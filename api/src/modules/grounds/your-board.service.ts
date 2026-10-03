@@ -10,7 +10,7 @@ import { GroundsService } from './grounds.service';
 import { yourBoard, type YourBoard, type YourPattern } from './your-board';
 import { isShut } from './a-ground-that-has-ended';
 import { targetsFor } from '../board/whose-number-is-whose-business';
-import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
+import { withoutWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
 import { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForThePerson } from '../suggestions/a-suggestion-told-like-a-signal';
 import { askedOfYou, type AskedOfYou } from './asked-of-you';
@@ -161,7 +161,7 @@ export class YourBoardService {
       : [];
     const targetsYouMayRead = (ownedTargets as any[]).filter((t) => {
       const g = mine.find((x) => x.id === t.groundId);
-      const runsIt = g?.initiatorId === reader.userId;
+      const runsIt = theyRunThisCheckIn(reader.userId, g as any);
       return withoutWhatTheLeadHasNotToldThemAbout([t], untoldRows.filter((r) => r.groundId === t.groundId), (g?.participants ?? []) as any[], runsIt).kept.length === 1;
     });
 

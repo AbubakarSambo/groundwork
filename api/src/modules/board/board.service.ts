@@ -33,7 +33,7 @@ import { howManyGoalsAreNotTold, notToldYet, withoutGoalsNotToldIn, theConversat
 import { whoAnAdminDidNotLetIn, isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from '../grounds/who-an-admin-did-not-let-in';
 import { theSharedReadWithoutTheLeadsJudgement } from './what-the-room-says-is-not-a-reading-of-the-lead';
 import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
-import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals } from './an-untold-goal-is-not-a-board-objective';
+import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals, theyRunThisCheckIn } from './an-untold-goal-is-not-a-board-objective';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-served';
@@ -411,6 +411,7 @@ export class BoardService {
      */
     const isInitiator = ground.initiatorId === requestingUserId;
     const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === requestingUserId;
+    const theyRunIt = theyRunThisCheckIn(requestingUserId, ground as any);
     const me = ground.participants.find((p) => p.userId === requestingUserId);
     /* A wait on "my direct reports" is said from this reader's side, never as the reader's own (item 18). */
     if (Array.isArray((ground as any).dependencies)) {
@@ -613,7 +614,7 @@ export class BoardService {
     });
     /* And the Blockers tile names only the reader's own waits wherever the header above it does (see ownWaitsOnly). */
     const ownWaitsOnly = whoMaySee.peersHidden || (isEvaluationCheckIn(ground.scenario) && !isInitiator && !runsItForAPattern(ground as any, requestingUserId));
-    const theMovementsReader = { participantId: me?.id ?? null, isLead: isInitiator, colleaguesWordsWalled, ownWaitsOnly };
+    const theMovementsReader = { participantId: me?.id ?? null, isLead: isInitiator, runsIt: theyRunIt, colleaguesWordsWalled, ownWaitsOnly };
     /*
      * WHETHER THIS READER IS A PARTICIPANT WHOSE BOARD IS THEIR OWN (request 105; the prototype's B5): somebody
      * who checks in and does not run the check-in. Not the lead, the admin who set it up, or an admin of the
@@ -1140,8 +1141,9 @@ export class BoardService {
        * an-untold-goal-is-not-a-board-objective: the lead's own words in the check-in become objectives that
        * share no sentence with the stored goal, so the sentence wall below never caught them.
        */
-      const untoldRows = isInitiator ? [] : await this.untoldGoalRows(groundId);
-      const { kept: mayReadUntold } = withoutWhatTheLeadHasNotToldThemAbout(mayRead as any[], untoldRows, ground.participants as any[], isInitiator);
+      /* Whoever runs it reads a goal not told: the lead, and the admin who set it up (decisions 5 and 86). */
+      const untoldRows = theyRunIt ? [] : await this.untoldGoalRows(groundId);
+      const { kept: mayReadUntold } = withoutWhatTheLeadHasNotToldThemAbout(mayRead as any[], untoldRows, ground.participants as any[], theyRunIt);
 
       out.objectives = (mayReadUntold as typeof ground.objectives).map((o) => ({
         /* The lead's own direction where they set one (decision 69); otherwise the words of the name, as before. */
@@ -2617,7 +2619,7 @@ export class BoardService {
       ) as any;
       /* A goal the lead has not told somebody about is in no sentence anybody but the lead reads. See
          grounds/a-goal-not-told-stays-with-the-lead. */
-      if (!isInitiator) {
+      if (!theyRunIt) {
         walled = withoutGoalsNotToldIn(walled, [
           ...(await this.goalsNotToldYet(groundId)),
           /* And the objectives the engine wrote from them, in its own words (decisions 48 and 56). */
@@ -3869,7 +3871,7 @@ export class BoardService {
    * dependency, every OPEN document: the same pure functions the session report runs, with the
    * ground's rows instead of one session's. Names go through the same labels the board already uses.
    */
-  private async everySessionThroughTheReportEngines(groundId: string, ground: any, checkIns: any[], openRound: number, reader: { participantId: string | null; isLead: boolean; colleaguesWordsWalled?: boolean }) {
+  private async everySessionThroughTheReportEngines(groundId: string, ground: any, checkIns: any[], openRound: number, reader: { participantId: string | null; isLead: boolean; runsIt?: boolean; colleaguesWordsWalled?: boolean }) {
     const completed = checkIns.filter((c) => c.status === CheckInStatus.COMPLETED);
     const [entries, docs, baseline, deps] = await Promise.all([
       this.prisma.recordEntry.findMany({

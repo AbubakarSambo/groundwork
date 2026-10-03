@@ -1,7 +1,7 @@
 import { theRecordsClock, theDayItBegan, wholeDaysTo } from '../board/a-wait-is-dated-not-counted';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
-import { theWordsOfWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
+import { theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
 import { onceAcrossCopies, theHour, theWeek } from '../prisma/once-across-copies';
 import { theJudgementWithItsConversationPoints } from './the-judgement-and-a-goal-not-told';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
@@ -3224,6 +3224,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       whatThisSessionHolds(this.prisma, groundId, sessionNumber, {
         participantId: me?.id ?? null,
         isLead: viewerIsLead,
+        /* A goal not told is read by whoever runs the check-in, not by every admin who reads (decisions 5 and 86). */
+        runsIt: theyRunThisCheckIn(requestingUserId, ground as any),
         /* A colleague's own words are walled from the person an evaluation is about, and from an admin without access to it. */
         colleaguesWordsWalled: viewerIsTheSubjectOfAnEvaluationCheckIn({
           scenario: (ground as any).scenario,
@@ -6754,7 +6756,8 @@ happened, and what is in the way.`;
        saying "Participant B" hid nothing (read live, 28 Sep 2026). */
     /* A goal the lead has not told somebody about is in no sentence anybody but the lead reads. See
        grounds/a-goal-not-told-stays-with-the-lead. Its words carry no label, so this can go first. */
-    if (!isInitiator) {
+    /* Whoever runs it reads a goal not told: the lead, and the admin who set it up (decisions 5 and 86). */
+    if (!theyRunThisCheckIn(requestingUserId, ground)) {
       const notTold = await ((this.prisma as any).personObjective?.findMany?.({
         where: { groundId, awareness: 'NOT_TOLD' },
         select: { participantId: true, text: true, awareness: true, authoredBy: true },
