@@ -126,6 +126,12 @@ const CHECKED_AND_FINE = new Set([
    */
   'modules/users/users.service.ts:role',
   /*
+   * `!!role` in who-may-decide. `roleIn` returns `m?.role ?? null`: the column is non-nullable, but a
+   * person with no membership in the organisation has no row at all, so the value really is null
+   * and the check is what keeps such a person from deciding. The same name collision as above.
+   */
+  'modules/suites/who-may-decide.ts:role',
+  /*
    * Three of the name-collision false positives this file's own header warns about, all in one
    * service because it reads Person, User and PersonObjective together.
    *
