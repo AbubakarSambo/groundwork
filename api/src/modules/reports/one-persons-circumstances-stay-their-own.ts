@@ -22,6 +22,30 @@
 /** "a colleague", "the sixth colleague", "a colleague's": one person the reader may not name. Never "colleagues". */
 const ONE_COLLEAGUE = /\bcolleague\b(?!s)/i;
 
+/*
+ * ONE OF THEM WITHOUT A NAME OR THE WORD "COLLEAGUE" (run-25, loans). Sunday read "One participant's tricycle was
+ * stolen in the fourth month, halting that business." and "Another participant never received the grinding machine
+ * they were promised", and his own guide told him to take seriously that "for another person, the problem was not
+ * just a delay in income but that the business asset itself was never delivered". In a cohort of eight borrowers,
+ * each is one person's circumstance, as plainly as a name. So "one participant", "another borrower", "a single
+ * recipient", "the other member", "that participant" and their like are one of them too. Plural words stay: "five
+ * participants", "other participants", "most borrowers" are people across the group.
+ *
+ * "Person" alone is too common a word in the product's own sentences ("backed by what another person said, a
+ * document, or a record", "could come to depend on one person"), so it counts only where it is somebody's: "one
+ * person's", "another person's", "for another person,", "another person never ...".
+ */
+const ONE_OF_THEM_UNNAMED = new RegExp(
+  [
+    String.raw`\b(?:one|another|a\s+single|the\s+other|a\s+fellow|that|this|a)\s+(?:other\s+)?(?:participant|borrower|recipient|respondent|team\s+member|teammate|trader|beneficiary|individual|business\s+owner)\b(?!s)`,
+    String.raw`\bone\s+of\s+the\s+(?:other\s+)?(?:participants|borrowers|recipients|respondents|beneficiaries|team\s+members|members|people|businesses)\b`,
+    String.raw`\b(?:one|another|the\s+other)\s+person['’]s\b`,
+    String.raw`\bfor\s+(?:one|another)\s+person\b`,
+    String.raw`\b(?:one|another)\s+person\s+(?:has|had|was|is|never|lost|did|does|cannot|could\s+not|received|got)\b`,
+  ].join('|'),
+  'i',
+);
+
 /* The reader's own sentence, even where it mentions somebody: "You are waiting on a colleague for the stock." But
    not one that puts them beside somebody: "You and a colleague both said ...". */
 const THE_READERS_OWN = /^\s*(?:you|your)\b(?!\s+and\b)/i;
@@ -46,6 +70,7 @@ export interface TheOthers {
 function aboutOneOfThem(sentence: string, others: TheOthers, namesOnly = false): boolean {
   if (!namesOnly && THE_READERS_OWN.test(sentence)) return false;
   if (!namesOnly && ONE_COLLEAGUE.test(sentence)) return true;
+  if (!namesOnly && ONE_OF_THEM_UNNAMED.test(sentence)) return true;
   return others.names.some((n) => n.length > 1 && new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(sentence));
 }
 
@@ -63,6 +88,25 @@ export function withoutSentencesAboutOneOfThem(text: string, others: TheOthers, 
 const NOT_TEXT = /^(?:id|groundId|promptVersionId|mark|marks?Behind|markSays|figureIs|sharedAs|releasedAt|createdAt|updatedAt|participantId|ownerParticipantId|kind|type|status|key)$/;
 
 /**
+ * A ROW ONE OTHER PERSON ALONE SAID (run-25, loans). Sunday's board, under what the borrowers already have, read "A
+ * tricycle business that has generated enough revenue to make all repayments on time." and "A borehole pump
+ * business that earns roughly N25,000 a week". Each row carried `said: { who: [], howMany: 1 }`: one person, whose
+ * name the names rule had taken out, and whose business and takings were still there. With eight borrowers and two
+ * tricycles, that row is the man. A row one person said is theirs alone; a row said by several is a pattern and
+ * stays. The reader's own row ("You") stays, and so does the lead's, who is named to everybody.
+ */
+function saidByOneOfThemAlone(item: Record<string, any>, others: TheOthers): boolean {
+  const said = item?.said;
+  if (!said || typeof said !== 'object' || Array.isArray(said)) return false;
+  const who: string[] = Array.isArray(said.who) ? said.who.filter((w: any) => typeof w === 'string' && w.trim()) : [];
+  const howMany = typeof said.howMany === 'number' ? said.howMany : who.length;
+  if (howMany !== 1) return false;
+  if (!who.length) return true;
+  /* Their own, or somebody the reader may name (the lead): not one of the others. */
+  return who.every((w) => aboutOneOfThem(w, others));
+}
+
+/**
  * THE SERVED REPORT, FOR A PARTICIPANT WHERE PEOPLE DO NOT SEE EACH OTHER. Every string loses its sentences about one
  * of the others; a list loses an item whose own sentence is about one of them, so a line, a "what went wrong" row
  * or a difference between two people is not served half-emptied.
@@ -75,6 +119,8 @@ export function onlyCountsAndPatternsAboutTheOthers<T>(served: T, others: TheOth
         .filter((item) => {
           if (typeof item === 'string') return true;
           if (!item || typeof item !== 'object') return true;
+          /* An item said by one other person alone is that person's circumstance, whatever its words (below). */
+          if (saidByOneOfThemAlone(item, others)) return false;
           /* An item is dropped whole where any of its own sentences is about one of them. */
           return !Object.entries(item).some(([k, x]) => typeof x === 'string' && !NOT_TEXT.test(k) && sentencesKeepingSpace(x).some((s) => s.trim() && aboutOneOfThem(s, others)));
         })
