@@ -19,14 +19,44 @@ export interface WaitsOnOneHolder { who: string | null; items: string[] }
 
 const theThing = (what: string) => (what ?? '').replace(/[.\s]+$/, '').trim();
 
+/*
+ * THE SAME THING SAID THREE WAYS IS ONE THING (run-25, sales). Femi's coaching read "Put their documents, especially
+ * the bank statements, the bank statements from the customers and the three remaining bank statements in writing".
+ * Each wait was recorded in other words, so each passed as a new thing. A wait whose words, without the little words,
+ * numbers, "remaining" or "outstanding", and who it comes from, are all already in a thing said before it is that
+ * thing again, and is said once. Only where it has two such words or more ("bank statements"): one word alone ("the
+ * dataset") is too little to tell "the dataset" from "approval for the dataset".
+ */
+const LITTLE = new Set(('the a an their his her my our your its this that these those of for to and or with especially including '
+  + 'all some any more other rest remaining outstanding missing last next new few several each every').split(' '));
+const A_NUMBER_WORD = /^(?:\d[\d,.]*|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|dozen)$/i;
+const itsWords = (thing: string): string[] =>
+  thing.toLowerCase()
+    /* Who it comes from is the holder, not the thing: "the bank statements from the customers". */
+    .replace(/\s+from\s+.+$/, '')
+    .split(/[^\p{L}\p{N}'’-]+/u)
+    .map((w) => w.replace(/['’]s$/, ''))
+    .filter((w) => w && !LITTLE.has(w) && !A_NUMBER_WORD.test(w));
+
+export function theSameThingAgain(thing: string, before: string[]): boolean {
+  const mine = [...new Set(itsWords(thing))];
+  if (mine.length < 2) return false;
+  return before.some((b) => {
+    const theirs = new Set(itsWords(b));
+    return mine.every((w) => theirs.has(w));
+  });
+}
+
 export function eachWaitUnderWhoeverHoldsIt(waits: AWaitToGroup[]): WaitsOnOneHolder[] {
   const groups: WaitsOnOneHolder[] = [];
   const said = new Set<string>();
+  const saidSoFar: string[] = [];
   for (const w of waits) {
     const it = theThing(w.what);
     const key = it.toLowerCase();
-    if (!it || said.has(key)) continue;
+    if (!it || said.has(key) || theSameThingAgain(it, saidSoFar)) continue;
     said.add(key);
+    saidSoFar.push(it);
     const who = (w.who ?? '').trim() || null;
     let g = groups.find((x) => (x.who ?? '').toLowerCase() === (who ?? '').toLowerCase());
     if (!g) { g = { who, items: [] }; groups.push(g); }

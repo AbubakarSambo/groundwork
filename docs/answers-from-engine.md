@@ -3255,3 +3255,13 @@ Tests: `api/src/modules/board/the-room-and-the-aims-as-each-reader-reads-them.sp
 **For the screens:** `client/src/components/gw/TheSessionsReport.tsx` (around line 393) matches the old sentence to rewrite it; it no longer matches, so the line falls to your own fallback, which reads "Nothing has moved yet. 13 targets are set. Any change in them will show here after the next check-in." Please drop the old pattern (and its cases in `at-a-glance-tile-is-a-sentence.spec.ts`) when you next touch it.
 
 Tests: two existing tests changed, because they pinned the old wording: `api/src/modules/board/request-111-a-wait-on-oneself-and-the-targets-set.spec.ts` and `api/src/modules/reports/what-this-session-holds.spec.ts`. Both now also check that "round" and "measure from" are gone.
+
+## One wait said three ways is said once (3 October)
+
+**Run-25, sales, session 3: Femi's own coaching (`coaching.beforeNextTime`, served to Femi only) read "Put their documents, especially the bank statements, the bank statements from the customers and the three remaining bank statements in writing, with the date you need them by." Bisi's "what to ask" for Femi read "Femi Okonkwo has been waiting for their documents, especially the bank statements, the bank statements from the customers and the three remaining bank statements since 2 October". The same thing, recorded three times in other words. A wait whose own words are all in a wait said before it is now that wait again, and is said once** (this commit).
+
+- **Femi now reads:** "Put their documents, especially the bank statements in writing, with the date you need it by."
+- **Bisi now reads:** "Femi Okonkwo has been waiting for their documents, especially the bank statements since 2 October, and nothing on record says it was raised higher. ..."
+- Two different things that share a word stay two: "the signed contract and the contract template from legal".
+
+Tests: `api/src/modules/reports/item-18-each-wait-under-whoever-holds-it.spec.ts`, three new, for Femi's coaching and Bisi's probe. Two fail on the old code. No existing test changed.
