@@ -47,8 +47,11 @@ describe('a wait on oneself is not a wait', () => {
 
 describe('the quick read counts every target it lists (request 109 c)', () => {
   it('three targets, one with a number', () => {
-    expect(theTargetsThatAreSet(3, 1)).toBe('3 targets are set, and 1 of them has a number. No round has closed to measure from.');
-    expect(theTargetsThatAreSet(3, 3)).toBe('3 targets are set, and no round has closed to measure from.');
+    /* Run-25: "no round has closed to measure from" was jargon; it now says plainly when a change will show. */
+    expect(theTargetsThatAreSet(3, 1)).toBe('3 targets are set, and 1 of them has a number. Any change in it will show here after the next check-in.');
+    expect(theTargetsThatAreSet(3, 3)).toBe('3 targets are set. Any change in them will show here after the next check-in.');
+    expect(theTargetsThatAreSet(1, 1)).toBe('1 target is set. Any change in it will show here after the next check-in.');
+    expect(theTargetsThatAreSet(3, 3)).not.toMatch(/round|measure from/);
     expect(theTargetsThatAreSet(1, 0)).toBe('1 target is set, and it has no number to measure from.');
   });
 

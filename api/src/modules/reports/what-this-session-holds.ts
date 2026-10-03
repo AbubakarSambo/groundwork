@@ -470,9 +470,14 @@ export function theBlockersTileNamesThis(tiles: AGlanceRead[], blocker: string |
  * is counted, so the tile never says one where the list shows three; and where some have no number, it says
  * so, because movement is measured on the number.
  */
+/*
+ * "NO ROUND HAS CLOSED TO MEASURE FROM" WAS WORK JARGON (run-25). It said that a change is measured from one finished
+ * round to the next, in words nobody uses. It now says when a change will show, plainly.
+ */
 export function theTargetsThatAreSet(set: number, withANumber: number): string {
   const are = set === 1 ? '1 target is set' : `${set} targets are set`;
-  if (withANumber >= set) return `${are}, and no round has closed to measure from.`;
+  const whenItShows = (n: number) => `Any change in ${n === 1 ? 'it' : 'them'} will show here after the next check-in.`;
+  if (withANumber >= set) return `${are}. ${whenItShows(set)}`;
   if (withANumber === 0) return set === 1 ? `${are}, and it has no number to measure from.` : `${are}, and none of them has a number to measure from.`;
-  return `${are}, and ${withANumber} of them ${withANumber === 1 ? 'has' : 'have'} a number. No round has closed to measure from.`;
+  return `${are}, and ${withANumber} of them ${withANumber === 1 ? 'has' : 'have'} a number. ${whenItShows(withANumber)}`;
 }

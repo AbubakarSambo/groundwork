@@ -125,7 +125,8 @@ describe('movement before a round has closed', () => {
   it('says nothing has moved yet, and how many are set', () => {
     const t = tile({ targetsSet: 13 });
     expect(t.value).toBe('Nothing yet');
-    expect(t.sub).toBe('13 targets are set, and no round has closed to measure from.');
+    /* Run-25: the old line, "no round has closed to measure from", was jargon. */
+    expect(t.sub).toBe('13 targets are set. Any change in them will show here after the next check-in.');
     expect(t.sub).not.toMatch(/nobody has set/);
   });
 

@@ -3242,3 +3242,16 @@ Tests: four more in `api/src/modules/suites/the-record-in-a-review-as-each-reade
 - **No number said twice.** "Your own aim is 12 twelve approved facilities this quarter." now reads "Your own aim is twelve approved facilities this quarter."
 
 Tests: `api/src/modules/board/the-room-and-the-aims-as-each-reader-reads-them.spec.ts`, on the served sales board as Femi, Kwame, Bisi and an admin, and the room in cofounder and drift as Tunde, Zainab and Nadia. The harness can now carry the room's stored read (`room`). No existing test changed.
+
+## The Movement tile says plainly when a change will show (3 October)
+
+**"13 targets are set, and no round has closed to measure from." was work jargon. The Movement tile's line (`quickRead[].sub` where `label` is "Movement", on the board and the session report) now reads, for every reader** (this commit):
+
+- "13 targets are set. Any change in them will show here after the next check-in."
+- "1 target is set. Any change in it will show here after the next check-in."
+- "3 targets are set, and 1 of them has a number. Any change in it will show here after the next check-in."
+- Unchanged: "1 target is set, and it has no number to measure from." and "2 targets are set, and none of them has a number to measure from."
+
+**For the screens:** `client/src/components/gw/TheSessionsReport.tsx` (around line 393) matches the old sentence to rewrite it; it no longer matches, so the line falls to your own fallback, which reads "Nothing has moved yet. 13 targets are set. Any change in them will show here after the next check-in." Please drop the old pattern (and its cases in `at-a-glance-tile-is-a-sentence.spec.ts`) when you next touch it.
+
+Tests: two existing tests changed, because they pinned the old wording: `api/src/modules/board/request-111-a-wait-on-oneself-and-the-targets-set.spec.ts` and `api/src/modules/reports/what-this-session-holds.spec.ts`. Both now also check that "round" and "measure from" are gone.
