@@ -891,7 +891,12 @@ export function overTimeAsServed(
     commitments,
     stillOpen: (rebuilt as unknown[]).filter(theThingIsNamed) as string[],
     patterns: [],
-    toSettleFirst: (it.toSettleFirst ?? []).filter((q) => !String(q).endsWith(A_QUESTION_BUILT_FROM_A_PATTERN_ENDS)),
+    /* And by its count too (item 21, the support desk board): where the person asked is the reader, the question's end has
+       already become "Your own account of this is not in this check-in." by the time it is read here, so Maria read "The
+       record names another person positively with specific evidence of their contribution. Seen in 1 sessions. Your own
+       account of this is not in this check-in." */
+    toSettleFirst: (it.toSettleFirst ?? []).filter((q) => !String(q).endsWith(A_QUESTION_BUILT_FROM_A_PATTERN_ENDS)
+      && !/(?:^|[.!?]\s+)(?:It was seen|Seen) in (?:one session|\d+ sessions?)\.\s/.test(String(q))),
   };
 }
 
