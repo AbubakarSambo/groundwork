@@ -150,6 +150,9 @@ export interface TheComparison {
 const keyOf = (l: ServedLine) => [l.t, l.ground ?? l.organizationId, l.role, l.userId ?? l.personId, l.what ?? l.question].join('|');
 const bump = (r: Record<string, number>, k: string) => { r[k] = (r[k] ?? 0) + 1; };
 
+/** Every sentence not explained, with its place and reader; written to a file when GW_LIST_UNEXPLAINED names one. */
+export const THE_UNEXPLAINED: { user: string; ground: string; scenario: string; role: string; place: string; text: string }[] = [];
+
 export function compare(
   oldLines: ServedLine[], newLines: ServedLine[],
   leakOf: (l: ServedLine, readerIsLead: boolean) => string[] = () => [],
@@ -235,6 +238,7 @@ export function compare(
       /* A participant whose report says a later session's picture is not shared yet: it comes back when the lead releases it. */
       if (l.role === 'participant' && heldBack) { out.heldUntilReleased += 1; continue; }
       out.unexplainedLost += 1;
+      THE_UNEXPLAINED.push({ user: l.userId ?? '', ground, scenario: scenarioOf.get(ground) ?? '', role: l.role!, place, text });
       const e = fieldTally.get(place) ?? { count: 0, roles: new Set<string>(), example: text.slice(0, 140) };
       e.count += 1; e.roles.add(l.role!); fieldTally.set(place, e);
       bump(out.lostByRole, l.role!);
@@ -328,6 +332,7 @@ async function main() {
   const leakOf = await theLeakSearch(database, newLines);
   const c = compare(readLines(oldFile), newLines, leakOf);
   for (const l of theSummary(c)) console.log(l);
+  if (process.env.GW_LIST_UNEXPLAINED) fs.writeFileSync(process.env.GW_LIST_UNEXPLAINED, JSON.stringify(THE_UNEXPLAINED, null, 1));
   fs.writeFileSync(path.join(work, 'comparison.json'), JSON.stringify(c, null, 1));
   process.exit(c.newlyFailed.length || c.companyFaults.length || c.leaks.length || c.unexplainedLost || c.peopleLost ? 3 : 0);
 }

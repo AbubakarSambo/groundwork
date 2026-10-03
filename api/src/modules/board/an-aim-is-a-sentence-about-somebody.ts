@@ -261,6 +261,9 @@ export function theDayKeptApart(name: string, day: (said: string) => Date | null
   return when ? { name: m[1].replace(/[,;]+$/, '').trim(), dueOn: when } : { name: t, dueOn: null };
 }
 
+/** "Tobi to close 8 renewals per quarter": a person's name, then "to" and a verb for what they are to do. */
+export const THE_NAME_TO_DO = /^(\p{Lu}[\p{L}'’-]*(?:\s+\p{Lu}[\p{L}'’-]*)?)\s+to\s+((?:close|meet|hit|reach|sign|get|make|bring|win|sell|onboard|complete|finish|deliver|raise|cut|reduce|keep|build|launch|hire|run|do|achieve|generate|secure|renew|collect|grow|increase|improve|lead|manage|take|visit|call|send|cover|recruit|train|open|resolve|clear|handle)\b.*)$/u;
+
 /**
  * The name of an aim, as one full sentence about a person, in labels. The board names it for the
  * reader with `withNames` after this.
@@ -298,6 +301,8 @@ export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {
   } else if (who.speaker) {
     t = aboutTheSpeaker(t, who.speaker);
   }
+  /* "Tobi to close 8 renewals per quarter." is a note, not a sentence: said to Tobi it read "You to close ...". */
+  t = t.replace(THE_NAME_TO_DO, (_m, name: string, rest: string) => `${name} needs to ${rest}`);
   t = t.charAt(0).toUpperCase() + t.slice(1);
   const sentence = /[.!?]$/.test(t) ? t : `${t}.`;
   return who.setByTheHolder && who.holder ? anAimTheySetThemselves(sentence, name, who) : sentence;

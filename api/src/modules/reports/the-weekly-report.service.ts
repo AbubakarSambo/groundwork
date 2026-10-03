@@ -17,6 +17,8 @@ import { whatMoreThanOnePersonNamed } from './what-more-than-one-person-named';
 import { whatTodayReads } from './what-today-reads-from-the-record';
 import { inOurVoice } from './what-the-record-shows-over-time';
 import { targetsFor } from '../board/whose-number-is-whose-business';
+import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
+import { withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { periodOf } from '../patterns/period-of';
 import { PATTERN_ROW_SELECT, servedPatterns, runsItForAPattern } from '../patterns/who-reads-a-pattern';
 import {
@@ -321,11 +323,23 @@ export class TheWeeklyReportService {
       return { who: isYou ? 'You' : whoIs(s.participantId), isYou, says: served(s.says, isYou) };
     });
 
+    /* A goal the lead has not told its person about is in no number and no sentence anybody but whoever runs the check-in reads
+       (decisions 48, 56 and 86). Facts are kept whole; this is what is served. */
+    const runsTheCheckIn = theyRunThisCheckIn(who.userId, ground);
+    const notTold: any[] = runsTheCheckIn ? [] : (((await ((this.prisma as any).personObjective?.findMany?.({
+      where: { groundId, awareness: 'NOT_TOLD' },
+      select: { id: true, participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
+    }) ?? Promise.resolve([])).catch(() => [])) ?? []) as any[]);
+    const asObjectives = (facts?.targets ?? []).map((t: any) => ({ ...t, setByParticipantId: t.setByTheHolder ? t.ownerParticipantId ?? null : null }));
+    const finish = <T,>(served: T): T => (notTold.length
+      ? withoutGoalsNotToldIn(served, theWordsOfWhatTheLeadHasNotToldThemAbout(asObjectives, notTold, parties, false))
+      : served);
+
     const out: TheWeeklySentences = { weekStart: latest.weekStart, builtAt: latest.builtAt, eachPerson };
     if (!eachPerson.length) out.saying = viewerIsLead ? NOTHING_YET_THIS_WEEK : 'Nothing has been written about you this week yet.';
-    if (!facts) return out;
+    if (!facts) return finish(out);
     /* Somebody who leads the same department, and is not in this check-in, reads the sentence rule above and nothing more. */
-    if (!viewerIsLead && !me) return out;
+    if (!viewerIsLead && !me) return finish(out);
 
     out.heading = theWeeksHeading(latest.weekStart, facts.lastAt, now);
     out.whatThisIs = whatThisReportIs(facts.cadence ?? ground.cadence ?? null);
@@ -340,13 +354,16 @@ export class TheWeeklyReportService {
       /* Every share, to whoever reads the whole check-in, admins included (decision 86). */
       { isLead: runsIt, seesEveryShare: viewerIsLead },
     ).shown as any[];
+    const shownUntold = withoutWhatTheLeadHasNotToldThemAbout(
+      shownTargets.map((t: any) => ({ ...t, setByParticipantId: t.setByTheHolder ? t.ownerParticipantId ?? null : null })), notTold, parties, runsTheCheckIn,
+    ).kept as any[];
     const whoseIs = (t: any) => (!t.ownerParticipantId ? 'team' as const : t.ownerParticipantId === me?.id ? 'you' as const : { label: labels.get(t.ownerParticipantId) ?? 'A colleague' });
     /* Aims and limits (Hafsah, 1 October, decision 73): whoever runs the check-in reads them; a person
        in it reads them only where the check-in's "who sees targets" is EVERYBODY, as on the board.
        With THEIR_OWN they read the counts alone. An admin who only reads, the chief executive included,
        reads them too (decision 86, which reverses that part of decision 73). */
     const readsTheAims = viewerIsLead || (!!me && ground.whoSeesTargets === 'EVERYBODY');
-    const targetFigures = shownTargets.map((t) => ({ t, f: aTargetThisWeek(t, whoseIs(t), readsTheAims) })).filter((x) => !!x.f) as { t: any; f: AFigure }[];
+    const targetFigures = shownUntold.map((t) => ({ t, f: aTargetThisWeek(t, whoseIs(t), readsTheAims) })).filter((x) => !!x.f) as { t: any; f: AFigure }[];
     out.inNumbers = [
       theCheckInsMade(facts.checkIns.due, facts.checkIns.made),
       theThingsWithProof(theirCounts.said, theirCounts.documented, !viewerIsLead),
@@ -386,7 +403,7 @@ export class TheWeeklyReportService {
        they said they would do; an admin who only reads the check-in has nothing here to do. */
     if (runsIt) out.forNextWeek = facts.forTheLead.map(forTheLeadToDo).map((t) => ({ do: served(t.do), why: served(t.why), comesFrom: t.comesFrom }));
     else if (me) out.forNextWeek = facts.open.filter((c) => c.participantId === me.id).map(yourOwnToDo).filter((t): t is AThingToDo => !!t).slice(0, 5).map((t) => ({ do: served(t.do), why: t.why, comesFrom: t.comesFrom }));
-    return out;
+    return finish(out);
   }
 
   /** The patterns this reader may read, as they read them everywhere else, that came up in a period of this week. */

@@ -226,6 +226,7 @@ import { whatTheySaidTheyWouldDo, thingsNobodyOwns, whatIsNotSettled, theQuestio
 import { alreadyAsked, withTheQuestionAsConfirmed } from '../grounds/a-question-asked-word-for-word';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 import { withoutWhatTheLeadHasNotToldThemAbout, type AnUntoldGoalRow } from '../board/an-untold-goal-is-not-a-board-objective';
+import { mayThisGoalBeCopiedToCommitments } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-set-it';
 import { withoutOurInstructions } from './our-instructions-never-reach-them';
@@ -8951,6 +8952,35 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   /**
+   * THE COPY THAT OUTLIVES THIS GROUND, for the org layer: a commitment the lead set for somebody, once the lead has told them
+   * (decisions 48 and 56). Additive: the row in the ground stays authoritative and nothing here changes what a check-in does.
+   * Failing to mirror must never fail the check-in being written, so `mirrorCommitment` swallows its own errors.
+   */
+  private async copyToTheOrganisationsCommitments(groundId: string, participantId: string, personObjectiveId: string, text: string, dueSaid: string | null): Promise<void> {
+    const person = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      select: { email: true, userId: true, ground: { select: { organizationId: true } } },
+    });
+    /* A guest's word is theirs, never an entry's on the host's list. See a-guest-is-never-somebody-on-the-hosts-list. */
+    const roster = person?.email && !(await isAGuestIn(this.prisma, person.ground.organizationId, person))
+      ? await this.prisma.person.findFirst({
+        where: { organizationId: person.ground.organizationId, email: person.email.toLowerCase() },
+        select: { externalId: true },
+      })
+      : null;
+    await mirrorCommitment(this.prisma, {
+      organizationId: person!.ground.organizationId,
+      groundId,
+      personObjectiveId,
+      personExternalId: roster?.externalId ?? null,
+      text,
+      dueSaid,
+      /* Only ever a date somebody actually gave. `dueSaid` is never parsed into one. */
+      dueAt: null,
+    });
+  }
+
+  /**
    * @param spokenElsewhere the conversation to read, where it is not on the check-in's own record.
    *
    * SETUP IS NOT A CHECK-IN ANY MORE, AND ITS WORDS STILL SET THE TARGETS.
@@ -9210,7 +9240,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
        */
       const prior = await this.prisma.personObjective.findFirst({
         where: { groundId, participantId: target, kind },
-        select: { id: true, text: true, trackedUrl: true },
+        select: { id: true, text: true, trackedUrl: true, awareness: true, authoredBy: true },
       });
       const textChanged = !!prior && prior.text.trim() !== text;
 
@@ -9279,6 +9309,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         if (awareness === 'NOT_TOLD') {
           wordTheAreaOfAGoal(this.anthropic, this.prisma, text).catch((err: any) => this.logger.warn(`Wording the area of an untold goal failed: ${err?.message}`));
         }
+        /* A commitment held back until the lead said they had told the person is copied now that they have (decisions 48 and 56). */
+        if (kind === 'COMMITMENT' && !mayThisGoalBeCopiedToCommitments(prior as any) && mayThisGoalBeCopiedToCommitments({ awareness, authoredBy })) {
+          await this.copyToTheOrganisationsCommitments(groundId, target, prior.id, text, dueSaid);
+        }
       } else {
         const created = await this.prisma.personObjective.create({
           data: {
@@ -9306,28 +9340,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
          * to mirror must never fail the check-in that was being written, so `mirrorCommitment`
          * swallows its own errors and returns false.
          */
-        if (kind === 'COMMITMENT') {
-          const person = await this.prisma.groundParticipant.findUnique({
-            where: { id: target },
-            select: { email: true, userId: true, ground: { select: { organizationId: true } } },
-          });
-          /* A guest's word is theirs, never an entry's on the host's list. See a-guest-is-never-somebody-on-the-hosts-list. */
-          const roster = person?.email && !(await isAGuestIn(this.prisma, person.ground.organizationId, person))
-            ? await this.prisma.person.findFirst({
-                where: { organizationId: person.ground.organizationId, email: person.email.toLowerCase() },
-                select: { externalId: true },
-              })
-            : null;
-          await mirrorCommitment(this.prisma, {
-            organizationId: person!.ground.organizationId,
-            groundId,
-            personObjectiveId: created.id,
-            personExternalId: roster?.externalId ?? null,
-            text,
-            dueSaid,
-            /* Only ever a date somebody actually gave. `dueSaid` is never parsed into one. */
-            dueAt: null,
-          });
+        /* A goal the lead has not told the person about is not copied to what they owe until the lead says they have (decisions 48 and 56). */
+        if (kind === 'COMMITMENT' && mayThisGoalBeCopiedToCommitments({ awareness, authoredBy })) {
+          await this.copyToTheOrganisationsCommitments(groundId, target, created.id, text, dueSaid);
         }
       }
     }

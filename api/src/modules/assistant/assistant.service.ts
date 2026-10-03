@@ -41,6 +41,7 @@ import {
   type Plan as ASetUpPlan, type SetUpSuite, type WhatIsKnown as WhatIsKnownToSetUp,
 } from './a-suite-set-up-by-talking';
 import { theirSignIn } from '../suites/a-roster-entry-and-its-sign-in';
+import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
 import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
@@ -114,7 +115,7 @@ import { Prisma } from '@prisma/client';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { isAGuestsKey } from './a-guests-questions-are-kept-apart';
 import { withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
-import { theWordsOfWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
+import { theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
 import { targetsHiddenFrom, withoutHiddenTargetsIn, namesOnTheRoster } from '../board/a-hidden-target-stays-hidden';
 import { runsIt } from '../grounds/who-may-read-this-check-in';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
@@ -872,10 +873,10 @@ export class AssistantService {
    */
   private async theConvertingMoves(organizationId: string, personExternalId: string): Promise<string> {
     const since = new Date(Date.now() - 30 * 86_400_000);
-    const commitments = await this.prisma.commitment.findMany({
+    const commitments = await withoutCommitmentsFromGoalsNotToldYet(this.prisma, await this.prisma.commitment.findMany({
       where: { organizationId, personExternalId, ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') },
-      select: { id: true, text: true, state: true, statedAt: true, dueAt: true, lastFollowedUpAt: true },
-    });
+      select: { id: true, text: true, state: true, statedAt: true, dueAt: true, lastFollowedUpAt: true, sourcePersonObjectiveId: true },
+    }));
     if (!commitments.length) return '';
 
     const load: Load[] = commitments.map((c) => ({
@@ -921,7 +922,7 @@ export class AssistantService {
     if (!who) return rules('what_next', text('I cannot see you in your organisation records, so I have nothing to put first.'));
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { email: true } });
     const [commitments, toDos] = await Promise.all([
-      this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN', ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }),
+      this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN', ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }).then((rows) => withoutCommitmentsFromGoalsNotToldYet(this.prisma, rows)),
       this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
     ]);
     const key = person?.email?.toLowerCase() ?? null;
@@ -2448,6 +2449,7 @@ export class AssistantService {
             id: true,
             label: true,
             initiatorId: true,
+            createdByUserId: true,
             /*
              * WHOSE TARGET A COLLEAGUE MAY READ, read here because this pulls the report straight
              * from the ground rather than through reports.service.ts's `get`, which already runs
@@ -2508,7 +2510,7 @@ export class AssistantService {
           divergences: (g.report as any).divergences,
         },
         hiddenTargets,
-      ), theWordsOfWhatTheLeadHasNotToldThemAbout(g.objectives ?? [], ((g as any).personObjectives ?? []) as any[], (g.participants ?? []) as any[], g.initiatorId === me.linkedUserId));
+      ), theWordsOfWhatTheLeadHasNotToldThemAbout(g.objectives ?? [], ((g as any).personObjectives ?? []) as any[], (g.participants ?? []) as any[], theyRunThisCheckIn(me.linkedUserId, g as any)));
       const r = recall({
         groundLabel: g.label,
         releasedAt: g.report.releasedAt!,
@@ -4218,7 +4220,7 @@ export class AssistantService {
   private async tickOffAToDo(organizationId: string, who: string | null, said: string): Promise<Reply> {
     if (!who) return rules('tick_off_a_to_do', text('I cannot see you in your organisation records, so I have no list to close anything on.'));
     const todos = await this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } });
-    const commitments = await this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } });
+    const commitments = await withoutCommitmentsFromGoalsNotToldYet(this.prisma, await this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } }));
     const open = [
       ...todos.map((t: any) => ({ id: `todo:${t.id}`, text: t.text as string, dueSaid: (t.dueSaid ?? null) as string | null })),
       ...commitments.map((c: any) => ({ id: `commitment:${c.id}`, text: c.text as string, dueSaid: (c.dueSaid ?? null) as string | null })),
@@ -4266,7 +4268,7 @@ export class AssistantService {
    * move, whoever runs the check-in.
    */
   private async commitmentsIMayMove(organizationId: string, who: string, userId: string | null) {
-    const own = await this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } });
+    const own = await withoutCommitmentsFromGoalsNotToldYet(this.prisma, await this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } }));
     const out: { id: string; text: string; dueAt: Date | null; dueSaid: string | null; ownerExternalId: string; mine: boolean }[] =
       (own as any[]).map((c) => ({ id: c.id, text: c.text, dueAt: c.dueAt ?? null, dueSaid: c.dueSaid ?? null, ownerExternalId: c.personExternalId, mine: true }));
     if (userId) {
@@ -4408,10 +4410,10 @@ export class AssistantService {
     });
     if (!me) return rules('what_did_i_commit_to', text('I cannot find you in what your organisation has sent us.'));
 
-    const open = await this.prisma.commitment.findMany({
+    const open = await withoutCommitmentsFromGoalsNotToldYet(this.prisma, await this.prisma.commitment.findMany({
       where: { organizationId, personExternalId: me.externalId, state: 'OPEN', ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') },
       orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }],
-    });
+    }));
     if (!open.length) {
       return rules('what_did_i_commit_to', text('Nothing is open. Anything you say you will do in a check-in shows up here.'));
     }

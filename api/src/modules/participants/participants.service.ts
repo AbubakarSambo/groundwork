@@ -17,6 +17,8 @@ import { EmailService } from '../email/email.service';
 import { AuthService } from '../auth/auth.service';
 import { CheckInStatus, TokenType, Cadence, PartyType, GroundScenario } from '@prisma/client';
 import { targetsFor } from '../board/whose-number-is-whose-business';
+import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
+import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 
 /**
  * Participant magic-link entry. A participant is added to a ground by email and
@@ -49,8 +51,9 @@ export class ParticipantsService {
      */
     const row = await this.prisma.groundParticipant.findUnique({ where: { inviteToken: token } });
     if (row && hasExpired(row)) {
-      const g = await this.prisma.ground.findUnique({ where: { id: row.groundId }, select: { initiator: { select: { firstName: true } } } });
-      return { expired: true as const, leadFirstName: (g?.initiator?.firstName ?? '').trim() || null };
+      const g = await this.prisma.ground.findUnique({ where: { id: row.groundId }, select: { initiator: { select: { firstName: true, lastName: true } } } });
+      /* A title is never a first name: "Dr Amina Bello" is Amina (a-title-is-not-a-first-name.ts). */
+      return { expired: true as const, leadFirstName: theFirstNameFrom(g?.initiator?.firstName, g?.initiator?.lastName) };
     }
     /*
      * HELD FOR A SEAT (U.4 third review): the page opens straight on the refusal, carrying nothing
@@ -65,10 +68,16 @@ export class ParticipantsService {
       include: {
         initiator: { select: { firstName: true, lastName: true } },
         organization: { select: { name: true } },
-        objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true } },
+        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true } },
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* The person this link is for has not been told a goal the lead has set and not said: it is not a share of theirs to speak of (decisions 48 and 56). */
+    const goalsNotToldYet: any[] = await ((this.prisma as any).personObjective?.findMany?.({
+      where: { groundId: participant.groundId, participantId: participant.id, awareness: 'NOT_TOLD' },
+      select: { id: true, participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
+    }) ?? Promise.resolve([])).catch(() => []);
+    const leadFirst = theFirstNameFrom(ground.initiator.firstName, ground.initiator.lastName);
 
     /*
      * "YOUR NUMBER" (join-invite.txt: "Only you and Wairimu see your share of the target."), THROUGH
@@ -86,19 +95,19 @@ export class ParticipantsService {
      */
     const alreadyAccepted = !!participant.userId;
     const whoSeesTargets: 'their own' | 'everybody' = (ground as any).whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own';
-    const ownsAShare = !!targetsFor(
+    const ownsAShare = !!withoutWhatTheLeadHasNotToldThemAbout(targetsFor(
       (ground as any).objectives ?? [],
       participant.id,
       whoSeesTargets,
       { isLead: false },
-    ).shown.find((o: any) => o.ownerParticipantId === participant.id && o.target != null);
+    ).shown as any[], goalsNotToldYet, [participant as any, { id: 'lead', user: ground.initiator } as any], false).kept.find((o: any) => o.ownerParticipantId === participant.id && o.target != null);
     const yourNumberIsSeenBy: 'you-and-lead' | 'everybody' | null =
       alreadyAccepted || !ownsAShare ? null : (whoSeesTargets === 'everybody' ? 'everybody' : 'you-and-lead');
 
     return {
       /* For "Wairimu invited you to the sales team's check-in" and "Baridi Appliances, until 30 September." */
       organisationName: (ground as any).organization?.name ?? null,
-      leadFirstName: (ground.initiator.firstName ?? '').trim() || null,
+      leadFirstName: leadFirst,
       endsAt: ground.endsAt ? ground.endsAt.toISOString() : null,
       /* U.6 review: when their first check-in opens, if that is later than now, so the page does not
          offer "Answer today's check-in now" for a check-in that opens on 5 October. */
@@ -111,7 +120,7 @@ export class ParticipantsService {
         cadence: ground.cadence,
         cadenceAnchorDay: ground.cadenceAnchorDay,
         workingDays: ground.workingDays,
-        leadFirstName: ground.initiator.firstName,
+        leadFirstName: leadFirst,
       }),
       groundLabel: ground.label,
       scenario: ground.scenario,

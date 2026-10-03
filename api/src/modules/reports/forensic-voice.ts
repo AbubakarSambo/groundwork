@@ -31,6 +31,7 @@
  */
 
 import { theQuotesKept } from './a-quote-is-what-they-said';
+import { aStoredSentenceReadsRight } from './a-stored-sentence-reads-right';
 
 export type ForensicHit = { phrase: string; why: string };
 
@@ -154,7 +155,10 @@ const A_RANGE = /(\d)\s*\u2013\s*(\d)/g;
 /* Never inside a quotation: a dash a person typed is part of what they said. See a-quote-is-what-they-said. */
 export function withoutDashes(text: string): string {
   if (!text) return text;
-  return theQuotesKept(text, dashesOutsideTheQuotes);
+  /* And the last touch before somebody reads it also puts a stored sentence right (a label's full stop, the old
+     work words), because this is the one place every served report and board sentence passes after the names
+     are put in. See a-stored-sentence-reads-right. */
+  return aStoredSentenceReadsRight(theQuotesKept(text, dashesOutsideTheQuotes));
 }
 
 function dashesOutsideTheQuotes(text: string): string {

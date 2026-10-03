@@ -153,6 +153,8 @@ export interface WhoReadsTheMovement {
   participantId: string | null;
   /** Whoever set the targets reads every one of them. */
   isLead: boolean;
+  /** Whoever runs the check-in (the lead, and the admin who set it up) reads a goal not told. Where it is not given, `isLead` stands for it. */
+  runsIt?: boolean;
   /**
    * The person an evaluation check-in is about, or an admin without access to it: a colleague's own
    * words are walled from them (colleagues-exact-words-stay-with-the-manager), so the tile gives them
@@ -253,11 +255,11 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     { isLead: reader.isLead },
   ).shown as any[];
   /* And not a target for somebody that the lead has not told them about (decisions 48 and 56): the tile would add its movement. */
-  const untoldRows = reader.isLead ? [] : await ((prisma as any).personObjective?.findMany?.({
+  const untoldRows = (reader.runsIt ?? reader.isLead) ? [] : await ((prisma as any).personObjective?.findMany?.({
     where: { groundId, awareness: 'NOT_TOLD' },
     select: { participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
   })?.catch?.(() => []) ?? Promise.resolve([]));
-  const objectives = withoutWhatTheLeadHasNotToldThemAbout(shownTargets, (untoldRows ?? []) as any[], ((theGround as any)?.participants ?? []) as any[], !!reader.isLead).kept as unknown as { id: string; count: number; target?: number | null }[];
+  const objectives = withoutWhatTheLeadHasNotToldThemAbout(shownTargets, (untoldRows ?? []) as any[], ((theGround as any)?.participants ?? []) as any[], !!(reader.runsIt ?? reader.isLead)).kept as unknown as { id: string; count: number; target?: number | null }[];
   /*
    * THE FIRST WORRY WHOSE LINE STANDS WHOLE: a first sentence that fits a tile, and whose quotes,
    * if it has any, are the record's words, so the quote rule at the read leaves it as it is (see

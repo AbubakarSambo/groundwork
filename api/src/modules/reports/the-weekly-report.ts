@@ -27,7 +27,7 @@
  * proportion of a person shown to somebody else. How anybody's answers were rated is never read.
  */
 
-import { aNumberPeopleCanRead, theNumbersPeopleCanRead, theAimItself, yourOwnAimIsYours } from '../board/an-aim-is-a-sentence-about-somebody';
+import { aNumberPeopleCanRead, theNumbersPeopleCanRead, theAimItself, yourOwnAimIsYours, THE_NAME_TO_DO } from '../board/an-aim-is-a-sentence-about-somebody';
 import { asADirection, whatTheWordsSuggest } from '../board/an-aim-or-a-limit';
 import { aDeadlineIsDone } from '../board/a-measure-that-goes-down-is-still-going-well';
 import { aCountThatMovedSaid, theMoneyItCountsIn } from './a-count-that-moved-is-one-sentence';
@@ -216,7 +216,9 @@ export function aTargetThisWeek(t: AWeeksTarget, whose: Whose, againstTheAim: bo
     /* "3 shops in Kilimani, your own aim" and ", Amani Wekesa's own aim" (request 117, part 11). */
     : t.setByTheHolder ? (whose === 'you' ? ', your own aim' : `, ${whose.label}'s own aim`)
       : whose === 'you' ? ', your own number' : `, ${whose.label}'s number`;
-  const of = `${(t.setByTheHolder && whose !== 'team' ? theAimItself(name, null) : null) ?? lowerFirst(readable)}${whoseWords}`;
+  /* "Tobi to close 8 renewals per quarter" is what is counted, "close 8 renewals per quarter", with whose it is after it. */
+  const whatIsDone = THE_NAME_TO_DO.exec(readable)?.[2];
+  const of = `${(t.setByTheHolder && whose !== 'team' ? theAimItself(name, null) : null) ?? lowerFirst(whatIsDone ?? readable)}${whoseWords}`;
 
   let says: string;
   if (t.from != null && t.from !== t.count) {

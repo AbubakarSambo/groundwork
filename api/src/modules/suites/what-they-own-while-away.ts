@@ -3,6 +3,8 @@ import { WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS, whatTheyMayRead, type CheckInIn
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { saidAsADay } from './who-is-away';
 import { whose } from './a-request-in-words';
+import { isThisTheUntoldGoal, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
+import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
 
 /**
  * WHAT THE PERSON OWNS THAT FALLS IN THE DAYS THEY ASK FOR (decision 85, item 1; build step 7 of
@@ -73,9 +75,9 @@ export async function whatTheyOwnWhileAway(
 
   const [commitments, subjects, participants] = await Promise.all([
     externalId
-      ? rowsOf<{ text: string; dueAt: Date; sourceGroundId: string | null }>(p.commitment, {
+      ? rowsOf<{ text: string; dueAt: Date; sourceGroundId: string | null; sourcePersonObjectiveId: string | null }>(p.commitment, {
         where: { organizationId: org, personExternalId: externalId, state: { in: ['OPEN', 'SLIPPED'] }, dueAt: inside },
-        select: { text: true, dueAt: true, sourceGroundId: true },
+        select: { text: true, dueAt: true, sourceGroundId: true, sourcePersonObjectiveId: true },
         orderBy: { dueAt: 'asc' },
       })
       : [],
@@ -108,18 +110,28 @@ export async function whatTheyOwnWhileAway(
   /* Each check-in behind any of these, read once, and whether this reader may read its board. */
   const groundIds = [...new Set([...commitments.map((c) => c.sourceGroundId), ...targets.map((t) => t.groundId), ...work.map((w) => w.groundId)].filter((x): x is string => !!x))];
   const mayRead = await theCheckInsThisReaderMayRead(prisma, reader, groundIds);
+  /* The goals the lead has not told the person about, as they stand now: only whoever runs that check-in reads them (decisions 48 and 56). */
+  const notTold = (participantIds.length && groundIds.length
+    ? await rowsOf<any>(p.personObjective, {
+      where: { groundId: { in: groundIds }, participantId: { in: participantIds }, awareness: 'NOT_TOLD' },
+      select: { id: true, groundId: true, participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
+    })
+    : []).filter(notToldYet);
+  const notToldIds = new Set(notTold.map((g: any) => g.id as string));
 
   const owned: Owned[] = [];
   let hidden = 0;
-  const keep = (groundId: string | null, item: Owned) => {
+  const keep = (groundId: string | null, item: Owned, aGoalNotTold = false) => {
     if (!groundId) { owned.push(item); return; }
     const g = mayRead.get(groundId);
     if (!g) { hidden++; return; }
+    /* A goal not told stays with whoever runs that check-in; to anybody else it is not here, and not counted as left out. */
+    if (aGoalNotTold && !g.runs) return;
     if (g.ended) return;
     owned.push({ ...item, checkIn: g.label });
   };
-  for (const c of commitments) keep(c.sourceGroundId, { kind: 'commitment', what: c.text.trim(), dueOn: dayOf(c.dueAt), checkIn: null });
-  for (const t of targets) keep(t.groundId, { kind: 'target', what: t.name.trim(), dueOn: dayOf(t.dueOn), checkIn: null });
+  for (const c of commitments) keep(c.sourceGroundId, { kind: 'commitment', what: c.text.trim(), dueOn: dayOf(c.dueAt), checkIn: null }, !!c.sourcePersonObjectiveId && notToldIds.has(c.sourcePersonObjectiveId));
+  for (const t of targets) keep(t.groundId, { kind: 'target', what: t.name.trim(), dueOn: dayOf(t.dueOn), checkIn: null }, notTold.some((g: any) => g.groundId === t.groundId && isThisTheUntoldGoal({ name: t.name }, g)));
   for (const w of work) keep(w.groundId, { kind: 'work', what: w.name.trim(), dueOn: dayOf(w.dueAt), checkIn: null });
   for (const s of subjects) {
     if (s.status && DONE_WORDS.test(s.status)) continue;
@@ -132,8 +144,8 @@ export async function whatTheyOwnWhileAway(
 }
 
 /** The check-ins this reader may read the board of ('lead' or 'shared'), with their names and whether they have ended. */
-async function theCheckInsThisReaderMayRead(prisma: PrismaService, reader: Reader, groundIds: string[]): Promise<Map<string, { label: string; ended: boolean }>> {
-  const out = new Map<string, { label: string; ended: boolean }>();
+async function theCheckInsThisReaderMayRead(prisma: PrismaService, reader: Reader, groundIds: string[]): Promise<Map<string, { label: string; ended: boolean; runs: boolean }>> {
+  const out = new Map<string, { label: string; ended: boolean; runs: boolean }>();
   if (!groundIds.length) return out;
   const grounds = await rowsOf<any>((prisma as any).ground, {
     where: { id: { in: groundIds }, organizationId: reader.organizationId },
@@ -150,7 +162,7 @@ async function theCheckInsThisReaderMayRead(prisma: PrismaService, reader: Reade
       participants: g.participants, status: g.status, approvedById: g.approvedById, leadDepartment: department(g.initiatorId),
     };
     const level = whatTheyMayRead(reader.userId, viewer, view);
-    if (level === 'lead' || level === 'shared') out.set(g.id, { label: (g.label ?? '').trim(), ended: ENDED.has(g.status) });
+    if (level === 'lead' || level === 'shared') out.set(g.id, { label: (g.label ?? '').trim(), ended: ENDED.has(g.status), runs: theyRunThisCheckIn(reader.userId, g) });
   }
   return out;
 }

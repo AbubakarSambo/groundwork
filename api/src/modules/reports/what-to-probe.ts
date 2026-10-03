@@ -275,11 +275,11 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     const escalated = i.waitingOn.filter((d) => d.escalated).length;
     const asked = i.waitingOn.length - escalated;
     if (escalated && asked) {
-      triedToUnblock = `Escalated ${escalated} of ${i.waitingOn.length}. The ${asked === 1 ? 'other was' : 'others were'} asked for and not escalated.`;
+      triedToUnblock = `${escalated} of ${i.waitingOn.length} ${escalated === 1 ? 'was' : 'were'} taken above the person ${escalated === 1 ? 'it was' : 'they were'} with. The ${asked === 1 ? 'other was' : 'others were'} asked for, and nothing more is on record.`;
     } else if (escalated) {
-      triedToUnblock = `Escalated ${escalated === 1 ? 'it' : `all ${escalated}`}.`;
+      triedToUnblock = escalated === 1 ? 'It was taken above the person it was with.' : `All ${escalated} were taken above the person they were with.`;
     } else if (asked) {
-      triedToUnblock = `Asked, and the record shows no escalation. It does not say whether anything happened outside the check-ins.`;
+      triedToUnblock = `It was asked for, and nothing on record shows it was taken any further. It does not say whether anything happened outside the check-ins.`;
     } else {
       triedToUnblock = 'The record does not say what they did about it.';
     }

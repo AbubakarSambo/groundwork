@@ -27,7 +27,7 @@ describe('the four reads', () => {
   it('are on the report, computed from the rows the board reads', () => {
     /* Through the one owner of the session's counts, which the board reads too. */
     /* With the reader, so the movement counts only the targets they may read (review of 1 October 2026). */
-    expect(service).toMatch(/whatThisSessionHolds\(this\.prisma, groundId, sessionNumber, \{\s*participantId: me\?\.id \?\? null,\s*isLead: viewerIsLead,\s*colleaguesWordsWalled:/);
+    expect(service).toMatch(/whatThisSessionHolds\(this\.prisma, groundId, sessionNumber, \{\s*participantId: me\?\.id \?\? null,\s*isLead: viewerIsLead,\s*(?:\/\*[^]*?\*\/\s*)?(?:runsIt: [^\n]*,\s*)?(?:\/\*[^]*?\*\/\s*)?colleaguesWordsWalled:/);
     expect(service).toContain('movedOnTargets: held.movedOnTargets');
     expect(service).toContain('blocked: held.blocked');
   });
