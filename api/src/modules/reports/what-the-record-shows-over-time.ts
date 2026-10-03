@@ -228,15 +228,31 @@ const FIRST_PERSON_FRAME = /^(?:i|we)(?:\s+will|['’]ll|\s+am going to|['’]m 
 /* "I am continuing to assess ..." is a promise to continue: "continue to assess ...". */
 const FIRST_PERSON_CONTINUING = /^(?:i am|i['’]m|we are|we['’]re)\s+(?:still\s+)?continuing\s+(?=to\s)/i;
 const FIRST_PERSON_WORD = /\b(?:i|me|my|mine|myself|we|us|our|ours|ourselves)\b/i;
-export function inOurVoice(what: string | null | undefined): string | null {
+/**
+ * "ask Amina to provide me with the commercial terms for each client" is a promise the person made about themselves.
+ * Said about them, "me" is "them" and "my" is "their"; said to them, it is "you" and "your". Only these three words are
+ * turned, because they take no verb after them. A line with "I" or "we" in it still cannot be said in our voice.
+ */
+const OBJECT_FIRST_PERSON = /\b(?:me|my|myself)\b/gi;
+export function inOurVoice(what: string | null | undefined, aboutThem?: 'you' | 'them'): string | null {
   const trimmed = String(what ?? '').trim();
   if (!trimmed) return null;
   const continuing = FIRST_PERSON_CONTINUING.exec(trimmed);
   /* "going to continue with that", kept without its "I" (item 21, the support desk board): "You committed to going to continue with that." */
   const frame = continuing ? null : FIRST_PERSON_FRAME.exec(trimmed) ?? /^going to\s+/i.exec(trimmed);
   const rest = (continuing ? `continue ${trimmed.slice(continuing[0].length)}` : frame ? trimmed.slice(frame[0].length) : trimmed).trim().replace(/[.!?]+$/, '');
-  if (!rest || FIRST_PERSON_WORD.test(rest)) return null;
-  return rest[0].toLowerCase() + rest.slice(1);
+  if (!rest) return null;
+  let said = rest;
+  if (FIRST_PERSON_WORD.test(said)) {
+    if (!aboutThem) return null;
+    const turned = said.replace(OBJECT_FIRST_PERSON, (w) => {
+      const l = w.toLowerCase();
+      return aboutThem === 'you' ? (l === 'me' ? 'you' : l === 'my' ? 'your' : 'yourself') : (l === 'me' ? 'them' : l === 'my' ? 'their' : 'themselves');
+    });
+    if (FIRST_PERSON_WORD.test(turned)) return null;
+    said = turned;
+  }
+  return said[0].toLowerCase() + said.slice(1);
 }
 
 /**
@@ -290,7 +306,8 @@ export function aCommitmentSaid(
   const quoteWhat = c.saidWordForWord === true;
   const quoteWhen = c.whenSaidWordForWord === true;
 
-  const clause = inOurVoice(c.what);
+  /* What they said they would do, said about them ("ask Amina to provide them with ...") where it is not in their own marks. */
+  const clause = inOurVoice(c.what, who === 'You' ? 'you' : 'them');
 
   if (!c.theySaidIt) {
     if (quoteWhat) {

@@ -198,7 +198,8 @@ const theSessionsSoFar = (sessions: ASession[], commitments: ACommitment[]): num
 
 /** What a person committed to, as the end of a sentence, or null when it cannot be said in our voice. */
 const clauseOf = (c: ACommitment, r?: WhoIsReading): string | null => {
-  const clause = inOurVoice(c.text);
+  /* "me" in a promise about themselves is "you" to the person and "them" to anybody else (request 123, item 9). */
+  const clause = inOurVoice(c.text, r?.meId && c.participantId === r.meId ? 'you' : 'them');
   return clause && r ? theReaderSaidAsYou(clause, r.myNames) : clause;
 };
 

@@ -12,7 +12,7 @@ describe('the quick read counts the waits the board counts', () => {
     const served = theQuickReadCountsTheWaitsTheBoardCounts(tilesFor(2), 4)!;
     const blockers = served.find((t) => t.label === 'Blockers')!;
     expect(blockers.value).toBe('4 waiting');
-    expect(blockers.sub).toBe('Work is held up by the commercial terms for each client. Nothing is hard-blocked.');
+    expect(blockers.sub).toBe('Work is held up by the commercial terms for each client. Nothing has stopped the work completely.');
   });
 
   it('a participant who may read only their own waits reads the count the board gave them', () => {

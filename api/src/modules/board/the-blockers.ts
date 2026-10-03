@@ -227,7 +227,7 @@ export function theBlockers(
     let wouldClearIt: string | null = null;
     if (promise) {
       const by = whoIs(r, promise.participantId);
-      const clause = theReaderSaidAsYou(inOurVoice(promise.text) ?? '', r.myNames) || null;
+      const clause = theReaderSaidAsYou(inOurVoice(promise.text, by === 'You' ? 'you' : 'them') ?? '', r.myNames) || null;
       const words = String(promise.text ?? '').trim();
       wouldClearIt = clause
         ? `${by} committed to ${clause}.`

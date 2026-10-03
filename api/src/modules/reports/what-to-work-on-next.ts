@@ -184,7 +184,7 @@ export function whichRoleMap(
   if ((confidence ?? 0) < MIN_COACHING_CONFIDENCE) {
     return {
       map: null,
-      why: `Your record looks like ${map.label.toLowerCase()}, but not clearly enough to coach against. Nothing below reads you against that; a few more sessions will settle it.`,
+      why: `What you have said so far fits ${map.label.toLowerCase()}, but it is not clear enough yet to coach you on that kind of work. Nothing below reads you against it, and a few more check-ins will settle it.`,
     };
   }
   return { map, why: null };
