@@ -1317,23 +1317,25 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const restOfWorkRecordSectionsToShow = restOfWorkRecordSections.filter((s) =>
     s.state !== 'not-known' || !switchboardHeadingsAlreadyShown.has(sectionHeading((b as any).kindOfWork ?? null, s)))
   /*
-   * PROJECT BOARD REVIEW 1, FIX 3: SAID ONCE, WITH NO HEADING - BUT ONLY WHEN THERE IS GENUINELY
-   * NOTHING ELSE FOR THIS KIND OF WORK ANYWHERE ON THE BOARD. A check-in with no kind of work
-   * chosen at all (the DRIFT fixture, "The partnerships work has gone quiet", dac969d3) sends
-   * every `workRecords` section back as not-known, with the same stock sentence, and nothing of
-   * the switchboard's own real sections (Work plan, Timeline...) filled in either -
-   * `switchboardHeadingsAlreadyShown` is empty. That is the one case this collapses to a single
-   * sentence with no heading, rather than the raw switchboard names ("Deal grid", "Forecast",
-   * "Themes", "Work plan") repeating the same sentence once each.
+   * PROJECT BOARD REVIEW 1, FIX 3: SAID ONCE, WITH NO HEADING, ON THESE TWO BOARDS ONLY. A
+   * check-in with no kind of work chosen at all (the DRIFT fixture, "The partnerships work has
+   * gone quiet", dac969d3) sends every `workRecords` section back as not-known, with the same
+   * stock sentence - repeated once per section, under the raw switchboard names ("Deal grid",
+   * "Forecast", "Themes", "Work plan") for four of them. Said once instead, with no heading.
    *
-   * An onboarding board (ONBOARDING family) also sends every `workRecords` entry as not-known
-   * with `kindOfWork: null`, but its real "Work plan" and "Timeline" DO carry content from their
-   * own fields - `switchboardHeadingsAlreadyShown` is not empty there, so this is left exactly as
-   * the onboarding board's own, already-reviewed fix 4 built it.
+   * SCOPED TO `isProjectBoard`, NOT GUESSED FROM `switchboardHeadingsAlreadyShown`. An onboarding
+   * board (ONBOARDING family, scenario NEW_HIRE) also sends every `workRecords` entry as
+   * not-known with `kindOfWork: null` - and NEW_HIRE's own switchboard row (the-switchboard-g2-
+   * table.ts) does not turn "Timeline" on at all, so `shown.timeline` reads false whether or not
+   * `b.timeline` itself has rows, the same way a test with no filled "Work plan" of its own leaves
+   * `switchboardHeadingsAlreadyShown` empty too - an emptiness this fix used to read as "nothing
+   * else on the board", collapsing the onboarding board's own not-known "Work plan" away with it.
+   * `isProjectBoard` is the one fact that actually distinguishes the two: true only for the two
+   * project scenarios this fix is about, so onboarding is never touched, whatever is filled in.
    */
   const allWorkRecords = b.workRecords ?? []
   const workRecordsAllNotKnownSameWhy =
-    switchboardHeadingsAlreadyShown.size === 0 &&
+    isProjectBoard &&
     allWorkRecords.length > 1 &&
     allWorkRecords.every((s) => s.state === 'not-known') &&
     new Set(allWorkRecords.map((s) => (s as { why: string }).why)).size === 1
@@ -1708,16 +1710,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
-          PROJECT BOARD REVIEW 1, FIX 2: "WHERE EACH TARGET STANDS", WITH NO HEADLINE. A project
-          board (`NEW_PROJECT`, `DRIFT`) is not always given a headline question, but it is always
-          given `objectives` with each target's own `journey.say` ("Nothing has been counted for
-          it yet."). Without a headline this used to show only in the end fold, under "Everything
-          else from this check-in" - the one place a reader checks first, where each target
-          stands, was missing entirely. This draws it at the top, in the headline's own place,
-          using the prototype's own heading. The sales board is unaffected: it is always sent a
-          headline, so this block never fires for it.
+          PROJECT BOARD REVIEW 1, FIX 2: "WHERE EACH TARGET STANDS", WITH NO HEADLINE, ON THESE
+          BOARDS. A project board (`NEW_PROJECT`, `DRIFT`) is not always given a headline
+          question, but it is always given `objectives` with each target's own `journey.say`
+          ("Nothing has been counted for it yet."). Without a headline this used to show only in
+          the end fold, under "Everything else from this check-in" - the one place a reader checks
+          first, where each target stands, was missing entirely. This draws it at the top, in the
+          headline's own place, using the prototype's own heading.
+
+          SCOPED TO `isProjectBoard`, NOT JUST "NO HEADLINE". Gating on `!headline` alone also drew
+          this for a TEAM_UPDATES board with no headline of its own (a-number-nobody-has-defined.
+          spec.tsx) - a different kind of board that already shows its own objectives, by name, in
+          "What we are aiming for" further down, so the same name ("new paying customers") read
+          twice on the page. `isProjectBoard` is the fact that actually distinguishes this case:
+          the sales board is still unaffected either way, since it is always sent a headline.
         */}
-        {!(b as any).headline && b.objectives && b.objectives.length > 0 && (
+        {isProjectBoard && !(b as any).headline && b.objectives && b.objectives.length > 0 && (
           <Panel>
             <Stack gap={10}>
               <SubHeading>Where each target stands</SubHeading>

@@ -119,24 +119,14 @@ describe('the onboarding board’s own order (day-30-and-60.txt)', () => {
     expect(divergence).toBeGreaterThan(history)
   })
 
-  /*
-   * PROJECT BOARD REVIEW 1, FIX 3: SAID ONCE, WITH NO HEADING - NOT THE SWITCHBOARD'S OWN RAW
-   * NAMES. This used to expect "Deal grid", "Forecast" and "Themes" drawn as headings in the end
-   * fold, each repeating the same stock sentence - the review found exactly that on a real board
-   * with no kind of work chosen and nothing else to say about it anywhere (the DRIFT fixture).
-   * Updated because it was asserting the defect, not a passing behaviour to protect; this board
-   * has no `workPlan` or `timeline` of its own either, so the same "nothing else on the board"
-   * case applies and the sentence now says once, with no heading.
-   */
-  it('says the not-known sentence once, in the end fold, with no "Deal grid" / "Forecast" / "Themes" heading', async () => {
+  it('moves every not-known work-record heading into the end fold, out of the sales family’s way', async () => {
     me = { id: 'u-amina', firstName: 'Amina', role: 'MEMBER' }
     renderBoard(boardAsLead())
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
     const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
-    expect(within(fold).queryByText('Deal grid')).toBeNull()
-    expect(within(fold).queryByText('Forecast')).toBeNull()
-    expect(within(fold).queryByText('Themes')).toBeNull()
-    expect(within(fold).getAllByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.').length).toBe(1)
+    expect(within(fold).getByText('Deal grid')).toBeTruthy()
+    expect(within(fold).getByText('Forecast')).toBeTruthy()
+    expect(within(fold).getByText('Themes')).toBeTruthy()
   })
 
   it('keeps a work-record section with real rows exactly where it was, not in the fold', async () => {

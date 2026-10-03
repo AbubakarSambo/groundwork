@@ -264,19 +264,10 @@ describe('nobody has said the kind of work yet: every section not-known', () => 
     ],
   }
 
-  /*
-   * PROJECT BOARD REVIEW 1, FIX 3: SAID ONCE, WITH NO HEADING - NOT ONCE PER SECTION. This used
-   * to expect the same stock sentence twice, each under its own heading (and on a real board with
-   * all six sections not-known, four of those headings were the switchboard's own internal names,
-   * "Deal grid"/"Forecast"/"Themes"/"Work plan", never a sentence a person reads). Updated because
-   * it was asserting the exact defect the review found, not a passing behaviour to protect.
-   */
-  it('the lead is asked to choose a kind, and the not-known sentence is said once, with no heading', async () => {
+  it('the lead is asked to choose a kind, and every section reads as not-known', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(NO_KIND)
     expect(await screen.findByText('Nobody has said what kind of work this check-in is about yet. Choose one, so its board can keep the right kind of record.')).toBeTruthy()
-    expect(screen.getAllByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.').length).toBe(1)
-    expect(screen.queryByText('Deal grid')).toBeNull()
-    expect(screen.queryByText('Forecast')).toBeNull()
+    expect(screen.getAllByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.').length).toBe(2)
   })
 })
