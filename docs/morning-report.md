@@ -251,6 +251,14 @@ Not checked by the run: the admin's view, because the run keeps only the lead's 
 - The one failing test (`a-number-with-a-name-on-it-goes-through-one-rule`) flags four new suites files that read a goal's numbers outside the one rule. The builder judges each a fair exception (a test fixture; the person's own drafted week; leave reading only a goal's name and date; a review reading the person's own goals). May they be added to its list of exceptions?
 - A review shows a person's goal figures only to the person and whoever runs that check-in. Decision 86 says admins see the figures. Should an admin who opens the review see them too?
 
+**Setting up a suite by talking to Groundwork** (`34293f00` to `0d4bc28f`; 1,537 tests pass). An admin says "Set up our employee leave process". Groundwork asks one question at a time, only for what it does not know ("Who approves annual leave?", "Does HR need to see all requests?", "What happens if the manager doesn't respond within two working days?"), then says the whole process back in plain sentences, and sets nothing until the admin says yes. A change ("make it three working days") is said back again. On yes it writes through the same rules the Suites page uses, and reads them back from the store. People named in answers become their job ("the head of the person's team"), so the setup survives people changing jobs. Leave, spending, time sheets and reviews all work this way. Anyone else is told who can set it up, and nothing changes. No model reads the answers yet; they are read by rules, like the role interview.
+
+**For Hafsah:**
+- Should a model read a long description given in one message ("Employees can request annual leave. Their line manager approves it…")? Today only short answers and a few kinds of statement are read; anything else is asked.
+- Once spending is set up by talking, the Suites page's single "who approves anything above the limit" person is no longer used. Acceptable, or should that question become optional?
+
+Being built now from what this found: leave approved by length ("more than 10 working days, the department head also approves", your own example, which could not be stored); whoever holds HR or finance may set up their suites, as decision 85 says; a step skipped when the same person already approved; and the leave rules history naming who holds HR.
+
 Now running: "proof asked for": whether a change caused the drop or the model varies, with repeated runs. If it does not come back, it goes to Hafsah. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
