@@ -2,7 +2,7 @@ import { wholeDaysTo, theDayItBegan, theRecordsClock } from './a-wait-is-dated-n
 import { aFindingThatDoesNotSayTheWaitAgain } from './where-each-person-is-against-their-number';
 import { eachRepeatedSentenceSaidOnce } from './each-repeated-sentence-said-once';
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
-import { aPartyOutside, aWaitOnOneself } from './a-thing-is-not-somebody';
+import { aPartyOutside, aWaitOnOneself, theWaitsAsABoardReadsThem } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
 import { whoSeesThisDifferently } from './who-sees-this-differently';
 import { theRoundCappedAtThePlan, whatEachSessionSays } from './one-count-for-the-sessions';
@@ -352,8 +352,8 @@ export class BoardService {
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
-    /* A wait on oneself is not a wait, even where one is already on record (request 111 e, a-thing-is-not-somebody). */
-    (ground as any).dependencies = ((ground as any).dependencies ?? []).filter((d: any) => !aWaitOnOneself(d));
+    /* A wait on oneself is not a wait, a wait on "the lead" is a wait on the lead, and one wait said four ways is one (request 111 e, request 123 items 4 and 5). */
+    (ground as any).dependencies = theWaitsAsABoardReadsThem((ground as any).dependencies ?? [], ground.participants.find((p) => !!ground.initiatorId && p.userId === ground.initiatorId)?.id);
 
     /**
      * "THERE IS NO BOARD" IS ANSWERED BEFORE "WHO ARE YOU", AND THAT ORDER IS THE FIX.

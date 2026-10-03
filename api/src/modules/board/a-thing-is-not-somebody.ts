@@ -43,3 +43,68 @@ export function aWaitOnOneself(d: { fromParticipantId?: string | null; onPartici
   if (d.onParticipantId && d.fromParticipantId && d.onParticipantId === d.fromParticipantId) return true;
   return ONESELF.test((d.onLabel ?? '').trim().replace(/[.!?]+$/, ''));
 }
+
+/**
+ * A WAIT ON "THE LEAD" IS A WAIT ON THE LEAD (request 123, item 4). The extraction can write the person waited on as
+ * the words the person used for them, "the lead", with nobody named. Read as it was stored, Amina read "waiting on the
+ * lead" and Tobi read "Waiting on: the lead". It is the check-in's lead, so it is read as that person: "you" to
+ * Amina and "Amina" to Tobi, by every sentence that already names a person waited on.
+ */
+const THE_LEAD = /^(?:the|your|my|our)?\s*(?:team\s+|line\s+)?(?:lead|manager|boss|supervisor)$/i;
+export function aWaitOnTheLeadIsOnTheLead<T extends { onParticipantId?: string | null; onLabel?: string | null }>(rows: readonly T[], leadParticipantId: string | null | undefined): T[] {
+  if (!leadParticipantId) return [...rows];
+  return rows.map((d) => (!d.onParticipantId && THE_LEAD.test((d.onLabel ?? '').trim().replace(/[.!?]+$/, ''))
+    ? { ...d, onParticipantId: leadParticipantId, onLabel: null }
+    : d));
+}
+
+/**
+ * ONE WAIT, SAID ONCE (request 123, item 5). The same person waiting on the same person for "the commercial terms for each
+ * client, including pricing structures and renewal processes", "any historical data related to these aspects", "the
+ * commercial terms and historical data" and "the commercial and historical data" was written as four waits, so the
+ * board listed four, counted four, and gave three different counts of how long it had been open.
+ *
+ * Open waits by the same person on the same person (or the same outside party) are one wait where what they are
+ * waiting for shares at least two words that carry meaning and at least half of the shorter one's. Each is then said in
+ * the fullest words of the four, so the board groups them as it groups any wait raised again, and it is blocking if any
+ * of them was. A cleared wait is left alone.
+ */
+const NOT_A_WORD_OF_THE_WORK = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'for', 'to', 'on', 'in', 'any', 'all', 'each', 'every', 'some', 'this', 'that', 'these', 'those', 'their', 'its', 'his', 'her', 'my', 'our', 'your', 'with', 'from', 'about', 'related', 'including', 'such', 'as', 'be', 'is', 'are', 'by', 'at', 'it', 'what', 'which', 'needed', 'need', 'needs', 'more']);
+const wordsOfAWait = (t: string): Set<string> => new Set(
+  t.toLowerCase().replace(/[^\p{L}\p{N} ]+/gu, ' ').split(/\s+/).filter((w) => w.length > 2 && !NOT_A_WORD_OF_THE_WORK.has(w)).map((w) => w.replace(/s$/, '')),
+);
+const theSameWait = (a: Set<string>, b: Set<string>): boolean => {
+  let shared = 0;
+  for (const w of a) if (b.has(w)) shared += 1;
+  return shared >= 2 && shared / Math.min(a.size, b.size) >= 0.5;
+};
+export function oneWaitSaidOnce<T extends { id?: string; what?: string | null; status?: any; fromParticipantId?: string | null; onParticipantId?: string | null; onLabel?: string | null; createdAt?: Date | string | null }>(rows: readonly T[]): T[] {
+  const open = (d: T) => String(d.status ?? '').toUpperCase() !== 'CLEARED';
+  const key = (d: T) => `${d.fromParticipantId ?? ''}::${d.onParticipantId ?? (d.onLabel ?? '').trim().toLowerCase()}`;
+  /* A wait that matches two groups joins them: the third phrasing is what shows the first and the second are one. */
+  type Cluster = { at: number; key: string; rows: T[]; words: Set<string>[] };
+  const clusters: Cluster[] = [];
+  const loose: { at: number; row: T }[] = [];
+  rows.forEach((d, at) => {
+    if (!open(d) || !(d.what ?? '').trim()) { loose.push({ at, row: d }); return; }
+    const w = wordsOfAWait(String(d.what));
+    const hits = clusters.filter((c) => c.key === key(d) && c.words.some((x) => theSameWait(x, w)));
+    if (!hits.length) { clusters.push({ at, key: key(d), rows: [d], words: [w] }); return; }
+    const [first, ...rest] = hits;
+    first.rows.push(d); first.words.push(w);
+    for (const c of rest) { first.rows.push(...c.rows); first.words.push(...c.words); first.at = Math.min(first.at, c.at); clusters.splice(clusters.indexOf(c), 1); }
+  });
+  /* Every phrasing is said in the fullest words, and each row stays: how often it was raised, and since when, are counted from the rows. */
+  const merged = clusters.flatMap((c) => {
+    if (c.rows.length === 1) return [{ at: c.at, row: c.rows[0] }];
+    const fullest = [...c.rows].sort((a, b) => String(b.what).length - String(a.what).length)[0];
+    const blocking = c.rows.some((r) => String(r.status ?? '').toUpperCase() === 'BLOCKING');
+    return c.rows.map((r) => ({ at: rows.indexOf(r), row: { ...r, what: fullest.what, ...(blocking ? { status: 'BLOCKING' } : {}) } as T }));
+  });
+  return [...loose, ...merged].sort((a, b) => a.at - b.at).map((x) => x.row);
+}
+
+/** The waits as a board reads them: none on oneself, a wait on "the lead" on the lead, and one wait said four ways as one. */
+export function theWaitsAsABoardReadsThem<T extends { id?: string; what?: string | null; status?: any; fromParticipantId?: string | null; onParticipantId?: string | null; onLabel?: string | null; createdAt?: Date | string | null }>(rows: readonly T[], leadParticipantId: string | null | undefined): T[] {
+  return oneWaitSaidOnce(aWaitOnTheLeadIsOnTheLead(rows.filter((d) => !aWaitOnOneself(d)), leadParticipantId).filter((d) => !aWaitOnOneself(d)));
+}
