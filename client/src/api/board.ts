@@ -415,6 +415,14 @@ export type BoardPresent = {
    */
   kindOfWork?: KindOfWork | null
   /**
+   * THE KINDS A NEW CHECK-IN MAY BE GIVEN (request for the screens workspace, 4 October 2026). The
+   * release offers only some of the eleven kinds; this is that list, exactly as the server writes
+   * it. The kind-of-work dialog (`WorkRecords.tsx`) lists only these, plus `kindOfWork` itself so a
+   * check-in that already holds another kind can still be saved. Absent on an older server - keep
+   * today's full list then.
+   */
+  kindsOffered?: KindOfWork[]
+  /**
    * THE RECORDS THE KIND OF WORK KEEPS: deals and their stages, releases, tickets, a matter's
    * deadlines and parties, and so on - one section per name in the switchboard (`section`, e.g.
    * "Deal grid"). Each section says what it holds, in plain words, and whether it is filled, has

@@ -2400,6 +2400,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           kindOfWork={(b as any).kindOfWork ?? null}
           workStages={(groundForSignals as any)?.workStages}
           canEdit={canEditKindOfWork}
+          kindsOffered={(b as any).kindsOffered}
         />
 
         {has('phaseSpine') && b.phaseSpine && (

@@ -236,11 +236,18 @@ const noneYetHoldsSentence = (holds: string) => NONE_YET_HOLDS_SAYS[holds] ?? ho
  * an admin of this organisation, can change it and its stage names; a participant reads it and
  * cannot change it. A name the server refuses is shown exactly as it says it.
  */
-export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: {
+export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit, kindsOffered }: {
   groundId: string
   kindOfWork: KindOfWork | null
   workStages?: string[] | null
   canEdit: boolean
+  /**
+   * THE RELEASE'S REQUEST (4 October 2026): A NEW CHECK-IN MAY BE GIVEN ONLY SOME OF THE ELEVEN
+   * KINDS. The dialog lists only `kindsOffered`, plus the kind this check-in already holds
+   * (`kindOfWork`), so a check-in that holds another kind can still be saved. Absent on an older
+   * server - keep today's full list then.
+   */
+  kindsOffered?: KindOfWork[]
 }) {
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -280,7 +287,8 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
               <FieldLabel htmlFor="kind-of-work-select">Kind of work</FieldLabel>
               <Select id="kind-of-work-select" value={kind} onChange={(e) => setKind(e.target.value)}>
                 <option value="">Not known yet</option>
-                {KIND_OF_WORK_OPTIONS.map((k) => <option key={k} value={k}>{KIND_OF_WORK_OPTION_LABEL[k]}</option>)}
+                {(kindsOffered ? KIND_OF_WORK_OPTIONS.filter((k) => kindsOffered.includes(k) || k === kindOfWork) : KIND_OF_WORK_OPTIONS)
+                  .map((k) => <option key={k} value={k}>{KIND_OF_WORK_OPTION_LABEL[k]}</option>)}
               </Select>
             </div>
             <div>
