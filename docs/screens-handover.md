@@ -4,6 +4,10 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## Onboarding board: done (3 October)
+
+The fourth review, on the engine's 0b15efca, says both Amina (the lead) and Tobi (the new hire) match what the prototype shows for a new hire, apart from the engine's faults (requests 123 and 125). Captures are in the scratchpad's `pictures/review-onboard-4/`. Next is the project board.
+
 ## Where it stopped (3 October, evening)
 
 - **Done:** the sales board matches the prototype for both readers. The onboarding board's lead view matches, apart from the engine's requests 123 and 124. Hafsah answered 124: the new hire reads his lead's own words and row. The new hire's "1 of 1 checked in" fix is finished and tested (39bee66f).

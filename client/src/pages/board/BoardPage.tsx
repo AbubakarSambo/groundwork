@@ -8,7 +8,7 @@ import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { WhatToSettleTogether } from '@/components/gw/what-to-settle-together'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckInLinks } from './CheckInLinks'
-import { boardApi, type BoardPresent, type CoverageVariant, type AnAction } from '@/api/board'
+import { boardApi, type BoardPresent, type CoverageVariant, type AnAction, type StartingStateAtTheStart } from '@/api/board'
 import { apiClient } from '@/api/client'
 import { groundsApi } from '@/api/grounds'
 import { participantRequestsApi } from '@/api/participantRequests'
@@ -705,12 +705,49 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
  * `DivergenceSectionBody` below is, for the same reason (the onboarding family's own order moves
  * it up, every other family keeps it where it was), so the one-off style classes it carries are
  * never counted twice.
+ *
+ * REQUEST 123: ON THE ONBOARDING BOARD, `startingState` IS AN OBJECT, NOT A SENTENCE - "What was
+ * agreed at the start", grouped by the step each row falls due in (Day 1, by day 30, 60, 90, or
+ * after; day-30-and-60.txt). Every other board still gets the plain sentence this field used to be
+ * everywhere, or null, drawn exactly as before - `StartingStateSentence` carries the one line of
+ * one-off classes both cases need, written once, so the guard that counts them in the file
+ * (`one-off-uses-only-go-down.spec.ts`) never sees it twice.
  */
-function StartingStateBody({ startingState }: { startingState: string }) {
+const STARTING_STATE_STEPS = ['Day 1', 'By day 30', 'By day 60', 'By day 90', 'After day 90'] as const
+
+function StartingStateSentence({ children }: { children: React.ReactNode }) {
+  return <div className="gwui-fs-15 gwui-ink-dark" style={{lineHeight: 1.55}}>{children}</div>
+}
+
+function StartingStateBody({ startingState }: { startingState: string | StartingStateAtTheStart }) {
+  if (typeof startingState === 'string') {
+    return (
+      <Section heading="What was agreed at the start" note="Set when this was opened, before any check-in.">
+        <Panel>
+          <StartingStateSentence>{startingState}</StartingStateSentence>
+        </Panel>
+      </Section>
+    )
+  }
+  const { heading, rows } = startingState
   return (
-    <Section heading="What was agreed at the start" note="Set when this was opened, before any check-in.">
+    <Section heading={heading} note="Set when this was opened, before any check-in.">
       <Panel>
-        <div className="gwui-fs-15 gwui-ink-dark" style={{lineHeight: 1.55}}>{startingState}</div>
+        <div className="gwui-subheading-list">
+          {STARTING_STATE_STEPS.filter((step) => rows.some((row) => row.when === step)).map((step) => (
+            <Stack key={step} gap={8}>
+              <SubHeading as="h3">{step}</SubHeading>
+              <Stack gap={18}>
+                {rows.filter((row) => row.when === step).map((row, i) => (
+                  <Stack key={i} gap={4}>
+                    <StartingStateSentence>{row.says}</StartingStateSentence>
+                    {row.what !== null && <StartingStateSentence>{row.what}</StartingStateSentence>}
+                  </Stack>
+                ))}
+              </Stack>
+            </Stack>
+          ))}
+        </div>
       </Panel>
     </Section>
   )
