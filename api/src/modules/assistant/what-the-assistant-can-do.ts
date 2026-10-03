@@ -55,11 +55,11 @@ export interface Capability {
 export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   {
     key: 'set_up_a_suite',
-    does: 'For an admin, set up how leave requests, spending requests or time sheets work by describing it. Only what is missing is asked, one question at a time, the whole of it is said back in plain sentences, and nothing is set until you say yes. Anybody else is told that an admin sets it up, and nothing changes.',
+    does: 'For an admin, set up how leave requests, spending requests, time sheets or performance reviews work by describing it. Only what is missing is asked, one question at a time, the whole of it is said back in plain sentences, and nothing is set until you say yes. Anybody else is told that an admin sets it up, and nothing changes.',
     writes: 'after you confirm it',
     ordered: 'First of all, because "set up our leave process" holds the word leave, which the leave lane would read as a request for time off. Narrow: a word for setting up, then only the suite and words such as process or rules to the end, and never a check-in.',
-    owns: ['Set up our employee leave process', 'set up leave requests', 'configure how leave works', 'set up our spending approvals', 'set up the expenses process', 'set up timesheets'],
-    refuses: ['set up a check-in', 'I want leave on 20 October', 'what is our leave policy', 'set up a check-in about our leave process', 'I spent 12,000 on fuel', 'how do we handle expenses', 'I did 6 hours on Atlas today'],
+    owns: ['Set up our employee leave process', 'set up leave requests', 'configure how leave works', 'set up our spending approvals', 'set up the expenses process', 'set up timesheets', 'set up performance reviews', 'set up our review process'],
+    refuses: ['set up a check-in', 'I want leave on 20 October', 'what is our leave policy', 'set up a check-in about our leave process', 'I spent 12,000 on fuel', 'how do we handle expenses', 'I did 6 hours on Atlas today', 'set up a review for Aisha'],
   },
   {
     key: 'tick_off_a_to_do',

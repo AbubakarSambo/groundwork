@@ -3353,3 +3353,14 @@ Tests: `api/src/modules/assistant/spending-set-up-by-talking-as-each-reader-read
 - **After the yes, a no, a change and somebody who is not an admin** read the same sentences as for leave, with "time sheets" in place of "leave requests".
 
 Tests: `api/src/modules/assistant/time-sheets-set-up-by-talking-as-each-reader-reads-it.spec.ts`, as Grace (admin), Fatuma (lead) and Kamau (member). No existing test changed; the leave spec added two commits ago follows the "it waits for them" wording.
+
+## Setting up performance reviews by talking to Ask Groundwork (3 October)
+
+**Decision 85: "Set up performance reviews" (or "our review process", "our appraisals") now works like the other three. On the yes it is written through `SuitesService.switch`, as the admin** (this commit).
+
+- **The questions, each only when it is not known yet:** "How often is each person reviewed, every 6 months or every 12 months?" (not asked when the opening already says, for example "annual performance reviews"), and "Who writes each review with the person, their manager or an admin?". Any other answer, such as "HR", is asked again: "A review can be written with the person by their manager or by an admin. Which should it be?"
+- **The said-back:** "Here is how performance reviews will work. Performance reviews will be switched on. Each person is reviewed every 6 months. The person’s manager writes each review with them. If the person has no manager in Groundwork, an admin writes it instead. Shall I set it up like this? Nothing changes until you say yes." With "An admin": "An admin writes each review with the person."
+- **One review is not the process.** "Set up a review" and "set up a review for Aisha" are not taken by this; the singular needs a word such as "process" after it.
+- **After the yes, a no, a change and somebody who is not an admin** read the same sentences as for leave, with "performance reviews" in place of "leave requests".
+
+Tests: `api/src/modules/assistant/reviews-set-up-by-talking-as-each-reader-reads-it.spec.ts`, as Grace (admin), Wairimu (lead) and Miriam (member). No existing test changed.

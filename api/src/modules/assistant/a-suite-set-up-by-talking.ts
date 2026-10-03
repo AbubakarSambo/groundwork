@@ -34,7 +34,7 @@ export const SUITE_SETUP_CONFIRM_KIND = 'suite_setup_confirm';
 export type SetUpSuite = 'leave' | 'spend' | 'time' | 'reviews';
 export const SET_UP_SUITES: SetUpSuite[] = ['leave', 'spend', 'time', 'reviews'];
 /** The suites that can be set up by talking so far. The others are answered as before, by the router's other lanes. */
-export const OFFERED: SetUpSuite[] = ['leave', 'spend', 'time'];
+export const OFFERED: SetUpSuite[] = ['leave', 'spend', 'time', 'reviews'];
 
 /** The suite as the admin reads it in a sentence. */
 export const SUITE_IN_WORDS: Record<SetUpSuite, string> = {
@@ -45,12 +45,13 @@ export const SUITE_IN_WORDS: Record<SetUpSuite, string> = {
 
 const VERB = String.raw`(?:set\s*up|setup|configure|put\s+in\s+place|establish|define|change\s+how|change\s+the\s+way)`;
 const FILLER = String.raw`(?:\s+(?:our|the|a|an|how|company|company'?s|employee|employees'?|staff|team|annual|whole|new|we|do|handle|run|people|workers))*`;
-const TAIL = String.raw`(?:\s+(?:request|requests|process|processes|policy|policies|rules|approval|approvals|system|suite|workflow|works?|work|for\s+(?:us|me|everyone|everybody|the\s+company|our\s+team|our\s+organisation|our\s+organization)))*\s*[.!?]*\s*$`;
+const TAIL = String.raw`(?:\s+(?:request|requests|process|processes|policy|policies|rules|approval|approvals|system|suite|cycle|cycles|workflow|works?|work|for\s+(?:us|me|everyone|everybody|the\s+company|our\s+team|our\s+organisation|our\s+organization)))*\s*[.!?]*\s*$`;
 const NOUNS: Record<SetUpSuite, string> = {
   leave: String.raw`(?:leave|time[\s-]?off|holidays?|annual\s+leave)`,
   spend: String.raw`(?:spending|spend|expenses?|expense\s+claims?|payment\s+requests?|purchase\s+requests?|payments?|budget\s+approvals?|requests?\s+to\s+spend)`,
   time: String.raw`(?:time[\s-]?sheets?|timesheets?|hours|time\s+tracking)`,
-  reviews: String.raw`(?:performance\s+reviews?|reviews?|appraisals?|performance\s+appraisals?)`,
+  /* One review ("set up a review") is not the process: the singular needs a word such as "process" after it. */
+  reviews: String.raw`(?:(?:performance\s+)?reviews|(?:performance\s+)?appraisals|(?:performance\s+)?(?:review|appraisal)(?=\s+(?:process|processes|policy|policies|rules|system|cycle|cycles|suite)\b))`,
 };
 
 const patternFor = (s: SetUpSuite) => new RegExp(String.raw`\b${VERB}${FILLER}\s+${NOUNS[s]}${TAIL}`, 'i');
