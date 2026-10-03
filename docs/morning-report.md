@@ -222,7 +222,15 @@ Run-25 was stopped: decision 86's reversals change what the engine writes, so it
 
 Not checked by the run: the admin's view, because the run keeps only the lead's and one participant's.
 
-Now running: the run-25 faults, and reviews as the record interpreted, with a briefing for the manager. "Proof asked for" is next: if it does not come back, it goes to Hafsah. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Reviews, as decision 85 describes them** (`4197cd1a`, `cda71b45`, `45cbd058`; migration 81, local only; 3,822 tests pass). When a review starts, Groundwork reads the record for the period and keeps it, built from rows, with no model. Aisha reads "This is what Groundwork understands from the record about your work between 1 April 2026 and 1 October 2026 …", then lines such as "In "Sales team, Q3", you made 5 commitments … Of these, 2 were done, 1 was not done, 1 was dropped and 1 was still open when this review started." She can mark any line wrong and say what is true; the correction sits beside the line and never changes the record. Wairimu, who writes it, gets a separate briefing: the counts, the patterns with Aisha's answers ("Aisha hasn't answered this yet." where she has not), what changed after earlier talks, and Aisha's corrections, ending "There are no scores. Groundwork gives you the evidence and the patterns, and you decide." No reader gets a label, verdict or score.
+
+**For Hafsah:**
+- Anyone other than the person reads only the lines and counts from check-ins they are in, because each person's load across check-ins is private (decision 4). The prototype shows the admin "Kept 41 of 44 things she said she would do", a count across check-ins. Your decision and the prototype disagree here: should admins read the whole record and the counts?
+- The briefing is served to everybody who may open the review except the person, each limited to what they can already read. Decision 85 says "the manager gets a separate briefing". Should it be the writer's alone?
+- A correction on a line from a check-in the writer is not in stays with the person, who is told to put it in their own view. Right?
+- The record knows only that a commitment was dropped, not that its scope changed. Is "dropped" enough?
+
+Now running: the run-25 faults (the loans privacy fault first), and "proof asked for": finding whether a change caused the drop or the model varies, with repeated runs of the affected scenarios. If it does not come back, it goes to Hafsah. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
