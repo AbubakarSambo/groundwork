@@ -137,6 +137,38 @@ export function targetPhrase(target: number, targetName: string | null | undefin
   return cleanedTargetName(target, targetName).noun
 }
 
+/**
+ * THE OTHER BROKEN SENTENCE (onboarding board fix 4): "Tobi Adewale has none of their 1 Manage the
+ * renewal process for at least one of the clients yet." A sales `targetName` is a noun phrase with
+ * its own number written as a digit ("Onboard 4 shops in Westlands.", "shops in Kilimani by 20
+ * December") - `cleanedTargetName` can always find and drop everything up to that digit, leaving a
+ * plain noun to slot into "has none of their N ... yet." An onboarding target can instead be the
+ * objective's own full sentence, a verb with its own count written as a WORD ("Manage the renewal
+ * process for at least one of the clients.") - there is no digit for `cleanedTargetName` to find,
+ * so the whole verb phrase was kept and the row said the number twice, once as a figure and once
+ * spelled out inside a phrase that was never meant to follow "has none of their 1".
+ *
+ * Told apart by shape, not by kind of work: a plain noun phrase a count can be slotted in front of
+ * reads lower-case ("shops in Westlands"); a full sentence describing what to do does not, and
+ * starts with a capital letter the way every other sentence on this board does. Only that
+ * combination - capitalised, and with no digit of the target's own number in it - is read as a
+ * verb phrase; a clean noun phrase is never mistaken for one.
+ */
+function isAVerbPhraseWithNoNumber(target: number, targetName: string | null | undefined): boolean {
+  const withoutStop = (targetName ?? '').replace(/\.+\s*$/, '').trim()
+  if (!withoutStop) return false
+  const hasTheNumber = new RegExp(`\\b${target}\\b`).test(withoutStop)
+  if (hasTheNumber) return false
+  return /^[A-Z]/.test(withoutStop)
+}
+
+/** The verb-phrase sentence itself, the stop restored: "Manage the renewal process for at least
+    one of the clients." */
+function verbPhraseSentence(targetName: string | null | undefined): string {
+  const withoutStop = (targetName ?? '').replace(/\.+\s*$/, '').trim()
+  return `${withoutStop}.`
+}
+
 /** "The aim is 3 by 20 December." when `targetName` carries a deadline, otherwise nothing to add. */
 export function targetDateClause(target: number, targetName: string | null | undefined): string | null {
   const { date } = cleanedTargetName(target, targetName)
@@ -186,14 +218,30 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
                   number counts, said as a sentence, using the matching objective's own name where
                   the server sent one. */}
               {r.target != null && (
-                <Note>
-                  {r.who} has {r.count === 0 ? 'none' : r.count} of {r.count === 0 ? 'their' : 'the'} {targetPhrase(r.target, r.targetName)}{r.count === 0 ? ' yet' : ' so far'}.
-                  {/* SALES BOARD, ITEM 4: a deadline carried inside `targetName` ("...by 20
-                      December...") used to run on into this same sentence, after "for their own
-                      work" had already been bolted in ahead of it. It is now its own short
-                      sentence, read once the date has been split off the name above. */}
-                  {targetDateClause(r.target, r.targetName) && ` ${targetDateClause(r.target, r.targetName)}`}
-                </Note>
+                isAVerbPhraseWithNoNumber(r.target, r.targetName) ? (
+                  /*
+                   * ONBOARDING BOARD FIX 4 (SECOND REVIEW): TWO FULL SENTENCES, NOT ONE JOINED ON
+                   * A COLON. "Tobi Adewale has not yet done this: "..."" still joined a name to a
+                   * quote with a colon - CLAUDE.md asks for plain, full sentences, never pieces
+                   * joined with colons. Now "{name}'s target is "{the objective, word for word}."
+                   * It is not done yet." - or "It is done." once it is - two sentences, each
+                   * complete on its own. The reader's own row reads "Your target is ...", the same
+                   * way every other first-person row on this board already says "you" rather than
+                   * their own name.
+                   */
+                  <Note>
+                    {r.who === 'You' ? 'Your' : `${r.who}’s`} target is &ldquo;{verbPhraseSentence(r.targetName)}&rdquo; It is {r.count === 0 ? 'not done yet' : 'done'}.
+                  </Note>
+                ) : (
+                  <Note>
+                    {r.who} has {r.count === 0 ? 'none' : r.count} of {r.count === 0 ? 'their' : 'the'} {targetPhrase(r.target, r.targetName)}{r.count === 0 ? ' yet' : ' so far'}.
+                    {/* SALES BOARD, ITEM 4: a deadline carried inside `targetName` ("...by 20
+                        December...") used to run on into this same sentence, after "for their own
+                        work" had already been bolted in ahead of it. It is now its own short
+                        sentence, read once the date has been split off the name above. */}
+                    {targetDateClause(r.target, r.targetName) && ` ${targetDateClause(r.target, r.targetName)}`}
+                  </Note>
+                )
               )}
               <Stack gap={4}>
                 <div className="gwui-fs-15 gwui-ink-sub">{r.says}</div>

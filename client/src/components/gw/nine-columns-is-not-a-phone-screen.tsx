@@ -25,6 +25,10 @@ export interface PersonRow {
   role?: string | null
   managingOnly?: boolean
   cells: Record<string, string>
+  /** Decision 77: held at the organisation's door - never answered any of this check-in's
+      sessions because nobody has let them in yet, not because they missed them. Read "{name} is
+      waiting to be let in." instead of the usual attendance sentence. */
+  notLetInYet?: boolean
 }
 
 /** The words, in one place, so the phone and the grid can never call the same state two things. */
@@ -105,13 +109,41 @@ const VERB_FOR: Record<Cell, string> = {
   'na': 'was not on',
 }
 
-export function theSentenceFor(name: string, shape: ReturnType<typeof theShapeOfIt>): string | null {
-  if (shape.of === 0) return `${name} is not on any of these sessions.`
-  if (!shape.usual) return shape.notOn > 0 ? `${name} is on ${shape.of} of these sessions.` : null
-  const verb = VERB_FOR[shape.usual]
+/** The same verbs, said to the reader about themselves rather than about them. */
+const SELF_VERB_FOR: Record<Cell, string> = {
+  'done': 'have checked in for',
+  'in-progress': 'are partway through',
+  'declined': 'have declined',
+  'not-started': 'have not started',
+  'na': 'were not on',
+}
+
+/**
+ * THE READER'S OWN ROW, SAID TO THEM RATHER THAN ABOUT THEM.
+ *
+ * Read live by Rukia Otieno, on her own board: "Rukia Otieno has checked in for 2 of 2 sessions
+ * this phase." - her own name and "has", read back at her, where every other screen on this board
+ * already says "you". `isReader` switches the verb to its second-person form and the subject to
+ * "You"; everyone else's sentence is untouched. "This phase" is also jargon nobody outside the
+ * product says, so it is now "so far" for every row, reader or not.
+ *
+ * Full attendance reads as "both" when there are exactly two sessions ("You have checked in for
+ * both sessions so far."), rather than echoing the same number twice ("2 of 2") - a phrasing kept
+ * only for the reader's own sentence; everyone else's count is left exactly as it was.
+ */
+export function theSentenceFor(name: string, shape: ReturnType<typeof theShapeOfIt>, isReader = false): string | null {
+  const subject = isReader ? 'You' : name
+  if (shape.of === 0) return isReader ? 'You are not on any of these sessions.' : `${name} is not on any of these sessions.`
+  if (!shape.usual) {
+    if (shape.notOn === 0) return null
+    return isReader ? `You are on ${shape.of} of these sessions.` : `${name} is on ${shape.of} of these sessions.`
+  }
+  const verb = (isReader ? SELF_VERB_FOR : VERB_FOR)[shape.usual]
   const who = shape.onlySession != null
-    ? `${verb} session ${shape.onlySession}`
-    : `${verb} ${shape.howMany} of ${shape.of} sessions this phase`
+    ? `${subject} ${verb} session ${shape.onlySession}`
+    : isReader && shape.howMany === shape.of && shape.of === 2
+      ? `You ${verb} both sessions so far`
+      : `${subject} ${verb} ${shape.howMany} of ${shape.of} sessions so far`
   /*
    * U.10 RE-REVIEW: NAME THE SESSION, NOT ONLY ITS COUNT. "...and was not part of the other 1."
    * said how many sessions this person was not on, never which ones - read live, it took a second
@@ -119,11 +151,12 @@ export function theSentenceFor(name: string, shape: ReturnType<typeof theShapeOf
    * names them the same way `onlySession` already names a lone one: "and was not part of session
    * 2." for one, "...sessions 2 and 3." for several.
    */
-  const rest = shape.notOn > 0 ? `, and was not part of ${namedSessions(shape.notOnSessions)}` : ''
-  return `${name} ${who}${rest}.`
+  const restVerb = isReader ? 'were not part of' : 'was not part of'
+  const rest = shape.notOn > 0 ? `, and ${restVerb} ${namedSessions(shape.notOnSessions)}` : ''
+  return `${who}${rest}.`
 }
 
-export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions }: {
+export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions, myParticipantId }: {
   rows: PersonRow[]
   sessions: (number | string)[]
   /**
@@ -134,6 +167,9 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions }: {
    * counted as one more he was not on. Defaults to `sessions` (every one counts) when omitted.
    */
   openSessions?: (number | string)[]
+  /** The reader's own participant id, the same way "Who owns what" knows it (`b.myParticipantId`),
+      so the reader's own sentence can be said to them rather than about them. */
+  myParticipantId?: string | null
 }) {
   const counted = openSessions ?? sessions
   return (
@@ -141,11 +177,25 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions }: {
       {rows.map((r) => {
         const shape = theShapeOfIt(r.cells, counted)
         const name = r.name ?? 'A colleague'
-        const sentence = theSentenceFor(name, shape)
+        const isReader = !!myParticipantId && r.participantId === myParticipantId
+        /*
+         * DECISION 77: SOMEBODY NOT LET IN YET IS NOT "HAS NOT STARTED SESSION 1". Read live,
+         * Faraji Odhiambo - held at the organisation's door - was drawn here as an ordinary
+         * absence: "Faraji Odhiambo has not started session 1, and was not part of session 2."
+         * He cannot have started a session nobody let him into. `notLetInYet` replaces the usual
+         * attendance sentence (and the per-session list below it - every session would read the
+         * same way, for the same reason) with the one true fact.
+         */
+        const sentence = r.notLetInYet ? `${name} is waiting to be let in.` : theSentenceFor(name, shape, isReader)
+        /* Re-review, 2 October: the heading above the reader's own sentence still said their own
+           name - "Rukia Otieno" over "You have checked in for both sessions so far." - on the
+           board she herself was reading, the same row BoardPage's 1440 view already heads "You"
+           for. The sentence already reads second person; the name above it now matches. */
+        const displayName = isReader ? 'You' : name
         return (
           <div key={r.participantId} style={{ display: 'grid', gap: 7 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 15 }}>{name}</span>
+              <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 15 }}>{displayName}</span>
               {r.role && r.role !== r.name && (
                 <span data-leads-note style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{theLeadsNote(r.role)}</span>
               )}
@@ -159,7 +209,7 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions }: {
             )}
 
             {/* Every session the usual state does not cover, named rather than counted. */}
-            {shape.rest.length > 0 && (
+            {!r.notLetInYet && shape.rest.length > 0 && (
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {shape.rest.map((e) => (
                   <span key={String(e.s)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>

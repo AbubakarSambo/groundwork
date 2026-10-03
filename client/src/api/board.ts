@@ -82,6 +82,13 @@ export type BoardPresent = {
   /** The newest thing in the record the board is built from. Opening the board does not move it. */
   lastChangedAt?: string | null
   /**
+   * DECISION 77: "Faraji Odhiambo is waiting to be let in." (or "...was not let in.", or null).
+   * Sent only to whoever runs the check-in, the admin who set it up, or an admin with access to
+   * it - null for everybody else, whether or not anybody is held at the door. Draw it beside the
+   * count in `HowItIsGoing`, never inside it.
+   */
+  waitingToBeLetIn?: string | null
+  /**
    * BOARD FIX (sales B, item 3a): WHETHER THE TEAM'S PICTURE IS SHARED, FOR A PARTICIPANT
    * (a-participants-board-is-their-own.ts). `shared: true` once the report has gone out to the
    * people in it; `shared: false` with `says` (the server's own sentence) and `yourOwnReport` (the
@@ -118,9 +125,9 @@ export type BoardPresent = {
     teamsNamed: string[]
     why: string
   } | null
-  participants: { id: string; name: string | null; role: string | null; managingOnly: boolean; signedOffAt: string | null }[]
+  participants: { id: string; name: string | null; role: string | null; managingOnly: boolean; signedOffAt: string | null; partyType?: string }[]
 
-  phaseSpine?: { startsAt: string | null; endsAt: string | null; currentSession: number; sessions: { n: number; state: string; date: string | null; /** The day it opens, for a session not yet done. */ opensOn?: string | null }[] }
+  phaseSpine?: { startsAt: string | null; endsAt: string | null; currentSession: number; sessions: { n: number; state: string; date: string | null; /** The day it opens, for a session not yet done. */ opensOn?: string | null; /** The engine's own sentence for this session, e.g. "Session 5 opens on 12 October." */ says?: string }[] }
   /** The ground's pre-agreed intent, set at creation. Null when none was set. */
   startingState?: string | null
   quickRead?: { label: string; value: string; sub: string; tone: string }[]
@@ -191,13 +198,26 @@ export type BoardPresent = {
     readAtSession: number | null
   } | null
   whatTheRoomIsAboutNote?: string
-  whoOwnsWhat?: { participantId: string; name: string | null; role: string | null; items: { id: string; type: string; text: string; sessionNumber: number | null }[] }[]
+  whoOwnsWhat?: { participantId: string; name: string | null; role: string | null; items: {
+    id: string; type: string; text: string; sessionNumber: number | null
+    /** Request 117 (8): `text` already says what kind of item this is in its own words (e.g. "You
+        have reported progress."), so the record-type sentence below it (`whatThisItemIs` in
+        BoardPage.tsx) would repeat it - "You have reported progress. This is progress you
+        reported." Draw that sentence only when this is not set. */
+    itsKindIsSaid?: boolean
+  }[] }[]
   dependencies?: {
     id: string; from: string | null; fromParticipantId?: string | null; what: string; on: string | null; onParticipantId?: string | null; status: 'BLOCKING' | 'WAITING' | 'CLEARED'; then: string | null
     /** REQUEST 107 (c), part 2: how often this blocker was raised, in check-ins, never a single session counted twice. */
     raised?: { times: number; firstRaisedAt: string; lastRaisedAt: string; says: string }
   }[]
-  checkInGrid?: { sessions: number[]; rows: { participantId: string; name: string | null; role: string | null; managingOnly: boolean; cells: Record<string, string> }[] }
+  checkInGrid?: { sessions: number[]; rows: {
+    participantId: string; name: string | null; role: string | null; managingOnly: boolean; cells: Record<string, string>
+    /** Decision 77: not sent on this row today - the ground's own `participants` (`GET
+        /grounds/:id`) carry it instead. Kept here, optional, so a future board payload that does
+        send it on the row itself needs no further change. */
+    notLetInYet?: boolean
+  }[] }
 
   /**
    * WHERE EACH PERSON IS AGAINST THEIR OWN NUMBER, ordered by what needs attention.
@@ -266,18 +286,31 @@ export type BoardPresent = {
      * true (board review, third pass, item 1).
      */
     nothingCheckable?: boolean
+    /** Engine merge, 2 October (`each-repeated-sentence-said-once.ts`): true once this row's
+        `note` was the same as another row's and has been nulled out here, its words moved once
+        into `contributionSaysOnce`, above every card. */
+    saidOnceAbove?: boolean
   }[]
+  /** Request 117 (8): a sentence repeated across several `contribution` rows, said once here
+      instead of under each row - see `contribution[].saidOnceAbove`. */
+  contributionSaysOnce?: string | null
   coverage?: {
     scope: string
     reads: {
       /** Request 111 (a): a score of where a person's work lands stays removed - the engine does
           not always send this any more, so the bar variant only draws when it is a real number. */
       participantId: string; name: string | null; scope: string; pct?: number
-      kind: 'LEAKING' | 'ABSORBING' | 'STABLE'; trend: string; what: string
-      reason: string; reasonText: string; ownVoice: string | null
+      kind: 'LEAKING' | 'ABSORBING' | 'STABLE'; trend: string; what: string | null
+      reason: string; reasonText: string | null; ownVoice: string | null
       coupledToBlocker: boolean; remitDefined: boolean
       confidence?: number; evidenceCount?: number; shown?: boolean; basis?: string
+      /** Engine merge, 2 October: true once `what` and/or `reasonText` were the same as another
+          row's and have been nulled out here, their words moved once into `coverage.saysOnce`. */
+      saidOnceAbove?: boolean
     }[]
+    /** Request 117 (8): one entry per sentence repeated across several `reads` rows, said once
+        above them instead of under each - see `reads[].saidOnceAbove`. */
+    saysOnce?: string[]
   }
   managerAlignment?: {
     managerParticipantId: string; managerName: string | null
@@ -524,8 +557,9 @@ export interface AServedWorkRow {
   /**
    * DECISION 76, ITEM 3: a record with nobody's name on it that somebody says is theirs. Sent to
    * the lead alone, with the claim already said as a full sentence; her yes or no goes to
-   * `POST .../work-items/:itemId/claim` with `{ yes }`. Nobody else is ever sent a claim. Not yet
-   * drawn on the deal grid - see the note beside `deleteWorkItem`, below.
+   * `POST .../work-items/:itemId/claim` with `{ yes }` (`boardApi.claimWorkItem`, below). Nobody
+   * else is ever sent a claim. Drawn on the deal grid row, beside "Nobody is named for it yet." -
+   * see `SalesDealGridRow` in WorkRecords.tsx.
    */
   ownerClaim?: { participantId: string; who: string; says: string } | null
   /** REQUEST 115 (b): what somebody said it is worth, where they said - and the sentence where nobody has. */
@@ -606,13 +640,22 @@ export const boardApi = {
   deleteWorkItem: (groundId: string, itemId: string) =>
     apiClient.delete<{ deleted: true }>(`/grounds/${groundId}/board/work-items/${itemId}`).then((r) => r.data),
 
-  /*
-   * REQUEST 112 (b): an item's own `AnAction.choices[].route` (the exact call the engine built to
-   * keep that answer - today, `PATCH .../commitments/:id` and `POST .../decisions/:itemId/answer`)
-   * is run generically, by `ActionButtons` in BoardPage.tsx, rather than through a named wrapper
-   * per route here. Decision 76 item 3's `POST .../work-items/:itemId/claim` runs the same way once
-   * a deal row's own `ownerClaim` is drawn with its yes/no - not yet done, so it has no caller yet.
+  /**
+   * DECISION 76, ITEM 3: THE LEAD'S YES OR NO TO A RECORD'S `ownerClaim`. The path is built only
+   * from this call's own `groundId` and `itemId` (never a route string read off the server), the
+   * same way `addWorkItem`/`updateWorkItem`/`deleteWorkItem` above already call this check-in's
+   * own path - so there is nothing here for a served value to redirect. A yes answers with
+   * `{ record: { id, ownerParticipantId }, saidBack: "The Westgate Deli deal is now Amani Wekesa's." }`;
+   * a no with `{ record: { id, ownerParticipantId: null }, saidBack: "The Westgate Deli deal still
+   * has nobody's name on it." }`. Lead only; refused otherwise.
    */
+  claimWorkItem: (groundId: string, itemId: string, yes: boolean) =>
+    apiClient
+      .post<{ record: { id: string; ownerParticipantId: string | null }; saidBack: string }>(
+        `/grounds/${groundId}/board/work-items/${itemId}/claim`,
+        { yes },
+      )
+      .then((r) => r.data),
 
   /** Initiator only: set the availability question and the times. */
   upsertPoll: (groundId: string, dto: { question: string; options: string[] }) =>

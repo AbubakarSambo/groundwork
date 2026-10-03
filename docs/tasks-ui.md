@@ -69,6 +69,29 @@ Rebuilt from the shared parts in four groups, each with a picture check per scre
 - [ ] **Group 3, check-ins and signing in:** the rest of GroundAdminPage, ChatPage, CreateGroundPage, EntryChatPage and SaveCard, ReportPage and SessionReportPage, the sign-in pages (AuthPage, auth-kit, MagicVerifyPage), JoinPage.
 - [ ] **Group 4, the back office:** AdminPage, AdminDashboardPage, the ops pages, the prompt pages.
 
+## The order from here (Hafsah, 2 October, late evening; this replaces every order below)
+
+Hafsah's client needs these first:
+1. **Three boards, in this order, each matched against its prototype example and reviewed:** the sales team; onboarding ("Help a new hire get started", `NEW_HIRE`); project, which is both "Get a new project off to a good start" (`NEW_PROJECT`) and "Get a project back on track" (`DRIFT`).
+2. **The three suites the client uses, each matched against the prototype:** leave (`E-suites/suite-leave`), finance requests (`E-suites/suite-spend`), and performance reviews (`E-suites/suite-reviews`). Hafsah said "performance management" means the reviews suite.
+3. **The Company page,** with the company-wide picture.
+4. **The Ask Groundwork chat.**
+5. **The other eight boards.**
+6. **The back office.** It stays as it is for Groundwork's staff; its rebuild comes last.
+
+**From the engine's item 21 notes (3 October), to do on the screen for the project boards and the other eight:**
+- `eachPerson[].reason`, `whereThisIsHeading.outcomes[].value`, `managerAlignment[].pattern` and `.pole` are codes ("nothing to do", "ALIGNED", "SETUP_NEVER_SAID"). Never print them; print the sentence beside each (`says`, `label`, `gap`).
+- `workRecords[].section` is "Deal grid" on every kind. It is the key, not the heading; take each kind's heading from its prototype (engineering: "Every task, and what shows it").
+- On the where-next board, `whereTheyDisagree` holds the same items as `divergence.items`; draw one of them.
+- Draw `blockers[].holdingUp` ("Once it is cleared, you can start testing the integration."), not `dependencies[].then` (the person's own words, "I can start").
+- `whatChangedThisWeek` can be `state: "not-known"` with `why`; draw the `why`, in the end fold.
+
+**Straight after the onboarding board's screen fixes (Hafsah, 3 October):** check every place the screen hides or narrows a field the engine sends. Keep what her decisions or the prototype require, draw the rest, and ask her where neither says. Start with the admin's To-dos board and the "role, as described" column.
+
+Plan and billing keeps Hafsah's decisions of 2 October (a one-month free trial for teams under 20; WhatsApp as a paid add-on at about 80% of the plan price, with a monthly limit; no prices or limits written into the screens). It has no place in the client's list, so it comes after item 5.
+
+`docs/screens-handover.md` is updated after every finished piece.
+
 ## The order from here (Hafsah, 2 October, evening; this replaces the order below)
 
 1. The boards for all eleven kinds of work: finish the sales board (its sixth review), then the other ten, one at a time, each matched and reviewed before the next.

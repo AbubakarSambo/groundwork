@@ -29,7 +29,14 @@ import { BOARD_MUTED_INK, BOARD_BODY_INK } from './the-board-reads-on-a-dark-gro
 
 export interface Glance {
   progress: { roundsDone: number; roundsPlanned: number | null; answeredThisRound: number; ofPeople: number }
-  inTheWay: { count: number; oldest: string | null; daysWaiting: number | null }
+  inTheWay: {
+    count: number; oldest: string | null; daysWaiting: number | null
+    /** Engine merge, 2 October (request 117, part 9): "since 27 September", drawn from the
+        wait's own clock so it never changes when the board is opened - unlike `daysWaiting`,
+        which creeps forward on every visit. Draw this when it is sent; fall back to the day
+        count only when it is absent. */
+    sinceSays?: string | null
+  }
 }
 
 /** "1" reads as a code on a sentence a person reads; "One" is the word. Never touches any other number. */
@@ -77,12 +84,19 @@ function answeredSentence(progress: Glance['progress']): string {
  * it is actually going. Falls back to the brief only where no round has finished - a check-in
  * nobody has answered has no picture yet and still has to say what it is for.
  */
-export function HowItIsGoing({ summary, brief, glance, tone = 'light' }: {
+export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingToBeLetIn }: {
   summary?: string | null
   brief?: string | null
   glance?: Glance | null
   /* On the board's dark header the same inks would be invisible. Nothing else changes. */
   tone?: 'light' | 'dark'
+  /**
+   * Decision 77: "Faraji Odhiambo is waiting to be let in." (or "...was not let in.", or null),
+   * sent only to whoever runs the check-in, the admin who set it up, or an admin with access -
+   * everybody else is sent null. Drawn as a muted note under the headline's own count, never
+   * folded into it.
+   */
+  waitingToBeLetIn?: string | null
 }) {
   const late = (glance?.inTheWay.count ?? 0) > 0
   const vars = tone === 'dark'
@@ -122,6 +136,9 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light' }: {
               <span className="gwui-how-people"> {answeredSentence(glance.progress)}</span>
             )}
           </div>
+          {/* Decision 77: beside the count, never inside it - a fact about the organisation's own
+              door, not about how far through this round is. */}
+          {waitingToBeLetIn && <div className="gwui-how-people">{waitingToBeLetIn}</div>}
           <div>
             {late
               ? (
@@ -129,9 +146,19 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light' }: {
                   {/* "(0d)" read as a code on a live board. Days, in words, and nothing on the day it was named. */}
                   {glance!.inTheWay.count} {glance!.inTheWay.count === 1 ? 'thing is' : 'things are'} in the way
                   {glance!.inTheWay.oldest ? `, the oldest being ${glance!.inTheWay.oldest}` : ''}
-                  {glance!.inTheWay.daysWaiting != null && glance!.inTheWay.daysWaiting > 0
-                    ? `, waiting ${glance!.inTheWay.daysWaiting} ${glance!.inTheWay.daysWaiting === 1 ? 'day' : 'days'}`
-                    : ''}
+                  {/*
+                    Engine merge, 2 October (request 117, part 9): `daysWaiting` creeps forward on
+                    every visit - a wait first read as "waiting 2 days" reads "waiting 3 days" the
+                    next morning with nothing having changed on the board itself. `sinceSays`
+                    ("since 27 September") is drawn from the wait's own clock instead, so the same
+                    wait reads the same at any hour; `daysWaiting` is now only the fallback, for a
+                    served payload that has not been updated to send it yet.
+                  */}
+                  {glance!.inTheWay.sinceSays
+                    ? `, waiting ${glance!.inTheWay.sinceSays}`
+                    : glance!.inTheWay.daysWaiting != null && glance!.inTheWay.daysWaiting > 0
+                      ? `, waiting ${glance!.inTheWay.daysWaiting} ${glance!.inTheWay.daysWaiting === 1 ? 'day' : 'days'}`
+                      : ''}
                   .
                 </span>
               )

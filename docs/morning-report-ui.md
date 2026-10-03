@@ -6,6 +6,30 @@ same file.
 
 ## This morning, 2 October: in short
 
+**A question for you (3 October): what the new hire reads of the lead.** On "Engagement Director, first 90 days", Tobi, the new hire, is shown only himself in "Who checked in", and Amina's words are left out of "Where you both see it differently", because the engine treats it as a check-in where people answer without seeing each other. Yet he is sent all eight of her "what success looks like" quotes word for word. The prototype says the lead and the new hire "see the same pictures" for the 30, 60 and 90-day steps, but it does not picture the new hire's own board. Should the new hire read his lead's words and her row on his board? Nothing is restricted or opened until you say (request 124).
+
+**A new standing rule (3 October), and what it changes.** You withdrew "when unsure, choose the more private option". Three things I restricted under it are now on the list to put right or to ask you about:
+- **The admin's To-dos board** leaves out to-dos from check-ins the admin may not read. The prototype shows an admin the list. It goes into the check below.
+- **The "role, as described" column** on a check-in's people is shown only to the lead, on the grounds that it reads like the lead's private note. The prototype does not say. Should admins and the people in the check-in see it?
+- **An admin on a check-in where "Hide email addresses between participants" is on** does not get participants' addresses there. This one is an existing privacy test, which I never weaken, so it is your question. Should they?
+
+Next, after the onboarding board's screen fixes: a check of every place the screen hides a field the engine sends. Each one is kept if your decisions or the prototype say so, drawn if they do, and asked about if they say nothing.
+
+**The sales board is done (3 October).** After thirteen reviews, the last one, on the engine's newest code, says Rukia's and Amani's boards match the prototype at both widths, apart from what the engine still sends wrong. On the way:
+- I ran the engine's own script that brings a check-in's stored records up to its current rules, on the local test database only, for this check-in alone, after a dry run. It wrote six changes: the false "Met" and the three repeated targets are now one team aim, 0 of 12, due 20 December, and Rukia is asked whether two deals are hers.
+- For a while the engine's newest code did not start (request 120). The local API ran on the last code that did, until the engine fixed it.
+- The engine still sends some things wrong, in requests 121 and 122:
+  - a wrong date in "To close the gap";
+  - one stored duplicate target;
+  - Faraji chased though he is not let in;
+  - counts of six beside five;
+  - on Today, "Nothing needs you right now." and the wrong day for the next check-in.
+- I chained one push with `cd`. The guard refused it, and I ran it on its own.
+
+Next is the onboarding board.
+
+- **Decided for you to confirm (2 October, late evening).** The prototype has no example board for onboarding or for either project situation; its eleven examples are other kinds of work. So each of those boards is matched against what the prototype does show for that situation: the switchboard's list of sections for it, the board's own look (B5), and, for a new hire, the day 30 and day 60 screens and the probation review (B6).
+
 **Stopping for the week, 2 October, evening.** The weekly allowance is nearly used up, so I finished the piece in hand and stopped there. Everything is in `docs/screens-handover.md`: where every screen stands, what is in progress, what comes next, and what needs you. It is committed and pushed.
 - **The sales board.** It is now drawn from the engine's latest work: deal groups, each deal's card, each item's own action, "Open issues", and Amani's share and aim. The fifth review says Amani's board matches. It found four small faults on Rukia's board, and they are fixed and tested, but not yet reviewed. That review is the first thing to do next.
 - **What the engine still sends wrong** on that board is request 117. That includes the false "Met", sessions counted two ways, deal owners missing, and the days changing just by opening the board.
@@ -47,7 +71,7 @@ None of the eleven is done yet. A kind is marked done only when its pictures mat
 | Support desk | Not done, the same as engineering. | Not done, the same. |
 | Distribution operations | Not done, the same. | Not done, the same. |
 | Trader training programme | Not done, the same. | Not done, the same. |
-| Sales team | **Nearly done.** The engine has since sent new fields, which are now drawn. The fifth review found four small screen faults; they are fixed (`7ad69fc6` to `f828693b`) but not yet reviewed. The engine's faults are request 117. | **Done, 2 October,** after the fifth review, apart from the engine's faults (request 117). |
+| Sales team | **Done, 3 October.** The thirteenth review, on the engine's newest code (ea5e2a54), says it matches the prototype, apart from what the engine still sends wrong (requests 121 and 122). | **Done, 3 October,** on the same review. |
 | A government programme | Not done. Mainly the engine: its own sections are not sent (request 105). | Not done, the same. |
 | Asset loans | Not done. Mainly the engine (request 105). | Not done, the same. |
 | A law firm matter | Not done. Mainly the engine (request 105). | Not done, the same. |
@@ -543,6 +567,10 @@ nothing about today's billing has changed. Nobody already on the free plan is cu
 U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
+
+**3 October: no privacy restriction beyond Hafsah's decisions or the prototype.** Never add a privacy restriction that is not in her own decisions or the prototype. When unsure, follow the prototype. If the prototype does not say, ask her instead of restricting. The old rule, "when unsure, choose the more private option", is withdrawn and must not be acted on again. The engine is reversing several restrictions: patterns reach the lead after the person, suggestions show counts, and admins see the figures. The screen draws whatever the engine sends. Every helper's brief says this. Existing privacy tests are still never deleted or weakened; where one pins a restriction that is not in her decisions or the prototype, it goes to her as a question.
+
+**2 October, late evening: the client's order.** Hafsah's client needs three boards first, in this order, each matched against its prototype example and reviewed: the sales team, onboarding, and project. Project means both "Get a new project off to a good start" and "Get a project back on track". Then the three suites the client uses, each matched against the prototype: leave, finance requests and performance reviews. "Performance management" means the reviews suite. Then the Company page with the company-wide picture, then the Ask Groundwork chat, then the other eight boards. The existing back office stays as it is for Groundwork's staff, and its rebuild comes last. `docs/screens-handover.md` is kept up to date after every finished piece.
 
 **2 October, evening: the new order of work.** The boards for all eleven kinds of work come first: finish the sales board, then the other ten, one at a time, each matched and reviewed before the next. When the engine sends the company-wide picture, the Company page comes next. Then Plan and billing, with these decisions: a one-month free trial for teams under 20, and WhatsApp as a paid add-on, charged monthly after the trial at about 80% of the plan price, with a monthly limit. Prices and limits are never written into the screens; the engine sends them. The back office (group 4) comes last of everything. If a board names the reader instead of saying "you", that exact case (the check-in, the reader and the sentence) goes to the engine as a request. `docs/screens-handover.md` is kept up to date after every finished board.
 
