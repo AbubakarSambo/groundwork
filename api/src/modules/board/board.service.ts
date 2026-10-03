@@ -2800,10 +2800,25 @@ export class BoardService {
         const owner = d.onParticipantId
           ? (someone(d.onParticipantId) ?? NOBODY_NAMED_TO_DECIDE)
           : (aPartyOutside(d) ? d.onLabel!.trim() : NOBODY_NAMED_TO_DECIDE);
+        /*
+         * ONLY A DECISION NEEDS DECIDING (item 21, the engineering and founder boards). Ifeoma read "Samuel Otieno is
+         * waiting on the sandbox credentials, so it needs deciding.", and Ada "Tunde Bakare is waiting on the co-founder
+         * agreement, so it needs deciding.": a thing somebody has to send is not a decision. A wait the record calls a
+         * decision, or whose words say one, reads as before; any other says who it waits on, or that nobody was named.
+         */
+        const aDecision = (d as any).blockerKind === 'DECISION' || /\b(?:decision|decide|deciding|decided|approval|approve|sign-?off|go-ahead|answer)\b/i.test(String(d.what ?? ''));
+        const is = who === 'You' ? 'are' : 'is';
+        const holder = owner === NOBODY_NAMED_TO_DECIDE ? null : owner === 'You' ? 'you' : owner;
         return {
-          question: `${who} ${who === 'You' ? 'are' : 'is'} waiting on ${inASentence(d.what)}, so it needs deciding.`,
-          why: who === 'You' ? 'You cannot move until this is decided.' : `${who} cannot move until this is decided.`,
-          owner,
+          question: aDecision
+            ? `${who} ${is} waiting on ${inASentence(d.what)}, so it needs deciding.`
+            : holder
+              ? `${who} ${is} waiting on ${holder} for ${inASentence(d.what)}.`
+              : `${who} ${is} waiting for ${inASentence(d.what)}, and nobody has been named to provide it.`,
+          why: aDecision
+            ? (who === 'You' ? 'You cannot move until this is decided.' : `${who} cannot move until this is decided.`)
+            : `${who} cannot move until it comes.`,
+          owner: !aDecision && owner === NOBODY_NAMED_TO_DECIDE ? 'Nobody has been named to provide it.' : owner,
           source: 'blocker' as const,
           /* For what the lead can do about it (request 112 b); taken off before the board is served. */
           waitsOn: { participantId: d.onParticipantId ?? null, outside: aPartyOutside(d) ? d.onLabel!.trim() : null, what: d.what },
