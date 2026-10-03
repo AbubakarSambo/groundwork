@@ -1,3 +1,4 @@
+import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
@@ -465,21 +466,31 @@ export class ReviewsService {
   }
 
   /** Which of these check-ins this reader is in, and which they run (the lead, or the admin who set it up). */
-  private async whatTheyAreIn(userId: string | null, groundIds: string[], isThePerson: boolean): Promise<WhatTheReaderIsIn> {
-    if (isThePerson || !userId || !groundIds.length) return { isThePerson, inCheckIns: new Set(), runsCheckIns: new Set() };
+  private async whatTheyAreIn(userId: string | null, groundIds: string[], isThePerson: boolean, personUserId: string | null = null): Promise<WhatTheReaderIsIn> {
     const db = this.prisma as any;
+    /* The goals the lead has not told the person about, as they stand now: the record stores the goal, and this decides who reads it. */
+    const theirPlace: any[] = personUserId && groundIds.length
+      ? ((await db.groundParticipant?.findMany?.({ where: { userId: personUserId, groundId: { in: groundIds } }, select: { id: true } }).catch(() => [])) ?? [])
+      : [];
+    const notTold: any[] = theirPlace.length
+      ? ((await db.personObjective?.findMany?.({
+        where: { groundId: { in: groundIds }, participantId: { in: theirPlace.map((x) => x.id) }, awareness: 'NOT_TOLD' },
+        select: { id: true, groundId: true, participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
+      }).catch(() => [])) ?? []).filter(notToldYet)
+      : [];
+    if (isThePerson || !userId || !groundIds.length) return { isThePerson, inCheckIns: new Set(), runsCheckIns: new Set(), notTold };
     const [ins, runs] = await Promise.all([
       db.groundParticipant?.findMany?.({ where: { userId, groundId: { in: groundIds } }, select: { groundId: true } }).catch(() => []),
       db.ground?.findMany?.({ where: { id: { in: groundIds }, OR: [{ initiatorId: userId }, { createdByUserId: userId }] }, select: { id: true } }).catch(() => []),
     ]);
-    return { isThePerson, inCheckIns: new Set(((ins ?? []) as any[]).map((x) => x.groundId)), runsCheckIns: new Set(((runs ?? []) as any[]).map((x) => x.id)) };
+    return { isThePerson, inCheckIns: new Set(((ins ?? []) as any[]).map((x) => x.groundId)), runsCheckIns: new Set(((runs ?? []) as any[]).map((x) => x.id)), notTold };
   }
 
   /** The lines of the record this reader may read. */
   private async readableLines(row: any, person: Person, readerUserId: string): Promise<ARecordLine[]> {
     const lines = theStoredRecord(row.recordRead);
     const groundIds = [...new Set(lines.map((l) => l.groundId).filter((g): g is string => !!g))];
-    const access = await this.whatTheyAreIn(readerUserId, groundIds, person.userId === readerUserId);
+    const access = await this.whatTheyAreIn(readerUserId, groundIds, person.userId === readerUserId, person.userId ?? null);
     return lines.filter((l) => mayReadTheLine(l, access));
   }
 
@@ -513,7 +524,7 @@ export class ReviewsService {
     const isThePerson = person.userId === readerUserId;
     const first = this.firstOf(person) || 'this person';
     const groundIds = [...new Set(lines.map((l) => l.groundId).filter((g): g is string => !!g))];
-    const access = await this.whatTheyAreIn(readerUserId, groundIds, isThePerson);
+    const access = await this.whatTheyAreIn(readerUserId, groundIds, isThePerson, person.userId ?? null);
     const theirs = lines.filter((l) => mayReadTheLine(l, access));
     const corrections: any[] = ((await (this.prisma as any).performanceReviewCorrection?.findMany?.({
       where: { reviewId: row.id }, orderBy: { createdAt: 'asc' }, select: { lineKey: true, whatIsTrue: true, createdAt: true },
@@ -536,7 +547,7 @@ export class ReviewsService {
     const period = thePeriodSaid(row.recordFrom ? new Date(row.recordFrom) : until, until);
     if (isThePerson) {
       const writer = writerFirst?.trim() || 'The person who writes your review with you';
-      const writersAccess = writerId && writerId !== readerUserId ? await this.whatTheyAreIn(writerId, groundIds, false) : null;
+      const writersAccess = writerId && writerId !== readerUserId ? await this.whatTheyAreIn(writerId, groundIds, false, person.userId ?? null) : null;
       const staysWithYou = !!writersAccess && lines.some((l) => !mayReadTheLine(l, writersAccess));
       return {
         intro: !lines.length ? `Groundwork found nothing in the record about your work ${period}. You can still add your own view.` : `This is what Groundwork understands from the record about your work ${period}. It comes from your check-ins, the goals and work-plan items you own, what you committed to and how each one went, and what you said was holding you up. If a line is wrong, mark it and say what is true. Your correction is kept beside the line, and the record itself is not changed.`,

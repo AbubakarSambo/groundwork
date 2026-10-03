@@ -2,6 +2,7 @@ import type { PrismaService } from '../prisma/prisma.service';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { inOurVoice } from '../reports/what-the-record-shows-over-time';
 import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
+import { isThisTheUntoldGoal, type AnUntoldGoalRow } from '../board/an-untold-goal-is-not-a-board-objective';
 
 /**
  * THE REVIEW AS THE RECORD INTERPRETED (decision 85, item 4; build step 12 of
@@ -44,7 +45,11 @@ export type ARecordLine =
   | ({ key: string; kind: 'blocker'; what: string; onUserId: string | null; onFirst: string | null; onLabel: string | null; saidOn: string; clearedOn: string | null } & InACheckIn);
 
 /** What one reader is allowed to read of the record: the check-ins they are in, and the ones they run. */
-export interface WhatTheReaderIsIn { isThePerson: boolean; inCheckIns: ReadonlySet<string>; runsCheckIns: ReadonlySet<string> }
+export interface WhatTheReaderIsIn {
+  isThePerson: boolean; inCheckIns: ReadonlySet<string>; runsCheckIns: ReadonlySet<string>;
+  /** The person's goals the lead has not told them about, as they stand now (decisions 48 and 56). Only whoever runs that check-in reads such a goal. */
+  notTold?: readonly (AnUntoldGoalRow & { groundId: string })[];
+}
 
 /** How a line is said: to the person as "you", to anybody else with the person's first name. */
 export interface WhoReadsIt { isThePerson: boolean; userId: string; personFirst: string }
@@ -222,6 +227,10 @@ export function theStoredRecord(raw: unknown): ARecordLine[] {
  * check-in only when they are in that check-in, and a goal only when they run it. See the top.
  */
 export function mayReadTheLine(line: ARecordLine, reader: WhatTheReaderIsIn): boolean {
+  /* A goal the lead has not told the person about stays with whoever runs that check-in, the person included, and it is read as it stands now,
+     so a line stored before the lead told them is read once they have. */
+  if (line.kind === 'goal' && !reader.runsCheckIns.has(line.groundId)
+    && (reader.notTold ?? []).some((g) => g.groundId === line.groundId && isThisTheUntoldGoal({ name: line.name, target: line.target }, g))) return false;
   if (reader.isThePerson) return true;
   if (line.groundId === null) return true;
   if (line.kind === 'goal') return reader.runsCheckIns.has(line.groundId);

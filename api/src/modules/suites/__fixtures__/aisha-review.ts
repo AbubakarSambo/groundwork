@@ -73,6 +73,8 @@ export interface Options {
   earlier?: boolean;
   /** Pattern rows in check-ins Aisha is in. */
   patterns?: any[];
+  /** The goals the lead has set Aisha (PersonObjective rows), with whether she has been told. */
+  personObjectives?: any[];
 }
 
 export function setup(opts: Options = {}) {
@@ -126,6 +128,7 @@ export function setup(opts: Options = {}) {
     groundCommitment: { findMany: jest.fn(async ({ where }: any) => commitments.filter((x) => where.participantId.in.includes(x.participantId) && x.explicit === where.explicit && x.source !== where.source.not && x.createdAt >= where.createdAt.gte && x.createdAt <= where.createdAt.lte)) },
     groundDependency: { findMany: jest.fn(async ({ where }: any) => waits.filter((x) => where.fromParticipantId.in.includes(x.fromParticipantId) && x.createdAt >= where.createdAt.gte && x.createdAt <= where.createdAt.lte)) },
     subject: { findMany: jest.fn(async ({ where }: any) => subjects.filter((s) => s.organizationId === where.organizationId && s.ownerExternalId === where.ownerExternalId && where.type.in.includes(s.type))) },
+    personObjective: { findMany: jest.fn(async ({ where }: any) => (opts.personObjectives ?? []).filter((x) => where.participantId.in.includes(x.participantId) && (!where.awareness || x.awareness === where.awareness))) },
     patternDetection: { findMany: jest.fn(async ({ where }: any) => (opts.patterns ?? []).filter((x) => where.participantId.in.includes(x.participantId))) },
     platformSetting: { findUnique: jest.fn(async () => null) },
     suiteEvent: { create: jest.fn(async () => ({})), findMany: jest.fn(async () => []) },
