@@ -260,7 +260,19 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
             ? <span />
             : r.reason === 'nothing to do' && r.waitingOnReader
               ? <Tag tone="attention">Waiting on you</Tag>
-              : <Tag tone={TONE[r.reason]}>{LABEL[r.reason]}</Tag>}
+              /*
+               * PROJECT BOARD REVIEW 1, FIX 4: NO TAG FOR "NOTHING TO DO". The prototype's own
+               * "team today" rows (eng.txt: David "Nothing checkable", Samuel "Stuck on a
+               * dependency", Brian "Behind the pace") carry a tag only where there is something
+               * to flag; a person on pace, with nothing needed of the reader, reads no tag at all
+               * - `says` already carries the sentence ("...has checked in, and nothing here needs
+               * you this week."). Printing the engine's own internal reason code ("Nothing to
+               * do") as if it were a label on the person is exactly what CLAUDE.md's "no labels on
+               * people" rules out - so this draws nothing here, and `says` speaks for itself.
+               */
+              : r.reason === 'nothing to do'
+                ? <span />
+                : <Tag tone={TONE[r.reason]}>{LABEL[r.reason]}</Tag>}
           {/* The last-10 squares, the same mark and the same data "Who checked in" draws, in their
               own fixed-width column so they line up across every row. */}
           {squaresFor ? (
