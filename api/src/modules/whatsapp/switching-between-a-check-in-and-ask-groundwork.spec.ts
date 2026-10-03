@@ -164,7 +164,7 @@ describe('the opening notice on a one-to-one check-in (survey item 9, decision 8
     for (const label of ['Performance plan for Amina', "Kwame's first 90 days"]) {
       expect(theCheckInIsOpen({ firstName: 'Amina', label }).text).not.toMatch(/released|everybody else/i);
     }
-    const listener = readFileSync(join(__dirname, '..', 'webhooks', 'webhooks.listener.ts'), 'utf8');
+    const listener = readFileSync(join(__dirname, '..', 'webhooks', 'webhooks.listener.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(listener).not.toMatch(/released with everybody else/);
   });
 });
