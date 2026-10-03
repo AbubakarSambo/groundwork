@@ -187,16 +187,15 @@ describe('the participant’s own view, first (board-as-participant.txt)', () =>
     expect(screen.queryByText('It is below, with everything else from this check-in.')).toBeNull()
     expect(screen.getByText('Your own report is ready now.')).toBeTruthy()
     /*
-     * BOARD REVIEW, SALES PIECE D, ITEM 6: A FULL SENTENCE, NOT A CLIPPED PHRASE. "Open it,
-     * below" named neither what "it" was nor where "below" was - updated to say both, in a full
-     * sentence a person actually reads.
+     * PROJECT BOARD REVIEW 1, FIX 6: POINTS AT THE TEAM REPORT, NOT A FOLD WITH NO TEAM PICTURE
+     * IN IT. "Open today's team picture below." used to open and scroll to "The whole check-in"
+     * fold, which never actually holds a team picture - only everything else this board sends
+     * (By area, coaching, the switchboard's own sections). Updated because the old assertion
+     * (opening the fold) was checking that exact defect: this now links straight to the report
+     * tab, where "The team's report" actually lives.
      */
-    const open = screen.getByRole('button', { name: 'Open today’s team picture below.' })
-    expect(open).toBeTruthy()
-    const fold = screen.getByText('The whole check-in').closest('details') as HTMLDetailsElement
-    expect(fold.open).toBe(false)
-    open.click()
-    expect(fold.open).toBe(true)
+    const open = screen.getByRole('link', { name: 'Open today’s team picture.' })
+    expect(open).toHaveAttribute('href', '/grounds/g1/report')
   })
 
   it('reads "Your share" when the engine sends one, ending with who else sees it', async () => {

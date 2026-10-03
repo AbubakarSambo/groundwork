@@ -445,19 +445,6 @@ function MaybeFolded({ fold, children }: { fold: boolean; children: ReactNode })
 
 
 /**
- * OPEN "THE WHOLE CHECK-IN" AND JUMP TO IT (board review, sales piece C, item 6).
- *
- * `Folded` is a plain, uncontrolled `<details>` - no script opens it, so this sets `.open` on the
- * DOM node directly (the same thing a browser does when you click its own summary) rather than
- * reaching for React state nothing here tracks, then scrolls to it.
- */
-function openTheWholeCheckIn() {
-  const el = document.getElementById(THE_WHOLE_CHECK_IN_ID) as HTMLDetailsElement | null
-  if (el) el.open = true
-  scrollTo(el, { block: 'start' })
-}
-
-/**
  * AN ACTION CALL GOES ONLY TO THIS CHECK-IN. `action.choices[].route` is sent by the server, but
  * this runs whatever method and path it carries - a route to another check-in, to some other part
  * of the API entirely, or to another site altogether, would be sent exactly the same way a correct
@@ -654,10 +641,18 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
               below" names neither what "it" is nor where "below" is - CLAUDE.md asks for plain, full
               sentences, and a person reading this button should not have to infer either from
               context. Says what opens, and where.
+
+              PROJECT BOARD REVIEW 1, FIX 6: POINTS AT THE TEAM REPORT, NOT A FOLD WITH NO TEAM
+              PICTURE IN IT. "Open today's team picture below." used to open and scroll to "The
+              whole check-in" fold - which holds everything else this board sends (By area,
+              coaching, the switchboard's own sections), never a team picture. The actual team
+              picture is "The team's report" (SessionReportPage.tsx), reached from the report tab
+              this board already links "Read your own report" to. This now sends the reader there
+              instead, and is left out entirely once there is nothing shared to point it at.
             */
-            <button type="button" onClick={openTheWholeCheckIn} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
-              Open today’s team picture below.
-            </button>
+            <Link to={`/grounds/${groundId}/report`} className="gwui-plain-link gwui-fs-15 gwui-mt-4">
+              Open today’s team picture.
+            </Link>
           )}
           {(shared || (teamPicture && 'yourOwnReport' in teamPicture && teamPicture.yourOwnReport)) && (
             <>
