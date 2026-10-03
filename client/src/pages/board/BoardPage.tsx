@@ -260,7 +260,6 @@ export function theWordsOfALine(text: string | null | undefined): string {
 const WHAT_THIS_ITEM_IS: Record<string, string> = {
   COMMITMENT: 'This is a commitment.',
   SUCCESS_DEFINITION: 'This says what success looks like.',
-  INTENT: 'This is something they intend to do.',
 }
 
 /**
@@ -271,9 +270,14 @@ const WHAT_THIS_ITEM_IS: Record<string, string> = {
  * board; this line is the one place a record type's sentence needs to know who said it, so it is
  * no longer a fixed lookup for PROGRESS - "This is progress you reported." when the reader said it
  * themself, and "This is progress {name} reported." otherwise, by name, never "they".
+ *
+ * PROJECT BOARD REVIEW 1, FIX 5: INTENT GETS THE SAME CHECK. "This is something they intend to
+ * do." read under the reader's own words exactly the same way "they reported" did - fixed here,
+ * the same way, rather than left as the one record type still saying "they" about the reader.
  */
 function whatThisItemIs(type: string, saidByTheReader: boolean, name: string): string | null {
   if (type === 'PROGRESS') return saidByTheReader ? 'This is progress you reported.' : `This is progress ${name} reported.`
+  if (type === 'INTENT') return saidByTheReader ? 'This is something you intend to do.' : `This is something ${name} intends to do.`
   return WHAT_THIS_ITEM_IS[type] ?? null
 }
 
