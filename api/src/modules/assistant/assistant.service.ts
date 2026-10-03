@@ -45,6 +45,12 @@ import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-f
 import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheckIn } from './a-check-in-kept-in-the-app-is-not-read-on-whatsapp';
 import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
 import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
+import { whoApprovesFor } from '../suites/who-approves';
+import {
+  HOURS_ARE_OFF_FOR_YOUR_QUESTION, LEAVE_IS_OFF_FOR_YOUR_QUESTION, NEITHER_SUITE_IS_ON, NO_SIGN_IN_FOR_YOUR_QUESTION, SPENDING_IS_OFF_FOR_YOUR_QUESTION,
+  daysOfLeaveLeftSaid, theDaysAskedAbout, theSuiteRefusal, whatIsDueSaid, whatWaitsForYouSaid, whereYourRequestsAre, whichOfYourRequests, whichSuite, whoApprovesSaid, whoIsAwaySaid,
+  type AwayRow,
+} from './your-own-requests-asked-about';
 import { LEAVE_ANSWER_KIND, LEAVE_QUESTION_KIND, LONGEST, NO_QUESTION_WAITING, QUESTION_REFUSED, aDeclineWithAReasonSaidBack, aReasonIn, anAnswerNotSent, anAnswerSaidBack, anAnswerSent, noQuestionWaiting, type AQuestionWaiting, type QuestionSuite } from '../suites/a-question-about-a-request';
 import { HOURS_CAN_BE_TOLD_HERE, HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, asksWhereMyHoursStand, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
 import { billableSaidBack, billableSaidIn, type TimeRules } from '../suites/the-time-sheet-rules';
@@ -483,6 +489,14 @@ export class AssistantService {
         return this.compose(await this.whatIsStuck(organizationId, who, message));
       case 'how_am_i_doing':
         return this.compose(await this.howAmIDoing(organizationId, who));
+      case 'your_requests':
+        return this.aboutYourRequests(organizationId, userId ?? null, message);
+      case 'who_approves':
+        return this.whoApprovesYours(organizationId, userId ?? null, message);
+      case 'what_is_due':
+        return this.whatIsDue(organizationId, who, userId ?? null);
+      case 'who_is_away':
+        return this.whoIsAway(organizationId, userId ?? null, routed.subject ?? message);
       case 'what_next':
         return this.whatNext(organizationId, who);
       case 'what_did_they_say':
@@ -3395,6 +3409,117 @@ export class AssistantService {
    */
   private async waitingForYouToDecide(organizationId: string, userId: string): Promise<AWaitingRequest[]> {
     return whatWaitsForYouToDecide({ userId, organizationId }, { leave: this.leave, timeSheets: this.timeSheets, spending: this.spending as any });
+  }
+
+  /**
+   * YOUR OWN LEAVE DAYS LEFT, WHERE YOUR OWN REQUESTS STAND, AND WHAT WAITS FOR YOU TO DECIDE. Each is
+   * read from what the suites already serve this reader (`mine`, and the boards' own waiting lists), so
+   * nothing here decides who may know what, and nothing about anybody else is read. Said in plain
+   * sentences, to this reader only. Nothing is written.
+   */
+  private async aboutYourRequests(organizationId: string, userId: string | null, message: string): Promise<Reply> {
+    const lane = 'your_requests';
+    if (!userId) return rules(lane, text(NO_SIGN_IN_FOR_YOUR_QUESTION));
+    const reader = { userId, organizationId };
+    const which = whichOfYourRequests(message);
+    if (which === 'waiting_for_you') {
+      const waiting = await this.waitingForYouToDecide(organizationId, userId);
+      return rules(lane, text(whatWaitsForYouSaid(waiting.map((w) => w.thing))));
+    }
+    if (which === 'days_left') {
+      let refused: string | null = null;
+      const mine = this.leave ? await this.leave.mine(reader).catch((err) => { refused = theSuiteRefusal(err); return null; }) : null;
+      return rules(lane, text(mine ? daysOfLeaveLeftSaid(mine) : refused ?? LEAVE_IS_OFF_FOR_YOUR_QUESTION));
+    }
+    const suite = whichSuite(message);
+    let refused: string | null = null;
+    const [leave, spend] = await Promise.all([
+      suite === 'spend' || !this.leave ? null : this.leave.mine(reader).catch((err) => { refused = theSuiteRefusal(err); return null; }),
+      suite === 'leave' || !this.spending ? null : this.spending.mine(reader).catch((err) => { refused = theSuiteRefusal(err); return null; }),
+    ]);
+    if (!leave && !spend) return rules(lane, text(refused ?? (suite === 'leave' ? LEAVE_IS_OFF_FOR_YOUR_QUESTION : suite === 'spend' ? SPENDING_IS_OFF_FOR_YOUR_QUESTION : NEITHER_SUITE_IS_ON)));
+    const all = [...(leave?.requests ?? []), ...(spend?.requests ?? [])].filter((r) => r.where);
+    /* What still waits first, then what was decided, each group in the order the suite served it (newest first). */
+    const ordered = [...all.filter((r) => r.status === 'waiting'), ...all.filter((r) => r.status !== 'waiting')];
+    return rules(lane, text(whereYourRequestsAre(ordered.map((r) => r.where))));
+  }
+
+  /**
+   * WHO APPROVES YOUR LEAVE, YOUR HOURS OR YOUR SPENDING, in plain words, from the same approval rule
+   * that routes the request (who-may-decide.ts): the first step for you, and for spending the people
+   * above the limit. Your own approver only; nobody else's requests are read.
+   */
+  private async whoApprovesYours(organizationId: string, userId: string | null, message: string): Promise<Reply> {
+    const lane = 'who_approves';
+    if (!userId) return rules(lane, text(NO_SIGN_IN_FOR_YOUR_QUESTION));
+    const asked = whichSuite(message);
+    const suites = asked ? [asked] : (['leave', 'spend', 'time'] as const);
+    const m = await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } }).catch(() => null);
+    const readerIsAdmin = m?.role === 'ADMIN';
+    const said: string[] = [];
+    const off: string[] = [];
+    for (const suite of suites) {
+      if (suite === 'leave') {
+        const on = this.leave ? await this.leave.mine({ userId, organizationId }).then(() => true).catch(() => false) : false;
+        if (!on) { off.push(LEAVE_IS_OFF_FOR_YOUR_QUESTION); continue; }
+        const a = await whoApprovesFor(this.prisma, { organizationId, personUserId: userId, suite: 'leave' });
+        said.push(whoApprovesSaid({ suite, firstName: a.kind === 'admin' ? null : a.firstName, readerIsAdmin }));
+      } else if (suite === 'time') {
+        const facts: any = this.timeSheets ? await this.timeSheets.forChat(organizationId, userId).catch(() => null) : null;
+        if (!facts) { off.push(HOURS_ARE_OFF_FOR_YOUR_QUESTION); continue; }
+        said.push(whoApprovesSaid({ suite, firstName: facts.approverFirstName ?? null, readerIsAdmin }));
+      } else {
+        const first: any = this.spending ? await this.spending.checkForChat(organizationId, userId, 1).catch(() => null) : null;
+        if (!first) { off.push(SPENDING_IS_OFF_FOR_YOUR_QUESTION); continue; }
+        const bar = first.limit ?? null;
+        const above: any = bar != null ? await this.spending!.checkForChat(organizationId, userId, bar + 1).catch(() => null) : null;
+        said.push(whoApprovesSaid({
+          suite, firstName: first.approverFirstName ?? null, over: bar, currency: first.currency ?? null,
+          aboveFirstName: above?.approverFirstName ?? null, thenTo: above?.thenTo ?? [], readerIsAdmin,
+        }));
+      }
+    }
+    /* A suite that is off is mentioned only when it was the one asked about, or when nothing else could be said. */
+    const body = said.length ? said : off.slice(0, 1);
+    if (asked && off.length && said.length === 0) return rules(lane, text(off[0]));
+    return rules(lane, text(body.join('\n')));
+  }
+
+  /** What is due on this person's own commitments and to-dos, soonest first, and how many requests wait for them. */
+  private async whatIsDue(organizationId: string, who: string | null, userId: string | null): Promise<Reply> {
+    const lane = 'what_is_due';
+    if (!who) return rules(lane, text('I cannot see you in your organisation records, so I have nothing to say is due.'));
+    const [commitments, toDos, waiting] = await Promise.all([
+      this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN', ...notFromAKeptCheckIn(await keptInTheApp(this.prisma as any, organizationId), 'sourceGroundId') }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }).then((rows) => withoutCommitmentsFromGoalsNotToldYet(this.prisma, rows)),
+      this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
+      userId ? this.waitingForYouToDecide(organizationId, userId).catch(() => []) : Promise.resolve([]),
+    ]);
+    return rules(lane, text(whatIsDueSaid({ commitments: commitments as any, toDos: toDos as any, waitingToDecide: waiting.length, now: new Date() })));
+  }
+
+  /**
+   * WHO IS OFF, from approved leave, as far as this reader may know. An admin reads everyone's, a lead
+   * their own team's (both exactly as the leave board serves them), and anybody else, a guest included,
+   * only their own: the board refuses them the rest, and a guest is never told a colleague's leave
+   * (decision 75, item 28). Dates only, never a reason or a kind of leave.
+   */
+  private async whoIsAway(organizationId: string, userId: string | null, subject: string): Promise<Reply> {
+    const lane = 'who_is_away';
+    if (!userId) return rules(lane, text(NO_SIGN_IN_FOR_YOUR_QUESTION));
+    const window = theDaysAskedAbout(subject, new Date());
+    const reader = { userId, organizationId };
+    const overlaps = (r: { startsOn: string; endsOn: string }) => r.startsOn <= window.to.toISOString().slice(0, 10) && r.endsOn >= window.from.toISOString().slice(0, 10);
+    if (!this.leave) return rules(lane, text(LEAVE_IS_OFF_FOR_YOUR_QUESTION));
+    const m = await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } }).catch(() => null);
+    if (m?.role === 'ADMIN' || m?.role === 'LEAD') {
+      const board = await this.leave.board(reader).catch(() => null);
+      if (!board) return rules(lane, text(LEAVE_IS_OFF_FOR_YOUR_QUESTION));
+      const rows: AwayRow[] = board.off.filter(overlaps).map((o) => ({ name: o.name, startsOn: o.startsOn, endsOn: o.endsOn }));
+      return rules(lane, text(whoIsAwaySaid(rows, window, m.role === 'ADMIN' ? 'everyone' : 'your team')));
+    }
+    const mine = await this.leave.mine(reader).catch(() => null);
+    const rows: AwayRow[] = (mine?.requests ?? []).filter((r) => r.status === 'approved' && overlaps(r)).map((r) => ({ name: 'You', startsOn: r.startsOn, endsOn: r.endsOn }));
+    return rules(lane, text(whoIsAwaySaid(rows, window, 'you')));
   }
 
   /** Whether anything waits for this person to approve or decline. The WhatsApp router asks, so a decision is never taken into a check-in. */
