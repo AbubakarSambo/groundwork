@@ -187,7 +187,16 @@ Run-25 was stopped: decision 86's reversals change what the engine writes, so it
 - Should a request waiting on the person's answer stop counting towards being passed on?
 - Two templates are proposed: a question about a request, and leave told to HR. Submit them?
 
-Now running: run-25 on `a7e0f76f`, and spending rules with finance's part (verify, code, export, mark paid), plus a WhatsApp answer to an approver's question reaching the question rather than an open check-in. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Spending and finance, as decision 85 describes them** (`fc5aef52` to `759ce9c5`; migrations 76 to 79, local only; 3,899 tests pass). An admin sets categories, evidence needed (a receipt or quote) and several thresholds, each with its own steps. Groundwork asks only for what is missing ("Which category is this for? It can be Fuel, Travel or Equipment."). Approvers can ask a question and give a reason with a decline, as on leave. Finance (Omar) reads each approved request, checks it, codes it, records the receipt, exports a CSV or Excel file of requests to pay, and marks them paid; Kamau reads "Your request to spend KES 12,000 for fuel for Kisumu deliveries … was paid on 6 October." With no rules set, everything reads as before. On WhatsApp, an answer to an approver's question now reaches the question even with a check-in open ("Is this your answer to Wairimu's question about your leave?").
+
+**For Hafsah:**
+- Finance's steps can be done by whoever holds the finance duty and any admin. Should an admin act when somebody is named for finance?
+- Nobody checks or pays their own request, copied from "nobody approves their own". Right?
+- Should a missing receipt or quote block payment? Today it does not.
+- Should the person be able to say they handed in the receipt? Today only finance ticks it.
+- Should the person be told on WhatsApp when a request is paid?
+
+Now running: run-25 on `a7e0f76f`, and timesheets (rules, a billing export, and a week drafted from the record), plus a fault where a WhatsApp reply held for a yes or no is lost after ten minutes. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
