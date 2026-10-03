@@ -1962,7 +1962,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           addressed to - still gets the original "Decisions needed" section, lower on the page,
           unchanged.
         */}
-        {viewerRunsThisCheckIn && (needsHere.length > 0 || (shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan)) || shown.decisions) && (
+        {viewerRunsThisCheckIn && (needsHere.length > 0 || (shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan, true)) || shown.decisions) && (
           <Section heading="What needs you in this check-in">
             <EdgeList label="What needs you in this check-in">
               {needsHere.map((n: Need) => (
@@ -1983,7 +1983,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 lead settles it. `ActionButtons` falls back to that same "Open" link on an older
                 server that sends no `action`.
               */}
-              {shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan) && b.leadActions!.map((r) => (
+              {shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan, true) && b.leadActions!.map((r) => (
                 <EdgeRow
                   key={r.id}
                   kind="look"

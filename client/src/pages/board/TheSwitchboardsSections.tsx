@@ -213,8 +213,20 @@ export function LeadActionsSection({ rows }: { rows: BoardPresent['leadActions']
  * lists - the same record read twice under two headings. Drawn once: when every one of
  * `leadActions`'s sentences already appears in `workPlan`, `LeadActionsSection` is left out and
  * `WorkPlanSection` alone carries it.
+ *
+ * SUPPORT DESK BOARD FIX 5: NEVER TRUE WHILE THE WORK PLAN SITS INSIDE THE CLOSED FOLD. That
+ * assumption only holds if a reader can actually see `WorkPlanSection` without first opening
+ * something - but `WorkPlanSection` always sits inside "Everything else from this check-in"
+ * (`FoldEverythingElseUnless` in BoardPage.tsx), a disclosure closed by default for every reader.
+ * Dropping the row left nothing in its place for a reader who never opens that fold: support.txt's
+ * own example board still lists "The ready-made answer for import errors has still not been
+ * written" under "What needs you in this check-in", with "This comes from the plan." said once, in
+ * full view, and its own "Has it happened?" choice ("Yes, it's done" / "Not yet") right there.
+ * `workPlanSitsInTheFold` is passed in by the caller, which is the one place that actually knows
+ * whether `WorkPlanSection` is folded for this render - today that is always true.
  */
-export function sameAsTheWorkPlan(leadActions: BoardPresent['leadActions'], workPlan: BoardPresent['workPlan']): boolean {
+export function sameAsTheWorkPlan(leadActions: BoardPresent['leadActions'], workPlan: BoardPresent['workPlan'], workPlanSitsInTheFold: boolean): boolean {
+  if (workPlanSitsInTheFold) return false
   if (!leadActions?.length || !workPlan?.length) return false
   const plan = new Set(workPlan.map((r) => r.says))
   return leadActions.every((r) => plan.has(r.says))

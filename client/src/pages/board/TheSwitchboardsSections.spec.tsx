@@ -207,15 +207,26 @@ describe('the switchboard’s 22 sections: as a participant reads them', () => {
   })
 })
 
-describe('"What needs you in this check-in" is drawn once, not twice as "Work plan" too', () => {
+/*
+ * SUPPORT DESK BOARD FIX 5, REWRITTEN (not deleted): "Work plan" ALWAYS SITS INSIDE THE CLOSED
+ * END FOLD, SO DROPPING THE ROW LEFT NOTHING IN ITS PLACE. This used to check that a leadActions
+ * row whose sentence also appeared under "Work plan" was left out of "What needs you in this
+ * check-in", on the assumption the reader would read it under "Work plan" instead - but
+ * `WorkPlanSection` sits inside "Everything else from this check-in" (`FoldEverythingElseUnless`),
+ * a disclosure closed by default for every reader, so a lead who never opens it lost the row
+ * entirely. support.txt's own example board still lists a plan item under "What needs you in this
+ * check-in", with "This comes from the plan." said once, in full view. The row is now kept.
+ */
+describe('"What needs you in this check-in" keeps a row even when "Work plan" says the same thing', () => {
   beforeEach(() => { vi.clearAllMocks(); me = { id: 'u-bisi', firstName: 'Bisi', role: 'MEMBER' } })
 
-  it('is left out when every one of its sentences already appears under "Work plan"', async () => {
+  it('is kept, because "Work plan" sits inside the closed end fold, not read without opening it', async () => {
     const duplicateLeadActions = [{ id: 'l3', says: workPlan[0].says, because: null }]
     renderBoard({ ...AS_THE_LEAD, leadActions: duplicateLeadActions })
     await screen.findByRole('heading', { name: 'Sales org, Q3' })
     expect(screen.getByText('Work plan')).toBeTruthy()
-    expect(screen.queryByText('What needs you in this check-in')).toBeNull()
+    const section = screen.getByText('What needs you in this check-in').closest('section') as HTMLElement
+    expect(within(section).getByText(workPlan[0].says)).toBeTruthy()
   })
 })
 
