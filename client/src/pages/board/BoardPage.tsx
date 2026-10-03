@@ -94,23 +94,32 @@ function decisionOwnerTag(
  * on the dependency it would have to match) is never merged - "else don't merge".
  */
 const WAITING_ON_THE_LEAD_PREFIX = 'waiting-on-the-lead-'
+const NOBODY_NAMED_PREFIX = 'nobody-named-'
 
 export function decisionDuplicatesALeadAction(
   decision: { question: string; source: string },
   leadActions: { id: string }[] | undefined,
   dependencies: { id: string; from: string | null; what: string | null }[] | undefined,
+  myName?: string | null,
 ): boolean {
   if (decision.source !== 'blocker' || !leadActions?.length || !dependencies?.length) return false
   const dependencyById = new Map(dependencies.map((dep) => [dep.id, dep]))
   return leadActions.some((la) => {
-    if (!la.id.startsWith(WAITING_ON_THE_LEAD_PREFIX)) return false
-    const dep = dependencyById.get(la.id.slice(WAITING_ON_THE_LEAD_PREFIX.length))
+    const prefix = la.id.startsWith(WAITING_ON_THE_LEAD_PREFIX)
+      ? WAITING_ON_THE_LEAD_PREFIX
+      : la.id.startsWith(NOBODY_NAMED_PREFIX)
+        ? NOBODY_NAMED_PREFIX
+        : null
+    if (!prefix) return false
+    const dep = dependencyById.get(la.id.slice(prefix.length))
     if (!dep || (!dep.from && !dep.what)) return false
     /* `from` is who the dependency is waiting on behalf of - the person named in both sentences
        ("...Baraka Mwangi, who is waiting on you..." / "Baraka Mwangi is waiting on..."). `on` is
        the lead themselves for every "waiting-on-the-lead" row, so it never distinguishes one
-       blocker from another and is not checked here. */
-    const sameWho = !dep.from || decision.question.includes(dep.from)
+       blocker from another and is not checked here. When the lead is themselves the one waiting
+       (a "nobody-named" row raised by the lead), the engine writes the decision as "You", not
+       their own name, so that also counts as the same who. */
+    const sameWho = !dep.from || decision.question.includes(dep.from) || (!!myName && dep.from === myName && decision.question.includes('You'))
     const sameSubject = !dep.what || decision.question.toLowerCase().includes(dep.what.toLowerCase())
     return sameWho && sameSubject
   })
@@ -1689,7 +1698,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 `decisionDuplicatesALeadAction`.
               */}
               {shown.decisions && b.decisions!
-                .filter((d) => !decisionDuplicatesALeadAction(d, b.leadActions, b.dependencies))
+                .filter((d) => !decisionDuplicatesALeadAction(d, b.leadActions, b.dependencies, myName))
                 .map((d, i) => (
                 <EdgeRow
                   key={`decision-${i}`}
