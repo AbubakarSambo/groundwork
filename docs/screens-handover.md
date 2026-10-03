@@ -9,7 +9,7 @@ The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`
 - **Done:** the sales board matches the prototype for both readers. The onboarding board's lead view matches, apart from the engine's requests 123 and 124. Hafsah answered 124: the new hire reads his lead's own words and row. The new hire's "1 of 1 checked in" fix is finished and tested (39bee66f).
 - **Stopped at:** before my own check and the review of the new hire's board after that fix. Nothing of this has been seen on the live page yet.
 - **Next:** check Tobi's board live (captures and script in the scratchpad's `pictures/review-onboard-3/`), run one review of both readers, mark onboarding done, then the project board for lead and participant. Read `docs/release-checklist.md` after each merge, once the engine writes it.
-- **Not done:** `.claude/hooks/guard.py` (Hafsah's guard version 2) is still uncommitted, because the permission check refused staging it. Hafsah needs to commit it herself.
+- **Done by Hafsah:** her guard version 2 is committed and pushed (99e55c65).
 
 ## Earlier: where it stopped (3 October, the weekly limit reached)
 
