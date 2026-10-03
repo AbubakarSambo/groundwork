@@ -1107,6 +1107,8 @@ export function theVerbAgreesWithYouIn(input: string): string {
     .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}was\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}were`)
     .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}has\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}have`)
     .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}does\\b`, 'gi'), (_m, you: string, adv = '') => `${you}${adv}do`)
+    /* And the same verbs said short (item 21, the founder's board): "when you doesn't have to think about it". */
+    .replace(new RegExp(`${NOT_THE_OBJECT_OF}(you )${ADVERBS}(doesn|isn|hasn|wasn)(['’])t\\b`, 'gi'), (_m, you: string, adv = '', v: string, q: string) => `${you}${adv}${({ doesn: 'don', isn: 'aren', hasn: 'haven', wasn: 'weren' } as Record<string, string>)[v.toLowerCase()]}${q}t`)
     .replace(
       new RegExp(
         `${NOT_THE_OBJECT_OF}(you )${ADVERBS}(` +

@@ -122,6 +122,17 @@ const AN_INSTRUCTION_STARTS = new Set(('decide achieve confirm hire build launch
   + 'establish develop define prepare plan introduce publish release deploy test fix resolve reconcile settle renew retain convert '
   + 'visit call meet attend stop start take give send pay spend save do be have go see stay hold cover handle drive clear').split(' '));
 
+/*
+ * AND THESE, ONLY IN A SENTENCE WITH ITS OWN FULL STOP AND AT LEAST FOUR WORDS (item 21, the founder's board).
+ * "Provide the final details for the paperwork to my lawyer." read "The team is working on provide the final
+ * details ...", and "Draft the formal co-founder agreement for Tunde, ..." read "The team is aiming for 25 draft
+ * ...". Several of these are nouns too ("Share of wallet", "Schedule adherence"), which is why a counted name
+ * without a full stop is never read as one of them.
+ */
+const AN_INSTRUCTION_WITH_A_STOP_STARTS = new Set(('provide draft let prioritize prioritise schedule share formalize formalise clarify '
+  + 'delegate assess document outline propose discuss align sort follow chase update check ask tell invite present arrange '
+  + 'organise organize finalize finalise negotiate identify map track measure monitor hand iron').split(' '));
+
 /** A row that only says what is counted: "approved facilities", "Contracts", "Spending on field visits.". Never a sentence. */
 export function onlySaysWhatIsCounted(name: string): boolean {
   const t = name.trim();
@@ -132,6 +143,7 @@ export function onlySaysWhatIsCounted(name: string): boolean {
      eight renewals per quarter". */
   const first = (t.split(/\s+/)[0] ?? '').toLowerCase().replace(/[^a-z]/g, '');
   if (AN_INSTRUCTION_STARTS.has(first) || /ly$/.test(first)) return false;
+  if (AN_INSTRUCTION_WITH_A_STOP_STARTS.has(first) && /[.!?]$/.test(t) && t.split(/\s+/).length >= 4) return false;
   return !A_PERSON_OR_A_VERB.test(t);
 }
 
