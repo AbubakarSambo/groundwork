@@ -53,7 +53,7 @@ describe('where accounts differ', () => {
      * instead. Same guarantee, wider: what this rests on is that the resolution happens on the
      * ROW, before any section reads it. See the-board-uses-names-like-the-report.
      */
-    expect(SERVICE).toMatch(/\(ground as any\)\.report = this\.reports\.theReportAsItWasShared\(/);
+    expect(SERVICE).toMatch(/\(ground as any\)\.report = askTheReportsDoor\(\s*this\.reports,/);
     expect(SERVICE).toMatch(/const reportSafe = ground\.report \? pickBoardSafeReportFields\(/);
   });
 });

@@ -87,7 +87,7 @@ describe('and the list carries it', () => {
     /* And only once the latest round's own session is released (decision 76, item 4). */
     expect(GROUNDS).toMatch(/const mayReadTheReport = runsIt \|\| \(!!fullReport\?\.releasedAt && peersVisibleEffective\s+&& latestRound !== null && isThisSessionReleased\(fullReport as any, latestRound\)\);/);
     expect(GROUNDS).toMatch(/if \(!mayReadTheReport \|\| \(!latestFinding && !latestSummary\)\) return \{ latestFinding: null, latestSummary: null \};/);
-    expect(GROUNDS).toMatch(/this\.reportTextAsItWasShared\(rest as any, \{ latestFinding, latestSummary \}, fullReport\?\.sharedAs, me\?\.id \?\? null, runsIt\)/);
+    expect(GROUNDS).toMatch(/this\.reportTextAsItWasShared\(\{ \.\.\.\(rest as any\), participants: allParticipants, initiatorId: .*? \?\? null \}, \{ latestFinding, latestSummary \}, fullReport\?\.sharedAs, me\?\.id \?\? null, runsIt\)/);
     expect(GROUNDS).toMatch(/return \{ latestFinding: named\.latestFinding, latestSummary: named\.latestSummary \};/);
     /* And never handed out raw, around the gate. */
     expect(GROUNDS).not.toMatch(/latestFinding, latestSummary,/);

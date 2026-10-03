@@ -51,20 +51,21 @@ describe('the board is wired to the same helpers', () => {
   it('asks the report to do it, rather than reimplementing the rule', () => {
     // A second copy of an access rule is how the two answers drift apart, and this one drifted.
     expect(CODE).toMatch(/import \{ ReportsService \} from '\.\.\/reports\/reports\.service'/);
-    expect(CODE).toMatch(/this\.reports\.theReportAsItWasShared\(/);
+    /* Through askTheReportsDoor, which asks the same door and hands it the lead's names (run-26 review). */
+    expect(CODE).toMatch(/askTheReportsDoor\(\s*this\.reports,/);
   });
 
   it('and it is the whole row that goes through it, not a list of fields', () => {
     /* The field list was the bug in the report twice and on the board once. The row is replaced in
        place, so a column added to that table tomorrow is named the day it arrives. */
-    expect(CODE).toMatch(/\(ground as any\)\.report = this\.reports\.theReportAsItWasShared\(/);
+    expect(CODE).toMatch(/\(ground as any\)\.report = askTheReportsDoor\(\s*this\.reports,\s*ground as any,/);
   });
 
   it('and nothing reads the report row before that line', () => {
     /* The old pass ran after several reads had already been taken off the raw row, which is how
        `theJudgement` and `overTime` kept their labels. Asserted by position: every read of the
        report row must come after the row has been replaced. */
-    const cut = CODE.indexOf('(ground as any).report = this.reports.theReportAsItWasShared(');
+    const cut = CODE.indexOf('(ground as any).report = askTheReportsDoor(');
     expect(cut).toBeGreaterThan(0);
     const before = CODE.slice(0, cut);
     const reads = before.match(/ground(?: as any\))?\)?\??\.report\b/g) ?? [];
