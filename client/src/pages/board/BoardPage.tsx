@@ -66,15 +66,25 @@ function nameOnTheBoard(b: { participants?: { id: string; name: string | null }[
  * roster: when it is, this reads "This comes from {person}." (or "You" for the reader's own), the
  * prototype's own words (G1-example-check-ins); when it is not a person at all, it reads the
  * prototype's own tag for that case instead - "Decision needed" (eng.txt, ops.txt).
+ *
+ * PROJECT BOARD REVIEW 1, FIX 8: A BLOCKER SAYS WHERE IT COMES FROM, NOT "DECISION NEEDED". eng.txt
+ * and ops.txt draw "Decision needed" only for a decision with no source to point to at all
+ * ("Decide what the release will include if the other teams are late"); a decision whose `source`
+ * is `'blocker'` - nobody named to decide it, or a non-person label like "the pipeline" - instead
+ * reads "This comes from a blocker that keeps coming back." (eng.txt, ops.txt), the same way a
+ * named person reads "This comes from {person}." "Decision needed" is kept for every other source
+ * with no person on it.
  */
 function decisionOwnerTag(
   owner: string,
   participants: { name: string | null }[] | undefined,
   myName: string | null,
+  source?: string,
 ): string {
   if (myName && owner === myName) return 'You'
   const isPerson = (participants ?? []).some((p) => p.name && p.name === owner)
-  return isPerson ? `This comes from ${owner}.` : 'Decision needed'
+  if (isPerson) return `This comes from ${owner}.`
+  return source === 'blocker' ? 'This comes from a blocker that keeps coming back.' : 'Decision needed'
 }
 
 /**
@@ -1764,7 +1774,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           dependency's own non-person label such as "the pipeline". Stapled after
                           the sentence as a bare fragment, all three read as a label, not words -
                           see `decisionOwnerTag`. */}
-                      {d.owner && <span className="gwui-fs-13-5 gwui-ink-sub gwui-ml-7">{decisionOwnerTag(d.owner, b.participants, myName)}</span>}
+                      {d.owner && <span className="gwui-fs-13-5 gwui-ink-sub gwui-ml-7">{decisionOwnerTag(d.owner, b.participants, myName, d.source)}</span>}
                     </>
                   )}
                   actions={<ActionButtons groundId={id!} action={d.action} />}

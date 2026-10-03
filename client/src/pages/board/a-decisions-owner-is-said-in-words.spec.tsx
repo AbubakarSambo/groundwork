@@ -54,18 +54,27 @@ describe('a decision’s owner, on the lead’s rows in "What needs you"', () =>
     expect(screen.queryByText('Lead and team')).toBeNull()
   })
 
-  it('reads "Decision needed" for "Nobody has been named to decide this.", never the raw sentence', async () => {
+  /*
+   * PROJECT BOARD REVIEW 1, FIX 8: A BLOCKER SAYS WHERE IT COMES FROM. These two cases are both
+   * `source: 'blocker'`, which eng.txt and ops.txt read as "This comes from a blocker that keeps
+   * coming back.", not "Decision needed" - updated because they were asserting the exact defect
+   * the review found. "Decision needed" stays correct for a decision with no source to point to
+   * at all (the "Lead and team" case, above, is `source: 'divergence'`).
+   */
+  it('reads "This comes from a blocker that keeps coming back." for "Nobody has been named to decide this."', async () => {
     renderBoard([{ question: 'Who owns the backup transporter decision?', why: 'Someone cannot move until this is decided.', owner: 'Nobody has been named to decide this.', source: 'blocker' }])
     await screen.findByText('Who owns the backup transporter decision?')
-    expect(screen.getByText('Decision needed')).toBeTruthy()
+    expect(screen.getByText('This comes from a blocker that keeps coming back.')).toBeTruthy()
     expect(screen.queryByText('Nobody has been named to decide this.')).toBeNull()
+    expect(screen.queryByText('Decision needed')).toBeNull()
   })
 
-  it('reads "Decision needed" for a non-person label such as "the pipeline"', async () => {
+  it('reads "This comes from a blocker that keeps coming back." for a non-person label such as "the pipeline"', async () => {
     renderBoard([{ question: 'Somebody is waiting on a decision, so it needs deciding.', why: 'Someone cannot move until this is decided.', owner: 'the pipeline', source: 'blocker' }])
     await screen.findByText('Somebody is waiting on a decision, so it needs deciding.')
-    expect(screen.getByText('Decision needed')).toBeTruthy()
-    expect(screen.queryByText('the pipeline')).toBeNull()
+    expect(screen.getByText('This comes from a blocker that keeps coming back.')).toBeTruthy()
+    expect(screen.queryByText('the pipeline', { selector: 'span' })).toBeNull()
+    expect(screen.queryByText('Decision needed')).toBeNull()
   })
 
   it('reads "This comes from {person}." for a real name on the roster', async () => {
