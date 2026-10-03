@@ -1226,6 +1226,26 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    */
   const isProjectBoard = b.scenario === 'NEW_PROJECT' || b.scenario === 'DRIFT'
   /*
+   * SUPPORT DESK BOARD FIX 1/3/4: ONE SMALL PER-KIND TABLE, IN PLACE OF A GROWING LIST OF
+   * `isProjectBoard`-STYLE SPECIAL CASES. The project boards (above) decide three placements by
+   * their own `scenario`, not by `kindOfWork` - that stays exactly as it was, so NEW_PROJECT and
+   * DRIFT read exactly as before. A kind of work decided by `kindOfWork` instead (support desk's
+   * own example, support.txt) gets the same three placements from one row here, so the next kind
+   * that needs them is one row added, not a new special case threaded through the page.
+   */
+  const kindOfWorkKey = ((b as any).kindOfWork ?? null) as string | null
+  const kindLayout: Partial<Record<string, {
+    /** "Where each target stands" draws at the top, in the headline's place, when there is none. */
+    targetsAtTopWithNoHeadline?: boolean
+    /** "Who checked in" draws early, before Blockers and "What keeps coming up". */
+    whoCheckedInEarly?: boolean
+    /** "Open issues" draws only in the end fold, never in its usual place on the main board. */
+    openIssuesInFold?: boolean
+  }>> = {
+    'support desk': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true },
+  }
+  const layoutFor = (k: string | null) => (k ? kindLayout[k] : undefined)
+  /*
    * ONBOARDING BOARD FIX 1 (SECOND REVIEW): THE WHOLE-CHECK-IN FOLD WAS BUILT FOR THE SALES
    * PARTICIPANT'S OWN VIEW, AND NOW ONLY SALES HAS ONE. `TheParticipantsOwnView` drew a short
    * personal view for every participant - whether today's team picture is shared, a way to their
@@ -1799,8 +1819,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           "What we are aiming for" further down, so the same name ("new paying customers") read
           twice on the page. `isProjectBoard` is the fact that actually distinguishes this case:
           the sales board is still unaffected either way, since it is always sent a headline.
+
+          SUPPORT DESK BOARD FIX 1: THE SAME PLACE, FOR SUPPORT DESK TOO. support.txt's own
+          example check-in (48896035) is sent no headline either, and "Where each target stands"
+          belongs here for the same reason - `kindLayout['support desk'].targetsAtTopWithNoHeadline`
+          says so, one table row, rather than a second special case bolted onto `isProjectBoard`.
         */}
-        {isProjectBoard && !(b as any).headline && b.objectives && b.objectives.length > 0 && (
+        {(isProjectBoard || layoutFor(kindOfWorkKey)?.targetsAtTopWithNoHeadline) && !(b as any).headline && b.objectives && b.objectives.length > 0 && (
           <Panel>
             <Stack gap={10}>
               <SubHeading>Where each target stands</SubHeading>
@@ -2098,7 +2123,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           drawn from the server's own `blockers` field - every sentence built and ordered server
           side, so this file no longer joins `blockerCheck` and `whoWaitedOnWhom` by hand.
         */}
-        {isProjectBoard && whoCheckedIn()}
+        {(isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
         <BlockersSection blockers={(b as any).blockers} />
         {shown.patterns && b.patterns && (
           <>
@@ -2185,7 +2210,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         <ReportedAgainstCriteriaSection data={(b as any).reportedAgainstCriteria} kindOfWork={(b as any).kindOfWork ?? null} />
 
-        {!isProjectBoard && whoCheckedIn()}
+        {!(isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
 
         {/*
           U.10 ITEM 7: "OVER TIME" MOVES OUT OF THE FOLD, TO THE PROTOTYPE'S OWN PLACE
@@ -2347,8 +2372,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           it moves into "Everything else from this check-in" for those two, the same place every
           other section the prototype's own project boards do not show already sits. Every other
           kind of work keeps it exactly where it was.
+
+          SUPPORT DESK BOARD FIX 4: THE SAME FOLD, BY THE SAME TABLE ROW. support.txt shows no
+          "Open issues" either, so `kindLayout['support desk'].openIssuesInFold` says so here too.
         */}
-        {!isProjectBoard && (b as any).openIssues && (
+        {!(isProjectBoard || layoutFor(kindOfWorkKey)?.openIssuesInFold) && (b as any).openIssues && (
           <Section heading="Open issues">
             <Note tone="muted">{(b as any).openIssues.why}</Note>
           </Section>
@@ -2399,7 +2427,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           PROJECT BOARD REVIEW 1, FIX 11: "OPEN ISSUES", FOLDED HERE ON THESE BOARDS - see the
           comment where it would otherwise have drawn, above.
         */}
-        {isProjectBoard && (b as any).openIssues && (
+        {(isProjectBoard || layoutFor(kindOfWorkKey)?.openIssuesInFold) && (b as any).openIssues && (
           <Section heading="Open issues">
             <Note tone="muted">{(b as any).openIssues.why}</Note>
           </Section>
