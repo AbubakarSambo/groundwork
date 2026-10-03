@@ -385,22 +385,31 @@ export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn
 }
 
 /**
+ * THE SUPPORT DESK'S OWN HEADING FOR THIS SECTION (support.txt: "By queue", right after "The
+ * shape of the work"). Every other kind of work keeps the plain "By area".
+ */
+const BY_AREA_HEADING: Partial<Record<string, string>> = {
+  'support desk': 'By queue',
+}
+
+/**
  * REQUEST 107 (c), PART 3: BY AREA (board-as-lead.txt doesn't show this one - no board in the
  * suite's own test data has a site, county, team or queue said about its records). Drawn only
  * when the server has something to group; the "not-known" state says why in the server's own
  * words, so nothing is claimed Groundwork cannot back.
  */
-export function ByAreaSection({ data }: { data: BoardPresent['byArea'] }) {
+export function ByAreaSection({ data, kindOfWork }: { data: BoardPresent['byArea']; kindOfWork?: string | null }) {
   if (!data) return null
+  const heading = (kindOfWork && BY_AREA_HEADING[kindOfWork]) ?? (data.state === 'not-known' ? 'By area' : data.heading)
   if (data.state === 'not-known') {
     return (
-      <Section heading="By area">
+      <Section heading={heading}>
         <Note tone="muted">{data.why}</Note>
       </Section>
     )
   }
   return (
-    <Section heading={data.heading}>
+    <Section heading={heading}>
       <Panel pad={false}>
         {data.areas.map((a) => (
           <div key={a.area} className="gwui-panel-row">

@@ -1245,6 +1245,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     'support desk': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true },
   }
   const layoutFor = (k: string | null) => (k ? kindLayout[k] : undefined)
+  const isSupportDesk = kindOfWorkKey === 'support desk'
+  /*
+   * SUPPORT DESK BOARD FIX 2: "THE SHAPE OF THE WORK" AND "BY QUEUE", RIGHT AFTER "THE TEAM
+   * TODAY" - support.txt's own place for them, not the end fold both sit in today. Pulled out of
+   * `workRecords` by name so they are never also drawn in their usual spot below.
+   */
+  const themesSection = (b.workRecords ?? []).find((s) => s.section === 'Themes')
   /*
    * ONBOARDING BOARD FIX 1 (SECOND REVIEW): THE WHOLE-CHECK-IN FOLD WAS BUILT FOR THE SALES
    * PARTICIPANT'S OWN VIEW, AND NOW ONLY SALES HAS ONE. `TheParticipantsOwnView` drew a short
@@ -1273,12 +1280,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * did; only the not-known ones move into the end fold, alongside everything else this kind of
    * work's prototype does not show.
    */
+  /*
+   * SUPPORT DESK BOARD FIX 2: "THEMES" NEVER DRAWN TWICE. Pulled out above to draw once, right
+   * after "The team today" - left out of both lists here so it is never also drawn in its usual
+   * spot (filled, among `dealGridSections`, or not-known, among `restOfWorkRecordSections`).
+   */
   const dealGridSections = isSalesOrg
     ? (b.workRecords ?? []).filter((s) => s.section === 'Deal grid')
-    : (b.workRecords ?? []).filter((s) => s.state !== 'not-known')
+    : (b.workRecords ?? []).filter((s) => s.state !== 'not-known' && !(isSupportDesk && s.section === 'Themes'))
   const restOfWorkRecordSections = isSalesOrg
     ? (b.workRecords ?? []).filter((s) => s.section !== 'Deal grid')
-    : (b.workRecords ?? []).filter((s) => s.state === 'not-known')
+    : (b.workRecords ?? []).filter((s) => s.state === 'not-known' && !(isSupportDesk && s.section === 'Themes'))
   const myWorkTab = viewerRunsThisCheckIn ? 'sessions' : 'record'
   const headerTabs = [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
@@ -2119,6 +2131,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
+          SUPPORT DESK BOARD FIX 2: "THE SHAPE OF THE WORK" THEN "BY QUEUE", RIGHT HERE - support.
+          txt's own place for both, straight after "The team today" and before "Who checked in".
+          Both render in the end fold for every other kind of work still, unchanged.
+        */}
+        {isSupportDesk && themesSection && (
+          <WorkRecordsSections
+            groundId={id!}
+            kindOfWork={kindOfWorkKey as any}
+            sections={[themesSection]}
+            participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
+            leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+            readerIsLead={viewerRunsThisCheckIn}
+            canEdit={b.canEditFrame}
+          />
+        )}
+        {isSupportDesk && <ByAreaSection data={(b as any).byArea} kindOfWork={kindOfWorkKey} />}
+
+        {/*
           BLOCKERS (board-as-lead.txt, "Blockers"; request 105 part 2 and 107 b/c): one section,
           drawn from the server's own `blockers` field - every sentence built and ordered server
           side, so this file no longer joins `blockerCheck` and `whoWaitedOnWhom` by hand.
@@ -2563,7 +2593,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             collapseWhenAllNotKnown={workRecordsAllNotKnownSameWhy}
           />
         )}
-        <ByAreaSection data={(b as any).byArea} />
+        {/* SUPPORT DESK BOARD FIX 2: ALREADY DRAWN ABOVE, RIGHT AFTER "THE TEAM TODAY" - never twice. */}
+        {!isSupportDesk && <ByAreaSection data={(b as any).byArea} />}
         {/*
           REQUEST 70: THE SWITCHBOARD'S OWN SECTIONS, THE 13 THAT NOW HAVE A SERVED FIELD. Each
           component draws nothing when its own rows are empty, so there is no heading-with-nothing-

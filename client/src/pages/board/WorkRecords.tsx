@@ -155,6 +155,17 @@ function DealGridKey({ rows }: { rows: AServedWorkRow[] }) {
 }
 const THEMES_HEADING: Partial<Record<KindOfWork, string>> = {
   'MarketView where next': 'Where next, ranked',
+  /* Support desk board fix 2: support.txt's own heading, right after "The team today". */
+  'support desk': 'The shape of the work',
+}
+
+/**
+ * THE SUPPORT DESK'S OWN NOTE FOR "THE SHAPE OF THE WORK" (support.txt, directly under its
+ * heading: "Volume from the helpdesk, causes from the check-ins"). Said once here, the same way
+ * `DEAL_GRID_NOTE` already does for the deal grid's own subtitle.
+ */
+const THEMES_NOTE: Partial<Record<KindOfWork, string>> = {
+  'support desk': 'Volume from the helpdesk, causes from the check-ins.',
 }
 
 /** The word for one row's kind, at the head of its own column ("Deal", "Task", "Item", "Trader"...). */
@@ -935,7 +946,9 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
    * narrowed to theirs.
    */
   const onlyYours = section.state !== 'not-known' ? section.onlyYours ?? undefined : undefined
-  const note = (isDealGrid && kindOfWork && dealGroups?.length ? DEAL_GRID_NOTE[kindOfWork] : undefined) ?? onlyYours ?? undefined
+  const note = (isDealGrid && kindOfWork && dealGroups?.length ? DEAL_GRID_NOTE[kindOfWork] : undefined)
+    ?? (section.section === 'Themes' && kindOfWork ? THEMES_NOTE[kindOfWork] : undefined)
+    ?? onlyYours ?? undefined
 
   if (section.state === 'not-known') {
     return (
