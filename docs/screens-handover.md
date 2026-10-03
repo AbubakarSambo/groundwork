@@ -4,6 +4,10 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## Distribution operations board: done (4 October)
+
+"Distribution operations, test" (f76b7a18), lead and participant, matched to ops.txt after one review and its six screen fixes, checked live (scratchpad `pictures/ops-A/`). The engine's part is request 130. Note: an earlier builder saved captures into an untracked `scratchpad/` folder inside the project. It is not committed, and can be deleted.
+
 ## Support desk board: done (4 October)
 
 "Support desk, test" (48896035), lead and participant, matched to support.txt after one review and three fixes (a2596ea5..aa4c6d3b), checked live (scratchpad `pictures/support-A/`). BoardPage.tsx now has a per-kind table, `kindLayout`, for where sections sit. Each later kind is one row. The engine's part is request 129.
