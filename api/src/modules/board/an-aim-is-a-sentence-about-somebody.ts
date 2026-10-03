@@ -196,7 +196,10 @@ export function theAimItself(name: string, target: number | null): string | null
   } else {
     const m = /\b(?:am|is|are|['’]m|['’]re)\s+aiming\s+(?:for|at|to\s+(?:get|reach|hit|close|sign|onboard|make|do))\s+(.+)$/i.exec(t)
       ?? /\b(?:want|wants|aim|aims|plan|plans|hope|hopes|need|needs)\s+(?:to\s+(?:get|reach|hit|close|sign|onboard|make|do)\s+)?(.+)$/i.exec(t)
-      ?? /\b(?:goal|aim|target)\s+is\s+(?:to\s+(?:get|reach|hit|close|sign|onboard|make|do)\s+)?(.+)$/i.exec(t);
+      ?? /\b(?:goal|aim|target)\s+is\s+(?:to\s+(?:get|reach|hit|close|sign|onboard|make|do)\s+)?(.+)$/i.exec(t)
+      /* "I'm working on getting twelve approved facilities this quarter" (run-25): it read "Femi Okonkwo is working on
+         getting twelve approved facilities this quarter. Femi Okonkwo set this aim.", the name twice. */
+      ?? /\b(?:am|is|are|['’]m|['’]re)\s+(?:working\s+(?:on|towards?)|trying\s+to)\s+(?:getting|get|reaching|reach|hitting|hit|closing|close|signing|sign|onboarding|onboard|a\s+(?:personal\s+)?target\s+of)\s+(.+)$/i.exec(t);
     what = m ? m[1].trim() : null;
   }
   if (what && A_PERSON_IN_IT.test(what)) what = theFirstPartAlone(what);

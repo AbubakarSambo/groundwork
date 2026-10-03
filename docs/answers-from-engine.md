@@ -3277,3 +3277,11 @@ Tests: `api/src/modules/reports/item-18-each-wait-under-whoever-holds-it.spec.ts
 - **Still said twice:** a person's name after "says" or "thinks" ("Musa says Musa never received the grinding machine"), and a sentence that opens with an owner ("Tunde's understanding is that Tunde will ..."). These can only be said once with "they" or "he" or "she"; that choice is Hafsah's. Over run-25's served text, the count I measure falls from 459 sentences to 275 (my count, not the scorer's).
 
 Tests: `api/src/modules/reports/a-name-said-once-in-a-sentence-as-each-reader-reads-it.spec.ts`, through the report door as Nadia, an admin and Zainab, and the rule itself. Five existing tests changed, each because it pinned a name said twice that is now said once: `reports/you-takes-its-verb-in-your-own-report.spec.ts` ("..., and identifies Westgate Deli as the next one."), `reports/every-line-is-read-before-it-is-kept.spec.ts` ("Nathan Owusu says their own goal is ..."), and the conversation point in `grounds/a-goal-not-told-stays-with-the-lead.spec.ts`, `reports/the-judgement-and-a-goal-not-told.spec.ts` and `suggestions/suggestions-as-each-reader-reads-them.spec.ts`.
+
+## An aim said as work under way names the person once (3 October)
+
+**Bisi read among the aims "Femi Okonkwo is working on getting twelve approved facilities this quarter. Femi Okonkwo set this aim." A person's own aim said as work under way ("I'm working on getting ...", "I'm trying to reach ...") is now read for the thing aimed for, like "I am aiming for ..."** (this commit).
+
+- **Bisi and an admin read:** "Femi Okonkwo's own aim is twelve approved facilities this quarter." **Femi reads:** "Your own aim is twelve approved facilities this quarter." (`objectives[].name`, and Femi's `yourShare`).
+
+Tests: one new test in `api/src/modules/board/the-room-and-the-aims-as-each-reader-reads-them.spec.ts`, as Bisi and Femi. No existing test changed.

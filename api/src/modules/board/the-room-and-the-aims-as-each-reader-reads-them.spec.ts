@@ -129,3 +129,13 @@ describe('the room in cofounder and drift, as the person it is about reads it', 
     expect(room.aims[0].aim).toBe('Zainab Suleiman is worried that she will be measured on targets that she has not been able to work on.');
   });
 });
+
+describe('an aim said as work under way (run-25)', () => {
+  it('Bisi reads Femi\'s own aim with his name once, and Femi reads it as his own', async () => {
+    const setup: Setup = { ...RUN, objectives: [target('o-femi-12', "I'm working on getting twelve approved facilities this quarter.", 12, 'p-femi', 'p-femi')] };
+    const bisi = (await boardAs(setup, ...BISI)).objectives.map((o: any) => o.name);
+    expect(bisi).toEqual(["Femi Okonkwo's own aim is twelve approved facilities this quarter."]);
+    const femi = (await boardAs(setup, ...FEMI)).objectives.map((o: any) => o.name);
+    expect(femi).toEqual(['Your own aim is twelve approved facilities this quarter.']);
+  });
+});
