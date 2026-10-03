@@ -4,7 +4,14 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
-## Where it stopped (3 October, the weekly limit reached)
+## Where it stopped (3 October, evening)
+
+- **Done:** the sales board matches the prototype for both readers. The onboarding board's lead view matches, apart from the engine's requests 123 and 124. Hafsah answered 124: the new hire reads his lead's own words and row. The new hire's "1 of 1 checked in" fix is finished and tested (39bee66f).
+- **Stopped at:** before my own check and the review of the new hire's board after that fix. Nothing of this has been seen on the live page yet.
+- **Next:** check Tobi's board live (captures and script in the scratchpad's `pictures/review-onboard-3/`), run one review of both readers, mark onboarding done, then the project board for lead and participant. Read `docs/release-checklist.md` after each merge, once the engine writes it.
+- **Not done:** `.claude/hooks/guard.py` (Hafsah's guard version 2) is still uncommitted, because the permission check refused staging it. Hafsah needs to commit it herself.
+
+## Earlier: where it stopped (3 October, the weekly limit reached)
 
 - **Sales board:** done, matched on the engine's code at ea5e2a54.
 - **Onboarding board** ("Engagement Director, first 90 days", e2cfd3d8): the third review says the lead's board matches what the prototype shows for a new hire, apart from requests 123 and 124. The new hire's board has one fault left: his Reports rows read "1 of 1 checked in" because `client/src/lib/session-rows.ts` counts `ground.participants`, and `GET /grounds/:id` sends him only himself. A builder started the fix and was cut off by the spend limit. Its unfinished, **untested** changes to `client/src/lib/session-rows.ts` and `client/src/components/gw/TheReportIsAListOfSessions.tsx` are committed as work in progress. Next: check them, run `cd client && npx vitest run` and `npx tsc --noEmit`, finish the fix (count from the board's own participants, or draw no count), then a fourth review of both readers. Captures are in the scratchpad's `pictures/review-onboard-3/`.

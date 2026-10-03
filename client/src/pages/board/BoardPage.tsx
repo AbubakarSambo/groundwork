@@ -831,7 +831,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    */
   const labelsHere = peopleLabels((groundForSignals as any)?.participants ?? [], { forTheLead: viewerRunsThisCheckIn })
   const labelInASentence = (p: any): string => labelsHere.get(p?.id) ?? personLabel(p)
-  const sessionRows = buildSessionRows(groundForSignals as any, user?.id, labelInASentence)
 
   /* What needs the lead here: Today's items for this check-in. See where it is drawn. */
   const { data: today } = useQuery({ queryKey: ['today'], queryFn: todayApi.get, staleTime: 30_000, enabled: viewerRunsThisCheckIn, retry: false })
@@ -843,6 +842,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     enabled: !!id,
     retry: false,
   })
+
+  /*
+   * THE FULL ROSTER, for a restricted `ground.participants` (see `fullParticipants` on
+   * `buildSessionRows`). `GET /grounds/:id` sends a participant only their own row; the board's own
+   * answer, fetched just above, sends every party on this check-in to everybody on it - so a
+   * "Reports" row built from it can say truthfully how many of the whole roster checked in,
+   * instead of "1 of 1" for a reader who is restricted to their own one-person list.
+   */
+  const sessionRows = buildSessionRows(groundForSignals as any, user?.id, labelInASentence, (data as any)?.participants)
 
   /* Where the run is, read once, so the top and the foot of the board gate the ending panel on the
      same answer (the-exit-belongs-at-the-exit). */
