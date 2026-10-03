@@ -730,7 +730,8 @@ function StartingStateBody({ startingState }: { startingState: string }) {
  * case's own position - only the heavy content (every one of this board's one-off style classes it
  * carries) lives here, once, so moving it never raises that count either.
  */
-function DivergenceSectionBody({ heading, divergence, onlyOnePersonHere, myName }: {
+function DivergenceSectionBody({ heading, divergence, whyNothingYet, onlyOnePersonHere, myName }: {
+  whyNothingYet?: string | null
   heading: string
   divergence: NonNullable<BoardPresent['divergence']>
   onlyOnePersonHere: boolean
@@ -744,7 +745,7 @@ function DivergenceSectionBody({ heading, divergence, onlyOnePersonHere, myName 
           /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
              more than one person has checked in" on a round where everybody had, three inches
              under a tile that said so. The server computes it from the one counter. */
-          <Row columns="1fr" inset="panel"><div className="gwui-fs-15 gwui-ink-muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></Row>
+          <Row columns="1fr" inset="panel"><div className="gwui-fs-15 gwui-ink-muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></Row>
         ) : (
           <>
             {divergence.items.map((d: any, i: number) => (
@@ -1340,7 +1341,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const divergenceBlock = (heading: string) => (
     <>
       {b.divergence && shown.divergence && (
-        <DivergenceSectionBody heading={heading} divergence={b.divergence} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
+        <DivergenceSectionBody heading={heading} divergence={b.divergence} whyNothingYet={b.divergence.whyNothingYet} onlyOnePersonHere={onlyOnePersonHere} myName={myName} />
       )}
       {b.divergence?.centralQuestion && (
         <Panel>
