@@ -419,11 +419,21 @@ export function ByAreaSection({ data }: { data: BoardPresent['byArea'] }) {
  * REQUEST 107 (c), PART 4: REPORTED AGAINST CRITERIA, STAGE BY STAGE (board-as-lead.txt: "Reported
  * vs criteria met, stage by stage"). The record holds no criteria, so this is always `not-known` -
  * it counts what people reported and how much has a document behind it, never "criteria met".
+ *
+ * PROJECT BOARD REVIEW 1, FIX 10: ENG.TXT'S OWN HEADING. An engineering release's own prototype
+ * example (eng.txt) gives this section a different heading, word for word - "Reported vs evidence,
+ * stage by stage" - from the sales board's "Reported vs criteria met, stage by stage" this section
+ * was named after. Every other kind of work keeps the plain "Reported, stage by stage".
  */
-export function ReportedAgainstCriteriaSection({ data }: { data: BoardPresent['reportedAgainstCriteria'] }) {
+const REPORTED_AGAINST_CRITERIA_HEADING: Partial<Record<string, string>> = {
+  'engineering release': 'Reported vs evidence, stage by stage',
+}
+
+export function ReportedAgainstCriteriaSection({ data, kindOfWork }: { data: BoardPresent['reportedAgainstCriteria']; kindOfWork?: string | null }) {
   if (!data) return null
+  const heading = (kindOfWork && REPORTED_AGAINST_CRITERIA_HEADING[kindOfWork]) ?? 'Reported, stage by stage'
   return (
-    <Section heading="Reported, stage by stage" note={data.why}>
+    <Section heading={heading} note={data.why}>
       <Panel pad={false}>
         {data.stages.map((s) => (
           <div key={s.stage} className="gwui-panel-row">

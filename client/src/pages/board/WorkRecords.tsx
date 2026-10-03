@@ -981,6 +981,16 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
      (item 3 a, c, d - see `SalesDealGridHead`/`SalesDealGridRow`), not the generic table every
      other kind of work shares. */
   const isSalesDealGrid = isDealGrid && kindOfWork === 'sales org'
+  /*
+   * PROJECT BOARD REVIEW 1, FIX 10: "NOT RIGHT? TELL THE CHECK-IN" ON THE ENGINEERING GRID TOO.
+   * eng.txt's own grid carries this line under its rows ("Something here wrong? Anyone can
+   * correct what's about their own work in their check-in; the change and the original both show
+   * here."), the same invitation the sales deal grid already gives through `DealDetail` - but
+   * the engine does not yet send the sales grid's own per-row detail fields (`groupSays`,
+   * `contactHistory`, `theirRead`) for an engineering release, so there is no row-level fold to
+   * hang it on yet. Said once, under the grid, rather than left out until that data exists.
+   */
+  const isEngineeringDealGrid = isDealGrid && kindOfWork === 'engineering release'
   const dealGridContent = isTimeline ? (
         <TimelineList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} readerIsLead={readerIsLead} onEdit={setEditingRow} />
       ) : isObligations ? (
@@ -1087,6 +1097,12 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
         <div className="gwui-mt-14">
           <p className="gwui-mb-8 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
           <StageTrack stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
+        </div>
+      )}
+
+      {isEngineeringDealGrid && (
+        <div className="gwui-mt-14">
+          <Link to={`/grounds/${groundId}?tab=chat`} className="gwui-plain-link">Not right? Tell the check-in</Link>
         </div>
       )}
 

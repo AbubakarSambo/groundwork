@@ -1965,7 +1965,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           show this one, so it now sits in "Everything else from this check-in" instead of here,
           beside the sales ground's own "Forecast" section - see the comment on `dealGridSections`.
         */}
-        <ReportedAgainstCriteriaSection data={(b as any).reportedAgainstCriteria} />
+        <ReportedAgainstCriteriaSection data={(b as any).reportedAgainstCriteria} kindOfWork={(b as any).kindOfWork ?? null} />
 
         {shown.checkInGrid && b.checkInGrid && (() => {
           /** Does any row have a role worth a column of its own? */
