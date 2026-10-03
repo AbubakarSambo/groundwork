@@ -3171,3 +3171,12 @@ Wairimu, who writes it, reads the same lines from "Sales team, Q3" and the work 
 - **Migration** `20261004000000_a_review_reads_the_record_and_the_person_corrects_it` (docs/deploy.md).
 
 Tests: `api/src/modules/suites/the-record-in-a-review-as-each-reader-reads-it.spec.ts` (Aisha, Wairimu, Grace, Juma, Miriam and Kamau; a correction kept beside the line; one that stays with Aisha; who may correct). Every test fails on the old code, where none of this existed. One existing test changed: `the-reviews-as-each-reader-reads-them.spec.ts` pins the person's whole review with `toEqual`, so it now includes `record: null` for a review started before the record was read.
+
+## "Their documents" are the customers', not a colleague's (3 October)
+
+**On run-25's sales check-in, Femi waited on the customers for "their documents, especially the bank statements". Every reader read "A colleague's documents, especially the bank statements" at the top of the board, and "Work is held up by a colleague's documents, especially the bank statements." on the Blockers tile: an owner nobody named. "Their" now becomes a colleague's only where the row says a person in the check-in is waited on (`onParticipantId`); otherwise it is said as whoever the row waits on, or left as the person said it. "Her" and "his" read as before** (this commit).
+
+- **Bisi, Femi, and an admin now read** at the top (`howItIsGoing.glance.inTheWay.oldest`): "the customers' documents, especially the bank statements", and on the tile: "Work is held up by the customers' documents, especially the bank statements."
+- The list of check-ins and Today take the same line, from the same place.
+
+Tests: `api/src/modules/board/their-documents-are-not-a-colleagues.spec.ts`, on the served board as Bisi, Femi, Ngozi and an admin, and the rule itself. The four board tests fail on the old code. No existing test changed.
