@@ -122,6 +122,29 @@ export interface YourReview {
 }
 export interface ReviewsBoard { every: string | null; next: NextReview[] }
 export interface Noticed { says: string; mark: 'proven' | 'said' }
+/** What Groundwork understands from the record, as one reader is served it: each part, each line, and the person's correction beside it. */
+export interface TheRecord {
+  intro: string
+  /** For the person: who reads their corrections and what stays with them. Null for anybody else. */
+  whoReads: string | null
+  parts: { part: string; heading: string; lines: { key: string; says: string; correction: { said: string; whatIsTrue: string } | null }[] }[]
+  /** Only the person corrects a line. */
+  mayCorrect: boolean
+}
+/** "Groundwork suggests recognising Aisha’s work", for the person who writes the review only. */
+export interface RecogniseForTheWriter { headline: string; why: string; whatWouldChangeIt: string; yourDecision: string }
+/** What the person reads about that suggestion: their own count, the line, and who decides. */
+export interface RecogniseForThePerson { facts: string; whoDecides: string }
+/** The writer's briefing: evidence and patterns, never a verdict. */
+export interface ABriefing {
+  heading: string
+  counts: string | null
+  patterns: { heading: string; whatHappened: string | null; howOften: string; checkIn: string; theirAnswer: string }[]
+  patternsNote: string | null
+  changedAfterEarlierConversations: string[]
+  corrections: { line: string; said: string; whatIsTrue: string }[]
+  whoDecides: string
+}
 export interface ReviewForTheWriter {
   reader: 'writer' | 'lead' | 'admin'
   id: string
@@ -135,6 +158,10 @@ export interface ReviewForTheWriter {
   theirView: string | null
   decision: { says: string; reasons: string } | null
   mayWrite: boolean
+  /** Null for a review started before the record was read. */
+  record?: TheRecord | null
+  recognise?: RecogniseForTheWriter | null
+  briefing?: ABriefing
 }
 export interface ReviewForThePerson {
   reader: 'person'
@@ -145,6 +172,8 @@ export interface ReviewForThePerson {
   noticed: Noticed[]
   theirView: string | null
   decision: { says: string; reasons: string } | null
+  record?: TheRecord | null
+  recognise?: RecogniseForThePerson
 }
 export type AReview = ReviewForTheWriter | ReviewForThePerson
 
@@ -155,6 +184,8 @@ export const reviewsApi = {
   one: async (id: string): Promise<AReview> => (await apiClient.get(`/suites/reviews/${id}`)).data,
   words: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/words`, { text })).data,
   view: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/view`, { text })).data,
+  correct: async (id: string, lineKey: string, text: string): Promise<AReview> =>
+    (await apiClient.post(`/suites/reviews/${id}/lines/${encodeURIComponent(lineKey)}/correction`, { text })).data,
   decide: async (id: string, decision: string, reasons: string): Promise<AReview> =>
     (await apiClient.post(`/suites/reviews/${id}/decision`, { decision, reasons })).data,
 }

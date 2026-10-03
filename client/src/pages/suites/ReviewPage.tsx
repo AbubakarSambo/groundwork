@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { reviewsApi, type AReview } from '@/api/suites'
+import { reviewsApi, type AReview, type TheRecord, type ABriefing, type RecogniseForTheWriter, type RecogniseForThePerson } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Page, PageTitle, Section, Button, Note, ProofMark, FieldLabel, TextArea, TextField, RowList, Row } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Note, ProofMark, FieldLabel, TextArea, TextField, RowList, Row } from '@/components/gw/ui'
 
 /**
  * ONE PERFORMANCE REVIEW (E4, #/suite/reviews/:id, group 2 piece 4). The wording is copied from the
@@ -25,9 +25,11 @@ import { Page, PageTitle, Section, Button, Note, ProofMark, FieldLabel, TextArea
  * docs/the-parts-against-the-prototype.md) for each noticed line, `FieldLabel`/`TextArea`/
  * `TextField` for what a person writes, and `Note`/`Empty` for loading, error and empty states.
  *
- * NOT DRAWN HERE, ON PURPOSE: Groundwork's suggestion ("Groundwork suggests recognising Aisha’s
- * work"). A suggestion belongs to a check-in today, not to a review; the engine is asked for one
- * that belongs to a review (request 23).
+ * ALSO DRAWN, WHEN THE SERVER SENDS THEM (decision 85, item 4): the record Groundwork understands (every
+ * line, with the person's correction beside it; only the person can mark a line wrong and say what is
+ * true), the writer's briefing, and "Groundwork suggests recognising Aisha’s work" for the writer alone,
+ * with the prototype's "Agree" (which fills in "Recognise Aisha’s work." for the writer to give reasons
+ * for) and "Choose something else". The person reads their own count and who decides.
  *
  * WORDING NO SCREEN SHOWS (item 28): "Your review, March"; "What you write"; "Your own view";
  * "Groundwork has not written this part yet."; "... has not written anything yet."; "... has not
@@ -124,6 +126,10 @@ function TheReview({ r }: { r: AReview }) {
         />
       </div>
 
+      {r.record && <TheRecordSection r={r} record={r.record} />}
+      {!person && r.briefing && <TheBriefing b={r.briefing} />}
+      {person && r.recognise && <WhatMayBeSuggested firstName={manager} r={r.recognise as RecogniseForThePerson} />}
+
       <Decision r={r} />
 
       <p className="gwui-panel-text-muted">{footer}</p>
@@ -157,6 +163,140 @@ function Words({ heading, text, empty, editable, save, reviewId }: {
   )
 }
 
+/** What Groundwork understands from the record. The person marks a line wrong and says what is true; nobody else can. */
+function TheRecordSection({ r, record }: { r: AReview; record: TheRecord }) {
+  const person = r.reader === 'person'
+  return (
+    <Section heading={person ? 'What Groundwork understands about your work' : `What Groundwork understands about ${r.firstName}’s work`}>
+      <p className="gwui-panel-text">{record.intro}</p>
+      {record.whoReads && <p className="gwui-panel-text-muted">{record.whoReads}</p>}
+      {record.parts.map(part => (
+        <Panel key={part.part} as="section" aria-label={part.heading}>
+          <h3 className="gwui-panel-heading">{part.heading}</h3>
+          <RowList label={part.heading}>
+            {part.lines.map(l => <ALine key={l.key} reviewId={r.id} line={l} mayCorrect={record.mayCorrect} />)}
+          </RowList>
+        </Panel>
+      ))}
+    </Section>
+  )
+}
+
+function ALine({ reviewId, line, mayCorrect }: { reviewId: string; line: TheRecord['parts'][number]['lines'][number]; mayCorrect: boolean }) {
+  const qc = useQueryClient()
+  const [asking, setAsking] = useState(false)
+  const [text, setText] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+  const save = useMutation({
+    mutationFn: () => reviewsApi.correct(reviewId, line.key, text.trim()),
+    onSuccess: (x) => { setProblem(null); setAsking(false); setText(''); qc.setQueryData(['suite-review', reviewId], x) },
+    onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
+  })
+  const fieldId = `review-correct-${line.key.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
+  return (
+    <Row columns="minmax(0, 1fr) auto">
+      <div>
+        <span>{line.says}</span>
+        {line.correction && (
+          <>
+            <p className="gwui-panel-text-muted">{line.correction.said}</p>
+            <p className="gwui-quoted-text">“{line.correction.whatIsTrue}”</p>
+          </>
+        )}
+        {asking && (
+          <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); if (text.trim()) save.mutate() }}>
+            <div className="gwui-suite-q">
+              <FieldLabel htmlFor={fieldId}>What is true</FieldLabel>
+              <TextArea id={fieldId} rows={3} value={text} onChange={e => setText(e.target.value)} maxLength={2000} />
+            </div>
+            <div className="gwui-edge-acts">
+              <Button kind="secondary" size="small" type="submit" disabled={!text.trim() || save.isPending}>Save what is true</Button>
+              <Button kind="quiet" size="small" onClick={() => { setAsking(false); setProblem(null) }}>Cancel</Button>
+            </div>
+          </form>
+        )}
+        {problem && <Note tone="error">{problem}</Note>}
+      </div>
+      {mayCorrect && !asking && (
+        <Button kind="quiet" size="small" onClick={() => setAsking(true)} aria-label={`This is wrong, ${line.says}`}>This is wrong</Button>
+      )}
+    </Row>
+  )
+}
+
+/** The writer's briefing: counts, patterns with the person's answer beside each, what changed after earlier talks, corrections. */
+function TheBriefing({ b }: { b: ABriefing }) {
+  return (
+    <Section heading={b.heading}>
+      {b.counts && <p className="gwui-panel-text">{b.counts}</p>}
+      {b.patterns.length > 0 && (
+        <Panel as="section" aria-label="What keeps coming up">
+          <h3 className="gwui-panel-heading">What keeps coming up</h3>
+          <RowList label="What keeps coming up">
+            {b.patterns.map((p, i) => (
+              <Row key={i} columns="minmax(0, 1fr)">
+                <div>
+                  <b>{p.heading}</b>
+                  {p.whatHappened && <p className="gwui-panel-text">{p.whatHappened}</p>}
+                  <p className="gwui-panel-text">{p.howOften}</p>
+                  <p className="gwui-panel-text-muted">{p.checkIn}</p>
+                  <p className="gwui-panel-text">{p.theirAnswer}</p>
+                </div>
+              </Row>
+            ))}
+          </RowList>
+          {b.patternsNote && <p className="gwui-panel-text-muted">{b.patternsNote}</p>}
+        </Panel>
+      )}
+      {b.changedAfterEarlierConversations.length > 0 && (
+        <Panel as="section" aria-label="What changed after earlier conversations">
+          <h3 className="gwui-panel-heading">What changed after earlier conversations</h3>
+          {b.changedAfterEarlierConversations.map((c, i) => <p key={i} className="gwui-panel-text">{c}</p>)}
+        </Panel>
+      )}
+      {b.corrections.length > 0 && (
+        <Panel as="section" aria-label="What has been marked as wrong">
+          <h3 className="gwui-panel-heading">What has been marked as wrong</h3>
+          {b.corrections.map((c, i) => (
+            <div key={i}>
+              <p className="gwui-panel-text">{c.line}</p>
+              <p className="gwui-panel-text-muted">{c.said}</p>
+              <p className="gwui-quoted-text">“{c.whatIsTrue}”</p>
+            </div>
+          ))}
+        </Panel>
+      )}
+      <p className="gwui-panel-text-muted">{b.whoDecides}</p>
+    </Section>
+  )
+}
+
+/** What the person reads when Groundwork may suggest recognising their work: their own count, the line, who decides. */
+function WhatMayBeSuggested({ firstName, r }: { firstName: string | null; r: RecogniseForThePerson }) {
+  return (
+    <Section heading={firstName ? `What Groundwork may suggest to ${firstName}` : 'What Groundwork may suggest'}>
+      <p className="gwui-panel-text">{r.facts}</p>
+      <p className="gwui-panel-text-muted">{r.whoDecides}</p>
+    </Section>
+  )
+}
+
+/** "Groundwork suggests recognising Aisha’s work": the card the writer sees, with the prototype's Agree and Choose something else. */
+function TheSuggestion({ r, firstName, onAgree, onElse }: { r: RecogniseForTheWriter; firstName: string; onAgree: () => void; onElse: () => void }) {
+  return (
+    <Panel as="section" aria-label={r.headline}>
+      <h3 className="gwui-panel-heading">{r.headline}</h3>
+      <p className="gwui-panel-text">{r.why}</p>
+      <p className="gwui-panel-text-muted">{r.whatWouldChangeIt}</p>
+      <p className="gwui-panel-text-muted">{r.yourDecision}</p>
+      <div className="gwui-edge-acts">
+        <Button kind="secondary" size="small" onClick={onAgree} aria-label={`Agree to recognise ${firstName}’s work`}>Agree</Button>
+        <Button kind="quiet" size="small" onClick={onElse}>Choose something else</Button>
+      </div>
+    </Panel>
+  )
+}
+
 function Decision({ r }: { r: AReview }) {
   const qc = useQueryClient()
   const [says, setSays] = useState('')
@@ -168,6 +308,7 @@ function Decision({ r }: { r: AReview }) {
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
   const writer = r.reader === 'writer'
+  const suggestion = r.reader !== 'person' ? r.recognise ?? null : null
 
   if (r.decision) {
     return (
@@ -182,6 +323,10 @@ function Decision({ r }: { r: AReview }) {
   if (!writer) return null
   return (
     <Section heading="Your decision">
+      {suggestion && (
+        <TheSuggestion r={suggestion} firstName={r.firstName}
+          onAgree={() => setSays(`Recognise ${r.firstName}’s work.`)} onElse={() => setSays('')} />
+      )}
       <form className="gwui-suite-ask" onSubmit={e => { e.preventDefault(); if (says.trim() && reasons.trim()) saving.mutate() }}>
         <div className="gwui-suite-q">
           <FieldLabel htmlFor="rv-says">Your decision</FieldLabel>
