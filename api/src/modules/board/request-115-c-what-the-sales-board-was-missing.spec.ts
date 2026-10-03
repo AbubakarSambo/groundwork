@@ -126,7 +126,7 @@ describe('request 115 (c): open issues, and what a target assumes', () => {
 
   it('an aim with nothing written down for what it assumes says so, to the lead as something she can do', async () => {
     const lead = await boardAs(WITH_AN_AIM, ...BISI);
-    expect(lead.objectives.find((o: any) => o.id === 'o-approved').assumesSays).toBe('Nothing on record says what this target assumes yet. You can write down what it assumes here.');
+    expect(lead.objectives.find((o: any) => o.id === 'o-approved').assumesSays).toBe('Nothing on record says what this target assumes yet.');
     const juma = await boardAs({ ...WITH_AN_AIM, whoSeesTargets: 'EVERYBODY' }, ...JUMA);
     expect(juma.objectives.find((o: any) => o.id === 'o-approved').assumesSays).toBe('Nobody has written down what this target assumes yet.');
     const written = await boardAs({ ...WITH_AN_AIM, objectives: [{ ...aim('o-approved', 'Approved facilities this quarter', 40, 38), assumes: ['Credit approves within a week.'] }] }, ...BISI);

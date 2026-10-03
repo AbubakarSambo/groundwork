@@ -1158,7 +1158,7 @@ export class BoardService {
         assumesSays: (Array.isArray((o as any).assumes) ? ((o as any).assumes as string[]).filter((a) => typeof a === 'string' && a.trim()) : []).length
           ? null
           : isInitiator
-            ? 'Nothing on record says what this target assumes yet. You can write down what it assumes here.'
+            ? 'Nothing on record says what this target assumes yet.'
             : 'Nobody has written down what this target assumes yet.',
         /*
          * WHOSE NUMBER THIS IS. The board listed a target set for one person exactly as it listed the
