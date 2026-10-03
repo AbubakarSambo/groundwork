@@ -84,7 +84,7 @@ export interface PersonRow {
    * the decider's name; the board builds this row only for whoever runs the check-in or an admin,
    * the same readers who may see the decider on GET /grounds/:id.
    */
-  notLetIn?: { by: string | null; at: Date | null };
+  notLetIn?: { by: string | null; at: Date | null; declined?: boolean };
 }
 
 /**
@@ -199,6 +199,7 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
   const mid = subjectFor(row, false);
   switch (reason) {
     case 'not let in':
+      if (row.notLetIn?.declined === false) return `${start} is waiting to be let in, so there is nobody to ask yet.`;
       return row.notLetIn?.by
         ? `${start} was not let in by ${row.notLetIn.by}, so there is nobody to ask.`
         : `${start} was not let in, so there is nobody to ask.`;

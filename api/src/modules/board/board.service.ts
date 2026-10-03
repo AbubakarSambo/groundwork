@@ -1469,6 +1469,8 @@ export class BoardService {
           notLetInByUser.set(userId, { by: deciderName.get(d.decidedByUserId ?? '') ?? null, at: d.decidedAt ?? null });
         }
       }
+      /* Everybody not let in yet, declined or still waiting: the same givers as the header's count (decision 77, request 121 part 4). */
+      const heldBack = await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId);
       out.eachPerson = whereEachPersonIs(
         /*
          * AND THE MANAGER IS NOT IN THEIR OWN LIST.
@@ -1504,7 +1506,10 @@ export class BoardService {
               [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim()
               || ((p as any).nameGiven ?? '').trim()
             ),
-            notLetIn: p.userId && notLetInByUser.has(p.userId) ? { by: notLetInByUser.get(p.userId)!.by, at: notLetInByUser.get(p.userId)!.at } : undefined,
+            /* Declined by an admin, or still waiting to be let in (decision 77): neither can be asked to check in. */
+            notLetIn: p.userId && notLetInByUser.has(p.userId)
+              ? { by: notLetInByUser.get(p.userId)!.by, at: notLetInByUser.get(p.userId)!.at, declined: true }
+              : (heldBack.has(p.id) ? { by: null, at: null, declined: false } : undefined),
             target: theirs?.target ?? null,
             count: theirs?.count ?? 0,
             answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED,
