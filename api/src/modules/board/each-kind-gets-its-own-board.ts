@@ -285,7 +285,9 @@ export const NO_GROUP_ON_RECORD =
   'Groundwork does not keep which group each person belongs to, such as processors, distributors or researchers, so the answers cannot be shown by group yet.';
 
 function byWhoTheyAre(i: WhatTheKindsBoardIsBuiltFrom) {
-  const asked = i.people.filter((p) => !p.managingOnly && !p.isLead);
+  /* A lead who checks in too is one of the people asked (item 21, the where-next board): Omar read "3 of 3 people have
+     answered." under a summary saying all four had. A lead who only runs it is not counted. */
+  const asked = i.people.filter((p) => !p.managingOnly && (!p.isLead || p.answered));
   const answered = asked.filter((p) => p.answered).length;
   return {
     heading: 'By who they are',
