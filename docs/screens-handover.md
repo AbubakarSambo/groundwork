@@ -4,6 +4,10 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## Support desk board: done (4 October)
+
+"Support desk, test" (48896035), lead and participant, matched to support.txt after one review and three fixes (a2596ea5..aa4c6d3b), checked live (scratchpad `pictures/support-A/`). BoardPage.tsx now has a per-kind table, `kindLayout`, for where sections sit. Each later kind is one row. The engine's part is request 129.
+
 ## Project boards: done (4 October)
 
 Both situations, "Get a new project off to a good start" (555ac67d, engineering) and "Get a project back on track" (dac969d3), as lead and participant. The first review's eleven screen faults are fixed (06c9a1ac..6a207536) and checked live, with captures in the scratchpad's `pictures/project-check-eng/` and `project-check-drift/`. The engine's part is request 127. The local API runs the engine's 0b15efca, because its newest code does not compile (request 126). Next: Phase B, the other eight kinds of work, one at a time.
