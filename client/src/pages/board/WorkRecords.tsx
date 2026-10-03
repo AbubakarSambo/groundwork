@@ -1202,7 +1202,7 @@ export function YourOwnRecordsSections({ groundId, kindOfWork, sections, myParti
  * rebuilt pages already use - `Section` itself carries no spacing of its own, so without this a
  * button at the foot of one section sits flush against the next section's heading.
  */
-export function WorkRecordsSections({ groundId, kindOfWork, sections, participants, leadFirstName, readerIsLead, canEdit }: {
+export function WorkRecordsSections({ groundId, kindOfWork, sections, participants, leadFirstName, readerIsLead, canEdit, collapseWhenAllNotKnown }: {
   groundId: string
   kindOfWork?: KindOfWork | null
   sections?: AServedWorkSection[]
@@ -1210,21 +1210,23 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
   leadFirstName: string | null
   readerIsLead: boolean
   canEdit: boolean
+  /**
+   * PROJECT BOARD REVIEW 1, FIX 3: NO KIND OF WORK, ONE SENTENCE, NOT SIX HEADED SECTIONS. A
+   * check-in with no kind of work chosen at all (the DRIFT fixture, "The partnerships work has
+   * gone quiet", dac969d3) gets every `workRecords` section back as not-known with the exact same
+   * `why`, and nothing else on the board to say instead - drawn as before, that repeated the same
+   * italic sentence six times, each under its own heading, four of them the switchboard's own
+   * internal names ("Deal grid", "Forecast", "Themes", "Work plan"), never a sentence a person
+   * reads. The caller works out whether that is really true for this board (it is not, for the
+   * onboarding board's own `workRecords`, which looks the same but has real "Work plan" and
+   * "Timeline" content elsewhere) and passes the answer in here, rather than this component
+   * guessing from the sections alone.
+   */
+  collapseWhenAllNotKnown?: boolean
 }) {
   if (!sections?.length) return null
 
-  /*
-   * PROJECT BOARD REVIEW 1, FIX 3: NO KIND OF WORK, ONE SENTENCE, NOT SIX HEADED SECTIONS. A
-   * check-in with no kind of work chosen yet (the DRIFT fixture, dac969d3) gets every section back
-   * as "not-known" with the exact same `why` ("Groundwork does not know what kind of work this
-   * check-in is about yet, so it keeps no records of this kind."). Drawn as before, that repeated
-   * the same italic sentence six times, each under its own heading - and four of those headings
-   * were the switchboard's own internal names ("Deal grid", "Forecast", "Themes", "Work plan"),
-   * never a sentence a person reads. Where every section is not-known for the same reason, this
-   * says that sentence once, with no heading at all, instead of once per section.
-   */
-  const allNotKnownSameWhy = sections.length > 1 && sections.every((s) => s.state === 'not-known') && sections.every((s) => s.state === 'not-known' && s.why === (sections[0] as { why: string }).why)
-  if (allNotKnownSameWhy) {
+  if (collapseWhenAllNotKnown) {
     return (
       <div className="gwui-page-wrap">
         <p className="gwui-fs-13-5 gwui-ink-muted" style={{fontStyle: 'italic', lineHeight: 1.5}}>{(sections[0] as { why: string }).why}</p>

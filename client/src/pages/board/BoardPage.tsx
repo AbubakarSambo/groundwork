@@ -443,6 +443,7 @@ function MaybeFolded({ fold, children }: { fold: boolean; children: ReactNode })
   )
 }
 
+
 /**
  * OPEN "THE WHOLE CHECK-IN" AND JUMP TO IT (board review, sales piece C, item 6).
  *
@@ -1296,6 +1297,27 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   ])
   const restOfWorkRecordSectionsToShow = restOfWorkRecordSections.filter((s) =>
     s.state !== 'not-known' || !switchboardHeadingsAlreadyShown.has(sectionHeading((b as any).kindOfWork ?? null, s)))
+  /*
+   * PROJECT BOARD REVIEW 1, FIX 3: SAID ONCE, WITH NO HEADING - BUT ONLY WHEN THERE IS GENUINELY
+   * NOTHING ELSE FOR THIS KIND OF WORK ANYWHERE ON THE BOARD. A check-in with no kind of work
+   * chosen at all (the DRIFT fixture, "The partnerships work has gone quiet", dac969d3) sends
+   * every `workRecords` section back as not-known, with the same stock sentence, and nothing of
+   * the switchboard's own real sections (Work plan, Timeline...) filled in either -
+   * `switchboardHeadingsAlreadyShown` is empty. That is the one case this collapses to a single
+   * sentence with no heading, rather than the raw switchboard names ("Deal grid", "Forecast",
+   * "Themes", "Work plan") repeating the same sentence once each.
+   *
+   * An onboarding board (ONBOARDING family) also sends every `workRecords` entry as not-known
+   * with `kindOfWork: null`, but its real "Work plan" and "Timeline" DO carry content from their
+   * own fields - `switchboardHeadingsAlreadyShown` is not empty there, so this is left exactly as
+   * the onboarding board's own, already-reviewed fix 4 built it.
+   */
+  const allWorkRecords = b.workRecords ?? []
+  const workRecordsAllNotKnownSameWhy =
+    switchboardHeadingsAlreadyShown.size === 0 &&
+    allWorkRecords.length > 1 &&
+    allWorkRecords.every((s) => s.state === 'not-known') &&
+    new Set(allWorkRecords.map((s) => (s as { why: string }).why)).size === 1
   // Only the caller's own availability is theirs to toggle.
   const myIds = new Set(b.myParticipantId ? [b.myParticipantId] : [])
 
@@ -2376,6 +2398,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
             readerIsLead={viewerRunsThisCheckIn}
             canEdit={b.canEditFrame}
+            collapseWhenAllNotKnown={workRecordsAllNotKnownSameWhy}
           />
         )}
         <ByAreaSection data={(b as any).byArea} />
