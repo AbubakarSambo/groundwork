@@ -19,18 +19,15 @@ export const CONTEXT_IN_ASK_GROUNDWORK_KEY = 'release.contextInAskGroundwork';
 export const PLAN_AND_BILLING_NEW_PARTS_KEY = 'release.planAndBillingNewParts';
 
 /**
- * The kinds offered at release: sales, onboarding (a new hire, a new manager, a new advisor) and
- * projects. Of the eleven kinds a board can keep records for, only the sales one is among them; the
- * onboarding and project boards are chosen by the situation, not by this list, and are listed here so
- * the setting says what the release offers in one place.
+ * The kinds of work a NEW check-in may be given at release (decision 91, item 3). The paid client
+ * needs sales, onboarding and projects. Of the eleven kinds a board keeps records for, two serve
+ * them: "sales org" (deals) and "engineering release" (the project board's tasks and releases, the
+ * prototype's engineering example). Onboarding and project boards are chosen by the situation
+ * (NEW_HIRE, NEW_MANAGER, NEW_ADVISOR and NEW_PROJECT, see board-families.ts), not by a kind, so a
+ * new onboarding or project check-in gets its board whether or not it holds a kind. Every other kind
+ * stays hidden until the screens workspace marks its board done.
  */
-export const KINDS_OFFERED_AT_RELEASE: readonly string[] = [
-  'sales org',
-  'onboarding: a new hire',
-  'onboarding: a new manager',
-  'onboarding: a new advisor',
-  'project',
-];
+export const KINDS_OFFERED_AT_RELEASE: readonly string[] = ['sales org', 'engineering release'];
 
 type Reader = { platformSetting?: { findUnique: (a: any) => Promise<{ value: unknown } | null> } } | any;
 

@@ -1,7 +1,8 @@
 import { GroundsService } from '../grounds/grounds.service';
 import { AssistantService } from '../assistant/assistant.service';
 import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
-import { theBoardKindsOffered, aKindMayBeGiven, contextIsInAskGroundwork, theNewBillingPartsAreShown } from './what-is-hidden-at-release';
+import { SCENARIO_FAMILY, BoardFamily } from '../board/board-families';
+import { KINDS_OFFERED_AT_RELEASE, theBoardKindsOffered, aKindMayBeGiven, contextIsInAskGroundwork, theNewBillingPartsAreShown } from './what-is-hidden-at-release';
 
 /**
  * WHAT THE RELEASE HIDES (decisions 78, 88 and 90): a hidden thing is not offered to anything NEW,
@@ -10,15 +11,15 @@ import { theBoardKindsOffered, aKindMayBeGiven, contextIsInAskGroundwork, theNew
 const settings = (rows: Record<string, unknown>) => ({ platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where.key in rows ? { value: rows[where.key] } : null)) } });
 
 describe('the three settings, with no row at all', () => {
-  it('offer sales only of the eleven kinds, and keep the context and billing parts off', async () => {
+  it('offer sales and engineering of the eleven kinds, and keep the context and billing parts off', async () => {
     const p = settings({});
-    expect(await theBoardKindsOffered(p)).toEqual(['sales org']);
+    expect(await theBoardKindsOffered(p)).toEqual(['sales org', 'engineering release']);
     expect(await contextIsInAskGroundwork(p)).toBe(false);
     expect(await theNewBillingPartsAreShown(p)).toBe(false);
   });
   it('read a broken row as the default, never as everything on', async () => {
     const p = settings({ 'release.boardKindsOffered': 'nonsense', 'release.contextInAskGroundwork': 'yes', 'release.planAndBillingNewParts': { on: 'true' } });
-    expect(await theBoardKindsOffered(p)).toEqual(['sales org']);
+    expect(await theBoardKindsOffered(p)).toEqual(['sales org', 'engineering release']);
     expect(await contextIsInAskGroundwork(p)).toBe(false);
     expect(await theNewBillingPartsAreShown(p)).toBe(false);
   });
@@ -54,7 +55,7 @@ describe('boards for kinds of work nobody uses yet', () => {
   it('does not let a lead give a NEW check-in a kind that is not offered, and says so in a sentence', async () => {
     const { svc, updates } = grounds(aCheckIn(), {});
     await expect(svc.setKindOfWork('g1', 'lead', { kind: 'a law firm matter' })).rejects.toThrow(
-      'Groundwork does not offer that kind of work yet. Choose one of these: sales org.',
+      'Groundwork does not offer that kind of work yet. Choose one of these: sales org, engineering release.',
     );
     expect(updates).toEqual([]);
   });
@@ -62,6 +63,16 @@ describe('boards for kinds of work nobody uses yet', () => {
     const { svc, updates } = grounds(aCheckIn(), {});
     await svc.setKindOfWork('g1', 'lead', { kind: 'sales org' });
     expect(updates).toEqual([{ kindOfWork: 'sales org', kindOfWorkSetBy: 'lead' }]);
+  });
+  it('lets a lead give a new check-in the engineering kind, which the project board uses', async () => {
+    const { svc, updates } = grounds(aCheckIn(), {});
+    await svc.setKindOfWork('g1', 'lead', { kind: 'engineering release' });
+    expect(updates).toEqual([{ kindOfWork: 'engineering release', kindOfWorkSetBy: 'lead' }]);
+  });
+  it('lets the read at setup give a new project check-in the engineering kind', async () => {
+    const { svc, updates } = grounds(aCheckIn({ label: 'Release by 30 September' }), { kind: 'engineering release' });
+    await svc.readTheKindOfWork('g1');
+    expect(updates).toEqual([{ kindOfWork: 'engineering release', kindOfWorkSetBy: 'read' }]);
   });
   it('does not let the read at setup pick a kind that is not offered', async () => {
     const { svc, updates } = grounds(aCheckIn(), { kind: 'a law firm matter' });
@@ -142,5 +153,17 @@ describe('plan and billing\'s new parts', () => {
   });
   it('reads the same to everybody else, hidden or not', async () => {
     expect(await read(false, false)).toEqual(await read(true, false));
+  });
+});
+
+describe('onboarding and project check-ins get their board without a kind', () => {
+  it('puts a new hire, a new manager, a new advisor and a new project on their own boards', () => {
+    expect(SCENARIO_FAMILY.NEW_HIRE).toBe(BoardFamily.ONBOARDING);
+    expect(SCENARIO_FAMILY.NEW_MANAGER).toBe(BoardFamily.ONBOARDING);
+    expect(SCENARIO_FAMILY.NEW_ADVISOR).toBe(BoardFamily.ONBOARDING);
+    expect(SCENARIO_FAMILY.NEW_PROJECT).toBe(BoardFamily.DELIVERY);
+  });
+  it('offers nothing but the two kinds the paid client needs', () => {
+    expect([...KINDS_OFFERED_AT_RELEASE]).toEqual(['sales org', 'engineering release']);
   });
 });
