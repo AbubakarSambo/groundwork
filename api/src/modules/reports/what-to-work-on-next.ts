@@ -287,7 +287,7 @@ function roleBlock(map: RoleMap | null, pair: { noticed: string; lookingLike: st
  */
 const GENERAL_ROLE_BLOCK = {
   label: 'What you said',
-  onTrack: 'What you said can be checked later: it has a date, a number or a name on it, and you say what you did about anything that stalled.',
+  onTrack: 'What you said can be checked later, because it has a date, a number or a name on it. You also say what you did about anything that stalled.',
   goingWrong: 'What you said is hard to check later: it has no dates, numbers or names, or things were named and not carried through.',
   protectAgainst: 'A short account is not a weak one. If you said little, little may have happened yet, or nobody may have asked the right question. Nothing here is read against a kind of job.',
   noticed: null,
