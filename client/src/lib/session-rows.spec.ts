@@ -93,3 +93,53 @@ describe('buildSessionRows: somebody not let in yet is not counted', () => {
     expect(session1?.waitingOn).not.toContain('Faraji Odhiambo')
   })
 })
+
+/**
+ * ONBOARDING BOARD REVIEW, 3 OCTOBER: TOBI'S ROWS READ "1 of 1 checked in" ON A TWO-PERSON CHECK-IN.
+ *
+ * `GET /grounds/:id` gives a participant only their own row, so `ground.participants` here has one
+ * entry even though both people answered every session. The board's own `GET /grounds/:id/board`
+ * sends the full roster - passed in as `fullParticipants` - so a restricted, closed round can read
+ * the true "2 of 2", and a restricted, still-open round draws no count at all rather than guess.
+ */
+describe('buildSessionRows: a restricted roster, given the full one from the board', () => {
+  const labelInASentence = (p: any) => p.name ?? 'a colleague'
+  const restrictedGround = {
+    participants: [{ id: 'p-tobi', userId: 'u-tobi', name: 'Tobi Adewale', managingOnly: false }],
+    checkIns: [
+      { id: 'c1', participantId: 'p-tobi', sessionNumber: 1, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-26T16:01:00.000Z' },
+      { id: 'c2', participantId: 'p-tobi', sessionNumber: 2, status: 'COMPLETED', isSetup: false, completedAt: '2026-09-26T16:05:00.000Z' },
+    ],
+    roundCompletions: [{ sessionNumber: 1, completedAt: '2026-09-26T16:01:40.000Z' }],
+  }
+  const fullParticipants = [
+    { id: 'p-tobi', managingOnly: false },
+    { id: 'p-director', managingOnly: false },
+  ]
+
+  it('reads "2 of 2 checked in" for a closed round, with the full roster passed in', () => {
+    const rows = buildSessionRows(restrictedGround, 'u-tobi', labelInASentence, fullParticipants)
+    const session1 = rows.find((r) => r.sessionNumber === 1)
+    expect(session1?.closed).toBe(true)
+    expect(session1?.answered).toBe(2)
+    expect(session1?.total).toBe(2)
+  })
+
+  it('draws no count for a restricted, still-open round', () => {
+    const rows = buildSessionRows(restrictedGround, 'u-tobi', labelInASentence, fullParticipants)
+    const session2 = rows.find((r) => r.sessionNumber === 2)
+    expect(session2?.closed).toBe(false)
+    expect(session2?.answered).toBeNull()
+    expect(session2?.total).toBe(2)
+  })
+
+  it('behaves exactly as before when fullParticipants is not passed', () => {
+    const rows = buildSessionRows(restrictedGround, 'u-tobi', labelInASentence)
+    const session1 = rows.find((r) => r.sessionNumber === 1)
+    const session2 = rows.find((r) => r.sessionNumber === 2)
+    expect(session1?.answered).toBe(1)
+    expect(session1?.total).toBe(1)
+    expect(session2?.answered).toBe(1)
+    expect(session2?.total).toBe(1)
+  })
+})
