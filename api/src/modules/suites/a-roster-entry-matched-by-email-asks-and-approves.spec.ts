@@ -138,7 +138,8 @@ describe('Amani asks for leave through Ask Groundwork, with an entry nobody link
   it('and her yes sends it as her own sign-in', async () => {
     const s = svc({ id: 'pk', kind: 'leave_request', state: 'PARKED', summary: 'x', payload: { startsOn: '2026-10-08', endsOn: '2026-10-09' } });
     const out = await s.said('yes');
-    expect(s.ask).toHaveBeenCalledWith(ORG, 'u-amani', { startsOn: '2026-10-08', endsOn: '2026-10-09' });
+    /* With the say-back's reference, kept in the record of who did what (decision 85, build step 5). */
+    expect(s.ask).toHaveBeenCalledWith(ORG, 'u-amani', { startsOn: '2026-10-08', endsOn: '2026-10-09', proposalId: expect.any(String) });
     expect(out.text).toBe('I have sent your leave request from Thursday 8 October to Friday 9 October to Wairimu. It is not approved until they decide, and you will see it under your leave.');
   });
 });

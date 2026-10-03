@@ -95,8 +95,12 @@ const FIVE = /\b5 sales\b|\bfive sales\b/i;
 describe('what the lead has not shared reaches nobody, on the board', () => {
   it.each(READERS)('%s', async (_who, userId, role, may) => {
     const served = JSON.stringify(await boardAs(userId, role));
+    /* The lead's private file stays the lead's, from an admin too. */
     expect(served.includes(FILE)).toBe(may.file);
-    if (!may.target) expect(served).not.toMatch(FIVE);
+    /* Decision 86: on the board an admin sees the figures, Aisha's number included. The report is not
+       changed by it (a question for Hafsah). A participant with no target still never reads it. */
+    if (role === 'ADMIN') expect(served).toMatch(FIVE);
+    else if (!may.target) expect(served).not.toMatch(FIVE);
     /* What is not the lead's to keep stays for everybody: what Miriam did is not a secret. */
     if (served.includes('Miriam Wanjiku')) expect(served).toMatch(/visited the buyers/);
   });

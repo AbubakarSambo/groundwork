@@ -5,6 +5,7 @@ import { peopleSaidDifferentThingsAbout } from './what-people-said-differently-a
 import { cleanText } from './what-the-record-actually-holds';
 import { PrismaService } from '../prisma/prisma.service';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
+import { anArticleSaidMidSentence } from '../board/a-holder-in-their-own-words';
 
 /*
  * A TILE SHOWS A WHOLE SENTENCE, OR NONE.
@@ -34,7 +35,13 @@ const up = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : 
  * put inside a sentence of ours. A sentence somebody said stays theirs and only gets its capital.
  */
 const SAYS_SOMETHING = /^(?:I|We|They|He|She|It|There|Nobody|Nothing|Everyone)\b|\b(?:is|are|was|were|has|have|had|will|can|cannot|did|does|do|said|says|need|needs|waiting|stopped|heard)\b/;
-const blockerAsASentence = (b: string): string => (SAYS_SOMETHING.test(b) ? `${up(b)}.` : `Work is held up by ${inASentence(b)}.`);
+/* "The grinding machine they were approved for" is a thing with a clause about it, not a sentence (item 21, the loans
+   board): it read "The grinding machine I was approved for." on the tile. A phrase that opens with "the", "a", "their" and
+   the like, and whose only verb follows "I", "you" or "they", is a thing held up. */
+const A_THING_WITH_A_CLAUSE = /^(?:the|a|an|this|that|these|those|your|their|our|his|her|my)\s/i;
+const A_RELATIVE_CLAUSE = /\b(?:I|you|they|we|he|she)\s+(?:was|were|am|are|is|had|have|has|need|needs|asked|ordered|requested)\b/;
+const blockerAsASentence = (b: string): string => (SAYS_SOMETHING.test(b) && !(A_THING_WITH_A_CLAUSE.test(b) && A_RELATIVE_CLAUSE.test(b))
+  ? `${up(b)}.` : `Work is held up by ${inASentence(b)}.`);
 
 export function theFirstSentenceThatFits(s: string | null | undefined, max = A_TILE_HOLDS): string | null {
   const t = (s ?? '').trim().replace(/\s+/g, ' ');
@@ -105,6 +112,13 @@ export interface WhatThisSessionHolds {
   worries: number;
   theFirstWorry: string | null;
   /**
+   * WAITS RAISED IN AN EARLIER SESSION AND STILL OPEN (item 21, the founder's board). The tile said
+   * "There is 1 more worry on record, and nobody is waiting on anybody." to Ada, while Tunde was
+   * waiting on her for three things raised two sessions before. This session raised no wait, but
+   * the earlier ones had not gone away; the tile now says so instead of saying nobody waits.
+   */
+  waitsFromEarlier?: number;
+  /**
    * HOW MANY TARGETS EXIST AT ALL, which is a different fact from whether any moved.
    *
    * Read live, 22 September 2026, on a check-in whose lead had just pasted the quarter's six numbers
@@ -134,6 +148,14 @@ export interface WhoReadsTheMovement {
    * only how many worries there are, never a colleague's words.
    */
   colleaguesWordsWalled?: boolean;
+  /**
+   * WHETHER THE BLOCKERS TILE COUNTS AND NAMES ONLY THIS READER'S OWN WAITS (run-25, loans). Sunday, a borrower where
+   * people do not see each other, read "Work is held up by the grinding machine, which waits on the supplier.": Musa's
+   * wait, not his. The header above the tiles already said only his own (theGlanceAsThisReaderMayReadIt); the tile
+   * read every wait on the check-in. Set where the header is narrowed: a participant where people do not see each
+   * other, and anybody on an evaluation check-in who does not run it.
+   */
+  ownWaitsOnly?: boolean;
 }
 
 /**
@@ -170,7 +192,7 @@ export async function whatMovedInTheRound(
 export async function whatThisSessionHolds(prisma: PrismaService, groundId: string, sessionNumber: number, reader: WhoReadsTheMovement): Promise<WhatThisSessionHolds> {
   /* A dependency knows which check-in raised it (sourceCheckInId); the check-in knows its session. */
   const raisedIn = await prisma.checkIn.findMany({ where: { groundId, sessionNumber }, select: { id: true } });
-  const [deps, everyObjective, theGround, worried] = await Promise.all([
+  const [deps, everyObjective, theGround, worried, earlierDeps] = await Promise.all([
     raisedIn.length
       ? prisma.groundDependency.findMany({
           where: { groundId, clearedAt: null, status: { in: ['WAITING', 'BLOCKING'] as any }, sourceCheckInId: { in: raisedIn.map((c) => c.id) } },
@@ -193,6 +215,18 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
           orderBy: { createdAt: 'asc' },
         })
       : Promise.resolve([] as { text: string; participantId: string | null; saidWordForWord: boolean | null }[]),
+    /* Still open, and raised before this session (or with no session on record). A session nobody has
+       answered yet says nothing about waits, so the table is not asked. */
+    raisedIn.length
+      ? (prisma.groundDependency.findMany({
+          where: {
+            groundId, clearedAt: null, status: { in: ['WAITING', 'BLOCKING'] as any },
+            OR: [{ sourceCheckInId: null }, { sourceCheckInId: { notIn: raisedIn.map((c) => c.id) } }],
+          },
+          select: { status: true, fromParticipantId: true, onParticipantId: true, what: true, onLabel: true },
+        }) as Promise<{ status: string; fromParticipantId: string; onParticipantId: string | null; what: string; onLabel: string | null }[]>)
+          .then((r) => r ?? []).catch(() => [])
+      : Promise.resolve([] as { status: string; fromParticipantId: string; onParticipantId: string | null; what: string; onLabel: string | null }[]),
   ]);
   const worries = worried.length;
   /*
@@ -241,7 +275,11 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     .filter((w): w is { who: string | null; line: string } => !!w.line && !/["“”]/.test(w.line) && quotesBuiltAtTheRead(w.line, quotable) === w.line)
     .map((w) => `${whoSaid(w.who)} said, "${/[.!?]$/.test(w.line) ? w.line : `${w.line}.`}"`)[0] ?? null;
   /* A wait on oneself, by id or as "themselves", is not a wait (request 111 e). */
-  const real = deps.filter((d) => !aWaitOnOneself(d));
+  const theseMayBeRead = (rows: typeof deps) => rows.filter((d) => !aWaitOnOneself(d))
+    /* What they wait on, or what waits on them, and nobody else's (ownWaitsOnly). */
+    .filter((d) => !reader.ownWaitsOnly || (!!reader.participantId && (d.fromParticipantId === reader.participantId || d.onParticipantId === reader.participantId)));
+  const real = theseMayBeRead(deps);
+  const waitsFromEarlier = theseMayBeRead(earlierDeps).length;
   const blocked = real.filter((d) => d.status === 'BLOCKING').length;
   const waiting = real.filter((d) => d.status === 'WAITING').length;
   /* The hard one first, because that is the one a lead acts on. */
@@ -249,7 +287,7 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
   /* The person it sits with, unless the line already says it: "legal to look at the contract, on
      legal" is the tile telling somebody the same word twice. */
   const what = first?.what?.trim() ?? '';
-  const on = first?.onLabel?.trim() ?? '';
+  const on = anArticleSaidMidSentence(first?.onLabel?.trim() ?? '');
   const alreadySaid = !!on && what.toLowerCase().includes(on.toLowerCase());
   const theFirstBlocker = what ? `${what}${on && !alreadySaid ? `, which waits on ${on}` : ''}` : null;
 
@@ -271,7 +309,7 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
    * EVERY TARGET THIS READER IS LISTED, and how many of them have a number (request 109 c). The tile read "1
    * target is set" above a list of three, because it counted only the ones with a number. Both are said.
    */
-  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, targetsSet: objectives.length, targetsWithANumber: objectives.filter((o) => o.target != null).length, targetsMoved };
+  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, waitsFromEarlier, targetsSet: objectives.length, targetsWithANumber: objectives.filter((o) => o.target != null).length, targetsMoved };
 }
 
 /** The four tiles, from the counts. The one builder both the report and the board call. */
@@ -312,6 +350,8 @@ export function atAGlanceTiles(a: {
   /** Worries said this round, for when nothing is blocked: the tile says so instead of "None". */
   worries?: number;
   theWorry?: string | null;
+  /** Waits raised before this session and still open, so the tile never says nobody waits while somebody does. */
+  waitsFromEarlier?: number;
 }): AGlanceRead[] {
   /*
    * NOT CUT AT ALL. Read live: "we have a meeting with the CEO to discuss m..." - the tile stopped
@@ -332,9 +372,14 @@ export function atAGlanceTiles(a: {
     if (!first) return null;
     return /[.!?]["'”’)\]]*$/.test(first) ? first : `${first}.`;
   })();
+  const earlier = a.waitsFromEarlier ?? 0;
+  /* Nobody waits, said only where it is true; otherwise how many waits from earlier sessions are still open. */
+  const andTheWaits = earlier > 0
+    ? `. Nobody named a new wait this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
+    : ', and nobody is waiting on anybody.';
   const theRestOfTheWorries = (n: number): string => (n <= 0
-    ? 'It is the only worry on record, and nobody is waiting on anybody.'
-    : `There ${n === 1 ? 'is 1 more worry' : `are ${n} more worries`} on record, and nobody is waiting on anybody.`);
+    ? `It is the only worry on record${andTheWaits}`
+    : `There ${n === 1 ? 'is 1 more worry' : `are ${n} more worries`} on record${andTheWaits}`);
   const worries = a.worries ?? 0;
   const moved = a.movedOnTargets == null ? 0 : (a.targetsMoved ?? (a.movedOnTargets !== 0 ? 1 : 0));
   return [
@@ -349,7 +394,8 @@ export function atAGlanceTiles(a: {
       sub: a.stillOpen
         ? (theDifference
           ? `${peopleSaidDifferentThingsAbout(theDifference)}${a.stillOpen > 1 ? ` ${a.stillOpen - 1} more ${a.stillOpen === 2 ? 'difference is' : 'differences are'} still open.` : ''}`
-          : 'The written report reads this as still open.')
+          /* With more than one, how many (item 21): "2" over "The written report reads this as still open." left "this" pointing at nothing. */
+          : a.stillOpen > 1 ? `The written report reads ${a.stillOpen} differences as still open.` : 'The written report reads this as still open.')
         : a.agreed ? 'The written report finds no disagreement.'
           : a.stillToAnswer === 0 ? 'Everybody has answered, and the written report names no agreement and no gap yet.'
             /* And where nobody passed a count, say what is true of the report rather than guess at the
@@ -407,8 +453,10 @@ export function atAGlanceTiles(a: {
           : worries
             ? (theWorry
               ? `${theWorry} ${theRestOfTheWorries(worries - 1)}`
-              : `${worries} ${worries === 1 ? 'worry is' : 'worries are'} on record, and nobody is waiting on anybody.`)
-            : 'Nobody named anything holding work up.',
+              : `${worries} ${worries === 1 ? 'worry is' : 'worries are'} on record${andTheWaits}`)
+            : earlier > 0
+              ? `Nobody named anything new holding work up this session, and ${earlier === 1 ? '1 wait from an earlier session is' : `${earlier} waits from earlier sessions are`} still open.`
+              : 'Nobody named anything holding work up.',
       tone: a.blocked ? 'bad' : (a.waiting ?? 0) > 0 || worries ? 'warn' : 'good',
     },
     {
@@ -442,13 +490,20 @@ export function atAGlanceTiles(a: {
  * Only a Blockers tile that already names something is changed: one that says nobody named anything,
  * or that counts worries, is left as it is.
  */
-export function theBlockersTileNamesThis(tiles: AGlanceRead[], blocker: string | null | undefined): AGlanceRead[] {
+/*
+ * AND A COUNT OF HARD BLOCKERS NAMES A HARD BLOCKER (item 21, the government programme board). Stephen read "Blockers 1.
+ * Work is held up by an update on a fix.": the top line's oldest wait was one nobody called blocking, while the one thing
+ * blocking was "a fix for the printer connection". Where the caller says the top line's wait is not a hard one, a tile
+ * counting hard blockers keeps its own.
+ */
+export function theBlockersTileNamesThis(tiles: AGlanceRead[], blocker: string | null | undefined, opts: { itIsHard?: boolean } = {}): AGlanceRead[] {
   const named = theFirstSentenceThatFits(blocker ?? null);
   const name = named ? named.replace(/[.?!]+$/, '') : '';
   if (!name) return tiles;
   return tiles.map((t) => {
     if (t.label !== 'Blockers') return t;
     const hard = /^(\d+)$/.exec(String(t.value));
+    if (hard && opts.itIsHard === false) return t;
     if (hard) return { ...t, sub: `${blockerAsASentence(name)}${Number(hard[1]) > 1 ? ` ${Number(hard[1]) - 1} more ${Number(hard[1]) === 2 ? 'is' : 'are'} holding work up.` : ''}` };
     if (/^\d+ waiting$/.test(String(t.value))) return { ...t, sub: `${blockerAsASentence(name)} Nothing is hard-blocked.` };
     return t;
@@ -460,9 +515,14 @@ export function theBlockersTileNamesThis(tiles: AGlanceRead[], blocker: string |
  * is counted, so the tile never says one where the list shows three; and where some have no number, it says
  * so, because movement is measured on the number.
  */
+/*
+ * "NO ROUND HAS CLOSED TO MEASURE FROM" WAS WORK JARGON (run-25). It said that a change is measured from one finished
+ * round to the next, in words nobody uses. It now says when a change will show, plainly.
+ */
 export function theTargetsThatAreSet(set: number, withANumber: number): string {
   const are = set === 1 ? '1 target is set' : `${set} targets are set`;
-  if (withANumber >= set) return `${are}, and no round has closed to measure from.`;
+  const whenItShows = (n: number) => `Any change in ${n === 1 ? 'it' : 'them'} will show here after the next check-in.`;
+  if (withANumber >= set) return `${are}. ${whenItShows(set)}`;
   if (withANumber === 0) return set === 1 ? `${are}, and it has no number to measure from.` : `${are}, and none of them has a number to measure from.`;
-  return `${are}, and ${withANumber} of them ${withANumber === 1 ? 'has' : 'have'} a number. No round has closed to measure from.`;
+  return `${are}, and ${withANumber} of them ${withANumber === 1 ? 'has' : 'have'} a number. ${whenItShows(withANumber)}`;
 }

@@ -11,6 +11,8 @@
 
 export const SPEND_SUITE_OFF = 'Spending requests are not switched on in your organisation, so I have not sent or kept this. An admin can switch them on under Suites.';
 export const SPEND_NOT_SENT = 'I have not sent it. Nothing was kept.';
+/** The parked proposal in Ask Groundwork while Groundwork asks for the one thing the rules need and the words did not say (build step 9). */
+export const SPEND_MISSING_KIND = 'spend_missing';
 export const SPEND_NOTHING_WAITING = 'There is no spending request waiting to be sent. Tell me what you want to spend and I will ask.';
 
 export interface SpendSaid { amount: number; what: string; currency: string | null }
@@ -84,6 +86,14 @@ export interface SpendFacts {
   limit: number | null;
   approver: 'manager' | 'person' | 'admin';
   approverFirstName: string | null;
+  /** The highest threshold of the spending rules this is over (build step 9). Said in place of the limit. */
+  bar?: number | null;
+  /** Whoever decides each later step of that threshold, in words: "Grace, the chief executive". */
+  thenTo?: string[];
+  /** The evidence the rules ask for, in full sentences for the person. */
+  evidence?: string[];
+  /** The category it is for, and what a category is called, when the rules have categories. */
+  category?: { name: string; called: string } | null;
 }
 
 /**
@@ -94,6 +104,7 @@ export function spendingSaidBack(said: SpendSaid, facts: SpendFacts, month: stri
   const cur = facts.currency ?? said.currency;
   const who = facts.approverFirstName ?? 'an admin';
   const parts = [`You asked to spend ${money(cur, said.amount)} on ${said.what}.`];
+  if (facts.category) parts.push(`It is for the ${facts.category.called} ${facts.category.name}.`);
   let trouble = false;
   const waiting = facts.waiting && facts.waiting > 0 ? facts.waiting : 0;
   if (facts.team && facts.left != null && facts.left > 0 && waiting > 0) {
@@ -120,10 +131,14 @@ export function spendingSaidBack(said: SpendSaid, facts: SpendFacts, month: stri
   } else if (facts.team) {
     parts.push(`There is no budget set for ${facts.team} for ${month}.`);
   }
-  if (facts.limit != null && said.amount > facts.limit) {
-    parts.push(`This is over ${money(cur, facts.limit)}, so ${who} must approve it.`);
+  /* Over a threshold of the spending rules (build step 9): that amount, and who decides after. Otherwise the limit, as before. */
+  const bar = facts.bar != null ? facts.bar : facts.limit != null && said.amount > facts.limit ? facts.limit : null;
+  if (bar != null) {
+    const then = (facts.thenTo ?? []).filter(Boolean);
+    parts.push(`This is over ${money(cur, bar)}, so ${who} must approve it${then.length ? `, and then ${then.join(', and then ')}` : ''}.`);
     trouble = true;
   }
+  for (const e of facts.evidence ?? []) parts.push(e);
   parts.push(`Shall I ${trouble ? 'still ' : ''}send it to ${who} to approve?`);
   return parts.join(' ');
 }

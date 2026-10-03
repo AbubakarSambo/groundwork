@@ -221,7 +221,15 @@ export function theRecordSections(kind: KindOfWork | null, leadsStages: unknown,
   }
   return RECORDS_FOR_EACH_KIND[kind].map((s) => {
     if (!s.itemKinds.length) return { section: s.section, holds: s.holds, state: 'not-known' as const, why: s.whyNotKnown ?? FROM_ANOTHER_SYSTEM };
-    const mine = rows.filter((r) => s.itemKinds.includes(r.kind));
+    const seenNames = new Set<string>();
+    const mine = rows.filter((r) => s.itemKinds.includes(r.kind) && aNameThatNamesSomething((r as any).name)).filter((r) => {
+      /* Per person: two borrowers' tricycles are two loans, whatever article each was said with. A priority people name
+         together (the where-next board's themes) is one theme whoever named it. */
+      const key = `${r.kind}|${r.kind === 'priority' ? '' : ((r as any).ownerParticipantId ?? '')}|${theSameName((r as any).name)}`;
+      if (seenNames.has(key)) return false;
+      seenNames.add(key);
+      return true;
+    });
     const stages = stagesFor(s, leadsStages);
     return {
       section: s.section,
@@ -286,6 +294,8 @@ Each line has an id. For every record a line names, give the id of the line, the
 
 Leave out anything the line does not say. Never make up a record, a name, a stage or a date. When no line names a record, give an empty list.
 
+Each line says who said it. A record is theirs unless the line clearly says it is somebody else's. Give an owner only when the line names another person in this check-in as the one who will do it, is doing it or holds it, and give their name exactly as the line says it. For example, when Ada says "Tunde is taking on everything engineering", the owner is Tunde. Leave the owner out when it is the speaker's own, when the line names nobody, or when it is not clear whose it is.
+
 ${PLAIN_WORDS}`;
 }
 
@@ -305,6 +315,7 @@ export const THE_RECORDS_SCHEMA = {
             name: { type: 'string' },
             stage: { type: 'string' },
             due: { type: 'string' },
+            owner: { type: 'string', description: 'Only when the line clearly says the record is another named person\'s in this check-in: their name, as the line says it. Leave it out otherwise.' },
             details: { type: 'array', items: { type: 'object', properties: { label: { type: 'string' }, value: { type: 'string' } } } },
           },
           required: ['lineId', 'kind', 'name'],
@@ -321,10 +332,76 @@ export interface AnOfferedRecord {
   name?: string;
   stage?: string;
   due?: string;
+  /** The person the line names as the one whose record it is, when that is not the speaker. */
+  owner?: string;
   details?: { label?: string; value?: string }[];
 }
 
+/** A person in the check-in, with the names a line may call them by. */
+export interface APersonALineMayName {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  nameGiven?: string | null;
+}
+
+const aWord = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const theNamesOf = (p: APersonALineMayName): string[] => {
+  const full = [p.firstName, p.lastName].map((x) => (x ?? '').trim()).filter(Boolean).join(' ');
+  const given = (p.nameGiven ?? '').trim();
+  return [...new Set([full, (p.firstName ?? '').trim(), given, given.split(/\s+/)[0] ?? ''].filter((n) => n.length >= 2))];
+};
+const saysTheName = (text: string, name: string) => new RegExp(`(?:^|[^\\p{L}])${aWord(name)}(?=$|[^\\p{L}])`, 'iu').test(text);
+
+/**
+ * WHOSE A RECORD IS: THE PERSON THE SPEAKER NAMES, WHEN THEY CLEARLY NAME SOMEBODY IN THE CHECK-IN, AND OTHERWISE
+ * THE SPEAKER (item 21, the founder's board). Ada said "Tunde, as co-founder, is definitely taking on everything
+ * engineering" and the record was Ada's; Tunde said "Ada, I believe, will be covering the operational and business
+ * development aspects" and it was Tunde's. The model reads whose it is; it is kept only when the name it gives is one
+ * person in this check-in, other than the speaker, and that person is named in the line itself. Anything else, a
+ * name shared by two people, a name not in the line, nobody in the check-in, keeps the speaker.
+ */
+export function theOwnerTheLineNames(
+  offered: string | null | undefined,
+  line: { text: string; participantId: string },
+  people: readonly APersonALineMayName[] | null | undefined,
+): string {
+  const said = (offered ?? '').trim().replace(/[.,;:!?]+$/, '');
+  if (!said || !people?.length) return line.participantId;
+  const matches = people.filter((p) => theNamesOf(p).some((n) => n.toLowerCase() === said.toLowerCase()));
+  if (matches.length !== 1) return line.participantId;
+  const who = matches[0];
+  if (who.id === line.participantId) return line.participantId;
+  /* The same name on somebody else in the check-in would make it a guess. */
+  const theirNamesInTheLine = theNamesOf(who).filter((n) => saysTheName(line.text, n));
+  if (!theirNamesInTheLine.length) return line.participantId;
+  if (people.some((p) => p.id !== who.id && theNamesOf(p).some((n) => theirNamesInTheLine.some((m) => m.toLowerCase() === n.toLowerCase())))) return line.participantId;
+  return who.id;
+}
+
 const squash = (s: string) => s.toLowerCase().replace(/[‘’“”'"]/g, '').replace(/\s+/g, ' ').trim();
+
+/*
+ * A WORD THAT POINTS AT SOMETHING ELSE IS NOT A RECORD'S NAME (item 21, the engineering board). Ifeoma's task list
+ * held rows named "it" ("I expect it to take about five weeks."), "that migration" and "this": a name that is only a
+ * pronoun, or "that", "this", "these" or "those" before one or two words, names nothing anybody could find again. Not
+ * kept when a check-in is read, and not served from rows already stored.
+ */
+const ONLY_POINTS_ELSEWHERE = /^(?:it|its|this|that|these|those|them|they|he|she|him|her|one|ones|something|everything|anything|the same|(?:this|that|these|those|which|what)(?:\s+[\p{Ll}-]+){1,2}|(?:\d+|some|all|most|many|few|each|one|two|three|four|five|six|seven|eight|nine|ten)\s+of\s+(?:those|these|them|it|that))$/u;
+/*
+ * ONE THING UNDER TWO ARTICLES IS ONE RECORD (item 21, the law firm matter). Adaeze's deadlines held "a four-hour
+ * acknowledgement" and "the four-hour acknowledgement" as two rows. A name is compared without a leading "a", "an" or
+ * "the", and without its case.
+ */
+/* And "to improve our customer retention" is "improve our customer retention" (the where-next board's themes). */
+export const theSameName = (name: string | null | undefined): string => squash(String(name ?? '').replace(/^\s*(?:a|an|the|to)\s+/i, ''));
+
+export function aNameThatNamesSomething(name: string | null | undefined): boolean {
+  const n = (name ?? '').trim().replace(/[.,;:!?]+$/, '');
+  /* "something I don't have" (the loans board): a name that starts with "something" names nothing. */
+  if (/^(?:something|anything|nothing|everything)\b/i.test(n)) return false;
+  return !!n && !ONLY_POINTS_ELSEWHERE.test(n.charAt(0).toLowerCase() + n.slice(1));
+}
 
 /**
  * ONLY WHAT THE LINE SAYS. A record the model offers is kept only when its line is one of the lines
@@ -336,6 +413,8 @@ export function onlyRecordsTheLinesSay(
   offered: AnOfferedRecord[] | null | undefined,
   lines: { id: string; text: string; participantId: string }[],
   leadsStages: unknown,
+  /** The people in the check-in, so a record the speaker says is somebody else's is theirs. See theOwnerTheLineNames. */
+  people: readonly APersonALineMayName[] = [],
 ): { kind: string; name: string; stage: string | null; dueAt: Date | null; fields: Record<string, string>; sourceEntryId: string; ownerParticipantId: string }[] {
   const byId = new Map(lines.map((l) => [l.id, l]));
   const allowed = new Set(itemKindsFor(kind));
@@ -344,7 +423,7 @@ export function onlyRecordsTheLinesSay(
   for (const r of offered ?? []) {
     const line = r.lineId ? byId.get(r.lineId) : undefined;
     const name = (r.name ?? '').trim();
-    if (!line || !r.kind || !allowed.has(r.kind) || !name || name.length > 120) continue;
+    if (!line || !r.kind || !allowed.has(r.kind) || !name || name.length > 120 || !aNameThatNamesSomething(name)) continue;
     if (!squash(line.text).includes(squash(name))) continue;
     const section = RECORDS_FOR_EACH_KIND[kind].find((s) => s.itemKinds.includes(r.kind!))!;
     const stages = stagesFor(section, leadsStages) ?? [];
@@ -354,7 +433,7 @@ export function onlyRecordsTheLinesSay(
     const key = `${r.kind}|${squash(name)}|${line.id}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ kind: r.kind, name, stage, dueAt: due && !isNaN(due.getTime()) ? due : null, fields, sourceEntryId: line.id, ownerParticipantId: line.participantId });
+    out.push({ kind: r.kind, name, stage, dueAt: due && !isNaN(due.getTime()) ? due : null, fields, sourceEntryId: line.id, ownerParticipantId: theOwnerTheLineNames(r.owner, line, people) });
   }
   return out;
 }

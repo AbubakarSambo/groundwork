@@ -225,7 +225,7 @@ These come from `docs/morning-report.md`, under "Decided for Hafsah to confirm" 
 
 ### Decided since (decision 74), and no longer blocking
 
-- **Patterns are never switched off.** While steadiness is under 8 in 10, a setting (`patterns.reach`, set to `PERSON_ONLY`) makes a pattern reach only the person it is about, with their answer box, never the lead or an admin. A platform admin widens it with `PATCH /admin/pattern-reach`.
+- **Patterns are never switched off.** The person it is about reads a pattern first, with their answer box, and whoever runs the check-in reads it after the person has had their turn. The setting that held the lead back until steadiness reached 8 in 10 (`patterns.reach`) is gone (decision 86 reverses decision 74, item 2).
 - **Coaching is on where no setting row exists.** Hafsah confirmed this is correct.
 
 ### These are decided as the more private or the safer choice, and do not block

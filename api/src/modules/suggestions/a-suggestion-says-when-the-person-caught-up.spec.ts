@@ -84,10 +84,10 @@ describe('a suggestion nobody has decided, after Kwame caught up', () => {
     expect(w.rows[0].caughtUpAt).toEqual(new Date('2026-10-01T12:00:00Z'));
   });
 
-  it('Wairimu, who runs it, reads that he caught up, with the date and no count', async () => {
+  it('Wairimu, who runs it, reads that he caught up, with the date, and the count the suggestion was reached on (decision 86)', async () => {
     const w = await caughtUpOnThe1st();
     const [s]: any[] = (await w.svc.forGround('g1', reader('u-wairimu'), NOW)).suggestions;
-    expect(s.why).toBe('In the last four weeks, Kwame has kept fewer of the commitments made in this check-in than Groundwork looks for.');
+    expect(s.why).toBe('In the last four weeks, Kwame kept two of the eight commitments made in this check-in. That is 25%. When fewer than half are kept, Groundwork suggests extra support.');
     expect(s.caughtUp).toBe(FOR_THE_LEAD);
     expect(JSON.stringify(s)).not.toMatch(/\d+ of \d+/);
   });

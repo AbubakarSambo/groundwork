@@ -62,7 +62,8 @@ describe('a wait on a thing is not said as a wait on somebody', () => {
       'Baraka Otieno is waiting for owners with dates for the API format, and nobody has been named to provide it. That waits on a decision on who owns them.',
     ]));
     expect(b.decisions).toEqual(expect.arrayContaining([
-      expect.objectContaining({ question: 'Rukia Mwangi is waiting on the pipeline fix, so it needs deciding.', owner: 'Nobody has been named to decide this.' }),
+      /* A fix to the pipeline is something to provide, not a decision (item 21): it no longer says "so it needs deciding". */
+      expect.objectContaining({ question: 'Rukia Mwangi is waiting for the pipeline fix, and nobody has been named to provide it.', owner: 'Nobody has been named to provide it.' }),
       expect.objectContaining({
         question: 'People in this check-in said different things. There is no shared understanding of who owns the release. This needs settling.',
         owner: 'You',

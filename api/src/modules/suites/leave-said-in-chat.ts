@@ -2,7 +2,11 @@ import type { PrismaService } from '../prisma/prisma.service';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { workingDays, type Day } from './the-leave-board.service';
 import { whoApprovesFor } from './who-approves';
+import { readWorkflow, whoInWords } from './the-approval-steps';
+import { theStepsFor, whoDecidesNow } from './who-may-decide';
+import { theThresholdCrossed } from './the-spending-rules';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
+import { hereSince, inASentence, moreThanWorkingDays, readLeaveRules, theKindOf, theKindSaid, theRulesThatApply, type LeaveRules } from './the-leave-rules';
 
 /**
  * LEAVE DATES SAID IN CHAT GO TO THE LEAVE SUITE, NEVER TO THE RECORD (week 20, request 21).
@@ -37,6 +41,8 @@ export function plainlyAsksForLeave(message: string): boolean {
 }
 
 export interface LeaveDates { startsOn: Day; endsOn: Day }
+/** The days, and the kind of leave when the admin has set kinds (build step 8). */
+export interface LeaveAsked extends LeaveDates { kind?: string | null }
 
 const DAY_MS = 86_400_000;
 const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
@@ -168,18 +174,40 @@ export function theDaysAsRead(d: LeaveDates): string {
 }
 
 interface LeaveLike {
-  mine(reader: { userId: string; organizationId: string }, today?: Date): Promise<{ daysLeft: number | null }>;
-  ask(organizationId: string, userId: string, input: { startsOn: Day; endsOn: Day }): Promise<unknown>;
+  mine(reader: { userId: string; organizationId: string }, today?: Date): Promise<{ daysLeft: number | null; kinds?: { key: string; daysLeft: number | null }[] }>;
+  ask(organizationId: string, userId: string, input: { startsOn: Day; endsOn: Day; proposalId?: string; kind?: string }): Promise<unknown>;
 }
 
 const firstName = (p: { givenName?: string | null; displayName?: string | null } | null | undefined) =>
   (p?.givenName?.trim() || p?.displayName?.trim().split(/\s+/)[0] || '') || null;
 
-/** Whom the person asks (the one answer in who-approves.ts: their line manager, or an admin) and their team, for the say-back. */
-async function whoApproves(prisma: PrismaService, organizationId: string, userId: string) {
+/**
+ * Whom the person asks (the one answer in who-approves.ts: their line manager, or an admin) and their
+ * team, for the say-back. `days` is the request's working days, so leave by length is read.
+ */
+async function whoApproves(prisma: PrismaService, organizationId: string, userId: string, days?: number) {
   const me = await theirRosterEntry(prisma, organizationId, userId, { department: true, managerExternalId: true });
-  const who = await whoApprovesFor(prisma, { organizationId, personUserId: userId, managerExternalId: me?.managerExternalId ?? null });
-  return { name: who.kind === 'manager' ? who.firstName : null, team: me?.department?.trim() || null };
+  const who = await whoApprovesFor(prisma, { organizationId, personUserId: userId, managerExternalId: me?.managerExternalId ?? null, ...(days != null ? { days } : {}) });
+  return { name: who.kind === 'admin' ? null : who.firstName, team: me?.department?.trim() || null, managerExternalId: me?.managerExternalId ?? null };
+}
+
+/**
+ * LEAVE BY LENGTH (the-leave-rules.ts). When the request is longer than a threshold whose steps are more
+ * than one, the say-back names who approves after the first person, as spending does over a threshold:
+ * "This is more than ten working days, so Wairimu approves it first, and then Joseph, who heads Sales."
+ * Null when no threshold is crossed, or its steps are one.
+ */
+async function longerLeaveSaid(prisma: PrismaService, organizationId: string, userId: string, rules: LeaveRules, days: number, first: string | null, managerExternalId: string | null): Promise<string | null> {
+  const crossed = theThresholdCrossed(rules, days);
+  if (!crossed || crossed.steps.length < 2) return null;
+  const workflow = await readWorkflow(prisma, organizationId, 'leave');
+  const steps = theStepsFor('leave', { workflow, rules }, days);
+  const then: string[] = [];
+  for (let step = 1; step < steps.length; step++) {
+    const later = await whoDecidesNow(prisma, steps, { organizationId, requesterUserId: userId, managerExternalId }, { step });
+    then.push(await whoInWords(prisma, later.who, later.team, userId));
+  }
+  return `This is ${moreThanWorkingDays(crossed.above)}, so ${first ?? 'an admin'} approves it first, and then ${then.join(', and then ')}.`;
 }
 
 /** Who else in the person's team is off on any of those days, by first name. */
@@ -199,6 +227,13 @@ async function alsoOff(prisma: PrismaService, organizationId: string, userId: st
 
 /**
  * The say-back, or the plain refusal when the suite is off (then nothing is offered and nothing is kept).
+ *
+ * THE LEAVE RULES (decision 85, build step 8). When the admin has set kinds of leave, the kind is read
+ * from what the person said ("sick leave tomorrow"), or else the first kind, and the days left are of
+ * that kind. Each rule that applies is said before the question, which then asks whether to send it
+ * anyway: "Annual leave needs two weeks’ notice, and this starts in five days. Shall I still send it to
+ * Wairimu?" A rule never stops the request. With no rules set, the say-back is exactly what it was.
+ * `said` is the person's own message, read only for the kind of leave.
  */
 export async function sayBackLeave(
   prisma: PrismaService,
@@ -206,7 +241,8 @@ export async function sayBackLeave(
   reader: { userId: string; organizationId: string },
   dates: LeaveDates,
   today: Date = new Date(),
-): Promise<{ ok: true; say: string } | { ok: false; say: string }> {
+  said?: string,
+): Promise<{ ok: true; say: string; kind?: string } | { ok: false; say: string }> {
   const suite = await prisma.organizationSuite.findUnique({
     where: { organizationId_suite: { organizationId: reader.organizationId, suite: 'leave' } },
     select: { isOn: true },
@@ -216,34 +252,54 @@ export async function sayBackLeave(
   if (!mine) return { ok: false, say: LEAVE_SUITE_OFF };
 
   const n = workingDays(new Date(`${dates.startsOn}T00:00:00.000Z`), new Date(`${dates.endsOn}T00:00:00.000Z`));
-  const { name, team } = await whoApproves(prisma, reader.organizationId, reader.userId);
+  const { name, team, managerExternalId } = await whoApproves(prisma, reader.organizationId, reader.userId, n);
   const off = await alsoOff(prisma, reader.organizationId, reader.userId, team, dates);
+  const rules: LeaveRules = await readLeaveRules(prisma, reader.organizationId).catch(() => ({}));
+  const longer = await longerLeaveSaid(prisma, reader.organizationId, reader.userId, rules, n, name, managerExternalId).catch(() => null);
+  const kind = theKindSaid(said, rules);
+  const daysLeft = kind ? (mine.kinds?.find((k) => k.key === kind.key)?.daysLeft ?? null) : mine.daysLeft;
 
-  const left = mine.daysLeft == null ? null : `You have ${mine.daysLeft} ${mine.daysLeft === 1 ? 'day' : 'days'} of leave left this year`;
+  const left = daysLeft == null ? null : `You have ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} of ${kind ? inASentence(kind) : 'leave'} left this year`;
   const others = !team ? null
     : off.length === 0 ? `nobody else in ${team} is off then`
     : off.length === 1 ? `${off[0]} is also off then`
     : `${off.slice(0, -1).join(', ')} and ${off[off.length - 1]} are also off then`;
   const middle = left && others ? `${left}, and ${others}.` : left ? `${left}.` : others ? `${others[0].toUpperCase()}${others.slice(1)}.` : '';
+  const applies = theRulesThatApply(rules, {
+    kind, startsOn: dates.startsOn, endsOn: dates.endsOn, days: n, askedOn: today.toISOString().slice(0, 10),
+    hereSince: (rules as any).eligibleAfterDays ? await hereSince(prisma, reader.organizationId, reader.userId).catch(() => null) : null,
+  }, { you: true });
+  const ask = applies.length ? `Shall I still send it to ${name ?? 'an admin'}?` : `Shall I send it to ${name ?? 'an admin'} to approve?`;
   return {
     ok: true,
-    say: `You asked for leave ${theDaysAsRead(dates)}, which is ${days(n)}. ${middle ? `${middle} ` : ''}Shall I send it to ${name ?? 'an admin'} to approve?`,
+    say: `You asked for ${kind ? inASentence(kind) : 'leave'} ${theDaysAsRead(dates)}, which is ${days(n)}. ${middle ? `${middle} ` : ''}${applies.length ? `${applies.join(' ')} ` : ''}${longer ? `${longer} ` : ''}${ask}`,
+    ...(kind ? { kind: kind.key } : {}),
   };
 }
 
-/** After the yes: sent through the leave suite, and nowhere else. */
+/**
+ * After the yes: sent through the leave suite, and nowhere else. `saidBack` is the parked say-back the
+ * person said yes to, kept as a reference in the record of who did what (decision 85, build step 5).
+ */
 export async function sendLeave(
   leave: LeaveLike | undefined,
   prisma: PrismaService,
   reader: { userId: string; organizationId: string },
-  dates: LeaveDates,
+  dates: LeaveAsked,
+  saidBack?: { proposalId: string },
 ): Promise<string> {
   if (!leave) return LEAVE_SUITE_OFF;
+  const asked: { startsOn: Day; endsOn: Day; proposalId?: string; kind?: string } = { startsOn: dates.startsOn, endsOn: dates.endsOn };
+  if (saidBack?.proposalId) asked.proposalId = saidBack.proposalId;
+  if (dates.kind) asked.kind = dates.kind;
   try {
-    await leave.ask(reader.organizationId, reader.userId, dates);
+    await leave.ask(reader.organizationId, reader.userId, asked);
   } catch (err: any) {
     return typeof err?.message === 'string' && err.message ? `I could not send it. ${err.message}` : 'I could not send it.';
   }
-  const { name } = await whoApproves(prisma, reader.organizationId, reader.userId);
-  return `I have sent your leave request ${theDaysAsRead(dates)} to ${name ?? 'an admin'}. It is not approved until they decide, and you will see it under your leave.`;
+  const n = workingDays(new Date(`${dates.startsOn}T00:00:00.000Z`), new Date(`${dates.endsOn}T00:00:00.000Z`));
+  const { name } = await whoApproves(prisma, reader.organizationId, reader.userId, n);
+  const kind = dates.kind ? theKindOf(dates.kind, await readLeaveRules(prisma, reader.organizationId).catch(() => ({}))) : null;
+  const what = kind ? `request for ${inASentence(kind)}` : 'leave request';
+  return `I have sent your ${what} ${theDaysAsRead(dates)} to ${name ?? 'an admin'}. It is not approved until they decide, and you will see it under your leave.`;
 }

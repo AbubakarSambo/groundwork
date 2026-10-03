@@ -4,6 +4,11 @@
 
 One list, merged from every instruction since decision 81, without duplicates. Marked **done**, **in progress** or **not started**.
 
+**Now, before anything else (decision 86, 3 October)**
+- Reverse three privacy choices: the lead sees patterns after the person's answer or 3 or 7 days; the manager's suggestion shows its counts; admins and the chief executive see the figures on priorities and the aims and limits on boards. *Done* (`92e2c434`, `4c647014`, `04053a91`).
+- List every privacy restriction in the product that came from Claude's choice rather than Hafsah's words or the prototype, for her yes or no. Change nothing in it until she answers. *Done*, in `docs/privacy-restrictions-for-hafsah.md`; waiting for her answers.
+- The scenario run (run-25) on `a7e0f76f`, after the reversals. *Done*: worse than the baseline on "proof asked for" (33 against 42), and a privacy fault in loans. The faults are *done*. "Proof asked for": no change caused it; the scorer counts "picture", which earlier work cut on purpose. *Needs Hafsah.*
+
 **First, before anything else (decision 84)**
 0. Request 118: Rukia's Today page failing when nobody is left in "not checked in yet" (with an empty-list test on every page that has such a list), the two sentences that name Rukia on her own board instead of "you", and what is still open from request 117 (the false "Met", the headline with no number, deal owners, Neema's shop, "waiting on themselves"). *Done in code* (`c12aa05f` to `969cbe72`). What is left is stored rows on the screens workspace's database: the script fixes the false "Met" and the headline; deal owners wait on Rukia answering the claim; Neema's shop waits on the model's next read.
 
@@ -20,7 +25,7 @@ From now on, every change to what the board, reports or Today page send is writt
 6. Never silence when WhatsApp is held by the add-on or the limit. *Done* (`f66363a0`).
 7. The opening notice on one-to-one check-ins never says "released with everybody else's". *Done* everywhere (`ee0ac236`, `23b05cdd`).
 8. Leave, hours and spending for people matched to their sign-in by email. *Done* (`1b77ebda`).
-9. Ask Groundwork never answers from a check-in kept in the app. *Done* on WhatsApp (`477aae60`); in the app it is unchanged. One rare gap is left, below. (Nothing about such a check-in reaches a phone already: `937c1c6b`.)
+9. Ask Groundwork never answers from a check-in kept in the app. *Done* on WhatsApp (`477aae60`); in the app it is unchanged. The rare merge gap is closed too (`6cac17d6`). (Nothing about such a check-in reaches a phone already: `937c1c6b`.)
 10. The roster import tidies numbers the same way. *Done* (`e02ed275`, `96e6ba5c`).
 11. The lead's daily summary on WhatsApp, Groundwork's one message of the day for the lead. *Done* (`74698e8a`), at 07:00 Lagos time; the template's last line needs Hafsah's yes before Meta will accept it.
 12. Hafsah's eight templates in `docs/whatsapp-templates.md`, word for word, wired up, with the two-messages-on-the-day rule and a check against WhatsApp's rules. *Done* (`045f5a5f`, `3c318354`), apart from the three wording questions for Hafsah in the templates file.
@@ -31,7 +36,7 @@ From now on, every change to what the board, reports or Today page send is writt
 **d. The three suites, end to end, including over WhatsApp**
 14. Leave requests. Said back and confirmed in chat: *done*; approval and telling people: item 3.
 15. Finance (spending) requests. As item 14.
-16. Performance reviews, as the prototype's suite shows it, on evaluation check-ins and judging, with a proposed threshold for a "recognise" suggestion for Hafsah to confirm. *Done* (`2a8e77eb` to `cdf5e3ee`); the recognise suggestion is off until Hafsah confirms it. Matching by email for reviews is *done* (`4d22feea`); reviews on Today wait until request 118 frees the Today code.
+16. Performance reviews, as the prototype's suite shows it, on evaluation check-ins and judging, with a proposed threshold for a "recognise" suggestion for Hafsah to confirm. *Done* (`2a8e77eb` to `cdf5e3ee`); the recognise suggestion is off until Hafsah confirms it. Matching by email for reviews is *done* (`4d22feea`); reviews on Today are *done* (`073dd64b`).
 
 **e. The boards the client needs, from the engine**
 17. Request 117 (item 1). *Done*, as item 1.
@@ -47,10 +52,19 @@ From now on, every change to what the board, reports or Today page send is writt
 - On WhatsApp, the board merges two alike waits from different check-ins before Ask Groundwork leaves out the ones kept in the app, so in a rare case a wait from such a check-in could be said. The fix is an option in the board's own reads (`waitingAcrossTheOrg`, `whoNeedsYouThisWeek`) to leave them out before merging. *Done* (`6cac17d6`); reviews on Today too (`073dd64b`).
 
 - WhatsApp's waiting yes-or-no answers and parked approvals kept in the database, so a restart or a second copy of the server does not lose them. *Done* (`12b132b7`, migration 72). Approvals were already stored.
+- The API did not start from `4baeb646` (two files importing each other). *Done* (`4090223b`), with a test that builds the whole app.
+- Ask Groundwork named people by email and answered in clipped lines. *Done* (`856d0cbd`, `bc7aa385`).
+- Waits taken further could never show in "where am I needed". *Done* (`72e9b0a6`), shown only to whoever runs that check-in.
+- The lead's "<who> has been told" sentence is untrue. *Done* (`1973482c`). The rest of that read made plain too (`2d5f3b3f`).
 - A scenario run (run-25) to measure requests 117 and 118's model-written changes against the baseline. *In progress.*
 
+**d2. The suites as one request and workflow layer (decision 85, 3 October)**
+- Compare leave, spending and payments, timesheets and performance reviews with the seven layers, suite by suite, and list what exists, what is partly there and what is missing. *Done* (`54f4d4a1`, `docs/suites-against-the-workflow-model.md`): no leaks; two bugs and a 14-step build list.
+- Then build the missing parts in this order: approvers by rule and escalation; who sees what by record, field and action, with an audit record; leave's manager view (balance, who else is away, what the person owns in those days); spending thresholds, finance verifying, exporting and marking paid; timesheets drafted from the record; the review as the record interpreted, with the person correcting it; and the conversational setup. *Done* (steps 2 to 5 and 7 to 14; step 6, one who-sees-what table in code, waits for Hafsah's answers on the privacy list).
+- Decision 86 settled the counts and patterns; the payment-system connection is dropped. Calendar connections still wait.
+
 **h. Then everything else**
-21. The other seven boards, and the rest of the earlier list. *Not started.*
+21. The other seven boards, and the rest of the earlier list. *In progress* (the boards' engine faults, kind by kind).
 22. The back office rebuild, last. *Not started.*
 
 Already done for this release: the WhatsApp survey (`docs/whatsapp-end-to-end.md`), WhatsApp billing (decision 78), the WhatsApp status page, the company-wide picture and its live check (decisions 79 and 80), and the one-month free trial.

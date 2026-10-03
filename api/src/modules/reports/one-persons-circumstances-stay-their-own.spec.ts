@@ -110,3 +110,104 @@ describe('a turn in Sunday\'s own check-in', () => {
     expect(withoutSentencesAboutOneOfThem('You said Chinedu helped you. How?', { names: [] }, { namesOnly: true })).toBe('You said Chinedu helped you. How?');
   });
 });
+
+/**
+ * RUN-25, LOANS: ONE OF THEM WITHOUT A NAME. The wall above caught "a sixth colleague" and a name. Run-25 served
+ * Sunday the same circumstances in other words: "One participant's tricycle was stolen in the fourth month, halting
+ * that business." in his shared picture and its lines, "for another person, the problem was not just a delay in
+ * income but that the business asset itself was never delivered" in his own guide, and, on his board under what
+ * the borrowers already have, "A tricycle business that has generated enough revenue to make all repayments on
+ * time." and "A borehole pump business that earns roughly N25,000 a week ...", each said by one other borrower.
+ */
+const RUN25 = join(__dirname, '../../../journey/all-24/run-25/loans.json');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const run25 = existsSync(RUN25) ? require(RUN25) : null;
+const session25 = run25?.sessions?.[0];
+
+const PICTURE_25 = [
+  'All nine people have answered.',
+  'You expected the grinding machine to help you start a business and now make about N45,000 every week.',
+  'For most participants, the asset-based business is operating and generating revenue, though for many there was a delay of several weeks or months before income started. Several are now making payments but are behind on repayments from the initial period. One participant\'s tricycle was stolen in the fourth month, halting that business. Another participant never received the grinding machine they were promised and has no business to operate.',
+].join('\n\n');
+const LINES_25 = [
+  'All nine people have answered.',
+  'Several are now making payments but are behind on repayments from the initial period.',
+  'One participant\'s tricycle was stolen in the fourth month, halting that business.',
+  'Another participant never received the grinding machine they were promised and has no business to operate.',
+].map((text) => ({ text, mark: 'said' }));
+const HAVE_25 = {
+  thePicture: 'Five of the eight businesses are operating, but they started in debt because repayments began before the asset could generate income.',
+  whatMatters: [
+    { said: { who: ['Sunday Eze'], howMany: 2 }, thing: 'Grinding machine' },
+    { said: { who: [], howMany: 2 }, thing: 'Tricycle' },
+    { said: { who: [], howMany: 1 }, thing: 'Freezer' },
+  ],
+  whatTheyAlreadyHave: [
+    { said: { who: ['Sunday Eze'], howMany: 1 }, what: 'A grinding business that earns approximately N45,000 weekly from around 40 customers.' },
+    { said: { who: ['Chinedu Obi'], howMany: 1 }, what: 'A tricycle business that has generated enough revenue to make all repayments on time.' },
+    { said: { who: [], howMany: 1 }, what: 'A borehole pump business that earns roughly N25,000 a week selling water to households and small businesses.' },
+    { said: { who: ['Amaka Nwachukwu'], howMany: 1 }, what: 'A team of field officers and a system for collecting repayment data.' },
+  ],
+  whatWentWrong: [{ said: { who: ['Sunday Eze'], howMany: 5 }, whatHappened: 'Repayments for the loan started before the asset could generate any income.' }],
+};
+const GUIDE_25 = {
+  openingLine: 'My business is profitable now, but I had to miss my first payments because it took time to find customers.',
+  toAcknowledge: 'I need to take seriously that for another person, the problem was not just a delay in income but that the business asset itself was never delivered.',
+  questionToCarry: 'What is the most direct way for us to report when the loan terms are not working at the start of a new business?',
+};
+const ground25 = (over: any = {}) => ground({ report: { sharedPicture: PICTURE_25, sharedPictureLines: LINES_25, networkPicture: HAVE_25, postReportGuide: GUIDE_25 }, ...over });
+const ONE_OF_THEM_25 = /One participant's tricycle|Another participant never received|for another person|A tricycle business|borehole pump business|N25,000|Freezer/;
+
+describe('run-25: one of them without a name, as each reader reads it', () => {
+  it('Sunday reads the counts and patterns, his own row and goal, the lead\'s row, and no one borrower\'s circumstance', () => {
+    const r = door().theReportAsItWasShared(ground25(), 'p-sunday', false);
+    const said = JSON.stringify(r);
+    expect(said).not.toMatch(ONE_OF_THEM_25);
+    expect(r.sharedPicture).toContain('All nine people have answered.');
+    expect(r.sharedPicture).toContain('For most participants, the asset-based business is operating and generating revenue');
+    expect(r.sharedPicture).toContain('Several are now making payments but are behind on repayments from the initial period.');
+    expect(r.sharedPictureLines.map((l: any) => l.text)).toEqual(['All nine people have answered.', 'Several are now making payments but are behind on repayments from the initial period.']);
+    expect(r.networkPicture.whatTheyAlreadyHave.map((w: any) => w.what)).toEqual([
+      'A grinding business that earns approximately N45,000 weekly from around 40 customers.',
+      'A team of field officers and a system for collecting repayment data.',
+    ]);
+    expect(r.networkPicture.whatMatters.map((w: any) => w.thing)).toEqual(['Grinding machine', 'Tricycle']);
+    expect(r.networkPicture.whatWentWrong).toHaveLength(1);
+    expect(r.postReportGuide.openingLine).toBe(GUIDE_25.openingLine);
+    expect(r.postReportGuide.questionToCarry).toBe(GUIDE_25.questionToCarry);
+  });
+
+  it('Amaka, who runs it, and an admin, who reads with her eyes, read every borrower\'s row', () => {
+    const r = door().theReportAsItWasShared(ground25(), 'p-amaka', true);
+    expect(r.sharedPicture).toContain('One participant\'s tricycle was stolen in the fourth month, halting that business.');
+    expect(r.networkPicture.whatTheyAlreadyHave).toHaveLength(4);
+    const admin = door().theReportAsItWasShared(ground25(), null, true);
+    expect(JSON.stringify(admin)).toMatch(/A tricycle business that has generated enough revenue/);
+  });
+
+  it('where people see each other, Sunday reads it as before', () => {
+    const r = door().theReportAsItWasShared(ground25({ peersVisibleToEachOther: true }), 'p-sunday', false);
+    expect(r.sharedPicture).toContain('One participant\'s tricycle was stolen');
+    expect(r.networkPicture.whatTheyAlreadyHave).toHaveLength(4);
+  });
+
+  it('the product\'s own sentences with "another person" or "one person" in them stay', () => {
+    const keep = 'All 2 of the things described here line up with something other than what the person said. Each one is backed by what another person said, a document, or a record. If this holds, the work could come to depend on one person.';
+    expect(withoutSentencesAboutOneOfThem(keep, { names: [] })).toBe(keep);
+  });
+});
+
+(session25 ? describe : describe.skip)('the loans run as it was served to Sunday (run-25)', () => {
+  it('through the wall, his report and his board lose every one-borrower sentence and row, and keep the patterns', () => {
+    const before = JSON.stringify({ r: session25.participantReport, b: session25.participantBoard });
+    expect(before).toMatch(ONE_OF_THEM_25);
+    const after: any = onlyCountsAndPatternsAboutTheOthers({ r: session25.participantReport, b: session25.participantBoard }, { names: NAMES.slice(1) });
+    expect(JSON.stringify(after)).not.toMatch(ONE_OF_THEM_25);
+    expect(after.r.sharedPicture).toContain('For most participants, the asset-based business is operating and generating revenue');
+    expect(after.b.whatTheAnswersSay.whatTheyAlreadyHave.map((w: any) => w.what)).toEqual([
+      'A grinding business that earns approximately N45,000 weekly from around 40 customers.',
+      'A team of field officers and a system for collecting repayment data.',
+    ]);
+    expect(after.b.whatTheAnswersSay.thePicture).toMatch(/^Five of the eight businesses are operating/);
+  });
+});

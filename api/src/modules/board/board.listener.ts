@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent } from '../../common/events';
-import { oneOfTheKinds, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, type AnOfferedRecord } from './the-kind-of-work';
+import { oneOfTheKinds, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, theSameName, type AnOfferedRecord, type APersonALineMayName } from './the-kind-of-work';
 import { withAClaim } from './a-claim-on-a-record-is-checked-first';
 import {
   WHAT_THE_RECORD_SAYS_PROMPT,
@@ -55,7 +55,14 @@ export class BoardListener {
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
   async onCheckInCompleted(e: CheckInCompletedEvent) {
     try {
-      const ground = await this.prisma.ground.findUnique({ where: { id: e.groundId }, select: { kindOfWork: true, workStages: true } });
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: e.groundId },
+        select: {
+          kindOfWork: true, workStages: true,
+          /* Who is in the check-in, so a record the speaker says is somebody else's is theirs (item 21). */
+          participants: { select: { id: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+        },
+      }) as any;
       const kind = oneOfTheKinds(ground?.kindOfWork);
       if (!kind) return;
       const said = await this.prisma.recordEntry.findMany({
@@ -64,16 +71,33 @@ export class BoardListener {
       });
       const lines = said.map((l: any) => ({ id: l.id, text: cleanText(l.text), participantId: l.participantId })).filter((l: any) => l.text);
       if (!lines.length) return;
+      const people: APersonALineMayName[] = ((ground?.participants ?? []) as any[]).map((p) => ({
+        id: p.id, firstName: p.user?.firstName ?? null, lastName: p.user?.lastName ?? null, nameGiven: p.nameGiven ?? null,
+      }));
+      const nameOf = (pid: string) => {
+        const p = people.find((x) => x.id === pid);
+        return (p ? [p.firstName, p.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() : '') || 'Somebody';
+      };
+      const everybody = people.map((p) => nameOf(p.id)).filter((n) => n !== 'Somebody');
       const answer = await this.anthropic.extract<{ records?: AnOfferedRecord[] }>(
         theRecordsPrompt(kind),
-        [{ role: 'user', content: lines.map((l: any) => `[${l.id}] ${l.text}`).join('\n') }],
+        [{
+          role: 'user',
+          content: [
+            ...(everybody.length ? [`People in this check-in: ${everybody.join(', ')}.`, ''] : []),
+            ...lines.map((l: any) => `[${l.id}] ${nameOf(l.participantId)} said: ${l.text}`),
+          ].join('\n'),
+        }],
         THE_RECORDS_SCHEMA,
       );
-      const kept = onlyRecordsTheLinesSay(kind, answer?.records ?? [], lines, ground?.workStages);
+      const kept = onlyRecordsTheLinesSay(kind, answer?.records ?? [], lines, ground?.workStages, people);
+      const speakerOf = new Map(lines.map((l: any) => [l.id, l.participantId]));
       if (!kept.length) return;
       const already = await (this.prisma as any).workItem.findMany({ where: { groundId: e.groundId }, select: { id: true, kind: true, name: true, fields: true, ownerParticipantId: true } });
       for (const r of kept) {
-        const same = (already as any[]).find((a) => a.kind === r.kind && a.name.trim().toLowerCase() === r.name.trim().toLowerCase());
+        /* "a four-hour acknowledgement" and "the four-hour acknowledgement" are one record (item 21). */
+        const same = (already as any[]).find((a) => a.kind === r.kind && (a.name.trim().toLowerCase() === r.name.trim().toLowerCase()
+          || (theSameName(a.name) === theSameName(r.name) && (a.ownerParticipantId ?? null) === (r.ownerParticipantId ?? null))));
         if (same) {
           await (this.prisma as any).workItem.update({
             where: { id: same.id },
@@ -86,7 +110,8 @@ export class BoardListener {
                * checked first: it is put to the lead, and only her yes sets the owner (decision 76, item 3,
                * a-claim-on-a-record-is-checked-first). One with a name keeps it.
                */
-              fields: !same.ownerParticipantId && r.ownerParticipantId
+              /* Only the speaker's own claim. A record somebody says is a colleague's is not that colleague's claim. */
+              fields: !same.ownerParticipantId && r.ownerParticipantId && r.ownerParticipantId === speakerOf.get(r.sourceEntryId)
                 ? withAClaim({ ...((same.fields as any) ?? {}), ...r.fields }, r.ownerParticipantId, r.sourceEntryId ?? null, new Date())
                 : { ...((same.fields as any) ?? {}), ...r.fields },
               sourceEntryId: r.sourceEntryId,

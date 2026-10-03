@@ -75,11 +75,13 @@ describe('what is waiting for you to approve, on Today', () => {
     expect(await said(svc, 'u-grace', 'ADMIN')).toBe('');
   });
 
-  it('a person and a colleague are told nothing, and the boards are not even asked', async () => {
+  /* The boards are now asked for every reader, because the rules can name a member to decide
+     (decisions 85 and 86). Each board refuses a member nobody names, and Today reads that as nothing. */
+  it('a person and a colleague nobody names are refused by each board and told nothing', async () => {
     const { svc, asked } = setup();
     expect(await said(svc, 'u-aisha', 'MEMBER')).toBe('');
     expect(await said(svc, 'u-aisha', 'GUEST')).toBe('');
-    expect(asked).toEqual({ leave: 0, time: 0, spend: 0 });
+    expect(asked).toEqual({ leave: 2, time: 2, spend: 2 });
   });
 
   it('nothing appears when the suites are off, and Today does not fail', async () => {

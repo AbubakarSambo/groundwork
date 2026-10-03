@@ -1,4 +1,3 @@
-import { setPatternReachInForce as theReachForThisFile } from './who-reads-a-pattern';
 /**
  * "SAY WHAT'S BEHIND IT." The person a pattern is about answers it, and nobody else can.
  *
@@ -83,30 +82,19 @@ describe('the person a pattern is about says what is behind it', () => {
 });
 
 /*
- * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
- * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
- * puts that reach in force for the whole file. Its last block puts the person-only reach in force
- * and reads the same surfaces again, so both settings are checked here.
+ * DECISION 86 REVERSES DECISION 74, ITEM 2. This block was "with the person-only reach", where Femi
+ * was told only he saw the pattern. There is no such reach now: the file runs with nothing put in
+ * force, and Femi is told his lead will read it with his answer.
  */
-beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-afterAll(() => theReachForThisFile('PERSON_ONLY'));
-
-/*
- * DECISION 74, ITEM 2: THE PERSON-ONLY REACH, THE DEFAULT. The person keeps the answer box, and is
- * told that only they see the pattern and their answer. Nobody else can answer it.
- */
-describe('with the person-only reach, the person still answers, and is told only they see it', () => {
-  beforeAll(() => theReachForThisFile('PERSON_ONLY'));
-  afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-
-  it('keeps their words beside it, and the sentence says nobody else reads it', async () => {
+describe('with no setting at all, the person answers and is told the lead reads it too (decision 86)', () => {
+  it('keeps their words beside it, and the sentence names Tunde, never "only you"', async () => {
     const { svc, update } = serviceWith(true);
     const served = await svc.answerAsThePerson('pd2', 'u-femi', 'I built the deck and Ngozi did the pricing.');
     expect(update).toHaveBeenCalledTimes(1);
     expect(served.theirWords).toBe('I built the deck and Ngozi did the pricing.');
     expect(served.canAnswer).toBe(true);
-    expect(served.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
-    expect(served.whoSeesIt).not.toContain('Tunde');
+    expect(served.whoSeesIt).toBe('Tunde can see this too, with anything you say about it. Nothing is decided from it.');
+    expect(served.whoSeesIt).not.toContain('Only you see this');
   });
 
   it('a colleague, the lead or an admin still cannot answer it', async () => {

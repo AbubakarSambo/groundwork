@@ -29,6 +29,13 @@ export const JUMA = ['u-juma', 'ADMIN'] as const;
 export const SETUP_ADMIN = ['u-setup', 'ADMIN'] as const;
 
 export interface Setup {
+  /**
+   * Whether the waits are also answered where they are read on their own (what this session holds), by the
+   * check-in that raised them. Off by default, so the specs written before it read the boards they always read.
+   */
+  waitsAreReadOnTheirOwn?: boolean;
+  /** What the room is about, as the board listener stores it, with people's names, and the round it was read at. */
+  room?: any;
   scenario?: GroundScenario;
   peersVisibleToEachOther?: boolean;
   commitments?: any[];
@@ -75,6 +82,8 @@ export interface Setup {
   contextItems?: { id?: string; kind: string; audience?: string; text: string; closedAt?: Date | null }[];
   /** A colleague naming somebody's work (WorkMention rows: sourceParticipantId, aboutParticipantId, kind, text). */
   mentions?: any[];
+  /** Stored patterns (PatternDetection rows), as the detector keeps them. */
+  patterns?: any[];
 }
 
 /**
@@ -114,6 +123,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     dependencies: setup.dependencies ?? [], poll: null, objectives: setup.objectives ?? [], closedAt: setup.closedAt ?? null,
     kindOfWork: setup.kindOfWork ?? null, workStages: null, subjectExternalId: setup.subjectExternalId ?? null,
     ...(({ now: _now, ...rest }) => rest)(setup.clock ?? {}),
+    ...(setup.room ? { whatTheRoomIsAbout: setup.room, whatTheRoomIsAboutSession: 2 } : {}),
     ...(setup.status ? { status: setup.status } : {}),
     ...(setup.endState !== undefined ? { endState: setup.endState } : {}),
     ...(setup.resolvedAt !== undefined ? { resolvedAt: setup.resolvedAt } : {}),
@@ -138,8 +148,15 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     conversationTurn: model({ findMany: jest.fn(async (args: any) => clone((setup.turns ?? []).filter((t) => (args?.where?.checkInId?.in ?? []).includes(t.checkInId)))) }),
     personObjective: model({ findMany: jest.fn(async (args: any) => clone((setup.personObjectives ?? []).filter((o: any) => !args?.where?.awareness || o.awareness === args.where.awareness))) }),
     groundCommitment: model({ findMany: jest.fn(async () => clone(setup.commitments ?? [])) }),
+    ...(setup.waitsAreReadOnTheirOwn ? {
+      groundDependency: model({ findMany: jest.fn(async (args: any) => clone((setup.dependencies ?? [])
+        .filter((d: any) => !args?.where?.sourceCheckInId?.in || args.where.sourceCheckInId.in.includes(d.sourceCheckInId))
+        .filter((d: any) => !args?.where?.status?.in || args.where.status.in.includes(d.status))
+        .filter((d: any) => !(args?.where && 'clearedAt' in args.where) || !d.clearedAt))) }),
+    } : {}),
     checkInGap: model({ findMany: jest.fn(async () => clone(setup.gaps ?? [])) }),
     workMention: model({ findMany: jest.fn(async () => clone(setup.mentions ?? [])) }),
+    patternDetection: model({ findMany: jest.fn(async () => clone(setup.patterns ?? [])) }),
     workItem: model({ findMany: jest.fn(async () => clone(setup.items ?? [])) }),
     groundDocument: model({ findMany: jest.fn(async (args: any) => clone((setup.documents ?? []).filter((d: any) => !args?.where?.id?.in || args.where.id.in.includes(d.id)))) }),
     productMetric: model({ findMany: jest.fn(async (args: any) => clone((setup.metrics ?? []).filter((m: any) => !args?.where?.subjectExternalId || m.subjectExternalId === args.where.subjectExternalId))) }),

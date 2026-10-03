@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { SuitesService, REFUSED } from './suites.service';
+import { SuitesService, REFUSED, type ForAnAdmin } from './suites.service';
 import { SUITES } from './the-ten-suites';
 
 /**
@@ -62,10 +62,10 @@ const served = (x: unknown) => JSON.stringify(x);
 describe('switching a suite on or off', () => {
   it('an admin may switch a suite with no questions on straight away, and off again', async () => {
     const { svc, as } = setup();
-    const page = await svc.switch(as('grace'), 'todos', { on: true });
+    const page = (await svc.switch(as('grace'), 'todos', { on: true })) as ForAnAdmin;
     const todos = page.groups.flatMap((g) => g.suites).find((s) => s.key === 'todos')!;
     expect(todos.on).toBe(true);
-    const off = await svc.switch(as('grace'), 'todos', { on: false });
+    const off = (await svc.switch(as('grace'), 'todos', { on: false })) as ForAnAdmin;
     expect(off.groups.flatMap((g) => g.suites).find((s) => s.key === 'todos')!.on).toBe(false);
   });
 
@@ -94,7 +94,7 @@ describe('switching a suite on or off', () => {
     await expect(svc.switch(as('grace'), 'leave', { on: true, answers: { days: 21, approver: 'Anybody' } })).rejects.toThrow(BadRequestException);
     await expect(svc.switch(as('grace'), 'leave', { on: true, answers: { days: -3, approver: 'Their manager' } })).rejects.toThrow(BadRequestException);
     expect(rows).toHaveLength(0);
-    const page = await svc.switch(as('grace'), 'leave', { on: true, answers: { days: '21', approver: 'Their manager', extra: 'dropped' } });
+    const page = (await svc.switch(as('grace'), 'leave', { on: true, answers: { days: '21', approver: 'Their manager', extra: 'dropped' } })) as ForAnAdmin;
     const leave = page.groups.flatMap((g) => g.suites).find((s) => s.key === 'leave')!;
     expect(leave.on).toBe(true);
     expect(leave.answers).toEqual({ days: 21, approver: 'Their manager' });
@@ -104,7 +104,7 @@ describe('switching a suite on or off', () => {
     const { svc, as } = setup();
     await expect(svc.switch(as('grace'), 'equipment', { on: true, answers: { keeper: 'u-tomas' } })).rejects.toThrow(BadRequestException);
     await expect(svc.switch(as('grace'), 'equipment', { on: true, answers: { keeper: 'u-nobody' } })).rejects.toThrow(BadRequestException);
-    const page = await svc.switch(as('grace'), 'equipment', { on: true, answers: { keeper: 'u-kamau' } });
+    const page = (await svc.switch(as('grace'), 'equipment', { on: true, answers: { keeper: 'u-kamau' } })) as ForAnAdmin;
     expect(page.groups.flatMap((g) => g.suites).find((s) => s.key === 'equipment')!.answers).toEqual({ keeper: 'u-kamau' });
     expect(page.people.map((p) => p.name)).not.toContain('Tomas Guest');
   });
@@ -112,14 +112,14 @@ describe('switching a suite on or off', () => {
   it('a list answer keeps one line each, and is refused when empty', async () => {
     const { svc, as } = setup();
     await expect(svc.switch(as('grace'), 'time', { on: true, answers: { clients: '  \n ', approver: 'An admin' } })).rejects.toThrow(BadRequestException);
-    const page = await svc.switch(as('grace'), 'time', { on: true, answers: { clients: 'Naivas\n Lakeside \n\nGreen Mart', approver: 'An admin' } });
+    const page = (await svc.switch(as('grace'), 'time', { on: true, answers: { clients: 'Naivas\n Lakeside \n\nGreen Mart', approver: 'An admin' } })) as ForAnAdmin;
     expect(page.groups.flatMap((g) => g.suites).find((s) => s.key === 'time')!.answers.clients).toEqual(['Naivas', 'Lakeside', 'Green Mart']);
   });
 
   it('switching off keeps the answers, so switching on again starts from them', async () => {
     const { svc, as } = setup();
     await svc.switch(as('grace'), 'reviews', { on: true, answers: { every: 'Every 6 months', writer: 'Their manager' } });
-    const off = await svc.switch(as('grace'), 'reviews', { on: false });
+    const off = (await svc.switch(as('grace'), 'reviews', { on: false })) as ForAnAdmin;
     const reviews = off.groups.flatMap((g) => g.suites).find((s) => s.key === 'reviews')!;
     expect(reviews.on).toBe(false);
     expect(reviews.answers).toEqual({ every: 'Every 6 months', writer: 'Their manager' });

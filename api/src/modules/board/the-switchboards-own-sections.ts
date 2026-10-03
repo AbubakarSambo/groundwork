@@ -445,7 +445,8 @@ export function thePersonHistory(
     const theirOwn = !!r.meId && p.id === r.meId;
     const summary = total
       ? `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')} and made ${plural(total, 'commitment', 'commitments')}.${theirOwn ? ` ${doneCount} ${doneCount === 1 ? 'is' : 'are'} done, ${notDone} ${notDone === 1 ? 'is' : 'are'} not done or dropped, and ${open} ${open === 1 ? 'is' : 'are'} still open.` : ''}`
-      : `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')}, and the record holds no commitment from ${midSentence(who)} yet.`;
+      /* The name once (run-25): "Kwame Mensah has answered 1 session, and the record holds no commitment from Kwame Mensah yet." */
+      : `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')}, and ${who === 'You' ? 'have' : 'has'} made no commitment on record yet.`;
     out.push({ participantId: p.id, who, says: summary, sessions: perSession });
   }
   return out;
@@ -567,7 +568,12 @@ export function theBusyOrMoving(
     /* Counts of what was said, never of how many were kept: that tally is the person's own (decision 24). */
     const parts: string[] = [];
     if (mine.length) parts.push(`${who} has made ${plural(mine.length, 'commitment', 'commitments')} across ${plural(answered, 'answered session', 'answered sessions')}.`);
-    if (waits.length) parts.push(`${who} also named ${plural(waits.length, 'thing', 'things')} the work was waiting on.`);
+    /* "also" only after the commitments (item 21): Kwabena read "Blessing Okafor also named 1 thing ..." with nothing before it. */
+    if (waits.length) {
+      parts.push(mine.length
+        ? `${who} also named ${plural(waits.length, 'thing', 'things')} the work was waiting on.`
+        : `${who} named ${plural(waits.length, 'thing', 'things')} the work was waiting on, across ${plural(answered, 'answered session', 'answered sessions')}.`);
+    }
     eachPerson.push({ participantId: p.id, who, says: parts.join(' ') });
   }
   if (!eachPerson.length) return null;
@@ -948,11 +954,14 @@ export function theQuestionsForTheLead(
     if (!r.handoffMayBeRead(d)) continue;
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
-    out.push({
-      id: `went-back-${d.id}`,
-      question: `Has anybody gone back to ${on} about ${inASentence(d.what)}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
-      because: `Nothing on record says anybody has, so ${onlyTheLead} whether it was raised outside the check-in.`,
-    });
+    /* The reader's own wait is asked of them as theirs (item 21, the MarketView Q4 board). */
+    out.push(who === 'You'
+      ? { id: `went-back-${d.id}`, question: `Have you gone back to ${on} about ${inASentence(d.what)}?`, because: 'Nothing on record says you have. If you raised it outside the check-in, say so in your check-in.' }
+      : {
+        id: `went-back-${d.id}`,
+        question: `Has anybody gone back to ${on} about ${inASentence(d.what)}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
+        because: `Nothing on record says anybody has, so ${onlyTheLead} whether it was raised outside the check-in.`,
+      });
   }
 
   /* 4. A wait on somebody outside the check-in that nobody has chased. */
@@ -960,11 +969,15 @@ export function theQuestionsForTheLead(
     if (!isOpen(d) || d.triedSaid?.trim() || d.onParticipantId || !aPartyOutside(d)) continue;
     if (!r.handoffMayBeRead(d)) continue;
     const who = whoIs(r, d.fromParticipantId);
-    out.push({
-      id: `chased-${d.id}`,
-      question: `What has been tried to get ${inASentence(d.what)} from ${(d.onLabel ?? '').trim()}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
-      because: `Nothing on record says anybody has chased it, so ${onlyTheLead} what was done outside the check-in.`,
-    });
+    /* Omar read "What has been tried to get the full, detailed breakdowns ... from Marketing and Product Development, which
+       you are waiting for?" with "only you can find out what was done": his own wait, asked as if somebody else's (item 21). */
+    out.push(who === 'You'
+      ? { id: `chased-${d.id}`, question: `What have you tried to get ${inASentence(d.what)} from ${(d.onLabel ?? '').trim()}?`, because: 'Nothing on record says you have chased it. If you did, outside the check-in, say so in your check-in.' }
+      : {
+        id: `chased-${d.id}`,
+        question: `What has been tried to get ${inASentence(d.what)} from ${(d.onLabel ?? '').trim()}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
+        because: `Nothing on record says anybody has chased it, so ${onlyTheLead} what was done outside the check-in.`,
+      });
   }
 
   return out.slice(0, MOST_QUESTIONS);

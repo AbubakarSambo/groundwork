@@ -15,12 +15,14 @@ export interface AnOpenRow {
 
 export function anInboundHarness(opts: {
   open?: AnOpenRow[];
-  thread?: { checkInId: string | null; pickPendingAt?: Date | null; requestKind?: string | null; requestWords?: string | null; requestAskedAt?: Date | null } | null;
+  thread?: { checkInId: string | null; pickPendingAt?: Date | null; requestKind?: string | null; requestWords?: string | null; requestAskedAt?: Date | null; questionAskedAbout?: string | null } | null;
   who?: { personId: string | null; userId: string | null; externalId?: string | null };
   completed?: { overWhatsApp?: boolean | null; scenario?: string; label?: string };
   personPhone?: string | null;
   /** Something waits for this person to approve or decline (decision 82, item 1). */
   decisionWaiting?: boolean;
+  /** A question about this person's own request waits for their answer (decision 85, build step 7). */
+  questionWaiting?: { id: string; suite: 'leave' | 'spend'; ref: string; askedBy: string; about: string } | null;
 } = {}) {
   const said: string[] = [];
   const sent: { org: string | null; via?: string; to: string; text: string; context?: any }[] = [];
@@ -75,6 +77,8 @@ export function anInboundHarness(opts: {
   const assistant: any = {
     respond: jest.fn(async () => ({ blocks: [{ type: 'text', body: 'Ask Groundwork answered.' }] })),
     somethingWaitsForYouToDecide: jest.fn(async () => !!opts.decisionWaiting),
+    aQuestionWaitsForYourAnswer: jest.fn(async () => opts.questionWaiting ?? null),
+    answerAQuestionOnWhatsApp: jest.fn(async () => `I have sent your answer to ${opts.questionWaiting?.askedBy ?? 'them'}. Your leave request is still waiting for ${opts.questionWaiting?.askedBy ?? 'them'} to decide.`),
   };
   /* On WhatsApp the router asks through this door (decision 82, item 7); it is the same answer, so it is counted as `respond`. */
   assistant.respondOnWhatsApp = jest.fn((...args: any[]) => assistant.respond(...args));

@@ -15,7 +15,12 @@ export const HOURS_NOT_SENT = 'I have not sent it. Nothing was kept.';
 export const HOURS_NOTHING_WAITING = 'There are no hours waiting to be sent. Tell me the hours again and I will ask.';
 
 export interface HoursEntry { client: string; hours: number }
-export interface HoursSaid { onDay: string; entries: HoursEntry[] }
+export interface HoursSaid {
+  onDay: string;
+  entries: HoursEntry[];
+  /** Billable or not, as the person said of these hours, only when the time sheet rules say what is billable (build step 11). */
+  billable?: boolean;
+}
 
 export type HoursRead =
   | { kind: 'none' }
@@ -148,10 +153,24 @@ const theHours = (entries: HoursEntry[]) => {
   return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 };
 
-/** The say-back. It repeats what the person gave and says nothing about it. */
-export function hoursSaidBack(said: HoursSaid, approverFirstName: string | null): string {
-  return `Shall I log ${theHours(said.entries)} for ${longDay(said.onDay)} and send it to ${approverFirstName ?? 'an admin'} to approve?`;
+/**
+ * The say-back. It repeats what the person gave and says nothing about it. `notes` are the sentences
+ * about billable hours under the time sheet rules ("The hours on Internal are not billable."), only
+ * when the rules say what is billable; with none, the say-back is exactly as it was.
+ */
+export function hoursSaidBack(said: HoursSaid, approverFirstName: string | null, notes: string[] = []): string {
+  return [`Shall I log ${theHours(said.entries)} for ${longDay(said.onDay)} and send it to ${approverFirstName ?? 'an admin'} to approve?`, ...notes].join(' ');
 }
+
+/** "how many hours have I logged", "my hours this week", "my time sheet": the person asking where they stand. */
+export function asksWhereMyHoursStand(message: string): boolean {
+  const t = message ?? '';
+  if (soundsLikeHours(t) || /\b(draft|fill (?:in|out)|prepare|put together|write up)\b/i.test(t)) return false;
+  return /\b(how many hours|my hours|my time ?sheet|hours (?:have|did) i (?:log|logged|record|recorded|put|send|sent)|hours do i (?:still )?(?:need|owe|have left))\b/i.test(t);
+}
+
+/** Said after where the person stands, when they asked in Ask Groundwork. */
+export const HOURS_CAN_BE_TOLD_HERE = 'You can tell me your hours here at any time, for example "I spent 3 hours on a client today".';
 
 export function hoursSent(said: HoursSaid, approverFirstName: string | null): string {
   return `I have logged ${theHours(said.entries)} for ${longDay(said.onDay)} and sent it to ${approverFirstName ?? 'an admin'} to approve. It is not approved until they decide, and you will see it under your hours.`;

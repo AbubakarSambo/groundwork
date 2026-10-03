@@ -26,6 +26,7 @@ const atTheStart = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : 
 export interface ACommitment { id: string; text: string; dueSaid: string | null; dueAt: Date | null; statedAt: Date; state: 'OPEN' | 'KEPT' | 'SLIPPED' | 'DROPPED'; lastFollowedUpAt: Date | null }
 export interface AToDoRow { id: string; text: string; dueSaid: string | null; dueAt: Date | null; createdAt: Date }
 /** `sinceSays` is the day the wait began ("since 10 September"); `waitingDays` is for the order only. */
+/* Only the reader's own queue (WAITING_ON_YOU) is read here, on purpose; a wait taken further is "where am I needed". */
 export interface SomebodyWaiting { who: string; says: string; waitingDays: number; sinceSays?: string | null }
 
 export const NOTHING_TO_PUT_FIRST =

@@ -31,6 +31,7 @@ import { someOfThemHave } from './some-of-them-has-or-have';
 import { THE_LEADS_LABEL } from './party-labels';
 import { theNumbersPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
 import { whatWasTried, somebodyWentBackAboutIt, itWasTakenFurther } from './what-they-said-they-did-about-it';
+import { anArticleSaidMidSentence } from '../board/a-holder-in-their-own-words';
 
 export interface ACommitmentOverTime {
   participantId: string | null;
@@ -217,13 +218,23 @@ export function looksLikeATimeOrADate(s: string): boolean {
  * not the "I" of this sentence any more. Null tells the caller to fall back to a sentence with no
  * text in it at all.
  */
-const FIRST_PERSON_FRAME = /^(?:i will|i'll|i am going to|i'm going to|i plan to|we will|we'll)\s+/i;
+/*
+ * AND THE OTHER WAYS PEOPLE SAY THEY WILL (item 21, the founder's board). "I just need to schedule a dedicated call
+ * for that exact topic." and "I am continuing to assess the documentation and codebases" kept their "I", so the
+ * board said "you made a commitment, which is in the record." with nothing in it. Each of these frames is taken off
+ * the same way, with up to two small words between ("I just need to", "I will definitely").
+ */
+const FIRST_PERSON_FRAME = /^(?:i|we)(?:\s+will|['’]ll|\s+am going to|['’]m going to|\s+are going to|['’]re going to|\s+plan to|\s+need to|\s+have to|\s+must|\s+intend to|\s+want to|\s+would like to|['’]d like to|\s+(?:just|still|also|really|definitely|now|then|first)(?:\s+(?:just|still|also|really|definitely|now|then|first))?\s+(?:will|need to|have to|must|want to|plan to))(?:\s+(?:just|still|also|really|definitely|now|then|first|be sure to|make sure to)){0,2}\s+/i;
+/* "I am continuing to assess ..." is a promise to continue: "continue to assess ...". */
+const FIRST_PERSON_CONTINUING = /^(?:i am|i['’]m|we are|we['’]re)\s+(?:still\s+)?continuing\s+(?=to\s)/i;
 const FIRST_PERSON_WORD = /\b(?:i|me|my|mine|myself|we|us|our|ours|ourselves)\b/i;
 export function inOurVoice(what: string | null | undefined): string | null {
   const trimmed = String(what ?? '').trim();
   if (!trimmed) return null;
-  const frame = FIRST_PERSON_FRAME.exec(trimmed);
-  const rest = (frame ? trimmed.slice(frame[0].length) : trimmed).trim().replace(/[.!?]+$/, '');
+  const continuing = FIRST_PERSON_CONTINUING.exec(trimmed);
+  /* "going to continue with that", kept without its "I" (item 21, the support desk board): "You committed to going to continue with that." */
+  const frame = continuing ? null : FIRST_PERSON_FRAME.exec(trimmed) ?? /^going to\s+/i.exec(trimmed);
+  const rest = (continuing ? `continue ${trimmed.slice(continuing[0].length)}` : frame ? trimmed.slice(frame[0].length) : trimmed).trim().replace(/[.!?]+$/, '');
   if (!rest || FIRST_PERSON_WORD.test(rest)) return null;
   return rest[0].toLowerCase() + rest.slice(1);
 }
@@ -372,8 +383,8 @@ export function dependenciesOverTime(
     .filter((d) => String(d.status).toUpperCase() !== 'CLEARED')
     .map((d) => {
       /* A thing is not somebody: "the data structure decision" is what is waited for, not who holds it (request 107 b). */
-      const on = d.onParticipantId ? labelOf(d.onParticipantId) : (aPartyOutside(d) ? (d.onLabel ?? null) : null);
-      const aThingItWaitsOn = !d.onParticipantId && d.onLabel?.trim() && !aPartyOutside(d) && !theSameThing(d.onLabel, d.what) ? d.onLabel.trim() : null;
+      const on = d.onParticipantId ? labelOf(d.onParticipantId) : (aPartyOutside(d) ? (d.onLabel ? anArticleSaidMidSentence(d.onLabel) : null) : null);
+      const aThingItWaitsOn = !d.onParticipantId && d.onLabel?.trim() && !aPartyOutside(d) && !theSameThing(d.onLabel, d.what) ? anArticleSaidMidSentence(d.onLabel.trim()) : null;
       const from = labelOf(d.fromParticipantId);
       const stated = d.statedInSession ?? null;
       const sessionsWaiting = stated !== null ? Math.max(0, sessionsSoFar - stated) : null;
@@ -648,7 +659,10 @@ export function aRoleWrittenAsATitle(label: string, description: string): string
      Inside quotation marks it is left as the lead wrote it. */
   const isTheirLabel = label.toLowerCase().startsWith(title.toLowerCase());
   const role = isTheirLabel ? `down as "${comma > 0 ? first.slice(0, comma) : first}"` : `${anArticleFor(title)}${title}`;
-  return [`${label} is ${role}${where}${withGoals}.`, ...more].join(' ');
+  /* "Finance operations" is where somebody works, not one of a kind: "works in finance operations", never "is a finance operations" (item 21). */
+  const aField = !isTheirLabel && /^\p{Ll}/u.test(title) && title.split(/\s+/).length <= 3
+    && /^(?:operations|logistics|communications|relations|analytics|partnerships|payments|admissions)$/i.test(title.split(/\s+/).pop() ?? '');
+  return [aField ? `${label} works in ${title}${where}${withGoals}.` : `${label} is ${role}${where}${withGoals}.`, ...more].join(' ');
 }
 
 /** What the record holds, in one list a sentence can end on. */
@@ -686,8 +700,11 @@ export function gapsOverTime(people: APersonsRecord[]): AGapOverTime[] {
        * goes, so the read puts the name in (or "you", for the lead's own row).
        */
       const expected = p.expected.trim();
+      /* A title alone is one short piece. "Finance operations. Owns daily reconciliation." and "Senior engineer, doing
+         the build" are five words each and say what the role covers, so they are not read as a title alone (item 21). */
+      const onePiece = !/[,;]|[.!?]\s+\S/.test(expected.replace(/[.\s]+$/, ''));
       const titleOnly = expected.toLowerCase().replace(/[.\s]+$/, '') === p.label.toLowerCase().replace(/[.\s]+$/, '')
-        || expected.split(/\s+/).length <= 5;
+        || (onePiece && expected.split(/\s+/).length <= 5);
       return {
         participantId: p.participantId,
         who: p.label,
@@ -704,11 +721,22 @@ export function gapsOverTime(people: APersonsRecord[]): AGapOverTime[] {
  * AND WHAT NONE OF IT CAN TELL A READER
  * ---------------------------------------------------------------------------------------------- */
 
+/** Whether any line speaks of a meeting, a visit or an introduction: only then is who arranged it a question. */
+export function aMeetingIsOnRecord(lines: { text: string }[]): boolean {
+  return lines.some((l) => /\b(?:meetings?|met|meet|introduc\w*|visit(?:s|ed)?|appointments?)\b/i.test(String(l.text ?? '')));
+}
+
 export function whatThisCannotTellYou(o: {
   documentsAttached: number;
   peopleWhoAnswered: number;
   peopleInvited: number;
   anybodyAskedWhoArrangedThings: boolean;
+  /**
+   * Whether anybody spoke of a meeting at all (item 21, the outage check-in). "Nobody on record has said who arranged
+   * the meetings that happened" was said on a check-in about an outage, where nobody had spoken of a meeting. Left out,
+   * it is said as before.
+   */
+  meetingsOnRecord?: boolean;
 }): string[] {
   const out: string[] = [];
   if (!o.documentsAttached) {
@@ -717,7 +745,7 @@ export function whatThisCannotTellYou(o: {
   if (o.peopleWhoAnswered < o.peopleInvited) {
     out.push(someOfThemHave(o.peopleInvited - o.peopleWhoAnswered, o.peopleInvited, 'not answered yet, so anything about them is missing rather than absent.'));
   }
-  if (!o.anybodyAskedWhoArrangedThings) {
+  if (!o.anybodyAskedWhoArrangedThings && o.meetingsOnRecord !== false) {
     out.push('Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.');
   }
   out.push('Most of what anybody did is not in here. This is what was said in the sessions, and nothing else.');
@@ -742,6 +770,8 @@ export function toSettleFirst(o: {
   patterns: APatternOverTime[];
   documentsAttached: number;
   anybodySaidWhoArrangedThings: boolean;
+  /** Whether anybody spoke of a meeting at all; see whatThisCannotTellYou. */
+  meetingsOnRecord?: boolean;
 }): string[] {
   const out: string[] = [];
 
@@ -765,7 +795,7 @@ export function toSettleFirst(o: {
     out.push(`${outside.length === 1 ? 'One thing is' : `${outside.length} things are`} waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.`);
   }
 
-  if (!o.anybodySaidWhoArrangedThings) {
+  if (!o.anybodySaidWhoArrangedThings && o.meetingsOnRecord !== false) {
     out.push('Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.');
   }
 
@@ -862,7 +892,12 @@ export function overTimeAsServed(
     commitments,
     stillOpen: (rebuilt as unknown[]).filter(theThingIsNamed) as string[],
     patterns: [],
-    toSettleFirst: (it.toSettleFirst ?? []).filter((q) => !String(q).endsWith(A_QUESTION_BUILT_FROM_A_PATTERN_ENDS)),
+    /* And by its count too (item 21, the support desk board): where the person asked is the reader, the question's end has
+       already become "Your own account of this is not in this check-in." by the time it is read here, so Maria read "The
+       record names another person positively with specific evidence of their contribution. Seen in 1 sessions. Your own
+       account of this is not in this check-in." */
+    toSettleFirst: (it.toSettleFirst ?? []).filter((q) => !String(q).endsWith(A_QUESTION_BUILT_FROM_A_PATTERN_ENDS)
+      && !/(?:^|[.!?]\s+)(?:It was seen|Seen) in (?:one session|\d+ sessions?)\.\s/.test(String(q))),
   };
 }
 

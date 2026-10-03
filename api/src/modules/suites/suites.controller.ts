@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Param, Post, Put, Query, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
 import { CurrentUser, CurrentUserData } from '../../common';
@@ -10,6 +11,7 @@ import { ReviewsService } from './the-reviews.service';
 import { LeavingBoardService } from './the-leaving-board.service';
 import { RoleMapService } from './the-role-map.service';
 import { SpendingService } from './the-spending.service';
+import { SpendingForFinanceService } from './the-spending-for-finance.service';
 import { TodosService } from './the-todos.service';
 import { CustomersService } from './the-customers.service';
 import { EquipmentService } from './the-equipment.service';
@@ -21,6 +23,18 @@ class SwitchDto {
 
 class WordsDto {
   @IsString() @MaxLength(4000) text!: string;
+}
+
+class DeclineDto {
+  @IsOptional() @IsString() @MaxLength(1000) reason?: string;
+}
+
+class QuestionDto {
+  @IsString() @MaxLength(1000) question!: string;
+}
+
+class AnswerDto {
+  @IsString() @MaxLength(1000) answer!: string;
 }
 
 class ReviewDecisionDto {
@@ -52,6 +66,55 @@ class EquipmentItemDto extends EquipmentChangeDto {
   @IsString() @MaxLength(120) name!: string;
 }
 
+class DutiesDto {
+  @IsOptional() @IsString() @MaxLength(200) finance?: string | null;
+  @IsOptional() @IsString() @MaxLength(200) hr?: string | null;
+  @IsOptional() @IsString() @MaxLength(200) chiefExecutive?: string | null;
+  @IsOptional() @IsObject() budgetOwners?: Record<string, string | null>;
+  @IsOptional() @IsObject() departmentHeads?: Record<string, string | null>;
+}
+
+class WorkflowsDto {
+  @IsOptional() @IsObject() leave?: Record<string, unknown> | null;
+  @IsOptional() @IsObject() time?: Record<string, unknown> | null;
+  @IsOptional() @IsObject() spend?: Record<string, unknown> | null;
+}
+
+class LeaveRulesDto {
+  @IsOptional() @IsArray() kinds?: Record<string, unknown>[] | null;
+  @IsOptional() @IsNumber() noticeDays?: number | null;
+  @IsOptional() @IsArray() blackouts?: Record<string, unknown>[] | null;
+  @IsOptional() @IsNumber() eligibleAfterDays?: number | null;
+  @IsOptional() @IsString() tellHr?: 'approved' | 'every' | null;
+}
+
+class SpendRulesDto {
+  @IsOptional() @IsArray() categories?: Record<string, unknown>[] | null;
+  @IsOptional() @IsString() @MaxLength(30) categoryCalled?: string | null;
+  @IsOptional() @IsObject() evidence?: Record<string, unknown> | null;
+  @IsOptional() @IsArray() thresholds?: Record<string, unknown>[] | null;
+}
+
+class TimeRulesDto {
+  @IsOptional() @IsObject() submitters?: Record<string, unknown> | null;
+  @IsOptional() @IsString() @MaxLength(10) every?: string | null;
+  @IsOptional() @IsNumber() hoursAWeek?: number | null;
+  @IsOptional() @IsObject() cutOff?: Record<string, unknown> | null;
+  @IsOptional() @IsObject() billable?: Record<string, unknown> | null;
+}
+
+class FinanceCodeDto {
+  @IsString() @MaxLength(80) code!: string;
+}
+
+class FinanceEvidenceDto {
+  @IsString() @MaxLength(16) what!: string;
+}
+
+class FinancePaidDto {
+  @IsString() @MaxLength(10) on!: string;
+}
+
 class AgreementsDto {
   @IsArray() agreements!: unknown[];
 }
@@ -76,6 +139,7 @@ export class SuitesController {
     private readonly todos: TodosService,
     private readonly customers: CustomersService,
     private readonly equipment: EquipmentService,
+    private readonly finance: SpendingForFinanceService,
   ) {}
 
   @Get()
@@ -109,9 +173,39 @@ export class SuitesController {
   }
 
   @Post('leave/requests/:id/decline')
-  @ApiOperation({ summary: 'The approver declines a request for time off' })
-  declineLeave(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
-    return this.leave.decide({ userId: user.id, organizationId: user.organizationId }, id, 'declined');
+  @ApiOperation({ summary: 'The approver declines a request for time off, with a reason if they give one, which the person is told' })
+  declineLeave(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: DeclineDto) {
+    return this.leave.decide({ userId: user.id, organizationId: user.organizationId }, id, 'declined', dto?.reason);
+  }
+
+  @Post('leave/requests/:id/question')
+  @ApiOperation({ summary: 'Whoever decides a request for time off asks the person a question. The request keeps waiting.' })
+  askAboutLeave(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: QuestionDto) {
+    return this.leave.askAQuestion({ userId: user.id, organizationId: user.organizationId }, id, dto.question);
+  }
+
+  @Post('leave/requests/:id/answer')
+  @ApiOperation({ summary: 'The person who asked for time off answers the question waiting for them. The request keeps waiting.' })
+  answerAboutLeave(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AnswerDto) {
+    return this.leave.answerAQuestion({ userId: user.id, organizationId: user.organizationId }, id, dto.answer);
+  }
+
+  @Get('leave/rules')
+  @ApiOperation({ summary: 'The leave rules: kinds of leave, notice, blackout periods, who may take leave, documents, and whether HR is told. For an admin only.' })
+  leaveRules(@CurrentUser() user: CurrentUserData) {
+    return this.suites.leaveRules({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Put('leave/rules')
+  @ApiOperation({ summary: 'An admin sets the leave rules. A part given as null is cleared; one left out is kept.' })
+  setLeaveRules(@CurrentUser() user: CurrentUserData, @Body() dto: LeaveRulesDto) {
+    return this.suites.setLeaveRules({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('leave/requests/:id/history')
+  @ApiOperation({ summary: 'Who did what on one request for time off, in plain sentences, for the people who may already read it' })
+  leaveHistory(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.leave.history({ userId: user.id, organizationId: user.organizationId }, id);
   }
 
   @Get('time/board')
@@ -130,6 +224,34 @@ export class SuitesController {
   @ApiOperation({ summary: 'The approver approves one person’s week of hours' })
   approveTime(@Param('weekOf') weekOf: string, @Param('personId') personId: string, @CurrentUser() user: CurrentUserData) {
     return this.time.approve({ userId: user.id, organizationId: user.organizationId }, personId, weekOf);
+  }
+
+  @Get('time/weeks/:weekOf/people/:personId/history')
+  @ApiOperation({ summary: 'Who did what on one person’s week of hours, in plain sentences, for the people who may already read it' })
+  timeHistory(@Param('weekOf') weekOf: string, @Param('personId') personId: string, @CurrentUser() user: CurrentUserData) {
+    return this.time.history({ userId: user.id, organizationId: user.organizationId }, personId, weekOf);
+  }
+
+  @Get('time/rules')
+  @ApiOperation({ summary: 'The time sheet rules: who keeps a time sheet, how often, the hours asked a week, the cut-off in Lagos time, and what is billable. For an admin only.' })
+  timeRules(@CurrentUser() user: CurrentUserData) {
+    return this.suites.timeRules({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Put('time/rules')
+  @ApiOperation({ summary: 'An admin sets the time sheet rules. A part given as null is cleared; one left out is kept.' })
+  setTimeRules(@CurrentUser() user: CurrentUserData, @Body() dto: TimeRulesDto) {
+    return this.suites.setTimeRules({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('time/billing/export')
+  @ApiOperation({ summary: 'Approved billable hours as a CSV or Excel file (format=csv or format=xlsx, from and to as YYYY-MM-DD). For an admin, or whoever looks after finance. For billing only.' })
+  async timeBillingExport(@CurrentUser() user: CurrentUserData, @Query('format') format: string, @Query('from') from: string, @Query('to') to: string, @Res() res: Response) {
+    const file = await this.time.billingExport({ userId: user.id, organizationId: user.organizationId }, format || 'csv', { from: from || null, to: to || null });
+    res.status(HttpStatus.OK)
+      .setHeader('Content-Type', file.contentType)
+      .setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`)
+      .send(file.body);
   }
 
   @Put('time/agreements')
@@ -162,6 +284,12 @@ export class SuitesController {
     return this.reviews.one({ userId: user.id, organizationId: user.organizationId }, id);
   }
 
+  @Get('reviews/:id/history')
+  @ApiOperation({ summary: 'Who started and decided one review, in plain sentences, for the people who may read the review' })
+  reviewHistory(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.reviews.history({ userId: user.id, organizationId: user.organizationId }, id);
+  }
+
   @Put('reviews/:id/words')
   @ApiOperation({ summary: 'The writer’s own words' })
   reviewWords(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: WordsDto) {
@@ -172,6 +300,12 @@ export class SuitesController {
   @ApiOperation({ summary: 'The person’s own view of their work' })
   reviewView(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: WordsDto) {
     return this.reviews.writeView({ userId: user.id, organizationId: user.organizationId }, id, dto.text);
+  }
+
+  @Post('reviews/:id/lines/:key/correction')
+  @ApiOperation({ summary: 'The person marks one line of their review as wrong and says what is true. It is kept beside the line, and the record is not changed.' })
+  correctAReviewLine(@Param('id') id: string, @Param('key') key: string, @CurrentUser() user: CurrentUserData, @Body() dto: WordsDto) {
+    return this.reviews.correct({ userId: user.id, organizationId: user.organizationId }, id, key, dto.text);
   }
 
   @Post('reviews/:id/decision')
@@ -217,9 +351,27 @@ export class SuitesController {
   }
 
   @Post('spend/requests/:id/decline')
-  @ApiOperation({ summary: 'The one who approves a request to spend says no' })
-  declineSpend(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
-    return this.spend.decide({ userId: user.id, organizationId: user.organizationId }, id, 'declined');
+  @ApiOperation({ summary: 'The one who approves a request to spend says no, with a reason if they give one, which the person is told' })
+  declineSpend(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: DeclineDto) {
+    return this.spend.decide({ userId: user.id, organizationId: user.organizationId }, id, 'declined', undefined, dto?.reason);
+  }
+
+  @Post('spend/requests/:id/question')
+  @ApiOperation({ summary: 'Whoever decides a request to spend asks the person a question. The request keeps waiting.' })
+  askAboutSpend(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: QuestionDto) {
+    return this.spend.askAQuestion({ userId: user.id, organizationId: user.organizationId }, id, dto.question);
+  }
+
+  @Post('spend/requests/:id/answer')
+  @ApiOperation({ summary: 'The person who asked to spend answers the question waiting for them. The request keeps waiting.' })
+  answerAboutSpend(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: AnswerDto) {
+    return this.spend.answerAQuestion({ userId: user.id, organizationId: user.organizationId }, id, dto.answer);
+  }
+
+  @Get('spend/requests/:id/history')
+  @ApiOperation({ summary: 'Who did what on one request to spend, in plain sentences, for the people who may already read it' })
+  spendHistory(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.spend.history({ userId: user.id, organizationId: user.organizationId }, id);
   }
 
   @Put('spend/budgets')
@@ -256,6 +408,94 @@ export class SuitesController {
   @ApiOperation({ summary: 'An admin changes who has an item, or how it is' })
   changeEquipment(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: EquipmentChangeDto) {
     return this.equipment.change({ userId: user.id, organizationId: user.organizationId }, id, dto);
+  }
+
+  @Get('duties')
+  @ApiOperation({ summary: 'Who holds each duty (finance, HR, the chief executive, each team’s budget and head). For an admin only.' })
+  duties(@CurrentUser() user: CurrentUserData) {
+    return this.suites.duties({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Put('duties')
+  @ApiOperation({ summary: 'An admin says who holds each duty. A duty given as null is cleared; one left out is kept.' })
+  setDuties(@CurrentUser() user: CurrentUserData, @Body() dto: DutiesDto) {
+    return this.suites.setDuties({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('rules/history')
+  @ApiOperation({ summary: 'Each change of the suites’ rules, who holds each duty and the approval steps: who changed it, when, and from what to what. For an admin only.' })
+  rulesHistory(@CurrentUser() user: CurrentUserData) {
+    return this.suites.rulesHistory({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Get('workflows')
+  @ApiOperation({ summary: 'The approval steps of leave, time sheets and spending, and the working days before a request is passed on. For an admin only.' })
+  workflows(@CurrentUser() user: CurrentUserData) {
+    return this.suites.workflows({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Put('workflows')
+  @ApiOperation({ summary: 'An admin sets the approval steps or the working days for leave, time sheets or spending. A part given as null is cleared; one left out is kept.' })
+  setWorkflows(@CurrentUser() user: CurrentUserData, @Body() dto: WorkflowsDto) {
+    return this.suites.setWorkflows({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('spend/rules')
+  @ApiOperation({ summary: 'The spending rules: categories, the receipt or quote needed, and thresholds by amount with their own approval steps. For an admin only.' })
+  spendRules(@CurrentUser() user: CurrentUserData) {
+    return this.suites.spendRules({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Put('spend/rules')
+  @ApiOperation({ summary: 'An admin sets the spending rules. A part given as null is cleared; one left out is kept.' })
+  setSpendRules(@CurrentUser() user: CurrentUserData, @Body() dto: SpendRulesDto) {
+    return this.suites.setSpendRules({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('spend/finance')
+  @ApiOperation({ summary: 'Approved requests to spend, for whoever looks after finance or an admin: only what is on each request, to check, code and mark paid' })
+  financeView(@CurrentUser() user: CurrentUserData) {
+    return this.finance.view({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Get('spend/finance/export')
+  @ApiOperation({ summary: 'Approved requests to spend not yet paid, as a CSV or Excel file (format=csv or format=xlsx). For whoever looks after finance or an admin.' })
+  async financeExport(@CurrentUser() user: CurrentUserData, @Query('format') format: string, @Res() res: Response) {
+    const file = await this.finance.export({ userId: user.id, organizationId: user.organizationId }, format || 'csv');
+    res.status(HttpStatus.OK)
+      .setHeader('Content-Type', file.contentType)
+      .setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`)
+      .send(file.body);
+  }
+
+  @Post('spend/requests/:id/check')
+  @ApiOperation({ summary: 'Finance checks an approved request to spend' })
+  financeCheck(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.finance.verify({ userId: user.id, organizationId: user.organizationId }, id);
+  }
+
+  @Put('spend/requests/:id/code')
+  @ApiOperation({ summary: 'Finance records the budget line or category an approved request is paid from' })
+  financeCode(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: FinanceCodeDto) {
+    return this.finance.code({ userId: user.id, organizationId: user.organizationId }, id, dto.code);
+  }
+
+  @Post('spend/requests/:id/evidence')
+  @ApiOperation({ summary: 'Finance records that it has had the receipt or the quote (what: receipt or quote). No file is kept.' })
+  financeEvidence(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: FinanceEvidenceDto) {
+    return this.finance.evidenceGiven({ userId: user.id, organizationId: user.organizationId }, id, dto.what);
+  }
+
+  @Post('spend/requests/:id/paid')
+  @ApiOperation({ summary: 'Finance marks a checked request to spend paid, with the day it was paid (on: YYYY-MM-DD)' })
+  financePaid(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: FinancePaidDto) {
+    return this.finance.paid({ userId: user.id, organizationId: user.organizationId }, id, dto.on);
+  }
+
+  @Get('spend/mine')
+  @ApiOperation({ summary: 'Your own requests to spend, each with where it is. Nobody else reads them here.' })
+  mySpending(@CurrentUser() user: CurrentUserData) {
+    return this.spend.mine({ userId: user.id, organizationId: user.organizationId });
   }
 
   @Put(':key')

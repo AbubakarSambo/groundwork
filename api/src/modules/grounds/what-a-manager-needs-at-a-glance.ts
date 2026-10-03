@@ -148,7 +148,7 @@ export function whatIsInTheWay(dependencies: GlanceInput['dependencies'], now: D
 
   return {
     count: real.length,
-    oldest: oldest?.what ? (startsWithAPronoun(oldest.what) ? whoseIsIt(oldest.what) : oldest.what) : null,
+    oldest: oldest?.what ? (startsWithAPronoun(oldest.what) ? whoseIsIt(oldest.what, null, { onParticipantId: (oldest as any).onParticipantId ?? null, onLabel: (oldest as any).onLabel ?? null }) : oldest.what) : null,
     ...(forTheList && oldest && startsWithAPronoun(oldest.what) ? { oldestOnParticipantId: (oldest as any).onParticipantId ?? null } : {}),
     daysWaiting: oldest?.createdAt
       ? Math.max(0, Math.floor((now.getTime() - new Date(oldest.createdAt).getTime()) / A_DAY))

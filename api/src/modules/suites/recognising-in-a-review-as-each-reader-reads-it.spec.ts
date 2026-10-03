@@ -95,16 +95,16 @@ describe('with the setting on', () => {
     expect((await svc.one(as('u-wairimu'), 'r-aisha') as any).recognise).toBeNull();
   });
 
-  it('once Aisha has written her view, Wairimu reads the suggestion in the prototype’s words, with no number behind it', async () => {
+  /* Decision 86 reverses decision 53's "a plain line with no count": Wairimu now reads the count behind it. */
+  it('once Aisha has written her view, Wairimu reads the suggestion with the count behind it', async () => {
     const { svc, as } = setup({ setting: ON, theirView: 'I want to lead the supermarket accounts, but I need faster stock.' });
     const r: any = await svc.one(as('u-wairimu'), 'r-aisha');
     expect(r.recognise).toEqual({
       headline: 'Groundwork suggests recognising Aisha’s work',
-      why: 'In the four weeks before this review started, Aisha kept nearly every commitment made in your check-ins together.',
-      whatWouldChangeIt: 'If Aisha keeps fewer of them from now on.',
+      why: 'Aisha kept nine of the ten commitments made in your check-ins together in the four weeks before this review started. When at least nine in ten are kept, Groundwork suggests recognising the work.',
+      whatWouldChangeIt: 'If Aisha keeps fewer than nine in ten of them from now on.',
       yourDecision: 'This is only a suggestion. You decide, and Aisha sees your reasons.',
     });
-    expect(JSON.stringify(r.recognise)).not.toMatch(/\d|nine|ten\b/);
   });
 
   it('or three days after the review started, if Aisha has said nothing', async () => {

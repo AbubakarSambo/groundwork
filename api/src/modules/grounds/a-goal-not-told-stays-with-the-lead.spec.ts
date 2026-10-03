@@ -223,7 +223,7 @@ describe('theLeadIsNudgedToTell (decision 56, item 1)', () => {
 describe('theConversationPointForTheLead (decision 56, item 3)', () => {
   it('uses the name throughout, never "him" or "her"', () => {
     expect(theConversationPointForTheLead('Tobi')).toBe(
-      'Tobi has not been told about this goal yet, so talk it through with Tobi before reading anything into it.',
+      'Tobi has not been told about this goal yet. Talk it through together before reading anything into it.',
     );
   });
 });

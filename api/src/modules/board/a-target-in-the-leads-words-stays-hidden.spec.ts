@@ -124,8 +124,15 @@ describe('each person\'s target from the lead\'s words about them, on a check-in
            as everyone reads it, which already leaves the lead's figures out; that rule is not this one.) */
         if (where !== 'the Context page') expect(got).toContain(TEAM);
       });
-      it('Grace, an admin who only reads, reads neither', async () => {
+      /* Decision 86: on the board an admin sees the figures, so Grace reads both there. The Context page and
+         the report are not changed by it (a question for Hafsah), and there she still reads neither. */
+      it(where === 'the board' ? 'Grace, an admin who only reads, reads both on the board (decision 86)' : 'Grace, an admin who only reads, reads neither', async () => {
         const got = await text(read(GRACE));
+        if (where === 'the board') {
+          expect(got).toMatch(has14);
+          expect(got).toMatch(has12);
+          return;
+        }
         expect(got).not.toMatch(has14);
         expect(got).not.toMatch(has12);
       });

@@ -138,7 +138,7 @@ import { onePerPerson, howManyPeople, AnAnswerInItsSession } from './one-person-
 import { howFarBehind } from './a-report-behind-the-answers';
 import {
   commitmentsOverTime, dependenciesOverTime, patternsOverTime, gapsOverTime, theOnesStillOpen,
-  whatThisCannotTellYou, theRecordOverTime, toSettleFirst, overTimeForThisReader, WhatTheRecordShowsOverTime,
+  whatThisCannotTellYou, theRecordOverTime, toSettleFirst, overTimeForThisReader, WhatTheRecordShowsOverTime, aMeetingIsOnRecord,
 } from './what-the-record-shows-over-time';
 /*
  * THE ONE WORDING RULEBOOK, SPLIT BY SURFACE. The post-report guide is written to one person in the
@@ -3205,6 +3205,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
           viewerParticipantId: me?.id ?? null,
           participants: ground.participants as any,
         }) || (isOrgAdmin && !evaluationWordsRunsIt && isEvaluationCheckIn((ground as any).scenario)),
+        /* The Blockers tile names only the reader's own waits, as the board's header and tile do (ownWaitsOnly). */
+        ownWaitsOnly: !!me && !viewerIsLead && !evaluationWordsRunsIt
+          && (!this.peersAreNamed(ground as any, me.id) || isEvaluationCheckIn((ground as any).scenario)),
       }),
       this.prisma.recordEntry.count({ where: { disputedAt: null, participant: { groundId }, checkIn: { sessionNumber } } }),
       this.prisma.recordEntry.count({ where: { disputedAt: null, participant: { groundId }, checkIn: { sessionNumber }, recallBased: false, anchoredOrigin: { in: [...COUNTS_AS_A_SOURCE] as any } } }),
@@ -3318,6 +3321,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       theFirstBlocker: held.theFirstBlocker,
       worries: held.worries,
       theFirstWorry: held.theFirstWorry,
+      waitsFromEarlier: held.waitsFromEarlier,
       saidInAll,
       documentedInAll,
       /* Everybody the session counts, from the one definition (how-many-have-answered.ts): the
@@ -4488,12 +4492,14 @@ happened, and what is in the way.`;
        * secured a meeting. The conversation's own detector answers it exactly.
        */
       anybodyAskedWhoArrangedThings: saidWhoArranged,
+      meetingsOnRecord: aMeetingIsOnRecord(entries as any[]),
     });
 
     const settleFirst = toSettleFirst({
       commitments, dependencies, patterns,
       documentsAttached: Number(documents ?? 0),
       anybodySaidWhoArrangedThings: saidWhoArranged,
+      meetingsOnRecord: aMeetingIsOnRecord(entries as any[]),
     });
 
     return theRecordOverTime({
@@ -5439,7 +5445,9 @@ happened, and what is in the way.`;
       asStored.engagement && typeof asStored.engagement === 'object' ? { ...asStored, engagement: theRestOfEngagement } : asStored,
       marksOnItsLines,
     );
-    const withNamesPutIn = this.applyNames(gapsAsTheirSentences(findingsWithoutTheirLabels(theTableStaysWithTheEngine(withMarks))), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
+    /* A field name the model wrote into a divergence comes out at every read, for reports already stored (item 21). */
+    const readable = withMarks && Array.isArray((withMarks as any).divergences) ? { ...(withMarks as any), divergences: everyDivergenceReadable((withMarks as any).divergences) } : withMarks;
+    const withNamesPutIn = this.applyNames(gapsAsTheirSentences(findingsWithoutTheirLabels(theTableStaysWithTheEngine(readable))), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
     /*
      * DECISION 75, ITEM 14: WHERE PEOPLE DO NOT SEE EACH OTHER, ONE PERSON'S CIRCUMSTANCES NEVER REACH ANOTHER. The
      * shared picture a participant reads carries counts and patterns across people, never a sentence about one

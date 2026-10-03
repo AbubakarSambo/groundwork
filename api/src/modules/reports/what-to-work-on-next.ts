@@ -285,7 +285,8 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     ? { map: null, why: null }
     : whichRoleMap(i.detectedFunction, i.functionConfidence);
   const pair = map ? thePair(map, i.noticedBehaviour) : null;
-  const where = i.totalSessions ? `session ${i.sessionNumber} of ${i.totalSessions}` : `session ${i.sessionNumber}`;
+  /* "Session 6 of 3" is never said: past the planned count, the session is said alone (item 21). */
+  const where = i.totalSessions && i.totalSessions >= i.sessionNumber ? `session ${i.sessionNumber} of ${i.totalSessions}` : `session ${i.sessionNumber}`;
   /*
    * WHAT THIS IS ABOUT, FROM THE MAP WHERE THERE IS ONE. The map's label is what kind of work this
    * person's record is made of, which is a stronger fact than the scenario the check-in was opened

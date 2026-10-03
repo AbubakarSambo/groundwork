@@ -80,3 +80,13 @@ describe('what is not offered', () => {
     for (const n of notYet) expect(n.because.length).toBeGreaterThan(50);
   });
 });
+
+describe('the suites (decision 85)', () => {
+  it('are reached by asking: an admin sets one up by describing it, and nothing is set before the yes', () => {
+    /* Until 3 October the suites sat on the not-offered list as "the chat is the wrong shape".
+       Decision 85 says an admin sets them up by talking to Groundwork, so that is now the truth. */
+    expect(NOT_OFFERED_AREAS.has('suites')).toBe(false);
+    expect(REACHABLE_IN_CHAT.suites).toBe('set_up_a_suite');
+    expect(CAPABILITY_BY_KEY.get('set_up_a_suite')?.writes).toBe('after you confirm it');
+  });
+});

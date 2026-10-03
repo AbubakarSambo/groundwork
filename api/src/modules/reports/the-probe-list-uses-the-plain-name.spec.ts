@@ -1,4 +1,3 @@
-import { setPatternReachInForce as theReachForThisFile } from '../patterns/who-reads-a-pattern';
 import { ReportsService } from './reports.service';
 import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
 import { BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES } from '../patterns/pattern-library';
@@ -106,33 +105,20 @@ describe('the probe list, decision 52', () => {
 });
 
 /*
- * DECISION 74, ITEM 2. Patterns reach only the person they are about by default. This file checks the
- * rules of the wider reach, where the lead reads a pattern after the person has had their turn, so it
- * puts that reach in force for the whole file. Its last block puts the person-only reach in force
- * and reads the same surfaces again, so both settings are checked here.
+ * DECISION 86 REVERSES DECISION 74, ITEM 2. This block was "with the person-only reach, the lead's
+ * report carries no pattern line". There is no such reach now: with nothing put in force, the lead's
+ * probe list carries Femi's pattern, in its plain name, after his turn.
  */
-beforeAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-afterAll(() => theReachForThisFile('PERSON_ONLY'));
-
-/*
- * DECISION 74, ITEM 2: THE PERSON-ONLY REACH, THE DEFAULT. The probe list is the lead's, so with the
- * person-only reach it carries no pattern line, and nothing of Femi's pattern reaches the lead's report.
- */
-describe('with the person-only reach, the lead’s report carries no pattern line', () => {
-  beforeAll(() => theReachForThisFile('PERSON_ONLY'));
-  afterAll(() => theReachForThisFile('PERSON_FIRST_THEN_LEAD'));
-
-  it('the lead’s probe list and report hold no pattern, in any words', async () => {
+describe('with no setting at all, the lead’s report carries the pattern line (decision 86)', () => {
+  it('the lead’s probe list holds Femi’s pattern in plain words, and never the internal name', async () => {
     const report: any = await reportsFor('MEMBER').get('g-atlas', 'u-tunde', 'org-1');
-    const patternLines = (report.probes ?? []).flatMap((p: any) => p.patterns ?? []);
-    expect(patternLines).toEqual([]);
-    const all = JSON.stringify(report);
-    expect(all).not.toContain('Others describe doing work they described as theirs');
+    const all = JSON.stringify(report.probes ?? []);
+    expect(all).toContain('Others describe doing work they described as theirs');
     expect(all).not.toContain(b3.signal);
-    expect(all).not.toContain(FEMI_SAID);
+    expect(all).not.toContain(b3.name);
   });
 
-  it('an admin of the organisation reads none either', async () => {
+  it('an admin of the organisation who does not run the check-in reads none (decision 58)', async () => {
     const report: any = await reportsFor('ADMIN').get('g-atlas', 'u-grace', 'org-1').catch(() => null);
     expect(JSON.stringify(report ?? null)).not.toContain('Others describe doing work they described as theirs');
   });

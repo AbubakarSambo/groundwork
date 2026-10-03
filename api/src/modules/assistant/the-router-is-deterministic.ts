@@ -11,6 +11,7 @@
  */
 import { quotedThenEnding } from './a-quote-takes-no-second-mark';
 import { parseAskAPerson } from './a-line-or-a-note-typed-in-chat';
+import { SET_UP_A_SUITE_PATTERNS } from './a-suite-set-up-by-talking';
 
 /** A sentence that asks one named person something. Shares its reading with the lane that acts on it. */
 const ASKS_A_PERSON = { exec: (m: string): RegExpExecArray | null => (parseAskAPerson(m) ? (['ask'] as unknown as RegExpExecArray) : null) } as unknown as RegExp;
@@ -52,6 +53,8 @@ export type Lane =
   | 'ask_to_spend'
   /** An approver deciding a leave, hours or spending request by saying so: said back, and decided on a yes (decision 82, item 1). */
   | 'decide_a_request'
+  /** An admin setting a suite up by describing it (decision 85): asked only what is missing, said back, written on a yes. */
+  | 'set_up_a_suite'
   | 'unplaced';
 
 export interface Routed {
@@ -75,6 +78,14 @@ const rule = (lane: Lane, patterns: RegExp[]) => ({ lane, patterns });
  * swallow it sits below.
  */
 const RULES = [
+  /*
+   * DECISION 85: AN ADMIN SETS A SUITE UP BY SAYING SO ("Set up our employee leave process"). First,
+   * because it is narrow (a word for setting up, then only the suite's name and words like "process"
+   * or "rules" to the end) and because "leave", "hours" and "spending" would otherwise read as a
+   * request for time off, hours or money. A check-in, a session, an objective or a target is never
+   * this (a-suite-set-up-by-talking.ts).
+   */
+  rule('set_up_a_suite', SET_UP_A_SUITE_PATTERNS),
   /*
    * TO-DOS, FIRST, AND ON THE WORD "TO-DO" OR A SHAPE THAT IS ONLY A NOTE TO SELF.
    *

@@ -17,9 +17,10 @@ import { plainToInstance } from 'class-transformer';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { asATextMessage } from './a-reply-reads-as-a-text-message';
 import { aDecisionIn } from '../suites/a-request-in-words';
+import { BACK_TO_THE_CHECK_IN, YES_OR_NO_TO_AN_ANSWER, isThisYourAnswer, type AQuestionWaiting } from '../suites/a-question-about-a-request';
 import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
   AN_ASK_WORD, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
-  ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, type ARequest,
+  ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest,
 } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING } from '../whatsapp/a-message-outside-the-window';
 import { keptOffThePhone, answerItInTheApp } from '../whatsapp/a-check-in-kept-off-the-phone';
@@ -204,6 +205,22 @@ export class WhatsAppForAnOrganisationService {
     const said = arrived.kind === 'text' ? arrived.text : '';
 
     /*
+     * WORDS HELD FOR A YES OR A NO ARE NEVER LOST. "Shall I treat this as a leave request?" or "Is this
+     * your answer to Wairimu's question about your leave?" holds the person's words for ten minutes.
+     * When nobody answered in time, the words were wiped, and they went nowhere. Now, at the person's
+     * next message after the ten minutes, on whichever copy of the API reads it, the words go where
+     * they would have gone without the question, which is the check-in they were held from, as the
+     * "no" does. Then this message is handled as it always was. While the person is in Ask
+     * Groundwork the words wait until they come back to the check-in.
+     */
+    if (userId && !isAsking(thread?.checkInId) && this.aHoldHasExpired(thread)) {
+      await this.forgetTheRequest(organizationId, from);
+      const heldFrom = open.find((c) => c.id === thread!.checkInId);
+      if (heldFrom) await say(await this.putInTheCheckIn(heldFrom, userId, thread!.requestWords!));
+      else await say(heldWordsNotPut(thread!.requestWords!));
+    }
+
+    /*
      * "ASK" REACHES ASK GROUNDWORK, AND "BACK" RETURNS (survey item 2). Ask Groundwork was blocked
      * while any check-in was open, so a question became an answer in the check-in. Now "ask" (or "Ask
      * Groundwork") moves this conversation to Ask Groundwork and every message after it goes there,
@@ -320,7 +337,27 @@ export class WhatsAppForAnOrganisationService {
      * anything is sent; no puts it in the check-in, as it would have gone before.
      */
     const pending = await this.aRequestAskedAbout(organizationId, from, thread);
-    if (pending) {
+    if (pending?.kind === 'answer') {
+      /*
+       * AN ANSWER TO A QUESTION ABOUT THE PERSON'S OWN REQUEST (decision 85, build step 7). They were
+       * asked "Is this your answer to Wairimu's question about your leave?". Yes sends their words as
+       * the answer, through the suite's own code; no puts them in the check-in, as they would have gone.
+       */
+      if (A_YES.test(text) && who.personId) {
+        await this.forgetTheRequest(organizationId, from);
+        const sent = await this.assistant.answerAQuestionOnWhatsApp(organizationId, who.personId, pending.questionId ?? '', pending.text);
+        await say(`${sent} ${BACK_TO_THE_CHECK_IN}`);
+        return;
+      }
+      if (A_NO.test(text)) {
+        await this.forgetTheRequest(organizationId, from);
+        text = pending.text;
+      } else {
+        const q = who.personId ? await this.aQuestionWaitsFor(organizationId, who.personId) : null;
+        await say(YES_OR_NO_TO_AN_ANSWER(q ?? { askedBy: '', about: 'your request' }));
+        return;
+      }
+    } else if (pending) {
       if (A_YES.test(text) && who.personId) {
         await this.forgetTheRequest(organizationId, from);
         await this.rememberAsking(organizationId, from, current.id);
@@ -332,7 +369,7 @@ export class WhatsAppForAnOrganisationService {
         await this.forgetTheRequest(organizationId, from);
         text = pending.text;
       } else {
-        await say(YES_OR_NO(pending.kind));
+        await say(YES_OR_NO(pending.kind as ARequest));
         return;
       }
     } else if (who.personId && aDecisionIn(text) && (await this.aDecisionWaitsFor(organizationId, who.personId))) {
@@ -351,6 +388,19 @@ export class WhatsAppForAnOrganisationService {
         await this.askAboutTheRequest(organizationId, from, text, kind);
         await say(shallITreatThisAs(kind));
         return;
+      }
+      /*
+       * A QUESTION ABOUT THEIR OWN REQUEST IS WAITING FOR THEIR ANSWER (decision 85, build step 7).
+       * Whoever decides it asked them, and their reply here would have gone into the check-in. Asked
+       * once for each question, never for a greeting, "finish" or the first word that starts a check-in.
+       */
+      if (!beginning && !A_FINISH_WORD.test(text) && !A_GREETING_ALONE.test(text)) {
+        const q = await this.aQuestionWaitsFor(organizationId, who.personId);
+        if (q && thread?.questionAskedAbout !== q.id) {
+          await this.askAboutTheAnswer(organizationId, from, text, q.id);
+          await say(isThisYourAnswer(q));
+          return;
+        }
       }
     }
 
@@ -406,6 +456,11 @@ export class WhatsAppForAnOrganisationService {
       const said = e?.response?.message ?? e?.message ?? 'That could not be answered just now. Try again in a moment.';
       await say(Array.isArray(said) ? said.join(' ') : String(said));
     }
+  }
+
+  /** The question about this person's own request waiting for their answer (decision 85, build step 7). Never throws. */
+  private async aQuestionWaitsFor(organizationId: string, personId: string): Promise<AQuestionWaiting | null> {
+    try { return (await this.assistant.aQuestionWaitsForYourAnswer?.(organizationId, personId)) ?? null; } catch { return null; }
   }
 
   /** Whether anything waits for this person to approve or decline (decision 82, item 1). Never throws. */
@@ -567,7 +622,8 @@ export class WhatsAppForAnOrganisationService {
    * on another copy, the yes or no went into the check-in as an answer. The words are kept because
    * the answer needs them: a yes hands them to Ask Groundwork, which reads the days or the amount
    * from them, and a no puts them in the check-in as they would have gone. They are cleared on the
-   * answer, and once ten minutes have passed, by the next message anybody sends on WhatsApp.
+   * answer. Once ten minutes have passed with no answer, the person's next message puts them in the
+   * check-in they were held from, as a no does, so they are never lost.
    */
   private static readonly A_REQUEST_WAITS_MS = 10 * 60 * 1000;
   private static readonly NO_REQUEST = { requestKind: null, requestWords: null, requestAskedAt: null };
@@ -583,17 +639,50 @@ export class WhatsAppForAnOrganisationService {
   private async aRequestAskedAbout(
     organizationId: string,
     from: string,
-    thread: { requestKind?: string | null; requestWords?: string | null; requestAskedAt?: Date | string | null } | null,
-  ): Promise<{ text: string; kind: ARequest } | null> {
-    const cutoff = new Date(Date.now() - WhatsAppForAnOrganisationService.A_REQUEST_WAITS_MS);
-    /* Every request left unanswered past its ten minutes, this person's or anybody's, is forgotten. */
-    await this.prisma.whatsAppThread.updateMany({
-      where: { requestAskedAt: { lt: cutoff } },
-      data: WhatsAppForAnOrganisationService.NO_REQUEST,
-    }).catch(() => undefined);
+    thread: { requestKind?: string | null; requestWords?: string | null; requestAskedAt?: Date | string | null; questionAskedAbout?: string | null } | null,
+  ): Promise<{ text: string; kind: ARequest | 'answer'; questionId?: string | null } | null> {
+    /*
+     * Nobody else's held words are wiped here any more: an unanswered request past its ten minutes
+     * waits on its own thread until that person writes again, and then goes into their check-in
+     * (aHoldHasExpired, in route). Here only a hold still inside its ten minutes counts.
+     */
     if (!thread?.requestAskedAt || !thread.requestKind || thread.requestWords == null) return null;
-    if (new Date(thread.requestAskedAt).getTime() < cutoff.getTime()) return null;
-    return { text: thread.requestWords, kind: thread.requestKind as ARequest };
+    if (this.aHoldHasExpired(thread)) return null;
+    return { text: thread.requestWords, kind: thread.requestKind as ARequest | 'answer', questionId: thread.questionAskedAbout ?? null };
+  }
+  /** Words were held for a yes or a no, and the ten minutes passed with no answer. */
+  private aHoldHasExpired(thread: { requestKind?: string | null; requestWords?: string | null; requestAskedAt?: Date | string | null } | null): boolean {
+    if (!thread?.requestAskedAt || !thread.requestKind || thread.requestWords == null) return false;
+    return new Date(thread.requestAskedAt).getTime() < Date.now() - WhatsAppForAnOrganisationService.A_REQUEST_WAITS_MS;
+  }
+  /**
+   * The words go into the check-in as an answer, as the "no" puts them, and the check-in's reply is
+   * what the person reads. A check-in not yet started is opened first. A refusal is said, never lost.
+   */
+  private async putInTheCheckIn(c: AnOpenCheckIn, userId: string, words: string): Promise<string> {
+    try {
+      const opened = await this.openIfWaiting(c, userId);
+      const r = await this.conversation.sendMessage(c.id, userId, words, { door: 'whatsapp' });
+      const reply = `${HELD_WORDS_PUT_IN(words)}\n\n${r.reply}`;
+      return opened ? `${sessionHeader(c)} ${THE_WORDS}\n\n${opened}\n\n${reply}` : reply;
+    } catch (e: any) {
+      const refused = e?.response?.message ?? e?.message;
+      return `${heldWordsNotPut(words)}${refused ? ` ${Array.isArray(refused) ? refused.join(' ') : refused}` : ''}`;
+    }
+  }
+  /**
+   * The person's reply held while they are asked whether it is their answer to a question about their
+   * own request, with the question it would answer. The question stays remembered after the answer,
+   * so it is asked about once only.
+   */
+  private async askAboutTheAnswer(organizationId: string, from: string, text: string, questionId: string) {
+    const phone = WhatsAppService.normalize(from);
+    const asked = { requestKind: 'answer', requestWords: text, requestAskedAt: new Date(), questionAskedAbout: questionId };
+    await this.prisma.whatsAppThread.upsert({
+      where: { organizationId_phone: { organizationId, phone } },
+      create: { organizationId, phone, ...asked },
+      update: asked,
+    }).catch(() => undefined);
   }
   private async forgetTheRequest(organizationId: string, from: string) {
     const phone = WhatsAppService.normalize(from);

@@ -60,8 +60,12 @@ describe('A forecast, as each person reads it', () => {
     expect((await boardAs(WITH_TARGETS, ...KWAME)).forecast).toBeUndefined();
   });
 
-  it('an admin who only reads keeps the counts alone, as in the weekly report, and reads no forecast', async () => {
-    expect((await boardAs(WITH_TARGETS, ...JUMA)).forecast).toBeUndefined();
+  /* Decision 86 reverses decision 73 for admins: this used to pin that an admin who only reads read no forecast. */
+  it('an admin who only reads reads the same forecast as Bisi, as in the weekly report', async () => {
+    const asJuma = (await boardAs(WITH_TARGETS, ...JUMA)).forecast;
+    expect(asJuma).toBeDefined();
+    expect(asJuma).toEqual((await boardAs(WITH_TARGETS, ...BISI)).forecast);
+    expect(asJuma[0].says).toBe('If it keeps moving at the pace it has since session 1, it would be about 21 by session 4, against an aim of 40.');
   });
 
   it('a limit is read as a limit, and a number that has not moved says so', async () => {

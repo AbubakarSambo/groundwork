@@ -245,7 +245,7 @@ describe('What Groundwork noticed, written from the record when Wairimu says yes
     await expect(svc.one(as('u-aisha'), id)).rejects.toThrow(ForbiddenException);
   });
 
-  it('Wairimu reads the suggestion if one was reached on a check-in she runs, with no count; nobody else does', async () => {
+  it('Wairimu reads the suggestion if one was reached on a check-in she runs, with the count behind it (decision 86); nobody else does', async () => {
     const w = await started();
     const label = labelsForParties(participants as any).get('pp-k')!;
     const made = aSuggestionFromTheRecord('g1', {
@@ -261,8 +261,9 @@ describe('What Groundwork noticed, written from the record when Wairimu says yes
     /* CHANGED 2 October: Kwame's first 90 days is an evaluation check-in (decision 75, item 25), so the review
        serves the suggestion reached there, as the prototype does. On 1 October it served none on it. */
     const w1: any = await w.svc.one(w.as('u-wairimu'), w.id);
-    expect(w1.suggestion).toMatchObject({ headline: 'Groundwork suggests extra support for Kwame', why: 'In the last four weeks, Kwame has kept fewer of the commitments made in this check-in than Groundwork looks for.' });
-    expect(JSON.stringify(w1)).not.toMatch(/\d+ of \d+|\d+ in 100|\d+%/);
+    expect(w1.suggestion).toMatchObject({ headline: 'Groundwork suggests extra support for Kwame', why: 'In the last four weeks, Kwame kept two of the eight commitments made in this check-in. That is 25%. When fewer than half are kept, Groundwork suggests extra support.' });
+    /* Decision 86: the count Wairimu reads is the one in the suggestion's why, never the person's own "of your" count. */
+    expect(JSON.stringify(w1)).not.toMatch(/ of your |\d+ in 100/);
     expect((await w.svc.one(w.as('u-grace'), w.id) as any).suggestion).toBeNull();
     expect(JSON.stringify(await w.svc.one(w.as('u-kwame'), w.id))).not.toContain('Groundwork suggests');
   });

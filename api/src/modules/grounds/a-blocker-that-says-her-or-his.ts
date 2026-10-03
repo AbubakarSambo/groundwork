@@ -17,10 +17,36 @@ export function startsWithAPronoun(what: string | null | undefined): boolean {
   return !!what && A_POSSESSIVE.test(what.trim());
 }
 
-/** The sentence with its pronoun replaced by "A colleague's" or by `name` followed by 's. */
-export function whoseIsIt(what: string, name: string | null = null): string {
+/**
+ * "THEIR" IS NOT ALWAYS A COLLEAGUE (run-25, sales). Femi waited on the customers for "their documents, especially
+ * the bank statements": the customers' documents. Every reader of the board read "Work is held up by a colleague's
+ * documents, especially the bank statements." The owner was invented. "Their" is very often several people, or
+ * whoever the wait is on, so it becomes a colleague's only where the row says a person in the check-in is waited
+ * on (`onParticipantId`), and otherwise it is said as whoever the row says it waits on ("the customers'
+ * documents"), or left as the person said it. "Her" and "his" are one person, and stay as before.
+ */
+const THEIR = /^their\b/i;
+
+/** Whoever a wait is on, as the row stores it: a person in the check-in, or a name for somebody outside it. */
+export interface WhoItWaitsOn {
+  onParticipantId?: string | null;
+  onLabel?: string | null;
+}
+
+/** "the customers" -> "the customers'", "the supplier" -> "the supplier's". */
+const possessive = (label: string): string => (/s$/i.test(label) ? `${label}'` : `${label}'s`);
+
+/** The sentence with its pronoun replaced by "A colleague's", by `name` followed by 's, or for "their", by whoever it waits on. */
+export function whoseIsIt(what: string, name: string | null = null, on?: WhoItWaitsOn): string {
   const t = what.trim();
   if (!A_POSSESSIVE.test(t)) return what;
+  if (THEIR.test(t) && !name && on !== undefined && !on.onParticipantId) {
+    const label = (on.onLabel ?? '').trim();
+    if (!label) return what;
+    /* Read inside a sentence, as the pronoun was: "The customers" is "the customers" there, unless the line began with it. */
+    const inPlace = /^T/.test(t) ? label.charAt(0).toUpperCase() + label.slice(1) : label.replace(/^The\b/, 'the');
+    return t.replace(THEIR, possessive(inPlace));
+  }
   const whose = name ? `${name}'s` : `A colleague's`;
   return t.replace(A_POSSESSIVE, whose);
 }

@@ -116,7 +116,175 @@ The rest of request 117 on the sales board is stored rows on the screens workspa
 
 **For Hafsah:** an admin who is waited on in a check-in where people are not named to each other reads "somebody in …", which is stricter than "Everything asked of you", where admins see names. Keep it strict, or let admins see the name there?
 
-Now running: run-25 on `4090223b`, and the "raised that they are stuck" group of "where am I needed", which could never show because one field was never read. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Waits taken further now show, to the right person only** (`72e9b0a6`; 5,000 tests pass). The group in "where am I needed" could never show, and its sentence ("has raised that they are stuck") was untrue: nobody raises a wait by hand; Groundwork stamps one still open after 14 days. Now Wairimu, who runs the check-in, reads "Femi Ade … has been waiting on Miriam Njeri for it since 10 September, in the check-in Sales team, Q3. It was still open after 14 days, so Groundwork raised it on 24 September." Wiring it as it was written would have shown every such wait in the organisation to everybody; only whoever runs that check-in reads it now. On WhatsApp, waits from check-ins kept in the app stay out.
+
+**The lead's read of a handoff says only what is true** (`1973482c`; 5,003 tests pass). Before: "the schema sign-off - 20 days with Tom, blocking. Tom has been told - it was raised automatically once it passed 14 days." Now: "Priya has been waiting on Tom for the schema sign-off since 12 May. They have said it stops their work. Groundwork raised it on 26 May, after it had been open for 14 days. That posts a notice to your organisation's own connected tools, where there are any. It does not tell Tom directly. If it is still open, ask Tom what they need in order to finish it, rather than whether they will."
+
+**The rest of the lead's read is plain** (`2d5f3b3f`; 5,010 tests pass). "Send the migration plan. - due 9 days ago, still open." now reads "Priya promised "Send the migration plan" by 23 May, and it is still open." "A STALLED OBJECTIVE finding, 5 days old." now reads "Groundwork first raised "stalled objective" on 27 May, and nothing more was written about it." Two wordings had no prototype to copy, so they are the helper's own: "Priya's next check-in asks them to put a date on it", which mixes a name with "them", and the finding's key put into words.
+
+**Decision 85, the suites as one workflow layer, recorded.** The comparison of each suite with the seven layers is running. Four points meet earlier decisions and wait for Hafsah: counts in the manager's review briefing (decision 53), patterns about one person (decision 74), the chief executive seeing individual records (decision 73), and calendar and payment-system connections.
+
+**The suites compared with the seven layers** (`docs/suites-against-the-workflow-model.md`, `54f4d4a1`). No reader is sent more than decision 85 allows. In one line each: leave works in chat, setup and WhatsApp, but has no escalation, leave types, "ask a question", or what the person owns in those days; spending has one limit and one named person above it, and finance's part (verify, code, export, mark paid) is missing; timesheets take hours in chat and get weekly approval, but are not drafted from the record; reviews fall due, start, take both views and a decision, but the person cannot correct the record and there is no manager briefing. They are four services sharing helpers, with three different approval rules, not one engine. Two bugs: an approver named for spending above the limit who is not an admin can never decide; and where an admin writes reviews, the person is still told their line manager started it.
+
+**For Hafsah:**
+- A lead in the same department who does not approve still reads the leave, spending and hours requests, including days of leave left; and a lead who does not write a review reads all of it. Keep that?
+- When someone asks for leave, the say-back names which colleagues are off ("Brian is also off then"). Keep that?
+- Reading timesheets against what was delivered may go against decision 10 (hours are for billing only). May they?
+- Nobody holds the HR, finance or budget-owner duty in Groundwork yet. Each organisation will have to say who does.
+
+Run-25 was stopped: decision 86's reversals change what the engine writes, so it runs after them.
+
+**Decision 86 so far:** patterns reach the lead again after the person's turn (`92e2c434`), and the manager reads the count behind a suggestion (`4c647014`). Admins' figures are in progress. **The privacy restrictions Claude chose are listed** in `docs/privacy-restrictions-for-hafsah.md`: 23 rows, 9 never seen by Hafsah, 13 confirmed only in bulk, 1 never asked on its own. Nothing changed until she answers.
+
+**Spending** (`a2990939`, `b7ff00b4`; 1,713 tests pass): a member named for spending over the limit could be told a request waited and then find nothing to approve. Now Omar can see it and approve it in the app, in Ask Groundwork or by WhatsApp reply. (Correction: an earlier version of this line said he also sees it on Today. He does not yet; Today hid approvals from members. That is being fixed now.) **Each organisation now says who holds each duty** (finance, HR, the chief executive, each team's budget holder and head), set by an admin; spending over the limit goes to the team's budget holder, then finance, then the person named before. No migration.
+
+**For Hafsah:**
+- Spending over the limit goes to the budget holder before finance, following decision 85's example. Or finance first, or both in turn?
+- Setting a duty now overrides the person the admin named for "anything above that". All right?
+- Only an admin reads who holds each duty. May leads or everybody read it?
+- A named approver who is not an admin sees no team budgets (the prototype shows them only to an admin). Should finance or an approver see every team's budget?
+
+**One approval rule for every suite** (`1625d046`, `18996ed6`, `04f1360a`; 1,853 tests pass). The three separate rules are replaced by one, which names approvers by role and reads who holds each duty. Across all 602 combinations of existing answers, the same person approves as before, except two where nobody could approve at all (a lead named as their own manager for a review; spending above the limit named to a guest or someone who has left); those now go to an admin. A member named as approver or review writer now opens the leave, hours or reviews board and sees only what waits on them. **The review bug is fixed:** where Grace, an admin, started Aisha's review, Aisha read "Wairimu has started your review."; she now reads "Grace has started your review." in the app, on Today and on WhatsApp.
+
+**For Hafsah:**
+- Leave and hours still ignore the answer "An admin" (decided 1 October), while reviews follow it. Should leave and hours follow it now?
+- A line manager who is a member (not a lead or admin) cannot approve their own people's requests; an admin does. Now that members can open the boards, should their line manager approve?
+- Before anyone starts a review that any admin may write, its "Written with" is blank. Should it say "An admin"?
+- A member who approves leave sees only the requests waiting on them, not who else is off. Confirm or widen.
+
+**Decision 86 is in** (`92e2c434`, `4c647014`, `04053a91`; 9,700 tests pass across the folders touched).
+- **Patterns:** the `patterns.reach` setting is gone. The person reads "You are seeing this first. Tunde will see it too, with anything you say about it." The lead then reads the pattern and the person's answer on the board, the ending page, the weekly report and Today.
+- **Counts:** the lead reads "In the last four weeks, Kwame kept two of the eight commitments made in this check-in. That is 25%. When fewer than half are kept, Groundwork suggests extra support." The review writer reads "Aisha kept nine of the ten commitments …".
+- **Admins' figures:** an admin, the chief executive included, reads every person's aim and number on the board and in the weekly report ("Aisha Otieno is at 1 of 40, and 3 of the 4 rounds have gone."). The Company page already showed the figures.
+
+**For Hafsah:**
+- The Context page, the session report and Today still hide each person's figures from an admin who only reads, so the same admin reads Kwame's 17 on the board but not in the report. Should those show them too?
+- Patterns reach the lead and the admin who set the check-in up. Should every admin read them, after the person's turn?
+- A decision about a person (decision 46) stays the lead's alone, hidden from admins. Right?
+- Suggestions already stored keep their old wording without a count. Fine, with no live users?
+
+**Today now shows a member what waits for them** (`2d6d9e51`): Omar, a member named for spending over the limit, reads "Lina asked to spend KES 95,000 on a new laptop. It is waiting for you to approve." on Today; a member who heads a team reads its leave, hours and reviews to start. A member nobody names still reads nothing. One existing test changed, because it pinned the old fault.
+
+**Approval steps, escalation and one record of who did what** (`c9d61a5d` to `1a2411e3`; migrations 73 and 74, local only; 3,760 tests pass). An admin can now send a request through several steps ("first to the person's manager, then to whoever looks after HR"); each approval moves it on and only the last ends it. With no steps set, every one of 90 cases decides exactly as before. Aisha reads where her request is: "Your leave from Thursday 1 October to Friday 2 October is approved by Wairimu and is now waiting for Omar in finance." Escalation runs once a day, only where an admin set a number of working days, and also when the approver is on leave. Every request keeps its history in plain sentences ("Wairimu approved it on 2 October."), and admins read who changed the suites' rules and when.
+
+**For Hafsah:**
+- Should a request pass on when its approver is on leave, even where no number of days is set?
+- A member who approved an earlier step loses sight of the request's history once it moves on. Should anyone who ever decided a request keep reading its history?
+- Should Today tell an approver who approved the earlier steps?
+- Should a review have steps (for example the manager writes it and HR signs it off)?
+- Should the person be told on WhatsApp at each step, not only at the end? That needs a new template.
+
+**Leave, as decision 85 describes it** (`1ccc4172` to `4bf35fb2`; migration 75, local only; 3,815 tests pass).
+- **The approver reads:** "Aisha asked for annual leave from Thursday 8 October to Friday 9 October, which is 2 working days.", "Aisha has 21 days of annual leave left.", "Brian and Neema are also off on some of those days, so Sales would be three short.", and "Aisha owns "Project X milestone" on Sales, Q3, due on Thursday 15 October."
+- **Asking a question:** the approver can ask one ("Who will cover the Project X milestone?"). Aisha is told in the app and on WhatsApp, answers, and the request keeps waiting. A decline can carry a reason, which Aisha reads.
+- **Leave rules, set by an admin:** kinds with their own allowances, notice, blackout periods, 90 days before leave, sick notes, and HR told. Aisha's say-back names a rule that applies ("Annual leave needs two weeks' notice, and this starts in three days. Shall I still send it to Wairimu?").
+- With no rules set, everything reads exactly as before.
+
+**For Hafsah:**
+- The kind of leave ("Sick leave") is now shown to whoever decides, admins, the team's lead, HR, and in "Who's off". The engine still gets dates only (decision 31). All of those readers, or only whoever decides and HR?
+- Where should a sick note be kept? No file is stored yet; the rule is only said.
+- "Time here" counts from when the person was added to Groundwork, because there is no start date. Should the staff directory have one?
+- Should a request waiting on the person's answer stop counting towards being passed on?
+- Two templates are proposed: a question about a request, and leave told to HR. Submit them?
+
+**Spending and finance, as decision 85 describes them** (`fc5aef52` to `759ce9c5`; migrations 76 to 79, local only; 3,899 tests pass). An admin sets categories, evidence needed (a receipt or quote) and several thresholds, each with its own steps. Groundwork asks only for what is missing ("Which category is this for? It can be Fuel, Travel or Equipment."). Approvers can ask a question and give a reason with a decline, as on leave. Finance (Omar) reads each approved request, checks it, codes it, records the receipt, exports a CSV or Excel file of requests to pay, and marks them paid; Kamau reads "Your request to spend KES 12,000 for fuel for Kisumu deliveries … was paid on 6 October." With no rules set, everything reads as before. On WhatsApp, an answer to an approver's question now reaches the question even with a check-in open ("Is this your answer to Wairimu's question about your leave?").
+
+**For Hafsah:**
+- Finance's steps can be done by whoever holds the finance duty and any admin. Should an admin act when somebody is named for finance?
+- Nobody checks or pays their own request, copied from "nobody approves their own". Right?
+- Should a missing receipt or quote block payment? Today it does not.
+- Should the person be able to say they handed in the receipt? Today only finance ticks it.
+- Should the person be told on WhatsApp when a request is paid?
+
+**Timesheets, as decision 85 describes them** (`b8778d2f` to `e2aebc00`; migration 80, local only; 3,955 tests pass, none changed).
+- **Rules:** an admin sets who keeps a time sheet, how often, hours asked a week, a cut-off in Lagos time, and what is billable.
+- **The person** reads "You have recorded 31 hours this week. You still need 9 hours by Friday at 17:00." on Today and in Ask Groundwork.
+- **Billing:** an admin or finance exports approved billable hours as CSV or Excel.
+- **A drafted week:** Groundwork drafts the week from the person's own record ("I have enough to draft this week's hours. Here is what I found."), says plainly that the record holds no durations, and nothing is sent without their yes.
+- Hours never feed a report, a signal or a review (decision 10). With no rules set, everything is as before.
+
+**Also fixed:** a WhatsApp message held for a yes or no was lost after ten minutes. It now goes into the check-in at the person's next message: "You did not answer my question within ten minutes, so I have added what you wrote earlier to your check-in."
+
+**For Hafsah:**
+- The draft shares out the hours asked a week across the days the record shows, because it holds no durations, and says so. Acceptable, or only list what was found and always ask for the hours?
+- Should finance be able to export the billing file, or only admins?
+- A lead in a team that keeps time sheets also gets "You still need…" about their own hours on Today. Wanted?
+
+**Run-25 (on `a7e0f76f`, all 24 scenarios): worse than the baseline on one number.** "Proof asked for" is 33 against the baseline's 42 (run-24 was already 37). The drop is spread across scenarios (cofounder 3 to 0, sales 5 to 3, loans 4 to 2, while seniorhire rose 1 to 5), and the conversation prompt did not change, so it looks like the model varying. It is still below the line, and under the rules that makes it wrong until it is back. Patterns 90 against 100 sits exactly on the line. Everything else is at or above the baseline: zero wording problems of every kind, jargon in reports 60 against 511, commitments recorded 61 against 33. "Waiting on themselves" appears nowhere.
+
+**A privacy fault, against decision 75 item 14:** in loans, where borrowers do not see each other, Sunday's report now says "One participant's tricycle was stolen in the fourth month", and his board lists other borrowers' businesses with their figures. With two tricycles among eight borrowers, these point at people. Sunday's quick read also gives Musa's wait as if it were his. **Being fixed now**, with other faults the reading found:
+- "Work is held up by a colleague's documents" (the customers' documents);
+- "on, the-ground", 31 times;
+- Femi named on his own board where "you" belongs;
+- empty aim rows;
+- Kwame's own "I'm aiming" glued into a sentence about him;
+- a name said twice in a sentence (406, up from 362).
+
+Not checked by the run: the admin's view, because the run keeps only the lead's and one participant's.
+
+**Reviews, as decision 85 describes them** (`4197cd1a`, `cda71b45`, `45cbd058`; migration 81, local only; 3,822 tests pass). When a review starts, Groundwork reads the record for the period and keeps it, built from rows, with no model. Aisha reads "This is what Groundwork understands from the record about your work between 1 April 2026 and 1 October 2026 …", then lines such as "In "Sales team, Q3", you made 5 commitments … Of these, 2 were done, 1 was not done, 1 was dropped and 1 was still open when this review started." She can mark any line wrong and say what is true; the correction sits beside the line and never changes the record. Wairimu, who writes it, gets a separate briefing: the counts, the patterns with Aisha's answers ("Aisha hasn't answered this yet." where she has not), what changed after earlier talks, and Aisha's corrections, ending "There are no scores. Groundwork gives you the evidence and the patterns, and you decide." No reader gets a label, verdict or score.
+
+**For Hafsah:**
+- Anyone other than the person reads only the lines and counts from check-ins they are in, because each person's load across check-ins is private (decision 4). The prototype shows the admin "Kept 41 of 44 things she said she would do", a count across check-ins. Your decision and the prototype disagree here: should admins read the whole record and the counts?
+- The briefing is served to everybody who may open the review except the person, each limited to what they can already read. Decision 85 says "the manager gets a separate briefing". Should it be the writer's alone?
+- A correction on a line from a check-in the writer is not in stays with the person, who is told to put it in their own view. Right?
+- The record knows only that a commitment was dropped, not that its scope changed. Is "dropped" enough?
+
+**The run-25 faults are fixed** (`867fc6b3` to `180d3a73`, nine commits).
+- **The loans privacy fault:** Sunday no longer reads "One participant's tricycle was stolen…" or another borrower's business and earnings. He keeps the counts, the shared pattern and his own grinding business, and his quick read no longer gives Musa's wait.
+- **Other fixes:**
+  - "Work is held up by the customers' documents" (not "a colleague's");
+  - "on-the-ground" is kept whole;
+  - Femi reads "You are trying to get twelve approved facilities…" on his own board;
+  - empty aim rows are gone;
+  - Kwame's own "I'm aiming" is no longer glued on;
+  - a promise is no longer listed as an aim;
+  - "Any change in them will show here after the next check-in." replaces "no round has closed".
+- **Names said twice:** by the builder's count, sentences with a name said twice fall from 459 to 275.
+
+**For Hafsah:** the rest of the names said twice ("Musa says Musa never received the grinding machine") can only be fixed with "they" or with "he" or "she". Groundwork never guesses "he" or "she". May it say "they" there?
+
+**"What the room is about" leaked, and is fixed** (`4589925c`). Loans has no such section, but on every other kind of check-in that has one, where the lead keeps people apart, a participant was served the others' aims by name ("Musa Danjuma wants the grinding machine he was promised to be delivered.", "Yakubu Sani wants help after his tricycle was stolen."). Now a participant reads their own ("You are trying to catch up on the three repayments you missed."), aims shared by several ("The borrowers want the first repayment to start once the asset earns.", with a count of others), and the lead's; nothing about Musa or Yakubu. The lead and admins read it whole. **The old failing tests pass** with a fixed clock (`f5ddd1fc`), and "waiting on The customers" now reads "waiting on the customers" (`49d6a074`). 6,602 of 6,603 tests pass in reports, board, grounds and suites.
+
+**For Hafsah:**
+- "What the room is about" is kept on the check-in with full names, and served outside the wrapper that handles names and anonymous sharing. Should it be stored with labels and named only when served, like reports?
+- The one failing test (`a-number-with-a-name-on-it-goes-through-one-rule`) flags four new suites files that read a goal's numbers outside the one rule. The builder judges each a fair exception (a test fixture; the person's own drafted week; leave reading only a goal's name and date; a review reading the person's own goals). May they be added to its list of exceptions?
+- A review shows a person's goal figures only to the person and whoever runs that check-in. Decision 86 says admins see the figures. Should an admin who opens the review see them too?
+
+**Setting up a suite by talking to Groundwork** (`34293f00` to `0d4bc28f`; 1,537 tests pass). An admin says "Set up our employee leave process". Groundwork asks one question at a time, only for what it does not know ("Who approves annual leave?", "Does HR need to see all requests?", "What happens if the manager doesn't respond within two working days?"), then says the whole process back in plain sentences, and sets nothing until the admin says yes. A change ("make it three working days") is said back again. On yes it writes through the same rules the Suites page uses, and reads them back from the store. People named in answers become their job ("the head of the person's team"), so the setup survives people changing jobs. Leave, spending, time sheets and reviews all work this way. Anyone else is told who can set it up, and nothing changes. No model reads the answers yet; they are read by rules, like the role interview.
+
+**For Hafsah:**
+- Should a model read a long description given in one message ("Employees can request annual leave. Their line manager approves it…")? Today only short answers and a few kinds of statement are read; anything else is asked.
+- Once spending is set up by talking, the Suites page's single "who approves anything above the limit" person is no longer used. Acceptable, or should that question become optional?
+
+**Built from what this found** (`2860bab5` to `43e12b1c`; 3,697 tests pass):
+- **Leave approved by length:** Grace says "If it's more than 10 working days, the department head also approves", and it is stored. Aisha asking for 12 days reads "This is more than ten working days, so Wairimu approves it first, and then Joseph, who heads Sales."
+- **HR and finance may set up their suites:** whoever looks after HR sets up leave and reviews, and whoever looks after finance sets up spending and time sheets. Naming who holds each job stays an admin's.
+- **The same approver twice:** when the same person already approved, the later step passes ("Wairimu had already approved it, so this step was passed.").
+- **The history names HR:** the leave rules history names who looks after HR.
+
+**For Hafsah:**
+- When the same person would approve twice, their one approval counts for both. Or should it skip them and go to the next person on that step's list?
+- Those who look after HR or finance may now read who holds each job, because their setup needs it. Right?
+- A member who looks after HR or finance now gets a Suites page of their own; the screens workspace needs to draw it.
+
+**Fixed** (`ab7d1f7f`, `4f7a072d`; 1,620 tests pass): the setup say-back now says "You look after HR, so you see every leave request on the leave board…" to Grace, and "it goes to you to approve as well" where a step comes to the reader; others are still named. The odd question "after the head of the team, for example the head of the person's team?" now gives a job that does not already approve it ("for example HR?").
+
+**NEEDS HAFSAH: "proof asked for" is below the baseline, and no honest fix to the conversation brings it back.** No change caused the drop, and nothing was changed. The scorer counts any Groundwork turn containing "photo", "picture", "document", "receipt" and similar words. In the baseline, 27 of its 42 were "picture" in comments such as "That is a clear picture of your day-to-day." and "That changes the picture." Those comments were cut back on purpose in earlier work, so "picture" now gives 19 or 20. Real requests for proof did not fall: on six scenarios run three more times on today's code, the baseline asked about 3 times and the new runs 3, 5 and 8 times. The rest of the count swings with the model (loans 1 to 5, seniorhire 1 to 4 on identical code). Both runs used the same instructions (`promptVersionId c69dbfdd…`). The choices are yours: count "picture" out of "proof asked for" in the scorer, or bring back the "picture" comments. The scorer is not ours to change. "Patterns found" is within the usual swing (53 to 61 against the baseline's 50 on the same six scenarios).
+
+**Needs Hafsah (safety check):** on 4 October the safety check refused my morning-report entry for item 21, because one listed prototype section was named with words it watches for. As the rules say, it was not reworded or written another way. Item 21 is finished in 38 commits from `a9890cc9` to `3b884e64`, each written up in `docs/answers-from-engine.md`; the builder's full report, with its questions on the prototype sections the engine does not build and on how a loan cohort is read, is held for Hafsah in this chat.
+
+**Pattern questions are back for the lead, and records go to the owner named** (`b804c57c`, `71a94bda`; 7,226 of 7,227 tests pass, the one failure waiting on Hafsah's answer on the four suites files).
+- **Pattern questions:** after the person's answer or the usual 3 or 7 days, Amina's "what to settle first" now includes, for example, "“Steps in to stop things failing” keeps coming up in Rukia Mwangi’s check-ins. This came up in 3 check-ins, in sessions 1, 2 and 3. Rukia Mwangi said, “Nobody else was on call that week.” Ask Rukia Mwangi what has changed since then."
+- **Records:** Ada's "Tunde is taking on everything engineering" is now Tunde's record, not Ada's.
+
+A three-scenario check showed sales' "blocker checked" 16 to 10 and "commitments recorded" 32 to 29. Neither change touches the conversation or what writes commitments, and sales' commitments per session (2, 8, 19 against 6, 10, 16) move as the model varies. The full run below will show it.
+
+**Needs Hafsah (safety check):** on 4 October the safety check refused my morning-report entry for run-26, because it named a read-only command the check watches for. As the rules say, it was not reworded. Run-26's results and the reading of it are held for Hafsah in this chat. The run itself is in `api/journey/all-24/run-26` (not committed).
+
+Now running: fixes from run-26 (the loans privacy rule, a record given to the wrong person, the lead's words on a borrower's Blockers tile), and differences lost when a report is asked for a second time.
+
+Now running: "proof asked for": whether a change caused the drop or the model varies, with repeated runs. If it does not come back, it goes to Hafsah. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 

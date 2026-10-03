@@ -1,6 +1,6 @@
 import { ReportsService } from '../reports/reports.service';
 import { BoardService } from './board.service';
-import { prismaFor } from './__fixtures__/a-page-that-contradicts-itself';
+import { prismaFor, THE_CLOCK } from './__fixtures__/a-page-that-contradicts-itself';
 import { theDisagreementTheReportOpensWith } from './the-quick-read-agrees-with-the-report';
 
 /**
@@ -12,7 +12,7 @@ async function boardFor(which: 'sales' | 'contract', userId: string, role = 'MEM
   const { prisma } = prismaFor(which, role);
   const reports = Object.create(ReportsService.prototype) as ReportsService;
   const svc = new BoardService(prisma, { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, reports);
-  return (await svc.get(which === 'sales' ? 'g-credit' : 'g-contract', userId)) as any;
+  return (await svc.get(which === 'sales' ? 'g-credit' : 'g-contract', userId, undefined, { now: THE_CLOCK })) as any;
 }
 
 const readers = {
@@ -38,10 +38,10 @@ describe('the sales board: one count per thing, and nobody with something open i
       const forty = (b.objectives as any[]).filter((o) => o.target === 40);
       /* Read on the run: "0 at the start, 0 now, said 40." beside "0 at the start, 11 now, said 40." */
       expect(forty).toHaveLength(1);
-      /* An admin standing outside the check-in reads no number on it at all (decision 53), so one row and no count. */
-      if (role === 'ADMIN') expect(forty[0].journey.say).toBe('');
-      /* The same count, as one full sentence since 1 October (the review rules out "0 at the start, 11 now, said 40."). */
-      else expect(forty[0].journey.say).toBe('It was 0 at the start and is 11 now, and the aim is 40.');
+      /* The same count, as one full sentence since 1 October (the review rules out "0 at the start, 11 now, said 40.").
+         An admin standing outside the check-in used to read no number on it at all; since decision 86 an admin
+         sees the figures, so every reader here reads the same sentence. */
+      expect(forty[0].journey.say).toBe('It was 0 at the start and is 11 now, and the aim is 40.');
       expect(JSON.stringify(b.objectives)).not.toContain('It was 0 at the start and is 0 now, and the aim is 40.');
     });
 

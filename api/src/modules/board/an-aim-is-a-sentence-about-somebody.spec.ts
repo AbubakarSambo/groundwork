@@ -44,8 +44,13 @@ describe('the sales board (re-a)', () => {
   it('Femi reads the team\'s aim and nobody else\'s number', async () => {
     expect(await namesAs(people, 'u-bisi', objectives, 'u-femi')).toEqual(['Bisi Adeyemi is aiming for 120 million naira disbursed this quarter.']);
   });
-  it('an admin outside the check-in reads the team\'s aim by Bisi\'s name', async () => {
-    expect(await namesAs(people, 'u-bisi', objectives, ...ADMIN)).toEqual(['Bisi Adeyemi is aiming for 120 million naira disbursed this quarter.']);
+  /* Decision 86 reverses decision 73 for admins: this used to pin that the admin read the team's aim alone. */
+  it('an admin outside the check-in reads every aim, each by its person\'s name', async () => {
+    expect(await namesAs(people, 'u-bisi', objectives, ...ADMIN)).toEqual([
+      'Bisi Adeyemi is aiming for 120 million naira disbursed this quarter.',
+      'Bisi Adeyemi is aiming for 40 approved facilities.',
+      'Ngozi Eze is aiming for 14 approved facilities.',
+    ]);
   });
 });
 
@@ -120,9 +125,10 @@ describe('the workplan board (run-21): the line under a budget', () => {
   }
   /* Where the 180,000 is also Helen's own number, which an admin outside may not read (decision 53),
      the admin loses the whole line, never half of it. Chidi and Helen still read it. */
-  it('an admin who may not read the number loses the whole line, and nobody else does', async () => {
+  /* Decision 86: an admin may read the number now, so the admin reads the whole line too. */
+  it('an admin reads the whole line, as everybody who may read the number does', async () => {
     const withHers = [BUDGET, aim('o-2', 'Helen is keeping spending within 180,000 this quarter.', 180000, 'p-helen', 'p-helen', 0)];
-    expect(await linesAs(withHers, 'u-admin', 'ADMIN')).toEqual(['']);
+    expect(await linesAs(withHers, 'u-admin', 'ADMIN')).toEqual([OVER]);
     expect(await linesAs(withHers, 'u-chidi')).toEqual([OVER]);
     expect(await linesAs(withHers, 'u-helen')).toEqual([OVER]);
   });

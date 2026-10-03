@@ -76,11 +76,13 @@ describe('request 110: an aim a person set for themselves, kept only as their pr
   });
 
   for (const [who, reader] of Object.entries({ 'Juma, an admin who only reads': JUMA, 'the admin who set it up': SETUP })) {
-    it(`${who} reads no one person's aim and is sent no share`, async () => {
+    /* Decision 86: an admin sees the figures, so each person's own aim too. This used to pin that the admin read none. */
+    it(`${who} reads each person's own aim, and is sent no share of their own`, async () => {
       const b = await boardAs({ ...ONLY_AS_PROMISES, createdByUserId: 'u-setup' }, reader[0], reader[1]);
       expect(b.yourShare).toBeUndefined();
       expect(b.yourShareSays).toBeUndefined();
-      expect(JSON.stringify(b.objectives ?? [])).not.toMatch(/12 approved|14 approved/);
+      expect(JSON.stringify(b.objectives ?? [])).toMatch(/12 approved/);
+      expect(JSON.stringify(b.objectives ?? [])).toMatch(/14 approved/);
     });
   }
 

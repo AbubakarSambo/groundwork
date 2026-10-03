@@ -488,6 +488,10 @@ model Organization {
   customerStandings  CustomerStanding[]
   /// Equipment: who has which laptop, phone or demo freezer, and how it is (E10, U.17).
   equipmentItems     EquipmentItem[]
+  /// One record of who did what on a suite's request, and each change of a suite's rules (decision 85, build step 5).
+  suiteEvents        SuiteEvent[]
+  suiteQuestions     SuiteQuestion[]
+  suiteRuleChanges   SuiteRuleChange[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -2597,6 +2601,36 @@ model SpendRequest {
   decidedById    String?   @map("decided_by_id")
   decidedAt      DateTime? @map("decided_at")
   createdAt      DateTime  @default(now()) @map("created_at")
+  /// The approval step it is on, from 0 (decision 85, build step 4). Today's answers have one step.
+  step           Int       @default(0)
+  /// How far down that step's list of rules it has been passed on, from 0.
+  escalatedTo    Int       @default(0) @map("escalated_to")
+  /// When it started waiting at this step, or for the person it was passed to. Null: since it was asked.
+  stepSince      DateTime? @map("step_since")
+  /// Who approved each step so far, in order, by sign-in.
+  approvedByIds  String[]  @default([]) @map("approved_by_ids")
+  /// The category the admin named that it is for ("Fuel", a project), when the spending rules have
+  /// categories (decision 85, build step 9). Empty with none set, and on every request kept before.
+  category       String?   @db.VarChar(40)
+  /// The evidence the rules asked for when it was asked: "receipt", "quote", or both. Only that it is
+  /// needed; no file is kept. Empty when none was needed.
+  evidenceNeeded String[]  @default([]) @map("evidence_needed")
+  /// The reason the person who declined it gave, in their words, told to the person who asked
+  /// (decision 85, build step 9, as leave has). Empty when none was given, and on every request before.
+  declineReason  String?   @map("decline_reason") @db.Text
+  /// FINANCE'S PART, after the last approval (decision 85, build step 10). Whoever looks after finance
+  /// checks it (verified), records the budget line it is paid from (code), and marks it paid with the
+  /// day it was paid. Each step is also in `suite_events`, with who and when. All empty on every request
+  /// kept before, and on any request finance has not touched.
+  verifiedById   String?   @map("verified_by_id")
+  verifiedAt     DateTime? @map("verified_at")
+  /// The budget line or category finance records it under, in finance's own words.
+  code           String?   @db.VarChar(80)
+  /// The day it was paid, as finance says it.
+  paidOn         DateTime? @map("paid_on") @db.Date
+  paidById       String?   @map("paid_by_id")
+  /// The evidence finance has had: "receipt", "quote". Only that it was given; no file is kept.
+  evidenceGiven  String[]  @default([]) @map("evidence_given")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -2687,11 +2721,43 @@ model PerformanceReview {
   decisionReasons        String?   @map("decision_reasons") @db.Text
   decidedById            String?   @map("decided_by_id")
   decidedAt              DateTime? @map("decided_at")
+  /// THE RECORD, INTERPRETED (decision 85, item 4; build step 12). What Groundwork understands from the
+  /// record about the person's work in the review's period: the check-ins they took part in, the goals
+  /// and work-plan items they own, what they committed to and how each was settled, and what they said
+  /// was holding them up. Written once, from rows and without a model, when the review starts, so it
+  /// reads the same whenever it is opened. Stored as facts with ids, never as sentences with names:
+  /// each reader is served the sentences in their own words (suites/the-record-read-for-a-review.ts),
+  /// and only the lines from check-ins they are in. Never hours, never leave.
+  recordRead             Json?     @map("record_read")
+  /// The first day of the period the record was read for. The last day is `startedAt`.
+  recordFrom             DateTime? @map("record_from")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  corrections  PerformanceReviewCorrection[]
 
   @@index([organizationId, personExternalId])
   @@map("performance_reviews")
+}
+
+/// THE PERSON'S CORRECTION OF ONE LINE OF THEIR REVIEW (build step 12). The person marks a line of
+/// "the record, interpreted" as wrong and says what is true. It is kept beside the line and never
+/// changes the line or the record it came from. A second correction of the same line is a new row, so
+/// nothing the person said is lost; the latest is the one served. Who reads it is decided in
+/// suites/the-reviews.service.ts: the person, and whoever may read that line.
+model PerformanceReviewCorrection {
+  id         String   @id @default(uuid())
+  reviewId   String   @map("review_id")
+  /// The line's key in `PerformanceReview.recordRead`.
+  lineKey    String   @map("line_key") @db.VarChar(120)
+  /// What the person says is true, in their own words.
+  whatIsTrue String   @map("what_is_true") @db.Text
+  byUserId   String   @map("by_user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  review PerformanceReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId, lineKey, createdAt])
+  @@map("performance_review_corrections")
 }
 
 /// HOURS SPENT ON ONE CLIENT OR PROJECT ON ONE DAY (E3, the time sheets suite, U.17). FOR BILLING
@@ -2706,6 +2772,10 @@ model TimeEntry {
   client         String   @db.VarChar(120)
   onDay          DateTime @map("on_day") @db.Date
   minutes        Int
+  /// Billable or not, as the person said of this one entry ("3 hours on Internal, not billable").
+  /// Null: it follows the time sheet rules for its client or project (the-time-sheet-rules.ts), and
+  /// with no rules set every hour is billable. For billing only (decision 10).
+  billable       Boolean?
   createdAt      DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -2723,9 +2793,16 @@ model TimeWeek {
   userId          String   @map("user_id")
   /// The Monday the week starts on.
   weekOf          DateTime @map("week_of") @db.Date
-  approvedMinutes Int      @map("approved_minutes")
-  approvedById    String   @map("approved_by_id")
-  approvedAt      DateTime @default(now()) @map("approved_at")
+  /// The total the last step approved. Null until the last step approves (decision 85, build step 4).
+  approvedMinutes Int?      @map("approved_minutes")
+  approvedById    String?   @map("approved_by_id")
+  approvedAt      DateTime? @default(now()) @map("approved_at")
+  /// The total the steps so far approved. When the hours change, the week starts again at the first step.
+  seenMinutes     Int?      @map("seen_minutes")
+  step            Int       @default(0)
+  escalatedTo     Int       @default(0) @map("escalated_to")
+  stepSince       DateTime? @map("step_since")
+  approvedByIds   String[]  @default([]) @map("approved_by_ids")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -2769,6 +2846,17 @@ model LeaveRequest {
   decidedById    String?   @map("decided_by_id")
   decidedAt      DateTime? @map("decided_at")
   askedAt        DateTime  @default(now()) @map("asked_at")
+  /// The approval step it is on, from 0 (decision 85, build step 4). Today's answers have one step.
+  step           Int       @default(0)
+  /// How far down that step's list of rules it has been passed on, from 0.
+  escalatedTo    Int       @default(0) @map("escalated_to")
+  /// When it started waiting at this step, or for the person it was passed to. Null: since it was asked.
+  stepSince      DateTime? @map("step_since")
+  /// Who approved each step so far, in order, by sign-in.
+  approvedByIds  String[]  @default([]) @map("approved_by_ids")
+  /// The reason the person who declined it gave, in their words, told to the person who asked
+  /// (decision 85, build step 7). Empty when none was given, and on every request decided before.
+  declineReason  String?   @map("decline_reason") @db.Text
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -2794,6 +2882,83 @@ model OrganizationSuite {
 
   @@unique([organizationId, suite])
   @@map("organization_suites")
+}
+
+/// ONE RECORD OF WHO DID WHAT ON A SUITE'S REQUEST (decision 85, build step 5): asked (after the
+/// say-back and the yes), told, approved at a step, declined, passed on, started, decided. On what
+/// information is kept as references to rows only, never a copy of anybody's words.
+model SuiteEvent {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  /// leave, spend, time or reviews.
+  suite          String   @db.VarChar(16)
+  /// The request: a leave or spending request's id, a review's id, or for hours the person's sign-in and the week's Monday joined by "|".
+  ref            String   @db.VarChar(200)
+  /// asked, told, approved, declined, escalated, started, decided, questioned, answered, and for
+  /// spending finance's verified, coded, evidence, exported and paid.
+  kind           String   @db.VarChar(16)
+  /// Who did it, by sign-in. Empty when Groundwork did it (telling, passing on).
+  byUserId       String?  @map("by_user_id")
+  /// Who it went to: who was told, or who it was passed to. Empty for any admin.
+  toUserId       String?  @map("to_user_id")
+  /// The approval step it happened at, from 0.
+  step           Int?
+  /// On what information, as references to rows only.
+  basis          Json?
+  at             DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, suite, ref, at])
+  @@map("suite_events")
+}
+
+/// A QUESTION ABOUT A REQUEST, AND THE ANSWER (decision 85, build step 7). The person who decides a
+/// request asks the person who made it, and the request keeps waiting. Both are in the words each of
+/// them wrote, read only by the people who may read the request (the-leave-board.service.ts); the
+/// record of who did what (`SuiteEvent`) keeps only that a question was asked and answered, with this
+/// row's id.
+model SuiteQuestion {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  /// leave or spend.
+  suite          String    @db.VarChar(16)
+  /// The request's id.
+  ref            String    @db.VarChar(200)
+  /// Who asked: the person who decides it.
+  askedById      String    @map("asked_by_id")
+  /// Who was asked: the person who made the request.
+  toUserId       String    @map("to_user_id")
+  question       String    @db.Text
+  answer         String?   @db.Text
+  askedAt        DateTime  @default(now()) @map("asked_at")
+  answeredAt     DateTime? @map("answered_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, suite, ref])
+  @@index([organizationId, toUserId, answeredAt])
+  @@map("suite_questions")
+}
+
+/// EACH CHANGE OF A SUITE'S RULES (decision 85, build step 5): a suite switched on or off with its
+/// answers, who holds each duty, or the approval steps. `OrganizationSuite` keeps only the last.
+model SuiteRuleChange {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  /// The suite's key, or "duties", or "workflows".
+  suite          String   @db.VarChar(24)
+  changedById    String?  @map("changed_by_id")
+  changedAt      DateTime @default(now()) @map("changed_at")
+  /// What it was: { isOn, answers }, or nothing when it had never been set.
+  before         Json?
+  /// What it became: { isOn, answers }.
+  after          Json
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, changedAt])
+  @@map("suite_rule_changes")
 }
 
 /// The engine's text is written by the engine (docs/requests-to-engine.md, request 15), stored in
@@ -3154,10 +3319,16 @@ model WhatsAppThread {
   /// request?"), waiting for the person's yes or no (decision 82, item 2). Kept here, not in one copy
   /// of the API's memory, so the answer finds it after a restart or on another copy. The kind
   /// (`leave`, `hours`, `spending`), the words (the yes hands them to Ask Groundwork, the no puts them
-  /// in the check-in), and when it was asked. All three are cleared on the answer, and after ten minutes.
+  /// in the check-in), and when it was asked. All three are cleared on the answer. After ten minutes with no answer, the next message puts the words in the check-in.
+  /// The kind `answer` is a reply that may be the person's answer to a question about their own request.
   requestKind    String?   @map("request_kind")
   requestWords   String?   @map("request_words")
   requestAskedAt DateTime? @map("request_asked_at")
+  /// The question about the person's own request (a `SuiteQuestion` id) they were already asked about
+  /// here, "Is this your answer to Wairimu's question about your leave?" (decision 85, build step 7).
+  /// While `requestKind` is `answer`, it is the question the held words would answer. It stays after
+  /// a no, so the same question is asked about once only.
+  questionAskedAbout String? @map("question_asked_about")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   @@unique([organizationId, phone])

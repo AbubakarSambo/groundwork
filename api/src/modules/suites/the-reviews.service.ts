@@ -1,12 +1,18 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
-import { mayApprove } from './who-approves';
+import { aRequestsHistory, recordIt } from './a-request-is-recorded';
+import { couldBeNamed, decidesIt, everyRuleIn, theOneWhoDecides, theStepsFor, type WhoDecides } from './who-may-decide';
 import { withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { isProposedByGroundwork, theProposalSentence } from './a-review-falls-due';
 import { whatGroundworkNoticed } from './the-review-noticed-from-the-record';
+import {
+  A_LINE_WAS_CORRECTED, aRecordLineSaid, mayReadTheLine, thePartOf, thePartsHeading, thePeriodSaid, theRecordForAReview, theReviewsPeriodFrom, theStoredRecord,
+  type ARecordLine, type ARecordPart, type WhatTheReaderIsIn,
+} from './the-record-read-for-a-review';
 import { monthsToDrawOn, theFirstCheckInOf, theOpenDecisionsAbout, whereItStandsSaid, type Stands } from './where-a-review-stands';
 import { SuggestionsService } from '../suggestions/suggestions.service';
+import { PATTERNS_NOTE, theBriefingsHeading, theCountsSaid, theEarlierReviews, thePatternsForTheBriefing, whoDecidesTheReview, type ABriefing } from './a-review-briefing';
 import type { ForTheLead } from '../suggestions/a-suggestion-told-like-a-signal';
 import { AReviewToldOnWhatsApp } from './a-review-told-on-whatsapp.service';
 import {
@@ -25,6 +31,9 @@ export const REVIEW_REFUSED = {
   alreadyStarted: 'This review has already been started.',
   notYet: 'This review cannot start yet, because a check-in that decides something about this person is still open. It can start once that check-in is decided.',
   writeSomething: 'Write something first.',
+  onlyThePersonCorrects: 'Only the person this review is about can correct what it says about their work.',
+  noSuchLine: 'That line is not in this review.',
+  sayWhatIsTrue: 'Say what is true, in a sentence or two.',
   sayWhatAndWhy: 'Say what you decided, and why, in a sentence or two.',
 };
 
@@ -74,6 +83,29 @@ export function yourReviewSaid(stands: 'started' | 'decided', writerFirstName: s
     : `${who} has started your review. You can read it and add your own view before you meet.`;
 }
 
+/**
+ * THE RECORD, INTERPRETED, as one reader is served it (build step 12): each part with its heading, and
+ * each line as a full sentence in this reader's words, with the person's correction beside it.
+ */
+export interface TheRecordServed {
+  /** What this is, and the period it covers, for this reader. */
+  intro: string;
+  /** For the person: who reads their corrections, and what stays with them. Null for anybody else. */
+  whoReads: string | null;
+  parts: { part: ARecordPart; heading: string; lines: ARecordLineServed[] }[];
+  /** Only the person corrects a line. */
+  mayCorrect: boolean;
+}
+export interface ARecordLineServed {
+  key: string;
+  says: string;
+  /** The person's latest correction of this line, kept beside it. The line itself never changes. */
+  correction: { said: string; whatIsTrue: string } | null;
+}
+
+/** The order the parts are served in. */
+const THE_PARTS: ARecordPart[] = ['worked-on', 'committed', 'completed', 'changed', 'delayed', 'blocked'];
+
 /** The whole review, for whoever writes it with the person, their lead or an admin. */
 export interface ForTheWriter {
   reader: 'writer' | 'lead' | 'admin';
@@ -84,6 +116,8 @@ export interface ForTheWriter {
   writtenWithFirstName: string | null;
   dueOn: Day;
   noticed: Noticed[];
+  /** What Groundwork understands from the record, only the lines from check-ins this reader is in. Null for a review started before it existed. */
+  record: TheRecordServed | null;
   managersWords: string | null;
   theirView: string | null;
   decision: { says: string; reasons: string } | null;
@@ -99,6 +133,13 @@ export interface ForTheWriter {
    * not write it, while the setting is off, and when the record does not reach the line.
    */
   recognise: RecogniseForTheWriter | null;
+  /**
+   * The manager's briefing (build step 13, a-review-briefing.ts): the counts, the person's patterns
+   * after their turn with their answer beside each, what changed after earlier conversations, and the
+   * person's corrections. Evidence and patterns only, never a verdict. Each reader reads only what they
+   * may already read: counts and corrections from check-ins they are in, patterns from ones they run.
+   */
+  briefing: ABriefing;
 }
 
 /** The person's own review: the facts, their own view, and the decision with its reasons. */
@@ -109,6 +150,8 @@ export interface ForThePerson {
   writtenWithFirstName: string | null;
   dueOn: Day;
   noticed: Noticed[];
+  /** What Groundwork understands from the record about their work, every line, to correct. Null for a review started before it existed. */
+  record: TheRecordServed | null;
   theirView: string | null;
   decision: { says: string; reasons: string } | null;
   /** Their own count, the line, and who decides, when Groundwork suggests recognising their work. Absent otherwise. */
@@ -117,6 +160,15 @@ export interface ForThePerson {
 
 const dayOf = (d: Date): Day => d.toISOString().slice(0, 10);
 const DAY = 86_400_000;
+
+/**
+ * The person a started review is said to be written with: whoever decided it, once decided, or else
+ * whoever started it. Read from the review itself, so an admin who started it is named, never the
+ * person's line manager in their place (bug 2 of docs/suites-against-the-workflow-model.md).
+ */
+export function theOneWhoWrote(r: { startedById?: string | null; decidedById?: string | null; decidedAt?: Date | null }): string | null {
+  return (r.decidedAt && r.decidedById) || r.startedById || null;
+}
 
 /**
  * `userId` is the person's sign-in: the link, or the one account in this organisation with the same
@@ -133,11 +185,19 @@ type Person = { externalId: string; userId: string | null; linkedUserId: string 
  * WHO READS WHAT, decided here and never on the screen (decisions rule 6):
  *   - nobody, while the suite is off;
  *   - an admin reads every review; a lead only their own team's (a-leads-team.ts);
+ *   - whoever the rules name to write a review (who-may-decide.ts) also reads it on the board: a lead
+ *     from another team, or a member, who opens the board as an "approver" and reads only the reviews
+ *     they write;
  *   - the person who writes it with them (the organisation's answer: "Their manager" or "An admin",
- *     through who-approves.ts) starts it, writes their own words, and decides with reasons;
+ *     through who-may-decide.ts) starts it, writes their own words, and decides with reasons;
  *   - the person it is about reads the facts, their own view, and the decision with its reasons,
  *     and writes their own view; never a verdict, a label, or how their answers were rated;
- *   - a colleague and a guest are refused.
+ *   - a colleague and a guest are refused;
+ *   - the record, interpreted (build step 12, the-record-read-for-a-review.ts): the person reads every
+ *     line and corrects it; anybody else reads only the lines from check-ins they are in (decision 4);
+ *   - the manager's briefing (build step 13, a-review-briefing.ts): everybody who may open the review
+ *     except the person, each limited to what they may already read; evidence and patterns, never a
+ *     verdict.
  * Hours and leave never feed a review (decisions rule 10): nothing here reads them.
  */
 @Injectable()
@@ -149,10 +209,18 @@ export class ReviewsService {
     @Optional() private readonly toldOnWhatsApp?: AReviewToldOnWhatsApp,
   ) {}
 
-  async board(reader: Reader, today = new Date()): Promise<{ every: string | null; next: NextReview[] }> {
+  async board(reader: Reader, today = new Date()): Promise<{ reader: 'admin' | 'lead' | 'approver'; every: string | null; next: NextReview[] }> {
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
-    if (role !== 'ADMIN' && role !== 'LEAD') throw new ForbiddenException(REVIEW_REFUSED.onlyAdminsAndLeads);
+    /*
+     * Whoever the rules name writes the review, whatever their role or team (who-may-decide.ts). A
+     * member the rules could name opens the board as an approver and is served only the reviews they
+     * write; any other member, and a guest, are refused, as before.
+     */
+    const asApprover = role !== 'ADMIN' && role !== 'LEAD';
+    if (asApprover && !(role === 'MEMBER' && (await couldBeNamed(this.prisma, everyRuleIn(theStepsFor('reviews', answers)), reader.organizationId, { userId: reader.userId, role })))) {
+      throw new ForbiddenException(REVIEW_REFUSED.onlyAdminsAndLeads);
+    }
     const dues = await this.prisma.evaluationDue.findMany({
       where: { organizationId: reader.organizationId, dueOn: { gte: new Date(today.getTime() - 90 * DAY), lte: new Date(today.getTime() + 365 * DAY) } },
       orderBy: { dueOn: 'asc' },
@@ -162,7 +230,7 @@ export class ReviewsService {
     const me = [...directory.values()].find((p) => p.userId === reader.userId) ?? null;
     const reviews = await this.prisma.performanceReview.findMany({
       where: { organizationId: reader.organizationId, evaluationDueId: { in: dues.map((d) => d.id) } },
-      select: { id: true, evaluationDueId: true, decidedAt: true, startedAt: true },
+      select: { id: true, evaluationDueId: true, decidedAt: true, startedAt: true, startedById: true, decidedById: true },
     });
     const byDue = new Map(reviews.map((r) => [r.evaluationDueId, r]));
     const signIns = dues.map((d) => directory.get(d.personExternalId)?.userId).filter((u): u is string => !!u);
@@ -174,15 +242,17 @@ export class ReviewsService {
     for (const d of dues) {
       const p = directory.get(d.personExternalId);
       if (!p || p.userId === reader.userId) continue;
-      if (role === 'LEAD' && !(me && inTheLeadsTeam(me, p))) continue;
+      /* A lead reads their own team's reviews; anybody also reads each review they write. */
+      const writesIt = await this.writes(reader, role, p, answers.writer);
+      if (role !== 'ADMIN' && !(role === 'LEAD' && me && inTheLeadsTeam(me, p)) && !writesIt) continue;
       const r = byDue.get(d.id);
-      const manager = p.managerExternalId ? directory.get(p.managerExternalId) : null;
+      const writtenWith = r ? await this.fullNameOf(theOneWhoWrote(r as any), directory) : await this.whoWouldWrite(reader.organizationId, p, answers.writer, directory);
       const waitingFor = !r && p.userId ? openDecisions.get(p.userId) ?? null : null;
       const stands: Stands = r ? (r.decidedAt ? 'decided' : 'started') : waitingFor ? 'not-yet' : 'ready';
       next.push({
         dueId: d.id,
         name: this.nameOf(p),
-        writtenWith: manager ? this.nameOf(manager) : null,
+        writtenWith,
         dueOn: dayOf(d.dueOn),
         stands,
         standsSays: whereItStandsSaid({
@@ -191,11 +261,11 @@ export class ReviewsService {
           startedAt: (r as any)?.startedAt ?? null, decidedAt: r?.decidedAt ?? null,
         }),
         reviewId: r?.id ?? null,
-        mayStart: stands === 'ready' && (await this.writes(reader, role, p, answers.writer)),
+        mayStart: stands === 'ready' && writesIt,
         proposal: stands === 'ready' && isProposedByGroundwork(d.source) ? theProposalSentence(d.source, this.firstOf(p)) : null,
       });
     }
-    return { every: answers.every, next: next.filter((n) => n.name) };
+    return { reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : 'approver', every: answers.every, next: next.filter((n) => n.name) };
   }
 
   /** The person who writes it with them starts it. */
@@ -214,13 +284,28 @@ export class ReviewsService {
     }
     /* Written once, when the writer says yes, from the record and nothing else (the-review-noticed-from-the-record.ts). */
     const noticed = await whatGroundworkNoticed(this.prisma, reader.organizationId, p.userId).catch(() => []);
+    /*
+     * The record, interpreted, for the review's period (build step 12): from the day this person's
+     * previous review started, or the organisation's "How often?" back from today. Written once, now.
+     */
+    const now = new Date();
+    const previous = await (this.prisma.performanceReview as any).findFirst?.({
+      where: { organizationId: reader.organizationId, personExternalId: due.personExternalId }, orderBy: { startedAt: 'desc' }, select: { startedAt: true },
+    }).catch(() => null);
+    const from = theReviewsPeriodFrom(now, answers.every, previous?.startedAt ?? null);
+    const recordRead = await theRecordForAReview(this.prisma, {
+      organizationId: reader.organizationId, personUserId: p.userId, personExternalId: p.externalId, from, until: now,
+    }).catch(() => [] as ARecordLine[]);
     const r = await this.prisma.performanceReview.create({
       data: {
         organizationId: reader.organizationId, evaluationDueId: due.id, personExternalId: due.personExternalId, startedById: reader.userId,
+        recordRead: recordRead as any, recordFrom: from,
         ...(noticed.length ? { noticed: noticed as any } : {}),
       },
       select: { id: true },
     });
+    /* One record of who did what (decision 85, build step 5). */
+    await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'reviews', ref: r.id, kind: 'started', byUserId: reader.userId, basis: { row: 'performance_reviews', id: r.id, due: due.id } });
     /* The person is told it waits for them in the app; nothing of it goes to the phone. */
     await this.toldOnWhatsApp?.toThePerson(reader.organizationId, p.userId, reader.userId, 'started').catch(() => false);
     return { id: r.id };
@@ -238,15 +323,15 @@ export class ReviewsService {
     if (!me) return [];
     const rows = await this.prisma.performanceReview.findMany({
       where: { organizationId: reader.organizationId, personExternalId: me.externalId },
-      select: { id: true, evaluationDueId: true, theirView: true, decidedAt: true, decision: true, decisionReasons: true },
+      select: { id: true, evaluationDueId: true, theirView: true, decidedAt: true, decision: true, decisionReasons: true, startedById: true, decidedById: true },
     });
-    const manager = me.managerExternalId ? directory.get(me.managerExternalId) ?? null : null;
-    const writer = manager ? this.firstOf(manager) : null;
     const out: YourReview[] = [];
     for (const r of rows) {
       const due = await this.prisma.evaluationDue.findUnique({ where: { id: r.evaluationDueId }, select: { dueOn: true } });
       if (!due) continue;
       const stands = r.decidedAt && r.decision && r.decisionReasons ? 'decided' : 'started';
+      /* The person who actually started it, or decided it: never the line manager by default (bug 2). */
+      const writer = await this.firstNameOf(theOneWhoWrote(r), directory);
       out.push({ id: r.id, dueOn: dayOf(due.dueOn), writtenWithFirstName: writer, stands, says: yourReviewSaid(stands, writer, !!r.theirView?.trim()) });
     }
     return out.sort((a, b) => b.dueOn.localeCompare(a.dueOn));
@@ -257,7 +342,10 @@ export class ReviewsService {
     const answers = await this.suiteAnswers(reader.organizationId);
     const { row, person, directory } = await this.theReview(reader, id);
     const role = await this.roleOf(reader);
-    const manager = person.managerExternalId ? directory.get(person.managerExternalId) ?? null : null;
+    /* Whoever started it, or decided it, is named; never the line manager by default (bug 2). */
+    const writerId = theOneWhoWrote(row as any);
+    const writerFirst = await this.firstNameOf(writerId, directory);
+    const startedByFirst = await this.firstNameOf((row as any).startedById ?? null, directory);
     const decision = row.decision && row.decisionReasons ? { says: row.decision, reasons: row.decisionReasons } : null;
     const dueOn = dayOf(row.due.dueOn);
 
@@ -267,24 +355,32 @@ export class ReviewsService {
     }).catch(() => null);
     if (person.userId === reader.userId) {
       return {
-        reader: 'person', id: row.id, firstName: this.firstOf(person), writtenWithFirstName: manager ? this.firstOf(manager) : null,
-        dueOn, noticed: this.noticedOf(row.noticed, true), theirView: row.theirView ?? null, decision,
-        ...(recognising ? { recognise: recogniseForThePerson(recognising, manager ? this.firstOf(manager) : null) } : {}),
+        reader: 'person', id: row.id, firstName: this.firstOf(person), writtenWithFirstName: writerFirst,
+        dueOn, noticed: this.noticedOf(row.noticed, true),
+        record: await this.theRecordServed(row, person, reader.userId, writerId, writerFirst),
+        theirView: row.theirView ?? null, decision,
+        /* The count is of check-ins with whoever started the review (theRecordForRecognising), so that person is named. */
+        ...(recognising ? { recognise: recogniseForThePerson(recognising, startedByFirst) } : {}),
       };
     }
     const writes = await this.writes(reader, role, person, answers.writer);
     const me = [...directory.values()].find((p) => p.userId === reader.userId) ?? null;
     const readsIt = writes || role === 'ADMIN' || (role === 'LEAD' && !!me && inTheLeadsTeam(me, person));
     if (!readsIt) throw new ForbiddenException(REVIEW_REFUSED.notYours);
+    const record = await this.theRecordServed(row, person, reader.userId, writerId, writerFirst);
+    const briefing = await this.theBriefing(row, person, reader.userId, writes, writerFirst, record);
     const suggestion = writes && person.userId && this.suggestions
       ? await this.suggestions.latestForTheLeadAbout(person.userId, reader).catch(() => null)
       : null;
     return {
       reader: writes ? 'writer' : role === 'ADMIN' ? 'admin' : 'lead',
       id: row.id, name: this.nameOf(person), firstName: this.firstOf(person),
-      writtenWith: manager ? this.nameOf(manager) : null, writtenWithFirstName: manager ? this.firstOf(manager) : null,
-      dueOn, noticed: this.noticedOf(row.noticed, writes), managersWords: row.managersWords ?? null, theirView: row.theirView ?? null, decision, mayWrite: writes, suggestion,
-      recognise: writes && recognising && theWriterMayReadIt({ theirView: row.theirView ?? null, startedAt: (row as any).startedAt }) ? recogniseForTheWriter(this.firstOf(person)) : null,
+      writtenWith: await this.fullNameOf(writerId, directory), writtenWithFirstName: writerFirst,
+      dueOn, noticed: this.noticedOf(row.noticed, writes),
+      record,
+      managersWords: row.managersWords ?? null, theirView: row.theirView ?? null, decision, mayWrite: writes, suggestion,
+      recognise: writes && recognising && theWriterMayReadIt({ theirView: row.theirView ?? null, startedAt: (row as any).startedAt }) ? recogniseForTheWriter(this.firstOf(person), recognising) : null,
+      briefing,
     };
   }
 
@@ -310,6 +406,33 @@ export class ReviewsService {
     return this.one(reader, id);
   }
 
+  /**
+   * THE PERSON CORRECTS ONE LINE (build step 12): they mark it as wrong and say what is true. The
+   * correction is kept beside the line, in its own row, and the line and the record it came from never
+   * change. A second correction of the same line is kept too; the latest is the one served.
+   */
+  async correct(reader: Reader, id: string, lineKey: string, whatIsTrue: string) {
+    await this.suiteAnswers(reader.organizationId);
+    const { row, person } = await this.theReview(reader, id);
+    if (person.userId !== reader.userId) throw new ForbiddenException(REVIEW_REFUSED.onlyThePersonCorrects);
+    if (!theStoredRecord((row as any).recordRead).some((l) => l.key === lineKey)) throw new NotFoundException(REVIEW_REFUSED.noSuchLine);
+    const text = (whatIsTrue ?? '').trim();
+    if (!text) throw new BadRequestException(REVIEW_REFUSED.sayWhatIsTrue);
+    await (this.prisma as any).performanceReviewCorrection.create({ data: { reviewId: row.id, lineKey, whatIsTrue: text.slice(0, 2000), byUserId: reader.userId } });
+    /* One record of who did what (decision 85, build step 5): that a line was corrected, never which or the words. */
+    await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'reviews', ref: row.id, kind: 'corrected', byUserId: reader.userId, basis: { row: 'performance_review_corrections' } });
+    return this.one(reader, id);
+  }
+
+  /**
+   * One review's record of who started and decided it, in plain sentences (decision 85, build step 5),
+   * for exactly the people who may read the review (`one` decides that, and refuses everybody else).
+   */
+  async history(reader: Reader, id: string): Promise<{ said: string[] }> {
+    await this.one(reader, id);
+    return aRequestsHistory(this.prisma, reader.organizationId, 'reviews', id, reader.userId);
+  }
+
   /** The writer decides, with reasons. The person reads both. */
   async decide(reader: Reader, id: string, input: { decision?: string; reasons?: string }) {
     const answers = await this.suiteAnswers(reader.organizationId);
@@ -322,6 +445,8 @@ export class ReviewsService {
       where: { id: row.id },
       data: { decision: says.slice(0, 1000), decisionReasons: reasons.slice(0, 2000), decidedById: reader.userId, decidedAt: new Date() },
     });
+    /* One record of who did what (decision 85, build step 5): who decided and when, never the words. */
+    await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'reviews', ref: row.id, kind: 'decided', byUserId: reader.userId, basis: { row: 'performance_reviews', id: row.id } });
     /* Told once, the first time it is decided; a reason corrected later is not a second message. */
     if (!row.decidedAt) await this.toldOnWhatsApp?.toThePerson(reader.organizationId, person.userId, reader.userId, 'decided').catch(() => false);
     return this.one(reader, id);
@@ -339,12 +464,133 @@ export class ReviewsService {
     return { row: { ...row, due }, person, directory };
   }
 
-  /** Whether this reader writes the review with this person, by the organisation's answer. */
-  private writes(reader: Reader, role: string | null, p: Person, writer: string | null): Promise<boolean> {
-    return mayApprove(this.prisma, {
-      organizationId: reader.organizationId, readerId: reader.userId, readerRole: role,
-      personUserId: p.userId ?? `person:${p.externalId}`, approver: writer, managerExternalId: p.managerExternalId,
+  /** Which of these check-ins this reader is in, and which they run (the lead, or the admin who set it up). */
+  private async whatTheyAreIn(userId: string | null, groundIds: string[], isThePerson: boolean): Promise<WhatTheReaderIsIn> {
+    if (isThePerson || !userId || !groundIds.length) return { isThePerson, inCheckIns: new Set(), runsCheckIns: new Set() };
+    const db = this.prisma as any;
+    const [ins, runs] = await Promise.all([
+      db.groundParticipant?.findMany?.({ where: { userId, groundId: { in: groundIds } }, select: { groundId: true } }).catch(() => []),
+      db.ground?.findMany?.({ where: { id: { in: groundIds }, OR: [{ initiatorId: userId }, { createdByUserId: userId }] }, select: { id: true } }).catch(() => []),
+    ]);
+    return { isThePerson, inCheckIns: new Set(((ins ?? []) as any[]).map((x) => x.groundId)), runsCheckIns: new Set(((runs ?? []) as any[]).map((x) => x.id)) };
+  }
+
+  /** The lines of the record this reader may read. */
+  private async readableLines(row: any, person: Person, readerUserId: string): Promise<ARecordLine[]> {
+    const lines = theStoredRecord(row.recordRead);
+    const groundIds = [...new Set(lines.map((l) => l.groundId).filter((g): g is string => !!g))];
+    const access = await this.whatTheyAreIn(readerUserId, groundIds, person.userId === readerUserId);
+    return lines.filter((l) => mayReadTheLine(l, access));
+  }
+
+  /** The manager's briefing, as this reader may read it (build step 13). */
+  private async theBriefing(row: any, person: Person, readerUserId: string, writes: boolean, writerFirst: string | null, record: TheRecordServed | null): Promise<ABriefing> {
+    const first = this.firstOf(person) || 'this person';
+    const directory = await this.directory(row.organizationId);
+    const [lines, found, earlier] = await Promise.all([
+      this.readableLines(row, person, readerUserId),
+      thePatternsForTheBriefing(this.prisma, { organizationId: row.organizationId, personUserId: person.userId, readerUserId, first }),
+      theEarlierReviews(this.prisma, {
+        organizationId: row.organizationId, personExternalId: person.externalId, before: new Date(row.startedAt ?? Date.now()), first, readerUserId,
+        nameOf: (id) => this.firstNameOf(id, directory),
+      }),
+    ]);
+    return {
+      heading: theBriefingsHeading(writes, first),
+      counts: theCountsSaid(lines, first),
+      patterns: found.patterns,
+      patternsNote: found.patterns.length ? PATTERNS_NOTE(first) : null,
+      changedAfterEarlierConversations: [...found.talkedThrough, ...earlier],
+      corrections: (record?.parts ?? []).flatMap((p) => p.lines).filter((l) => l.correction).map((l) => ({ line: l.says, said: l.correction!.said, whatIsTrue: l.correction!.whatIsTrue })),
+      whoDecides: whoDecidesTheReview(writes, first, writerFirst),
+    };
+  }
+
+  /** The record, interpreted, as this reader may read it, with the person's corrections beside each line. */
+  private async theRecordServed(row: any, person: Person, readerUserId: string, writerId: string | null, writerFirst: string | null): Promise<TheRecordServed | null> {
+    if (!Array.isArray(row.recordRead)) return null;
+    const lines = theStoredRecord(row.recordRead);
+    const isThePerson = person.userId === readerUserId;
+    const first = this.firstOf(person) || 'this person';
+    const groundIds = [...new Set(lines.map((l) => l.groundId).filter((g): g is string => !!g))];
+    const access = await this.whatTheyAreIn(readerUserId, groundIds, isThePerson);
+    const theirs = lines.filter((l) => mayReadTheLine(l, access));
+    const corrections: any[] = ((await (this.prisma as any).performanceReviewCorrection?.findMany?.({
+      where: { reviewId: row.id }, orderBy: { createdAt: 'asc' }, select: { lineKey: true, whatIsTrue: true, createdAt: true },
+    }).catch(() => [])) ?? []);
+    const latest = new Map<string, any>();
+    for (const c of corrections) latest.set(c.lineKey, c);
+    const who = { isThePerson, userId: readerUserId, personFirst: first };
+    const parts = THE_PARTS.map((part) => ({
+      part,
+      heading: thePartsHeading(part, who),
+      lines: theirs.filter((l) => thePartOf(l) === part).map((l): ARecordLineServed => {
+        const c = latest.get(l.key);
+        return {
+          key: l.key, says: aRecordLineSaid(l, who),
+          correction: c ? { said: isThePerson ? A_LINE_WAS_CORRECTED.forThePerson(new Date(c.createdAt)) : A_LINE_WAS_CORRECTED.forAnybodyElse(first, new Date(c.createdAt)), whatIsTrue: String(c.whatIsTrue) } : null,
+        };
+      }),
+    })).filter((x) => x.lines.length);
+    const until = row.startedAt && !Number.isNaN(new Date(row.startedAt).getTime()) ? new Date(row.startedAt) : new Date();
+    const period = thePeriodSaid(row.recordFrom ? new Date(row.recordFrom) : until, until);
+    if (isThePerson) {
+      const writer = writerFirst?.trim() || 'The person who writes your review with you';
+      const writersAccess = writerId && writerId !== readerUserId ? await this.whatTheyAreIn(writerId, groundIds, false) : null;
+      const staysWithYou = !!writersAccess && lines.some((l) => !mayReadTheLine(l, writersAccess));
+      return {
+        intro: !lines.length ? `Groundwork found nothing in the record about your work ${period}. You can still add your own view.` : `This is what Groundwork understands from the record about your work ${period}. It comes from your check-ins, the goals and work-plan items you own, what you committed to and how each one went, and what you said was holding you up. If a line is wrong, mark it and say what is true. Your correction is kept beside the line, and the record itself is not changed.`,
+        whoReads: `${writer} reads your corrections and your own view before you meet.${staysWithYou ? ` Lines from check-ins that ${writer} is not in stay with you, and so does anything you say about them. If you want ${writer} to know, put it in your own view.` : ''}`,
+        parts, mayCorrect: true,
+      };
+    }
+    return {
+      intro: !lines.length
+        ? `Groundwork found nothing in the record about ${first}’s work ${period}.`
+        : parts.length
+          ? `This is what Groundwork understands from the record about ${first}’s work ${period}, from the check-ins you are in. ${first} reads it too, and can mark any line as wrong and say what is true.`
+          : `You are not in any check-in with ${first} ${period}, so nothing from the record is here for you. ${first} reads what Groundwork understands from the record, and can mark any line as wrong and say what is true.`,
+      whoReads: null, parts, mayCorrect: false,
+    };
+  }
+
+  /** Whether this reader writes the review with this person, by the organisation's answer (who-may-decide.ts). */
+  private async writes(reader: Reader, role: string | null, p: Person, writer: string | null): Promise<boolean> {
+    return decidesIt(await this.theWriter(reader.organizationId, p, writer), { userId: reader.userId, role }, p.userId ?? `person:${p.externalId}`);
+  }
+
+  /** Who writes this person's review, by rule: "Their manager" is their manager, else an admin; "An admin" is an admin. */
+  private theWriter(organizationId: string, p: Person, writer: string | null): Promise<WhoDecides> {
+    return theOneWhoDecides(this.prisma, theStepsFor('reviews', { writer })[0], {
+      organizationId, requesterUserId: p.userId ?? `person:${p.externalId}`, managerExternalId: p.managerExternalId, team: p.department,
     });
+  }
+
+  /**
+   * Who would write a review not started yet: the one person the rule names, or nobody when any admin
+   * may write it.
+   */
+  private async whoWouldWrite(organizationId: string, p: Person, writer: string | null, directory: Map<string, Person>): Promise<string | null> {
+    const who = await this.theWriter(organizationId, p, writer).catch(() => null);
+    return who && who.kind !== 'admin' ? this.fullNameOf(who.userId, directory) : null;
+  }
+
+  /** A sign-in's first name, from the staff directory, or else from the sign-in itself. Never an address. */
+  private async firstNameOf(userId: string | null, directory: Map<string, Person>): Promise<string | null> {
+    if (!userId) return null;
+    const p = [...directory.values()].find((x) => x.userId === userId);
+    if (p) return this.firstOf(p) || null;
+    const u = await (this.prisma as any).user?.findUnique?.({ where: { id: userId }, select: { firstName: true } }).catch(() => null);
+    return u?.firstName?.trim() || null;
+  }
+
+  /** A sign-in's full name, from the staff directory, or else from the sign-in itself. Never an address. */
+  private async fullNameOf(userId: string | null, directory: Map<string, Person>): Promise<string | null> {
+    if (!userId) return null;
+    const p = [...directory.values()].find((x) => x.userId === userId);
+    if (p) return this.nameOf(p) || null;
+    const u = await (this.prisma as any).user?.findUnique?.({ where: { id: userId }, select: { firstName: true, lastName: true } }).catch(() => null);
+    return [u?.firstName, u?.lastName].filter(Boolean).join(' ').trim() || null;
   }
 
   /** Only lines the engine marked, and only the two marks a person may read. */

@@ -333,18 +333,6 @@ export class AdminController {
     return this.adminService.setSuggestionThresholds(body, userId);
   }
 
-  @Get('pattern-reach')
-  @ApiOperation({ summary: 'Who a pattern reaches (decision 74): PERSON_ONLY, the default, or PERSON_FIRST_THEN_LEAD. Detection and coaching for the person run either way.' })
-  getPatternReach() {
-    return this.adminService.getPatternReach();
-  }
-
-  @Patch('pattern-reach')
-  @ApiOperation({ summary: 'Set who a pattern reaches. Send { reach: "PERSON_ONLY" } or { reach: "PERSON_FIRST_THEN_LEAD" }.' })
-  setPatternReach(@CurrentUser('id') userId: string, @Body() body: { reach?: unknown }) {
-    return this.adminService.setPatternReach(body?.reach, userId);
-  }
-
   @Get('writers')
   @ApiOperation({ summary: 'Zero-row detection: every writer that should fill a table, its row count, last write and ship date. Zero since shipped is flagged.' })
   getWriters() {

@@ -12,7 +12,9 @@ const person = (id: string, userId: string, first: string, last: string, lead = 
   managingOnly: false, createdAt: new Date('2026-09-01T10:00:00Z'), user: { firstName: first, lastName: last },
 });
 
-const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
+/** The clock these rows were written at, and the board is read at, so a date reads the same on any day the tests run. */
+export const THE_CLOCK = new Date('2026-10-02T12:00:00Z');
+const daysAgo = (n: number) => new Date(THE_CLOCK.getTime() - n * 86_400_000);
 
 const BISI = person('p-bisi', 'u-bisi', 'Bisi', 'Adeyemi', true);
 const FEMI = person('p-femi', 'u-femi', 'Femi', 'Okonkwo');

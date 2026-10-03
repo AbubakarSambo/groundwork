@@ -1,6 +1,6 @@
 import type { PrismaService } from '../prisma/prisma.service';
 import { commitmentsKeptInTheLastFourWeeks, theCountSaidToThePerson } from '../grounds/your-board';
-import { aShareInWords } from '../suggestions/a-suggestion-reached-from-the-record';
+import { aShareInWords, keptOfSaidAbout } from '../suggestions/a-suggestion-reached-from-the-record';
 import { theLeadMayReadIt } from '../suggestions/a-suggestion-told-like-a-signal';
 import { theirApprovedLeave } from './who-is-away';
 
@@ -19,14 +19,15 @@ import { theirApprovedLeave } from './who-is-away';
  * pattern, no hours (decision 10), nothing anybody said.
  *
  * WHY THOSE CHECK-INS ONLY. Each person's load across check-ins is private. The writer reads only what
- * happened in check-ins they run themselves, and even that never as a count (decision 53).
+ * happened in check-ins they run themselves, and reads it with its count (decision 86, which reverses
+ * decision 53's "no count behind it").
  *
  * READ THE SAME EVERY TIME IT IS OPENED. The four weeks end the day the review was started, so opening
  * the review never changes what it says (reports and boards update only when something new comes in).
  *
- * WHO READS WHAT (decision 6 and decision 53, "the more private way"):
+ * WHO READS WHAT (decision 6, decision 53's timing, and decision 86):
  *   - the person reads their own count, the line, and that the writer decides;
- *   - the writer reads the suggestion with no number behind it, only once the person has written their
+ *   - the writer reads the suggestion with the count behind it, only once the person has written their
  *     view or three days have passed since the review started;
  *   - a lead of the team who does not write it, and an admin, read nothing of it.
  */
@@ -48,7 +49,7 @@ export function readRecogniseSetting(stored: unknown): RecogniseSetting {
   return { on: v.on === true, keptAtLeast: share, atLeastSettled: settled };
 }
 
-/** What the writer reads. No number at all. */
+/** What the writer reads: the suggestion, with the count behind it (decision 86). */
 export interface RecogniseForTheWriter { headline: string; why: string; whatWouldChangeIt: string; yourDecision: string }
 /** What the person reads: their own count, the line, and who decides. */
 export interface RecogniseForThePerson { facts: string; whoDecides: string }
@@ -82,12 +83,13 @@ export async function theRecordForRecognising(
   return { kept: kl.kept, of: kl.of, setting };
 }
 
-export function recogniseForTheWriter(firstName: string): RecogniseForTheWriter {
+export function recogniseForTheWriter(firstName: string, record: TheRecordForRecognising): RecogniseForTheWriter {
   const name = firstName.trim() || 'this person';
+  const theLine = aShareInWords(record.setting.keptAtLeast);
   return {
     headline: `Groundwork suggests recognising ${name}’s work`,
-    why: `In the four weeks before this review started, ${name} kept nearly every commitment made in your check-ins together.`,
-    whatWouldChangeIt: `If ${name} keeps fewer of them from now on.`,
+    why: `${keptOfSaidAbout(name, record.kept, record.of, 'made in your check-ins together')} in the four weeks before this review started. When at least ${theLine} are kept, Groundwork suggests recognising the work.`,
+    whatWouldChangeIt: `If ${name} keeps fewer than ${theLine} of them from now on.`,
     yourDecision: `This is only a suggestion. You decide, and ${name} sees your reasons.`,
   };
 }

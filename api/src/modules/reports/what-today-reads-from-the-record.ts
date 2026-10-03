@@ -8,6 +8,7 @@ import { whatMovedInTheRound } from './what-this-session-holds';
 import { yourOwnWhereYouAreTheSubject, anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { PATTERN_ROW_SELECT, servedPatterns, patternTalkNudge } from '../patterns/who-reads-a-pattern';
+import { anArticleSaidMidSentence } from '../board/a-holder-in-their-own-words';
 
 /** A phrase put inside a sentence, as the board does it (board.service's inASentence, kept here so
  *  the report does not import the board's service). */
@@ -212,7 +213,7 @@ export async function sinceLastFrom(prisma: any, groundId: string, l: Loaded, re
   const onWhom = (d: any) =>
     d.onParticipantId && d.onParticipantId === me?.id ? ' on you'
       : d.onParticipantId ? ` on ${nameOf(d.onParticipantId)}`
-        : (d.onLabel ?? '').trim() ? ` on ${(d.onLabel ?? '').trim()}` : '';
+        : (d.onLabel ?? '').trim() ? ` on ${anArticleSaidMidSentence((d.onLabel ?? '').trim())}` : '';
   /* One sentence per thing, with everybody it is about: "Brian and Miriam are now waiting on you for …". */
   const said = (list: any[], now: 'no longer' | 'now') => {
     const groups = new Map<string, any[]>();
@@ -274,7 +275,7 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
     } else {
       decide = QUESTION_WORD.test(what) ? `Decide ${what}.` : `Decide what to do about ${what}.`;
       /* A thing the same as what is waited for is not said twice (request 107 b). */
-      const onWho = d.onParticipantId ? nameOf(d.onParticipantId) : (theSameThing(d.onLabel, d.what) ? '' : (d.onLabel ?? '').trim());
+      const onWho = d.onParticipantId ? nameOf(d.onParticipantId) : (theSameThing(d.onLabel, d.what) ? '' : anArticleSaidMidSentence((d.onLabel ?? '').trim()));
       why = `${andList(waiting)} cannot move until it is settled${onWho ? `, and it is waiting on ${onWho}` : ''}.`;
     }
     const then = rows.map((r) => (r.then ?? '').trim()).find(Boolean);

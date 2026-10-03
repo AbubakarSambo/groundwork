@@ -59,3 +59,41 @@ describe('item 18: each wait under whoever holds it, and each thing once', () =>
     expect(c.beforeNextTime).toContain('Put the price list in writing to Rukia Otieno, with the date you need it by.');
   });
 });
+
+/*
+ * RUN-25, SALES, SESSION 3: THE SAME THING SAID THREE WAYS. Femi's own coaching (served to Femi only) read "Put their
+ * documents, especially the bank statements, the bank statements from the customers and the three remaining bank
+ * statements in writing, with the date you need them by." and Bisi's probe (served to Bisi only) read "Femi Okonkwo
+ * has been waiting for their documents, especially the bank statements, the bank statements from the customers and
+ * the three remaining bank statements since 2 October". One thing, said once.
+ */
+describe('run-25: the bank statements, said three ways, are one thing', () => {
+  const THREE = [
+    { what: 'their documents, especially the bank statements', who: null, daysOld: 1, escalated: false, since: '2 October' },
+    { what: 'the bank statements from the customers', who: null, daysOld: 1, escalated: false, since: '2 October' },
+    { what: 'the three remaining bank statements', who: null, daysOld: 1, escalated: false, since: '2 October' },
+  ];
+
+  it('Femi reads it once in his own coaching', () => {
+    const c = coachingFor(THREE);
+    expect(c.beforeNextTime).toContain('Put their documents, especially the bank statements in writing, with the date you need it by.');
+    expect(JSON.stringify(c)).not.toMatch(/bank statements from the customers|three remaining bank statements/);
+  });
+
+  it('Bisi reads it once in what to ask Femi', () => {
+    const p = whatToProbe({
+      who: 'Femi Okonkwo', participantId: 'p-femi', role: null, answeredThisSession: true, patterns: [],
+      waitingOn: THREE, holdingUp: [], concrete: [], documentsAttached: 0, sessionNumber: 3, totalSessions: 12, scenario: 'OKR_ALIGNMENT',
+    } as any);
+    expect(p.probe.join(' ')).toContain('Femi Okonkwo has been waiting for their documents, especially the bank statements since 2 October');
+    expect(JSON.stringify(p)).not.toMatch(/bank statements from the customers|three remaining bank statements/);
+  });
+
+  it('two different things that share a word are still two', () => {
+    const c = coachingFor([
+      { what: 'the signed contract', who: null, daysOld: 1, escalated: false, since: '2 October' },
+      { what: 'the contract template from legal', who: null, daysOld: 1, escalated: false, since: '2 October' },
+    ]);
+    expect(c.beforeNextTime).toContain('Put the signed contract and the contract template from legal in writing, with the date you need them by.');
+  });
+});

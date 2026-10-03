@@ -21,6 +21,10 @@ const SWAPS: [RegExp, string][] = [
   [/\bTheir stated role\b/g, 'Your stated role'],
   [/\bSo they are being read\b/g, 'So you are being read'],
   [/\bThis read of their function\b/g, 'This read of your function'],
+  /* Item 21, the engineering board: Samuel read "What they say is in the way sits outside this check-in" about himself. */
+  [/\bWhat they say is in the way\b/g, 'What you say is in the way'],
+  [/\bnaming them as the reason\b/g, 'naming you as the reason'],
+  [/\bnothing is blocking them\b/g, 'nothing is blocking you'],
 ];
 
 export function yourOwnReadSaysYou(text: string | null | undefined): string | null | undefined {

@@ -25,6 +25,7 @@ import {
   classifyCoverageReason,
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor, priorFunctionFromRole } from './role-maps';
+import { anArticleSaidMidSentence } from './a-holder-in-their-own-words';
 
 // ---------------------------------------------------------------------------
 // Input shapes - plain data, no Prisma client, no ground object.
@@ -198,7 +199,7 @@ const stamp = (d?: Date | number) => (d instanceof Date ? d.getTime() : (d ?? 0)
  * The newest row wins, because a handoff someone has stopped describing as
  * blocking is no longer blocking.
  */
-export function dedupeDependencies<T extends ReadDependency>(deps: T[]): T[] {
+export function dedupeDependencies<T extends ReadDependency>(deps: T[], alsoKeep?: (kept: T, said: T) => void): T[] {
   const norm = (t: string) =>
     (t ?? '')
       .toLowerCase()
@@ -234,6 +235,8 @@ export function dedupeDependencies<T extends ReadDependency>(deps: T[]): T[] {
       (hit as any).onLabel = d.onLabel ?? hit.onLabel;
       /* Each time it was said, kept so the board can say how often it was raised (request 107 c). */
       (hit as any).raisedAt = [...((hit as any).raisedAt ?? []), { at: d.createdAt ?? null, checkInId: (d as any).sourceCheckInId ?? null }];
+      /* Anything else a caller needs kept from a later mention. No caller passes it, nothing changes. */
+      alsoKeep?.(hit, d);
       continue;
     }
     out.push({ ...d, raisedAt: [{ at: d.createdAt ?? null, checkInId: (d as any).sourceCheckInId ?? null }] } as T);
@@ -706,7 +709,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         reasonParts.push(
           somebodyHoldsIt
             ? 'Part of this is blocked on someone else (see what people are waiting on), which is different from being behind. Separate the two before reading anything into it.'
-            : `What they say is in the way sits outside this check-in${theirs[0]?.onLabel ? `, with ${theirs[0].onLabel}` : ''}, and nothing on record says anybody has chased it. That is a thing to ask about, not a reason to read this as blocked.`,
+            : `What they say is in the way sits outside this check-in${theirs[0]?.onLabel ? `, with ${anArticleSaidMidSentence(theirs[0].onLabel)}` : ''}, and nothing on record says anybody has chased it. That is a thing to ask about, not a reason to read this as blocked.`,
         );
       }
       /*

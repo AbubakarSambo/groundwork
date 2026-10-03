@@ -109,6 +109,21 @@ describe('Grace, an admin, reads the whole board', () => {
     expect(waiting[0]).toEqual({
       id: 'r-aisha', name: 'Aisha Otieno', startsOn: '2026-10-01', endsOn: '2026-10-02', days: 2, daysLeft: 16,
       team: 'Sales', alsoOff: [], standIn: 'Miriam Wanjiku', mayDecide: false,
+      /* Where it is, in a full sentence (decision 85, build step 4): one step, waiting for her manager. */
+      where: 'It is waiting for Wairimu.',
+      /* The manager's view in full sentences (decision 85, build step 7). */
+      owns: ['Groundwork found nothing Aisha owns that is due on those days.'],
+      questions: [],
+      /* No kinds of leave and no rules set (build step 8): none said. */
+      leaveKind: null,
+      rules: [],
+      said: [
+        'Aisha asked for leave from Thursday 1 October to Friday 2 October, which is 2 working days.',
+        'Aisha has 16 days left.',
+        'Nobody else in Sales is off those days.',
+        'Miriam Wanjiku will stand in for Aisha.',
+        'Groundwork found nothing Aisha owns that is due on those days.',
+      ],
     });
     expect(waiting[1]).toMatchObject({ name: 'Samuel Njoroge', daysLeft: 21, team: 'Sales', alsoOff: ['Brian'] });
   });

@@ -136,8 +136,20 @@ export function forensicInReport(report: Record<string, unknown>): { field: stri
  * because she is new". Every word here is one that never begins the second half of a compound, so
  * check-in, follow-up, trade-off and drop-in are all still safe.
  */
+/*
+ * AND A COMPOUND OF THREE OR MORE PARTS IS NEVER A CLAUSE (run-25). "on-the-ground" became "on, the-ground" 31 times
+ * across the run, because "the" opens a clause on this list and the rule looked at two parts only. A hyphen whose
+ * second part runs on into another hyphen ("on-the-ground", "word-for-word", "back-and-forth", "behind-the-scenes",
+ * "do-it-yourself", "state-of-the-art"), or whose first part is itself the end of a hyphenated run ("free-for-all",
+ * "so-and-so"), is a compound, and is left as it is. So are the few two-part compounds whose second part is on the
+ * list: "know-how", "to-do", "must-have", "can-do", "make-do", "either-or".
+ */
+const TWO_PART_COMPOUNDS = /^(?:know-how|to-do|must-have|must-do|can-do|make-do|either-or|has-been|would-be|wanna-be)$/i;
 const A_CLAUSE_NOT_A_COMPOUND =
-  /([a-z0-9])-(for|a|an|the|or|and|but|so|which|that|this|these|those|it|they|we|you|i|is|are|was|were|am|do|does|did|has|have|had|will|would|can|could|should|because|when|where|why|how|what|who)\b/gi;
+  /(?<![-\w])([a-z0-9]+)-(for|a|an|the|or|and|but|so|which|that|this|these|those|it|they|we|you|i|is|are|was|were|am|do|does|did|has|have|had|will|would|can|could|should|because|when|where|why|how|what|who)\b(?!-)/gi;
+
+/* A range between two numbers, "10–12" or "2025 – 2026", is said "10 to 12": a comma there would change what it says. */
+const A_RANGE = /(\d)\s*\u2013\s*(\d)/g;
 
 /* Never inside a quotation: a dash a person typed is part of what they said. See a-quote-is-what-they-said. */
 export function withoutDashes(text: string): string {
@@ -148,9 +160,10 @@ export function withoutDashes(text: string): string {
 function dashesOutsideTheQuotes(text: string): string {
   if (!text) return text;
   return text
+    .replace(A_RANGE, '$1 to $2')
     // "queue—the only" and "queue — the only" both become "queue, the only".
     .replace(/\s*[\u2014\u2013]\s*/g, (m) => (/^\s*$/.test(m) ? m : ', '))
-    .replace(A_CLAUSE_NOT_A_COMPOUND, '$1, $2')
+    .replace(A_CLAUSE_NOT_A_COMPOUND, (m, a: string, b: string) => (TWO_PART_COMPOUNDS.test(`${a}-${b}`) ? m : `${a}, ${b}`))
     // A comma may now be doubled where the sentence already had one.
     .replace(/,\s*,/g, ',');
 }

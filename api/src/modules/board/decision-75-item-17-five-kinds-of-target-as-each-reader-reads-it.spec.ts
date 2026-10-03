@@ -119,12 +119,16 @@ describe('the others who read the board', () => {
     expect(row(b, 'o-due').journey.say).toBe('It is due by 30 October, and it is not done yet.');
   });
 
-  it('Juma, an admin who only reads, reads each target\'s sentence, and no word, headline or forecast (decision 58)', async () => {
+  /* Decision 86 reverses decision 73 for admins: this used to pin that Juma read no word, headline or forecast. */
+  it('Juma, an admin who only reads, reads each target\'s sentence, its word, the headline and the forecast, as Bisi does', async () => {
     const b = await boardAs(RUN, ...JUMA);
+    const bisi = await boardAs(RUN, ...BISI);
     expect(row(b, 'o-lower').journey.say).toBe(WHAT_BISI_READS['o-lower'][3]);
-    expect(row(b, 'o-lower').stands ?? null).toBeNull();
-    expect(b.headline).toBeUndefined();
-    expect(b.forecast).toBeUndefined();
+    expect(row(b, 'o-lower').stands).toEqual({ says: 'It is 12, which is over the limit of 10.', word: 'Over limit' });
+    expect(b.headline).toBeDefined();
+    expect(b.headline).toEqual(bisi.headline);
+    expect(b.forecast).toBeDefined();
+    expect(b.forecast).toEqual(bisi.forecast);
   });
 
   it('on a performance plan, the person reviewed reads no word, headline or forecast on any kind', async () => {

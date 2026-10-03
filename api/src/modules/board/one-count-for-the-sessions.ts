@@ -42,7 +42,7 @@ export function aDayPeopleRead(d: Date, now = new Date()): string {
 }
 
 export function theHeaderSays(openRound: number, planned: number | null, allFinished: boolean): string {
-  if (planned && allFinished) return `Session ${planned} of ${planned}, finished.`;
+  if (planned && allFinished) return openRound > planned ? `Session ${openRound}, finished.` : `Session ${planned} of ${planned}, finished.`;
   return planned && planned >= openRound ? `Session ${openRound} of ${planned}.` : `Session ${openRound}.`;
 }
 
@@ -84,6 +84,17 @@ export interface TheSessionClock {
   whileOpen: string | null;
 }
 
+/*
+ * THE OPEN ROUND, CAPPED AT THE LAST PLANNED SESSION, UNLESS PEOPLE HAVE ALREADY CHECKED IN PAST IT (item 21,
+ * the founder's board). Six sessions ran on a check-in planned for three, and the board read "Session 3"
+ * beside six finished sessions, and "This is session 3 of 3" to the founder. A session somebody has
+ * started is a session, so the count never says fewer than have run.
+ */
+export function theRoundCappedAtThePlan(open: number, planned: number | null, rows: { sessionNumber: number; status: string }[]): number {
+  const ranPastThePlan = !!planned && planned > 0 && rows.some((r) => r.sessionNumber > planned && r.status !== 'NOT_STARTED');
+  return planned && planned > 0 && !ranPastThePlan ? Math.min(Math.max(open, 1), planned) : Math.max(open, 1);
+}
+
 export function theSessionClock(
   rows: (ASessionRow & { participantId: string })[],
   whoChecksIn: ReadonlySet<string>,
@@ -93,7 +104,7 @@ export function theSessionClock(
   const theirs = rows.filter((r) => whoChecksIn.has(r.participantId));
   const highest = rows.reduce((m, r) => Math.max(m, r.sessionNumber ?? 1), 1);
   const open = theirs.length ? whichRoundIsOpen(theirs as any) : highest;
-  const current = planned && planned > 0 ? Math.min(Math.max(open, 1), planned) : Math.max(open, 1);
+  const current = theRoundCappedAtThePlan(open, planned, theirs);
   const done = (r: ASessionRow) => r.status === 'COMPLETED' || r.status === 'DECLINED';
   const allFinished = !!planned && theirs.length > 0 && theirs.every(done) && theirs.some((r) => r.sessionNumber >= planned);
   const ahead = [...new Set(theirs.filter((r) => r.sessionNumber > current && r.status !== 'NOT_STARTED').map((r) => r.sessionNumber))].sort((a, b) => a - b)[0];

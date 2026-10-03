@@ -94,9 +94,12 @@ export function theLeadIsNudgedToTell(personName: string, area: string): { decid
  * lead is also shown it as a conversation point, so nothing is read into it before they have talked
  * it through. Uses the person's name throughout, never "him" or "her".
  */
-export function theConversationPointForTheLead(personName: string): string {
+export function theConversationPointForTheLead(personName: string, goals = 1): string {
   const name = (personName ?? 'They').trim() || 'They';
-  return `${name} has not been told about this goal yet, so talk it through with ${name} before reading anything into it.`;
+  /* Several goals are one sentence with how many (item 21): the founder's board said the same sentence twice in a row. */
+  if (goals > 1) return `${name} has not been told about ${goals} goals yet. Talk them through together before reading anything into them.`;
+  /* The name once (run-25): it read "... so talk it through with Zainab Suleiman before reading anything into it." after the same name. */
+  return `${name} has not been told about this goal yet. Talk it through together before reading anything into it.`;
 }
 
 /**

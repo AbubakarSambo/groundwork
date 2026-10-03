@@ -4,7 +4,7 @@ Written on 1 October 2026, on branch `wip/plain-reports`, and brought in line wi
 
 **What decision 74 changed, in short:**
 1. A backup is taken before release. It stays a release question for whoever runs the hosting.
-2. Patterns are never switched off. Who reads them is a setting, `patterns.reach`, and it is set to **the person only** (section 4).
+2. Patterns are never switched off. The person it is about reads a pattern first, and whoever runs the check-in reads it after the person has had their turn. There is no setting for this any more (decision 86 reverses decision 74, item 2; section 4).
 3. Coaching is on when there is no `coaching_live` row. That is correct and stays.
 4. `NODE_ENV` stays a release question.
 5. The word-for-word script has a safe way to run on a hosted database, only with a confirmation typed by whoever runs the release (section 5).
@@ -28,7 +28,7 @@ The local `main` on this computer is old (11 August, pull request 130), so compa
 
 ## 2. The database migrations, in the order they run
 
-There are **72 new migrations** since the remote `main` (67 listed in the table below, and five added on 2 and 3 October, listed after it). They run in name order. The last one the remote `main` has is `20260923140000_what_we_have_so_far`; these come after it.
+There are **79 new migrations** since the remote `main` (67 listed in the table below, and twelve added on 2 and 3 October, listed after it). They run in name order. The last one the remote `main` has is `20260923140000_what_we_have_so_far`; these come after it.
 
 **Read this first: six of the 67 in the table do something to existing rows, and two of the four added on 2 October do too (see below). The rest only add new tables, new empty columns, new types or new indexes.**
 
@@ -37,7 +37,7 @@ There are **72 new migrations** since the remote `main` (67 listed in the table 
 | **Deletes a column and anything in it.** `check_ins.next_commitment` is removed. The code never wrote to it, so it should be empty everywhere, but check it on each database before the migration runs: `SELECT count(*) FROM check_ins WHERE next_commitment IS NOT NULL;` must say 0. | `20260924121349_a_column_nothing_ever_wrote` |
 | **Backfills.** Every pattern row that has a last period gets that period written into the new list of periods it was seen in. | `20260924121524_a_gap_no_longer_discards_a_period` |
 | **Backfills.** People who came in through the open link are marked as having done so, worked out from the placeholder address the link gives them, or from a typed name with no account. | `20260924175813_how_somebody_arrived` |
-| **Backfills, and starts a clock on release day.** Every pattern already seen in three or more periods gets `ready_at` set to the moment the migration runs. From then, the person it is about is shown it first (decision 62). Patterns are switched on in the code, so this is the moment patterns start reaching the person they are about. With `patterns.reach` set to the person only, the default (section 4), nobody else reads them. If the reach is later widened, whoever runs the check-in reads one three days after the person was shown it, or seven days after it was ready if the person never opened a page that shows it. | `20260928090000_the_person_sees_their_pattern_first` |
+| **Backfills, and starts a clock on release day.** Every pattern already seen in three or more periods gets `ready_at` set to the moment the migration runs. From then, the person it is about is shown it first (decision 62). Patterns are switched on in the code, so this is the moment patterns start reaching the person they are about. Whoever runs the check-in reads one as soon as the person has answered, three days after the person was shown it, or seven days after it was ready if the person never opened a page that shows it (decision 86). | `20260928090000_the_person_sees_their_pattern_first` |
 | **Adds a settings row, only if it is not there.** It writes `suggestions.thresholds` into `platform_settings` (extra support is suggested when fewer than half of a person's commitments are kept over six periods, decision 61). If the row already exists it is left alone. This switches suggestions on, on performance plans, promotions and renewals only. | `20260930110000_the_first_threshold_for_extra_support` |
 | **Changes nothing, on purpose.** This file used to reopen every stalled check-in. Hafsah decided on 29 September (decision 54) that a migration does not reopen check-ins, so the file now only says `SELECT 1;`. It stays so that the order of migrations is unchanged. `docs/ready-to-deploy.md` now says the same. | `20260923200000_reopen_every_check_in_that_ran_out_of_time` |
 
@@ -122,6 +122,15 @@ Every migration, in order, in one sentence each:
 | 70 | `20261002140000_each_sessions_picture_is_released_on_its_own` | Adds which sessions' team pictures are released on a report, and fills it in for existing reports from their completed sessions. | **Fills a new column on existing reports** |
 | 71 | `20261002160000_whatsapp_is_a_paid_add_on` | Decision 78. Adds the WhatsApp add-on's monthly price, its cached Stripe price and the monthly WhatsApp limit on each plan, and writes the prices and limits; adds whether an organisation has turned WhatsApp on and the Stripe line that charges it; adds a new table counting each organisation's WhatsApp messages per calendar month; and writes the free trial's setting as one month, leaving its switch as it is (off unless somebody turned it on). | **Writes values into `pricing_plans` and the `pricing.freeTrial` settings row** |
 | 72 | `20261003090000_a_request_asked_about_on_whatsapp_survives_a_restart` | Decision 82, item 2. Adds three empty columns to WhatsApp threads for a leave, hours or spending request waiting for the person's yes or no (its kind, its words and when it was asked), and an index on when it was asked. It was held in the API's memory, so a restart or a second copy lost it. | Untouched |
+| 73 | `20261003120000_a_request_passes_through_approval_steps` | Decision 85, build step 4. Adds to each leave request, request to spend and week of hours the approval step it is on, how far down that step's list it has been passed on, since when it has waited there, and who approved each step so far, all with defaults, so every request already kept reads as step one, never passed on. On a week of hours, the approved total, who approved it and when may now be empty while the week waits at a later step. | **Allows three existing columns of `time_weeks` to be empty; no value is changed** |
+| 74 | `20261003140000_one_record_of_who_did_what_on_a_suite` | Decision 85, build step 5. Adds two new, empty tables: `suite_events`, one record of who asked, was told, approved each step, declined, was passed a request, and started or decided a review, with when and references to rows only; and `suite_rule_changes`, each change of a suite's rules, of who holds each duty and of the approval steps, with who changed it, when, and from what to what. | Untouched |
+| 75 | `20261003160000_a_question_about_a_request_and_a_reason_for_a_decline` | Decision 85, build step 7. Adds a new, empty table `suite_questions` for a question whoever decides a leave request asks the person, and the answer; and an empty column `decline_reason` on leave requests, for the reason given with a decline, told to the person. | Untouched |
+| 76 | `20261003180000_a_question_answered_on_whatsapp_during_a_check_in` | Decision 85, build step 7. Adds one empty column to WhatsApp threads, the question about the person's own request they were already asked about ("Is this your answer to Wairimu's question about your leave?"), so a reply during a check-in is asked about once only. | Untouched |
+| 77 | `20261003200000_spending_rules_categories_and_evidence` | Decision 85, build step 9. Adds two columns to requests to spend: the category it is for, when an admin has named categories, and which evidence (a receipt, a quote) the spending rules asked for. Only that it is needed; no file. Both empty on every request already kept. | Untouched |
+| 78 | `20261003210000_a_question_about_spending_and_a_reason_for_a_decline` | Decision 85, build step 9. Adds an empty column `decline_reason` on requests to spend, for the reason given with a decline, told to the person. A question about a request to spend goes in the existing `suite_questions` table. | Untouched |
+| 79 | `20261003220000_finance_checks_codes_and_pays_a_request_to_spend` | Decision 85, build step 10. Adds six empty columns to requests to spend for finance's part after the last approval: who checked it and when, the budget line it is paid from, the receipt or quote finance has had (only that; no file), the day it was paid and who marked it. Who did each step is also kept in the existing `suite_events`. | Untouched |
+| 80 | `20261003230000_time_sheet_rules_billable_entries` | Decision 85, build step 11. Adds one empty column `billable` to hours (`time_entries`): billable or not, only when the person said so of that entry. Empty means it follows the time sheet rules for its client or project, and with no rules every hour is billable. The rules themselves are kept in the existing `organization_suites` table (a `timeRules` row), so they need no table. | Untouched |
+| 81 | `20261004000000_a_review_reads_the_record_and_the_person_corrects_it` | Decision 85, build step 12. Adds two empty columns to `performance_reviews`: what Groundwork understands from the record for the review's period (`record_read`, facts with ids, written once when a review starts) and the first day of that period (`record_from`); and a new, empty table `performance_review_corrections`, each line the person marks as wrong with what they say is true, kept beside the line. Reviews already started keep no record and read as before. | Untouched |
 
 The prices and limits migration 71 writes, all editable afterwards at Admin, System, Pricing (`PATCH /admin/pricing/:plan` with `whatsappAddOnCents` and `whatsappMonthlyLimit`):
 
@@ -140,7 +149,7 @@ Things worth knowing about how they run:
 - Columns added with a fixed default (`false`, an empty list) do not rewrite the table on Postgres 11 or later, so none of these should lock a table for long.
 - The new unique indexes on existing tables (`organizations.join_domain`, `organizations.invite_link_code`) are on new columns that start empty, so they cannot fail on existing data.
 - Two pairs of migrations share a timestamp (`20260927180000_*` and `20260927190000_*`). Prisma runs them in full name order, which is the order above.
-- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261003090000_a_request_asked_about_on_whatsapp_survives_a_restart`.
+- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261004000000_a_review_reads_the_record_and_the_person_corrects_it`.
 
 ## 3. Settings and environment variables
 
@@ -166,7 +175,6 @@ For reference, the production start-up check (unchanged since the remote `main`)
 
 | Key | Where it comes from | What it does | Works without it? |
 | --- | --- | --- | --- |
-| `patterns.reach` | Set by a platform admin through `PATCH /admin/pattern-reach` (decision 74, item 2). Not written by any migration. | Who reads a pattern: `PERSON_ONLY` (only the person it is about, with their answer box) or `PERSON_FIRST_THEN_LEAD` (the person first, then whoever runs the check-in, as decisions 58 and 62 describe). | Yes. Without the row, or with any other value, it is `PERSON_ONLY`. |
 | `release.time_running_out_warnings_from` | Written once by the first start of this version (decision 74, item 7). Never changed after. | The moment of the release. A check-in already in its last week, or past its end, at that moment gets no "time running out" email. | Yes. If it is missing when the warning job runs, the job writes it then. |
 | `job.<name>.ran_for`, one per scheduled job | Written by each daily, weekly or hourly job when it runs (decision 74, item 7). | The time slot the job last ran for, so a second copy of the API does not run it again for the same night, week or hour. One row per job, overwritten each time. | Yes. A missing row is written by the first run. |
 | `suggestions.thresholds` | Written by migration 59 if absent; an admin can change it at Admin. | Sets when extra support is suggested about a person on a performance plan, promotion or renewal. | Yes. Without the row, no suggestion is ever reached. |
@@ -187,7 +195,7 @@ For reference, the production start-up check (unchanged since the remote `main`)
 | --- | --- | --- | --- |
 | Learned weights (week 8b) | Code: `APPLY_LEARNED_WEIGHTS` in `api/src/modules/learning/a-suggested-weight.ts` | **Off.** The counts are kept and a weight is suggested, and nothing uses it. | Must stay off until a scenario run proves the weights and Hafsah agrees. Switching it on is a code change, not a setting. |
 | Patterns served to people | Code: `PATTERNS_ARE_SERVED` in `api/src/modules/patterns/patterns-are-served.ts` | **On, and never switched off** (decisions 52, 55 and 74). Detection, storage, the periods, coaching for the person and the probes all run. | Nothing. It stays on. |
-| Who reads a pattern | Settings row `patterns.reach`, with its default in code (`DEFAULT_PATTERN_REACH` in `api/src/modules/patterns/who-reads-a-pattern.ts`) | **The person only** (`PERSON_ONLY`). The person it is about reads it, with their answer box, and is told "Only you see this. Nothing is decided from it." The lead, the admin who set the check-in up, any other admin and every colleague read none: not on the board, the check-in page, the session report, the weekly report, Today, the coaching note, the probe list, the judgement or the ending page. "How the leading is landing" reaches only the lead it is about. The lead cannot mark a pattern or say they talked it through. | It stays the person only until pattern steadiness is at least 8 in 10 on what people are shown (decision 68) and the release says otherwise. To widen it, a platform admin sends `PATCH /admin/pattern-reach` with `{ "reach": "PERSON_FIRST_THEN_LEAD" }` (and `GET /admin/pattern-reach` says which way it is set). The copy of the API that receives it serves the new reach at once; any other copy reads it within 30 seconds. |
+| Who reads a pattern | Code only, in `api/src/modules/patterns/who-reads-a-pattern.ts`. There is no setting and no settings row any more (decision 86). A `patterns.reach` row left in a database is not read. | The person it is about reads it first, with their answer box. Whoever runs the check-in, and the admin who set it up for them, read it after the person has had their turn: as soon as the person answers, three days after the person was shown it, or seven days after it was ready. | Nothing to set. |
 | Deleting invented words from questions | Code: `DELETES_WHAT_IT_FINDS` in `api/src/modules/conversation/nothing-invented-reaches-them.ts` | **Off** (it logs only, decided 17 September). | Stays off. |
 | The old context chat | No separate switch; it is part of the check-in page. | **On**, and must stay on. Hafsah decided it stays until the screens workspace confirms Ask Groundwork's screens do everything live. | Do nothing. Do not set `CONTEXT_ENABLED=false`, which would switch off the whole context feature, not only the old chat. |
 | Coaching in live check-ins | Settings row `coaching_live` | **On** if the row is missing (see section 3). | Decide before release whether production has the row, and what it says. |
@@ -201,7 +209,7 @@ For reference, the production start-up check (unchanged since the remote `main`)
 **The order to switch things on, after the release is up and checked:**
 1. Release with the states above. Do not change any switch on the same day as the migrations.
 2. Run the checks in section 7.
-3. Patterns reach the person only, from release. Widen `patterns.reach` only when steadiness is at least 8 in 10 and the release says so.
+3. Patterns reach the person first, then whoever runs the check-in, from release. There is nothing to set (decision 86).
 4. Coaching is on where there is no `coaching_live` row. That is correct, and stays (decision 74, item 3).
 5. WhatsApp, only after the templates are approved.
 6. The free trial, only after Stripe is wired and tested.
@@ -282,7 +290,7 @@ Every report updated after the release should name the newest `report_synthesis`
 ## 7. The checks to run after deploy
 
 **Before any person reads anything:**
-1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 75;` shows all 72 new migrations finished, and none failed.
+1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 80;` shows all 79 new migrations finished, and none failed.
 2. The API answers `/health`.
 3. The active prompt versions match section 6.
 4. The script in section 5 has run, and a report built after it shows quotation marks around people's words again.
@@ -310,7 +318,7 @@ None of these files were changed. This is what they say.
 
 | File | What triggers it | What it would do |
 | --- | --- | --- |
-| `api/railway.toml` | Whatever branch the API's hosting project is connected to. That is set in the hosting dashboard, not in the repository. | On every start: marks one old failed migration (`20260627000000_contributor_code_system`) as rolled back, then **runs `prisma migrate deploy`, which applies all 72 migrations with no backup step**, and then starts the API. If a migration fails, the API does not start, and the host retries three times. |
+| `api/railway.toml` | Whatever branch the API's hosting project is connected to. That is set in the hosting dashboard, not in the repository. | On every start: marks one old failed migration (`20260627000000_contributor_code_system`) as rolled back, then **runs `prisma migrate deploy`, which applies all 79 migrations with no backup step**, and then starts the API. If a migration fails, the API does not start, and the host retries three times. |
 | `client/vercel.json` | A push to `main` or to the other long-lived branch, through the hosting provider's own link to the repository. | Builds and publishes the screens. Every other branch is switched off. |
 | `.github/workflows/staging-deploy.yml` | A push to the other long-lived branch that changes `client/`. | Builds the screens with the hosting provider's command-line tool and points the fixed preview address at the new build. Not triggered by `main`. |
 | `.github/workflows/preview-deploy.yml` | A pull request that changes `client/`. | Builds a preview of the screens and comments the address on the pull request. |
