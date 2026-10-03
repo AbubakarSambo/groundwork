@@ -34,7 +34,7 @@ export const SUITE_SETUP_CONFIRM_KIND = 'suite_setup_confirm';
 export type SetUpSuite = 'leave' | 'spend' | 'time' | 'reviews';
 export const SET_UP_SUITES: SetUpSuite[] = ['leave', 'spend', 'time', 'reviews'];
 /** The suites that can be set up by talking so far. The others are answered as before, by the router's other lanes. */
-export const OFFERED: SetUpSuite[] = ['leave', 'spend'];
+export const OFFERED: SetUpSuite[] = ['leave', 'spend', 'time'];
 
 /** The suite as the admin reads it in a sentence. */
 export const SUITE_IN_WORDS: Record<SetUpSuite, string> = {
@@ -728,7 +728,7 @@ function teamJobsSaid(rule: 'departmentHead' | 'budgetOwner', d: Duties, known: 
 }
 
 function escalationSaid(steps: Rule[][], days: number | null | undefined, d: Duties, known: WhatIsKnown): string[] {
-  if (!days) return ['If somebody does not answer, the request waits for them. Groundwork does not pass it on by itself.'];
+  if (!days) return ['If somebody does not answer, it waits for them. Groundwork does not pass it on by itself.'];
   const n = `${inWords(days)} working ${days === 1 ? 'day' : 'days'}`;
   const out: string[] = [];
   const seen = new Set<string>();

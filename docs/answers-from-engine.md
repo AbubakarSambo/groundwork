@@ -3341,3 +3341,15 @@ Tests: `api/src/modules/assistant/leave-set-up-by-talking-as-each-reader-reads-i
 - **The Suites page, duties and approval steps routes** serve what was set, exactly as if the admin had set it there.
 
 Tests: `api/src/modules/assistant/spending-set-up-by-talking-as-each-reader-reads-it.spec.ts`, as Grace (admin), Wairimu (lead) and Omar (member, who looks after finance). No existing test changed.
+
+## Setting up time sheets by talking to Ask Groundwork (3 October)
+
+**Decision 85: "Set up timesheets" now works like leave and spending. On the yes it is written through `SuitesService.switch`, `setWorkflows` and `setTimeRules`, as the admin** (this commit).
+
+- **The questions, in order, each only when it is not known yet:** "Which clients or projects do people give their hours for? Write one on each line, or put commas between them." (not asked when the list is already set), "Who approves each week’s hours?", "Does anybody approve the hours after the manager, for example finance? You can say no.", "How many hours a week does each person need to give? You can say none.", "When are the hours due each week? For example, Friday at 17:00. You can say there is no cut-off.", "What happens if the manager doesn't respond within two working days?", and who holds any job the answers need. A cut-off with a day and no time is asked again: "At what time on that day? For example, 17:00."
+- **The said-back:** "Here is how time sheets will work. Time sheets will be switched on. People give their hours for Atlas, Kisumu depot and Internal, each week. A week of hours goes to the person’s manager. If the person has no manager in Groundwork, it goes to an admin instead. Each person is asked for 40 hours a week. The hours for each week are due by Friday at 17:00, Lagos time. If somebody does not answer, it waits for them. Groundwork does not pass it on by itself. Shall I set it up like this? Nothing changes until you say yes."
+- **Set up by talking, time sheets are sent each week** (`timeRules.every` is set to `week`), because the questions ask about each week. Who keeps a time sheet and billable or not are left as they were; they stay on the time sheet rules page.
+- **For leave and spending too:** the sentence when nothing is passed on now reads "If somebody does not answer, it waits for them. Groundwork does not pass it on by itself." (it said "the request waits for them").
+- **After the yes, a no, a change and somebody who is not an admin** read the same sentences as for leave, with "time sheets" in place of "leave requests".
+
+Tests: `api/src/modules/assistant/time-sheets-set-up-by-talking-as-each-reader-reads-it.spec.ts`, as Grace (admin), Fatuma (lead) and Kamau (member). No existing test changed; the leave spec added two commits ago follows the "it waits for them" wording.

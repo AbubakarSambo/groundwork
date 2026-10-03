@@ -136,7 +136,7 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
       'A leave request goes to Omar, who looks after finance.',
       'If nobody is named to look after finance, it goes to an admin instead.',
       'HR is not shown leave requests.',
-      'If somebody does not answer, the request waits for them. Groundwork does not pass it on by itself.',
+      'If somebody does not answer, it waits for them. Groundwork does not pass it on by itself.',
       'Shall I set it up like this? Nothing changes until you say yes.',
     ].join(' '));
     await o.says('u-grace', 'yes');
