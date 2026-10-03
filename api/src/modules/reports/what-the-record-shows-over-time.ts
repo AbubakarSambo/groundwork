@@ -232,7 +232,8 @@ export function inOurVoice(what: string | null | undefined): string | null {
   const trimmed = String(what ?? '').trim();
   if (!trimmed) return null;
   const continuing = FIRST_PERSON_CONTINUING.exec(trimmed);
-  const frame = continuing ? null : FIRST_PERSON_FRAME.exec(trimmed);
+  /* "going to continue with that", kept without its "I" (item 21, the support desk board): "You committed to going to continue with that." */
+  const frame = continuing ? null : FIRST_PERSON_FRAME.exec(trimmed) ?? /^going to\s+/i.exec(trimmed);
   const rest = (continuing ? `continue ${trimmed.slice(continuing[0].length)}` : frame ? trimmed.slice(frame[0].length) : trimmed).trim().replace(/[.!?]+$/, '');
   if (!rest || FIRST_PERSON_WORD.test(rest)) return null;
   return rest[0].toLowerCase() + rest.slice(1);
