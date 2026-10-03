@@ -25,13 +25,23 @@ export interface SuitesForAnAdmin {
 export interface SuitesForALead {
   reader: 'lead'
   suites: { key: string; name: string; line: string }[]
+  /** Only for a lead who also holds the HR or finance duty: the suites they set up, as a duty holder reads them. */
+  youSetUp?: AdminSuite[]
+  people?: { id: string; name: string }[]
 }
 
-export type SuitesPage = SuitesForAnAdmin | SuitesForALead
+/** A member who holds the HR or finance duty: only the suites that duty sets up, with their questions and answers. */
+export interface SuitesForADutyHolder {
+  reader: 'duty'
+  youSetUp: AdminSuite[]
+  people: { id: string; name: string }[]
+}
+
+export type SuitesPage = SuitesForAnAdmin | SuitesForALead | SuitesForADutyHolder
 
 export const suitesApi = {
   get: async (): Promise<SuitesPage> => (await apiClient.get('/suites')).data,
-  switch: async (key: string, on: boolean, answers?: Answers): Promise<SuitesForAnAdmin> =>
+  switch: async (key: string, on: boolean, answers?: Answers): Promise<SuitesPage> =>
     (await apiClient.put(`/suites/${key}`, answers ? { on, answers } : { on })).data,
 }
 

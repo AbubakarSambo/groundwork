@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { suitesApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead } from '@/api/suites'
+import { suitesApi, type AdminSuite, type Answers, type Question, type SuitesForAnAdmin, type SuitesForALead, type SuitesForADutyHolder } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Panel, Button, Tag, Toggle, Note, Empty, RowList, Row, FieldLabel, TextField, TextArea, Select } from '@/components/gw/ui'
 
@@ -79,7 +79,9 @@ export function SuitesPage() {
             ? 'Ready-made tools for other kinds of team work. Switch on only what you need. Each one adds a single board, and people use it by talking to Groundwork, not by filling in forms. Only admins see this page.'
             : data?.reader === 'lead'
               ? 'The team tools your organisation has switched on. An admin switches them on or off.'
-              : undefined
+              : data?.reader === 'duty'
+                ? 'Your organisation has asked you to set up these suites. Answer the first questions to switch one on, and switch it off again whenever you need to.'
+                : undefined
         }
       />
 
@@ -96,22 +98,44 @@ export function SuitesPage() {
       )}
       {data?.reader === 'admin' && <ForAnAdmin page={data} />}
       {data?.reader === 'lead' && <ForALead page={data} />}
+      {data?.reader === 'duty' && <ForADutyHolder page={data} />}
     </Page>
   )
 }
 
 function ForALead({ page }: { page: SuitesForALead }) {
-  if (page.suites.length === 0) return <Empty>None are switched on yet.</Empty>
+  const setUp = page.youSetUp ?? []
+  if (page.suites.length === 0 && setUp.length === 0) return <Empty>None are switched on yet.</Empty>
   return (
-    <div className="gwui-cards-3">
-      {page.suites.map(s => (
-        <Panel as="section" key={s.key} aria-label={s.name}>
-          <h3 className="gwui-panel-heading">{s.name}</h3>
-          <p className="gwui-panel-text">{s.line}</p>
-          {BOARDS[s.key] && <Link className="gwui-plain-link" to={BOARDS[s.key].to}>Open its board</Link>}
-        </Panel>
-      ))}
-    </div>
+    <>
+      {page.suites.length === 0 ? <Empty>None are switched on yet.</Empty> : (
+        <div className="gwui-cards-3">
+          {page.suites.map(s => (
+            <Panel as="section" key={s.key} aria-label={s.name}>
+              <h3 className="gwui-panel-heading">{s.name}</h3>
+              <p className="gwui-panel-text">{s.line}</p>
+              {BOARDS[s.key] && <Link className="gwui-plain-link" to={BOARDS[s.key].to}>Open its board</Link>}
+            </Panel>
+          ))}
+        </div>
+      )}
+      {setUp.length > 0 && <SuitesYouSetUp suites={setUp} people={page.people ?? []} />}
+    </>
+  )
+}
+
+/** Whoever holds the HR or finance duty sets up their suites here, with the same switch and questions an admin has. */
+function ForADutyHolder({ page }: { page: SuitesForADutyHolder }) {
+  return <SuitesYouSetUp suites={page.youSetUp} people={page.people} />
+}
+
+function SuitesYouSetUp({ suites, people }: { suites: AdminSuite[]; people: SuitesForAnAdmin['people'] }) {
+  return (
+    <Section heading="Suites you set up" note="Your organisation has asked you to set these up.">
+      <div className={suites.length === 1 ? undefined : 'gwui-cards-3'}>
+        {suites.map(s => <ASuite key={s.key} s={s} people={people} forYou />)}
+      </div>
+    </Section>
   )
 }
 
@@ -143,7 +167,7 @@ function ForAnAdmin({ page }: { page: SuitesForAnAdmin }) {
   )
 }
 
-function ASuite({ s, people }: { s: AdminSuite; people: SuitesForAnAdmin['people'] }) {
+function ASuite({ s, people, forYou }: { s: AdminSuite; people: SuitesForAnAdmin['people']; forYou?: boolean }) {
   const qc = useQueryClient()
   const [asking, setAsking] = useState(false)
   const [answers, setAnswers] = useState<Record<string, string>>(() => startFrom(s))
@@ -169,7 +193,7 @@ function ASuite({ s, people }: { s: AdminSuite; people: SuitesForAnAdmin['people
         <div>
           <h3 className="gwui-panel-heading">{s.name}</h3>
           <p className="gwui-panel-text">{s.line}</p>
-          {s.on && BOARDS[s.key] && <Link className="gwui-plain-link" to={BOARDS[s.key].to}>Open its board</Link>}
+          {s.on && BOARDS[s.key] && <Link className="gwui-plain-link" to={forYou && s.key === 'spend' ? '/suite/spend/finance' : BOARDS[s.key].to}>{forYou && s.key === 'spend' ? 'Open the requests for finance' : 'Open its board'}</Link>}
         </div>
         <div className="gwui-suite-switch">
           <Tag>{s.on ? 'On' : 'Off'}</Tag>

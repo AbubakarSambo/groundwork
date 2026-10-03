@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SuitesPage } from './SuitesPage'
 import { useAuthStore } from '@/stores/auth'
-import type { SuitesForAnAdmin, SuitesForALead, AdminSuite } from '@/api/suites'
+import type { SuitesForAnAdmin, SuitesForALead, SuitesForADutyHolder, AdminSuite } from '@/api/suites'
 
 /**
  * THE SUITES PAGE (E, #/settings/suites), AS EACH PERSON SEES IT. What each person is served is
@@ -66,7 +66,7 @@ const GRACE = { id: 'u-g', firstName: 'Grace', role: 'ADMIN', organizationName: 
 const WAIRIMU = { id: 'u-w', firstName: 'Wairimu', role: 'LEAD', organizationName: 'Baridi Appliances' }
 const MIRIAM = { id: 'u-m', firstName: 'Miriam', role: 'MEMBER', organizationName: 'Baridi Appliances' }
 
-function open(user: any, served: SuitesForAnAdmin | SuitesForALead | Error) {
+function open(user: any, served: SuitesForAnAdmin | SuitesForALead | SuitesForADutyHolder | Error) {
   if (served instanceof Error) (suitesApi.get as any).mockRejectedValue(served)
   else (suitesApi.get as any).mockResolvedValue(served)
   useAuthStore.setState({ user, token: 't', isAuthenticated: true } as any)
@@ -245,5 +245,66 @@ describe('Miriam, a member, opens the address', () => {
     open(MIRIAM, new Error('network'))
     expect(await screen.findByText('The suites did not load.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+  })
+})
+
+/* What a member who holds the HR duty is served: only the suites that duty sets up (decision 85). */
+const JOYS: SuitesForADutyHolder = {
+  reader: 'duty',
+  people: [{ id: 'u-g', name: 'Grace Achieng' }, { id: 'u-k', name: 'Kamau Njenga' }],
+  youSetUp: [
+    suite('leave', 'Leave requests', 'People ask for time off in a check-in or chat. Groundwork checks their days left and who else is off.', { questions: LEAVE_QS }),
+    suite('reviews', 'Performance reviews', 'A review every 6 months, built from what each person did and proved, with their own view beside it.', { on: true }),
+  ],
+}
+const OMARS: SuitesForADutyHolder = {
+  reader: 'duty', people: JOYS.people,
+  youSetUp: [
+    suite('spend', 'Spending and budgets', 'People ask to spend in chat. Groundwork checks the budget and sends it to the right person.', { on: true }),
+    suite('time', 'Time sheets', 'People say how many hours they spent, and on which client or project. Used for billing only.'),
+  ],
+}
+const JOY = { id: 'u-j', firstName: 'Joy', role: 'MEMBER', organizationName: 'Baridi Appliances' }
+
+describe('Joy, a member who looks after HR, reads the Suites page', () => {
+  it('reads a heading, a plain sentence about why, and the suites she sets up, not a blank page', async () => {
+    open(JOY, JOYS)
+    expect(await screen.findByRole('heading', { level: 2, name: 'Suites you set up' })).toBeInTheDocument()
+    expect(screen.getByText('Your organisation has asked you to set up these suites. Answer the first questions to switch one on, and switch it off again whenever you need to.')).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 3 }).map(h => h.textContent)).toEqual(['Leave requests', 'Performance reviews'])
+    expect(card('Leave requests').textContent).toBe('Leave requestsPeople ask for time off in a check-in or chat. Groundwork checks their days left and who else is off.Off')
+    expect(card('Performance reviews').textContent).toContain('On')
+    expect(screen.getAllByRole('switch')).toHaveLength(2)
+  })
+
+  it('answers the first questions and switches leave on, with the same form an admin has', async () => {
+    (suitesApi.switch as any).mockResolvedValue({ ...JOYS, youSetUp: [{ ...JOYS.youSetUp[0], on: true, answers: { days: 21, approver: 'Their manager' } }, JOYS.youSetUp[1]] })
+    open(JOY, JOYS)
+    await screen.findByRole('heading', { level: 2, name: 'Suites you set up' })
+    fireEvent.click(within(card('Leave requests')).getByRole('switch', { name: 'Leave requests' }))
+    expect(screen.getByText('Answer these first, and it switches on.')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('How many days of leave does each person have in a year?'), { target: { value: '21' } })
+    fireEvent.change(screen.getByLabelText('Who approves a request for time off?'), { target: { value: 'Their manager' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Switch it on' }))
+    await waitFor(() => expect(suitesApi.switch).toHaveBeenCalledWith('leave', true, { days: '21', approver: 'Their manager' }))
+    await waitFor(() => expect(within(card('Leave requests')).getByRole('switch')).toHaveAttribute('aria-checked', 'true'))
+  })
+})
+
+describe('Omar, a member who looks after finance, reads the Suites page', () => {
+  it('reads spending and time sheets, and the spending door goes to the requests for finance', async () => {
+    open({ ...JOY, id: 'u-o', firstName: 'Omar' }, OMARS)
+    await screen.findByRole('heading', { level: 2, name: 'Suites you set up' })
+    expect(screen.getAllByRole('heading', { level: 3 }).map(h => h.textContent)).toEqual(['Spending and budgets', 'Time sheets'])
+    const door = within(card('Spending and budgets')).getByRole('link', { name: 'Open the requests for finance' })
+    expect(door).toHaveAttribute('href', '/suite/spend/finance')
+  })
+})
+
+describe('Wairimu, a lead who also looks after HR, reads both', () => {
+  it('reads the suites that are on for leads, then the suites she sets up', async () => {
+    open(WAIRIMU, { ...WAIRIMUS, youSetUp: JOYS.youSetUp, people: JOYS.people })
+    await screen.findByRole('heading', { level: 2, name: 'Suites you set up' })
+    expect(screen.getAllByRole('heading', { level: 3 }).map(h => h.textContent)).toEqual(['Time sheets', 'To-dos', 'Leave requests', 'Performance reviews'])
   })
 })
