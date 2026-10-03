@@ -278,6 +278,22 @@ function roleBlock(map: RoleMap | null, pair: { noticed: string; lookingLike: st
   };
 }
 
+/**
+ * THE ROLE BLOCK FOR SOMEBODY WHO GAVE NO ROLE.
+ *
+ * It is read from what the person said, as the universal floor is (a-role-nobody-mapped-is-still-a-person.ts), so it
+ * never names a kind of job, and it still carries the fairness half. Run-26: a borrower was coached as a founder or
+ * CEO; the cure for that is a block that names no job, not no block (decision 55).
+ */
+const GENERAL_ROLE_BLOCK = {
+  label: 'What you said',
+  onTrack: 'What you said can be checked later: it has a date, a number or a name on it, and you say what you did about anything that stalled.',
+  goingWrong: 'What you said is hard to check later: it has no dates, numbers or names, or things were named and not carried through.',
+  protectAgainst: 'A short account is not a weak one. If you said little, little may have happened yet, or nobody may have asked the right question. Nothing here is read against a kind of job.',
+  noticed: null,
+  lookingLike: null,
+};
+
 export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   /* First on the page and first here: the part that could only have been written for this reader. */
   const aboutYou = i.aboutYou ?? [];
@@ -292,10 +308,12 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   const theyGaveNoRole = !(i.roleToSay ?? i.role ?? '').toString().trim();
   const { map, why: whyNoRoleMap } = runsTheirOwnBusiness(i.role)
     ? { map: null, why: null }
-    : theyGaveNoRole && whichRoleMap(i.detectedFunction, i.functionConfidence).map
+    : theyGaveNoRole
       ? { map: null, why: 'No role was given, so this is about where you are in the check-in rather than about a kind of work.' }
       : whichRoleMap(i.detectedFunction, i.functionConfidence);
   const pair = map ? thePair(map, i.noticedBehaviour) : null;
+  /* Coaching is never switched off (decision 55): a person with no role still gets the role block, read from what they said and not from a job. */
+  const roleOf = (m: RoleMap | null, p: typeof pair) => (m ? roleBlock(m, p) : !runsTheirOwnBusiness(i.role) && theyGaveNoRole ? GENERAL_ROLE_BLOCK : null);
   /* "Session 6 of 3" is never said: past the planned count, the session is said alone (item 21). */
   const where = i.totalSessions && i.totalSessions >= i.sessionNumber ? `session ${i.sessionNumber} of ${i.totalSessions}` : `session ${i.sessionNumber}`;
   /*
@@ -406,7 +424,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
          page shows the first three and the rest under "also"; nothing is dropped here. */
       beforeNextTime: actions,
       general: false,
-      role: roleBlock(map, pair),
+      role: roleOf(map, pair),
       whyNoRoleMap,
     };
   }
@@ -431,7 +449,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
       : `This is ${where} of ${about}. Nothing has come up often enough yet to be called a pattern.`,
     beforeNextTime: actions,
     general: true,
-    role: roleBlock(map, pair),
+    role: roleOf(map, pair),
     whyNoRoleMap,
   };
 }

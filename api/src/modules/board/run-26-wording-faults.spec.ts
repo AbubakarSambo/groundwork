@@ -57,7 +57,6 @@ describe('run 26: the wording faults', () => {
 
   it('a borrower who gave no role is not coached as a "Founder or CEO"', () => {
     const note = coaching({});
-    expect(note.role).toBeNull();
     expect(JSON.stringify(note)).not.toMatch(/founder or ceo/i);
     expect(note.whyNoRoleMap).toBe('No role was given, so this is about where you are in the check-in rather than about a kind of work.');
   });
