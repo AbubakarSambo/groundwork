@@ -3407,3 +3407,17 @@ Tests: `api/src/modules/suites/leave-by-length-as-each-reader-reads-it.spec.ts` 
 - **Anybody else** now reads who may, by name: "Only an admin or Joy, who looks after HR, can set up how leave requests work in your organisation, so I have not changed anything. If you would like it set up or changed, you could ask Joy, or Grace, who is an admin here." With nobody named for the duty: "Only an admin or whoever looks after HR can set up how leave requests work in your organisation, so I have not changed anything. If you would like it set up or changed, you could ask Grace, who is an admin here." The same for spending and time sheets with "whoever looks after finance".
 
 Tests: `api/src/modules/suites/whoever-holds-hr-or-finance-sets-up-their-suites-as-each-reader-reads-it.spec.ts` (Joy, Kamau, Wairimu, Aisha, Grace) and `api/src/modules/assistant/a-suite-set-up-by-whoever-holds-hr-or-finance-as-each-reader-reads-it.spec.ts` (Miriam, Omar, Wairimu). Existing tests changed, because the rule they pinned is what decision 85 changes: the leave rules spec (Joy, who looks after HR, may now read and set them), the spending rules spec (Omar, who looks after finance, may now), the time sheet rules spec (Omar may now), the four set-up-by-talking specs (the refusal now names whoever looks after HR or finance), and the suites page spec (an admin's `switch` reply is typed as the admin's page, because the reply type now covers every reader).
+
+## The same approver twice (3 October)
+
+**When a request has already been approved by a person, and a later step, or a passing-on, names the same person, that step is passed for them and the request moves on. If it was the last step, the request is approved. Every suite does this through the one resolver (`passWhatTheyAlreadyApproved` in `who-may-decide.ts`): leave, spending and time sheets. Reviews have one step, so nothing is passed there. "Any admin" is never the same person, because another admin may decide. This is a choice for Hafsah to confirm** (this commit).
+
+- **A new kind in the record of who did what** (`suite_events.kind = "passed"`, `toUserId` the person who had approved, `basis.alreadyApproved: true`). Each request's history (`GET /suites/leave/requests/:id/history`, `/suites/spend/requests/:id/history`, `/suites/time/weeks/:weekOf/people/:personId/history`) says it:
+  - Aisha reads: "Wairimu approved it on 5 October." then "Wairimu had already approved it, so this step was passed."
+  - Wairimu reads: "You approved it on 5 October." then "You had already approved it, so this step was passed."
+  - For hours: "Wairimu had already approved these hours, so this step was passed."
+  - After a passing-on: "Groundwork passed it to Wairimu on 5 October, because Joseph had not answered for 2 working days." then "Wairimu had already approved it, so this step was passed."
+- **Where it stands** reads through the fields it already has: a request whose last step was passed reads "Your leave from Monday 12 October to Tuesday 27 October is approved by Wairimu."; one with a step after it reads "... is approved by Wairimu and is now waiting for Joy in HR." The person is told on WhatsApp as for any approval. No new field.
+- **Nothing changes when nobody repeats**: a request whose next approver has not approved it before moves exactly as before.
+
+Tests: `api/src/modules/suites/the-same-approver-twice-as-each-reader-reads-it.spec.ts` (leave as Aisha, Wairimu and Joy, with a passing-on; spending as Kamau; time sheets as Aisha). No existing test changed.

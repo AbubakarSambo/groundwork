@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { whoApprovesFor } from './who-approves';
-import { couldBeNamed, decidesIt, everyRuleIn, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
+import { couldBeNamed, decidesIt, everyRuleIn, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt } from './a-request-is-recorded';
 import type { PassedOn } from './the-leave-board.service';
@@ -221,23 +221,50 @@ export class TimeSheetsService {
     const where = { organizationId_userId_weekOf: { organizationId: reader.organizationId, userId: personId, weekOf: monday } };
     const approvedByIds = [...state.approvedByIds, reader.userId];
     await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'time', ref: `${personId}|${dayOf(monday)}`, kind: 'approved', byUserId: reader.userId, step: now.step, basis: { row: 'time_entries', minutes: total } });
+    let lastStep = now.step;
     if (!now.last && !state.approved) {
-      const next = { step: now.step + 1, escalatedTo: 0, stepSince: new Date(), seenMinutes: total, approvedByIds };
-      await this.prisma.timeWeek.upsert({
-        where,
-        create: { organizationId: reader.organizationId, userId: personId, weekOf: monday, approvedMinutes: null, approvedById: null, approvedAt: null, ...next },
-        update: next,
-      });
-      await this.tellWhoApproves(reader.organizationId, personId, monday, entries as Entry[], { ...next, approved: false });
-      return this.board(reader, today);
+      /* The next step, unless whoever approves it has already approved these hours: then that step is passed too (who-may-decide.ts). */
+      const moved = await this.passOnFrom(reader.organizationId, personId, monday, people, answers, { step: now.step + 1, escalatedTo: 0 }, approvedByIds, total);
+      if (!moved.done) {
+        const next = { step: moved.where.step, escalatedTo: moved.where.escalatedTo, stepSince: new Date(), seenMinutes: total, approvedByIds };
+        await this.prisma.timeWeek.upsert({
+          where,
+          create: { organizationId: reader.organizationId, userId: personId, weekOf: monday, approvedMinutes: null, approvedById: null, approvedAt: null, ...next },
+          update: next,
+        });
+        await this.tellWhoApproves(reader.organizationId, personId, monday, entries as Entry[], { ...next, approved: false });
+        return this.board(reader, today);
+      }
+      lastStep = moved.where.step;
     }
-    await this.prisma.timeWeek.upsert({
-      where,
-      create: { organizationId: reader.organizationId, userId: personId, weekOf: monday, approvedMinutes: total, approvedById: reader.userId, seenMinutes: total, step: now.step, approvedByIds },
-      update: { approvedMinutes: total, approvedById: reader.userId, approvedAt: new Date(), seenMinutes: total, step: now.step, approvedByIds },
-    });
-    await this.tellThePerson(reader.organizationId, personId, monday, entries as Entry[], reader.userId);
+    await this.finish(reader.organizationId, personId, monday, entries as Entry[], total, reader.userId, lastStep, approvedByIds);
     return this.board(reader, today);
+  }
+
+  /** The last step approved these hours: kept, and the person is told. */
+  private async finish(organizationId: string, personId: string, monday: Date, entries: Entry[], total: number, byUserId: string, step: number, approvedByIds: string[]): Promise<void> {
+    await this.prisma.timeWeek.upsert({
+      where: { organizationId_userId_weekOf: { organizationId, userId: personId, weekOf: monday } },
+      create: { organizationId, userId: personId, weekOf: monday, approvedMinutes: total, approvedById: byUserId, seenMinutes: total, step, approvedByIds },
+      update: { approvedMinutes: total, approvedById: byUserId, approvedAt: new Date(), seenMinutes: total, step, approvedByIds },
+    });
+    await this.tellThePerson(organizationId, personId, monday, entries, byUserId);
+  }
+
+  /**
+   * Where a week goes from here: the step and rule given, passing each step whose approver has already
+   * approved these hours at an earlier step, with "Omar had already approved these hours, so this step
+   * was passed." kept in the record for each.
+   */
+  private async passOnFrom(organizationId: string, personId: string, monday: Date, people: Map<string, { department: string | null; managerExternalId: string | null }>, answers: { approver: string | null; workflow?: AWorkflow }, from: { step: number; escalatedTo: number }, approvedByIds: string[], total: number) {
+    const moved = await passWhatTheyAlreadyApproved(this.prisma, theStepsFor('time', answers), {
+      organizationId, requesterUserId: personId,
+      managerExternalId: people.get(personId)?.managerExternalId ?? null, team: people.get(personId)?.department ?? null,
+    }, from, approvedByIds);
+    for (const p of moved.passed) {
+      await recordIt(this.prisma, { organizationId, suite: 'time', ref: `${personId}|${dayOf(monday)}`, kind: 'passed', toUserId: p.userId, step: p.step, basis: { row: 'time_entries', minutes: total, alreadyApproved: true } });
+    }
+    return moved;
   }
 
   /**
@@ -319,17 +346,24 @@ export class TimeSheetsService {
       const why = await whyPassOn(this.prisma, organizationId, n.now, since, today, answers.workflow.escalateAfter);
       if (!why) continue;
       const monday = atMidnight(w);
-      const moved = { step: state.step, escalatedTo: n.next.at, stepSince: today, seenMinutes: total, approvedByIds: state.approvedByIds };
+      await recordIt(this.prisma, {
+        organizationId, suite: 'time', ref: k, kind: 'escalated', step: n.now.step, toUserId: n.next.who.kind === 'admin' ? null : n.next.who.userId,
+        basis: { row: 'time_entries', minutes: total, fromUserId: n.now.who.kind === 'admin' ? null : n.now.who.userId, ...why },
+      });
+      /* Passed to somebody who already approved these hours at an earlier step: that step is passed for them. */
+      const after = await this.passOnFrom(organizationId, userId, monday, people, answers, { step: state.step, escalatedTo: n.next.at }, state.approvedByIds, total);
+      if (after.done) {
+        await this.finish(organizationId, userId, monday, es, total, after.passed[after.passed.length - 1].userId, after.where.step, state.approvedByIds);
+        out.push({ ref: k, step: n.now.step, from: n.now.who, to: n.next.who, why });
+        continue;
+      }
+      const moved = { step: after.passed.length ? after.where.step : state.step, escalatedTo: after.where.escalatedTo, stepSince: today, seenMinutes: total, approvedByIds: state.approvedByIds };
       await this.prisma.timeWeek.upsert({
         where: { organizationId_userId_weekOf: { organizationId, userId, weekOf: monday } },
         create: { organizationId, userId, weekOf: monday, approvedMinutes: null, approvedById: null, approvedAt: null, ...moved },
         update: moved,
       });
-      await recordIt(this.prisma, {
-        organizationId, suite: 'time', ref: k, kind: 'escalated', step: n.now.step, toUserId: n.next.who.kind === 'admin' ? null : n.next.who.userId,
-        basis: { row: 'time_entries', minutes: total, fromUserId: n.now.who.kind === 'admin' ? null : n.now.who.userId, ...why },
-      });
-      await this.tellWhoApproves(organizationId, userId, monday, es, { ...state, escalatedTo: n.next.at }, answers);
+      await this.tellWhoApproves(organizationId, userId, monday, es, { ...state, step: moved.step, escalatedTo: moved.escalatedTo }, answers);
       out.push({ ref: k, step: n.now.step, from: n.now.who, to: n.next.who, why });
     }
     return out;

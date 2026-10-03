@@ -21,6 +21,8 @@ import type { PrismaService } from '../prisma/prisma.service';
 
 export type SuiteOfARecord = 'leave' | 'spend' | 'time' | 'reviews';
 export type WhatHappened = 'asked' | 'told' | 'approved' | 'declined' | 'escalated' | 'started' | 'decided' | 'questioned' | 'answered'
+  /* A later step's approver had already approved it at an earlier step, so the step was passed (who-may-decide.ts). */
+  | 'passed'
   /* Finance's part of a request to spend (build step 10). */
   | 'verified' | 'coded' | 'evidence' | 'exported' | 'paid'
   /* The person marked a line of their review as wrong and said what is true (build step 12). */
@@ -102,6 +104,11 @@ export function theRecordInWords(records: ARecord[], names: Map<string, string>,
       case 'approved':
         out.push(`${capital(by)} approved ${it} on ${on}.`);
         break;
+      case 'passed': {
+        const had = who(r.toUserId);
+        out.push(`${capital(had)} had already approved ${it}, so this step was passed.`);
+        break;
+      }
       case 'declined':
         out.push(`${capital(by)} declined ${it} on ${on}${(r.basis as any)?.withAReason ? ' and gave a reason' : ''}.`);
         break;

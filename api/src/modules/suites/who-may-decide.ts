@@ -142,6 +142,34 @@ export async function whoDecidesNow(prisma: PrismaService, steps: Step[], reques
   return { who, step, at, last: step >= all.length - 1, team };
 }
 
+/**
+ * THE SAME APPROVER TWICE. When a request moves to a later step, or is passed on, and whoever now
+ * decides it has already approved it at an earlier step, that step is passed for them: their approval
+ * stands for it, and the request moves on. Applied by every suite through this one function, so leave,
+ * time sheets and spending all do the same. `passed` is each step passed, with who had approved it
+ * (each suite records "Omar had already approved it, so this step was passed."); `done` is true when
+ * the last step was passed, so the request is approved. Any admin is never "the same person": another
+ * admin may decide.
+ */
+export interface APassedStep { step: number; userId: string }
+export async function passWhatTheyAlreadyApproved(
+  prisma: PrismaService, steps: Step[], request: ARequest, from: WhereItIs, approvedByIds: string[] | null | undefined,
+): Promise<{ now: DecidesNow; where: { step: number; escalatedTo: number }; passed: APassedStep[]; done: boolean }> {
+  const already = new Set(approvedByIds ?? []);
+  let where = { step: Math.max(0, from.step ?? 0), escalatedTo: Math.max(0, from.escalatedTo ?? 0) };
+  const passed: APassedStep[] = [];
+  for (let i = 0; i <= (steps.length || 1); i++) {
+    const now = await whoDecidesNow(prisma, steps, request, where);
+    const id = now.who.kind === 'admin' ? null : now.who.userId;
+    if (!id || !already.has(id)) return { now, where: { step: now.step, escalatedTo: where.escalatedTo }, passed, done: false };
+    passed.push({ step: now.step, userId: id });
+    if (now.last) return { now, where: { step: now.step, escalatedTo: where.escalatedTo }, passed, done: true };
+    where = { step: now.step + 1, escalatedTo: 0 };
+  }
+  const now = await whoDecidesNow(prisma, steps, request, where);
+  return { now, where, passed, done: false };
+}
+
 /** Whether two answers name the same people: both any admin, or the same person. */
 export function samePeople(a: WhoDecides, b: WhoDecides): boolean {
   if (a.kind === 'admin' || b.kind === 'admin') return a.kind === b.kind;

@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException,
 import { PrismaService } from '../prisma/prisma.service';
 import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
-import { couldBeNamed, decidesIt, everyStepFor, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
+import { couldBeNamed, decidesIt, everyStepFor, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
 import { whyPassOn } from './a-request-waits-too-long';
 import { aRequestsHistory, recordIt, saidAsADate } from './a-request-is-recorded';
 import { readDuties } from './who-holds-each-duty';
@@ -247,16 +247,42 @@ export class SpendingService {
     const approvedByIds = [...(r.approvedByIds ?? []), ...(outcome === 'approved' ? [reader.userId] : [])];
     await recordIt(this.prisma, { organizationId: r.organizationId, suite: 'spend', ref: id, kind: outcome, byUserId: reader.userId, step: now.step, basis: { row: 'spend_requests', id, ...(reason ? { withAReason: true } : {}) } });
     if (outcome === 'approved' && !now.last) {
-      const next = { ...r, step: now.step + 1, escalatedTo: 0, stepSince: new Date(), approvedByIds };
-      await this.prisma.spendRequest.update({ where: { id }, data: { step: next.step, escalatedTo: 0, stepSince: next.stepSince, approvedByIds } });
-      await this.tellWhoDecides(next, answers);
-      return this.board(reader, today);
+      /* The next step, unless whoever decides it has already approved it: then that step is passed too (who-may-decide.ts). */
+      const moved = await this.passOnFrom(r, answers, byUser, { step: now.step + 1, escalatedTo: 0 }, approvedByIds);
+      if (!moved.done) {
+        const next = { ...r, step: moved.where.step, escalatedTo: moved.where.escalatedTo, stepSince: new Date(), approvedByIds };
+        await this.prisma.spendRequest.update({ where: { id }, data: { step: next.step, escalatedTo: next.escalatedTo, stepSince: next.stepSince, approvedByIds } });
+        await this.tellWhoDecides(next, answers);
+        return this.board(reader, today);
+      }
     }
-    await this.prisma.spendRequest.update({ where: { id }, data: { status: outcome, decidedById: reader.userId, decidedAt: new Date(), approvedByIds, ...(reason ? { declineReason: reason } : {}) } });
-    await this.tellThePerson(r, answers.currency, outcome, reader.userId, reason);
+    await this.finish(r, outcome, reader.userId, approvedByIds, answers, reason);
+    return this.board(reader, today);
+  }
+
+  /** It ends: approved at the last step, or declined at any, and the person who asked is told. */
+  private async finish(r: Row, outcome: 'approved' | 'declined', byUserId: string, approvedByIds: string[], answers: Answers, reason?: string | null): Promise<void> {
+    await this.prisma.spendRequest.update({ where: { id: r.id }, data: { status: outcome, decidedById: byUserId, decidedAt: new Date(), approvedByIds, ...(reason ? { declineReason: reason } : {}) } });
+    await this.tellThePerson(r, answers.currency, outcome, byUserId, reason);
     /* A question still waiting for the person's answer in Ask Groundwork is no longer asked. */
     await this.forgetTheQuestionsInAskGroundwork(r);
-    return this.board(reader, today);
+  }
+
+  /**
+   * Where a request goes from here: the step and rule given, passing each step whose approver has
+   * already approved it at an earlier step, with "Omar had already approved it, so this step was
+   * passed." kept in the record for each.
+   */
+  private async passOnFrom(r: Row, answers: Answers, byUser: Map<string, Dir>, from: { step: number; escalatedTo: number }, approvedByIds: string[]) {
+    const moved = await passWhatTheyAlreadyApproved(this.prisma, theStepsFor('spend', answers, n(r.amount)), {
+      organizationId: r.organizationId, requesterUserId: r.userId,
+      managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null,
+      team: r.team?.trim() || byUser.get(r.userId)?.department?.trim() || null,
+    }, from, approvedByIds);
+    for (const p of moved.passed) {
+      await recordIt(this.prisma, { organizationId: r.organizationId, suite: 'spend', ref: r.id, kind: 'passed', toUserId: p.userId, step: p.step, basis: { row: 'spend_requests', id: r.id, alreadyApproved: true } });
+    }
+    return moved;
   }
 
   /**
@@ -429,12 +455,19 @@ export class SpendingService {
       if (!comes) continue;
       const why = await whyPassOn(this.prisma, organizationId, comes.now, r.stepSince ?? r.createdAt, today, answers.workflow.escalateAfter);
       if (!why) continue;
-      await this.prisma.spendRequest.update({ where: { id: r.id }, data: { escalatedTo: comes.next.at, stepSince: today } });
       await recordIt(this.prisma, {
         organizationId, suite: 'spend', ref: r.id, kind: 'escalated', step: comes.now.step, toUserId: comes.next.who.kind === 'admin' ? null : comes.next.who.userId,
         basis: { row: 'spend_requests', id: r.id, fromUserId: comes.now.who.kind === 'admin' ? null : comes.now.who.userId, ...why },
       });
-      await this.tellWhoDecides({ ...r, escalatedTo: comes.next.at, stepSince: today }, answers);
+      /* Passed to somebody who already approved it at an earlier step: that step is passed for them. */
+      const after = await this.passOnFrom(r, answers, byUser, { step: comes.now.step, escalatedTo: comes.next.at }, r.approvedByIds ?? []);
+      if (after.done) {
+        await this.finish(r, 'approved', after.passed[after.passed.length - 1].userId, r.approvedByIds ?? [], answers);
+        out.push({ ref: r.id, step: comes.now.step, from: comes.now.who, to: comes.next.who, why });
+        continue;
+      }
+      await this.prisma.spendRequest.update({ where: { id: r.id }, data: { ...(after.passed.length ? { step: after.where.step } : {}), escalatedTo: after.where.escalatedTo, stepSince: today } });
+      await this.tellWhoDecides({ ...r, step: after.where.step, escalatedTo: after.where.escalatedTo, stepSince: today }, answers);
       out.push({ ref: r.id, step: comes.now.step, from: comes.now.who, to: comes.next.who, why });
     }
     return out;
