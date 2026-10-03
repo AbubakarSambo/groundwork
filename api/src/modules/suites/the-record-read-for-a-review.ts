@@ -1,6 +1,7 @@
 import type { PrismaService } from '../prisma/prisma.service';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { inOurVoice } from '../reports/what-the-record-shows-over-time';
+import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 
 /**
  * THE REVIEW AS THE RECORD INTERPRETED (decision 85, item 4; build step 12 of
@@ -101,15 +102,16 @@ export async function theRecordForAReview(
       }).catch(() => []),
       db.groundDependency?.findMany?.({
         where: { fromParticipantId: { in: pids }, createdAt: { gte: from, lte: until } },
-        select: { id: true, fromParticipantId: true, what: true, onLabel: true, createdAt: true, clearedAt: true, onParticipant: { select: { userId: true, user: { select: { firstName: true } } } } },
+        select: { id: true, fromParticipantId: true, what: true, onLabel: true, createdAt: true, clearedAt: true, onParticipant: { select: { userId: true, user: { select: { firstName: true, lastName: true } } } } },
       }).catch(() => []),
     ])
     : [[], [], [], []];
 
   /* WHAT THEY WORKED ON: each check-in they completed in the period, under the check-in it was in. */
   const leadIds = [...new Set([...groundOf.values()].map((g) => g.initiatorId).filter((x): x is string => !!x))];
-  const leads: any[] = leadIds.length ? ((await db.user?.findMany?.({ where: { id: { in: leadIds } }, select: { id: true, firstName: true } }).catch(() => [])) ?? []) : [];
-  const leadFirst = new Map(leads.map((u) => [u.id, (u.firstName ?? '').trim() || null]));
+  const leads: any[] = leadIds.length ? ((await db.user?.findMany?.({ where: { id: { in: leadIds } }, select: { id: true, firstName: true, lastName: true } }).catch(() => [])) ?? []) : [];
+  /* A title is never said as a first name: "Dr Amina Bello" is "Amina" (a-title-is-not-a-first-name.ts). */
+  const leadFirst = new Map(leads.map((u) => [u.id, theFirstNameFrom(u.firstName, u.lastName)]));
   const byParticipant = new Map<string, Date[]>();
   for (const c of (checkIns ?? []) as any[]) {
     if (!c?.completedAt) continue;
@@ -134,7 +136,7 @@ export async function theRecordForAReview(
     if (new Date(o.createdAt ?? 0).getTime() > until.getTime()) continue;
     const at = new Date(Math.min(new Date(o.updatedAt ?? until).getTime(), until.getTime()));
     lines.push({
-      key: `goal:${o.id}`, kind: 'goal', groundId: g.id, label: g.label, name: String(o.name).trim(),
+      key: `goal:${o.id}`, kind: 'goal', groundId: g.id, label: g.label, name: String(o.name).trim().replace(/[.!?]+$/, ''),
       count: Number(o.count ?? 0), target: typeof o.target === 'number' ? o.target : null, at: day(at), dueOn: o.dueOn ? day(o.dueOn) : null,
     });
   }
@@ -180,6 +182,8 @@ export async function theRecordForAReview(
     if (!words) continue;
     /* A line that cannot be said truly (their words are not word for word, and cannot be put in our voice) is left out. */
     if (!c.saidWordForWord && !inOurVoice(words)) continue;
+    /* So is one that says nothing on its own, out of its check-in: "I will do that." */
+    if (saysNothingOnItsOwn(words)) continue;
     lines.push({
       key: `commitment:${c.id}`, kind: 'commitment', groundId: c.ground.id, label: c.ground.label, words: words.slice(0, 400), wordForWord: !!c.saidWordForWord,
       madeOn: day(c.createdAt), status: c.stood, saidAgain: c.again, settledOn: c.stood === 'DONE' || c.stood === 'NOT_DONE' ? (c.settledAt ? day(c.settledAt) : null) : null,
@@ -193,11 +197,17 @@ export async function theRecordForAReview(
     if (!g) continue;
     lines.push({
       key: `blocker:${w.id}`, kind: 'blocker', groundId: g.id, label: g.label, what: String(w.what).trim().replace(/[.!?]+$/, '').slice(0, 300),
-      onUserId: w.onParticipant?.userId ?? null, onFirst: (w.onParticipant?.user?.firstName ?? '').trim() || null, onLabel: (w.onLabel ?? '').trim() || null,
+      onUserId: w.onParticipant?.userId ?? null, onFirst: theFirstNameFrom(w.onParticipant?.user?.firstName, w.onParticipant?.user?.lastName), onLabel: (w.onLabel ?? '').trim() || null,
       saidOn: day(w.createdAt), clearedOn: inPeriod(w.clearedAt) ? day(w.clearedAt) : null,
     });
   }
   return lines;
+}
+
+/** "I will do that.", "I'll try it": a promise whose words mean nothing without the question before it. */
+export function saysNothingOnItsOwn(words: string): boolean {
+  const rest = String(words ?? '').trim().replace(/^(?:i will|i'll|i am going to|i'm going to|i plan to|we will|we'll)\s+/i, '').replace(/[.!?]+$/, '').trim();
+  return rest.split(/\s+/).filter(Boolean).length <= 2;
 }
 
 /** The stored record, read defensively: anything that is not a line Groundwork wrote is left out. */
@@ -244,6 +254,8 @@ export function thePartsHeading(part: ARecordPart, r: WhoReadsIt): string {
   }
 }
 
+/** A number as people read it: 36,000,000, never 36000000. */
+const aNumber = (n: number) => n.toLocaleString('en-GB');
 const times = (n: number) => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
 const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`);
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -264,8 +276,8 @@ export function aRecordLineSaid(line: ARecordLine, r: WhoReadsIt): string {
     }
     case 'goal': {
       const stood = line.target !== null
-        ? ` On ${said(line.at)}, it stood at ${line.count}, against a target of ${line.target}.`
-        : line.count > 0 ? ` On ${said(line.at)}, it stood at ${line.count}.` : '';
+        ? ` On ${said(line.at)}, it stood at ${aNumber(line.count)}, against a target of ${aNumber(line.target)}.`
+        : line.count > 0 ? ` On ${said(line.at)}, it stood at ${aNumber(line.count)}.` : '';
       const due = line.dueOn ? ` It is due on ${said(line.dueOn)}.` : '';
       return `${Who} ${own} the goal “${line.name}” in “${line.label}”.${stood}${due}`;
     }
@@ -282,7 +294,8 @@ export function aRecordLineSaid(line: ARecordLine, r: WhoReadsIt): string {
       if (line.open) parts.push(`${line.open} ${line.open === 1 ? 'was' : 'were'} still open when this review started`);
       const of = line.made === 1 && parts.length === 1
         ? ` It ${parts[0].replace(/^1 (was|were) /, 'was ')}.`
-        : parts.length ? ` Of these, ${andList(parts)}.` : '';
+        : parts.length === 1 ? ` All of them ${parts[0].replace(/^\d+ (was|were) /, 'were ')}.`
+          : parts.length ? ` Of these, ${andList(parts)}.` : '';
       return `In “${line.label}”, ${who} made ${plural(line.made, 'commitment', 'commitments')} ${between(line.first, line.last)}.${of}`;
     }
     case 'commitment': {
@@ -299,7 +312,9 @@ export function aRecordLineSaid(line: ARecordLine, r: WhoReadsIt): string {
     }
     case 'blocker': {
       const on = line.onUserId && line.onUserId === r.userId ? 'you' : line.onFirst ?? line.onLabel;
-      const waiting = on ? `waiting on ${on} for ${line.what}` : `waiting for ${line.what}`;
+      /* "waiting on Amina for a meeting with Amina" says Amina twice; the thing waited for already names them. */
+      const namedInIt = !!on && new RegExp(`\\b${on.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(line.what);
+      const waiting = on && !namedInIt ? `waiting on ${on} for ${line.what}` : `waiting for ${line.what}`;
       const cleared = line.clearedOn ? ` It cleared on ${said(line.clearedOn)}.` : ' It was still open when this review started.';
       /* No pronoun is guessed for the person: they are "you", or the work is. */
       return `On ${said(line.saidOn)}, in “${line.label}”, ${r.isThePerson ? 'you said you were' : `${r.personFirst} said the work was`} ${waiting}.${cleared}`;

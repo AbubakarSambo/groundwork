@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { REVIEW_REFUSED } from './the-reviews.service';
+import { aRecordLineSaid, saysNothingOnItsOwn } from './the-record-read-for-a-review';
 
 /**
  * THE REVIEW AS THE RECORD INTERPRETED, AS EACH READER READS IT (decision 85, item 4; build step 12).
@@ -171,5 +172,25 @@ describe('Aisha corrects a line', () => {
     await expect(svc.correct(as('u-grace'), id, 'commitment:c2', 'x')).rejects.toThrow(ForbiddenException);
     await expect(svc.correct(as('u-aisha'), id, 'commitment:c7', 'x')).rejects.toThrow(new NotFoundException(REVIEW_REFUSED.noSuchLine));
     await expect(svc.correct(as('u-aisha'), id, 'commitment:c2', '   ')).rejects.toThrow(new BadRequestException(REVIEW_REFUSED.sayWhatIsTrue));
+  });
+});
+
+describe('lines read from the local test database, as a person reads them', () => {
+  const you = { isThePerson: true, userId: 'u-x', personFirst: 'Bola' };
+  it('a big target is written with commas, and a goal’s own full stop is not put inside the sentence', () => {
+    expect(aRecordLineSaid({ key: 'goal:o', kind: 'goal', groundId: 'g', label: 'Credit sales against this quarter target', name: 'Disburse N36 million', count: 0, target: 36000000, at: '2026-09-30', dueOn: null }, you))
+      .toBe('You own the goal “Disburse N36 million” in “Credit sales against this quarter target”. On 30 September 2026, it stood at 0, against a target of 36,000,000.');
+  });
+  it('commitments that all stood the same way are said once', () => {
+    expect(aRecordLineSaid({ key: 'commitments:g', kind: 'commitments', groundId: 'g', label: 'Credit sales', first: '2026-09-29', last: '2026-09-30', made: 11, done: 0, notDone: 0, dropped: 0, open: 11, delayed: 0 }, you))
+      .toBe('In “Credit sales”, you made 11 commitments between 29 September 2026 and 30 September 2026. All of them were still open when this review started.');
+  });
+  it('the person waited on is not named twice', () => {
+    expect(aRecordLineSaid({ key: 'blocker:w', kind: 'blocker', groundId: 'g', label: 'Engagement Director, first 90 days', what: 'a meeting with Amina', onUserId: 'u-amina', onFirst: 'Amina', onLabel: null, saidOn: '2026-10-01', clearedOn: null }, you))
+      .toBe('On 1 October 2026, in “Engagement Director, first 90 days”, you said you were waiting for a meeting with Amina. It was still open when this review started.');
+  });
+  it('a promise that means nothing out of its check-in is left out', () => {
+    expect(saysNothingOnItsOwn('I will do that.')).toBe(true);
+    expect(saysNothingOnItsOwn('I will ask Amina to clarify my role.')).toBe(false);
   });
 });

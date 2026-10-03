@@ -78,11 +78,11 @@ export function theCountsSaid(lines: readonly ARecordLine[], first: string): str
   if (sum('notDone')) rest.push(`${sum('notDone')} ${sum('notDone') === 1 ? 'was' : 'were'} not done`);
   if (sum('dropped')) rest.push(`${sum('dropped')} ${sum('dropped') === 1 ? 'was' : 'were'} dropped`);
   if (sum('open')) rest.push(`${sum('open')} ${sum('open') === 1 ? 'was' : 'were'} still open when this review started`);
-  const kept = `${first} kept ${sum('done') ? `${sum('done')} of them` : 'none of them'}`;
+  const kept = `${first} kept ${sum('done') === made ? 'all of them' : sum('done') ? `${sum('done')} of them` : 'none of them'}`;
   const delayed = sum('delayed');
   return [
     `In the check-ins you are in with ${first}, ${first} made ${plural(made, 'commitment', 'commitments')} ${when}.`,
-    rest.length ? `${kept}, ${andList(rest)}.` : `${kept}.`,
+    sum('open') === made ? 'None of them was settled before this review started.' : rest.length ? `${kept}, ${andList(rest)}.` : `${kept}.`,
     delayed ? `Of them, ${delayed} took longer than first said, because ${delayed === 1 ? 'it was' : 'they were'} not done, or ${first} said ${delayed === 1 ? 'it' : 'them'} again in a later check-in.` : '',
   ].filter(Boolean).join(' ');
 }

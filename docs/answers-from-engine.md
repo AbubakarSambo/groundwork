@@ -3213,3 +3213,19 @@ Wairimu, who writes Aisha's review and runs "Sales team, Q3", reads:
 Grace (an admin) and Juma (another lead of Sales), in and running no check-in with Aisha, read heading "The briefing for Aisha’s review", `counts` null, no patterns, no corrections, the earlier review said with "Wairimu decided Aisha’s review on 15 March 2026. ...", and "There are no scores. Groundwork gives the evidence and the patterns, and Wairimu decides. Aisha sees the reasons." Aisha, a colleague and a lead of another team: unchanged (no briefing; refused).
 
 Tests: `api/src/modules/suites/the-briefing-for-a-review-as-each-reader-reads-it.spec.ts` (Wairimu, before and after Aisha's three days; her corrections; Grace; Juma; Aisha; Miriam; Kamau; no labels; patterns only through `servedPatterns`). Every test fails on the old code, where there was no briefing. The fixture both review specs use moved to `api/src/modules/suites/__fixtures__/aisha-review.ts`. No existing test changed.
+
+## A review's record, read against the local test database (3 October, build steps 12 and 13)
+
+**Served against the local test database, the record read for a real person said "a target of 36000000", "“Disburse N36 million.” in", "Of these, 11 were still open", "which Dr runs", "“I will do that.”" and "waiting on Amina for a meeting with Amina". Each is fixed where the sentence is made** (this commit).
+
+| Before | After |
+| --- | --- |
+| "You own the goal “Disburse N36 million.” in “Credit sales against this quarter target”. On 30 September 2026, it stood at 0, against a target of 36000000." | "You own the goal “Disburse N36 million” in “Credit sales against this quarter target”. On 30 September 2026, it stood at 0, against a target of 36,000,000." |
+| "... you made 11 commitments between 29 September 2026 and 30 September 2026. Of these, 11 were still open when this review started." | "... All of them were still open when this review started." |
+| "You checked in 4 times in “Engagement Director, first 90 days”, which Dr runs, ..." | "... which Amina runs, ..." (a title is never a first name) |
+| "On 1 October 2026, in “...”, you said, “I will do that.” It was marked as not done on 1 October 2026." | Left out: a promise of two words or fewer after "I will" means nothing outside its check-in. It is still counted. |
+| "... you said you were waiting on Amina for a meeting with Amina. ..." | "... you said you were waiting for a meeting with Amina. ..." |
+
+In the briefing's counts, when every commitment was kept: "Aisha kept all of them."; when none was settled: "None of them was settled before this review started."
+
+Tests: four more in `api/src/modules/suites/the-record-in-a-review-as-each-reader-reads-it.spec.ts`, built from those rows. Each fails on the code before this commit.
