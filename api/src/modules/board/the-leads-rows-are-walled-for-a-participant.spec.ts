@@ -33,6 +33,7 @@ interface Setup {
   items: any[];
   lines: { id: string; participantId: string; text: string; disputedAt?: Date | null }[];
   objectives?: any[];
+  commitments?: any[];
 }
 
 const item = (id: string, kind: string, name: string, more: Record<string, any> = {}) => ({
@@ -64,6 +65,7 @@ function boardAs(setup: Setup, userId: string, role: string) {
         return ids ? setup.lines.filter((l) => ids.includes(l.id) && (args?.where?.disputedAt !== null || !l.disputedAt)).map((l) => ({ disputedAt: null, ...l })) : [];
       }),
     }),
+    groundCommitment: model({ findMany: jest.fn(async () => (setup.commitments ?? []).map((c) => ({ ...c }))) }),
     workItem: model({ findMany: jest.fn(async () => setup.items.map((i) => ({ ...i }))) }),
   } as any, {
     get(target: any, prop: string) {
@@ -134,5 +136,26 @@ describe('a line of the lead\'s, for a reader who may not name the others', () =
     ['The supplier never delivered the machine. We want every borrower earning by the fourth month.', 'We want every borrower earning by the fourth month.'],
   ])('%s', (said, kept) => {
     expect(theLeadsLineAsAParticipantMayRead(said, others).kept).toBe(kept);
+  });
+});
+
+/**
+ * WHAT HAPPENS NEXT FOLLOWS THE SPEAKER, AS THE REST OF THE ROW DOES. An older row stored Rukia as the owner of a line
+ * Baraka said; the row is Baraka's, so his own commitment is its next step, and Rukia's is not.
+ */
+describe('what happens next to a record the speaker owns', () => {
+  const SPOKEN: Setup = {
+    kindOfWork: 'sales org',
+    lines: [{ id: 'e-b', participantId: 'p-baraka', text: 'I will send Eastside Foods the quote with a photo on Friday.' }],
+    items: [item('w-1', 'deal', 'Eastside Foods', { stage: 'Quoted', ownerParticipantId: 'p-rukia', sourceEntryId: 'e-b' })],
+    commitments: [
+      { id: 'k-b', groundId: 'g-1', participantId: 'p-baraka', text: 'I will send Eastside Foods the quote with a photo on Friday.', status: 'UNKNOWN', whenSaid: null, explicit: true, source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], settledBy: null, settledAt: null, saidWordForWord: true, whenSaidWordForWord: false, createdAt: new Date('2026-09-02T16:30:00Z') },
+      { id: 'k-r', groundId: 'g-1', participantId: 'p-rukia', text: 'I will phone Eastside Foods on Monday.', status: 'UNKNOWN', whenSaid: null, explicit: true, source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], settledBy: null, settledAt: null, saidWordForWord: true, whenSaidWordForWord: false, createdAt: new Date('2026-09-02T16:31:00Z') },
+    ],
+  };
+  it('Baraka reads his own commitment as the next step, and never Rukia\'s', async () => {
+    const row = rows(await boardAs(SPOKEN, ...BARAKA))[0];
+    expect(row.next).toBe('You committed to send Eastside Foods the quote with a photo on Friday.');
+    expect(JSON.stringify(row)).not.toMatch(/phone/);
   });
 });

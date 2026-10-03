@@ -2187,7 +2187,7 @@ export class BoardService {
           ),
           /* The proof mark the screens' ProofMark reads (request 108 c), from the line it came from, never upgraded. */
           mark: theRecordsMark(line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null),
-          ...whatHappensNext(i, openPromises.filter((c) => runsIt || c.participantId === me?.id || (!!i.ownerParticipantId && c.participantId === i.ownerParticipantId && c.participantId !== theLeadsRow)), (pid) => {
+          ...whatHappensNext(i, openPromises.filter((c) => runsIt || c.participantId === me?.id || (!!ownerId && c.participantId === ownerId && c.participantId !== theLeadsRow)), (pid) => {
             if (pid && pid === me?.id) return 'You';
             return pid ? (nameOf(pid) ?? aColleague(pid)) : 'Somebody';
           }),
