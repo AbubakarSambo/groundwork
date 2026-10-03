@@ -48,6 +48,22 @@ export function aNameSaidTwiceInARow(text: string, names: Iterable<string>): str
  *
  * Everything else is left as it was. Never inside a quotation: the caller runs outside quotes.
  */
+const REPORTING_VERBS = '(?:says|said|thinks|thought|believes|feels|felt|notes|noted|reports|reported|explains|explained|states|stated|adds|added|mentions|mentioned|worries|admits|admitted|expects|knows|knew|fears|doubts|claims|claimed)';
+
+/** The verb after "they" instead of a name: "does" is "do", "knows" is "know". Words that do not change are left alone. */
+export function forTheyAfterAName(verb: string): string {
+  const v = verb.replace(/’/g, "'");
+  const fixed: Record<string, string> = {
+    does: 'do', has: 'have', is: 'are', was: 'were', "doesn't": "don't", "hasn't": "haven't", "isn't": "aren't", "wasn't": "weren't",
+  };
+  if (fixed[v] !== undefined) return fixed[v];
+  if (/^(can|cannot|will|would|could|should|may|might|must|did|had|do|have|are|were|didn't|hadn't|won't|wouldn't|couldn't|shouldn't|can't|not|never|also|still|only|just|always|already)$/.test(v)) return verb;
+  if (/ies$/.test(v)) return `${v.slice(0, -3)}y`;
+  if (/(sses|shes|ches|xes|zes)$/.test(v)) return v.slice(0, -2);
+  if (/s$/.test(v) && !/(ss|us|is)$/.test(v) && v.length > 3) return v.slice(0, -1);
+  return verb;
+}
+
 export function aNameSaidAgainInOneSentence(text: string, names: Iterable<string>): string {
   if (!text) return text;
   const people = [...new Set([...names].map((n) => (n ?? '').trim()).filter((n) => n.length > 1))].sort((a, b) => b.length - a.length);
@@ -63,6 +79,11 @@ export function aNameSaidAgainInOneSentence(text: string, names: Iterable<string
       let out = sentence.replace(
         new RegExp(`(,?\\s+(?:and|but)\\s+)(?:${forms})\\s+(?=\\p{Ll})`, 'gu'),
         (m: string, joint: string, offset: number) => (offset > opens[0].length && !somebodyElseBefore(offset) ? joint : m),
+      );
+      /* "Tobi says that Tobi does not know ..." is "Tobi says that they do not know ...": no he or she is guessed. */
+      out = out.replace(
+        new RegExp(`^(\\s*(?:${forms})\\s+${REPORTING_VERBS}\\s+that\\s+)(?:${forms})\\s+(\\p{Ll}[\\p{L}'’]*)`, 'u'),
+        (_m: string, start: string, verb: string) => `${start}they ${forTheyAfterAName(verb)}`,
       );
       let owned = 0;
       out = out.replace(
