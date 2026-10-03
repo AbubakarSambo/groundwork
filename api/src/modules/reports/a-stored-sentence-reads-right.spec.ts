@@ -1,4 +1,4 @@
-import { aStoredSentenceReadsRight } from './a-stored-sentence-reads-right';
+import { aStoredSentenceReadsRight, everyStoredSentenceReadsRight } from './a-stored-sentence-reads-right';
 import { withoutDashes } from './forensic-voice';
 import { overTimeAsServed, overTimeForThisReader } from './what-the-record-shows-over-time';
 
@@ -69,5 +69,19 @@ describe('the over-time block, as the lead and as the person it is about', () =>
     const mine = overTimeForThisReader(stored, { isLead: false, participantId: 'p-1' })!;
     expect(JSON.stringify(mine)).not.toMatch(/escalat/i);
     expect(mine.dependencies[0].say).toMatch(/Nothing on record says anybody has chased it since\.$/);
+  });
+});
+
+describe('the board, which composes sentences after the names are put in', () => {
+  it('reads right for the lead, from the sentences of the local check-in with the co-founder and the cooperatives', () => {
+    const board = {
+      overTime: { commitments: [{ say: 'In session 1, Co-founder and CTO. Engineering, hiring and - he believes - product. committed to the epics will follow shortly after.' }] },
+      timeline: [{ says: 'On 21 September, Lawal said the work was waiting on Microfinance banks. Cooperative leaders. for a system to vet farmers for credit.' }],
+      whoOwnsWhat: { items: [{ theirWords: 'He also needs to improve his attitude. be more positive', text: 'You said it.' }] },
+    };
+    const out = everyStoredSentenceReadsRight(board);
+    expect(out.overTime.commitments[0].say).toBe('In session 1, Co-founder and CTO. Engineering, hiring and - he believes - product committed to the epics will follow shortly after.');
+    expect(out.timeline[0].says).toBe('On 21 September, Lawal said the work was waiting on Microfinance banks. Cooperative leaders for a system to vet farmers for credit.');
+    expect(out.whoOwnsWhat.items[0].theirWords).toBe(board.whoOwnsWhat.items[0].theirWords);
   });
 });

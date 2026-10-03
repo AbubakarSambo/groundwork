@@ -55,3 +55,24 @@ export function aStoredSentenceReadsRight(text: string): string {
   if (!text || typeof text !== 'string') return text;
   return theQuotesKept(text, (outside) => aLabelEndsWithoutAFullStop(oldWordingPutPlain(outside)));
 }
+
+/* Fields that carry a person's own words, which no repair touches. */
+const THEIR_OWN_WORDS = new Set(['theirWords', 'said', 'quote', 'quotes', 'theySaid']);
+
+/**
+ * The same repair over a whole served payload (the board's), for the sentences the board composes after the
+ * names are put in. Plain objects and lists are walked; dates and other instances are sent as they are.
+ */
+export function everyStoredSentenceReadsRight<T>(payload: T): T {
+  const walk = (v: any): any => {
+    if (typeof v === 'string') return aStoredSentenceReadsRight(v);
+    if (Array.isArray(v)) return v.map(walk);
+    if (!v || typeof v !== 'object') return v;
+    const proto = Object.getPrototypeOf(v);
+    if (proto !== Object.prototype && proto !== null) return v;
+    const out: Record<string, any> = {};
+    for (const [k, x] of Object.entries(v)) out[k] = THEIR_OWN_WORDS.has(k) ? x : walk(x);
+    return out;
+  };
+  return walk(payload);
+}
