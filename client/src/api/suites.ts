@@ -103,9 +103,22 @@ export interface NextReview {
   name: string
   writtenWith: string | null
   dueOn: string
-  stands: 'ready' | 'started' | 'decided'
+  /** 'not-yet' while a check-in that decides something about the person is still open. */
+  stands: 'ready' | 'started' | 'decided' | 'not-yet'
+  /** Where it stands, in a full sentence for this reader: "Ready to start. 6 months of check-ins to draw on." */
+  standsSays: string
   reviewId: string | null
   mayStart: boolean
+  /** Said when Groundwork proposed the review itself, so the reader knows why it is here and that nothing reaches the person until they say yes. */
+  proposal: string | null
+}
+/** One of the person's own reviews, once somebody has started it (GET /suites/reviews/mine). */
+export interface YourReview {
+  id: string
+  dueOn: string
+  writtenWithFirstName: string | null
+  stands: 'started' | 'decided'
+  says: string
 }
 export interface ReviewsBoard { every: string | null; next: NextReview[] }
 export interface Noticed { says: string; mark: 'proven' | 'said' }
@@ -137,6 +150,7 @@ export type AReview = ReviewForTheWriter | ReviewForThePerson
 
 export const reviewsApi = {
   board: async (): Promise<ReviewsBoard> => (await apiClient.get('/suites/reviews/board')).data,
+  mine: async (): Promise<YourReview[]> => (await apiClient.get('/suites/reviews/mine')).data,
   start: async (dueId: string): Promise<{ id: string }> => (await apiClient.post(`/suites/reviews/due/${dueId}/start`)).data,
   one: async (id: string): Promise<AReview> => (await apiClient.get(`/suites/reviews/${id}`)).data,
   words: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/words`, { text })).data,
