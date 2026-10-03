@@ -22,6 +22,8 @@ export function askGroundwork(opts: {
   const created: any[] = [];
   const prisma: any = {
     person: { findFirst: jest.fn(async () => ({ id: 'p1', externalId: 'u-1', displayName: opts.displayName ?? 'Rukia Otieno', active: true, linkedUserId: opts.userId ?? 'lead-1' })) },
+    /* The move into Ask Groundwork is hidden at release; these specs prove the path itself, so it is turned on here. */
+    platformSetting: { findUnique: async ({ where }: any) => (where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null) },
     user: { findUnique: jest.fn(async () => ({ role: opts.role ?? 'MEMBER', organizationId: 'org-a' })) },
     ground: {
       findMany: jest.fn(async () => grounds),
