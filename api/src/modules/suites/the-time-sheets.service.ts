@@ -13,6 +13,7 @@ import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-ap
 import { saidAsADay } from './who-is-away';
 import { readDuties } from './who-holds-each-duty';
 import { anyTimeRule, isAskedForHours, isBillable, lagosMonday, readTimeRules, stillNeedsHours, whereYouStand, type TimeRules } from './the-time-sheet-rules';
+import { draftTheWeek, readTheWeeksRecord, type AWeekDrafted } from './a-week-drafted-from-the-record';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const XLSX = require('xlsx') as typeof import('xlsx');
 
@@ -403,6 +404,28 @@ export class TimeSheetsService {
     });
     const minutes = entries.reduce((n, e) => n + e.minutes, 0);
     return { said: whereYouStand(rules, minutes, today), stillNeeds: stillNeedsHours(rules, minutes) };
+  }
+
+  /**
+   * THIS WEEK DRAFTED FROM THE PERSON'S OWN RECORD (decision 85, build step 11), for that person only:
+   * their check-in sessions, kept commitments and the items they own that changed, matched to the
+   * clients and projects on the list, with the hours asked a week shared out. Reads, writes nothing:
+   * only the person's yes in Ask Groundwork sends it (`record`). Never read for anything about the
+   * person (decision 10). See a-week-drafted-from-the-record.ts.
+   */
+  async draftAWeek(reader: Reader, today = new Date()): Promise<AWeekDrafted> {
+    const answers = await this.suiteAnswers(reader.organizationId);
+    const role = await this.roleOf(reader);
+    if (!role || role === 'GUEST') throw new ForbiddenException(TIME_REFUSED.notInIt);
+    const rules = await readTimeRules(this.prisma, reader.organizationId);
+    const me = await theirRosterEntry(this.prisma, reader.organizationId, reader.userId, { externalId: true }).catch(() => null);
+    const monday = lagosMonday(today);
+    const given = await this.prisma.timeEntry.findMany({
+      where: { organizationId: reader.organizationId, userId: reader.userId, onDay: { gte: atMidnight(monday), lt: new Date(atMidnight(monday).getTime() + 7 * DAY) } },
+      select: { onDay: true },
+    });
+    const found = await readTheWeeksRecord(this.prisma, { organizationId: reader.organizationId, userId: reader.userId, externalId: (me?.externalId as string | null) ?? null, clients: answers.clients, now: today });
+    return draftTheWeek(found, rules, new Set(given.map((g) => dayOf(g.onDay))), monday);
   }
 
   /**

@@ -3101,3 +3101,22 @@ Tests: `api/src/modules/whatsapp/a-reply-held-for-a-yes-or-no-is-never-lost.spec
 | Grace, the billing file | did not exist | every approved hour, Internal too |
 
 Tests: `api/src/modules/suites/the-time-sheet-rules-as-each-reader-reads-them.spec.ts` (Grace the admin; Aisha in Sales; Kamau in Operations, not asked; Wairimu who approves; Omar in finance; a guest; the CSV and Excel files; Today and Ask Groundwork). No existing test changed.
+
+## This week's hours drafted from the record (3 October, decision 85, build step 11)
+
+**A person can ask Ask Groundwork to draft their week's hours ("Can you draft my hours for this week?", "draft my time sheet"). Groundwork reads only that person's own record this week (check-in sessions they took part in, commitments they kept, and the work-plan and Subject items they own that changed), matches each to a client or project on the list, and shares out the hours the rules ask a week. It says what it found, the draft and where the hours came from, and only the person's yes sends it. Hours stay for billing only: the draft feeds no judgement, report or pattern about the person (decision 10)** (this commit).
+
+- **Ask Groundwork (and WhatsApp's Ask Groundwork), for the person only**, for example:
+  - "I have enough to draft this week's hours. Here is what I found."
+  - "On Monday 5 October, the record shows your check-in "Naivas Ngong Road install" and the commitment you kept, "Send Lakeside the service report"."
+  - "This is the draft." then "I put 4 hours on Naivas and 4 hours on Lakeside for Monday 5 October."
+  - "I gave each day 8 hours, from the 40 hours a week your organisation asks for, shared equally between the clients and projects the record shows that day. The record does not say how long anything took, so please check each line."
+  - "I could not tell which client or project your check-in "Sales team" on Tuesday 6 October was for, so it is not in the draft."
+  - "Change anything that is wrong before you send it. You can tell me, for example "6 hours on Naivas on Monday", or "remove Naivas on Monday"."
+  - "Shall I log these hours and send them to Wairimu to approve?"
+- **A change** is said back with the whole draft: "I have changed the draft. This is it now." and the lines again. A change that cannot be read: "I could not tell which line to change. ...". **Yes:** "I have logged 18 hours for this week and sent them to Wairimu to approve. They are not approved until Wairimu decides, and you will see them under your hours." **No:** "I have not sent the draft. Nothing was kept."
+- **Not enough to draft:** "I found this on your record for this week, but not enough to draft your hours.", what was found, then why ("The record does not say how long anything took, and your organisation has not set the hours asked a week, so I cannot draft the hours." or "You have already given hours for each of those days, so there is nothing more to draft."), then "Tell me the hours instead, ...". Nothing found: "I could not find anything on your record for this week to draft your hours from. ..."
+- **No new route and no new field.** The draft is a parked proposal until the yes; on the yes the hours are the same `time_entries` as hours said in chat, and reach the approver's board, Today and WhatsApp exactly as those do. Nothing on the boards, reports or Today changes.
+- **Not built, waiting for Hafsah:** the manager's "hours against the planned work and what was delivered" from decision 85, against decision 10.
+
+Tests: `api/src/modules/suites/a-week-drafted-from-the-record-as-each-reader-reads-it.spec.ts` (Brian drafting, changing a line, removing one and saying yes; his no; Wairimu's board after; Aisha's record never in Brian's draft; Aisha with every day already given; Kamau with nothing found; the suite off; a scan that keeps the draft out of every module but the suites and Ask Groundwork). Every test fails on the old code, where none of this existed. No existing test changed.

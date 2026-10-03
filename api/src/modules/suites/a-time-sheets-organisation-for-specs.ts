@@ -58,7 +58,15 @@ const d = (s: string) => new Date(`${s}T00:00:00.000Z`);
 const h = (userId: string, client: string, day: string, hours: number, billable?: boolean) =>
   ({ organizationId: ORG, userId, client, onDay: d(day), minutes: hours * 60, createdAt: d(day), ...(billable === undefined ? {} : { billable }) });
 
-export function aTimeSheetsOrganisation(opts: { rules?: unknown; on?: boolean; workflows?: unknown } = {}) {
+/** The record a week is drafted from (build step 11): each person's own sessions, kept commitments and owned items. */
+export interface ARecordForSpecs {
+  sessions?: { userId: string; label: string; startedAt?: Date | null; completedAt?: Date | null; isSetup?: boolean }[];
+  commitments?: { personExternalId: string; text: string; state: string; resolvedAt: Date | null; subjectExternalId?: string | null }[];
+  subjects?: { externalId: string; title: string; ownerExternalId: string | null; updatedAt: Date; sourceDeletedAt?: Date | null }[];
+  workItems?: { ownerUserId: string; name: string; updatedAt: Date; label: string }[];
+}
+
+export function aTimeSheetsOrganisation(opts: { rules?: unknown; on?: boolean; workflows?: unknown; record?: ARecordForSpecs } = {}) {
   let n = 0;
   const suites: Record<string, any> = {
     time: { isOn: opts.on ?? true, answers: { clients: ['Naivas', 'Lakeside', 'Internal'], approver: 'Their manager' } },
@@ -116,6 +124,19 @@ export function aTimeSheetsOrganisation(opts: { rules?: unknown; on?: boolean; w
       }),
     },
     timeAgreement: { findMany: jest.fn(async () => []) },
+    checkIn: {
+      findMany: jest.fn(async ({ where }: any) => (opts.record?.sessions ?? [])
+        .filter((x) => x.userId === where.participant?.userId && !x.isSetup && (matches(x, { startedAt: where.OR?.[0]?.startedAt }) && x.startedAt || matches(x, { completedAt: where.OR?.[1]?.completedAt }) && x.completedAt))
+        .map((x) => ({ startedAt: x.startedAt ?? null, completedAt: x.completedAt ?? null, ground: { label: x.label } }))),
+    },
+    commitment: { findMany: jest.fn(async ({ where }: any) => (opts.record?.commitments ?? []).filter((c) => matches({ organizationId: ORG, ...c }, where))) },
+    subject: { findMany: jest.fn(async ({ where }: any) => (opts.record?.subjects ?? []).filter((x) => matches({ organizationId: ORG, ...x }, where))) },
+    groundParticipant: { findMany: jest.fn(async ({ where }: any) => [...new Set((opts.record?.workItems ?? []).map((w) => w.ownerUserId))].filter((u) => u === where.userId).map((u) => ({ id: `gp-${u}` }))) },
+    workItem: {
+      findMany: jest.fn(async ({ where }: any) => (opts.record?.workItems ?? [])
+        .filter((w) => where.ownerParticipantId.in.includes(`gp-${w.ownerUserId}`) && matches(w, { updatedAt: where.updatedAt }))
+        .map((w) => ({ name: w.name, updatedAt: w.updatedAt, ground: { label: w.label } }))),
+    },
     assistantProposal: {
       findFirst: jest.fn(async ({ where }: any) => [...proposals].reverse().find((p) => p.state === 'PARKED' && p.personExternalId === where.personExternalId) ?? null),
       create: jest.fn(async ({ data }: any) => { const p = { id: `pr-${++n}`, state: 'PARKED', createdAt: new Date(), ...data }; proposals.push(p); return p; }),

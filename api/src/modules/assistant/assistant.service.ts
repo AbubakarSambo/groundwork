@@ -36,6 +36,7 @@ import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide'
 import { LEAVE_ANSWER_KIND, LEAVE_QUESTION_KIND, LONGEST, NO_QUESTION_WAITING, QUESTION_REFUSED, aDeclineWithAReasonSaidBack, aReasonIn, anAnswerNotSent, anAnswerSaidBack, anAnswerSent, noQuestionWaiting, type AQuestionWaiting, type QuestionSuite } from '../suites/a-question-about-a-request';
 import { HOURS_CAN_BE_TOLD_HERE, HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, asksWhereMyHoursStand, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
 import { billableSaidBack, billableSaidIn, type TimeRules } from '../suites/the-time-sheet-rules';
+import { DRAFT_CHANGE_NOT_READ, DRAFT_NOT_SENT, HOURS_WEEK_DRAFT_KIND, aLineRemoved, asksToDraftMyWeek, theClientNamedIn, theDraftChanged, theDraftSaidBack, theDraftSent, type ADraftEntry } from '../suites/a-week-drafted-from-the-record';
 import { SPEND_MISSING_KIND, SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
 import { theCategoryCalled, theCategoryIn, whichCategory, whichCategoryAgain, type SpendRules } from '../suites/the-spending-rules';
 import { NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
@@ -345,6 +346,11 @@ export class AssistantService {
       const proposed = await this.proposeSpending(organizationId, who, userId, message);
       if (proposed) return proposed;
     }
+    /*
+     * THIS WEEK'S HOURS DRAFTED FROM THE RECORD (decision 85, build step 11): "draft my hours for this
+     * week". Said back with what was found and parked; nothing is kept or sent without the person's yes.
+     */
+    if (who && userId && asksToDraftMyWeek(message)) return this.proposeAWeekDraft(organizationId, who, userId);
     /*
      * WHERE YOUR HOURS STAND (decision 85, build step 11): "how many hours have I logged this week?"
      * answered from the person's own hours against the time sheet rules, for them only. With no rules
@@ -1750,6 +1756,14 @@ export class AssistantService {
       return this.resolveParkedSpendMissing(organizationId, personId, who, parked, message);
     }
 
+    /*
+     * A WEEK OF HOURS DRAFTED FROM THE RECORD (build step 11): the reply can change a line ("6 hours on
+     * Naivas on Monday", "remove Naivas on Monday") before the yes, so it is read before the yes/no reading.
+     */
+    if (parked.kind === HOURS_WEEK_DRAFT_KIND) {
+      return this.resolveParkedWeekDraft(organizationId, personId, who, parked, message);
+    }
+
     /* THE ROLE INTERVIEW (request 25): what is typed is an answer to its question, not a yes or a no. */
     if (parked.kind === ROLE_INTERVIEW_KIND) {
       return this.resolveParkedInterview(organizationId, personId, who, parked, message);
@@ -2908,6 +2922,84 @@ export class AssistantService {
       select: { id: true },
     });
     return { lane: 'log_hours', composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
+  }
+
+  /**
+   * THIS WEEK'S HOURS, DRAFTED FROM THE PERSON'S OWN RECORD (decision 85, build step 11). What was found
+   * and the draft are said back, and the draft is parked for the person's yes. With nothing to draft,
+   * it says what was found and asks for the hours instead, and nothing is parked. Hours are for billing
+   * only (decision 10): nothing here is kept anywhere but the parked proposal until the yes.
+   */
+  private async proposeAWeekDraft(organizationId: string, who: string, userId: string): Promise<Reply> {
+    if (!this.timeSheets?.draftAWeek) return rules('log_hours', text(HOURS_SUITE_OFF));
+    let facts: { approverFirstName: string | null };
+    let drafted: Awaited<ReturnType<TimeSheetsService['draftAWeek']>>;
+    try {
+      facts = await this.timeSheets.forChat(organizationId, userId);
+      drafted = await this.timeSheets.draftAWeek({ userId, organizationId });
+    } catch { return rules('log_hours', text(HOURS_SUITE_OFF)); }
+    const { say, canSend } = theDraftSaidBack(drafted, facts.approverFirstName);
+    if (!canSend) return rules('log_hours', text(say));
+    const row = await this.prisma.assistantProposal.create({
+      data: { organizationId, personExternalId: who, kind: HOURS_WEEK_DRAFT_KIND, summary: say, payload: { weekOf: drafted.weekOf, entries: drafted.entries } as never },
+      select: { id: true },
+    });
+    return { lane: 'log_hours', composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
+  }
+
+  private async resolveParkedWeekDraft(organizationId: string, personId: string, who: string, parked: any, message: string): Promise<Reply> {
+    const entries: ADraftEntry[] = Array.isArray(parked.payload?.entries) ? parked.payload.entries : [];
+    const me = await this.theSignInOf(organizationId, who);
+    const close = (state: 'ACCEPTED' | 'DECLINED' | 'DROPPED') => this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state, resolvedAt: new Date() } });
+    if (!this.timeSheets || !me?.linkedUserId || !entries.length) {
+      await close('DROPPED');
+      return rules('log_hours', text(HOURS_NOTHING_WAITING));
+    }
+    let facts: { clients: string[]; approverFirstName: string | null };
+    try { facts = await this.timeSheets.forChat(organizationId, me.linkedUserId); } catch { await close('DROPPED'); return rules('log_hours', text(HOURS_SUITE_OFF)); }
+    const typed = (message ?? '').trim();
+    const decision = resolveConfirmation(typed);
+    if (decision === 'decline') {
+      await close('DECLINED');
+      return rules('log_hours', text(DRAFT_NOT_SENT));
+    }
+    if (decision === 'accept') {
+      let reply: string;
+      try {
+        await this.timeSheets.record(organizationId, me.linkedUserId, entries.map((e) => ({ client: e.client, onDay: e.onDay, hours: e.hours })), { proposalId: parked.id });
+        reply = theDraftSent(entries, facts.approverFirstName);
+      } catch (err: any) {
+        reply = typeof err?.message === 'string' && err.message ? `I could not send it. ${err.message}` : HOURS_SUITE_OFF;
+      }
+      await close('ACCEPTED');
+      return rules('log_hours', text(reply));
+    }
+    /* A change to one line, said back with the whole draft before the yes. */
+    let next: ADraftEntry[] | null = null;
+    const weekOf = typeof parked.payload?.weekOf === 'string' ? parked.payload.weekOf : entries[0].onDay;
+    const inTheDraftsWeek = (day: string) => day >= weekOf && new Date(`${day}T00:00:00.000Z`).getTime() < new Date(`${weekOf}T00:00:00.000Z`).getTime() + 7 * 86_400_000;
+    const removed = aLineRemoved(typed, entries);
+    if (removed) next = entries.filter((e) => !(e.client === removed.client && e.onDay === removed.onDay));
+    else {
+      const read = readHours(soundsLikeHours(typed) ? typed : `I spent ${typed}`, facts.clients);
+      if (read.kind === 'ask' && theClientNamedIn([typed], facts.clients)) return rules('log_hours', text(read.say));
+      if (read.kind === 'ok' && inTheDraftsWeek(read.said.onDay)) {
+        next = entries.filter((e) => !(e.onDay === read.said.onDay && read.said.entries.some((x) => x.client === e.client)));
+        for (const x of read.said.entries) next.push({ client: x.client, onDay: read.said.onDay, hours: x.hours });
+        next.sort((a, b) => a.onDay.localeCompare(b.onDay) || a.client.localeCompare(b.client));
+      }
+    }
+    if (next) {
+      if (!next.length) { await close('DECLINED'); return rules('log_hours', text(theDraftChanged(next, facts.approverFirstName))); }
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { payload: { ...(parked.payload ?? {}), entries: next } as never, summary: theDraftChanged(next, facts.approverFirstName) } });
+      return rules('log_hours', text(theDraftChanged(next, facts.approverFirstName)));
+    }
+    /* Something about the draft that could not be read is asked again; anything else leaves the draft unsent and is answered. */
+    if (theClientNamedIn([typed], [...new Set(entries.map((e) => e.client))]) || /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i.test(typed)) {
+      return rules('log_hours', text(DRAFT_CHANGE_NOT_READ));
+    }
+    await close('DROPPED');
+    return this.answer(organizationId, personId, who, message, true);
   }
 
   private async resolveParkedHours(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {

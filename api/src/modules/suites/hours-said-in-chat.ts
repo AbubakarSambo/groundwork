@@ -165,7 +165,7 @@ export function hoursSaidBack(said: HoursSaid, approverFirstName: string | null,
 /** "how many hours have I logged", "my hours this week", "my time sheet": the person asking where they stand. */
 export function asksWhereMyHoursStand(message: string): boolean {
   const t = message ?? '';
-  if (soundsLikeHours(t)) return false;
+  if (soundsLikeHours(t) || /\b(draft|fill (?:in|out)|prepare|put together|write up)\b/i.test(t)) return false;
   return /\b(how many hours|my hours|my time ?sheet|hours (?:have|did) i (?:log|logged|record|recorded|put|send|sent)|hours do i (?:still )?(?:need|owe|have left))\b/i.test(t);
 }
 
