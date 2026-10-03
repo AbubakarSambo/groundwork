@@ -141,6 +141,7 @@ import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-com
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument, notNothingWhereThePageSaysSomething } from './where-each-person-is-against-their-number';
 import { theQuickReadAgreesWithTheReport, theDisagreementTheReportOpensWith } from './the-quick-read-agrees-with-the-report';
+import { theNinetyDaysInThreeSteps } from './the-ninety-days-in-three-steps';
 import { theQuickReadCountsTheWaitsTheBoardCounts } from './the-quick-read-counts-the-waits-the-board-counts';
 import { oneCountPerThing } from './one-count-per-thing';
 import { type ToLookAt } from './the-same-thing-for-three-check-ins';
@@ -2485,6 +2486,14 @@ export class BoardService {
         (out as any).startingState = agreed;
         const change = changeSinceTheLastCheckIn({ commitments: mine.commitments, handoffs, goals, sessions, people, reader, now });
         if (change) (out as any).changeSinceLast = change;
+        /* The 90 days, in three steps (request 123), from the same goals, commitments and waits, under the same wall. */
+        const leadOfIt = (ground.participants as any[]).find((p) => p.id === theLeadsRow);
+        const ninety = theNinetyDaysInThreeSteps({
+          goals, commitments: mine.commitments, handoffs, sessions, people, startsAt: (ground as any).startsAt ?? null, createdAt: (ground as any).createdAt ?? null,
+          leadFirstName: (leadOfIt?.user?.firstName ?? '').trim() || (leadOfIt?.nameGiven ?? '').trim().split(/\s+/)[0] || null,
+          readerIsTheLead: isInitiator, reader, now,
+        });
+        if (ninety) (out as any).ninetyDays = ninety;
       }
       /*
        * Built from the targets this reader is already served, so every wall on a target holds here too. Never on an
