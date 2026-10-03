@@ -65,3 +65,39 @@ export function holdsItSaid(holder: string | null | undefined): string {
   const h = (holder ?? '').trim() || 'Somebody';
   return `${h.charAt(0).toUpperCase()}${h.slice(1)} ${aHolderIsMany(h) ? 'hold' : 'holds'} it.`;
 }
+
+/*
+ * WHAT A PERSON WAITS FOR, IN THEIR OWN WORDS, SAID FROM THE READER'S SIDE (item 21, the asset loans board).
+ *
+ * Musa said he was waiting for "the grinding machine I was approved for" and for "this loan cleared from my name", and
+ * the thing was kept as he said it. So he read "You cannot move on the grinding machine I was approved for until it
+ * comes from the field officer.", and Amaka read "Musa Danjuma is waiting on the field officer for the grinding machine
+ * I was approved for": an "I" inside a sentence about somebody else. To the person waiting, "I" and "my" are "you" and
+ * "your"; to anybody else they are "they" and "their". Only the first-person words change; nothing else is touched.
+ */
+export function aThingInTheirOwnWords(what: string | null | undefined, readerIsTheOneWaiting: boolean): string | null | undefined {
+  if (typeof what !== 'string' || !/\b(?:I|I['’]m|I['’]ve|I['’]d|I['’]ll|my|me|myself|mine)\b/.test(what)) return what;
+  const you = readerIsTheOneWaiting;
+  return what
+    .replace(/\bI was\b/g, you ? 'you were' : 'they were')
+    .replace(/\bI am\b/g, you ? 'you are' : 'they are')
+    .replace(/\bI['’]m\b/g, you ? "you're" : "they're")
+    .replace(/\bI['’]ve\b/g, you ? "you've" : "they've")
+    .replace(/\bI['’]d\b/g, you ? "you'd" : "they'd")
+    .replace(/\bI['’]ll\b/g, you ? "you'll" : "they'll")
+    .replace(/\bI\b/g, you ? 'you' : 'they')
+    .replace(/\bmyself\b/g, you ? 'yourself' : 'themselves')
+    .replace(/\bmine\b/g, you ? 'yours' : 'theirs')
+    .replace(/\bmy\b/g, you ? 'your' : 'their')
+    .replace(/\bme\b/g, you ? 'you' : 'them');
+}
+
+/** One wait, its holder and what it waits for, said from this reader's side. */
+export function aWaitInTheirOwnWords<T extends { fromParticipantId?: string | null; what?: unknown; onLabel?: unknown }>(d: T, readerParticipantId: string | null): T {
+  if (!d) return d;
+  const theirs = !!readerParticipantId && d.fromParticipantId === readerParticipantId;
+  const out: any = { ...d };
+  if (typeof d.what === 'string') out.what = aThingInTheirOwnWords(d.what, theirs);
+  if (typeof d.onLabel === 'string') out.onLabel = aHolderInTheirOwnWords(d.onLabel, theirs);
+  return out;
+}

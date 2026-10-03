@@ -126,7 +126,7 @@ import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { everyDivergenceReadable } from '../reports/a-field-name-is-not-a-heading';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { theFirstNameFrom, theShortNameOf } from '../reports/a-title-is-not-a-first-name';
-import { aHolderInTheirOwnWords } from './a-holder-in-their-own-words';
+import { aWaitInTheirOwnWords } from './a-holder-in-their-own-words';
 import { yourOwnRowsSayYou } from './your-own-read-says-you';
 import { theRoomAsThisReaderReadsIt } from './the-room-as-each-reader-reads-it';
 import { theRoomWithoutOneOfTheOthers } from './the-room-without-one-of-the-others';
@@ -407,9 +407,8 @@ export class BoardService {
     const me = ground.participants.find((p) => p.userId === requestingUserId);
     /* A wait on "my direct reports" is said from this reader's side, never as the reader's own (item 18). */
     if (Array.isArray((ground as any).dependencies)) {
-      (ground as any).dependencies = (ground as any).dependencies.map((d: any) => (d && typeof d.onLabel === 'string'
-        ? { ...d, onLabel: aHolderInTheirOwnWords(d.onLabel, !!me && d.fromParticipantId === me.id) }
-        : d));
+      /* And what they wait for, with its "I" and "my", too (item 21). See a-holder-in-their-own-words. */
+      (ground as any).dependencies = (ground as any).dependencies.map((d: any) => aWaitInTheirOwnWords(d, me?.id ?? null));
     }
     /**
      * AND AN ADMIN OF THIS ORGANISATION, WHO WAS BEING TURNED AWAY FROM HER OWN COMPANY'S BOARD.
