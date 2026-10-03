@@ -954,11 +954,14 @@ export function theQuestionsForTheLead(
     if (!r.handoffMayBeRead(d)) continue;
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
-    out.push({
-      id: `went-back-${d.id}`,
-      question: `Has anybody gone back to ${on} about ${inASentence(d.what)}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
-      because: `Nothing on record says anybody has, so ${onlyTheLead} whether it was raised outside the check-in.`,
-    });
+    /* The reader's own wait is asked of them as theirs (item 21, the MarketView Q4 board). */
+    out.push(who === 'You'
+      ? { id: `went-back-${d.id}`, question: `Have you gone back to ${on} about ${inASentence(d.what)}?`, because: 'Nothing on record says you have. If you raised it outside the check-in, say so in your check-in.' }
+      : {
+        id: `went-back-${d.id}`,
+        question: `Has anybody gone back to ${on} about ${inASentence(d.what)}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
+        because: `Nothing on record says anybody has, so ${onlyTheLead} whether it was raised outside the check-in.`,
+      });
   }
 
   /* 4. A wait on somebody outside the check-in that nobody has chased. */
@@ -966,11 +969,15 @@ export function theQuestionsForTheLead(
     if (!isOpen(d) || d.triedSaid?.trim() || d.onParticipantId || !aPartyOutside(d)) continue;
     if (!r.handoffMayBeRead(d)) continue;
     const who = whoIs(r, d.fromParticipantId);
-    out.push({
-      id: `chased-${d.id}`,
-      question: `What has been tried to get ${inASentence(d.what)} from ${(d.onLabel ?? '').trim()}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
-      because: `Nothing on record says anybody has chased it, so ${onlyTheLead} what was done outside the check-in.`,
-    });
+    /* Omar read "What has been tried to get the full, detailed breakdowns ... from Marketing and Product Development, which
+       you are waiting for?" with "only you can find out what was done": his own wait, asked as if somebody else's (item 21). */
+    out.push(who === 'You'
+      ? { id: `chased-${d.id}`, question: `What have you tried to get ${inASentence(d.what)} from ${(d.onLabel ?? '').trim()}?`, because: 'Nothing on record says you have chased it. If you did, outside the check-in, say so in your check-in.' }
+      : {
+        id: `chased-${d.id}`,
+        question: `What has been tried to get ${inASentence(d.what)} from ${(d.onLabel ?? '').trim()}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
+        because: `Nothing on record says anybody has chased it, so ${onlyTheLead} what was done outside the check-in.`,
+      });
   }
 
   return out.slice(0, MOST_QUESTIONS);
