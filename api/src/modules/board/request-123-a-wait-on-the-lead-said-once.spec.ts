@@ -36,3 +36,23 @@ describe('a wait on "the lead", written four ways', () => {
     expect(b).toMatch(/You are waiting on Bisi/);
   });
 });
+
+/**
+ * REQUEST 125, FINDING 8. "My manager", "the boss" and "my supervisor" are somebody's own manager, who may not run this check-in at all.
+ * They were read as the check-in's lead and put on Bisi by name. Only "the lead", and "your lead", "my lead" and "our lead", mean her.
+ */
+describe('a wait on somebody else’s manager is not a wait on the lead', () => {
+  const on = (label: string): Setup => ({ ...SALES_RUN, dependencies: [{ ...wait('w1', 'the signed agreement', '2026-09-02T18:00:00Z'), onLabel: label }] });
+
+  it.each(['my manager', 'the boss', 'my supervisor', 'my line manager'])('"%s" stays as said, and is not put on Bisi', async (label) => {
+    for (const b of [JSON.stringify(await boardAs(on(label), ...BISI)), JSON.stringify(await boardAs(on(label), ...KWAME))]) {
+      expect(b).toContain(label.replace(/^(?:my|the)\s+/, ''));
+      expect(b).not.toMatch(/waiting on you for|waiting on Bisi/);
+    }
+  });
+
+  it.each(['the lead', 'your lead', 'my lead', 'our lead', 'the team lead'])('"%s" is a wait on the lead', async (label) => {
+    expect(JSON.stringify(await boardAs(on(label), ...BISI))).toMatch(/waiting on you for/);
+    expect(JSON.stringify(await boardAs(on(label), ...KWAME))).toMatch(/You are waiting on Bisi/);
+  });
+});

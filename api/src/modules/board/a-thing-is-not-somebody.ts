@@ -49,8 +49,11 @@ export function aWaitOnOneself(d: { fromParticipantId?: string | null; onPartici
  * the words the person used for them, "the lead", with nobody named. Read as it was stored, Amina read "waiting on the
  * lead" and Tobi read "Waiting on: the lead". It is the check-in's lead, so it is read as that person: "you" to
  * Amina and "Amina" to Tobi, by every sentence that already names a person waited on.
+ *
+ * ONLY "THE LEAD", and the words that plainly mean the person who runs this check-in. "My manager", "the boss" and "my
+ * supervisor" are somebody's own manager, who may not run this check-in at all, so they stay as said (request 125).
  */
-const THE_LEAD = /^(?:the|your|my|our)?\s*(?:team\s+|line\s+)?(?:lead|manager|boss|supervisor)$/i;
+const THE_LEAD = /^(?:the|your|my|our)?\s*(?:team\s+|check-in\s+)?lead$/i;
 export function aWaitOnTheLeadIsOnTheLead<T extends { onParticipantId?: string | null; onLabel?: string | null }>(rows: readonly T[], leadParticipantId: string | null | undefined): T[] {
   if (!leadParticipantId) return [...rows];
   return rows.map((d) => (!d.onParticipantId && THE_LEAD.test((d.onLabel ?? '').trim().replace(/[.!?]+$/, ''))
