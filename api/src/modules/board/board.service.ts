@@ -2151,20 +2151,22 @@ export class BoardService {
       for (const i of items as any[]) {
         const line = i.sourceEntryId ? lineOf.get(i.sourceEntryId) : null;
         if (i.sourceEntryId && (!line || line.disputedAt)) continue;
+        /* A record is always owned by the person who said it (run-26), whatever an older row stored. */
+        const ownerId: string | null = (line?.participantId as string | undefined) ?? i.ownerParticipantId ?? null;
         rows.push({
           id: i.id,
           kind: i.kind,
           name: i.name,
           stage: i.stage ?? null,
-          owner: i.ownerParticipantId ? nameOf(i.ownerParticipantId) ?? aColleague(i.ownerParticipantId) : null,
-          ownerParticipantId: i.ownerParticipantId ?? null,
+          owner: ownerId ? nameOf(ownerId) ?? aColleague(ownerId) : null,
+          ownerParticipantId: ownerId,
           /*
            * SOMEBODY SAYS IT IS THEIRS, AND ONLY THE LEAD'S YES MAKES IT SO (decision 76, item 3). Said back to
            * the lead alone, on a record that still has nobody's name: "Amani Wekesa says the Westgate Deli
            * deal is theirs. Is it?" Nobody else is sent the claim. See a-claim-on-a-record-is-checked-first.
            */
           ...(() => {
-            const claim = isInitiator && !i.ownerParticipantId ? theClaimOn(i.fields) : null;
+            const claim = isInitiator && !ownerId ? theClaimOn(i.fields) : null;
             const claimant = claim ? ground.participants.find((x: any) => x.id === claim.participantId) : null;
             if (!claim || !claimant) return {};
             const who = claimant.userId && claimant.userId === requestingUserId ? null : (nameOf(claimant.id) ?? aColleague(claimant.id));

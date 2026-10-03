@@ -294,7 +294,7 @@ Each line has an id. For every record a line names, give the id of the line, the
 
 Leave out anything the line does not say. Never make up a record, a name, a stage or a date. When no line names a record, give an empty list.
 
-Each line says who said it. A record is theirs unless the line clearly says it is somebody else's. Give an owner only when the line names another person in this check-in as the one who will do it, is doing it or holds it, and give their name exactly as the line says it. For example, when Ada says "Tunde is taking on everything engineering", the owner is Tunde. Leave the owner out when it is the speaker's own, when the line names nobody, or when it is not clear whose it is.
+Each line says who said it. Every record is the speaker's own; do not give an owner.
 
 ${PLAIN_WORDS}`;
 }
@@ -315,7 +315,6 @@ export const THE_RECORDS_SCHEMA = {
             name: { type: 'string' },
             stage: { type: 'string' },
             due: { type: 'string' },
-            owner: { type: 'string', description: 'Only when the line clearly says the record is another named person\'s in this check-in: their name, as the line says it. Leave it out otherwise.' },
             details: { type: 'array', items: { type: 'object', properties: { label: { type: 'string' }, value: { type: 'string' } } } },
           },
           required: ['lineId', 'kind', 'name'],
@@ -354,29 +353,20 @@ const theNamesOf = (p: APersonALineMayName): string[] => {
 const saysTheName = (text: string, name: string) => new RegExp(`(?:^|[^\\p{L}])${aWord(name)}(?=$|[^\\p{L}])`, 'iu').test(text);
 
 /**
- * WHOSE A RECORD IS: THE PERSON THE SPEAKER NAMES, WHEN THEY CLEARLY NAME SOMEBODY IN THE CHECK-IN, AND OTHERWISE
- * THE SPEAKER (item 21, the founder's board). Ada said "Tunde, as co-founder, is definitely taking on everything
- * engineering" and the record was Ada's; Tunde said "Ada, I believe, will be covering the operational and business
- * development aspects" and it was Tunde's. The model reads whose it is; it is kept only when the name it gives is one
- * person in this check-in, other than the speaker, and that person is named in the line itself. Anything else, a
- * name shared by two people, a name not in the line, nobody in the check-in, keeps the speaker.
+ * WHOSE A RECORD IS: ALWAYS THE SPEAKER'S (run-26, replacing item 21's rule that let the model give another owner).
+ * Item 21, the founder's board, had let it be the person the speaker names (Ada's "Tunde ... is taking on everything
+ * engineering" was Tunde's). In run-26 that broke: Musa's "I signed for the loan" became Sunday's record and reached
+ * Sunday's board. So the model's offered owner is never used.
  */
 export function theOwnerTheLineNames(
   offered: string | null | undefined,
   line: { text: string; participantId: string },
   people: readonly APersonALineMayName[] | null | undefined,
 ): string {
-  const said = (offered ?? '').trim().replace(/[.,;:!?]+$/, '');
-  if (!said || !people?.length) return line.participantId;
-  const matches = people.filter((p) => theNamesOf(p).some((n) => n.toLowerCase() === said.toLowerCase()));
-  if (matches.length !== 1) return line.participantId;
-  const who = matches[0];
-  if (who.id === line.participantId) return line.participantId;
-  /* The same name on somebody else in the check-in would make it a guess. */
-  const theirNamesInTheLine = theNamesOf(who).filter((n) => saysTheName(line.text, n));
-  if (!theirNamesInTheLine.length) return line.participantId;
-  if (people.some((p) => p.id !== who.id && theNamesOf(p).some((n) => theirNamesInTheLine.some((m) => m.toLowerCase() === n.toLowerCase())))) return line.participantId;
-  return who.id;
+  /* A record is always owned by the person who said it (run-26, Hafsah's release instruction). What the model offers as
+     an owner is never used; this keeps the signature so older callers compile. */
+  void offered; void people;
+  return line.participantId;
 }
 
 const squash = (s: string) => s.toLowerCase().replace(/[‘’“”'"]/g, '').replace(/\s+/g, ' ').trim();

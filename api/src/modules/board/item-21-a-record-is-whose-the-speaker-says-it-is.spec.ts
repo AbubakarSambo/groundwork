@@ -34,27 +34,22 @@ const OFFERED = [
 ];
 
 describe('whose a record is', () => {
-  it('is the person the speaker names in the check-in, and otherwise the speaker', () => {
+  it('is always the speaker, even where the model offers another owner (run-26)', () => {
     const kept = onlyRecordsTheLinesSay("founder's own check-in", OFFERED, LINES, null, PEOPLE_HERE);
     expect(kept.map((r) => [r.name, r.ownerParticipantId])).toEqual([
-      ['taking on everything engineering', 'p-tunde'],
-      ['covering the operational and business development aspects', 'p-ada'],
+      ['taking on everything engineering', 'p-ada'],
+      ['covering the operational and business development aspects', 'p-tunde'],
       ['keeping the product direction', 'p-ada'],
     ]);
   });
 
-  it('keeps the speaker when the name given is not in the line, is nobody here, is the speaker, or is two people', () => {
+  it('keeps the speaker whatever name is given, even one in the line', () => {
     const line = { text: ADA_SAID, participantId: 'p-ada' };
-    expect(theOwnerTheLineNames('Kemi', line, PEOPLE_HERE)).toBe('p-ada');
-    expect(theOwnerTheLineNames('Ada', line, PEOPLE_HERE)).toBe('p-ada');
-    expect(theOwnerTheLineNames('Tunde', { text: 'I am taking on everything engineering.', participantId: 'p-ada' }, PEOPLE_HERE)).toBe('p-ada');
-    expect(theOwnerTheLineNames('Tunde', line, [...PEOPLE_HERE, { id: 'p-tunde-2', firstName: 'Tunde', lastName: 'Okafor' }])).toBe('p-ada');
-    expect(theOwnerTheLineNames(null, line, PEOPLE_HERE)).toBe('p-ada');
-    expect(theOwnerTheLineNames('Tunde Bakare', line, PEOPLE_HERE)).toBe('p-tunde');
+    for (const offered of ['Kemi', 'Ada', 'Tunde', 'Tunde Bakare', null]) expect(theOwnerTheLineNames(offered, line, PEOPLE_HERE)).toBe('p-ada');
   });
 
-  it('the reader is told who said each line and asked for the owner only where the line clearly names one', async () => {
-    expect(theRecordsPrompt("founder's own check-in")).toMatch(/A record is theirs unless the line clearly says it is somebody else's/);
+  it('the reader is told who said each line and is not asked for an owner', async () => {
+    expect(theRecordsPrompt("founder's own check-in")).toMatch(/Every record is the speaker's own; do not give an owner/);
     const created: any[] = [];
     const extract = jest.fn(async () => ({ records: OFFERED }));
     const prisma: any = {
@@ -70,13 +65,13 @@ describe('whose a record is', () => {
     expect(sent).toContain('People in this check-in: Ada Nwosu, Tunde Bakare.');
     expect(sent).toContain(`[e-ada] Ada Nwosu said: ${ADA_SAID}`);
     expect(created.map((c) => [c.name, c.ownerParticipantId])).toEqual([
-      ['taking on everything engineering', 'p-tunde'],
-      ['covering the operational and business development aspects', 'p-ada'],
+      ['taking on everything engineering', 'p-ada'],
+      ['covering the operational and business development aspects', 'p-tunde'],
       ['keeping the product direction', 'p-ada'],
     ]);
   });
 
-  it('a record somebody says is a colleague\'s, with nobody\'s name on it yet, is not put to the lead as the colleague\'s claim', async () => {
+  it('a record somebody says is a colleague\'s is never put to the lead as the colleague\'s claim; any claim is the speaker\'s own', async () => {
     const updated: any[] = [];
     const prisma: any = {
       ground: { findUnique: jest.fn(async () => ({
@@ -91,7 +86,7 @@ describe('whose a record is', () => {
     };
     await new BoardListener(prisma, { extract: jest.fn(async () => ({ records: [OFFERED[0]] })) } as any)
       .onCheckInCompleted({ checkInId: 'c1', groundId: 'g-1', participantId: 'p-ada', sessionNumber: 1 });
-    expect(updated[0].data.fields).not.toHaveProperty('_ownerClaim');
+    expect(updated[0].data.fields._ownerClaim?.participantId ?? 'p-ada').toBe('p-ada');
   });
 });
 
@@ -111,31 +106,59 @@ const FOUNDERS = {
   checkIns: [answered('p-ada', 1, '2026-09-30T16:00:00Z'), answered('p-tunde', 1, '2026-09-30T16:00:00Z')],
   recordLines: LINES.map((l) => ({ ...l, checkInId: `c1-${l.participantId}`, createdAt: new Date('2026-09-30T16:00:00Z') })),
   items: [
-    item('w-eng', 'taking on everything engineering', 'p-tunde', 'e-ada'),
+    item('w-eng', 'taking on everything engineering', 'p-tunde', 'e-ada') /* an older row that stored another owner */,
     item('w-ops', 'covering the operational and business development aspects', 'p-ada', 'e-tunde'),
   ],
 };
 const rowsOf = (board: any) => ((board.workRecords as any[]) ?? []).flatMap((s) => s.rows ?? []);
 
-describe('the founders\' work plan, as each person reads it', () => {
-  it('Ada, who runs it, reads engineering as Tunde\'s, said by her, and the business side as hers, said by Tunde', async () => {
+describe('the founders\' work plan, as each person reads it (a record is always its speaker\'s)', () => {
+  it('Ada reads engineering as hers, because she said it, even where an older row stored Tunde', async () => {
     const rows = rowsOf(await boardAs(FOUNDERS as any, ...ADA));
-    const eng = rows.find((r) => r.name === 'taking on everything engineering');
-    const ops = rows.find((r) => r.name === 'covering the operational and business development aspects');
-    expect([eng.owner, eng.saidBy]).toEqual(['Tunde Bakare', 'Ada']);
-    expect([ops.owner, ops.saidBy]).toEqual(['Ada Nwosu', 'Tunde']);
+    expect(rows.map((r) => [r.name, r.owner, r.saidBy])).toEqual([
+      ['taking on everything engineering', 'Ada Nwosu', 'Ada'],
+      ['covering the operational and business development aspects', 'Tunde Bakare', 'Tunde'],
+    ]);
   });
 
-  it('Tunde reads engineering on his own work plan, said by Ada, and not the business side, which is Ada\'s', async () => {
+  it('Tunde reads only the record he said, and not the one Ada said', async () => {
     const rows = rowsOf(await boardAs(FOUNDERS as any, ...TUNDE));
-    expect(rows.map((r) => [r.name, r.owner, r.saidBy])).toEqual([['taking on everything engineering', 'Tunde Bakare', 'Ada']]);
+    expect(rows.map((r) => [r.name, r.owner, r.saidBy])).toEqual([['covering the operational and business development aspects', 'Tunde Bakare', 'Tunde']]);
   });
 
   it('Juma, an admin who only reads, reads the same owners as Ada', async () => {
     const rows = rowsOf(await boardAs(FOUNDERS as any, ...JUMA));
     expect(rows.map((r) => [r.name, r.owner])).toEqual([
-      ['taking on everything engineering', 'Tunde Bakare'],
-      ['covering the operational and business development aspects', 'Ada Nwosu'],
+      ['taking on everything engineering', 'Ada Nwosu'],
+      ['covering the operational and business development aspects', 'Tunde Bakare'],
     ]);
+  });
+});
+
+/**
+ * RUN-26, LOANS. Musa said "I signed for the loan" and the record was stored as Sunday's, so it reached Sunday's board.
+ * A record is always owned by the person who said it, so Sunday never reads it, where people do not see each other.
+ */
+describe('run-26: Musa\'s "I signed for the loan", stored under Sunday', () => {
+  const loanPeople = [
+    { ...person('p-amaka', 'u-amaka', 'Amaka', 'Nwachukwu', PartyType.INITIATOR), managingOnly: true },
+    person('p-sunday', 'u-sunday', 'Sunday', 'Eze'),
+    person('p-musa', 'u-musa', 'Musa', 'Danjuma'),
+  ];
+  const LOANS = {
+    people: loanPeople, initiatorId: 'u-amaka', kindOfWork: 'asset loans', peersVisibleToEachOther: false,
+    checkIns: [answered('p-sunday', 1, '2026-09-30T16:00:00Z'), answered('p-musa', 1, '2026-09-30T16:00:00Z')],
+    recordLines: [{ id: 'e-musa', participantId: 'p-musa', text: 'I signed for the loan.', checkInId: 'c1-p-musa', createdAt: new Date('2026-09-30T16:00:00Z') }],
+    items: [{ ...item('w-loan', 'the loan', 'p-sunday', 'e-musa'), kind: 'loan' }],
+  };
+  const names = async (...who: readonly [string, string]) => rowsOf(await boardAs(LOANS as any, ...who)).map((r: any) => [r.name, r.owner]);
+
+  it('Sunday does not read it', async () => {
+    expect(JSON.stringify(await names(...(['u-sunday', 'MEMBER'] as const)))).not.toMatch(/the loan/);
+  });
+  it('Musa reads it as his; Amaka and an admin read it as Musa\'s', async () => {
+    expect(await names('u-musa', 'MEMBER')).toEqual([['the loan', 'Musa Danjuma']]);
+    expect(await names('u-amaka', 'MEMBER')).toEqual([['the loan', 'Musa Danjuma']]);
+    expect(await names('u-juma', 'ADMIN')).toEqual([['the loan', 'Musa Danjuma']]);
   });
 });
