@@ -138,7 +138,7 @@ import { onePerPerson, howManyPeople, AnAnswerInItsSession } from './one-person-
 import { howFarBehind } from './a-report-behind-the-answers';
 import {
   commitmentsOverTime, dependenciesOverTime, patternsOverTime, gapsOverTime, theOnesStillOpen,
-  whatThisCannotTellYou, theRecordOverTime, toSettleFirst, overTimeForThisReader, WhatTheRecordShowsOverTime,
+  whatThisCannotTellYou, theRecordOverTime, toSettleFirst, overTimeForThisReader, WhatTheRecordShowsOverTime, aMeetingIsOnRecord,
 } from './what-the-record-shows-over-time';
 /*
  * THE ONE WORDING RULEBOOK, SPLIT BY SURFACE. The post-report guide is written to one person in the
@@ -4492,12 +4492,14 @@ happened, and what is in the way.`;
        * secured a meeting. The conversation's own detector answers it exactly.
        */
       anybodyAskedWhoArrangedThings: saidWhoArranged,
+      meetingsOnRecord: aMeetingIsOnRecord(entries as any[]),
     });
 
     const settleFirst = toSettleFirst({
       commitments, dependencies, patterns,
       documentsAttached: Number(documents ?? 0),
       anybodySaidWhoArrangedThings: saidWhoArranged,
+      meetingsOnRecord: aMeetingIsOnRecord(entries as any[]),
     });
 
     return theRecordOverTime({

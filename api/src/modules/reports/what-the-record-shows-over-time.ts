@@ -720,11 +720,22 @@ export function gapsOverTime(people: APersonsRecord[]): AGapOverTime[] {
  * AND WHAT NONE OF IT CAN TELL A READER
  * ---------------------------------------------------------------------------------------------- */
 
+/** Whether any line speaks of a meeting, a visit or an introduction: only then is who arranged it a question. */
+export function aMeetingIsOnRecord(lines: { text: string }[]): boolean {
+  return lines.some((l) => /\b(?:meetings?|met|meet|introduc\w*|visit(?:s|ed)?|appointments?)\b/i.test(String(l.text ?? '')));
+}
+
 export function whatThisCannotTellYou(o: {
   documentsAttached: number;
   peopleWhoAnswered: number;
   peopleInvited: number;
   anybodyAskedWhoArrangedThings: boolean;
+  /**
+   * Whether anybody spoke of a meeting at all (item 21, the outage check-in). "Nobody on record has said who arranged
+   * the meetings that happened" was said on a check-in about an outage, where nobody had spoken of a meeting. Left out,
+   * it is said as before.
+   */
+  meetingsOnRecord?: boolean;
 }): string[] {
   const out: string[] = [];
   if (!o.documentsAttached) {
@@ -733,7 +744,7 @@ export function whatThisCannotTellYou(o: {
   if (o.peopleWhoAnswered < o.peopleInvited) {
     out.push(someOfThemHave(o.peopleInvited - o.peopleWhoAnswered, o.peopleInvited, 'not answered yet, so anything about them is missing rather than absent.'));
   }
-  if (!o.anybodyAskedWhoArrangedThings) {
+  if (!o.anybodyAskedWhoArrangedThings && o.meetingsOnRecord !== false) {
     out.push('Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.');
   }
   out.push('Most of what anybody did is not in here. This is what was said in the sessions, and nothing else.');
@@ -758,6 +769,8 @@ export function toSettleFirst(o: {
   patterns: APatternOverTime[];
   documentsAttached: number;
   anybodySaidWhoArrangedThings: boolean;
+  /** Whether anybody spoke of a meeting at all; see whatThisCannotTellYou. */
+  meetingsOnRecord?: boolean;
 }): string[] {
   const out: string[] = [];
 
@@ -781,7 +794,7 @@ export function toSettleFirst(o: {
     out.push(`${outside.length === 1 ? 'One thing is' : `${outside.length} things are`} waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.`);
   }
 
-  if (!o.anybodySaidWhoArrangedThings) {
+  if (!o.anybodySaidWhoArrangedThings && o.meetingsOnRecord !== false) {
     out.push('Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them.');
   }
 
