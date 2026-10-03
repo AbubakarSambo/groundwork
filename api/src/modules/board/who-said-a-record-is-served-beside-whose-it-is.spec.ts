@@ -100,22 +100,26 @@ const NAMED_BY_ANOTHER: Setup = {
 };
 const rowsOf = (board: any) => (board.workRecords as any[]).find((s) => s.section === 'Deal grid').rows as any[];
 
+/*
+ * CHANGED WITH RUN-26 (Hafsah's release instruction: a record is always owned by the person who said it). This fixture
+ * stored Rukia as the owner of a line Baraka said, which is exactly what let Musa's "I signed for the loan" reach Sunday's
+ * board. A record is its speaker's, so Baraka's line is Baraka's deal, whatever an older row stored, and Rukia does not
+ * read it.
+ */
 describe('who said a record, where people see each other', () => {
-  /* Baraka, who said it, is no longer among these: since request 105 (the prototype's B5, "Only yours") a person
-     who checks in is served only their own records, and the deal is Rukia's. */
-  it('Baraka, who said it, is not served Rukia\'s deal, which is hers', async () => {
-    expect(rowsOf(await boardAs(NAMED_BY_ANOTHER, ...BARAKA))).toEqual([]);
+  it('Rukia does not read a deal Baraka said, even where an older row stored her as its owner', async () => {
+    expect(rowsOf(await boardAs(NAMED_BY_ANOTHER, ...RUKIA)).map((r: any) => r.name)).toEqual([]);
   });
 
-  it.each<[string, readonly [string, string]]>([['Amina, who runs it', AMINA], ['Rukia, whose deal it is', RUKIA], ['Juma, an admin who only reads', JUMA]])('%s reads that Baraka said it and that it is Rukia\'s', async (_who, reader) => {
-    const row = rowsOf(await boardAs(NAMED_BY_ANOTHER, reader[0], reader[1]))[0];
-    expect(row.owner).toBe('Rukia Mwangi');
+  it.each<[string, readonly [string, string]]>([['Baraka, who said it', BARAKA], ['Amina, who runs it', AMINA], ['Juma, an admin who only reads', JUMA]])('%s reads that Baraka said it and that it is Baraka\'s', async (_who, reader) => {
+    const row = rowsOf(await boardAs(NAMED_BY_ANOTHER, reader[0], reader[1])).find((r: any) => r.name === 'Nyama Choma Palace');
+    expect(row.owner).toBe('Baraka Otieno');
     expect(row.saidBy).toBe('Baraka');
     expect(row.saidByParticipantId).toBe('p-baraka');
   });
 
   it('a record the lead added was said by nobody', async () => {
-    const row = rowsOf(await boardAs(NAMED_BY_ANOTHER, ...AMINA))[1];
+    const row = rowsOf(await boardAs(NAMED_BY_ANOTHER, ...AMINA)).find((r: any) => r.name === 'Karen Butchery');
     expect(row.saidBy).toBeNull();
     expect(row.saidByParticipantId).toBeNull();
   });
@@ -124,18 +128,14 @@ describe('who said a record, where people see each other', () => {
 describe('who said a record, where people see only themselves', () => {
   const HIDDEN = { ...NAMED_BY_ANOTHER, peersVisibleToEachOther: false };
 
-  it('Rukia reads her own deal, said by "a colleague", and is given no id for them', async () => {
-    const row = rowsOf(await boardAs(HIDDEN, ...RUKIA))[0];
-    expect(row.owner).toBe('Rukia Mwangi');
-    expect(row.saidBy).toBe('a colleague');
-    expect(row.saidByParticipantId).toBeNull();
+  it('Rukia is not served the deal Baraka said, and is given no id or name for him', async () => {
+    expect(rowsOf(await boardAs(HIDDEN, ...RUKIA)).map((r: any) => r.name)).toEqual([]);
     expect(JSON.stringify(await boardAs(HIDDEN, ...RUKIA))).not.toContain('p-baraka');
     expect(JSON.stringify(await boardAs(HIDDEN, ...RUKIA))).not.toContain('Baraka');
   });
 
-  /* Since request 105 he is served only his own records, so the lead's Karen Butchery is not on his board either. */
-  it('Baraka, who said it, is not served Rukia\'s deal at all, which is hers', async () => {
-    expect(rowsOf(await boardAs(HIDDEN, ...BARAKA)).map((r: any) => r.name)).toEqual([]);
+  it('Baraka, who said it, reads it as his own', async () => {
+    expect(rowsOf(await boardAs(HIDDEN, ...BARAKA)).map((r: any) => [r.name, r.owner])).toEqual([['Nyama Choma Palace', 'Baraka Otieno']]);
   });
 
   it('Amina, who runs it, and Juma, an admin, read the first name and the id', async () => {
