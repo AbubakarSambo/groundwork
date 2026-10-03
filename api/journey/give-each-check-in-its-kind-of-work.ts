@@ -73,13 +73,18 @@ export type ReadTheKind = (words: string) => Promise<string | null | undefined>;
 
 export const NO_WORDS = 'The lead wrote nothing at setup to read a kind of work from.';
 export const NOT_CLEAR = 'What the lead said at setup does not clearly say one of the eleven kinds of work.';
+export const NO_DESCRIPTION = 'The lead gave only a name, and no description of the work, which is too little to read a kind of work from.';
+export const THE_SITUATION_DECIDES = 'It is about somebody starting a role, and that board comes from the situation, not from a kind of work.';
 export const COULD_NOT_READ = 'The model could not be reached for this one, so it was not read. Run the script again to read it.';
+
+/** The situations whose board is chosen by the situation itself (docs/deploy.md, "Hidden at release", item 1). */
+export const ONBOARDING_SITUATIONS = ['NEW_HIRE', 'NEW_MANAGER', 'NEW_ADVISOR', 'NEW_COFOUNDER'];
 
 /** Reads only. What the one reading says for every check-in that has no kind (or the one asked for). */
 export async function whatWouldChange(prisma: any, read: ReadTheKind, onlyCheckIn: string | null = null, concurrency = 1): Promise<WhatWouldChange> {
   const grounds = await prisma.ground.findMany({
     where: onlyCheckIn ? { id: onlyCheckIn } : {},
-    select: { id: true, label: true, brief: true, endState: true, resolutionState: true, kindOfWork: true, kindOfWorkSetBy: true },
+    select: { id: true, label: true, scenario: true, brief: true, endState: true, resolutionState: true, kindOfWork: true, kindOfWorkSetBy: true },
     orderBy: { id: 'asc' },
   });
   const out: WhatWouldChange = { checkIns: grounds.length, alreadyHad: 0, toGive: [], left: [] };
@@ -88,6 +93,8 @@ export async function whatWouldChange(prisma: any, read: ReadTheKind, onlyCheckI
   for (const g of grounds as any[]) {
     const label = (g.label ?? '').trim() || 'A check-in';
     if (g.kindOfWorkSetBy === 'lead' || oneOfTheKinds(g.kindOfWork)) { out.alreadyHad++; continue; }
+    if (ONBOARDING_SITUATIONS.includes(g.scenario)) continue;
+    if (!((g.brief ?? '').trim() || (g.endState ?? '').trim())) continue;
     const words = theSetupWords(g);
     if (words.trim()) toRead.push({ g, label, words });
   }
@@ -103,7 +110,8 @@ export async function whatWouldChange(prisma: any, read: ReadTheKind, onlyCheckI
     const label = (g.label ?? '').trim() || 'A check-in';
     if (g.kindOfWorkSetBy === 'lead' || oneOfTheKinds(g.kindOfWork)) continue;
     const got = answers.get(g.id);
-    if (!got) { out.left.push({ groundId: g.id, label, why: NO_WORDS }); continue; }
+    if (ONBOARDING_SITUATIONS.includes(g.scenario)) { out.left.push({ groundId: g.id, label, why: THE_SITUATION_DECIDES }); continue; }
+    if (!got) { out.left.push({ groundId: g.id, label, why: ((g.label ?? '').trim() || (g.brief ?? '').trim() || (g.endState ?? '').trim()) ? NO_DESCRIPTION : NO_WORDS }); continue; }
     if (got.failed) { out.left.push({ groundId: g.id, label, why: COULD_NOT_READ }); continue; }
     const kind = oneOfTheKinds(got.answer);
     if (kind) out.toGive.push({ groundId: g.id, label, kind });
@@ -117,7 +125,8 @@ export async function writeTheKinds(prisma: any, plan: WhatWouldChange): Promise
   let n = 0;
   for (const c of plan.toGive) {
     const r = await prisma.ground.updateMany({
-      where: { id: c.groundId, kindOfWork: null, NOT: { kindOfWorkSetBy: 'lead' } },
+      /* Not `NOT: { kindOfWorkSetBy: 'lead' }`: in SQL that leaves out every row where it is empty. */
+      where: { id: c.groundId, kindOfWork: null, OR: [{ kindOfWorkSetBy: null }, { kindOfWorkSetBy: { not: 'lead' } }] },
       data: { kindOfWork: c.kind, kindOfWorkSetBy: 'read' },
     });
     n += r?.count ?? 0;
@@ -162,6 +171,13 @@ export function whatWouldChangeSays(plan: WhatWouldChange, listAll = false): str
   return lines;
 }
 
+/** How many are asked at once: --concurrency <n>, six by default. */
+export function theConcurrency(args: readonly string[]): number {
+  const at = args.indexOf('--concurrency');
+  const n = at >= 0 ? parseInt(args[at + 1] ?? '', 10) : NaN;
+  return Number.isFinite(n) && n >= 1 && n <= 32 ? n : 6;
+}
+
 /** The whole run, with the database, the reading and the question handed in, so a test can run it with none of them. */
 export async function run(opts: {
   url: string;
@@ -177,7 +193,7 @@ export async function run(opts: {
   const only = at >= 0 ? (opts.args[at + 1] ?? null) : null;
   const prisma = opts.prismaFor(opts.url);
   try {
-    const plan = await whatWouldChange(prisma, opts.readFor(), only, 6);
+    const plan = await whatWouldChange(prisma, opts.readFor(), only, theConcurrency(opts.args));
     for (const line of whatWouldChangeSays(plan, opts.args.includes('--list-all'))) opts.say(line);
     if (!may.writes) { opts.say('This was a dry run. Nothing was written.'); return { wrote: false, refused: null, written: 0 }; }
     if (may.mustTypeTheHostBack) {

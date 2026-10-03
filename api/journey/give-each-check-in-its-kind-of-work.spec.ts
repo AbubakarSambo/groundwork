@@ -1,4 +1,4 @@
-import { whatWouldChange, writeTheKinds, run, remembered, whatThisRunMayDo, whatWouldChangeSays, NOT_CLEAR, NO_WORDS, COULD_NOT_READ, theCacheKey } from './give-each-check-in-its-kind-of-work';
+import { whatWouldChange, writeTheKinds, run, remembered, whatThisRunMayDo, whatWouldChangeSays, NOT_CLEAR, NO_WORDS, NO_DESCRIPTION, THE_SITUATION_DECIDES, COULD_NOT_READ, theCacheKey } from './give-each-check-in-its-kind-of-work';
 import { KINDS_OF_WORK } from '../src/modules/board/the-kind-of-work';
 
 /**
@@ -11,6 +11,8 @@ const FIXTURES: any[] = [
   { id: 'law', label: 'Kasarani Foods v Pwani Mills', brief: 'A supply contract case with a hearing in November.', endState: null, resolutionState: null, kindOfWork: null, kindOfWorkSetBy: null },
   { id: 'unclear', label: 'Board meeting prep', brief: 'Getting ready for the board.', endState: null, resolutionState: null, kindOfWork: null, kindOfWorkSetBy: null },
   { id: 'empty', label: null, brief: null, endState: null, resolutionState: null, kindOfWork: null, kindOfWorkSetBy: null },
+  { id: 'name-only', label: 'Sales team', scenario: 'TEAM_UPDATES', brief: null, endState: null, resolutionState: null, kindOfWork: null, kindOfWorkSetBy: null },
+  { id: 'hire', label: 'New sales hire', scenario: 'NEW_HIRE', brief: 'Sam joins to sell kitchen appliances to shops.', endState: null, resolutionState: null, kindOfWork: null, kindOfWorkSetBy: null },
   { id: 'had', label: 'Support', brief: 'Tickets.', endState: null, resolutionState: null, kindOfWork: 'support desk', kindOfWorkSetBy: 'read' },
   { id: 'lead', label: 'Mine', brief: 'Sales deals.', endState: null, resolutionState: null, kindOfWork: null, kindOfWorkSetBy: 'lead' },
 ];
@@ -32,7 +34,10 @@ function db(rows: any[]) {
     ground: {
       findMany: jest.fn(async () => rows.map((r) => ({ ...r }))),
       updateMany: jest.fn(async (a: any) => {
-        const r = rows.find((x) => x.id === a.where.id && x.kindOfWork === a.where.kindOfWork && x.kindOfWorkSetBy !== 'lead');
+        /* Like the database: a test of "not lead" on an empty value is not true, so the where must say "or empty" itself. */
+        expect(a.where.NOT).toBeUndefined();
+        const setByOk = (x: any) => a.where.OR.some((o: any) => ('kindOfWorkSetBy' in o && o.kindOfWorkSetBy === null ? x.kindOfWorkSetBy === null : x.kindOfWorkSetBy !== null && x.kindOfWorkSetBy !== o.kindOfWorkSetBy.not));
+        const r = rows.find((x) => x.id === a.where.id && x.kindOfWork === a.where.kindOfWork && setByOk(x));
         if (!r) return { count: 0 };
         writes.push(a.data);
         Object.assign(r, a.data);
@@ -50,7 +55,7 @@ describe('giving each existing check-in its kind of work', () => {
     const plan = await whatWouldChange(prisma, read);
     expect(plan.toGive.map((c) => [c.groundId, c.kind])).toEqual([['sales', 'sales org'], ['eng', 'engineering release'], ['law', 'a law firm matter']]);
     for (const c of plan.toGive) expect(KINDS_OF_WORK).toContain(c.kind);
-    expect(plan.left.map((l) => [l.groundId, l.why])).toEqual([['unclear', NOT_CLEAR], ['empty', NO_WORDS]]);
+    expect(plan.left.map((l) => [l.groundId, l.why])).toEqual([['unclear', NOT_CLEAR], ['empty', NO_WORDS], ['name-only', NO_DESCRIPTION], ['hire', THE_SITUATION_DECIDES]]);
     expect(plan.alreadyHad).toBe(2);
   });
 
@@ -59,6 +64,7 @@ describe('giving each existing check-in its kind of work', () => {
     const { prisma } = db(FIXTURES.map((f) => ({ ...f })));
     await whatWouldChange(prisma, asked);
     expect(asked).toHaveBeenCalledTimes(4);
+    expect(asked.mock.calls.some(([w]) => w.includes('New sales hire'))).toBe(false);
     expect(asked.mock.calls.some(([w]) => w.includes('Sales deals.'))).toBe(false);
   });
 
@@ -108,9 +114,9 @@ describe('giving each existing check-in its kind of work', () => {
   it('reads in plain sentences', async () => {
     const { prisma } = db(FIXTURES.map((f) => ({ ...f })));
     const lines = whatWouldChangeSays(await whatWouldChange(prisma, read));
-    expect(lines[0]).toBe('7 check-ins were read. 2 already have a kind of work and are left as they are.');
+    expect(lines[0]).toBe('9 check-ins were read. 2 already have a kind of work and are left as they are.');
     expect(lines[1]).toBe('3 check-ins would be given a kind of work:');
-    expect(lines.join('\n')).toContain('2 check-ins cannot be placed confidently, so they get no kind and keep the board the situation gives.');
+    expect(lines.join('\n')).toContain('4 check-ins cannot be placed confidently, so they get no kind and keep the board the situation gives.');
   });
 });
 
