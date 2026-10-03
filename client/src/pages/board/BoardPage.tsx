@@ -3133,6 +3133,21 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   const fromWord = readerIsFrom ? 'You' : d.from
                   const needsWord = readerIsFrom ? 'need' : 'needs'
                   const onWhomInSentence = readerIsOnWhom ? 'you' : onWhom
+                  /*
+                   * PROJECT BOARD REVIEW 1, FIX 7: ONE SENTENCE, NOT A LABEL AND A VALUE JOINED
+                   * BY A COLON - "Waiting on: the pipeline" read as two pieces stapled together,
+                   * not a sentence. Said instead the same way `readerIsOnWhom`'s own line already
+                   * is, just with the name instead of "you".
+                   *
+                   * AND `blockers[].holdingUp`, NOT `dependencies[].then`. The engine already
+                   * writes a full sentence for what happens once this clears (board.blockers,
+                   * matched to this same handoff by id) - "Aisha Wanjiku said that once it is
+                   * cleared, "I can finish the ledger export."" - where the old "When this
+                   * arrives, {name} says: "{then}."" built a second, cruder version of the same
+                   * sentence from the bare quote alone.
+                   */
+                  const matchingBlocker = (b as any).blockers?.find((bl: { id: string }) => bl.id === d.id)
+                  const holdingUp = matchingBlocker?.holdingUp as string | null | undefined
                   return (
                     <Panel key={d.id}>
                       <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between'}}>
@@ -3142,14 +3157,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-8">
                         {readerIsOnWhom
                           ? 'This is waiting on you.'
-                          : <>Waiting on: <span className="gwui-ink-dark" style={{fontWeight: 600}}>{onWhom}</span></>}
+                          : <>This is waiting on <span className="gwui-ink-dark" style={{fontWeight: 600}}>{onWhom}</span>.</>}
                       </div>
                       <div className="gwui-fs-15 gwui-ink-dark gwui-mt-4" style={{lineHeight: 1.5}}>
                         <b>{fromWord}</b> {needsWord} {d.what} from <b>{onWhomInSentence}</b>. {statusSaid}
                       </div>
-                      {d.then && (
+                      {holdingUp && (
                         <div className="gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8 gwui-fs-15 gwui-ink-text" style={{background: 'var(--gw-blue-bg)', borderRadius: 8, lineHeight: 1.5}}>
-                          When this arrives, {readerIsFrom ? 'you say' : `${d.from} says`}: “{String(d.then).replace(/[.\s]+$/, '')}.”
+                          {holdingUp}
                         </div>
                       )}
                     </Panel>
