@@ -34,6 +34,8 @@ export interface Setup {
    * check-in that raised them. Off by default, so the specs written before it read the boards they always read.
    */
   waitsAreReadOnTheirOwn?: boolean;
+  /** What the room is about, as the board listener stores it, with people's names, and the round it was read at. */
+  room?: any;
   scenario?: GroundScenario;
   peersVisibleToEachOther?: boolean;
   commitments?: any[];
@@ -119,6 +121,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     dependencies: setup.dependencies ?? [], poll: null, objectives: setup.objectives ?? [], closedAt: setup.closedAt ?? null,
     kindOfWork: setup.kindOfWork ?? null, workStages: null, subjectExternalId: setup.subjectExternalId ?? null,
     ...(({ now: _now, ...rest }) => rest)(setup.clock ?? {}),
+    ...(setup.room ? { whatTheRoomIsAbout: setup.room, whatTheRoomIsAboutSession: 2 } : {}),
     ...(setup.status ? { status: setup.status } : {}),
     ...(setup.endState !== undefined ? { endState: setup.endState } : {}),
     ...(setup.resolvedAt !== undefined ? { resolvedAt: setup.resolvedAt } : {}),

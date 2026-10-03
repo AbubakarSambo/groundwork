@@ -73,7 +73,7 @@ import {
 } from './board-families';
 import { totalSessionsFor } from '../grounds/session-count';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody, plainWordsByPerson, atTheStart, withNames } from '../reports/party-labels';
-import { anAimAsASentence, yourOwnWhereYouAreTheSubject, anAimTheHolderSet } from './an-aim-is-a-sentence-about-somebody';
+import { anAimAsASentence, yourOwnWhereYouAreTheSubject, anAimTheHolderSet, aPromiseNotAnAim } from './an-aim-is-a-sentence-about-somebody';
 import {
   CoverageKind,
   CoverageRead,
@@ -127,6 +127,7 @@ import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-san
 import { theFirstNameFrom, theShortNameOf } from '../reports/a-title-is-not-a-first-name';
 import { aHolderInTheirOwnWords } from './a-holder-in-their-own-words';
 import { yourOwnRowsSayYou } from './your-own-read-says-you';
+import { theRoomAsThisReaderReadsIt } from './the-room-as-each-reader-reads-it';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -1194,6 +1195,8 @@ export class BoardService {
       const stored = new Map(((ground.objectives ?? []) as any[]).map((o) => [o.id, o]));
       const othersNames = (ground.participants as any[]).filter((p) => p.id !== me?.id)
         .flatMap((p) => [p.user?.firstName, p.user?.lastName, p.nameGiven].filter(Boolean) as string[]);
+      /* A promise to do something is the person's commitment, already on the board as that, and never an aim. See aPromiseNotAnAim. */
+      out.objectives = (out.objectives as any[]).filter((o) => !(stored.has(o.id) && aPromiseNotAnAim(stored.get(o.id)?.name)));
       out.objectives = (out.objectives as any[]).map((o) => {
         const row = stored.get(o.id);
         if (!row) return o;
@@ -2516,6 +2519,18 @@ export class BoardService {
       }
       /* An aim whose only sentence was the hidden number is not left on the board as an empty line. */
       if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
+      /* What the room is about, said to this reader: their own aims say "you", and a row a wall emptied is dropped. See the-room-as-each-reader-reads-it. */
+      if (walled.whatTheRoomIsAbout) {
+        const roomLabels = labelsForParties(ground.participants as any);
+        const readerLabel = me?.id ? roomLabels.get(me.id) ?? null : null;
+        const fullNameOf = (p: any) => [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim() || null;
+        walled.whatTheRoomIsAbout = theRoomAsThisReaderReadsIt(walled.whatTheRoomIsAbout, {
+          fullName: me ? fullNameOf(me) : null,
+          otherNames: (ground.participants as any[]).filter((p) => p.id !== me?.id)
+            .flatMap((p) => [fullNameOf(p), p.user?.firstName, p.user?.lastName, p.nameGiven].filter(Boolean) as string[]),
+          name: (t: string) => withNames(t, visibleNames, roomLabels.values(), { viewerLabel: readerLabel }),
+        });
+      }
       /* And a line with no words is left out here, never served for the page to draw as an empty line. */
       walled = withoutLinesWithNoWords(walled, ['whoOwnsWhat', '*', 'items'], 'text');
       /* Each line is a person's own words, so it is served as theirs, in quotation marks with their name. See what-each-person-said-is-in-their-name. */

@@ -3229,3 +3229,16 @@ Tests: `api/src/modules/suites/the-briefing-for-a-review-as-each-reader-reads-it
 In the briefing's counts, when every commitment was kept: "Aisha kept all of them."; when none was settled: "None of them was settled before this review started."
 
 Tests: four more in `api/src/modules/suites/the-record-in-a-review-as-each-reader-reads-it.spec.ts`, built from those rows. Each fails on the code before this commit.
+
+## What the room is about, and the aims, as each reader reads them (3 October)
+
+**Run-25 served the room's read (`whatTheRoomIsAbout`) the same to every reader, as it was stored with names, and left rows a wall had emptied. Four aims named the reader where "you" belongs, across sales, cofounder and drift. Among the board's aims (`objectives`), Kwame's own words were glued onto a sentence about him, and one of Femi's commitments was listed as an aim** (this commit).
+
+- **`whatTheRoomIsAbout.aims[].aim`, said to the reader.** Femi now reads "You are trying to get twelve approved facilities by collecting as many strong applications as possible." (was "Femi Okonkwo is trying to ..."). Tunde reads "You are responsible for and will run the product and engineering sides of the business." Zainab reads "You are worried that you will be measured on targets that you have not been able to work on." (was "Zainab Suleiman is worried that she will be measured on targets that she has not been able to work on."). Whoever runs it, and an admin, read the names as before.
+- **No empty rows.** A row whose aim a wall emptied for this reader (`{ "aim": "", "held": ["Kwame Mensah"] }`) is no longer sent.
+- **`held` and `named` say "You" for the reader**, first in the list: `["You"]`, `["You", "Ada Nwosu"]`. Please show "You" as the reader's own chip, as you already do for `said.who` in what the answers say.
+- **Kwame's own aim, on Bisi's board:** "Kwame Mensah's own aim is 42 million naira." (was "Kwame Mensah's own aim is 42 million naira, and I'm aiming to achieve that by the end of the quarter."). Kwame reads "Your own aim is 42 million naira."
+- **A promise is not an aim.** "Femi Okonkwo will follow up with the customers to get five bank statements. Femi Okonkwo set this aim." is no longer in `objectives` or in Femi's `yourShare`, for anybody. It stays where it belongs, as his commitment, in `whoOwnsWhat` and the work plan. Only a stored aim that opens with somebody promising an action ("I will follow up", "I'll call", "we are going to visit") is left out; "I will get 12 shops" is still an aim.
+- **No number said twice.** "Your own aim is 12 twelve approved facilities this quarter." now reads "Your own aim is twelve approved facilities this quarter."
+
+Tests: `api/src/modules/board/the-room-and-the-aims-as-each-reader-reads-them.spec.ts`, on the served sales board as Femi, Kwame, Bisi and an admin, and the room in cofounder and drift as Tunde, Zainab and Nadia. The harness can now carry the room's stored read (`room`). No existing test changed.

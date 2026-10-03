@@ -162,8 +162,22 @@ export function anAimTheHolderSet(row: { ownerParticipantId?: string | null; set
   return !!row.ownerParticipantId && row.setByParticipantId === row.ownerParticipantId && row.ownerParticipantId !== (leadsRow ?? null);
 }
 
-/** Words that make a phrase somebody's own sentence rather than the thing aimed for. */
-const A_PERSON_IN_IT = /(?:^|[^\p{L}'’])(?:I|me|my|we|our|us|you|your)(?![\p{L}'’])/iu;
+/**
+ * Words that make a phrase somebody's own sentence rather than the thing aimed for. "I'm" and "I've" too (run-25,
+ * sales): "42 million naira, and I'm aiming to achieve that by the end of the quarter" passed as the thing aimed
+ * for, because the apostrophe after "I" hid it, and Bisi read "Kwame Mensah's own aim is 42 million naira, and I'm
+ * aiming to achieve that by the end of the quarter."
+ */
+const A_PERSON_IN_IT = /(?:^|[^\p{L}'’])(?:I|me|my|we|our|us|you|your)(?![\p{L}])/iu;
+
+const A_NUMBER_IN_WORDS = /^(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a\s+hundred|hundred|a\s+thousand|a\s+dozen|dozen)\b/i;
+
+/* "42 million naira, and I'm aiming to achieve that ...": the thing aimed for is the first part, where only the rest is somebody's own words. */
+const theFirstPartAlone = (what: string): string | null => {
+  const m = /^(.+?)\s*(?:,|;|\s-\s)\s*(?:and|but|so|which)?\s*(?=\S)/i.exec(what);
+  const first = m ? m[1].trim() : null;
+  return first && !A_PERSON_IN_IT.test(first) && first.split(/\s+/).length >= 1 ? first : null;
+};
 
 /**
  * THE THING AIMED FOR, WITH ITS NUMBER: "3 shops in Kilimani" from "I am aiming for 3 shops in
@@ -185,8 +199,10 @@ export function theAimItself(name: string, target: number | null): string | null
       ?? /\b(?:goal|aim|target)\s+is\s+(?:to\s+(?:get|reach|hit|close|sign|onboard|make|do)\s+)?(.+)$/i.exec(t);
     what = m ? m[1].trim() : null;
   }
-  if (!what || A_PERSON_IN_IT.test(what)) return null;
-  if (target != null && !/^\d/.test(what)) {
+  if (what && A_PERSON_IN_IT.test(what)) what = theFirstPartAlone(what);
+  if (!what) return null;
+  /* "twelve approved facilities" already says its number: never "12 twelve approved facilities". */
+  if (target != null && !/^\d/.test(what) && !A_NUMBER_IN_WORDS.test(what)) {
     const n = aNumberPeopleCanRead(target);
     if (!what.includes(n)) what = `${n} ${what}`;
   }
@@ -247,7 +263,7 @@ export function anAimAsASentence(name: string, who: WhoAnAimIsAbout): string {
     if (words.length > 1 && /(?:'|’)s$/i.test(words[0]) && who.holder) words.shift();
     if (/^\p{Lu}\p{Ll}*(?:-\p{Ll}+)*$/u.test(words[0] ?? '') && (words.length === 1 || /^\p{Ll}/u.test(words[1]))) words[0] = words[0].toLowerCase();
     const what = words.join(' ');
-    const howMany = who.target != null && !/^\d/.test(what) ? `${aNumberPeopleCanRead(who.target)} ` : '';
+    const howMany = who.target != null && !/^\d/.test(what) && !A_NUMBER_IN_WORDS.test(what) ? `${aNumberPeopleCanRead(who.target)} ` : '';
     /* A limit the lead set is not something anybody is aiming for (decision 69), and each of the other
        kinds says what it is (decision 75, item 17). */
     t = who.direction === 'ZERO' ? `${holder} is keeping ${what} at zero.`
@@ -308,4 +324,25 @@ export function yourOwnAimIsYours(text: string): string {
     .replace(/(^|[.!?]\s+)your own (aim|limit)\b/g, '$1Your own $2')
     .replace(/(^|[.!?]\s+)You set an aim of (.+?) for their own work\./g, '$1You set yourself an aim of $2.')
     .replace(/(^|[.!?]\s+)You set this (aim|limit) for their own work\./g, '$1You set yourself this $2.');
+}
+
+/**
+ * A PROMISE TO DO SOMETHING IS NOT AN AIM (run-25, sales). Femi said "I will follow up with my customers to get five
+ * bank statements by next Friday." The record kept it as his commitment, which is right, and also as a target of his
+ * with the number 5, so Bisi's board listed it among the aims: "Femi Okonkwo will follow up with the customers to get
+ * five bank statements. Femi Okonkwo set this aim." It is something he said he would do, and it is already on the
+ * board as that. An aim says what somebody is trying to reach; this says what somebody will do next.
+ *
+ * Only a sentence that opens with somebody promising one of these actions ("I will follow up", "I'll call", "We are
+ * going to visit"). "I will get 12 shops", "I'll close 5 deals" and "I'm aiming for
+ * 14 facilities" are aims, and stay.
+ */
+const A_PROMISED_ACTION = '(?:follow(?:\\s+up)?|call|phone|ring|visit|chase|remind|email|e-mail|text|message|write|send|ask|check|talk|speak|meet|escalate|contact|reach\\s+out|push|look\\s+into|continue|keep\\s+(?:calling|chasing|following)|try)';
+const A_PROMISE = new RegExp(
+  String.raw`^\s*(?:I|we)\s*(?:will|shall|'ll|’ll|am\s+going\s+to|are\s+going\s+to|'m\s+going\s+to|’m\s+going\s+to|'re\s+going\s+to)\s+(?:also\s+|then\s+)?${A_PROMISED_ACTION}(?![-\w])`,
+  'i',
+);
+
+export function aPromiseNotAnAim(name: string | null | undefined): boolean {
+  return A_PROMISE.test((name ?? '').trim());
 }
