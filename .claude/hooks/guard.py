@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Safety rules that always run before Claude Code acts. Exit code 2 blocks the action, and the message goes back to Claude."""
+"""Safety rules that always run before Claude Code acts. Exit code 2 blocks the action, and the message goes back to Claude.
+
+Version 2 (3 October 2026): rules now block ACTIONS, not WORDS. A commit message, a document being written,
+or a read-only command may mention any word (a person's name, a branch name, a provider's name) without being
+refused. Every real action stays blocked exactly as before: pushing anywhere but your own wip/ branch on "mine",
+merging anything but mine/wip/, touching Abubakar's branches, deploying, touching staging, wiping a database,
+live Stripe keys, real emails, writing .env files, and changing the kit's protected files."""
 import json, re, sys
 kind = sys.argv[1] if len(sys.argv) > 1 else ""
 try:
@@ -17,12 +23,35 @@ def current_branch():
     except Exception:
         return ""
 
+# A command that only reads: one read-only program, optionally piped into other read-only programs,
+# with no redirection into a file and no chaining with ; && or ||.
+READ_ONLY_START = r"(grep|rg|cat|head|tail|less|ls|wc|sort|uniq|diff|file|stat|find(?!.*(-delete|-exec|-ok))|sed\s+-n|git\s+(log|show|diff|status|merge-base|rev-parse|rev-list|ls-files|ls-tree|blame|branch(\s+(-a|-r|--list|--contains|--merged|-v|-vv)[\w\s./-]*)?|tag\s+(-l|--list)|fetch(\s+(mine|origin))?(\s+[\w./-]+)?|remote(\s+-v)?$|cat-file|describe))"
+READ_ONLY_PIPE = r"(grep|rg|head|tail|wc|sort|uniq|cut|tr|awk|sed\s+-n|less|cat)"
+def is_read_only(c):
+    if re.search(r"(>|;|&&|\|\||`|\$\()", c):
+        return False
+    parts = [p.strip() for p in c.split("|")]
+    if not re.match(r"^\s*" + READ_ONLY_START + r"\b", parts[0]):
+        return False
+    return all(re.match(r"^" + READ_ONLY_PIPE + r"\b", p) for p in parts[1:])
+
+# Writing a document under docs/ through the shell, for example: cat > docs/morning-report.md <<'EOF' ... EOF
+# The document's text may mention any word. Only the destination matters.
+def is_doc_write(c):
+    return re.match(r"^\s*cat\s*>{1,2}\s*['\"]?docs/[\w./-]+\.(md|txt|json|csv)['\"]?\s*<<-?\s*['\"]?\w+['\"]?\s*\n", c) is not None and ".env" not in c.split("\n")[0]
+
 if kind == "bash":
     cmd = inp.get("command", "")
-    if re.search(r"abubakar", cmd, re.I) and re.search(r"\bgit\b", cmd):
-        block("Nothing may touch Abubakar's branches.")
-    # Hafsah's own work-in-progress branches on GitHub are the one allowed destination.
     one = cmd.strip()
+    is_commit = re.match(r"\s*git\s+commit\b", cmd) is not None and not re.search(r"(;|&&|\|\|)", cmd.split("\n")[0])
+    word_safe = is_commit or is_read_only(one) or is_doc_write(cmd)
+
+    # Abubakar's repository and branches: no git action that WRITES may touch them. Reading (log, show, diff,
+    # fetch) and mentioning his name in a message are fine.
+    if re.search(r"abubakar", cmd, re.I) and not word_safe and re.search(
+            r"\bgit\s+(push|merge(?![\w-])|checkout|switch|reset|rebase|cherry-pick|branch\s+-[dDmMf]|tag(?!\s+(-l|--list))|remote|worktree)\b", cmd):
+        block("Nothing may touch Abubakar's branches.")
+
     # The ONLY place work may be pushed: Hafsah's own private copy, the remote named "mine", wip/ branches only.
     # "origin" is Abubakar's repository and must never be pushed to.
     m = re.fullmatch(r"git\s+push\s+(?:(?:-u|--set-upstream)\s+)?mine\s+(?:([\w./-]+):)?(wip/[\w./-]+)", one)
@@ -44,34 +73,38 @@ if kind == "bash":
         sys.exit(0)
     if re.fullmatch(r"git\s+clone\s+(https://github\.com/|git@github\.com:)hafsahjumare-lgtm/[\w.-]+(\.git)?(\s+[\w./~-]+)?", one):
         sys.exit(0)
-    if re.search(r"\bgh\s+repo\b", cmd):
+
+    # A commit, a read-only command, or a document being written may mention any word. Only real actions are blocked below.
+    if word_safe:
+        sys.exit(0)
+
+    # A command at the start of the line, or after ; && || | or a newline: used to tell running a program from naming it.
+    S = r"(?:^|[;&|\n]\s*|\bnpx\s+|\bsudo\s+)"
+    if re.search(S + r"gh\s+repo\b", cmd):
         block("Only one GitHub repository action is allowed: gh repo create hafsahjumare-lgtm/<name> --private.")
     if re.search(r"\bgit\s+pull\b", cmd):
-        block("Use git fetch, then git merge origin/wip/<branch>, so every merge is visible.")
+        block("Use git fetch, then git merge mine/wip/<branch>, so every merge is visible.")
     rules = [
-        (r"\bgit\s+push\b", "Pushing is only allowed as: git push mine wip/<branch>, to Hafsah's own private copy. Never to origin, which is Abubakar's repository."),
-        (r"\bgit\s+merge\b", "Merging is only allowed as: git merge mine/wip/<branch>, into a wip/ branch."),
-        (r"\bgh\s+pr\b|\bpull request\b", "Opening pull requests is not allowed."),
+        (r"\bgit\s+push\b", "Pushing is only allowed as: git push mine wip/<branch>, on its own, to Hafsah's own private copy. Never to origin, which is Abubakar's repository."),
+        (r"\bgit\s+merge(?![\w-])", "Merging is only allowed as: git merge mine/wip/<branch>, on its own, into a wip/ branch."),
+        (S + r"gh\s+pr\b|" + S + r"hub\s+pull-request\b|" + S + r"glab\b", "Opening pull requests is not allowed."),
         (r"\bgit\s+reset\s+--hard\s+origin", "Resetting to the remote is not allowed."),
         (r"\bgit\s+(checkout|switch)\s+(main|master|staging|production)\b", "Changing to the main, staging or production branch is not allowed."),
-        (r"prisma\s+migrate\s+reset|dropdb|DROP\s+DATABASE|DROP\s+TABLE|TRUNCATE\s", "Wiping or dropping the database is not allowed."),
+        (r"prisma\s+migrate\s+reset|" + S + r"dropdb\b|DROP\s+DATABASE|DROP\s+TABLE|TRUNCATE\s", "Wiping or dropping the database is not allowed."),
         (r"EMAIL_SENDS_FOR_REAL\s*=\s*true", "Real emails must stay off."),
         (r"sk_live_|pk_live_|rk_live_", "Live Stripe keys are not allowed."),
         (r"\brm\s+-rf\s+(/|~|\.\.)(\s|$)", "Deleting outside the project is not allowed."),
-        (r"(>|>>|tee)\s*\S*\.env", "Writing to .env files is not allowed."),
-        (r"\bgh\s+(pr|release|workflow|run|api|repo\s+sync)\b", "Nothing goes to GitHub: no pull requests, releases or workflow runs."),
-        (r"\bglab\b|\bhub\s+pull-request\b", "No pull or merge requests."),
+        (r"(>|>>|\btee\b)\s*\S*\.env", "Writing to .env files is not allowed."),
+        (S + r"gh\s+(release|workflow|run|api|repo\s+sync)\b", "Nothing goes to GitHub: no pull requests, releases or workflow runs."),
         (r"\bgit\s+remote\s+(add|set-url|rename)\b", "Changing where the code can be sent is not allowed."),
-        (r"\b(vercel|netlify|railway|flyctl|heroku|firebase\s+deploy|serverless\s+deploy|sls\s+deploy|kubectl|terraform\s+apply|eb\s+deploy)\b|\bfly\s+deploy\b|\bhelm\s+(install|upgrade)\b|\bdocker\s+push\b|\baws\s+(ecs|s3\s+sync|deploy)\b", "Deploying anywhere is not allowed, staging included."),
-        (r"\b(npm|yarn|pnpm)\s+(run\s+)?\S*deploy\S*|\bmake\s+\S*deploy", "Deploying anywhere is not allowed, staging included."),
-        (r"(?=.*staging)(?=.*(\bpush\b|deploy|release|migrat|\bseed\b|psql|mysql|mongo|redis-cli|\bssh\b|\bscp\b|rsync|\bcurl\b|\bwget\b|https?://|DATABASE_URL|_URL=|prisma\s+(migrate|db)|kubectl|terraform|\baws\b|gcloud|\baz\s)).*", "Nothing may touch staging. Hafsah decides when anything goes there."),
+        (S + r"(vercel|netlify|railway|flyctl|heroku|kubectl|terraform\s+apply|eb\s+deploy|fly\s+deploy)\b|" + S + r"(firebase|serverless|sls)\s+deploy\b|" + S + r"helm\s+(install|upgrade)\b|\bdocker\s+push\b|" + S + r"aws\s+(ecs|s3\s+sync|deploy)\b", "Deploying anywhere is not allowed, staging included."),
+        (S + r"(npm|yarn|pnpm)\s+(run\s+)?\S*deploy\S*|" + S + r"make\s+\S*deploy", "Deploying anywhere is not allowed, staging included."),
+        # Staging: blocked when a command could reach it (a connection, a deploy, a database tool), not when a word appears in text.
+        (r"(?=.*staging)(?=.*(" + S + r"(psql|mysql|mongo|mongosh|redis-cli|ssh|scp|rsync|curl|wget|kubectl|terraform|aws|gcloud|az)\b|\bgit\s+push\b|prisma\s+(migrate|db)|DATABASE_URL\s*=|_URL\s*=\S*staging|\bdeploy\b)).*", "Nothing may touch staging. Hafsah decides when anything goes there."),
         (r"(sed\s+-i|>|>>|\btee\b|\bcp\b|\bmv\b|\brm\b|\btruncate\b|\bchmod\b|\bgit\s+(checkout|restore)\b)[^;&|]*(\.claude/|CLAUDE\.md|docs/decisions\.md|docs/baseline\.json|tools/score_run\.py)", "The kit's protected files cannot be changed."),
     ]
-    is_commit = re.match(r"\s*git\s+commit\b", cmd) is not None
     for pat, msg in rules:
-        if is_commit and "protected files" in msg:
-            continue  # a commit message may mention a protected file; committing does not change it
-        if re.search(pat, cmd, re.I):
+        if re.search(pat, cmd, re.I | re.S):
             block(msg)
 elif kind == "files":
     path = inp.get("file_path") or inp.get("path") or ""
