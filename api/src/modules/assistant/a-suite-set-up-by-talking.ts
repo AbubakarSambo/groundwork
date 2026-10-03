@@ -13,7 +13,9 @@ import { WEEKDAYS, changeTimeRules, type Weekday } from '../suites/the-time-shee
  * and sets nothing until the admin says yes. On the yes, AssistantService writes it through the same
  * SuitesService methods the routes use (`switch`, `setDuties`, `setWorkflows`, `setLeaveRules`,
  * `setTimeRules`), so there is no second way to set a suite up, the server checks again that the
- * person is an admin, and the rules history records it as that admin's change.
+ * person may (an admin for every suite; whoever holds the HR duty for leave and reviews; whoever holds
+ * the finance duty for spending and time sheets, decision 85), and the rules history records it as
+ * their change. Only an admin names who holds a job, so nobody else is asked who does.
  *
  * APPROVERS ARE NAMED BY RULE, NEVER BY PERSON (decision 85). An answer that names a person ("Wairimu")
  * is turned into the job they hold (who-holds-each-duty.ts): "Wairimu heads Sales" becomes "the head of
@@ -82,6 +84,12 @@ export interface WhatIsKnown {
   answers: Record<string, unknown>;
   /** Whether the suite is switched on today. */
   on: boolean;
+  /**
+   * Whether the person setting it up may name who holds a job. Only an admin may (who holds each duty
+   * stays admin-only); whoever holds the HR or finance duty sets up their suites with the jobs as they
+   * are. Left out, an admin.
+   */
+  mayNameJobs?: boolean;
 }
 
 /** What the admin has said so far, which is what would be stored. */
@@ -302,6 +310,7 @@ function stepsFrom(t: string, plan: Plan, known: WhatIsKnown): Read<Rule[][]> {
       const jobs = jobsOf(tok.person, d);
       const chosen = plan.chosen?.[tok.person];
       if (chosen && jobs.some((j) => j.rule === chosen)) rule = chosen;
+      else if (!jobs.length && known.mayNameJobs === false) return { again: ONLY_AN_ADMIN_NAMES_JOBS(first(known, tok.person)) };
       else if (jobs.length !== 1) return { whichJob: tok.person };
       else rule = jobs[0].rule;
     } else rule = tok.rule;
@@ -328,8 +337,13 @@ function whichJobQuestion(id: string, plan: Plan, known: WhatIsKnown): string {
   if (jobs.length > 1) {
     return `${n} ${andList(jobs.map((j) => (j.team ? (j.rule === 'departmentHead' ? `heads ${j.team}` : `holds the ${j.team} budget`) : JOB_NAMES[j.rule])))}. Which of these is ${n} approving it as? I set who approves by their job, so it keeps working when people change jobs.`;
   }
+  if (known.mayNameJobs === false) return ONLY_AN_ADMIN_NAMES_JOBS(n);
   return `I set who approves by their job, not by name, so it keeps working when people change jobs. Which job does ${n} do here? For example, does ${n} head a team, hold a team’s budget, look after HR, look after finance, or is ${n} the chief executive?`;
 }
+
+/** Said to whoever holds the HR or finance duty when they name a person who holds no job yet. */
+const ONLY_AN_ADMIN_NAMES_JOBS = (n: string) =>
+  `I set who approves by their job, not by name, so it keeps working when people change jobs. ${n} holds no job in Groundwork yet, and only an admin can say who holds each job. Who should approve it instead? For example, “the person’s manager”, “the head of their team”, “HR”, “finance” or “an admin”.`;
 
 /** The job named for a person, recorded in the plan. The team is the one named, or else the person's own. */
 function takeAJob(id: string, t: string, plan: Plan, known: WhatIsKnown): Read<Plan> {
@@ -339,6 +353,10 @@ function takeAJob(id: string, t: string, plan: Plan, known: WhatIsKnown): Read<P
   if (!rule) return { again: whichJobQuestion(id, plan, known) };
   const next: Plan = JSON.parse(JSON.stringify(plan));
   next.chosen = { ...(next.chosen ?? {}), [id]: rule };
+  if (known.mayNameJobs === false) {
+    /* Only an admin names who holds a job: somebody else chooses among the jobs the person already holds. */
+    return jobsOf(id, dutiesNow(plan, known)).some((j) => j.rule === rule) ? { ok: next } : { again: whichJobQuestion(id, plan, known) };
+  }
   if (rule === 'departmentHead' || rule === 'budgetOwner') {
     const team = known.teams.find((x) => new RegExp(String.raw`\b${x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\b`, 'i').test(t)) ?? known.people.find((p) => p.id === id)?.team ?? null;
     if (!team || !known.teams.includes(team)) return { again: `Which team? The teams in your staff directory are ${andList(known.teams)}.` };
@@ -352,6 +370,8 @@ function takeAJob(id: string, t: string, plan: Plan, known: WhatIsKnown): Read<P
 
 /** Statements of who holds a job, anywhere in the words: "Omar looks after finance", "Joseph heads Operations". */
 function jobsSaidIn(t: string, plan: Plan, known: WhatIsKnown): Plan | null {
+  /* Only an admin names who holds a job. */
+  if (known.mayNameJobs === false) return null;
   let next: Plan | null = null;
   const said = (p: Plan) => (next = p);
   for (const n of peopleNamed(t, known.people)) {
@@ -523,7 +543,8 @@ export function nextQuestion(plan: Plan, known: WhatIsKnown): AQuestion | null {
       if (!plan.writer) return { key: 'writer', ask: 'Who writes each review with the person, their manager or an admin?' };
       break;
   }
-  for (const r of rulesThatNeedSomebody(plan)) {
+  /* Only an admin names who holds a job, so nobody else is asked who does. */
+  for (const r of known.mayNameJobs === false ? [] : rulesThatNeedSomebody(plan)) {
     if (r === 'departmentHead' || r === 'budgetOwner') {
       const key = r === 'departmentHead' ? 'departmentHeads' : 'budgetOwners';
       const team = known.teams.find((x) => !d[key]?.[x] && !plan.skipped.includes(`${key}:${x}`) && !plan.skipped.includes(key));
@@ -874,6 +895,9 @@ export function theSetUpSaid(plan: Plan, known: WhatIsKnown): string[] {
       out.push(`Nobody is named ${r === 'finance' ? 'to look after finance' : r === 'hr' ? 'to look after HR' : 'as the chief executive'} yet, so that part goes to the next person on the list.`);
     }
   }
+  if (known.mayNameJobs === false && out.some((l) => /^Nobody is named /.test(l))) {
+    out.push('Only an admin can name who holds each job.');
+  }
   if (plan.suite === 'leave') {
     const hr = d.hr ? `${first(known, d.hr)}, who looks after HR,` : 'Whoever looks after HR';
     if (plan.tellHr === 'every') out.push(`${hr} sees every leave request on the leave board, when it is asked for and when it is decided.`);
@@ -902,12 +926,24 @@ export const SET_UP_CHANGE_NOT_READ =
   'I did not catch what to change. Say yes to set it up as I said it, or no to leave everything as it is. You can also tell me what to change, for example “make it three working days”.';
 export const SET_UP_CHANGED = (sayBack: string) => `I have changed that. ${sayBack}`;
 
-/** Said to somebody who is not an admin: who is, by first name, and that nothing changed. */
-export function onlyAnAdminSetsThisUp(suite: SetUpSuite, admins: string[]): string {
-  const head = `Only an admin can set up how ${SUITE_IN_WORDS[suite]} work in your organisation, so I have not changed anything.`;
-  if (!admins.length) return head;
-  if (admins.length > 3) return `${head} If you would like it set up or changed, you could ask one of your admins, such as ${admins[0]} or ${admins[1]}.`;
-  return `${head} If you would like it set up or changed, you could ask ${orList(admins)}, who ${admins.length === 1 ? 'is an admin' : 'are admins'} here.`;
+/** The duty whose holder sets up each suite (decision 85): HR for leave and reviews, finance for spending and time sheets. */
+export const THE_DUTY_FOR: Record<SetUpSuite, 'hr' | 'finance'> = { leave: 'hr', reviews: 'hr', spend: 'finance', time: 'finance' };
+const LOOKS_AFTER: Record<'hr' | 'finance', string> = { hr: 'looks after HR', finance: 'looks after finance' };
+
+/**
+ * Said to somebody who may not set this suite up: who may, by first name, and that nothing changed.
+ * `holder` is the first name of whoever holds the duty that sets it up (HR or finance), or null.
+ */
+export function onlyAnAdminSetsThisUp(suite: SetUpSuite, admins: string[], holder: string | null = null): string {
+  const duty = LOOKS_AFTER[THE_DUTY_FOR[suite]];
+  const who = holder ? `an admin or ${holder}, who ${duty},` : `an admin or whoever ${duty}`;
+  const head = `Only ${who} can set up how ${SUITE_IN_WORDS[suite]} work in your organisation, so I have not changed anything.`;
+  const others = admins.filter((a) => a !== holder);
+  if (!others.length) return holder ? `${head} If you would like it set up or changed, you could ask ${holder}.` : head;
+  const ask = others.length > 3
+    ? `one of your admins, such as ${others[0]} or ${others[1]}`
+    : `${orList(others)}, who ${others.length === 1 ? 'is an admin' : 'are admins'} here`;
+  return `${head} If you would like it set up or changed, you could ask ${holder ? `${holder}, or ` : ''}${ask}.`;
 }
 
 // ---------------------------------------------- what is written on the yes ----------------------------------------------
@@ -957,7 +993,7 @@ export function whatToWrite(plan: Plan, known: WhatIsKnown): WhatToWrite | null 
   if (used.has('chiefExecutive') && plan.duties.chiefExecutive) duties.chiefExecutive = plan.duties.chiefExecutive;
   if (used.has('departmentHead') && plan.duties.departmentHeads) duties.departmentHeads = plan.duties.departmentHeads;
   if (used.has('budgetOwner') && plan.duties.budgetOwners) duties.budgetOwners = plan.duties.budgetOwners;
-  const hasDuties = Object.keys(duties).length > 0;
+  const hasDuties = known.mayNameJobs !== false && Object.keys(duties).length > 0;
   if (hasDuties && 'refused' in changeDuties(known.duties ?? {}, duties, people, new Set(known.teams))) return null;
 
   let workflows: Record<string, unknown> | null = null;

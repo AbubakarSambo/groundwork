@@ -72,7 +72,8 @@ describe('somebody who is not an admin asks to set up time sheets', () => {
   it.each([['Fatuma, a lead', 'u-fatuma'], ['Kamau, a member', 'u-kamau']])('%s is told plainly that an admin sets it up, and nothing is changed', async (_who, userId) => {
     const o = anOrganisationToSetUp();
     expect(await o.says(userId, 'Set up timesheets')).toBe(
-      'Only an admin can set up how time sheets work in your organisation, so I have not changed anything. If you would like it set up or changed, you could ask Grace, who is an admin here.',
+      /* Decision 85: an admin or whoever looks after finance sets this up, and nobody is named for finance here. */
+      'Only an admin or whoever looks after finance can set up how time sheets work in your organisation, so I have not changed anything. If you would like it set up or changed, you could ask Grace, who is an admin here.',
     );
     expect(o.proposals).toEqual([]);
     expect(o.writes).toEqual([]);

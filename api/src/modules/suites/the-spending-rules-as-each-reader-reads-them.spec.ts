@@ -114,8 +114,17 @@ describe('Grace, the admin, sets the rules', () => {
   });
 });
 
+describe('Omar, who looks after finance, reads and sets the rules (decision 85)', () => {
+  it('reads them, sets them, and the history keeps it as his change', async () => {
+    const o = aSpendingOrganisation({ rules: RULES });
+    expect((await o.suites.spendRules(o.as('u-omar'))).rules).toEqual((await o.suites.spendRules(o.as('u-grace'))).rules);
+    await o.suites.setSpendRules(o.as('u-omar'), { categories: null });
+    expect((await o.suites.rulesHistory(o.as('u-grace'))).changes[0].said).toMatch(/^Omar changed the spending rules on /);
+  });
+});
+
 describe('nobody else reads or sets the rules', () => {
-  for (const [who, u] of [['Fatuma, a lead', 'u-fatuma'], ['Omar, who looks after finance', 'u-omar'], ['Kamau, a member', 'u-kamau'], ['a guest', 'u-tomas']]) {
+  for (const [who, u] of [['Fatuma, a lead', 'u-fatuma'], ['Kamau, a member', 'u-kamau'], ['a guest', 'u-tomas']]) {
     it(`${who} is refused`, async () => {
       const o = aSpendingOrganisation({ rules: RULES });
       await expect(o.suites.spendRules(o.as(u))).rejects.toThrow(new ForbiddenException(SPEND_RULES_REFUSED.onlyAnAdmin));

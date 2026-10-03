@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { readDuties } from './who-holds-each-duty';
 import { PrismaService } from '../prisma/prisma.service';
 import { GROUPS, SUITES, checkAnswers, suiteOf, type Answers, type Question, type SuiteGroup } from './the-ten-suites';
 import { DUTIES_REFUSED, DUTIES_ROW, ORGANISATION_DUTIES, TEAM_DUTIES, changeDuties, dutiesFrom, type Duties } from './who-holds-each-duty';
@@ -13,11 +14,33 @@ import { TIME_RULES_REFUSED, TIME_RULES_ROW, changeTimeRules, timeRulesFrom, the
 export const REFUSED = {
   onlyAdminsAndLeads: 'Only an admin or a lead can open the suites.',
   onlyAnAdmin: 'Only an admin can switch a suite on or off.',
+  onlyAnAdminOrHr: 'Only an admin or whoever looks after HR can switch leave requests or performance reviews on or off.',
+  onlyAnAdminOrFinance: 'Only an admin or whoever looks after finance can switch spending requests or time sheets on or off.',
   noSuchSuite: 'There is no suite with that name.',
   answerFirst: 'Answer every question before you switch it on.',
 };
 
 export interface Reader { userId: string; organizationId: string }
+
+/**
+ * WHO MAY SET UP EACH SUITE (decision 85: "The company/admin/HR/finance lead sets up the rules once").
+ * Whoever holds the HR duty sets up leave and reviews; whoever holds the finance duty sets up spending
+ * and time sheets (who-holds-each-duty.ts). An admin sets up every suite, as before. Who holds each duty
+ * is still set by an admin only.
+ */
+export const THE_DUTY_THAT_SETS_UP: Record<string, 'hr' | 'finance'> = { leave: 'hr', reviews: 'hr', spend: 'finance', time: 'finance' };
+
+/** A suite somebody who holds a duty may set up, as they read it on the Suites page. */
+export interface ASuiteYouSetUp { key: string; name: string; line: string; on: boolean; questions: Question[]; answers: Answers }
+
+/** A member who holds the HR or finance duty reads only the suites that duty sets up. */
+export interface ForADutyHolder {
+  reader: 'duty';
+  /** The suites this reader may set up, with their questions and answers. */
+  youSetUp: ASuiteYouSetUp[];
+  /** Who a "person" question may name: the organisation's own people, by name only. */
+  people: { id: string; name: string }[];
+}
 
 export interface ForAnAdmin {
   reader: 'admin';
@@ -110,6 +133,9 @@ export const RULES_HISTORY_REFUSED = 'Only an admin can read how the suites’ r
 export interface ForALead {
   reader: 'lead';
   suites: { key: string; name: string; line: string }[];
+  /** Only for a lead who holds the HR or finance duty: the suites they may set up, as a member who holds it reads them. */
+  youSetUp?: ASuiteYouSetUp[];
+  people?: { id: string; name: string }[];
 }
 
 /**
@@ -125,7 +151,7 @@ export interface ForALead {
 export class SuitesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async forReader(reader: Reader): Promise<ForAnAdmin | ForALead> {
+  async forReader(reader: Reader): Promise<ForAnAdmin | ForALead | ForADutyHolder> {
     const role = await this.roleOf(reader);
     const rows = await this.rows(reader.organizationId);
     if (role === 'ADMIN') {
@@ -143,19 +169,54 @@ export class SuitesService {
         people: await this.people(reader.organizationId),
       };
     }
+    /* Whoever holds the HR or finance duty also reads the suites that duty sets up (decision 85). */
+    const mine = role && role !== 'GUEST' ? await this.suitesTheySetUp(reader, role) : new Set<string>();
+    const youSetUp = SUITES.filter((s) => mine.has(s.key)).map((s) => ({
+      key: s.key, name: s.name, line: s.line, on: rows.get(s.key)?.isOn ?? false, questions: s.questions, answers: (rows.get(s.key)?.answers as Answers) ?? {},
+    }));
     if (role === 'LEAD') {
       return {
         reader: 'lead',
         suites: SUITES.filter((s) => s.forLeads && rows.get(s.key)?.isOn).map((s) => ({ key: s.key, name: s.name, line: s.line })),
+        ...(youSetUp.length ? { youSetUp, people: await this.people(reader.organizationId) } : {}),
       };
     }
+    if (role === 'MEMBER' && youSetUp.length) return { reader: 'duty', youSetUp, people: await this.people(reader.organizationId) };
     throw new ForbiddenException(REFUSED.onlyAdminsAndLeads);
   }
 
-  /** An admin switches one suite on, with its answers, or off. Switching off keeps the answers. */
-  async switch(reader: Reader, key: string, input: { on?: unknown; answers?: unknown }): Promise<ForAnAdmin> {
-    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(REFUSED.onlyAnAdmin);
+  /**
+   * The suites this reader may set up: every suite for an admin; leave and reviews for whoever holds the
+   * HR duty; spending and time sheets for whoever holds the finance duty; none for anybody else.
+   */
+  async suitesTheySetUp(reader: Reader, role?: string | null): Promise<Set<string>> {
+    const r = role === undefined ? await this.roleOf(reader) : role;
+    if (r === 'ADMIN') return new Set(SUITES.map((s) => s.key));
+    if (!r || r === 'GUEST') return new Set();
+    const duties = await readDuties(this.prisma, reader.organizationId);
+    return new Set(Object.entries(THE_DUTY_THAT_SETS_UP).filter(([, duty]) => duties[duty] === reader.userId).map(([key]) => key));
+  }
+
+  /** Whether this reader may set up this suite. */
+  async maySetUp(reader: Reader, key: string): Promise<boolean> {
+    return (await this.suitesTheySetUp(reader)).has(key);
+  }
+
+  /** The refusal for somebody who may not set up this suite, naming who may. */
+  private refusalFor(key: string): string {
+    const duty = THE_DUTY_THAT_SETS_UP[key];
+    return duty === 'hr' ? REFUSED.onlyAnAdminOrHr : duty === 'finance' ? REFUSED.onlyAnAdminOrFinance : REFUSED.onlyAnAdmin;
+  }
+
+  /**
+   * An admin switches one suite on, with its answers, or off. Switching off keeps the answers. Whoever
+   * holds the HR duty may switch leave and reviews, and whoever holds the finance duty spending and time
+   * sheets (decision 85). The rules history keeps it as their change.
+   */
+  async switch(reader: Reader, key: string, input: { on?: unknown; answers?: unknown }): Promise<ForAnAdmin | ForALead | ForADutyHolder> {
     const suite = suiteOf(key);
+    const mine = await this.suitesTheySetUp(reader);
+    if (!mine.size || (suite && !mine.has(suite.key))) throw new ForbiddenException(this.refusalFor(key));
     if (!suite) throw new NotFoundException(REFUSED.noSuchSuite);
     const on = input.on === true;
     const where = { organizationId_suite: { organizationId: reader.organizationId, suite: suite.key } };
@@ -179,12 +240,15 @@ export class SuitesService {
       });
       await this.keepTheChange(reader, suite.key, before, { isOn: false, answers: before?.answers ?? {} });
     }
-    return (await this.forReader(reader)) as ForAnAdmin;
+    return this.forReader(reader);
   }
 
-  /** Who holds each duty, for the admin who sets them. Nobody else reads this page. */
+  /**
+   * Who holds each duty, for the admin who sets them, and for whoever holds the HR or finance duty, who
+   * reads it to set up their suites (decision 85). Only an admin sets it.
+   */
   async duties(reader: Reader): Promise<TheDuties> {
-    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(DUTIES_REFUSED.onlyAnAdmin);
+    if (!(await this.suitesTheySetUp(reader)).size) throw new ForbiddenException(DUTIES_REFUSED.onlyAnAdmin);
     const org = reader.organizationId;
     const [row, people, teams] = await Promise.all([
       this.prisma.organizationSuite.findUnique({ where: { organizationId_suite: { organizationId: org, suite: DUTIES_ROW } }, select: { answers: true } }),
@@ -239,16 +303,21 @@ export class SuitesService {
     return this.duties(reader);
   }
 
-  /** The approval steps of leave, time sheets and spending, for the admin who sets them. Nobody else reads this. */
+  /**
+   * The approval steps of leave, time sheets and spending, for whoever sets them: an admin reads all
+   * three; whoever holds the HR duty reads leave; whoever holds the finance duty reads time sheets and
+   * spending. Nobody else reads this.
+   */
   async workflows(reader: Reader): Promise<TheWorkflows> {
-    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(WORKFLOWS_REFUSED.onlyAnAdmin);
+    const mine = await this.suitesTheySetUp(reader);
+    if (!STEP_SUITES.some((k) => mine.has(k))) throw new ForbiddenException(WORKFLOWS_REFUSED.onlyAnAdmin);
     const rows = await this.rows(reader.organizationId);
     const kept = workflowsFrom(rows.get(WORKFLOWS_ROW)?.answers);
     const spend = (rows.get('spend')?.answers ?? {}) as Record<string, unknown>;
     const limit = typeof spend.limit === 'number' ? spend.limit : null;
     const above = typeof spend.above === 'string' ? spend.above : null;
     return {
-      suites: STEP_SUITES.map((key) => {
+      suites: STEP_SUITES.filter((key) => mine.has(key)).map((key) => {
         const workflow = kept[key];
         const steps = key === 'spend' ? theStepsFor('spend', { limit, above, workflow }, 0) : theStepsFor(key, { workflow });
         const stepsAbove = key === 'spend' && limit != null ? theStepsFor('spend', { limit, above, workflow }, limit + 1) : null;
@@ -268,7 +337,11 @@ export class SuitesService {
    * left out is kept.
    */
   async setWorkflows(reader: Reader, input: unknown): Promise<TheWorkflows> {
-    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(WORKFLOWS_REFUSED.onlyAnAdmin);
+    const mine = await this.suitesTheySetUp(reader);
+    if (!STEP_SUITES.some((k) => mine.has(k))) throw new ForbiddenException(WORKFLOWS_REFUSED.onlyAnAdmin);
+    /* Whoever holds a duty changes only the steps of the suites that duty sets up. */
+    const given = input && typeof input === 'object' ? Object.keys(input as object) : [];
+    if (given.some((k) => (STEP_SUITES as string[]).includes(k) && !mine.has(k))) throw new ForbiddenException(WORKFLOWS_REFUSED.notYourSuite);
     const org = reader.organizationId;
     const where = { organizationId_suite: { organizationId: org, suite: WORKFLOWS_ROW } };
     const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });
@@ -284,9 +357,9 @@ export class SuitesService {
     return this.workflows(reader);
   }
 
-  /** The leave rules, for the admin who sets them. Nobody else reads this. */
+  /** The leave rules, for whoever sets them: an admin, or whoever holds the HR duty. Nobody else reads this. */
   async leaveRules(reader: Reader): Promise<TheLeaveRules> {
-    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(LEAVE_RULES_REFUSED.onlyAnAdmin);
+    if (!(await this.maySetUp(reader, 'leave'))) throw new ForbiddenException(LEAVE_RULES_REFUSED.onlyAnAdmin);
     const rows = await this.rows(reader.organizationId);
     const rules = leaveRulesFrom(rows.get(LEAVE_RULES_ROW)?.answers);
     const leave = (rows.get('leave')?.answers ?? {}) as Record<string, unknown>;
@@ -300,7 +373,7 @@ export class SuitesService {
    * documents needed, and whether HR is told. A part given as null is cleared; one left out is kept.
    */
   async setLeaveRules(reader: Reader, input: unknown): Promise<TheLeaveRules> {
-    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(LEAVE_RULES_REFUSED.onlyAnAdmin);
+    if (!(await this.maySetUp(reader, 'leave'))) throw new ForbiddenException(LEAVE_RULES_REFUSED.onlyAnAdmin);
     const org = reader.organizationId;
     const where = { organizationId_suite: { organizationId: org, suite: LEAVE_RULES_ROW } };
     const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });
@@ -316,9 +389,9 @@ export class SuitesService {
     return this.leaveRules(reader);
   }
 
-  /** The spending rules, for the admin who sets them. Nobody else reads this. */
+  /** The spending rules, for whoever sets them: an admin, or whoever holds the finance duty. Nobody else reads this. */
   async spendRules(reader: Reader): Promise<TheSpendRules> {
-    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(SPEND_RULES_REFUSED.onlyAnAdmin);
+    if (!(await this.maySetUp(reader, 'spend'))) throw new ForbiddenException(SPEND_RULES_REFUSED.onlyAnAdmin);
     const rows = await this.rows(reader.organizationId);
     const rules = spendRulesFrom(rows.get(SPEND_RULES_ROW)?.answers);
     const spend = (rows.get('spend')?.answers ?? {}) as Record<string, unknown>;
@@ -330,7 +403,7 @@ export class SuitesService {
    * needed, and thresholds with their own steps. A part given as null is cleared; one left out is kept.
    */
   async setSpendRules(reader: Reader, input: unknown): Promise<TheSpendRules> {
-    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(SPEND_RULES_REFUSED.onlyAnAdmin);
+    if (!(await this.maySetUp(reader, 'spend'))) throw new ForbiddenException(SPEND_RULES_REFUSED.onlyAnAdmin);
     const org = reader.organizationId;
     const where = { organizationId_suite: { organizationId: org, suite: SPEND_RULES_ROW } };
     const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });
@@ -346,9 +419,9 @@ export class SuitesService {
     return this.spendRules(reader);
   }
 
-  /** The time sheet rules, for the admin who sets them. Nobody else reads this. */
+  /** The time sheet rules, for whoever sets them: an admin, or whoever holds the finance duty. Nobody else reads this. */
   async timeRules(reader: Reader): Promise<TheTimeRules> {
-    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(TIME_RULES_REFUSED.onlyAnAdmin);
+    if (!(await this.maySetUp(reader, 'time'))) throw new ForbiddenException(TIME_RULES_REFUSED.onlyAnAdmin);
     const rows = await this.rows(reader.organizationId);
     const rules = timeRulesFrom(rows.get(TIME_RULES_ROW)?.answers);
     const nameOf = new Map((await this.people(reader.organizationId)).map((p) => [p.id, p.name]));
@@ -365,7 +438,7 @@ export class SuitesService {
    * cleared; one left out is kept. Who approves stays with the approval steps.
    */
   async setTimeRules(reader: Reader, input: unknown): Promise<TheTimeRules> {
-    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(TIME_RULES_REFUSED.onlyAnAdmin);
+    if (!(await this.maySetUp(reader, 'time'))) throw new ForbiddenException(TIME_RULES_REFUSED.onlyAnAdmin);
     const org = reader.organizationId;
     const where = { organizationId_suite: { organizationId: org, suite: TIME_RULES_ROW } };
     const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });

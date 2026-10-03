@@ -23,8 +23,8 @@ import { stepsFrom, stepsSaid, MAX_STEPS } from './the-approval-steps';
  * rules without it.
  *
  * WHERE IT IS KEPT. In the existing `OrganizationSuite` table, one row for each organisation with the
- * key `spendRules`, beside `duties`, `workflows` and `leaveRules`. Only an admin sets it
- * (`SuitesService.setSpendRules`), and each change is kept in the rules history.
+ * key `spendRules`, beside `duties`, `workflows` and `leaveRules`. An admin or whoever holds the finance
+ * duty sets it (`SuitesService.setSpendRules`, decision 85), and each change is kept in the rules history.
  */
 export const SPEND_RULES_ROW = 'spendRules';
 
@@ -61,7 +61,7 @@ export const MAX_THRESHOLDS = 5;
 const MAX_AMOUNT = 1e12;
 
 export const SPEND_RULES_REFUSED = {
-  onlyAnAdmin: 'Only an admin can set the spending rules.',
+  onlyAnAdmin: 'Only an admin or whoever looks after finance can set the spending rules.',
   badCategories: `Give up to ${MAX_CATEGORIES} categories, each with a name of 2 to 40 letters.`,
   sameCategoryTwice: 'Two categories have the same name. Give each category its own name.',
   badEvidence: 'Say whether a receipt or a quote is needed, and above which amount, from 0 up.',

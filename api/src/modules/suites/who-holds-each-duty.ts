@@ -72,9 +72,9 @@ export function dutiesFrom(answers: unknown): Duties {
 
 /** The organisation's duties as kept. Nothing kept reads as nobody holding any duty. */
 export async function readDuties(prisma: PrismaService, organizationId: string): Promise<Duties> {
-  const row = await prisma.organizationSuite
-    .findUnique({ where: { organizationId_suite: { organizationId, suite: DUTIES_ROW } }, select: { answers: true } })
-    .catch(() => null);
+  const row = await (prisma as any).organizationSuite
+    ?.findUnique?.({ where: { organizationId_suite: { organizationId, suite: DUTIES_ROW } }, select: { answers: true } })
+    ?.catch?.(() => null);
   return dutiesFrom(row?.answers);
 }
 

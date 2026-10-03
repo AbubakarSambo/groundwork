@@ -30,7 +30,8 @@ import type { Step } from './who-may-decide';
  *
  * WHERE IT IS KEPT. In the existing `OrganizationSuite` table, one row for each organisation with the
  * key `leaveRules`, beside `duties` and `workflows`, so switching the leave suite on again keeps it.
- * Only an admin sets it (`SuitesService.setLeaveRules`), and each change is kept in the history.
+ * An admin or whoever holds the HR duty sets it (`SuitesService.setLeaveRules`, decision 85), and each
+ * change is kept in the history.
  *
  * THE KIND OF LEAVE is read by whoever decides it, an admin, a lead of the team, and HR when told,
  * as decision 85 says ("Sarah, Annual Leave"). It never reaches the engine: who-is-away.ts still gives
@@ -76,7 +77,7 @@ export const MAX_LEAVE_THRESHOLDS = 5;
 export const MAX_BLACKOUTS = 20;
 
 export const LEAVE_RULES_REFUSED = {
-  onlyAnAdmin: 'Only an admin can set the leave rules.',
+  onlyAnAdmin: 'Only an admin or whoever looks after HR can set the leave rules.',
   badKinds: `Give up to ${MAX_KINDS} kinds of leave, each with a name of 2 to 40 letters and a number of days a year from 0 to 365, or none.`,
   sameKindTwice: 'Two kinds of leave have the same name. Give each kind its own name.',
   badDocument: 'Say which document is needed, in up to 60 letters, and after how many working days, from 0 to 60.',

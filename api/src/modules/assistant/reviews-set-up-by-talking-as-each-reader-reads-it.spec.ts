@@ -58,7 +58,8 @@ describe('somebody who is not an admin asks to set up performance reviews', () =
   it.each([['Wairimu, a lead', 'u-wairimu'], ['Miriam, a member', 'u-miriam']])('%s is told plainly that an admin sets it up, and nothing is changed', async (_who, userId) => {
     const o = anOrganisationToSetUp();
     expect(await o.says(userId, 'Set up performance reviews')).toBe(
-      'Only an admin can set up how performance reviews work in your organisation, so I have not changed anything. If you would like it set up or changed, you could ask Grace, who is an admin here.',
+      /* Decision 85: an admin or whoever looks after HR sets this up, and nobody is named for HR here. */
+      'Only an admin or whoever looks after HR can set up how performance reviews work in your organisation, so I have not changed anything. If you would like it set up or changed, you could ask Grace, who is an admin here.',
     );
     expect(o.proposals).toEqual([]);
     expect(o.writes).toEqual([]);

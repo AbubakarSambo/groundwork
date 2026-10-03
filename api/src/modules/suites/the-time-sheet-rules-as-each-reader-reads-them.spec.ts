@@ -146,8 +146,16 @@ describe('Grace, the admin, sets the rules and reads them back in full sentences
   });
 });
 
-describe('nobody but an admin reads or sets the time sheet rules', () => {
-  for (const u of ['u-wairimu', 'u-aisha', 'u-omar', 'u-tomas']) {
+/* Decision 85: whoever holds the finance duty sets up time sheets, so Omar may now read and set them. */
+describe('Omar, who looks after finance, reads and sets the time sheet rules', () => {
+  it('reads them and sets them', async () => {
+    const o = aTimeSheetsOrganisation({ rules: RULES });
+    expect((await o.suites.setTimeRules(o.as('u-omar'), { hoursAWeek: 10 })).rules.hoursAWeek).toBe(10);
+  });
+});
+
+describe('nobody but an admin or whoever looks after finance reads or sets the time sheet rules', () => {
+  for (const u of ['u-wairimu', 'u-aisha', 'u-tomas']) {
     it(u.slice(2), async () => {
       const o = aTimeSheetsOrganisation({ rules: RULES });
       await expect(o.suites.timeRules(o.as(u))).rejects.toThrow(new ForbiddenException(TIME_RULES_REFUSED.onlyAnAdmin));

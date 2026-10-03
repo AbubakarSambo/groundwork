@@ -14,7 +14,8 @@ import type { ARule, Rule, Step, WhoDecides } from './who-may-decide';
  *
  * WHERE IT IS KEPT. In the existing `OrganizationSuite` table, one row for each organisation with the
  * key `workflows`, beside the `duties` row, so switching a suite on again (which keeps only the
- * suite's own answers) never loses it. Only an admin sets it (`SuitesService.setWorkflows`).
+ * suite's own answers) never loses it. An admin sets it for every suite; whoever holds the HR duty for
+ * leave, and whoever holds the finance duty for time sheets and spending (`SuitesService.setWorkflows`).
  *
  * NOTHING CHANGES BY ITSELF. With nothing kept, every suite has the one step it had before (the
  * manager, else an admin; for spending above the limit, the budget holder, then finance, then the
@@ -45,7 +46,9 @@ export const MAX_DAYS = 30;
 
 /** The refusals, in plain full sentences. */
 export const WORKFLOWS_REFUSED = {
-  onlyAnAdmin: 'Only an admin can set the approval steps.',
+  onlyAnAdmin: 'Only an admin, or whoever looks after HR or finance, can set the approval steps.',
+  /** A duty holder setting steps for a suite that is not theirs. */
+  notYourSuite: 'Whoever looks after HR sets the approval steps for leave, and whoever looks after finance sets them for time sheets and spending. An admin sets them all.',
   badSteps: `Give between one and ${MAX_STEPS} steps, each a list of who decides, chosen from the person's manager, the head of their team, whoever holds their team's budget, finance, HR, the chief executive and an admin.`,
   badDays: `Give the number of working days as a whole number from 1 to ${MAX_DAYS}, or nothing to never pass a request on.`,
   notForThisSuite: 'Only spending has separate steps above the limit.',

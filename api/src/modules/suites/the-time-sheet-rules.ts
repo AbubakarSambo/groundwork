@@ -23,8 +23,9 @@ import { hoursAsRead } from './hours-said-in-chat';
  * cut-off, every hour is billable, and every reader reads exactly what they read before.
  *
  * WHERE IT IS KEPT. In the existing `OrganizationSuite` table, one row for each organisation with the
- * key `timeRules`, beside `duties`, `workflows`, `leaveRules` and `spendRules`. Only an admin sets it
- * (`SuitesService.setTimeRules`), and each change is kept in the rules history.
+ * key `timeRules`, beside `duties`, `workflows`, `leaveRules` and `spendRules`. An admin or whoever
+ * holds the finance duty sets it (`SuitesService.setTimeRules`, decision 85), and each change is kept
+ * in the rules history.
  */
 export const TIME_RULES_ROW = 'timeRules';
 
@@ -48,7 +49,7 @@ export const MAX_HOURS_A_WEEK = 80;
 const MAX_SUBMITTERS = 200;
 
 export const TIME_RULES_REFUSED = {
-  onlyAnAdmin: 'Only an admin can set the time sheet rules.',
+  onlyAnAdmin: 'Only an admin or whoever looks after finance can set the time sheet rules.',
   badEvery: 'Say whether hours are sent each week or each month.',
   badHours: `Give the hours asked of each person a week as a number from 1 to ${MAX_HOURS_A_WEEK}.`,
   badCutOff: 'Give the cut-off as a day and a time such as 17:00. For hours sent each week the day is a weekday, such as Friday. For hours sent each month it is a day of the month from 1 to 28, or the last day.',

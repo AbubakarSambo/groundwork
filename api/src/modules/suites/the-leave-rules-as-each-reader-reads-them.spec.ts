@@ -214,9 +214,16 @@ describe('Grace, an admin, sets the leave rules and reads them back in full sent
     await expect(suites.setLeaveRules(as('u-grace'), { tellHr: 'sometimes' })).rejects.toThrow(new BadRequestException(LEAVE_RULES_REFUSED.badTellHr));
   });
 
-  it('Wairimu, a lead, Joy, who looks after HR, and Aisha may neither read nor set them', async () => {
+  /* Decision 85: whoever holds the HR duty sets up leave, so Joy may now read and set them. */
+  it('Joy, who looks after HR, may read and set them, and the history keeps it as her change', async () => {
     const { suites, as } = setup();
-    for (const u of ['u-wairimu', 'u-joy', 'u-aisha']) {
+    expect((await suites.setLeaveRules(as('u-joy'), { noticeDays: 14 })).said).toContain('Leave needs two weeks’ notice.');
+    expect((await suites.rulesHistory(as('u-grace'))).changes[0].said).toBe('Joy changed the leave rules on 5 October.');
+  });
+
+  it('Wairimu, a lead, and Aisha may neither read nor set them', async () => {
+    const { suites, as } = setup();
+    for (const u of ['u-wairimu', 'u-aisha']) {
       await expect(suites.leaveRules(as(u))).rejects.toThrow(new ForbiddenException(LEAVE_RULES_REFUSED.onlyAnAdmin));
       await expect(suites.setLeaveRules(as(u), RULES)).rejects.toThrow(new ForbiddenException(LEAVE_RULES_REFUSED.onlyAnAdmin));
     }

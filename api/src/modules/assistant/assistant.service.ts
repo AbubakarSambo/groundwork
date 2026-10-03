@@ -29,12 +29,13 @@ import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { LEAVE_NOT_SENT, LEAVE_NOTHING_WAITING, LEAVE_WHICH_DAYS, plainlyAsksForLeave, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
-import { SuitesService, type ForAnAdmin } from '../suites/suites.service';
+import { SuitesService } from '../suites/suites.service';
+import { readDuties } from '../suites/who-holds-each-duty';
 import type { Duties } from '../suites/who-holds-each-duty';
 import type { Weekday } from '../suites/the-time-sheet-rules';
 import {
   SUITE_SETUP_KIND, SUITE_SETUP_CONFIRM_KIND, STOP as STOP_SETTING_UP, asksToSetUpASuite, startPlan, nextQuestion, takeAnswer, takeAChange,
-  theFirstQuestionSaid, theSayBack, theSetUpSaid, whatToWrite, planFromStored, onlyAnAdminSetsThisUp,
+  theFirstQuestionSaid, theSayBack, theSetUpSaid, whatToWrite, planFromStored, onlyAnAdminSetsThisUp, THE_DUTY_FOR,
   SET_UP_DONE, SET_UP_NOT_DONE, SET_UP_STOPPED, SET_UP_CHANGE_NOT_READ, SUITE_IN_WORDS,
   type Plan as ASetUpPlan, type SetUpSuite, type WhatIsKnown as WhatIsKnownToSetUp,
 } from './a-suite-set-up-by-talking';
@@ -429,7 +430,7 @@ export class AssistantService {
         return this.thinkItThrough(organizationId, personId, userId ?? null, message, routed.subject);
       case 'set_up_a_suite':
         /* Reached only by somebody with no entry of their own here, such as a guest: never an admin of this organisation. */
-        return rules('set_up_a_suite', text(onlyAnAdminSetsThisUp(asksToSetUpASuite(message) ?? 'leave', await this.adminsByFirstName(organizationId))));
+        return rules('set_up_a_suite', text(await this.whoSetsThisUp(organizationId, asksToSetUpASuite(message) ?? 'leave')));
       case 'what_you_can_see':
         return this.compose(await this.whatICanSee(organizationId));
       case 'what_am_i_on':
@@ -1705,13 +1706,15 @@ export class AssistantService {
   // ------------------------------------ a suite set up by talking ------------------------------------
 
   /**
-   * DECISION 85: "Set up our employee leave process". Only an admin may: the server says so again on the
-   * yes, because every write goes through SuitesService, which refuses anybody else. Anybody else is
-   * told plainly who sets it up, and nothing is parked or changed.
+   * DECISION 85: "Set up our employee leave process". An admin may set up every suite; whoever holds the
+   * HR duty may set up leave and reviews, and whoever holds the finance duty spending and time sheets
+   * ("The company/admin/HR/finance lead sets up the rules once"). The server says so again on the yes,
+   * because every write goes through SuitesService, which refuses anybody else. Anybody else is told
+   * plainly who sets it up, and nothing is parked or changed.
    */
   private async setUpASuite(organizationId: string, who: string, userId: string | null, suite: SetUpSuite, message: string): Promise<Reply> {
-    if (!userId || !(await this.isAnAdminHere(organizationId, userId))) {
-      return rules('set_up_a_suite', text(onlyAnAdminSetsThisUp(suite, await this.adminsByFirstName(organizationId))));
+    if (!userId || !(await this.maySetUpHere(organizationId, userId, suite))) {
+      return rules('set_up_a_suite', text(await this.whoSetsThisUp(organizationId, suite)));
     }
     if (!this.suites) return rules('set_up_a_suite', text(`I cannot set up ${SUITE_IN_WORDS[suite]} from here yet. You can set them up on the Suites page.`));
     const known = await this.whatIsKnownToSetUp({ userId, organizationId }, suite);
@@ -1748,9 +1751,9 @@ export class AssistantService {
       return rules('set_up_a_suite', text(SET_UP_STOPPED(plan.suite)));
     }
     const userId = await this.signedInAs(organizationId, who);
-    if (!userId || !this.suites || !(await this.isAnAdminHere(organizationId, userId))) {
+    if (!userId || !this.suites || !(await this.maySetUpHere(organizationId, userId, plan.suite))) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
-      return rules('set_up_a_suite', text(onlyAnAdminSetsThisUp(plan.suite, await this.adminsByFirstName(organizationId))));
+      return rules('set_up_a_suite', text(await this.whoSetsThisUp(organizationId, plan.suite)));
     }
     const known = await this.whatIsKnownToSetUp({ userId, organizationId }, plan.suite);
     const read = takeAnswer(plan, plan.asking ?? '', typed, known);
@@ -1771,9 +1774,9 @@ export class AssistantService {
       return rules('set_up_a_suite', text(SET_UP_NOT_DONE(plan.suite)));
     }
     const userId = await this.signedInAs(organizationId, who);
-    if (!userId || !this.suites || !(await this.isAnAdminHere(organizationId, userId))) {
+    if (!userId || !this.suites || !(await this.maySetUpHere(organizationId, userId, plan.suite))) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
-      return rules('set_up_a_suite', text(onlyAnAdminSetsThisUp(plan.suite, await this.adminsByFirstName(organizationId))));
+      return rules('set_up_a_suite', text(await this.whoSetsThisUp(organizationId, plan.suite)));
     }
     if (decision === 'accept') return this.writeTheSetUp(organizationId, userId, parked, plan);
     const known = await this.whatIsKnownToSetUp({ userId, organizationId }, plan.suite);
@@ -1814,7 +1817,7 @@ export class AssistantService {
       if (w.timeRules) await suites.setTimeRules(reader, w.timeRules);
     } catch (e: any) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
-      if (e?.status === 403) return rules('set_up_a_suite', text(onlyAnAdminSetsThisUp(plan.suite, await this.adminsByFirstName(organizationId))));
+      if (e?.status === 403) return rules('set_up_a_suite', text(await this.whoSetsThisUp(organizationId, plan.suite)));
       this.logger.warn(`A suite set up by talking stopped part way: ${e?.message ?? e}`);
       return rules('set_up_a_suite', text(`I could not finish setting up ${SUITE_IN_WORDS[plan.suite]}. Some of it may already be set, so please look at the Suites page to see what is set now.`));
     }
@@ -1840,12 +1843,12 @@ export class AssistantService {
     return theSetUpSaid(plan, known);
   }
 
-  /** The organisation as the admin setting a suite up may read it, through SuitesService. */
+  /** The organisation as the person setting a suite up may read it, through SuitesService. */
   private async whatIsKnownToSetUp(reader: { userId: string; organizationId: string }, suite: SetUpSuite): Promise<WhatIsKnownToSetUp> {
     const suites = this.suites!;
     const [duties, page, directory] = await Promise.all([
       suites.duties(reader),
-      suites.forReader(reader) as Promise<ForAnAdmin>,
+      suites.forReader(reader),
       this.prisma.person.findMany({ where: { organizationId: reader.organizationId, active: true }, select: { linkedUserId: true, department: true } }).catch(() => [] as { linkedUserId: string | null; department: string | null }[]),
     ]);
     const teamOf = new Map(directory.filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p.department?.trim() || null]));
@@ -1855,7 +1858,10 @@ export class AssistantService {
       if (t.budgetOwner) d.budgetOwners = { ...(d.budgetOwners ?? {}), [t.team]: t.budgetOwner.id };
       if (t.head) d.departmentHeads = { ...(d.departmentHeads ?? {}), [t.team]: t.head.id };
     }
-    const row = (page.groups ?? []).flatMap((g) => g.suites).find((x) => x.key === suite);
+    /* An admin reads every suite; whoever holds the HR or finance duty reads the suites that duty sets up. */
+    const row = 'groups' in page
+      ? (page.groups ?? []).flatMap((g) => g.suites).find((x) => x.key === suite)
+      : (page.youSetUp ?? []).find((x) => x.key === suite);
     return {
       people: duties.people.map((p) => ({ ...p, team: teamOf.get(p.id) ?? null })),
       teams: duties.teams.map((t) => t.team),
@@ -1863,7 +1869,24 @@ export class AssistantService {
       me: reader.userId,
       answers: (row?.answers ?? {}) as Record<string, unknown>,
       on: !!row?.on,
+      /* Only an admin names who holds a job. */
+      mayNameJobs: page.reader === 'admin',
     };
+  }
+
+  /** Whether this person may set up this suite: an admin, or whoever holds the duty that sets it up (SuitesService decides). */
+  private async maySetUpHere(organizationId: string, userId: string, suite: SetUpSuite): Promise<boolean> {
+    if (!this.suites) return this.isAnAdminHere(organizationId, userId);
+    return this.suites.maySetUp({ userId, organizationId }, suite).catch(() => false);
+  }
+
+  /** "Only an admin or Joy, who looks after HR, can set up how leave requests work ...", with who to ask. */
+  private async whoSetsThisUp(organizationId: string, suite: SetUpSuite): Promise<string> {
+    const holderId = (await readDuties(this.prisma, organizationId).catch((): Duties => ({})))[THE_DUTY_FOR[suite]];
+    const holder = holderId
+      ? ((await (this.prisma as any).user?.findMany?.({ where: { id: { in: [holderId] } }, select: { firstName: true } }).catch(() => [])) ?? [])[0]?.firstName?.trim() || null
+      : null;
+    return onlyAnAdminSetsThisUp(suite, await this.adminsByFirstName(organizationId), holder);
   }
 
   private async isAnAdminHere(organizationId: string, userId: string): Promise<boolean> {
