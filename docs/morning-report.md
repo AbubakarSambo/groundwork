@@ -268,7 +268,9 @@ Not checked by the run: the admin's view, because the run keeps only the lead's 
 - Those who look after HR or finance may now read who holds each job, because their setup needs it. Right?
 - A member who looks after HR or finance now gets a Suites page of their own; the screens workspace needs to draw it.
 
-Being fixed now: the setup say-back names the reader ("Grace, who looks after HR, sees…" said to Grace) where it should say "you".
+**Fixed** (`ab7d1f7f`, `4f7a072d`; 1,620 tests pass): the setup say-back now says "You look after HR, so you see every leave request on the leave board…" to Grace, and "it goes to you to approve as well" where a step comes to the reader; others are still named. The odd question "after the head of the team, for example the head of the person's team?" now gives a job that does not already approve it ("for example HR?").
+
+Now running as well: what the other kinds of work's boards still need from the engine (item 21: founder, engineering, support desk, distribution, training programme, government programme, asset loans, law firm matter, "where next", MarketView Q4).
 
 Now running: "proof asked for": whether a change caused the drop or the model varies, with repeated runs. If it does not come back, it goes to Hafsah. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 

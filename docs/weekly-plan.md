@@ -60,11 +60,11 @@ From now on, every change to what the board, reports or Today page send is writt
 
 **d2. The suites as one request and workflow layer (decision 85, 3 October)**
 - Compare leave, spending and payments, timesheets and performance reviews with the seven layers, suite by suite, and list what exists, what is partly there and what is missing. *Done* (`54f4d4a1`, `docs/suites-against-the-workflow-model.md`): no leaks; two bugs and a 14-step build list.
-- Then build the missing parts in this order: approvers by rule and escalation; who sees what by record, field and action, with an audit record; leave's manager view (balance, who else is away, what the person owns in those days); spending thresholds, finance verifying, exporting and marking paid; timesheets drafted from the record; the review as the record interpreted, with the person correcting it; and the conversational setup. *Not started.*
+- Then build the missing parts in this order: approvers by rule and escalation; who sees what by record, field and action, with an audit record; leave's manager view (balance, who else is away, what the person owns in those days); spending thresholds, finance verifying, exporting and marking paid; timesheets drafted from the record; the review as the record interpreted, with the person correcting it; and the conversational setup. *Done* (steps 2 to 5 and 7 to 14; step 6, one who-sees-what table in code, waits for Hafsah's answers on the privacy list).
 - Decision 86 settled the counts and patterns; the payment-system connection is dropped. Calendar connections still wait.
 
 **h. Then everything else**
-21. The other seven boards, and the rest of the earlier list. *Not started.*
+21. The other seven boards, and the rest of the earlier list. *In progress* (the boards' engine faults, kind by kind).
 22. The back office rebuild, last. *Not started.*
 
 Already done for this release: the WhatsApp survey (`docs/whatsapp-end-to-end.md`), WhatsApp billing (decision 78), the WhatsApp status page, the company-wide picture and its live check (decisions 79 and 80), and the one-month free trial.
