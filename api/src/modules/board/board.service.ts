@@ -130,6 +130,7 @@ import { theFirstNameFrom, theShortNameOf } from '../reports/a-title-is-not-a-fi
 import { aWaitInTheirOwnWords } from './a-holder-in-their-own-words';
 import { yourOwnRowsSayYou } from './your-own-read-says-you';
 import { theRoomAsThisReaderReadsIt } from './the-room-as-each-reader-reads-it';
+import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-their-own';
 import { theRoomWithoutOneOfTheOthers } from './the-room-without-one-of-the-others';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
@@ -543,7 +544,8 @@ export class BoardService {
      * the reader's own "you" in - and a board with the names but not the rest is worse than a board
      * with neither. See `ReportsService.theReportAsItWasShared`.
      */
-    (ground as any).report = this.reports.theReportAsItWasShared(
+    (ground as any).report = askTheReportsDoor(
+      this.reports,
       ground as any,
       me?.id ?? null,
       runsThisGround,

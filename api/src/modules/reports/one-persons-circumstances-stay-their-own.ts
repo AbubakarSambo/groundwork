@@ -129,12 +129,6 @@ function named(sentence: string, names: string[]): boolean {
   return names.some((n) => n && n.length > 1 && new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(sentence));
 }
 
-/* When the served report does not say who the lead is, a sentence that opens with a full name (all the others' names
-   are already out of it), or with the stand-in for an unnamed person, is the lead's: the only one named to everybody. */
-function startsWithAPersonsName(sentence: string): boolean {
-  return /^(?:[A-Z][\p{L}'’-]+(?:\s+[A-Z][\p{L}'’-]+)+|Somebody in this check-in)\b/u.test(sentence.trim());
-}
-
 type TheKinds = { others: TheOthers; lead: string[]; ownVoice: boolean };
 
 /** Which of the three a sentence is, if any. */
@@ -145,7 +139,7 @@ function whatItIsAbout(sentence: string, k: TheKinds): 'reader' | 'several' | 'p
   /* The lead is named to everybody, so what the lead says or does stays, as it always has, except their doubt about, or
      view of, the people in it, which a participant never reads (run-26: "Amaka wants to understand if there is an issue
      with the selection process for loan qualification"). */
-  if (named(s, k.lead) || (!k.lead.length && startsWithAPersonsName(s))) return THE_LEADS_DOUBT_OR_VIEW.test(s) ? null : 'purpose';
+  if (named(s, k.lead)) return THE_LEADS_DOUBT_OR_VIEW.test(s) ? null : 'purpose';
   if (THE_READER.test(s) || (k.ownVoice && THE_READER_IN_THEIR_OWN_VOICE.test(s))) return 'reader';
   if (SEVERAL_PEOPLE.test(s)) return 'several';
   if (THE_SHARED_PURPOSE.test(s)) return 'purpose';
@@ -196,6 +190,48 @@ const NOT_A_CIRCUMSTANCE = /^(?:who|participantLabel|label|whoSeesIt|markSays|kn
 
 const LIST = Symbol('a list the wall kept');
 
+/**
+ * THE LEAD'S NAMES, ALWAYS PASSED (run-26 review). The wall cannot keep the lead's aim without knowing who the lead
+ * is, and it must never guess from how a sentence begins (two capitalised words were read as the lead's, so "Mr
+ * Danjuma's machine never arrived." and "Kaduna Grinding Works never delivered the machine." were kept for Sunday).
+ * Every caller that asks the report's door for text hands the lead's names in on the report, under this key, with
+ * `askTheReportsDoor`; the wall reads them and takes the key out, so it is never served.
+ */
+export const THE_LEADS_NAMES = 'theLeadsNames';
+
+/** The lead's full and given names, from the check-in's own people. */
+export function theLeadsNamesOf(participants: any[] | null | undefined, leadUserId: string | null | undefined): string[] {
+  const out = new Set<string>();
+  for (const p of participants ?? []) {
+    if (!p || !(p.partyType === 'INITIATOR' || (!!leadUserId && p.userId === leadUserId))) continue;
+    const first = (p.user?.firstName ?? '').trim();
+    const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim();
+    if (full) out.add(full);
+    if (first.length > 2) out.add(first);
+  }
+  return [...out];
+}
+
+/**
+ * THE ONE WAY TO ASK THE REPORT'S DOOR FOR TEXT, from the grounds page, the board and the blocker trace: the lead's
+ * names and the people go in with every ask, and the key that carries them is taken back out of what is served.
+ */
+export function askTheReportsDoor(
+  reports: { theReportAsItWasShared: (ground: any, viewerParticipantId: string | null, viewerIsLead: boolean) => any },
+  ground: { initiatorId?: string | null; participants?: any[] | null; report?: any } & Record<string, any>,
+  viewerParticipantId: string | null,
+  viewerIsLead: boolean,
+): any {
+  const leads = theLeadsNamesOf(ground.participants, ground.initiatorId);
+  const shared = reports.theReportAsItWasShared(
+    { ...ground, participants: ground.participants ?? [], report: ground.report ? { ...ground.report, [THE_LEADS_NAMES]: leads } : ground.report },
+    viewerParticipantId,
+    viewerIsLead,
+  );
+  if (shared && typeof shared === 'object' && THE_LEADS_NAMES in shared) { const { [THE_LEADS_NAMES]: _gone, ...rest } = shared; return rest; }
+  return shared;
+}
+
 /** Peeled off the served report, when the caller did not say who the lead is. */
 function theLeadFromTheServed(served: any, others: TheOthers): string[] {
   const find = (v: any, depth: number): any[] => {
@@ -222,7 +258,8 @@ function theLeadFromTheServed(served: any, others: TheOthers): string[] {
  * loses the same places. A line of the picture is kept exactly when the picture keeps its sentence.
  */
 export function onlyWhatTheReaderMayKnowOfTheOthers<T>(served: T, others: TheOthers): T {
-  const lead = others.lead ?? theLeadFromTheServed(served, others);
+  const passed = Array.isArray((served as any)?.[THE_LEADS_NAMES]) ? ((served as any)[THE_LEADS_NAMES] as any[]).filter((x) => typeof x === 'string' && x.trim()) : [];
+  const lead = others.lead?.length ? others.lead : passed.length ? passed : theLeadFromTheServed(served, others);
   const base: TheKinds = { others, lead, ownVoice: false };
   const norm = (x: string) => x.replace(/^[;:,\s]+/, '').replace(/\s+/g, ' ').trim();
   const isAList = (r: any): r is { keptAt: number[]; list: any[] } => !!r && typeof r === 'object' && (r as any)[LIST] === true;
@@ -265,6 +302,7 @@ export function onlyWhatTheReaderMayKnowOfTheOthers<T>(served: T, others: TheOth
     if (!v || typeof v !== 'object' || v instanceof Date) return v;
     const out: any = {};
     for (const [kk, x] of Object.entries(v)) {
+      if (kk === THE_LEADS_NAMES) continue;
       if (THE_PICTURE_AND_ITS_LISTS.has(kk)) {
         const r = walk(x, kk, kk === 'postReportGuide' ? { ...base, ownVoice: true } : base);
         out[kk] = isAList(r) ? r.list : r;

@@ -261,3 +261,68 @@ describe('run-26: bare sentences about one borrower, as each reader reads them',
     expect(JSON.stringify(after)).not.toMatch(ONE_OF_THEM_26);
   });
 });
+
+/**
+ * RUN-26 REVIEW: THE LEAD'S DOUBT REACHED A BORROWER ON THE CHECK-IN PAGE. `GET /grounds/:id` and the list asked the report's
+ * door with only the shared picture, so the wall did not know who the lead was and guessed from the way a sentence began:
+ * two capitalised words were read as the lead's. Read here through the grounds service's own call, as Sunday and as Amaka.
+ */
+describe('run-26 review: the check-in page asks the door with the people and the lead\'s names', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { GroundsService } = require('../grounds/grounds.service');
+  const PAGE = [
+    'All nine people have answered.',
+    'You expected the grinding machine to help you start a business.',
+    'Amaka wants to understand if there is an issue with the selection process for loan qualification.',
+    'Amaka wants every borrower to be earning by the fourth month.',
+    'Mr Danjuma\'s machine never arrived.',
+    'Kaduna Grinding Works never delivered the machine.',
+    'Emeka Okafor logged eleven calls about the machine.',
+    'Emeka Okafor placed eleven calls to Musa about the machine.',
+    'Most borrowers started repaying before their asset was earning.',
+  ].join('\n\n');
+  const asServedBy = (viewer: string | null, runsIt: boolean, over: any = {}) => {
+    const service = Object.create(GroundsService.prototype) as any;
+    service.logger = { warn: () => undefined };
+    service.moduleRef = { get: () => door() };
+    const g = ground(over);
+    return service.reportTextAsItWasShared({ scenario: g.scenario, peersVisibleToEachOther: g.peersVisibleToEachOther, initiatorId: 'u-amaka', participants }, { sharedPicture: PAGE, theOpening: PAGE }, null, viewer, runsIt);
+  };
+
+  it('Sunday does not read the lead\'s doubt, a stranger\'s name, a company\'s name or a field officer\'s calls, and keeps the lead\'s aim', () => {
+    const r = asServedBy('p-sunday', false);
+    for (const text of [r.sharedPicture, r.theOpening]) {
+      expect(text).not.toMatch(/selection process|Danjuma|Kaduna|Emeka|eleven calls/);
+      expect(text).toContain('Amaka wants every borrower to be earning by the fourth month.');
+      expect(text).toContain('All nine people have answered.');
+      expect(text).toContain('You expected the grinding machine');
+      expect(text).toContain('Most borrowers started repaying before their asset was earning.');
+    }
+  });
+
+  it('Amaka reads all of it, and where people see each other Sunday does too', () => {
+    expect(asServedBy('p-amaka', true).sharedPicture).toMatch(/selection process[\s\S]*Danjuma[\s\S]*Kaduna[\s\S]*Emeka/);
+    expect(asServedBy('p-sunday', false, { peersVisibleToEachOther: true }).sharedPicture).toMatch(/selection process[\s\S]*Kaduna/);
+  });
+
+  it('the wall alone, given the lead\'s names and no guess, drops the sentences that merely begin with two capital letters', () => {
+    const served = { sharedPicture: PAGE, theLeadsNames: ['Amaka Nwachukwu', 'Amaka'] };
+    const after: any = onlyCountsAndPatternsAboutTheOthers(served, { names: NAMES.slice(1) });
+    expect(after.sharedPicture).not.toMatch(/Danjuma|Kaduna|Emeka|selection process/);
+    expect(after.theLeadsNames).toBeUndefined();
+  });
+});
+
+(session26 ? describe : describe.skip)('run-26 review: the saved run\'s own picture, asked for by the check-in page', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { GroundsService } = require('../grounds/grounds.service');
+  it('Sunday no longer reads "Amaka wants to understand if there is an issue with the selection process"', () => {
+    const picture: string = session26.participantReport.sharedPicture;
+    expect(picture).toMatch(/Amaka wants to understand if there is an issue with the selection process/);
+    const service = Object.create(GroundsService.prototype) as any;
+    service.logger = { warn: () => undefined };
+    service.moduleRef = { get: () => door() };
+    const r = service.reportTextAsItWasShared({ scenario: 'COHORT_CHECK', peersVisibleToEachOther: null, initiatorId: 'u-amaka', participants }, { sharedPicture: picture }, null, 'p-sunday', false);
+    expect(r.sharedPicture).not.toMatch(/selection process/);
+  });
+});

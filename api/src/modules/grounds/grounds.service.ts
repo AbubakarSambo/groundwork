@@ -8,6 +8,7 @@ import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-g
 import { theColleaguePickedById, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, type APatternReader, type AServedPattern } from '../patterns/who-reads-a-pattern';
+import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-their-own';
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words';
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
@@ -476,7 +477,7 @@ export class GroundsService {
    * served at all, rather than the stored labels.
    */
   private reportTextAsItWasShared<T extends Record<string, string | null | undefined>>(
-    ground: { scenario?: any; peersVisibleToEachOther?: boolean | null; participants?: any[] },
+    ground: { scenario?: any; peersVisibleToEachOther?: boolean | null; initiatorId?: string | null; participants?: any[] },
     text: T,
     sharedAs: string | null | undefined,
     viewerParticipantId: string | null,
@@ -488,8 +489,10 @@ export class GroundsService {
       const { ReportsService } = require('../reports/reports.service');
       const reports = this.moduleRef?.get(ReportsService, { strict: false });
       if (!reports?.theReportAsItWasShared) return nothing;
-      const shared = reports.theReportAsItWasShared(
-        { scenario: ground.scenario, peersVisibleToEachOther: ground.peersVisibleToEachOther, participants: ground.participants ?? [], report: { ...text, sharedAs: sharedAs ?? null } },
+      /* The people and the lead's names go in with every ask, so the wall in one-persons-circumstances-stay-their-own knows who the lead is. */
+      const shared = askTheReportsDoor(
+        reports,
+        { scenario: ground.scenario, peersVisibleToEachOther: ground.peersVisibleToEachOther, initiatorId: ground.initiatorId ?? null, participants: ground.participants ?? [], report: { ...text, sharedAs: sharedAs ?? null } },
         viewerParticipantId,
         viewerRunsIt,
       );
@@ -1617,7 +1620,7 @@ export class GroundsService {
           ...(() => {
             if (!mayReadTheReport || (!latestFinding && !latestSummary)) return { latestFinding: null, latestSummary: null };
             const me = ((allParticipants ?? []) as any[]).find(isMe);
-            const named = this.reportTextAsItWasShared(rest as any, { latestFinding, latestSummary }, fullReport?.sharedAs, me?.id ?? null, runsIt);
+            const named = this.reportTextAsItWasShared({ ...(rest as any), participants: allParticipants, initiatorId: (rest as any).initiatorId ?? g.initiatorId ?? null }, { latestFinding, latestSummary }, fullReport?.sharedAs, me?.id ?? null, runsIt);
             return { latestFinding: named.latestFinding, latestSummary: named.latestSummary };
           })(),
           hasBoard,

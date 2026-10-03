@@ -6,6 +6,7 @@ import { theTraceForThisReader, whichTeamItIsWaitingOn, type ACheckInTheReaderMa
 import { theDayInWords } from '../board/the-headline-and-where-each-target-stands';
 import { labelsForParties } from './party-labels';
 import { peersAreNamedOn } from './peers-are-named';
+import { askTheReportsDoor } from './one-persons-circumstances-stay-their-own';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn, youTakesItsVerb } from './no-internal-label-reaches-anyone';
 
 export interface AStepAsRead {
@@ -147,8 +148,9 @@ export class TheBlockerTraceService {
   ): T {
     const me = g.participants.find((p) => p.userId === reader.userId) ?? null;
     const viewerIsLead = (!!g.initiatorId && g.initiatorId === reader.userId) || reader.role === 'ADMIN';
-    const shared = this.reports.theReportAsItWasShared(
-      { scenario: g.scenario, peersVisibleToEachOther: g.peersVisibleToEachOther, participants: g.participants, report: { ...text, sharedAs: g.report?.sharedAs ?? null } },
+    const shared = askTheReportsDoor(
+      this.reports,
+      { scenario: g.scenario, peersVisibleToEachOther: g.peersVisibleToEachOther, initiatorId: g.initiatorId, participants: g.participants, report: { ...text, sharedAs: g.report?.sharedAs ?? null } },
       me?.id ?? null,
       viewerIsLead,
     ) as Record<string, any>;
