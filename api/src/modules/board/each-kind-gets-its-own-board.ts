@@ -116,9 +116,18 @@ function whatEachLevelUnderstood(i: WhatTheKindsBoardIsBuiltFrom) {
   const aims = ((i.board.objectives ?? []) as any[]).filter((o) => !o.ownerParticipantId && typeof o.name === 'string' && o.name.trim()).map((o) => String(o.name).trim());
   const levels: { participantId: string | null; who: string; said: string[] }[] = [];
   if (aims.length) levels.push({ participantId: lead?.id ?? null, who: i.readerIsTheLead ? 'You' : (lead?.name ?? 'The person running this check-in'), said: aims });
+  /*
+   * ONE LEVEL A PERSON, AND "YOU" FOR THE READER (item 21, the government programme board). Stephen read his aims under
+   * "You" and then his own words again under "Stephen Nwachukwu", one person twice and named to himself. The lead's own
+   * words now follow the aims they set, and the reader's row is "You".
+   */
+  const readerId = i.people.find((p) => p.name === 'You')?.id ?? (i.readerIsTheLead ? lead?.id ?? null : null);
   for (const row of (i.board.whoOwnsWhat ?? []) as any[]) {
     const said = ((row.items ?? []) as any[]).filter((it) => it.type === 'SUCCESS_DEFINITION' || it.type === 'INTENT').map((it) => String(it.text));
-    if (said.length) levels.push({ participantId: row.participantId ?? null, who: row.name ?? 'A colleague', said });
+    if (!said.length) continue;
+    const same = row.participantId ? levels.find((l) => l.participantId === row.participantId) : undefined;
+    if (same) { same.said.push(...said); continue; }
+    levels.push({ participantId: row.participantId ?? null, who: row.participantId && row.participantId === readerId ? 'You' : (row.name ?? 'A colleague'), said });
   }
   if (!levels.length) return { heading, state: 'none-yet' as const, says: 'Nobody has said yet what the aim means to them.', note: NO_LEVEL_ON_RECORD };
   return { heading, state: 'filled' as const, levels, note: NO_LEVEL_ON_RECORD };
