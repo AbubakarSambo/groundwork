@@ -1554,6 +1554,32 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </Stack>
         )}
 
+        {/*
+          PROJECT BOARD REVIEW 1, FIX 2: "WHERE EACH TARGET STANDS", WITH NO HEADLINE. A project
+          board (`NEW_PROJECT`, `DRIFT`) is not always given a headline question, but it is always
+          given `objectives` with each target's own `journey.say` ("Nothing has been counted for
+          it yet."). Without a headline this used to show only in the end fold, under "Everything
+          else from this check-in" - the one place a reader checks first, where each target
+          stands, was missing entirely. This draws it at the top, in the headline's own place,
+          using the prototype's own heading. The sales board is unaffected: it is always sent a
+          headline, so this block never fires for it.
+        */}
+        {!(b as any).headline && b.objectives && b.objectives.length > 0 && (
+          <Panel>
+            <Stack gap={10}>
+              <div className="gwui-fs-15 gwui-ink-dark" style={{ fontWeight: 700 }}>Where each target stands</div>
+              <Stack gap={10}>
+                {b.objectives.map((o) => (
+                  <div key={o.id} className="gwui-gap-12" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <p className="gwui-panel-text-muted" style={{ flex: 1, minWidth: 140 }}>{o.name}</p>
+                    <p className="gwui-panel-text-muted" style={{ flex: 2, minWidth: 180 }}>{o.journey?.say ?? ''}</p>
+                  </div>
+                ))}
+              </Stack>
+            </Stack>
+          </Panel>
+        )}
+
         {(b as any).howItIsGoing?.glance && !((b as any).headline && !(b as any).headline.answer) && (
           <div className="gwui-mt-16">
             <HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} />
