@@ -1,5 +1,7 @@
 # The release questions
 
+> **Rollback, always (decision 90):** restore the database backup and the old code together, never the code alone. Migration 8 dropped a column, so the old code cannot read the new database.
+
 Written on 1 October 2026, on branch `wip/plain-reports`, for the person who deploys Groundwork and owns its infrastructure. Each question says why it matters and what we would do for each answer. How the release itself runs is in `docs/deploy.md`.
 
 Nothing here has been done. Nothing was pushed, deployed or changed on any hosted database to write it.

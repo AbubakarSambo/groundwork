@@ -27,7 +27,7 @@ describe('request 117 (2): the number in the aim\'s own name', () => {
   });
 
   it('the check-in\'s write asks the rule', () => {
-    const service = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const service = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(service).toMatch(/const aimsWithTheirNumbers = theNumberInTheNameIsKept\(aims, \(n\) => numbersInTheirWords\.has\(n\)\);/);
     expect(service).toMatch(/theAimsThatAreNew\(aimsWithTheirNumbers,/);
   });

@@ -1,4 +1,5 @@
 import { inOurVoice } from '../reports/what-the-record-shows-over-time';
+import { theReaderSaidAsYou, aThingWithoutItsHolder } from './a-holder-in-their-own-words';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { aDayPeopleRead, asDate } from './one-count-for-the-sessions';
 import {
@@ -130,10 +131,29 @@ const FIRST_PERSON = /(?<![\p{L}'’])(?:I|I'm|I’m|I'll|I’ll|I've|I’ve|I'd
 const STARTS_A_SUBJECT = /^(?:the|a|an|this|that|these|those|it|its|they|their|he|his|she|her|we|our|you|your|there|everyone|everybody|someone|somebody|nobody|no|each|every|all|both|one|some|any|another|other|more|most|work|everything|nothing)\b/i;
 const startsWithAVerb = (t: string): boolean => /^[a-z]/.test(t) && !STARTS_A_SUBJECT.test(t) && !/^\d/.test(t);
 
+/*
+ * A THING, NOT SOMETHING TO DO (run-26, project). "testing and deployment" was given "you will" and read "Once it is
+ * cleared, Samuel Otieno will testing and deployment.", and "people can write code" read "Once it is cleared, you will
+ * people can write code." A line that names a thing (its first word ends in "-ing", "-tion" or "-sion") is said as
+ * the thing that can go ahead. A line with its own verb after one to three words ("people can write code") is already
+ * a whole clause and keeps its own subject.
+ */
+const NOT_A_THING_ENDING = /^(?:bring|ring|sing|swing|fling|sting|string|cling|wring|spring|mention|question|position|sanction|function|caution|condition|commission|provision|petition|auction|envision)$/;
+const A_VERB_OF_ITS_OWN = /^(?:\S+\s+){1,3}?(?:can|could|will|would|may|might|should|must|is|are|was|were|has|have|had)\s/i;
+const A_MODAL_ANYWHERE = /\s(?:can|could|will|would|may|might|should|must|shall)\s/i;
+/** "people can write code", and "questions about client needs and contract details would go to him": a plural noun first, then a verb. */
+const HAS_ITS_OWN_VERB = { test: (t: string): boolean => A_VERB_OF_ITS_OWN.test(t) || (A_MODAL_ANYWHERE.test(t) && /^[a-z]+(?<!s)s(?:\s|$)/i.test(t) && !/^[a-z]+(?:us|is|ss)\s/i.test(t)) };
+const namesAThing = (t: string): boolean => {
+  const first = (t.split(/\s+/)[0] ?? '').toLowerCase();
+  return /(?:ing|tion|sion)$/.test(first) && !NOT_A_THING_ENDING.test(first);
+};
+
 export function whatItIsHoldingUp(then: string, theirWords: string | null, who: string): string {
   const t = then.trim().replace(/[.!?]+$/, '');
   const subject = who === 'You' ? 'you' : mid(who);
   if (!FIRST_PERSON.test(t)) {
+    if (/^[a-z]/.test(t) && namesAThing(t) && !HAS_ITS_OWN_VERB.test(t)) return `Once it is cleared, ${inASentence(t)} can go ahead.`;
+    if (HAS_ITS_OWN_VERB.test(t)) return `Once it is cleared, ${inASentence(t)}.`;
     return startsWithAVerb(t) ? `Once it is cleared, ${subject} will ${t}.` : `Once it is cleared, ${inASentence(t)}.`;
   }
   if (theirWords) {
@@ -161,7 +181,7 @@ export function theBlockers(
     if (!r.handoffMayBeRead(d)) continue;
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
-    const what = inASentence(d.what);
+    const what = inASentence(on ? aThingWithoutItsHolder(d.what, d.onLabel) : d.what);
     const says = `${on ? `${who} ${isAre(who)} waiting on ${on} for ${what}.` : `${who} ${isAre(who)} waiting for ${what}.`}${thatWaitsOn(d)}`;
 
     /* Every time it was raised: the days, and the sessions where the record says which. */
@@ -207,7 +227,7 @@ export function theBlockers(
     let wouldClearIt: string | null = null;
     if (promise) {
       const by = whoIs(r, promise.participantId);
-      const clause = inOurVoice(promise.text);
+      const clause = theReaderSaidAsYou(inOurVoice(promise.text, by === 'You' ? 'you' : 'them') ?? '', r.myNames) || null;
       const words = String(promise.text ?? '').trim();
       wouldClearIt = clause
         ? `${by} committed to ${clause}.`

@@ -309,6 +309,8 @@ export function inOneFormOfNumber(text: string): string {
  * starts with "They" and a verb about people together, it says "People" instead. Anywhere after the
  * first sentence "They" has its people to point to and is left as it is.
  */
+import { theThingsTheyDisagreeOnAreSentences } from './the-things-people-disagree-on-are-sentences';
+
 export function theStoryHasSomeoneToPointTo(text: string): string {
   if (!text) return text;
   /*
@@ -316,9 +318,6 @@ export function theStoryHasSomeoneToPointTo(text: string): string {
    * read "They disagree on one thing: there is no shared understanding ...": two pieces joined with a
    * colon. What they disagree on is said as a sentence of its own, as written.
    */
-  const noColon = text.replace(
-    /\b(They|People|they|people) (disagree|differ) on (one thing|two things|three things|four things|five things|\d+ things?):\s*(\S)/g,
-    (_m, who: string, verb: string, n: string, first: string) => `${who} ${verb} on ${n}. ${first.toUpperCase()}`,
-  );
+  const noColon = theThingsTheyDisagreeOnAreSentences(text);
   return noColon.replace(/^(\s*)They (disagree|differ|agree|both|all|each)\b/, (_m, lead: string, verb: string) => `${lead}People ${verb}`);
 }

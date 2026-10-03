@@ -43,6 +43,8 @@ function svc(opts: {
 
   const prisma: any = {
     person: { findFirst: jest.fn(async () => ({ id: 'p1', externalId: 'u-1', active: true, linkedUserId: 'lead-1', ...(opts.person ?? {}) })) },
+    /* The move into Ask Groundwork is hidden at release; these specs prove the path itself, so it is turned on here. */
+    platformSetting: { findUnique: async ({ where }: any) => (where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null) },
     user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org-a' })) },
     ground: { findMany: jest.fn(async () => grounds) },
     groundParticipant: { findMany: jest.fn(async () => participants) },

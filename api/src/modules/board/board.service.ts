@@ -2,7 +2,7 @@ import { wholeDaysTo, theDayItBegan, theRecordsClock } from './a-wait-is-dated-n
 import { aFindingThatDoesNotSayTheWaitAgain } from './where-each-person-is-against-their-number';
 import { eachRepeatedSentenceSaidOnce } from './each-repeated-sentence-said-once';
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
-import { aPartyOutside, aWaitOnOneself } from './a-thing-is-not-somebody';
+import { aPartyOutside, aWaitOnOneself, theWaitsAsABoardReadsThem } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
 import { whoSeesThisDifferently } from './who-sees-this-differently';
 import { theRoundCappedAtThePlan, whatEachSessionSays } from './one-count-for-the-sessions';
@@ -29,14 +29,15 @@ import { eachDealInItsGroup } from './each-deal-in-its-group';
 import { isTheTeamPictureNowShared } from '../reports/each-sessions-picture-is-released-on-its-own';
 import { whatToDoAboutALeadAction, whatToDoAboutADecision, isAYesOrNoQuestion, theAnswerAsALine } from './what-needs-you-and-what-to-do';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
-import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { howManyGoalsAreNotTold, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn, isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from '../grounds/who-an-admin-did-not-let-in';
 import { theSharedReadWithoutTheLeadsJudgement } from './what-the-room-says-is-not-a-reading-of-the-lead';
 import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
-import { withoutWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals } from './an-untold-goal-is-not-a-board-objective';
+import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals } from './an-untold-goal-is-not-a-board-objective';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-served';
+import { theBoardKindsOffered } from '../admin/what-is-hidden-at-release';
 import { oneOfTheKinds, plainFields, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
 
 /** What the lead sends to add or change a record of the kind of work. */
@@ -126,7 +127,7 @@ import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { patternQuestionsToSettleFirst } from './pattern-questions-to-settle-first';
 import { everyDivergenceReadable } from '../reports/a-field-name-is-not-a-heading';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
-import { theFirstNameFrom, theShortNameOf } from '../reports/a-title-is-not-a-first-name';
+import { theFirstNameFrom, theShortNameOf, theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { aWaitInTheirOwnWords } from './a-holder-in-their-own-words';
 import { yourOwnRowsSayYou } from './your-own-read-says-you';
 import { theRoomAsThisReaderReadsIt } from './the-room-as-each-reader-reads-it';
@@ -141,6 +142,8 @@ import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-com
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument, notNothingWhereThePageSaysSomething } from './where-each-person-is-against-their-number';
 import { theQuickReadAgreesWithTheReport, theDisagreementTheReportOpensWith } from './the-quick-read-agrees-with-the-report';
+import { theNinetyDaysInThreeSteps } from './the-ninety-days-in-three-steps';
+import { theQuickReadCountsTheWaitsTheBoardCounts } from './the-quick-read-counts-the-waits-the-board-counts';
 import { oneCountPerThing } from './one-count-per-thing';
 import { type ToLookAt } from './the-same-thing-for-three-check-ins';
 import { theSameThingFromTheRows } from './the-same-thing-read-from-the-record';
@@ -154,6 +157,7 @@ import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
 import { whatWasAgreedAtTheStart, theGoalsSetForAnyone } from './what-was-agreed-at-the-start';
+import { changeSinceTheLastCheckIn } from './change-since-the-last-check-in';
 import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, theLeadActions, theObligations, theForecast, whoWaitedOnWhom, theContradictions, theQuestionsForTheLead, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject, theNewHireReadsTheLeadsWords } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { eachLineInTheirName, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
@@ -348,8 +352,8 @@ export class BoardService {
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
-    /* A wait on oneself is not a wait, even where one is already on record (request 111 e, a-thing-is-not-somebody). */
-    (ground as any).dependencies = ((ground as any).dependencies ?? []).filter((d: any) => !aWaitOnOneself(d));
+    /* A wait on oneself is not a wait, a wait on "the lead" is a wait on the lead, and one wait said four ways is one (request 111 e, request 123 items 4 and 5). */
+    (ground as any).dependencies = theWaitsAsABoardReadsThem((ground as any).dependencies ?? [], ground.participants.find((p) => !!ground.initiatorId && p.userId === ground.initiatorId)?.id);
 
     /**
      * "THERE IS NO BOARD" IS ANSWERED BEFORE "WHO ARE YOU", AND THAT ORDER IS THE FIX.
@@ -762,6 +766,8 @@ export class BoardService {
       /* The kind of work (request 76): one of the eleven names in the-kind-of-work.ts, or null. Checked
          again on the way out, so a stored value that is not one of the eleven is served as none. */
       kindOfWork: oneOfTheKinds((ground as any).kindOfWork),
+      /* The kinds a NEW check-in may be given at release. A check-in that holds another keeps it above. */
+      kindsOffered: await theBoardKindsOffered(this.prisma),
       /**
        * HOW IT IS GOING, AT THE TOP, WHICH IS WHY SOMEBODY OPENED THIS.
        *
@@ -1202,7 +1208,7 @@ export class BoardService {
       }));
       /* A week past, the person reads that the goal exists, with no number (decision 56, item 4). Only they do. */
       if (untoldRows.length) {
-        const leadFirst = ((ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')?.user?.firstName ?? '').trim() || 'Your lead';
+        const leadFirst = theFirstNameOfAParticipant((ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')) || 'Your lead';
         const withArea = await Promise.all(untoldRows.map(async (g) => ({ ...g, area: await areaOfGoalOrFallback(this.prisma, g.text ?? '') })));
         for (const say of whatThePersonReadsOfTheirOwnUntoldGoals(withArea, me?.id ?? null, leadFirst)) {
           (out.objectives as any[]).push({
@@ -1839,6 +1845,8 @@ export class BoardService {
         out.quickRead = theBlockersTileNamesThis(out.quickRead as any, out.howItIsGoing?.glance?.inTheWay?.oldest ?? null,
           itsRow ? { itIsHard: itsRow.status === 'BLOCKING' } : {});
       }
+      /* And the waits are counted once: the tile says the number the top line and the Blockers section say. */
+      out.quickRead = theQuickReadCountsTheWaitsTheBoardCounts(out.quickRead as any, out.howItIsGoing?.glance?.inTheWay?.count) as any;
       /* And never "no disagreement" over a report that opens with one. See the-quick-read-agrees-with-the-report. */
       out.quickRead = theQuickReadAgreesWithTheReport(out.quickRead as any, ((ground as any).report?.sharedPicture as string | null) ?? null) as any;
     }
@@ -2110,8 +2118,7 @@ export class BoardService {
        */
       const nameByParticipant = new Map((out.eachPerson as any[]).map((row) => [row.participantId, String(row.who ?? '').trim()]));
       /* One point per person, with how many goals, never the same sentence once per goal (item 21). */
-      const untoldCount = new Map<string, number>();
-      for (const g of await this.goalsNotToldYetByParticipant(groundId)) untoldCount.set(g.participantId, (untoldCount.get(g.participantId) ?? 0) + 1);
+      const untoldCount = howManyGoalsAreNotTold(await this.goalsNotToldYetByParticipant(groundId));
       const untoldByParticipant = new Map<string, string[]>();
       for (const [pid, n] of untoldCount) untoldByParticipant.set(pid, [theConversationPointForTheLead(nameByParticipant.get(pid) || 'This person', n)]);
       out.eachPersonToday = (out.eachPerson as any[]).map((row) => {
@@ -2479,6 +2486,16 @@ export class BoardService {
         const goals = await theGoalsSetForAnyone(this.prisma, groundId);
         const agreed = whatWasAgreedAtTheStart({ goals, commitments: mine.commitments, sessions, people, startsAt: (ground as any).startsAt ?? null, createdAt: (ground as any).createdAt ?? null, reader });
         (out as any).startingState = agreed;
+        const change = changeSinceTheLastCheckIn({ commitments: mine.commitments, handoffs, goals, sessions, people, reader, now });
+        if (change) (out as any).changeSinceLast = change;
+        /* The 90 days, in three steps (request 123), from the same goals, commitments and waits, under the same wall. */
+        const leadOfIt = (ground.participants as any[]).find((p) => p.id === theLeadsRow);
+        const ninety = theNinetyDaysInThreeSteps({
+          goals, commitments: mine.commitments, handoffs, sessions, people, startsAt: (ground as any).startsAt ?? null, createdAt: (ground as any).createdAt ?? null,
+          leadFirstName: theFirstNameOfAParticipant(leadOfIt),
+          readerIsTheLead: isInitiator, reader, now,
+        });
+        if (ninety) (out as any).ninetyDays = ninety;
       }
       /*
        * Built from the targets this reader is already served, so every wall on a target holds here too. Never on an
@@ -2600,7 +2617,14 @@ export class BoardService {
       ) as any;
       /* A goal the lead has not told somebody about is in no sentence anybody but the lead reads. See
          grounds/a-goal-not-told-stays-with-the-lead. */
-      if (!isInitiator) walled = withoutGoalsNotToldIn(walled, await this.goalsNotToldYet(groundId));
+      if (!isInitiator) {
+        walled = withoutGoalsNotToldIn(walled, [
+          ...(await this.goalsNotToldYet(groundId)),
+          /* And the objectives the engine wrote from them, in its own words (decisions 48 and 56). */
+          ...theWordsOfWhatTheLeadHasNotToldThemAbout(ground.objectives as any[], await this.untoldGoalRows(groundId), ground.participants as any[], false)
+            .filter((t) => !(ground.objectives as any[]).every((o) => o.name !== t)),
+        ]);
+      }
       /* The shared read of the answers carries no sentence that is a reading of the lead, to anybody but the lead. */
       if (!isInitiator && walled.whatTheAnswersSay) {
         const leadRow = (ground.participants as any[]).find((p) => p.id === theLeadsRow);

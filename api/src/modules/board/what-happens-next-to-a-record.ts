@@ -53,7 +53,7 @@ export function whatHappensNext(
   const promise = name.length >= 3 ? openPromises.find((c) => ` ${squash(c.text)} `.includes(` ${name} `)) : undefined;
   if (promise) {
     const who = whoIs(promise.participantId);
-    const clause = inOurVoice(promise.text);
+    const clause = inOurVoice(promise.text, who === 'You' ? 'you' : 'them');
     const says = clause ? `${who} committed to ${clause}.` : `${who} made a commitment about it, which is in the record.`;
     return { next: says, nextKnown: 'said', nextSays: says };
   }

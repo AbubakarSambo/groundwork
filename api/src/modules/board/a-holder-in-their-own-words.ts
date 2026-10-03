@@ -20,8 +20,18 @@ const MINE = /^\s*(my|our)\s+(.+)$/i;
  */
 const AN_ARTICLE_BEFORE_A_WORD = /^(\s*)(The|A|An)(\s+)(?=[a-z])/;
 
+/*
+ * AN ORDINARY WORD IS NOT A NAME EITHER (run-26, project). The lead said she was waiting on "Everyone involved in the
+ * project", kept with its capital, and the board said "You are waiting on Everyone involved in the project ..." 12
+ * times. A leading "Everyone", "Someone", "Nobody" and the like, followed by more words, is said in lower case
+ * mid-sentence. A single word on its own is left, and "All" or "Each" are not touched because they can start a name.
+ */
+const AN_ORDINARY_WORD_BEFORE_MORE = /^(\s*)(Everyone|Everybody|Someone|Somebody|Anyone|Anybody|Nobody|Everything|Something|Anything|Nothing)(?=\s+\S)/;
+
 export function anArticleSaidMidSentence(holder: string): string {
-  return holder.replace(AN_ARTICLE_BEFORE_A_WORD, (_m, lead: string, article: string, gap: string) => `${lead}${article.toLowerCase()}${gap}`);
+  return holder
+    .replace(AN_ARTICLE_BEFORE_A_WORD, (_m, lead: string, article: string, gap: string) => `${lead}${article.toLowerCase()}${gap}`)
+    .replace(AN_ORDINARY_WORD_BEFORE_MORE, (_m, lead: string, word: string) => `${lead}${word.toLowerCase()}`);
 }
 
 export function aHolderInTheirOwnWords(onLabel: string | null | undefined, readerIsTheOneWaiting: boolean): string | null | undefined {
@@ -92,6 +102,22 @@ export function aThingInTheirOwnWords(what: string | null | undefined, readerIsT
     .replace(/\bme\b/g, you ? 'you' : 'them');
 }
 
+/*
+ * A THING IS NOT SAID WITH ITS HOLDER TWICE (run-26, project). Samuel said he was waiting on "the provider" for "the
+ * sandbox credentials from the provider", and the board said "waiting on the provider for the sandbox credentials from
+ * the provider" and "You cannot move on the sandbox credentials from the provider until it comes from the provider."
+ * Where what is waited for ends in "from" and the holder, that ending is left off wherever it is said next to the
+ * holder. The person's own words, kept in quotation marks elsewhere, are never changed.
+ */
+const theWordsWithoutThe = (t: string): string => t.trim().toLowerCase().replace(/[.,;:!?]+$/, '').replace(/^(?:the|a|an)\s+/, '');
+export function aThingWithoutItsHolder(what: string, holder: string | null | undefined): string {
+  const h = theWordsWithoutThe(holder ?? '');
+  if (!h) return what;
+  const m = what.match(/^(.*\S)\s+from\s+(.+?)[.\s]*$/i);
+  if (!m || !m[1].trim() || theWordsWithoutThe(m[2]) !== h) return what;
+  return m[1];
+}
+
 /** One wait, its holder and what it waits for, said from this reader's side. */
 export function aWaitInTheirOwnWords<T extends { fromParticipantId?: string | null; what?: unknown; onLabel?: unknown }>(d: T, readerParticipantId: string | null): T {
   if (!d) return d;
@@ -99,5 +125,24 @@ export function aWaitInTheirOwnWords<T extends { fromParticipantId?: string | nu
   const out: any = { ...d };
   if (typeof d.what === 'string') out.what = aThingInTheirOwnWords(d.what, theirs);
   if (typeof d.onLabel === 'string') out.onLabel = aHolderInTheirOwnWords(d.onLabel, theirs);
+  return out;
+}
+
+/*
+ * THE READER'S OWN NAME INSIDE WORDS ABOUT THEM IS "YOU" (run-26, cofounder). Tunde said he would "clarify this with
+ * Ada directly", and Ada, who runs the check-in, read "Tunde Bakare committed to clarify this with Ada directly." Her
+ * own name, in a sentence the product wrote about what somebody else will do, is "you" ("with you directly") and her
+ * own name with 's is "your". Only the reader's own full name, first name and last name are changed, and only as
+ * whole words, so a longer name that holds it ("Adaeze") is not touched. The words inside quotation marks are the
+ * person's own and are never passed through this.
+ */
+export function theReaderSaidAsYou(text: string, readerNames: readonly string[] | null | undefined): string {
+  if (!text || !readerNames?.length) return text;
+  const names = [...new Set(readerNames.map((n) => (n ?? '').trim()).filter((n) => n.length > 1))].sort((a, b) => b.length - a.length);
+  let out = text;
+  for (const n of names) {
+    const re = new RegExp(`(?<![\\p{L}\\p{N}])${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:['\u2019]s)?(?![\\p{L}\\p{N}])`, 'gu');
+    out = out.replace(re, (m) => (/['\u2019]s$/.test(m) ? 'your' : 'you'));
+  }
   return out;
 }

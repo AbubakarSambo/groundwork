@@ -1,6 +1,7 @@
 import { theRecordsClock, theDayItBegan, wholeDaysTo } from '../board/a-wait-is-dated-not-counted';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { theWordsOfWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
 import { onceAcrossCopies, theHour, theWeek } from '../prisma/once-across-copies';
 import { theJudgementWithItsConversationPoints } from './the-judgement-and-a-goal-not-told';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
@@ -12,6 +13,7 @@ import { AsyncLocalStorage } from 'async_hooks';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { THEIR_OWN_WORDS_IN_A_REPORT, withTheirOwnWordsKept } from '../board/their-own-words-stay';
+import { withoutLinesWithNoWords } from './a-line-with-no-words-is-not-a-line';
 import { namesThisReaderMayNotOpen, withoutPrivateFileNamesIn } from '../documents/a-private-file-is-not-named';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
@@ -6724,7 +6726,7 @@ happened, and what is in the way.`;
       select: {
         initiatorId: true, organizationId: true, createdByUserId: true, whoSeesTargets: true, scenario: true, peersVisibleToEachOther: true,
         participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } } },
-        objectives: { select: { ownerParticipantId: true, target: true } },
+        objectives: { select: { name: true, ownerParticipantId: true, target: true } },
       } as any,
     }) as Promise<any>).catch(() => null);
     if (!ground) return served;
@@ -6755,9 +6757,10 @@ happened, and what is in the way.`;
     if (!isInitiator) {
       const notTold = await ((this.prisma as any).personObjective?.findMany?.({
         where: { groundId, awareness: 'NOT_TOLD' },
-        select: { text: true, awareness: true, authoredBy: true },
+        select: { participantId: true, text: true, awareness: true, authoredBy: true },
       }) ?? Promise.resolve([])).catch(() => []);
-      served = withoutGoalsNotToldIn(served, (notTold as any[]).filter(notToldYet).map((r) => String(r.text ?? '')));
+      /* And the objectives the engine wrote from them, in its own words (decisions 48 and 56). */
+      served = withoutGoalsNotToldIn(served, theWordsOfWhatTheLeadHasNotToldThemAbout(ground.objectives ?? [], notTold as any[], ground.participants ?? [], false));
       /* A line of the picture whose only sentence was the goal is not left as a line with no words. */
       if (Array.isArray((served as any).sharedPictureLines)) {
         served = { ...(served as any), sharedPictureLines: (served as any).sharedPictureLines.filter((l: any) => !(l && typeof l.text === 'string' && !l.text.trim())) };
@@ -6765,11 +6768,11 @@ happened, and what is in the way.`;
     }
     /* What people said stays as they said it: the hidden-target rule is for the report's own words.
        See board/their-own-words-stay (screens request 77). */
-    return withTheirOwnWordsKept(
+    return withoutLinesWithNoWords(withTheirOwnWordsKept(
       withoutPrivateFileNamesIn(withoutInternalLabelsIn(served, called), privateNames),
       THEIR_OWN_WORDS_IN_A_REPORT,
       (v) => withoutHiddenTargetsIn(v, hiddenTargets),
-    );
+    ));
   }
 
   /** The lead's untold goals with the first name of the person each is about (decision 56, point 3). */

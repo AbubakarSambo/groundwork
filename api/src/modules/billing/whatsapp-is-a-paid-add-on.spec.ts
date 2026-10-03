@@ -66,6 +66,8 @@ function world(opts: { trial?: any; org?: any; sent?: number; stripeConfigured?:
       findUnique: jest.fn(async (q: any) => {
         if (q.where.key === 'pricing.freeTrial') return { value: trial };
         if (q.where.key === 'pricing.freeMemberLimit') return { value: 5 };
+        /* The add-on's price, use and limit are hidden at release; this spec proves them, so they are turned on here. */
+        if (q.where.key === 'release.planAndBillingNewParts') return { value: { on: true } };
         return null;
       }),
     },
@@ -133,7 +135,7 @@ describe('the prices and limits a fresh database ends with', () => {
   });
 
   it('the free trial row becomes one month and its switch is left alone', () => {
-    const sql = readFileSync(join(__dirname, '../../../prisma/migrations/20261002160000_whatsapp_is_a_paid_add_on/migration.sql'), 'utf8');
+    const sql = readFileSync(join(__dirname, '../../../prisma/migrations/20261002160000_whatsapp_is_a_paid_add_on/migration.sql'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(sql).toMatch(/'pricing\.freeTrial', '\{"on": false, "teamsUnder": 20, "months": 1\}'/);
     expect(sql).toMatch(/ON CONFLICT \("key"\) DO UPDATE SET "value" = jsonb_set\("platform_settings"\."value", '\{months\}', '1'\)/);
   });

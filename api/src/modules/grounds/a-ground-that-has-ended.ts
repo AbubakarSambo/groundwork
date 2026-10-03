@@ -38,6 +38,15 @@ export const A_GROUND_IS_OVER: GroundStatus[] = [GroundStatus.RESOLVED, GroundSt
 export const A_GROUND_HAS_STOPPED: GroundStatus[] = [GroundStatus.STALLED];
 
 /**
+ * WHAT THE NIGHTLY AND MORNING JOBS SKIP: ended, and stalled. On the live main line STALLED sat in the
+ * ended list, so no job emailed, reminded, announced or messaged about a stalled check-in. Splitting
+ * STALLED out (so a person can reopen it) must not change that: a job that sends something reads this
+ * list. Only the stall and warning jobs read the two lists apart. Once a lead gives a check-in more
+ * time it is no longer stalled, and the jobs pick it up again.
+ */
+export const A_GROUND_THE_JOBS_LEAVE_ALONE: GroundStatus[] = [...A_GROUND_IS_OVER, ...A_GROUND_HAS_STOPPED];
+
+/**
  * A GROUND THAT IS HELD IS HELD.
  *
  * PAUSED exists for one reason - "temporarily paused (e.g. active legal proceedings detected)" - and

@@ -1,3 +1,4 @@
+import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { labelsForParties, namesVisibleTo } from './party-labels';
@@ -40,8 +41,18 @@ const SAYS_SOMETHING = /^(?:I|We|They|He|She|It|There|Nobody|Nothing|Everyone)\b
    the like, and whose only verb follows "I", "you" or "they", is a thing held up. */
 const A_THING_WITH_A_CLAUSE = /^(?:the|a|an|this|that|these|those|your|their|our|his|her|my)\s/i;
 const A_RELATIVE_CLAUSE = /\b(?:I|you|they|we|he|she)\s+(?:was|were|am|are|is|had|have|has|need|needs|asked|ordered|requested)\b/;
-const blockerAsASentence = (b: string): string => (SAYS_SOMETHING.test(b) && !(A_THING_WITH_A_CLAUSE.test(b) && A_RELATIVE_CLAUSE.test(b))
-  ? `${up(b)}.` : `Work is held up by ${inASentence(b)}.`);
+/* "One person is waiting on somebody else, work is held up by the terms." is two sentences joined with a comma; the part about what holds the work up is the one the tile means (request 123, item 10). */
+const HELD_UP_BY = /(?:^|[,;:]\s*)work is held up by\s+(.+)$/i;
+const blockerAsASentence = (raw: string): string => {
+  /* One full stop at the end, never two. */
+  const b = (raw ?? '').trim().replace(/[.!?]+$/, '');
+  const heldUp = HELD_UP_BY.exec(b);
+  if (heldUp) return `Work is held up by ${heldUp[1].trim()}.`;
+  return SAYS_SOMETHING.test(b) && !(A_THING_WITH_A_CLAUSE.test(b) && A_RELATIVE_CLAUSE.test(b))
+    ? `${up(b)}.` : `Work is held up by ${inASentence(b)}.`;
+};
+/* "Hard-blocked" is work jargon: it means nothing has stopped the work completely. */
+const NOTHING_STOPPED = 'Nothing has stopped the work completely.';
 
 export function theFirstSentenceThatFits(s: string | null | undefined, max = A_TILE_HOLDS): string | null {
   const t = (s ?? '').trim().replace(/\s+/g, ' ');
@@ -200,7 +211,7 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
         })
       : Promise.resolve([] as { status: string; fromParticipantId: string; onParticipantId: string | null; what: string; onLabel: string | null }[]),
     /* Every count, as Since the last round reads them; `targetsSet` counts the ones with a number. */
-    prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, count: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true } }),
+    prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, name: true, count: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true } }),
     (prisma as any).ground?.findUnique?.({
       where: { id: groundId },
       select: {
@@ -235,12 +246,18 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
    * read "+5" when the only target that moved was a colleague's. The same rule the board's own targets
    * use for this reader (whose-number-is-whose-business).
    */
-  const objectives = targetsFor(
+  const shownTargets = targetsFor(
     (everyObjective ?? []) as any[],
     reader.participantId,
     (theGround as any)?.whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
     { isLead: reader.isLead },
-  ).shown as unknown as { id: string; count: number; target?: number | null }[];
+  ).shown as any[];
+  /* And not a target for somebody that the lead has not told them about (decisions 48 and 56): the tile would add its movement. */
+  const untoldRows = reader.isLead ? [] : await ((prisma as any).personObjective?.findMany?.({
+    where: { groundId, awareness: 'NOT_TOLD' },
+    select: { participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
+  })?.catch?.(() => []) ?? Promise.resolve([]));
+  const objectives = withoutWhatTheLeadHasNotToldThemAbout(shownTargets, (untoldRows ?? []) as any[], ((theGround as any)?.participants ?? []) as any[], !!reader.isLead).kept as unknown as { id: string; count: number; target?: number | null }[];
   /*
    * THE FIRST WORRY WHOSE LINE STANDS WHOLE: a first sentence that fits a tile, and whose quotes,
    * if it has any, are the record's words, so the quote rule at the read leaves it as it is (see
@@ -453,7 +470,7 @@ export function atAGlanceTiles(a: {
           ? `${blockerAsASentence(theBlocker)}${a.blocked > 1 ? ` ${a.blocked - 1} more ${a.blocked === 2 ? 'is' : 'are'} holding work up.` : ''}`
           : a.blocked === 1 ? 'Something is named as holding work up.' : `${a.blocked} things are named as holding work up.`)
         : (a.waiting ?? 0) > 0
-          ? (theBlocker ? `${blockerAsASentence(theBlocker)} Nothing is hard-blocked.` : 'Work is waiting on someone else, and nothing is hard-blocked.')
+          ? (theBlocker ? `${blockerAsASentence(theBlocker)} ${NOTHING_STOPPED}` : 'Work is waiting on someone else, and nothing has stopped it completely.')
           : worries
             ? (theWorry
               ? `${theWorry} ${theRestOfTheWorries(worries - 1)}`
@@ -509,7 +526,7 @@ export function theBlockersTileNamesThis(tiles: AGlanceRead[], blocker: string |
     const hard = /^(\d+)$/.exec(String(t.value));
     if (hard && opts.itIsHard === false) return t;
     if (hard) return { ...t, sub: `${blockerAsASentence(name)}${Number(hard[1]) > 1 ? ` ${Number(hard[1]) - 1} more ${Number(hard[1]) === 2 ? 'is' : 'are'} holding work up.` : ''}` };
-    if (/^\d+ waiting$/.test(String(t.value))) return { ...t, sub: `${blockerAsASentence(name)} Nothing is hard-blocked.` };
+    if (/^\d+ waiting$/.test(String(t.value))) return { ...t, sub: `${blockerAsASentence(name)} ${NOTHING_STOPPED}` };
     return t;
   });
 }

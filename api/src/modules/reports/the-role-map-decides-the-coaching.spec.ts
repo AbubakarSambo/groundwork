@@ -40,7 +40,9 @@ describe('which map applies', () => {
        of the wrong map is worse than not coaching them. */
     const { map, why } = whichRoleMap('SALES', MIN_COACHING_CONFIDENCE - 0.1);
     expect(map).toBeNull();
-    expect(why).toContain('not clearly enough to coach against');
+    /* Reworded (request 123, item 11): "your record looks like ... coach against" was work jargon. */
+    expect(why).toContain('it is not clear enough yet to coach you on that kind of work');
+    expect(why).not.toMatch(/your record|coach against/i);
     expect(why).toContain(ROLE_MAPS[RoleFunction.SALES].label.toLowerCase());
   });
 

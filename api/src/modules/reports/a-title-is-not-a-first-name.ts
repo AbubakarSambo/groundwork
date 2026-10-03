@@ -68,3 +68,16 @@ export function theFirstNameFrom(firstName: string | null | undefined, lastName?
   const short = theShortNameOf(`${first} ${(lastName ?? '').trim()}`.trim());
   return short || first;
 }
+
+/**
+ * The first name of a person on a check-in, from their account name or, where they have none, the name they were given.
+ * A title ("Dr") is never taken as the first name. Null when there is no name at all.
+ */
+export function theFirstNameOfAParticipant(p: { user?: { firstName?: string | null; lastName?: string | null } | null; nameGiven?: string | null } | null | undefined): string | null {
+  const typed = (p?.user?.firstName ?? '').trim();
+  const fromAccount = theFirstNameFrom(typed, p?.user?.lastName);
+  /* Signup stores whatever was typed for the name whole, so "Rukia Otieno" can sit in the first-name field: only its first word is the first name. */
+  if (fromAccount) return typed && !isATitle(typed.split(/\s+/)[0]) ? typed.split(/\s+/)[0] : fromAccount;
+  const given = (p?.nameGiven ?? '').trim();
+  return given ? theShortNameOf(given) : null;
+}

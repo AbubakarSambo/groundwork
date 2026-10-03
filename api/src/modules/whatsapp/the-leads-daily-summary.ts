@@ -1,10 +1,12 @@
+import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { WhatsAppService } from './whatsapp.service';
 import { TEMPLATES, fill } from './a-message-outside-the-window';
 import { keptOffThePhone } from './a-check-in-kept-off-the-phone';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
-import { A_GROUND_IS_OVER, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
+import { organisationsThatTurnedWhatsAppOn } from './only-where-whatsapp-is-turned-on';
+import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
 import { theirApprovedLeave, fallsInLeave } from '../suites/who-is-away';
 import { theirRosterEntry } from '../suites/a-roster-entry-and-its-sign-in';
 import { whatWaitsForYouToDecide, type TheBoards } from '../suites/what-waits-for-you-to-decide';
@@ -80,7 +82,7 @@ export function theLeadsDailySummary(firstName: string | null | undefined, parag
   return { kind: 'lead-summary', text: fill(TEMPLATES['lead-summary'].body, params), params };
 }
 
-const TERMINAL: GroundStatus[] = [...A_GROUND_IS_OVER, ...A_GROUND_IS_HELD];
+const TERMINAL: GroundStatus[] = [...A_GROUND_THE_JOBS_LEAVE_ALONE, ...A_GROUND_IS_HELD];
 
 /**
  * THE MORNING SWEEP. Every lead with a check-in open, in every organisation, one message each. A lead
@@ -99,9 +101,11 @@ export async function sendTheLeadsDailySummaries(
   });
 
   /* Each lead's open check-ins that may go to a phone, per organisation. */
+  const turnedOn = await organisationsThatTurnedWhatsAppOn(prisma, deps.whatsapp, grounds.map((g) => g.organizationId));
   const byLead = new Map<string, { organizationId: string; leadId: string; checkIns: (ACheckInToday & { groundId: string })[] }>();
   for (const g of grounds) {
     if (keptOffThePhone(g)) continue;
+    if (!turnedOn.has(g.organizationId)) continue;
     const today = await theOpenSession(prisma, g.id, now);
     if (!today) continue;
     /* Every check-in has a lead: `Ground.initiatorId` is required, so there is no lead-less one to skip. */
@@ -155,7 +159,7 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
   const done = counted.filter((r) => r.status === CheckInStatus.COMPLETED);
   const notYet = counted
     .filter((r) => r.status !== CheckInStatus.COMPLETED)
-    .map((r) => (r.participant?.user?.firstName ?? r.participant?.nameGiven ?? '').trim().split(/\s+/)[0])
+    .map((r) => theFirstNameOfAParticipant(r.participant as any) ?? '')
     .filter((n: string) => !!n);
   return { ofHowMany: counted.length, answered: done.length, notYet };
 }

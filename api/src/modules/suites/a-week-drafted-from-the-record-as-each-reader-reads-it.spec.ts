@@ -153,7 +153,7 @@ describe('the draft is for billing only and feeds nothing about the person (deci
       for (const name of readdirSync(dir)) {
         const p = join(dir, name);
         if (statSync(p).isDirectory()) { if (name !== 'suites' && name !== 'assistant') walk(p); }
-        else if (/\.ts$/.test(name) && /a-week-drafted-from-the-record|draftAWeek/.test(readFileSync(p, 'utf8'))) faults.push(p);
+        else if (/\.ts$/.test(name) && !/\.spec\.ts$/.test(name) /* a spec that names the file in a list of excuses does not use it */ && /a-week-drafted-from-the-record|draftAWeek/.test(readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''))) faults.push(p);
       }
     };
     walk(root);

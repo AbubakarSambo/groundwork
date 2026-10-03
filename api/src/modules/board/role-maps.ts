@@ -535,7 +535,7 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
       'Which customer is still waiting, and on what?',
     ],
     protectAgainst:
-      'Support work is invisible when it goes well: the reward for solving something cleanly is that nobody hears about it. So this person is routinely read as low-value by people counting outputs, and their real contribution - the escalations that never happened - leaves no record unless somebody asks for it.',
+      'Support work goes unseen when it goes well. When a problem is solved cleanly, nobody hears about it. People who count outputs may read this person as low-value. The escalations that never happened leave no record unless somebody asks for them.',
     /**
      * INVISIBILITY, not a mode called absorption - there is no such mode, and
      * reaching for one I had imagined was worth catching: the seven universal modes

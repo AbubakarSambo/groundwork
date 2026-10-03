@@ -1,4 +1,5 @@
-import { holdsItSaid } from './a-holder-in-their-own-words';
+import { howManyGoalsAreNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { holdsItSaid, theReaderSaidAsYou, aThingWithoutItsHolder } from './a-holder-in-their-own-words';
 import { aCommitmentSaid, looksLikeATimeOrADate, inOurVoice } from '../reports/what-the-record-shows-over-time';
 import { aNumberPeopleCanRead } from './an-aim-is-a-sentence-about-somebody';
 import { aPartyOutside, theSameThing } from './a-thing-is-not-somebody';
@@ -30,6 +31,8 @@ import { aPartyOutside, theSameThing } from './a-thing-is-not-somebody';
 export interface WhoIsReading {
   /** The reader's own participant row, when they are a party. */
   meId: string | null;
+  /** The reader's own full name, first name and last name, so their name inside words about somebody else is said as "you". */
+  myNames?: string[];
   /** Whether the reader runs this check-in, in the sense of the pattern rule (who-reads-a-pattern.ts). */
   mayReadEveryone: boolean;
   /** Whether the reader is the person who runs it: they are "you" in the lead's own sentences. */
@@ -194,7 +197,11 @@ const theSessionsSoFar = (sessions: ASession[], commitments: ACommitment[]): num
   Math.max(1, ...sessions.filter((s) => !s.isSetup && String(s.status).toUpperCase() === 'COMPLETED').map((s) => s.sessionNumber), ...commitments.map((c) => c.statedInSession ?? 0));
 
 /** What a person committed to, as the end of a sentence, or null when it cannot be said in our voice. */
-const clauseOf = (c: ACommitment): string | null => inOurVoice(c.text);
+const clauseOf = (c: ACommitment, r?: WhoIsReading): string | null => {
+  /* "me" in a promise about themselves is "you" to the person and "them" to anybody else (request 123, item 9). */
+  const clause = inOurVoice(c.text, r?.meId && c.participantId === r.meId ? 'you' : 'them');
+  return clause && r ? theReaderSaidAsYou(clause, r.myNames) : clause;
+};
 
 /* ------------------------------------------------------------------------------------------------
  * WORK PLAN: who is doing what, and by when
@@ -290,7 +297,7 @@ export function theRisks(
     if (!r.handoffMayBeRead(d)) continue;
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
-    const what = inASentence(d.what);
+    const what = inASentence(on ? aThingWithoutItsHolder(d.what, d.onLabel) : d.what);
     const blocking = String(d.status).toUpperCase() === 'BLOCKING';
     const says = blocking
       ? (on ? `${who} cannot move on ${what} until it comes from ${on}.` : `${who} cannot move on ${what}, and nobody has been named to provide it.`)
@@ -303,7 +310,7 @@ export function theRisks(
     if (String(c.status).toUpperCase() !== 'UNKNOWN') continue;
     if (!r.personMayBeRead(c.participantId) || !r.commitmentMayBeRead(c)) continue;
     const who = c.participantId ? whoIs(r, c.participantId) : 'Somebody';
-    const clause = clauseOf(c);
+    const clause = clauseOf(c, r);
     const what = clause ? `committed to ${clause}` : 'made a commitment';
     const times = 1 + (c.saidAgainIn ?? []).length;
     const hasATime = !!c.whenSaid && looksLikeATimeOrADate(c.whenSaid);
@@ -371,7 +378,7 @@ export function theTimeline(
   for (const c of commitments) {
     if (!r.personMayBeRead(c.participantId) || !r.commitmentMayBeRead(c)) continue;
     const who = c.participantId ? whoIs(r, c.participantId) : 'Somebody';
-    const clause = clauseOf(c);
+    const clause = clauseOf(c, r);
     push(c.createdAt, clause ? `${who} committed to ${clause}.` : `${who} made a commitment, which is in the record.`);
     const state = stateOf(c.status);
     if (state !== 'open' && c.settledAt) {
@@ -383,7 +390,7 @@ export function theTimeline(
     if (!r.handoffMayBeRead(d)) continue;
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
-    const what = inASentence(d.what);
+    const what = inASentence(on ? aThingWithoutItsHolder(d.what, d.onLabel) : d.what);
     push(d.createdAt, `${on ? `${who} said the work was waiting on ${on} for ${what}.` : `${who} said the work was waiting for ${what}.`}${thatWaitsOn(d)}`);
     if (d.clearedAt) push(d.clearedAt, `The wait for ${inASentence(d.what)} was cleared.`);
   }
@@ -478,7 +485,7 @@ export function theBlockerCheck(handoffs: AHandoff[], r: WhoIsReading): ABlocker
     if (!r.handoffMayBeRead(d)) continue;
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
-    const what = inASentence(d.what);
+    const what = inASentence(on ? aThingWithoutItsHolder(d.what, d.onLabel) : d.what);
     const named = !!(d.onParticipantId || aPartyOutside(d));
     const wentBack = !!d.triedSaid?.trim();
     const timeGiven = !!d.dueSaid?.trim();
@@ -645,13 +652,16 @@ export function theLeadActions(
 
   /* 3. A goal the lead set for somebody and has not told them about (decision 56, items 1 and 3). */
   const toldOf = new Set<string>();
+  const howMany = howManyGoalsAreNotTold(untoldGoals);
   for (const g of untoldGoals) {
     if (!g.participantId || toldOf.has(g.participantId) || !r.personMayBeRead(g.participantId)) continue;
     toldOf.add(g.participantId);
     const who = r.nameOf(g.participantId) ?? r.aColleague(g.participantId);
     out.push({
       id: `tell-${g.participantId}`,
-      says: `${needs} to talk ${who} through a goal ${leadInASentence} set for this work, because ${who} has not been told about it yet.`,
+      says: (howMany.get(g.participantId) ?? 1) > 1
+        ? `${needs} to talk ${who} through the ${howMany.get(g.participantId)} goals ${leadInASentence} set for this work, because ${who} has not been told about them yet.`
+        : `${needs} to talk ${who} through a goal ${leadInASentence} set for this work, because ${who} has not been told about it yet.`,
       because: 'The goal still counts, and Groundwork will not tell its number until it has been talked through.',
     });
   }
@@ -696,7 +706,7 @@ export function theObligations(
   const waitSaid = (d: AHandoff) => {
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
-    return `${on ? `${who} ${isAre(who)} waiting on ${on} for ${inASentence(d.what)}.` : `${who} ${isAre(who)} waiting for ${inASentence(d.what)}.`}${thatWaitsOn(d)}`;
+    return `${on ? `${who} ${isAre(who)} waiting on ${on} for ${inASentence(aThingWithoutItsHolder(d.what, d.onLabel))}.` : `${who} ${isAre(who)} waiting for ${inASentence(d.what)}.`}${thatWaitsOn(d)}`;
   };
   const out: AnObligationSide[] = [];
   for (const p of people) {
@@ -824,7 +834,9 @@ export function whoWaitedOnWhom(handoffs: AHandoff[], r: WhoIsReading): AWait[] 
       const days = since && clearedOn ? Math.round((Date.parse(clearedOn) - Date.parse(since)) / 86_400_000) : null;
       const onWhom = on ? ` on ${on}` : '';
       const says = cleared
-        ? (since && clearedOn
+        ? (since && clearedOn && days === 0
+          ? `${who} waited${onWhom} for ${what} on ${saidAsDate(since)}, and it was cleared the same day.`
+          : since && clearedOn
           ? `${who} waited${onWhom} for ${what} from ${saidAsDate(since)} until it was cleared on ${saidAsDate(clearedOn)}, ${days === 1 ? '1 day' : `${days} days`} in all.`
           : `${who} waited${onWhom} for ${what}, and it has been cleared.`)
         : (since
@@ -852,10 +864,10 @@ export interface AContradiction {
  * A commitment named at the start of a sentence: in their words where the stored text is a passage of what
  * they typed (as the work plan quotes it, followed by a comma), otherwise in ours.
  */
-function aCommitmentNamed(c: ACommitment, who: string): string {
+function aCommitmentNamed(c: ACommitment, who: string, r?: WhoIsReading): string {
   const theirWords = c.saidWordForWord === true ? c.text.trim().replace(/[.!?]+$/, '') : '';
   if (theirWords) return `${possessive(who)} commitment, "${theirWords}",`;
-  const clause = clauseOf(c);
+  const clause = clauseOf(c, r);
   return clause ? `${possessive(who)} commitment to ${clause}` : `A commitment of ${who === 'You' ? 'yours' : `${who}'s`}`;
 }
 
@@ -880,8 +892,8 @@ export function theContradictions(commitments: ACommitment[], sessions: ASession
     const later = [...(c.saidAgainIn ?? [])].filter((n) => n > settledSession).sort((a, b) => a - b);
     if (!later.length) continue;
     const who = whoIs(r, c.participantId);
-    const clause = clauseOf(c);
-    const theCommitment = aCommitmentNamed(c, who);
+    const clause = clauseOf(c, r);
+    const theCommitment = aCommitmentNamed(c, who, r);
     const again = later.length === 1 ? `session ${later[0]}` : `sessions ${listed(later.map(String))}`;
     out.push({
       id: `again-after-${state.replace(' ', '-')}-${c.id}`,

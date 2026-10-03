@@ -1,3 +1,4 @@
+import { theThingsTheyDisagreeOnAreSentences } from './the-things-people-disagree-on-are-sentences';
 import { HowALineIsKnown, theMarkOf, ARecordRowToMark } from './how-a-line-is-known';
 import { contentWords } from './what-the-record-actually-holds';
 import { intoSentences } from '../conversation/nothing-invented-reaches-them';
@@ -125,7 +126,7 @@ const sidesOf = (d: any): any[] => (Array.isArray(d?.positions) ? d.positions : 
 
 /** The sentences of the shared picture, as a person reads them. The same split builds and serves the marks. */
 export function theSentencesOf(text: unknown): string[] {
-  return intoSentences(String(text ?? '')).map((s) => s.trim()).filter(Boolean);
+  return intoSentences(theThingsTheyDisagreeOnAreSentences(String(text ?? ''))).map((s) => s.trim()).filter(Boolean);
 }
 
 export function theMarksOfAReport(
@@ -160,9 +161,13 @@ export function theMarksOfAReport(
  * - each finding carries `mark`.
  */
 export function withTheMarksOnItsLines<T extends Record<string, any> | null | undefined>(report: T, marks: TheMarksOfAReport | null | undefined): T {
-  if (!report || typeof report !== 'object' || !marks) return report;
+  if (!report || typeof report !== 'object') return report;
   const r = report as Record<string, any>;
   const out: Record<string, any> = { ...r };
+  /* The things people disagree on are sentences, in the text as well as in its lines. */
+  if (typeof r.sharedPicture === 'string') out.sharedPicture = theThingsTheyDisagreeOnAreSentences(r.sharedPicture);
+  if (typeof r.theOpening === 'string') out.theOpening = theThingsTheyDisagreeOnAreSentences(r.theOpening);
+  if (!marks) return out.sharedPicture === r.sharedPicture && out.theOpening === r.theOpening ? report : (out as T);
 
   if (Array.isArray(marks.sharedPicture) && typeof r.sharedPicture === 'string') {
     const sentences = theSentencesOf(r.sharedPicture);

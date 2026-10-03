@@ -33,6 +33,8 @@ describe('item 1: a participant - not lead, not admin - reaches none of the setu
     const changeContextLine = jest.fn();
 
     const prisma: any = {
+    /* The move into Ask Groundwork is hidden at release; these specs prove the path itself, so it is turned on here. */
+    platformSetting: { findUnique: async ({ where }: any) => (where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null) },
       person: { findFirst: jest.fn(async () => ({ id: 'p1', externalId: 'u-1', active: true, linkedUserId: 'member-1' })) },
       user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org-a' })) },
       ground: { findMany: jest.fn(async () => grounds) },
@@ -110,6 +112,8 @@ describe('item 3: a change to something already recorded, through the add_contex
     const applyContextProposal = opts.applyContextProposal ?? jest.fn(async () => ({ changed: 'a context line', say: 'Changed: "we will drop the pilot" is now "we are pausing the pilot".' }));
     const contextChat = jest.fn(async () => ({ reply: 'How long does this check-in run for?', gaps: ['duration'], done: false, proposal: null }));
     const prisma: any = {
+    /* The move into Ask Groundwork is hidden at release; these specs prove the path itself, so it is turned on here. */
+    platformSetting: { findUnique: async ({ where }: any) => (where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null) },
       person: { findFirst: jest.fn(async () => ({ id: 'p1', externalId: 'u-1', active: true, linkedUserId: 'lead-1' })) },
       user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org-a' })) },
       ground: { findMany: jest.fn(async () => grounds) },
@@ -195,6 +199,8 @@ describe("item 13: a colleague asking Ask Groundwork about somebody else's targe
       },
     };
     const prisma: any = {
+    /* The move into Ask Groundwork is hidden at release; these specs prove the path itself, so it is turned on here. */
+    platformSetting: { findUnique: async ({ where }: any) => (where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null) },
       person: { findFirst: jest.fn(async () => ({ email: 'ngozi@x.test', linkedUserId: 'u-ngozi' })) },
       groundParticipant: { findMany: jest.fn(async () => [{ id: 'p-ngozi', ground }]) },
       assistantTurn: { count: jest.fn(async () => 5), createMany: jest.fn(async () => ({ count: 2 })) },
@@ -232,6 +238,8 @@ describe("item 13: a colleague asking Ask Groundwork about somebody else's targe
 describe('item 5: a bank account number typed into an Ask message never reaches the model or storage', () => {
   function svc() {
     const prisma: any = {
+    /* The move into Ask Groundwork is hidden at release; these specs prove the path itself, so it is turned on here. */
+    platformSetting: { findUnique: async ({ where }: any) => (where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null) },
       person: { findFirst: jest.fn(async () => ({ id: 'p1', externalId: 'u-1', active: true, linkedUserId: 'lead-1' })) },
       assistantTurn: { count: jest.fn(async () => 5), createMany: jest.fn(async ({ data }: any) => { kept.push(...data); return { count: data.length }; }) },
       assistantProposal: { findFirst: jest.fn(async () => null) },
@@ -280,6 +288,8 @@ describe('item 6: the same paste confirmed twice is not written twice', () => {
       objectives: [],
     };
     const prisma: any = {
+    /* The move into Ask Groundwork is hidden at release; these specs prove the path itself, so it is turned on here. */
+    platformSetting: { findUnique: async ({ where }: any) => (where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null) },
       ground: { findUnique: jest.fn(async () => ground) },
       groundDocument: { count: jest.fn(async () => 0), findMany: jest.fn(async () => []) },
       personObjective: { findMany: jest.fn(async () => []), create: jest.fn(async () => ({})) },
@@ -342,6 +352,8 @@ describe('item 2: a target from a paste lands on the right person, and an ambigu
       objectives: [],
     };
     const prisma: any = {
+    /* The move into Ask Groundwork is hidden at release; these specs prove the path itself, so it is turned on here. */
+    platformSetting: { findUnique: async ({ where }: any) => (where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null) },
       ground: { findUnique: jest.fn(async () => ground) },
       groundDocument: { count: jest.fn(async () => 0), findMany: jest.fn(async () => []) },
       personObjective: {

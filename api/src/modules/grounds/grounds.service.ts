@@ -1,3 +1,4 @@
+import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
@@ -26,10 +27,12 @@ import { daysRemaining, deadlineOf, clockStartsAt } from './when-the-clock-start
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import { aKindMayBeGiven, theBoardKindsOffered } from '../admin/what-is-hidden-at-release';
 import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
 import { targetsFor } from '../board/whose-number-is-whose-business';
+import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting } from './the-context-chat';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
@@ -1671,7 +1674,7 @@ export class GroundsService {
             let oldest: string | null = theWay.oldest;
             if (oldest && onWhom && oldest.startsWith("A colleague's")) {
               const who = ((allParticipants ?? []) as any[]).find((p) => p.id === onWhom);
-              const name = (who?.user?.firstName ?? '').trim() || (who?.nameGiven ?? '').trim().split(/\s+/)[0] || null;
+              const name = theFirstNameOfAParticipant(who);
               if (name && (runsIt || peersVisibleEffective)) oldest = whoseIsIt(oldest.replace(/^A colleague's/, 'her'), name);
             }
             return { ...glance, inTheWay: { ...theWay, oldest } };
@@ -2146,7 +2149,7 @@ export class GroundsService {
       const viewerParticipantId = (ground.participants ?? []).find((p: any) => p.userId === requestingUserId)?.id ?? null;
       const dueAWeek = objectiveRowsAsStored.filter((o: any) => o.participantId === viewerParticipantId && aWeekHasPassedSinceNotTold(o));
       if (dueAWeek.length) {
-        const leadFirst = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')?.user?.firstName?.trim() || 'Your lead';
+        const leadFirst = theFirstNameOfAParticipant((ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')) || 'Your lead';
         const worded = await Promise.all(dueAWeek.map(async (o: any) => ({
           ...o,
           /* The plain sentence only - never the lead's own private note about telling them
@@ -2219,7 +2222,7 @@ export class GroundsService {
      * place this field is built, rather than by every reader of it.
      */
     const leadParticipantRaw = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR') as any;
-    const leadFirstName = (leadParticipantRaw?.user?.firstName ?? '').trim().split(/\s+/)[0] || null;
+    const leadFirstName = theFirstNameOfAParticipant(leadParticipantRaw);
     const leadAnswersToo = !!leadParticipantRaw?.userId && !leadParticipantRaw?.managingOnly;
     /**
      * WHETHER A TEAM REPORT COMES FROM THIS AT ALL - A BOOLEAN, NOT A COUNT (U.8 fifth review).
@@ -2337,7 +2340,7 @@ export class GroundsService {
              * nothing is read into it before they have talked it through. The person's own name,
              * never a pronoun.
              */
-            conversationPoint: notToldYet(row as any) ? theConversationPointForTheLead((p.user?.firstName ?? '').trim() || 'This person') : null,
+            conversationPoint: notToldYet(row as any) ? theConversationPointForTheLead(theFirstNameOfAParticipant(p) || 'This person') : null,
             /**
              * GW-EXP-3. Null means they have not said what doing well looks like to them yet, which the
              * surface reports as "not yet said". An absent view is never a matching one.
@@ -2562,6 +2565,9 @@ export class GroundsService {
        report's words, a note. The same rule the report and the board apply, over the whole read, so a
        field added later is covered by being served. See board/a-hidden-target-stays-hidden. */
     /* And no sentence carrying a goal the lead has not told its person about (a-goal-not-told-stays-with-the-lead). */
+    const objectivesNotToldHere = new Set(
+      ((ground as any).objectives ?? []).filter((o: any) => !withoutWhatTheLeadHasNotToldThemAbout([o], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], viewerIsInitiator).kept.length).map((o: any) => o.id),
+    );
     return withoutGoalsNotToldIn(this.withoutTheTargetsHiddenFrom(ground as any, requestingUserId, {
       ...rest,
       /* Until the lead ends it: no length to show. The flag says so (request 37). */
@@ -2598,7 +2604,8 @@ export class GroundsService {
         (ground.participants ?? []).find((p: any) => !!requestingUserId && p.userId === requestingUserId)?.id ?? null,
         ((ground as any).whoSeesTargets ?? 'THEIR_OWN') === 'EVERYBODY' ? 'everybody' : 'their own',
         { isLead: viewerIsInitiator },
-      ).shown.map((o: any) => ({
+      /* And none that is a goal the lead has not told its person about (decisions 48 and 56): the board already left it out, and this page said it in full. */
+      ).shown.filter((o: any) => !objectivesNotToldHere.has(o.id)).map((o: any) => ({
         ...o,
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledSaid),
       })),
@@ -2830,7 +2837,12 @@ export class GroundsService {
       guestIn: ground.organizationId !== organizationId
         ? ((ground as any).organization?.name ?? 'another organisation')
         : null,
-    }), goalsNotToldHere);
+    }), [
+      ...goalsNotToldHere,
+      /* And the objectives the engine wrote from them, in its own words (decisions 48 and 56). A goal past its week is said as the area sentence, so its stored words are not kept out again. */
+      ...theWordsOfWhatTheLeadHasNotToldThemAbout(((ground as any).objectives ?? []) as any[], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], viewerIsInitiator)
+        .filter((t) => !objectiveRowsAsStored.some((o: any) => aWeekHasPassedSinceNotTold(o) && (o.text ?? '') === t)),
+    ]);
   }
 
   /**
@@ -3757,7 +3769,7 @@ export class GroundsService {
     const key = `${participantId}::${leadQuestion.replace(/\s+/g, ' ').trim().toLowerCase()}`;
     const held = this.draftedQuestions.get(key);
     if (held) return held;
-    const name = (person?.user?.firstName ?? person?.nameGiven ?? '').trim().split(' ')[0] || 'them';
+    const name = theFirstNameOfAParticipant(person) || 'them';
     /* HER WORDS, WHERE SHE WROTE IT TO THEM. No model is asked to tidy a question that is already one. */
     const hers = theLeadsOwnQuestionIfAddressedToThem(pasted, leadQuestion, { name, privateWords });
     if (hers) {
@@ -5065,9 +5077,11 @@ export class GroundsService {
     try {
       const g = await this.prisma.ground.findUnique({
         where: { id: groundId },
-        select: { label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true },
+        select: { label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true },
       });
       if (!g || g.kindOfWorkSetBy === 'lead') return;
+      /* A check-in that already has a kind keeps it, offered or not (docs/deploy.md, "Hidden at release"). */
+      const hasOne = oneOfTheKinds(g.kindOfWork);
       const words = theSetupWords(g);
       if (!words.trim()) return;
       const answer = await this.anthropic.extract<{ kind?: string }>(
@@ -5075,7 +5089,10 @@ export class GroundsService {
         [{ role: 'user', content: words }],
         THE_KIND_OF_WORK_SCHEMA,
       );
-      const kind = oneOfTheKinds(answer?.kind);
+      const read = oneOfTheKinds(answer?.kind);
+      /* A kind not offered at release is never given to a check-in by the read; one it already holds stays. */
+      const kind = read && (await aKindMayBeGiven(this.prisma, read, hasOne)) ? read : null;
+      if (read && !kind && hasOne) return;
       await this.prisma.ground.update({
         where: { id: groundId },
         data: { kindOfWork: kind, kindOfWorkSetBy: kind ? 'read' : null },
@@ -5097,6 +5114,13 @@ export class GroundsService {
       const kind = body.kind === null ? null : oneOfTheKinds(body.kind);
       if (body.kind !== null && !kind) {
         throw new BadRequestException(`That is not one of the kinds of work Groundwork knows. Choose one of these: ${KINDS_OF_WORK.join(', ')}.`);
+      }
+      if (kind) {
+        const holds = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true } });
+        if (!(await aKindMayBeGiven(this.prisma, kind, holds?.kindOfWork))) {
+          const offered = await theBoardKindsOffered(this.prisma);
+          throw new BadRequestException(`Groundwork does not offer that kind of work yet. Choose ${offered.length ? `one of these: ${offered.join(', ')}` : 'none of them, because none is offered at the moment'}.`);
+        }
       }
       data.kindOfWork = kind;
       data.kindOfWorkSetBy = 'lead';

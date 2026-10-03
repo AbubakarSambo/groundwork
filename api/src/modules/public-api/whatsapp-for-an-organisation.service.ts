@@ -465,7 +465,7 @@ export class WhatsAppForAnOrganisationService {
 
   /** Whether anything waits for this person to approve or decline (decision 82, item 1). Never throws. */
   private async aDecisionWaitsFor(organizationId: string, personId: string): Promise<boolean> {
-    try { return !!(await this.assistant.somethingWaitsForYouToDecide?.(organizationId, personId)); } catch { return false; }
+    try { return !!(await this.assistant.somethingWaitsForYouToDecide(organizationId, personId)); } catch { return false; }
   }
 
   /* --- the report, on the phone, when a session closes anywhere --- */

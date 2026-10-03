@@ -103,6 +103,16 @@ export function theConversationPointForTheLead(personName: string, goals = 1): s
 }
 
 /**
+ * HOW MANY GOALS EACH PERSON HAS NOT BEEN TOLD ABOUT: the one count every sentence to the lead is built from
+ * (the "What needs you" line and the team's per-person conversation point), so two sentences cannot give two numbers.
+ */
+export function howManyGoalsAreNotTold(rows: readonly { participantId?: string | null }[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const g of rows) if (g.participantId) out.set(g.participantId, (out.get(g.participantId) ?? 0) + 1);
+  return out;
+}
+
+/**
  * WHAT THE PERSON READS, ONCE A WEEK HAS PASSED WITHOUT BEING TOLD: that their lead has set a goal
  * about this work, and will talk it through with them. No number, no target wording - only the
  * worded area (see `theLeadIsNudgedToTell` above for what `area` is).

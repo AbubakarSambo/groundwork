@@ -129,12 +129,19 @@ describe('what the record shows over time', () => {
       }], priti, 1);
       expect(c2.say).toContain('In session 1, Priti Sharma committed to reach out to the InfoSec team to push the security review forward.');
 
-      /* A first-person word left deeper in the sentence cannot be said safely in our voice. */
+      /* "my" is said about the person ("their") rather than hiding what they committed to (request 123, item 9). */
       const [c3] = commitmentsOverTime([{
         participantId: 'priti', text: 'I will get my documents sorted out.', whenSaid: null, explicit: true,
         status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], saidWordForWord: false,
       }], priti, 1);
-      expect(c3.say).toContain('In session 1, Priti Sharma made a commitment, which is in the record.');
+      expect(c3.say).toContain('In session 1, Priti Sharma committed to get their documents sorted out.');
+
+      /* An "I" left deeper in the sentence still cannot be said safely in our voice. */
+      const [c4] = commitmentsOverTime([{
+        participantId: 'priti', text: 'I will ask the team after I have the figures.', whenSaid: null, explicit: true,
+        status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], saidWordForWord: false,
+      }], priti, 1);
+      expect(c4.say).toContain('In session 1, Priti Sharma made a commitment, which is in the record.');
       for (const say of [c1.say, c2.say, c3.say]) {
         expect(say).not.toContain('"');
         expect(say).not.toMatch(/\bmy\b|\bI\b|\bI'll\b|\bme\b|\bour\b/);

@@ -45,6 +45,8 @@ function svc(opts: {
   const declineQuestionForPerson = opts.declineQuestionForPerson ?? jest.fn(async () => ({ id: 'q1', status: 'left out', say: 'I have left it out. Groundwork will not ask Ben this question.' }));
 
   const prisma: any = {
+    /* The move into Ask Groundwork is hidden at release; these specs prove the path itself, so it is turned on here. */
+    platformSetting: { findUnique: async ({ where }: any) => (where.key === 'release.contextInAskGroundwork' ? { value: { on: true } } : null) },
     person: {
       findFirst: jest.fn(async ({ where }: any) => {
         if (where?.active === true && opts.person === null) return null;
