@@ -186,6 +186,7 @@ import { whatTheRosterSaysAbout } from './a-party-who-spoke-is-not-absent';
 import { THE_LEAD_ONLY_ASKS } from '../grounds/the-lead-who-only-asks';
 import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
 import { liftsInReport, withholdLiftsIn } from './said-in-its-own-words';
+import { keepWhatTheFirstFound } from './a-second-ask-keeps-what-the-first-found';
 import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-was';
 import { whatThisSessionHolds } from './what-this-session-holds';
 import { adminsThisOrg, adminsTheOrg, readsAsAnAdmin, runsOrSetItUp } from '../grounds/who-may-read-this-check-in';
@@ -1549,11 +1550,14 @@ Close the report by framing - neutrally, without recommending one - the choice n
       return '';
     });
 
+    /* What the first ask read, and so what every later ask reads too: a re-ask without the grounding
+       is a re-ask over less than the first draft saw. See a-second-ask-keeps-what-the-first-found. */
+    const whatItReads = grounding ? `${corpus}\n\n${grounding}` : corpus;
     let result: SynthesisResult | null;
     try {
       result = await this.anthropic.extract<SynthesisResult>(
         systemPrompt,
-        [{ role: 'user', content: grounding ? `${corpus}\n\n${grounding}` : corpus }],
+        [{ role: 'user', content: whatItReads }],
         activeSchema,
       );
     } catch (err: any) {
@@ -1580,12 +1584,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
        * exception keeps the long version, and so does a retry that comes back empty.
        */
       const retry = await this.anthropic
-        .extract<SynthesisResult>(systemPrompt, [{ role: 'user', content: brevityPrefix + corpus }], activeSchema)
+        .extract<SynthesisResult>(systemPrompt, [{ role: 'user', content: brevityPrefix + whatItReads }], activeSchema)
         .catch((err: any) => {
           this.logger?.warn?.(`The shorter-version pass failed; keeping the long report. ${err?.message ?? err}`);
           return null;
         });
-      if (retry) result = retry;
+      /* Shorter, never with fewer findings. See a-second-ask-keeps-what-the-first-found. */
+      if (retry) {
+        const kept = keepWhatTheFirstFound(result, retry);
+        if (kept.putBack.length) this.logger?.warn?.(`Ground ${groundId}: the shorter version lost ${kept.putBack.join(', ')}; put back from the first draft.`);
+        result = kept.report;
+      }
     }
 
     /*
@@ -1702,14 +1711,21 @@ Close the report by framing - neutrally, without recommending one - the choice n
           [{
             role: 'user',
             content:
-              `${corpus}\n\nA previous attempt had a problem and was not used. ` +
+              `${whatItReads}\n\nA previous attempt had a problem and was not used. ` +
               `Write the report again, fixing this: ${faults.join(' Also: ')}`,
           }],
           activeSchema,
         )
         .catch(() => null);
       if (secondPass && faultsIn(secondPass).length < faults.length) {
-        result = secondPass;
+        /*
+         * BETTER, BUT NEVER BY LOSING A FINDING. Run 26: the second answer dropped every difference,
+         * which also dropped every copied phrase in them, and so "won". What the first draft found
+         * is put back; a copied phrase in it is restated or withheld just below.
+         */
+        const kept = keepWhatTheFirstFound(result, secondPass);
+        if (kept.putBack.length) this.logger?.warn?.(`Ground ${groundId}: the second attempt lost ${kept.putBack.join(', ')}; put back from the first draft.`);
+        result = kept.report;
       } else if (secondPass) {
         this.logger?.warn?.(`Ground ${groundId}: the second attempt was no better, keeping the first.`);
       }
@@ -1733,13 +1749,15 @@ Close the report by framing - neutrally, without recommending one - the choice n
           [{
             role: 'user',
             content:
-              `${corpus}\n\nHere is the report you wrote:\n${JSON.stringify(result)}\n\n` +
+              `${whatItReads}\n\nHere is the report you wrote:\n${JSON.stringify(result)}\n\n` +
               `These phrases are copied word for word from one person's record: ${stillLifted.map((l) => `"${l.run}"`).join('; ')}. ` +
               `Return the same report with each of those phrases said in your own words. Keep every fact and change nothing else.`,
           }],
           activeSchema,
         )
-        .catch(() => null);
+        .catch(() => null)
+        /* "Change nothing else" is asked; it is not trusted. A restatement that drops a finding gets it back. */
+        .then((r) => (r ? keepWhatTheFirstFound(result as SynthesisResult, r).report : null));
       if (restated && liftsInReport(restated as any, theirWords).length < stillLifted.length && faultsIn(restated).length <= faultsIn(result).length) {
         result = restated;
       }
