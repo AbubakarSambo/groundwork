@@ -1,5 +1,12 @@
 # Morning report
 
+**Where it stands, 4 October 2026 (end of the session):**
+1. **Done:** WhatsApp for the first client; the four suites built to decision 85 (steps, escalation, record, leave, spending and finance, time sheets, reviews, setup by talking); decision 86's reversals; request 118; every board kind's engine faults (item 21); run-26 is level with or better than the baseline on everything except "proof asked for" (the "picture" count, with Hafsah).
+2. **In progress, not committed as code:** the loans privacy rebuild (decision 75 item 14) stopped half-way when the weekly allowance ran out; it fails the privacy spec, so it is saved as `docs/unfinished/loans-privacy-rebuild.patch` and the code is as it was.
+3. **Next for release (engine frozen, decision of 4 October):** finish the run-26 fixes (Sunday reads only what is about him, several people or the shared aim; a record always owned by its speaker, enforced in code; no lead's words on a participant's Blockers tile; differences kept from the report's first version), then the smaller wording faults, each re-run once on the scenarios it touches; one full 24-scenario run before release.
+4. **Needs Hafsah:** the "picture" count in "proof asked for"; the yes or no list in `docs/privacy-restrictions-for-hafsah.md`; the four suites files the one-rule test flags (its only failure); and the questions under each entry below.
+5. **Note:** `.claude/hooks/guard.py` shows as changed in the working tree; that was not done by this work, and it is left uncommitted.
+
 **Night of 25–26 September 2026.** Branch `wip/plain-reports`. Nothing left this computer.
 
 This is written as I go, so if it stops mid-sentence that is where I got to.
