@@ -3557,3 +3557,46 @@ Never the engine's own sentence about the work, and never how the pattern was pu
 
 - **No decision is said to be below when none has been made** (this commit). `divergence.items[].positions[].view` on the board, `whoOwnsWhat[].items[].text`, and the session report's `whatEachPersonSaid[].saying`, to the person an evaluation check-in is about. Where a side's words are not shown, the sentence that takes their place always said "What was found, and the decision with its reasons, are below.", though no decision had been made and none was below. It now says that only once a decision has been made (the check-in has an end state, or has been resolved). Before a decision the person reads "The words your lead used are not shown to you here. What was found is below." or "A colleague's own words are not shown to you here. What was found is below." After a decision they read the earlier sentences, unchanged. The earlier spec for the person reviewed expected the old sentence on a record with no decision; it now expects the new one.
 - **On an onboarding check-in, the new hire reads their lead's own words and row** (this commit; Hafsah's answer of 3 October, decision 88, decisions 3 and 4). Only for the person a new hire's check-in (NEW_HIRE, the first 90 days) is about. `divergence.items[].positions[]`, `divergence.items[].evidence[]`, `whoOwnsWhat[]`, `checkInGrid.rows[]`, `whyYouOnlySeeYourself`, the session report's prose (`sharedPicture`, `theOpening`, `findings[].text`, `agreements`) and `whatEachPersonSaid[]`. Tobi read, under "Where you both see it differently", "The words your lead used are not shown to you here. What was found, and the decision with its reasons, are below.", and was shown only himself in "Who checked in". He now reads Amina's side word for word, for example "We agreed 98% on-time delivery." under her name, her quotes in the evidence and in the report's sentences, her row in "Who checked in" beside his own, and her row in "Who owns what" with her words. A colleague's words still come out for him ("A colleague's own words are not shown to you here. What was found is below."), as decision 17 says. The lead's private notes and own report are still never served to him. `whyYouOnlySeeYourself` is now sent only when a colleague is left out, and then reads "On this check-in people give their views without seeing what each other said, so the person-by-person part of this board shows you and your lead. Everything above it is built from everybody and is the same for all of you. That covers where people said the same thing, where they said different things, and the question it turns on." With nobody else but the lead, it is not sent. A plan, a promotion, a renewal, an admin with no access to the check-in, and a colleague who gave a view read exactly what they read before. `participants` already held the lead's row.
+
+## Request 123: the onboarding board's new-hire sections (4 October, in progress)
+
+For a first 90 days, a new manager and a new advisor (`family: 'ONBOARDING'`). Built from the record, with no model, and nothing is stored: opening the board changes nothing.
+
+### `startingState`, "What was agreed at the start"
+
+On the onboarding board `startingState` is an object, or null when nothing was agreed yet. (On every other board it is still the sentence stored at creation, or null.)
+
+- `heading`: "What was agreed at the start".
+- `rows[]`, ordered Day 1, By day 30, By day 60, By day 90, After day 90:
+  - `when`: the step, one of "Day 1", "By day 30", "By day 60", "By day 90", "After day 90". A goal with a date is put in the step its date falls in, counting day 1 as the check-in's start date (else the day the first session was finished). A goal with no date, but "day 30", "day 60" or "day 90" in the words the time was given in, goes in that step. Any other goal is under "Day 1", and its sentence quotes the time that was given.
+  - `whose`: "You" to the person it is about, otherwise their name.
+  - `says`: one full sentence. A goal reads "A goal was agreed for Tobi Adewale, to be met by day 90." (Tobi reads "for you"). A goal with a time given in other words reads "A goal was agreed for Tobi Adewale, and the time given for it was "in the first week"." A commitment from session 1 reads as the work plan writes it, for example "In session 1, you said, "I will read the contract for each of the five clients."".
+  - `what`: the goal as it was written down, for the screen to draw under the step. Null for a commitment.
+  - `kind`: "goal" or "commitment".
+- Sources: the goals set for each person (`PersonObjective`, not a reference or a commitment) and the commitments stated in session 1.
+- Left out for every reader: a goal the lead has not told the person (or has not asked about), which is the lead's own note (decision 56); and the role the lead described the person by (decision 30). Rows go through `personMayBeRead` and `commitmentMayBeRead`, so a reader who may not read a person reads nothing of them. An admin with no access to the evaluation check-in is not let in at all.
+- Read by: the lead, the person it is about (their own and the goals told to them), and an admin who set the check-in up. Test: `request-123-what-was-agreed-at-the-start-as-each-reader-reads-it.spec.ts`.
+
+## Handover to the screens workspace: the onboarding and project boards (4 October)
+
+Hafsah has given the onboarding and project boards back to the screens workspace. What the engine workspace did on them while you were away:
+
+- **Client fixes, committed and pushed:**
+  - `4c7d8b73`: BoardPage.tsx reads `b.divergence.whyNothingYet`, so `why-nothing-is-cross-referenced.spec.ts` passes.
+  - `61911c52`: WorkRecords.tsx prints the engine's `saidByLine` ("In your words,").
+  - `a237a60f` and `64b19e2e`: Today's items with `onTheBoardToo` are left out of the board's `needsHere`.
+  - Your "1 of 1 checked in" fix (`39bee66f`) was read and is right.
+- **The onboarding review was only half done.** Your check-in e2cfd3d8 is not in this computer's databases, so the review used local check-in `4aea148f-7e87-41c4-9f24-4cd41c02229d` ("Engagement Director, first 90 days", Dr Amina Bello and Tobi Adewale, 6 sessions). Its board JSON for both readers is in the engine workspace's old scratchpad: `pictures/review-onboard-4/board-lead.json` and `board-newhire.json`.
+  - **The screens were not checked.** `client/node_modules` here lacks `@fontsource/atkinson-hyperlegible` and `@fontsource/literata`, so vite stops at `main.tsx` line 6. Installing them needs Hafsah's yes.
+  - **Privacy:** no fault. Tobi gets Amina's side, her row and her own words (decision 88), never her judgement or private notes.
+  - **Engine wording faults found:**
+    - "you will questions about client needs…";
+    - "2 waiting" against 4 waits listed;
+    - "Tobi says that Tobi does not know…";
+    - Tobi named where "you" belongs ("initiative from Tobi on renewals");
+    - "0 days in all".
+    These are with the engine; a builder started them and was stopped by the spending limit. The unfinished work is saved in `docs/unfinished/` and is not in the code.
+- **Request 123:** `startingState` ("What was agreed at the start", by day 1, 30, 60 and 90) is done (`07425436`). "Change since last check-in" is not done: it is in the same unfinished patch. The engine finishes it.
+- **The project board:** not started by the engine workspace.
+
+From here the engine workspace leaves both boards to you, and answers here as before.
