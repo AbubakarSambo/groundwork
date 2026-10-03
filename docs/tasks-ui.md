@@ -79,6 +79,13 @@ Hafsah's client needs these first:
 5. **The other eight boards.**
 6. **The back office.** It stays as it is for Groundwork's staff; its rebuild comes last.
 
+**From the engine's item 21 notes (3 October), to do on the screen for the project boards and the other eight:**
+- `eachPerson[].reason`, `whereThisIsHeading.outcomes[].value`, `managerAlignment[].pattern` and `.pole` are codes ("nothing to do", "ALIGNED", "SETUP_NEVER_SAID"). Never print them; print the sentence beside each (`says`, `label`, `gap`).
+- `workRecords[].section` is "Deal grid" on every kind. It is the key, not the heading; take each kind's heading from its prototype (engineering: "Every task, and what shows it").
+- On the where-next board, `whereTheyDisagree` holds the same items as `divergence.items`; draw one of them.
+- Draw `blockers[].holdingUp` ("Once it is cleared, you can start testing the integration."), not `dependencies[].then` (the person's own words, "I can start").
+- `whatChangedThisWeek` can be `state: "not-known"` with `why`; draw the `why`, in the end fold.
+
 **Straight after the onboarding board's screen fixes (Hafsah, 3 October):** check every place the screen hides or narrows a field the engine sends. Keep what her decisions or the prototype require, draw the rest, and ask her where neither says. Start with the admin's To-dos board and the "role, as described" column.
 
 Plan and billing keeps Hafsah's decisions of 2 October (a one-month free trial for teams under 20; WhatsApp as a paid add-on at about 80% of the plan price, with a monthly limit; no prices or limits written into the screens). It has no place in the client's list, so it comes after item 5.
