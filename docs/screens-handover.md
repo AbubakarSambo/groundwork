@@ -4,6 +4,10 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## Project boards: done (4 October)
+
+Both situations, "Get a new project off to a good start" (555ac67d, engineering) and "Get a project back on track" (dac969d3), as lead and participant. The first review's eleven screen faults are fixed (06c9a1ac..6a207536) and checked live, with captures in the scratchpad's `pictures/project-check-eng/` and `project-check-drift/`. The engine's part is request 127. The local API runs the engine's 0b15efca, because its newest code does not compile (request 126). Next: Phase B, the other eight kinds of work, one at a time.
+
 ## Onboarding board: done (3 October)
 
 The fourth review, on the engine's 0b15efca, says both Amina (the lead) and Tobi (the new hire) match what the prototype shows for a new hire, apart from the engine's faults (requests 123 and 125). Captures are in the scratchpad's `pictures/review-onboard-4/`. Next is the project board.
