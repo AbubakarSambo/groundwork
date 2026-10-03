@@ -57,6 +57,28 @@ export type BoardWithheld = {
   saying: string
 }
 
+/**
+ * REQUEST 123: "What was agreed at the start", the onboarding board's own shape for
+ * `startingState` (docs/answers-from-engine.md, "Request 123"). Built from each person's goals
+ * (`PersonObjective`) and the commitments made in session 1, grouped by the step of the first 90
+ * days they fall due in.
+ */
+export interface StartingStateAtTheStart {
+  /** "What was agreed at the start". */
+  heading: string
+  rows: {
+    /** "Day 1", "By day 30", "By day 60", "By day 90" or "After day 90", in that order. */
+    when: 'Day 1' | 'By day 30' | 'By day 60' | 'By day 90' | 'After day 90'
+    /** "You" to the person this row is about, otherwise their name. */
+    whose: string
+    /** One full sentence, e.g. "A goal was agreed for Tobi Adewale, to be met by day 90." */
+    says: string
+    /** The goal as it was written down, for the screen to draw under the step. Null for a commitment. */
+    what: string | null
+    kind: 'goal' | 'commitment'
+  }[]
+}
+
 export type BoardPresent = {
   groundId: string
   renders: true
@@ -128,8 +150,14 @@ export type BoardPresent = {
   participants: { id: string; name: string | null; role: string | null; managingOnly: boolean; signedOffAt: string | null; partyType?: string }[]
 
   phaseSpine?: { startsAt: string | null; endsAt: string | null; currentSession: number; sessions: { n: number; state: string; date: string | null; /** The day it opens, for a session not yet done. */ opensOn?: string | null; /** The engine's own sentence for this session, e.g. "Session 5 opens on 12 October." */ says?: string }[] }
-  /** The ground's pre-agreed intent, set at creation. Null when none was set. */
-  startingState?: string | null
+  /**
+   * The ground's pre-agreed intent, set at creation. Null when none was set.
+   *
+   * REQUEST 123: on the onboarding board (`family === 'ONBOARDING'`) this is an object instead of
+   * a sentence - "What was agreed at the start", grouped by when it falls due (Day 1, by day 30,
+   * 60, 90, or after). Every other board still gets the plain sentence, or null, unchanged.
+   */
+  startingState?: string | StartingStateAtTheStart | null
   quickRead?: { label: string; value: string; sub: string; tone: string }[]
   objectives?: {
     /** What the target assumes, the lead's lines (U.7). */
