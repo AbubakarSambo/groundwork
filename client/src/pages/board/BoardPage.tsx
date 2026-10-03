@@ -8,7 +8,7 @@ import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { WhatToSettleTogether } from '@/components/gw/what-to-settle-together'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckInLinks } from './CheckInLinks'
-import { boardApi, type BoardPresent, type CoverageVariant, type AnAction, type StartingStateAtTheStart } from '@/api/board'
+import { boardApi, type BoardPresent, type CoverageVariant, type AnAction, type StartingStateAtTheStart, type ChangeSinceLast, type NinetyDays } from '@/api/board'
 import { apiClient } from '@/api/client'
 import { groundsApi } from '@/api/grounds'
 import { participantRequestsApi } from '@/api/participantRequests'
@@ -773,6 +773,62 @@ function StartingStateBody({ startingState }: { startingState: string | Starting
             </Stack>
           ))}
         </div>
+      </Panel>
+    </Section>
+  )
+}
+
+/**
+ * CHANGE SINCE LAST CHECK-IN (request 123; day-30-and-60.txt: "Change since last check-in",
+ * "Accounts", "New accounts went up from 4 to 5...", "Moved"). On the onboarding board only, right
+ * after "What was agreed at the start". Absent until two sessions are finished, or where the
+ * reader may read nothing in it - `b.changeSinceLast` is simply not sent then.
+ */
+const CHANGE_SINCE_LAST_TAG: Record<ChangeSinceLast['rows'][number]['state'], { label: string; tone: TagTone }> = {
+  moved: { label: 'Moved', tone: 'proven' },
+  held: { label: 'Held', tone: 'plain' },
+  late: { label: 'Late', tone: 'attention' },
+}
+
+function ChangeSinceLastBody({ changeSinceLast }: { changeSinceLast: ChangeSinceLast }) {
+  return (
+    <Section heading={changeSinceLast.heading} note={changeSinceLast.between}>
+      <Panel pad={false}>
+        <RowList label={changeSinceLast.heading}>
+          {changeSinceLast.rows.map((row, i) => (
+            <Row key={i} columns="1fr" inset="panel">
+              <Stack gap={4}>
+                <SubHeading as="h3">{row.area}</SubHeading>
+                <Tag tone={CHANGE_SINCE_LAST_TAG[row.state].tone}>{CHANGE_SINCE_LAST_TAG[row.state].label}</Tag>
+                <StartingStateSentence>{row.says}</StartingStateSentence>
+              </Stack>
+            </Row>
+          ))}
+        </RowList>
+      </Panel>
+    </Section>
+  )
+}
+
+/**
+ * THE 90 DAYS, IN THREE STEPS (request 123, the rest; day-30-and-60.txt: "The 90 days, in three
+ * steps", "Wairimu and Kwame see the same pictures", "After 30 days: is Kwame settled in?"). On the
+ * onboarding board only, right after "Change since last check-in", before the person's history.
+ * A step not yet reached already says so in its own first sentence ("This step comes on 30
+ * October…"), from the engine, so nothing further is drawn for that here.
+ */
+function NinetyDaysBody({ ninetyDays }: { ninetyDays: NinetyDays }) {
+  return (
+    <Section heading={ninetyDays.heading} note="Wairimu and Kwame see the same pictures.">
+      <Panel>
+        <Stack gap={18}>
+          {ninetyDays.steps.map((step) => (
+            <Stack key={step.step} gap={4}>
+              <SubHeading as="h3">{step.question}</SubHeading>
+              <StartingStateSentence>{step.says}</StartingStateSentence>
+            </Stack>
+          ))}
+        </Stack>
       </Panel>
     </Section>
   )
@@ -1937,6 +1993,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 finds when it checks the general case's own document order - see the note there. */}
             {b.startingState && shown.startingState && (
               <StartingStateBody startingState={b.startingState} />
+            )}
+            {/*
+              REQUEST 123: "CHANGE SINCE LAST CHECK-IN" AND "THE 90 DAYS, IN THREE STEPS" - the
+              prototype's own order, right after "What was agreed at the start", before the
+              person's history (day-30-and-60.txt). Both are simply absent when the server has
+              nothing to send (fewer than two finished sessions, or nothing this reader may read).
+            */}
+            {b.changeSinceLast && (
+              <ChangeSinceLastBody changeSinceLast={b.changeSinceLast} />
+            )}
+            {b.ninetyDays && (
+              <NinetyDaysBody ninetyDays={b.ninetyDays} />
             )}
             {shown.personHistory && b.personHistory && (
               viewerRunsThisCheckIn ? (

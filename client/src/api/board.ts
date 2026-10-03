@@ -79,6 +79,45 @@ export interface StartingStateAtTheStart {
   }[]
 }
 
+/**
+ * REQUEST 123: "Change since last check-in", the onboarding board's own field (docs/answers-from-
+ * engine.md, "`changeSinceLast`, 'Change since last check-in'"). One row per area between the last
+ * two finished sessions. Absent until two sessions are finished, and absent for a reader who may
+ * read nothing in it.
+ */
+export interface ChangeSinceLast {
+  /** "Change since last check-in". */
+  heading: string
+  /** "Between session 5 and session 6." */
+  between: string
+  rows: {
+    /** "Commitments", "Waits", or the goal's own words. */
+    area: string
+    state: 'moved' | 'held' | 'late'
+    /** One or more full sentences. */
+    says: string
+    kind: 'commitments' | 'waits' | 'goal'
+  }[]
+}
+
+/**
+ * REQUEST 123: "The 90 days, in three steps" (docs/answers-from-engine.md, "Request 123, the
+ * rest"). Built from the goals told to the person, their commitments, and what they wait for.
+ */
+export interface NinetyDays {
+  /** "The 90 days, in three steps". */
+  heading: string
+  steps: {
+    step: number
+    day: number
+    /** E.g. "Is Tobi Adewale settled in?" to the lead, "Are you settled in?" to the new hire. */
+    question: string
+    /** One or more full sentences. */
+    says: string
+    reached: boolean
+  }[]
+}
+
 export type BoardPresent = {
   groundId: string
   renders: true
@@ -158,6 +197,10 @@ export type BoardPresent = {
    * 60, 90, or after). Every other board still gets the plain sentence, or null, unchanged.
    */
   startingState?: string | StartingStateAtTheStart | null
+  /** REQUEST 123: "Change since last check-in", on the onboarding board only. */
+  changeSinceLast?: ChangeSinceLast
+  /** REQUEST 123: "The 90 days, in three steps", on the onboarding board only. */
+  ninetyDays?: NinetyDays
   quickRead?: { label: string; value: string; sub: string; tone: string }[]
   objectives?: {
     /** What the target assumes, the lead's lines (U.7). */
