@@ -5443,7 +5443,9 @@ happened, and what is in the way.`;
       asStored.engagement && typeof asStored.engagement === 'object' ? { ...asStored, engagement: theRestOfEngagement } : asStored,
       marksOnItsLines,
     );
-    const withNamesPutIn = this.applyNames(gapsAsTheirSentences(findingsWithoutTheirLabels(theTableStaysWithTheEngine(withMarks))), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
+    /* A field name the model wrote into a divergence comes out at every read, for reports already stored (item 21). */
+    const readable = withMarks && Array.isArray((withMarks as any).divergences) ? { ...(withMarks as any), divergences: everyDivergenceReadable((withMarks as any).divergences) } : withMarks;
+    const withNamesPutIn = this.applyNames(gapsAsTheirSentences(findingsWithoutTheirLabels(theTableStaysWithTheEngine(readable))), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
     /*
      * DECISION 75, ITEM 14: WHERE PEOPLE DO NOT SEE EACH OTHER, ONE PERSON'S CIRCUMSTANCES NEVER REACH ANOTHER. The
      * shared picture a participant reads carries counts and patterns across people, never a sentence about one

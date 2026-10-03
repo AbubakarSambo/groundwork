@@ -123,6 +123,7 @@ import {
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, readsHowTheLeadingIsLanding } from '../patterns/who-reads-a-pattern';
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
+import { everyDivergenceReadable } from '../reports/a-field-name-is-not-a-heading';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { theFirstNameFrom, theShortNameOf } from '../reports/a-title-is-not-a-first-name';
 import { aHolderInTheirOwnWords } from './a-holder-in-their-own-words';
@@ -1264,7 +1265,8 @@ export class BoardService {
          * two people disagreeing with a third. Where the reader may see the name, the name wins.
          */
         items: Array.isArray(reportSafe.divergences)
-          ? (reportSafe.divergences as any[]).map((d) => {
+          /* A field name the model wrote into a value comes out at the read too, for reports already stored (item 21). */
+          ? (everyDivergenceReadable(reportSafe.divergences as any[]) as any[]).map((d) => {
               const named = (side: any) => {
                 const resolved = visibleNames.get(String(side?.participantLabel ?? '')) ?? side?.participantLabel;
                 return {

@@ -44,7 +44,30 @@ export interface ADivergence {
  * already set, the tail is discarded as the duplicate it is; where it is empty, the tail is what
  * the model meant to put there and had put somewhere else.
  */
-export function aFieldNameIsNotAHeading<T extends ADivergence>(d: T): T {
+/*
+ * AND IN THE EVIDENCE TOO (item 21, the engineering board). Ifeoma read, as the first line of evidence under a
+ * difference, "atStake: If this holds, the project could be delivered on time according to your definition, but
+ * fail ...". A line of evidence that opens with a field name loses the field name; where the difference has no
+ * "what is at stake" of its own, the line is moved there, as the topic's tail is below.
+ */
+const A_FIELD_NAME_FIRST = /^\s*(?:atStake|at stake|whyItMatters|why it matters|evidence|positions|recommendedMove)\s*:\s*/i;
+function theEvidenceWithoutFieldNames<T extends ADivergence>(d: T): T {
+  const evidence = (d as any)?.evidence;
+  if (!Array.isArray(evidence) || !evidence.some((e) => typeof e === 'string' && A_FIELD_NAME_FIRST.test(e))) return d;
+  let atStake = (d.atStake ?? '').toString().trim();
+  const kept: unknown[] = [];
+  for (const e of evidence) {
+    if (typeof e !== 'string' || !A_FIELD_NAME_FIRST.test(e)) { kept.push(e); continue; }
+    const text = e.replace(A_FIELD_NAME_FIRST, '').trim();
+    if (!text) continue;
+    if (!atStake) { atStake = text; continue; }
+    kept.push(text);
+  }
+  return { ...d, evidence: kept, atStake: atStake || d.atStake };
+}
+
+export function aFieldNameIsNotAHeading<T extends ADivergence>(input: T): T {
+  const d = input ? theEvidenceWithoutFieldNames(input) : input;
   const topic = (d?.topic ?? '').trim();
   if (!topic) return d;
   const at = topic.search(A_FIELD_NAME);
