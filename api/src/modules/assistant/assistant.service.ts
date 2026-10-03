@@ -113,6 +113,8 @@ import {
 import { Prisma } from '@prisma/client';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { isAGuestsKey } from './a-guests-questions-are-kept-apart';
+import { withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { theWordsOfWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
 import { targetsHiddenFrom, withoutHiddenTargetsIn, namesOnTheRoster } from '../board/a-hidden-target-stays-hidden';
 import { runsIt } from '../grounds/who-may-read-this-check-in';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
@@ -2455,7 +2457,9 @@ export class AssistantService {
              * their own. See board/whose-number-is-whose-business and board/a-hidden-target-stays-hidden.
              */
             whoSeesTargets: true,
-            objectives: { select: { ownerParticipantId: true, target: true } },
+            objectives: { select: { name: true, ownerParticipantId: true, target: true } },
+            /* A goal the lead has not told its person about is never recalled to anybody else (decisions 48 and 56). */
+            personObjectives: { where: { awareness: 'NOT_TOLD' }, select: { participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true } },
             participants: {
               select: {
                 id: true, nameGiven: true, roleAsDescribed: true, remitAsGiven: true, partyType: true,
@@ -2497,14 +2501,14 @@ export class AssistantService {
         namesOnTheRoster(g.participants ?? []),
         g.participants ?? [],
       );
-      const guarded = withoutHiddenTargetsIn(
+      const guarded = withoutGoalsNotToldIn(withoutHiddenTargetsIn(
         {
           centralQuestion: g.report.centralQuestion,
           agreements: (g.report as any).agreements,
           divergences: (g.report as any).divergences,
         },
         hiddenTargets,
-      );
+      ), theWordsOfWhatTheLeadHasNotToldThemAbout(g.objectives ?? [], ((g as any).personObjectives ?? []) as any[], (g.participants ?? []) as any[], g.initiatorId === me.linkedUserId));
       const r = recall({
         groundLabel: g.label,
         releasedAt: g.report.releasedAt!,

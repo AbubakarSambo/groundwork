@@ -1,3 +1,4 @@
+import { howManyGoalsAreNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { holdsItSaid, theReaderSaidAsYou, aThingWithoutItsHolder } from './a-holder-in-their-own-words';
 import { aCommitmentSaid, looksLikeATimeOrADate, inOurVoice } from '../reports/what-the-record-shows-over-time';
 import { aNumberPeopleCanRead } from './an-aim-is-a-sentence-about-somebody';
@@ -650,13 +651,16 @@ export function theLeadActions(
 
   /* 3. A goal the lead set for somebody and has not told them about (decision 56, items 1 and 3). */
   const toldOf = new Set<string>();
+  const howMany = howManyGoalsAreNotTold(untoldGoals);
   for (const g of untoldGoals) {
     if (!g.participantId || toldOf.has(g.participantId) || !r.personMayBeRead(g.participantId)) continue;
     toldOf.add(g.participantId);
     const who = r.nameOf(g.participantId) ?? r.aColleague(g.participantId);
     out.push({
       id: `tell-${g.participantId}`,
-      says: `${needs} to talk ${who} through a goal ${leadInASentence} set for this work, because ${who} has not been told about it yet.`,
+      says: (howMany.get(g.participantId) ?? 1) > 1
+        ? `${needs} to talk ${who} through the ${howMany.get(g.participantId)} goals ${leadInASentence} set for this work, because ${who} has not been told about them yet.`
+        : `${needs} to talk ${who} through a goal ${leadInASentence} set for this work, because ${who} has not been told about it yet.`,
       because: 'The goal still counts, and Groundwork will not tell its number until it has been talked through.',
     });
   }

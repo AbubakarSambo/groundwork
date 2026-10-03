@@ -3666,3 +3666,19 @@ Coaching, role behaviour, patterns and probes are protected (decision 55). The r
 ## Request for the screens workspace: the kind-of-work list on the board (4 October 2026)
 
 The release offers a new check-in only some of the eleven kinds of work. The board now carries a new field `kindsOffered`, the list of kinds a new check-in may be given (at release, only "sales org"). The kind-of-work dialog in `client/src/pages/board/WorkRecords.tsx` still lists all eleven from `KIND_OF_WORK_OPTIONS`, and the server now refuses the rest with a plain sentence. Please list only `kindsOffered` in that dialog, and also the kind the check-in already holds (`kindOfWork`), so a check-in that holds another kind can still be saved. The engine workspace did not edit `pages/board/*`.
+
+## Request 125: a goal not told stays with the lead on every path, a title is not a first name, one count of goals not told (4 October 2026)
+
+**A goal the lead has not told a person about now stays with the lead on every path that serves goals** (decisions 48 and 56). One rule, `grounds/a-goal-not-told-stays-with-the-lead.ts` (the goal's own words), with `board/an-untold-goal-is-not-a-board-objective.ts` for the objectives the engine wrote from it in its own words. Before, `GET /grounds/:id` sent Tobi `objectives[7]`, "Manage the renewal process for at least one of the clients.", in full while the board hid it. Now it is not in `objectives` for Tobi, for a colleague or for an admin who only reads, and Amina still reads it. The same rule now runs on:
+- `GET /grounds/:id` (`objectives`, and every sentence on the page),
+- the board (its sentences, as well as its objectives),
+- the report, which is also what WhatsApp's "your report" message and the API's report routes serve (`reports.get` and `sessionReport` both end in the same wall),
+- Today's "Since the last round" (the counts that moved),
+- the Movement tile ("targets changed") in the session report,
+- the You board's `ownedTargets`,
+- Ask Groundwork's "what came of it" recall.
+The other WhatsApp and API routes that name a goal read a person's own commitments only, or the lead's own list, so they needed no change. Tests: `grounds/a-goal-not-told-stays-with-the-lead-on-the-check-in-page.spec.ts`, read as Amina, Tobi and an admin on each path.
+
+**A title is not a first name.** Tobi read "Dr has set a goal about this part of the work, and will talk it through with you." He now reads "Amina has set a goal about this part of the work, and will talk it through with you." `leadFirstName` on `GET /grounds/:id` is "Amina", not "Dr". One helper, `theFirstNameOfAParticipant` (`reports/a-title-is-not-a-first-name.ts`), is used where a first name was taken from a full name: the check-in page, the board's goal sentence and its 90 days steps, the You board, Today, the check-ins that wait on this one, the lead's daily WhatsApp summary of who has not answered, and the question drafted for the lead. Places outside the engine's files that still take a first word (`suites/the-todos.service.ts`, `reports.service.ts`'s name list for the walls, `conversation` for waits) are listed in the report to Hafsah.
+
+**One count of the goals not told.** Amina read "You need to talk Tobi Adewale through a goal you set for this work" under "What needs you" and "Tobi Adewale has not been told about 2 goals yet" under the team today. Both are built from `howManyGoalsAreNotTold`. With two goals she reads "You need to talk Tobi Adewale through the 2 goals you set for this work, because Tobi Adewale has not been told about them yet." and "Tobi Adewale has not been told about 2 goals yet. Talk them through together before reading anything into them." With one, "through a goal you set" and "has not been told about this goal yet". Test: `board/request-125-one-count-of-the-goals-not-told.spec.ts`.

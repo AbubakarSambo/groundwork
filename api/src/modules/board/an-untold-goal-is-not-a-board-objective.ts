@@ -89,3 +89,24 @@ export function whatThePersonReadsOfTheirOwnUntoldGoals(
   }
   return out;
 }
+
+/**
+ * THE WORDS A READER MUST NOT BE GIVEN IN ANY SENTENCE (decisions 48 and 56): the lead's stored goal, and the
+ * objectives the engine wrote from it in its own words (the ones `withoutWhatTheLeadHasNotToldThemAbout` takes
+ * out of the list). Every place that serves text to a person runs these through `withoutGoalsNotToldIn`, so a
+ * sentence cannot give back what the list leaves out. Empty for the lead.
+ */
+export function theWordsOfWhatTheLeadHasNotToldThemAbout<T extends AnObjectiveRow>(
+  objectives: readonly T[],
+  untold: readonly AnUntoldGoalRow[],
+  people: readonly ABoardPerson[],
+  isTheLead: boolean,
+): string[] {
+  if (isTheLead) return [];
+  const { kept } = withoutWhatTheLeadHasNotToldThemAbout(objectives, untold, people, false);
+  const left = new Set<T>(objectives.filter((o) => !kept.includes(o)));
+  return [
+    ...untold.filter(notToldYet).map((g) => String(g.text ?? '')),
+    ...[...left].map((o) => String(o.name ?? '')),
+  ].filter((t) => t.trim());
+}

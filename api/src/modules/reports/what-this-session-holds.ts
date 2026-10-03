@@ -1,3 +1,4 @@
+import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { labelsForParties, namesVisibleTo } from './party-labels';
@@ -200,7 +201,7 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
         })
       : Promise.resolve([] as { status: string; fromParticipantId: string; onParticipantId: string | null; what: string; onLabel: string | null }[]),
     /* Every count, as Since the last round reads them; `targetsSet` counts the ones with a number. */
-    prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, count: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true } }),
+    prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, name: true, count: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true } }),
     (prisma as any).ground?.findUnique?.({
       where: { id: groundId },
       select: {
@@ -235,12 +236,18 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
    * read "+5" when the only target that moved was a colleague's. The same rule the board's own targets
    * use for this reader (whose-number-is-whose-business).
    */
-  const objectives = targetsFor(
+  const shownTargets = targetsFor(
     (everyObjective ?? []) as any[],
     reader.participantId,
     (theGround as any)?.whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
     { isLead: reader.isLead },
-  ).shown as unknown as { id: string; count: number; target?: number | null }[];
+  ).shown as any[];
+  /* And not a target for somebody that the lead has not told them about (decisions 48 and 56): the tile would add its movement. */
+  const untoldRows = reader.isLead ? [] : await ((prisma as any).personObjective?.findMany?.({
+    where: { groundId, awareness: 'NOT_TOLD' },
+    select: { participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
+  })?.catch?.(() => []) ?? Promise.resolve([]));
+  const objectives = withoutWhatTheLeadHasNotToldThemAbout(shownTargets, (untoldRows ?? []) as any[], ((theGround as any)?.participants ?? []) as any[], !!reader.isLead).kept as unknown as { id: string; count: number; target?: number | null }[];
   /*
    * THE FIRST WORRY WHOSE LINE STANDS WHOLE: a first sentence that fits a tile, and whose quotes,
    * if it has any, are the record's words, so the quote rule at the read leaves it as it is (see

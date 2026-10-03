@@ -1,3 +1,4 @@
+import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { CheckInStatus, GroundStatus } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { WhatsAppService } from './whatsapp.service';
@@ -158,7 +159,7 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
   const done = counted.filter((r) => r.status === CheckInStatus.COMPLETED);
   const notYet = counted
     .filter((r) => r.status !== CheckInStatus.COMPLETED)
-    .map((r) => (r.participant?.user?.firstName ?? r.participant?.nameGiven ?? '').trim().split(/\s+/)[0])
+    .map((r) => theFirstNameOfAParticipant(r.participant as any) ?? '')
     .filter((n: string) => !!n);
   return { ofHowMany: counted.length, answered: done.length, notYet };
 }

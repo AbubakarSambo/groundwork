@@ -29,11 +29,11 @@ import { eachDealInItsGroup } from './each-deal-in-its-group';
 import { isTheTeamPictureNowShared } from '../reports/each-sessions-picture-is-released-on-its-own';
 import { whatToDoAboutALeadAction, whatToDoAboutADecision, isAYesOrNoQuestion, theAnswerAsALine } from './what-needs-you-and-what-to-do';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
-import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { howManyGoalsAreNotTold, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn, isNotLetInYet, whoIsNotLetInYet, theWaitingToBeLetInLine } from '../grounds/who-an-admin-did-not-let-in';
 import { theSharedReadWithoutTheLeadsJudgement } from './what-the-room-says-is-not-a-reading-of-the-lead';
 import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
-import { withoutWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals } from './an-untold-goal-is-not-a-board-objective';
+import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals } from './an-untold-goal-is-not-a-board-objective';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-served';
@@ -127,7 +127,7 @@ import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { patternQuestionsToSettleFirst } from './pattern-questions-to-settle-first';
 import { everyDivergenceReadable } from '../reports/a-field-name-is-not-a-heading';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
-import { theFirstNameFrom, theShortNameOf } from '../reports/a-title-is-not-a-first-name';
+import { theFirstNameFrom, theShortNameOf, theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { aWaitInTheirOwnWords } from './a-holder-in-their-own-words';
 import { yourOwnRowsSayYou } from './your-own-read-says-you';
 import { theRoomAsThisReaderReadsIt } from './the-room-as-each-reader-reads-it';
@@ -1208,7 +1208,7 @@ export class BoardService {
       }));
       /* A week past, the person reads that the goal exists, with no number (decision 56, item 4). Only they do. */
       if (untoldRows.length) {
-        const leadFirst = ((ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')?.user?.firstName ?? '').trim() || 'Your lead';
+        const leadFirst = theFirstNameOfAParticipant((ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')) || 'Your lead';
         const withArea = await Promise.all(untoldRows.map(async (g) => ({ ...g, area: await areaOfGoalOrFallback(this.prisma, g.text ?? '') })));
         for (const say of whatThePersonReadsOfTheirOwnUntoldGoals(withArea, me?.id ?? null, leadFirst)) {
           (out.objectives as any[]).push({
@@ -2118,8 +2118,7 @@ export class BoardService {
        */
       const nameByParticipant = new Map((out.eachPerson as any[]).map((row) => [row.participantId, String(row.who ?? '').trim()]));
       /* One point per person, with how many goals, never the same sentence once per goal (item 21). */
-      const untoldCount = new Map<string, number>();
-      for (const g of await this.goalsNotToldYetByParticipant(groundId)) untoldCount.set(g.participantId, (untoldCount.get(g.participantId) ?? 0) + 1);
+      const untoldCount = howManyGoalsAreNotTold(await this.goalsNotToldYetByParticipant(groundId));
       const untoldByParticipant = new Map<string, string[]>();
       for (const [pid, n] of untoldCount) untoldByParticipant.set(pid, [theConversationPointForTheLead(nameByParticipant.get(pid) || 'This person', n)]);
       out.eachPersonToday = (out.eachPerson as any[]).map((row) => {
@@ -2493,7 +2492,7 @@ export class BoardService {
         const leadOfIt = (ground.participants as any[]).find((p) => p.id === theLeadsRow);
         const ninety = theNinetyDaysInThreeSteps({
           goals, commitments: mine.commitments, handoffs, sessions, people, startsAt: (ground as any).startsAt ?? null, createdAt: (ground as any).createdAt ?? null,
-          leadFirstName: (leadOfIt?.user?.firstName ?? '').trim() || (leadOfIt?.nameGiven ?? '').trim().split(/\s+/)[0] || null,
+          leadFirstName: theFirstNameOfAParticipant(leadOfIt),
           readerIsTheLead: isInitiator, reader, now,
         });
         if (ninety) (out as any).ninetyDays = ninety;
@@ -2618,7 +2617,14 @@ export class BoardService {
       ) as any;
       /* A goal the lead has not told somebody about is in no sentence anybody but the lead reads. See
          grounds/a-goal-not-told-stays-with-the-lead. */
-      if (!isInitiator) walled = withoutGoalsNotToldIn(walled, await this.goalsNotToldYet(groundId));
+      if (!isInitiator) {
+        walled = withoutGoalsNotToldIn(walled, [
+          ...(await this.goalsNotToldYet(groundId)),
+          /* And the objectives the engine wrote from them, in its own words (decisions 48 and 56). */
+          ...theWordsOfWhatTheLeadHasNotToldThemAbout(ground.objectives as any[], await this.untoldGoalRows(groundId), ground.participants as any[], false)
+            .filter((t) => !(ground.objectives as any[]).every((o) => o.name !== t)),
+        ]);
+      }
       /* The shared read of the answers carries no sentence that is a reading of the lead, to anybody but the lead. */
       if (!isInitiator && walled.whatTheAnswersSay) {
         const leadRow = (ground.participants as any[]).find((p) => p.id === theLeadsRow);

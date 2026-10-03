@@ -1,3 +1,4 @@
+import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { aWaitOnOneself } from '../board/a-thing-is-not-somebody';
 import { notToldYet, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
@@ -9,6 +10,7 @@ import { GroundsService } from './grounds.service';
 import { yourBoard, type YourBoard, type YourPattern } from './your-board';
 import { isShut } from './a-ground-that-has-ended';
 import { targetsFor } from '../board/whose-number-is-whose-business';
+import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
 import { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForThePerson } from '../suggestions/a-suggestion-told-like-a-signal';
 import { askedOfYou, type AskedOfYou } from './asked-of-you';
@@ -72,7 +74,7 @@ export class YourBoardService {
               if (!notToldYet(o) || mine.some((g) => g.id === o.groundId && g.initiatorId === reader.userId)) return o;
               const g = mine.find((x) => x.id === o.groundId);
               const lead = (g?.participants ?? []).find((p: any) => p.userId === g?.initiatorId);
-              const leadName = (lead?.user?.firstName ?? '').trim() || 'Your lead';
+              const leadName = theFirstNameOfAParticipant(lead) || 'Your lead';
               const area = await areaOfGoalOrFallback(this.prisma, o.text);
               return { ...o, text: whatThePersonReadsAfterAWeek(leadName, area) };
             })))
@@ -150,9 +152,22 @@ export class YourBoardService {
        the decision with its reasons, never the verdict). Left off when there are none. */
     const aboutYou = this.suggestions ? await this.suggestions.aboutYou({ userId: reader.userId, organizationId: reader.organizationId }) : [];
 
+    /* And no target of yours that is a goal the lead has not told you about (decisions 48 and 56): the same rule as the board, per check-in, and the lead of one reads their own. */
+    const untoldRows: any[] = participantIds.length
+      ? await this.prisma.personObjective.findMany({
+          where: { groundId: { in: groundIds }, participantId: { in: participantIds }, awareness: 'NOT_TOLD' },
+          select: { groundId: true, participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
+        })
+      : [];
+    const targetsYouMayRead = (ownedTargets as any[]).filter((t) => {
+      const g = mine.find((x) => x.id === t.groundId);
+      const runsIt = g?.initiatorId === reader.userId;
+      return withoutWhatTheLeadHasNotToldThemAbout([t], untoldRows.filter((r) => r.groundId === t.groundId), (g?.participants ?? []) as any[], runsIt).kept.length === 1;
+    });
+
     const board = yourBoard(mine, { userId: reader.userId, organizationId: reader.organizationId }, {
       objectives: objectives as any,
-      ownedTargets: this.onlyYours(ownedTargets as any[], participantIds),
+      ownedTargets: this.onlyYours(targetsYouMayRead, participantIds),
       commitments: commitments as any,
       coaching: coaching as any,
       todos: todos as any,

@@ -1,3 +1,4 @@
+import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { blockerHasSubstance, dedupeDependencies, type ReadDependency } from '../board/reads';
 import { peersAreNamedOn, theReaderBySignIn } from '../reports/peers-are-named';
 import { theDueFields } from './when-a-handoff-is-due';
@@ -141,7 +142,7 @@ export function checkInLinks(
     if (!from || !labelOf(from)) continue;
     const walled = wallFor(from, reader);
     if (walled && !youArePartOf(r, reader)) continue;
-    const first = (r.fromParticipant?.user?.firstName ?? '').trim() || (r.fromParticipant?.nameGiven ?? '').trim().split(/\s+/)[0] || null;
+    const first = theFirstNameOfAParticipant(r.fromParticipant as any);
     askedOfThisCheckIn.push({
       id: r.id,
       team: labelOf(from),

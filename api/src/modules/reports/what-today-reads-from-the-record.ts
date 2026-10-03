@@ -1,6 +1,8 @@
+import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { theSameThing } from '../board/a-thing-is-not-somebody';
 import { plainWordsByPerson, atTheStart, labelsForParties, namesVisibleTo, withNames, eachSideGetsSomebody } from './party-labels';
 import { targetsFor } from '../board/whose-number-is-whose-business';
+import { withoutWhatTheLeadHasNotToldThemAbout } from '../board/an-untold-goal-is-not-a-board-objective';
 import { notToldYet, theLeadIsNudgedToTell, aWeekHasPassedSinceNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 import { aCountThatMovedSaid } from './a-count-that-moved-is-one-sentence';
@@ -115,11 +117,11 @@ async function load(prisma: any, groundId: string) {
   const aColleague = (pid: string | null | undefined) => atTheStart((pid ? noName.get(pid) : null) ?? 'a colleague');
   const fullName = (p: any) => [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim();
   /* The first name, as the prototype says it ("Brian and Miriam both raised it"), unless two people share it. */
-  const firstNames = participants.map((p) => (p.user?.firstName ?? '').trim()).filter(Boolean);
+  const firstNames = participants.map((p) => (theFirstNameOfAParticipant(p) ?? '')).filter(Boolean);
   const nameOf = (pid: string | null | undefined): string => {
     const p = participants.find((x) => x.id === pid);
     if (!p) return aColleague(pid);
-    const first = (p.user?.firstName ?? '').trim();
+    const first = theFirstNameOfAParticipant(p) ?? '';
     if (first && firstNames.filter((f) => f === first).length === 1) return first;
     return fullName(p) || aColleague(pid);
   };
@@ -160,12 +162,13 @@ export async function sinceLastFrom(prisma: any, groundId: string, l: Loaded, re
   /* The counts. A participant reads the check-in's shared counts and their own, never a colleague's. */
   /* Whose number is whose goes through the one rule, as on the board: the lead reads every share;
      anybody else, an admin who only reads included, the team's counts and their own. */
-  const objectives = (targetsFor(
+  /* And none that is a goal the lead has not told its person about (decisions 48 and 56), as on the board. */
+  const objectives = withoutWhatTheLeadHasNotToldThemAbout(targetsFor(
     (ground.objectives ?? []) as any[],
     me?.id ?? null,
     ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
     { isLead: runsIt },
-  ).shown as any[]);
+  ).shown as any[], (ground.personObjectives ?? []) as any[], participants as any[], runsIt).kept as any[];
   /*
    * WHAT MOVED IS READ ONE WAY, FOR EVERY SURFACE (review of 1 October 2026, re-d, sales, session 2).
    * This read `count` against `prevCount`, and the Movement tile on the same page read the snapshots:
