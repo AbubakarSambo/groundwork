@@ -388,7 +388,8 @@ export function atAGlanceTiles(a: {
       sub: a.stillOpen
         ? (theDifference
           ? `${peopleSaidDifferentThingsAbout(theDifference)}${a.stillOpen > 1 ? ` ${a.stillOpen - 1} more ${a.stillOpen === 2 ? 'difference is' : 'differences are'} still open.` : ''}`
-          : 'The written report reads this as still open.')
+          /* With more than one, how many (item 21): "2" over "The written report reads this as still open." left "this" pointing at nothing. */
+          : a.stillOpen > 1 ? `The written report reads ${a.stillOpen} differences as still open.` : 'The written report reads this as still open.')
         : a.agreed ? 'The written report finds no disagreement.'
           : a.stillToAnswer === 0 ? 'Everybody has answered, and the written report names no agreement and no gap yet.'
             /* And where nobody passed a count, say what is true of the report rather than guess at the
