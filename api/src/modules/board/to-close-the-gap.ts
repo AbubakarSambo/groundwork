@@ -1,5 +1,5 @@
 import type { AServedRecord, AServedSection, KindOfWork } from './the-kind-of-work';
-import { theDayInWords } from './the-day-in-words';
+import { theDayInWords, aDateOnly } from './the-day-in-words';
 
 /**
  * TO CLOSE THE GAP (request 115 c; the prototype's B5 board-as-lead.txt, "To close the gap, two of these
@@ -31,7 +31,7 @@ const OPEN_GROUPS = new Set(['likely', 'possible']);
 export function toCloseTheGap(
   kind: KindOfWork | null,
   sections: AServedSection[] | null | undefined,
-  teamAims: { name: string; target: number | null; count: number; ownerParticipantId?: string | null }[],
+  teamAims: { name: string; target: number | null; count: number; ownerParticipantId?: string | null; dueOn?: Date | string | null }[],
   end: Date | null,
   now: Date,
 ): ToCloseTheGap | null {
@@ -39,7 +39,9 @@ export function toCloseTheGap(
   const aim = teamAims.find((a) => !a.ownerParticipantId && typeof a.target === 'number' && a.target > a.count);
   if (!aim || typeof aim.target !== 'number') return null;
   const gap = aim.target - aim.count;
-  const by = end ? ` by ${theDayInWords(end, now)}` : '';
+  /* The day the aim itself is due, when it has one, is the day the headline and "Where each target stands" say; the check-in's end is only the fallback. */
+  const day = aDateOnly(aim.dueOn ?? null) ?? end;
+  const by = day ? ` by ${theDayInWords(day, now)}` : '';
   const aimName = aim.name.trim().replace(/[.!?]+$/, '');
   if (NOT_A_COUNT_OF_THINGS.test(aimName)) {
     return {

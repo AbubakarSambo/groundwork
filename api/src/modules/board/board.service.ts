@@ -2745,7 +2745,8 @@ export class BoardService {
         if (atEachStage) walled.reportedAgainstCriteria = atEachStage;
         /* To close the gap (request 115 c): to whoever is served the headline, from the deals they are served. See to-close-the-gap. */
         if (walled.headline && !aParticipantOnly) {
-          const gap = toCloseTheGap(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, (walled.objectives ?? []) as any[], deadlineOf(ground as any), now);
+          const storedAims = new Map(((ground.objectives ?? []) as any[]).map((o) => [o.id, o]));
+          const gap = toCloseTheGap(oneOfTheKinds((ground as any).kindOfWork), walled.workRecords, ((walled.objectives ?? []) as any[]).map((o) => ({ ...o, dueOn: storedAims.get(o.id)?.dueOn ?? null })), deadlineOf(ground as any), now);
           if (gap) walled.toCloseTheGap = gap;
         }
       }
