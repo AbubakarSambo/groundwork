@@ -1,6 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { NOTHING_FLAGGED } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
+import { contextIsInAskGroundwork } from '../admin/what-is-hidden-at-release';
 import { DependencyStatus } from '@prisma/client';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
 import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
@@ -154,6 +155,9 @@ const SETUP_LANES = new Set<string>(['add_context', 'context_line', 'lead_note',
  */
 const JUST_ADDED_A_DOCUMENT =
   /\bi(?:'ve| have)?\s+(?:just\s+)?(?:added|uploaded|attached|put\s+(?:up|in))\b/i;
+
+/** The lanes that move the Context tab into Ask Groundwork. Hidden at release; the old context chat stays. */
+const THE_CONTEXT_LANES = new Set<string>(['add_context', 'context_line', 'lead_note', 'questions_for_people']);
 
 @Injectable()
 export class AssistantService {
@@ -322,6 +326,10 @@ export class AssistantService {
 
     /* Asking one person something is not an answer to the question the setup conversation has open,
        even inside it (request 92, point 11): it is said back as the exact question and confirmed. */
+    /* The context and setup lanes are hidden at release (docs/deploy.md, "Hidden at release"). The old
+       context chat on the check-in page does all of this, exactly as before. */
+    const contextIsHere = await contextIsInAskGroundwork(this.prisma);
+    if (!contextIsHere) forceAddContext = false;
     if (forceAddContext && parseAskAPerson(message)) return this.questionsForPeopleByChat(organizationId, who, userId ?? null, groundId, message);
     if (forceAddContext) return this.addContext(organizationId, who, userId ?? null, groundId, message);
 
@@ -384,7 +392,8 @@ export class AssistantService {
     }
 
 
-    const routed = route(message);
+    const routedByRules = route(message);
+    const routed = !contextIsHere && THE_CONTEXT_LANES.has(routedByRules.lane) ? { ...routedByRules, lane: 'unplaced' as typeof routedByRules.lane } : routedByRules;
 
     /*
      * A DOCUMENT'S NUMBERS, SAID BACK BEFORE ANYTHING ELSE IS ROUTED (decision 50, task A).

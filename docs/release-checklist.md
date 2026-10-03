@@ -46,10 +46,10 @@ The engine workspace keeps this file current. The screens workspace reads it aft
 - [ ] **Whatever that check shows is missing**, built. *Not done.*
 
 ## Hidden at release (never hide something an existing client uses today)
-- [ ] Boards for kinds of work nobody uses yet. *Not done.*
-- [ ] The back office rebuild. The existing back office stays for Groundwork's staff. *Not done.*
-- [ ] The Context tab's move to Ask Groundwork. The old context chat stays. *Not done.*
-- [ ] Plan and billing's new parts. The trial switch stays off. *Not done.*
+- [x] Boards for kinds of work nobody uses yet. Hidden from new check-ins by `release.boardKindsOffered`; existing check-ins keep their kind. `docs/deploy.md`, "Hidden at release".
+- [x] The back office rebuild. Checked: none of it was built, so nothing to hide. The existing back office stays for Groundwork's staff.
+- [x] The Context tab's move to Ask Groundwork. Hidden by `release.contextInAskGroundwork` (off). The old context chat stays.
+- [x] Plan and billing's new parts. Hidden by `release.planAndBillingNewParts` (off); the trial switch stays off.
 
 ## Release
 - [ ] Join with the live main line. *Not done.*

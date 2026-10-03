@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SubscriptionPlan, UserRole } from '@prisma/client';
+import { theNewBillingPartsAreShown } from '../admin/what-is-hidden-at-release';
 import { PrismaService } from '../prisma/prisma.service';
 import { onceAcrossCopies, theDay } from '../prisma/once-across-copies';
 import { EmailService } from '../email/email.service';
@@ -323,7 +324,8 @@ export class WhatsAppAddOnService {
   async whatTheyRead(organizationId: string, isAdmin: boolean, now: Date = new Date()) {
     const s = await this.standing(organizationId, now);
     const personSays = s.heldBecause ? whatThePersonReads(s.heldBecause, now) : null;
-    if (!isAdmin) return { sending: s.sending, says: personSays };
+    /* The price, the trial, the use and the limit are hidden at release (docs/deploy.md): an admin reads what everybody reads. */
+    if (!isAdmin || !(await theNewBillingPartsAreShown(this.prisma))) return { sending: s.sending, says: personSays };
 
     const label = s.plan ? PLAN_LABELS[s.plan] : null;
     const says: Record<string, string | null> = {

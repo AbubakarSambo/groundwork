@@ -3662,3 +3662,7 @@ Coaching, role behaviour, patterns and probes are protected (decision 55). The r
 **Patterns on a first 90 days board.** `patterns` is now served on this board, on decision 86's timing and under the rules every other board already follows: the person reads their own first; the lead reads a pattern after the person's answer, or 3 days after it was shown or 7 days after it was ready; a pattern nobody has shown the person yet is the person's alone. Detection is unchanged. Test: `board/request-123-patterns-on-the-new-hires-board-as-each-reader-reads-them.spec.ts`.
 
 **`whereThisIsHeading` is not built for evaluation check-ins** (decision 6). It is served only where the board is not an evaluation check-in, as before.
+
+## Request for the screens workspace: the kind-of-work list on the board (4 October 2026)
+
+The release offers a new check-in only some of the eleven kinds of work. The board now carries a new field `kindsOffered`, the list of kinds a new check-in may be given (at release, only "sales org"). The kind-of-work dialog in `client/src/pages/board/WorkRecords.tsx` still lists all eleven from `KIND_OF_WORK_OPTIONS`, and the server now refuses the rest with a plain sentence. Please list only `kindsOffered` in that dialog, and also the kind the check-in already holds (`kindOfWork`), so a check-in that holds another kind can still be saved. The engine workspace did not edit `pages/board/*`.

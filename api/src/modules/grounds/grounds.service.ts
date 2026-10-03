@@ -26,6 +26,7 @@ import { daysRemaining, deadlineOf, clockStartsAt } from './when-the-clock-start
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import { aKindMayBeGiven, theBoardKindsOffered } from '../admin/what-is-hidden-at-release';
 import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
@@ -5065,9 +5066,11 @@ export class GroundsService {
     try {
       const g = await this.prisma.ground.findUnique({
         where: { id: groundId },
-        select: { label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true },
+        select: { label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true },
       });
       if (!g || g.kindOfWorkSetBy === 'lead') return;
+      /* A check-in that already has a kind keeps it, offered or not (docs/deploy.md, "Hidden at release"). */
+      const hasOne = oneOfTheKinds(g.kindOfWork);
       const words = theSetupWords(g);
       if (!words.trim()) return;
       const answer = await this.anthropic.extract<{ kind?: string }>(
@@ -5075,7 +5078,10 @@ export class GroundsService {
         [{ role: 'user', content: words }],
         THE_KIND_OF_WORK_SCHEMA,
       );
-      const kind = oneOfTheKinds(answer?.kind);
+      const read = oneOfTheKinds(answer?.kind);
+      /* A kind not offered at release is never given to a check-in by the read; one it already holds stays. */
+      const kind = read && (await aKindMayBeGiven(this.prisma, read, hasOne)) ? read : null;
+      if (read && !kind && hasOne) return;
       await this.prisma.ground.update({
         where: { id: groundId },
         data: { kindOfWork: kind, kindOfWorkSetBy: kind ? 'read' : null },
@@ -5097,6 +5103,13 @@ export class GroundsService {
       const kind = body.kind === null ? null : oneOfTheKinds(body.kind);
       if (body.kind !== null && !kind) {
         throw new BadRequestException(`That is not one of the kinds of work Groundwork knows. Choose one of these: ${KINDS_OF_WORK.join(', ')}.`);
+      }
+      if (kind) {
+        const holds = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { kindOfWork: true } });
+        if (!(await aKindMayBeGiven(this.prisma, kind, holds?.kindOfWork))) {
+          const offered = await theBoardKindsOffered(this.prisma);
+          throw new BadRequestException(`Groundwork does not offer that kind of work yet. Choose ${offered.length ? `one of these: ${offered.join(', ')}` : 'none of them, because none is offered at the moment'}.`);
+        }
       }
       data.kindOfWork = kind;
       data.kindOfWorkSetBy = 'lead';

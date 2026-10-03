@@ -37,6 +37,7 @@ import { withoutWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUnto
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-served';
+import { theBoardKindsOffered } from '../admin/what-is-hidden-at-release';
 import { oneOfTheKinds, plainFields, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
 
 /** What the lead sends to add or change a record of the kind of work. */
@@ -765,6 +766,8 @@ export class BoardService {
       /* The kind of work (request 76): one of the eleven names in the-kind-of-work.ts, or null. Checked
          again on the way out, so a stored value that is not one of the eleven is served as none. */
       kindOfWork: oneOfTheKinds((ground as any).kindOfWork),
+      /* The kinds a NEW check-in may be given at release. A check-in that holds another keeps it above. */
+      kindsOffered: await theBoardKindsOffered(this.prisma),
       /**
        * HOW IT IS GOING, AT THE TOP, WHICH IS WHY SOMEBODY OPENED THIS.
        *

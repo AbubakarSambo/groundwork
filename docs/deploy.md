@@ -1,5 +1,7 @@
 # How to deploy the engine work
 
+> **Rollback, always (decision 90):** restore the database backup and the old code together, never the code alone. Migration 8 dropped a column, so the old code cannot read the new database.
+
 Written on 1 October 2026, on branch `wip/plain-reports`, and brought in line with decision 74 (the seven deploy risks) on 2 October 2026. This document only describes. Nothing was deployed, pushed or changed to write it, and no database was touched except reading the local test database.
 
 **What decision 74 changed, in short:**
@@ -330,3 +332,22 @@ None of these files were changed. This is what they say.
 There is no `render.yaml`, `fly.toml`, `railway.json`, `Procfile` or `app.json` in the repository.
 
 **So the one step that changes a hosted database is the API starting on its host.** Whoever releases must take the backup before the API host picks up the new code, not after.
+
+## Hidden at release
+
+The release hides four things from anything new. It hides nothing an existing client uses today (decisions 88 and 90): every setting below reads as "hidden" when its row is missing, and a check-in or organisation that already has the thing, or already uses the old way, is unchanged. Each setting is one row in the `platform_settings` table (key, JSON value). They are read in one file, `api/src/modules/admin/what-is-hidden-at-release.ts`, and a broken row reads as the default. Hafsah turns one on by writing the row (for example in the database console, with `INSERT ... ON CONFLICT (key) DO UPDATE`), and nothing needs a deploy.
+
+| What is hidden | Setting (key) | Default | To turn it on |
+| --- | --- | --- | --- |
+| Boards for kinds of work nobody uses yet | `release.boardKindsOffered`, value `{"kinds": ["sales org", ...]}` | Sales, onboarding (a new hire, a new manager, a new advisor) and project. Of the eleven kinds a board can keep records for, only "sales org" is offered. | Write the row with more of the eleven names, exactly as they are spelled in `api/src/modules/board/the-kind-of-work.ts`. |
+| The back office rebuild | None. | Nothing to hide. | Nothing to do. |
+| The Context tab's move to Ask Groundwork | `release.contextInAskGroundwork`, value `{"on": false}` | Off. | Write `{"on": true}`. |
+| Plan and billing's new parts | `release.planAndBillingNewParts`, value `{"on": false}`; and `pricing.freeTrial`, value `{"on": false, ...}` | Both off. | Write `{"on": true}` in the first. The trial is switched on separately, in `pricing.freeTrial`, only after Stripe is wired and tested. |
+
+**1. Boards for kinds of work nobody uses yet.** The eleven kinds of work (sales org, engineering release, support desk, and so on) are new in this release. No existing check-in has one, because the column did not exist. A new check-in can be given only an offered kind: the lead choosing one (`PATCH /grounds/:id/kind-of-work`) is refused with "Groundwork does not offer that kind of work yet. Choose one of these: sales org.", and the read at setup never picks one that is not offered. A check-in that already holds a kind that is not offered keeps it: the read at setup leaves it alone, the lead can save it again, its board and records are served exactly as before. The board now also carries `kindsOffered` so the dialog can list only those (a request to the screens workspace is in `docs/answers-from-engine.md`, because the dialog is in `pages/board/`, which the engine workspace does not edit). The onboarding and project boards are chosen by the situation, not by this list, and are not hidden. Tests: `api/src/modules/admin/hidden-at-release.spec.ts`.
+
+**2. The back office rebuild.** Checked, and not built. Compared with the live main line, `client/src/pages/admin` and `client/src/pages/ops` changed by a page background colour, a sign-out address and one unused line, and `api/src/modules/back-office` did not change at all. No new back office page or route exists, so there is nothing to hide and no setting was added (a setting that hides nothing would only suggest something is held back). `/admin` and `/ops` stay exactly as they are for Groundwork's staff.
+
+**3. The Context tab's move to Ask Groundwork.** The old context chat on the check-in page is untouched and works as on the live main line. What is hidden is the new path into the same conversation through Ask Groundwork: the four lanes that add context, a context line, a lead's note and questions for people, and the "opened from check-in setup" door. While the setting is off, those messages are answered as any other message Ask Groundwork cannot place, and the old chat is not called. Ask Groundwork's other lanes (to-dos, documents, objectives, leave and the rest) are unchanged. Tests: the same spec, plus the three specs that prove the lanes themselves (`items-8-9-17-through-ask-groundwork.spec.ts`, `add-context-is-the-context-chat.spec.ts`, `decision-50-task-b-through-ask-groundwork.spec.ts`), which now turn the setting on in their stand-in database, because they test the new path. They were changed for that reason only.
+
+**4. Plan and billing's new parts.** The free trial stays off (`pricing.freeTrial` has `"on": false`; nothing here changes it). The WhatsApp add-on's price, trial wording, monthly use and limit (`GET /billing/whatsapp`) are served to an admin only while `release.planAndBillingNewParts` is on; while it is off, an admin reads what every other member reads, whether check-ins go by WhatsApp and why not. The seat count, the plans and prices, Stripe, invoices and activation codes are not touched, because existing clients use them. One thing to know: turning the add-on on for an organisation (`PATCH /billing/whatsapp`) still works, because it charges nothing while the trial is off and the three new WhatsApp jobs (the morning reminder, the reminder before a session, the lead's daily summary) go only to organisations that have turned it on. The Plan and billing page in the client does not call `GET /billing/whatsapp` at release.
