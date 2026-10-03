@@ -22,3 +22,19 @@ describe('the deadlines, as each reader reads them', () => {
     expect(await names(reader as readonly [string, string])).toEqual(['a four-hour acknowledgement', 'the contract start date']);
   });
 });
+
+describe('a theme said with "to" before it', () => {
+  /* The where-next board (52d4fd15): Omar's themes held "improve our customer retention" and "to improve our customer retention". */
+  const themes = {
+    kindOfWork: 'MarketView where next',
+    checkIns: [answered('p-rukia', 1), answered('p-baraka', 1)],
+    items: [
+      { ...item('t-1', 'improve our customer retention', 'p-rukia', '2026-09-16T17:00:00Z'), kind: 'priority' },
+      { ...item('t-2', 'to improve our customer retention', 'p-baraka', '2026-09-16T18:00:00Z'), kind: 'priority' },
+    ],
+  };
+  it.each([['Amina, who runs it', AMINA], ['Juma, an admin', JUMA]])('%s reads it once', async (_w, reader) => {
+    const n = ((await boardAs(themes as any, ...(reader as readonly [string, string]))).workRecords ?? []).flatMap((s: any) => (s.rows ?? []).map((r: any) => r.name));
+    expect(n).toEqual(['improve our customer retention']);
+  });
+});

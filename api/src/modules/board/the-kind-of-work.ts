@@ -344,7 +344,8 @@ const ONLY_POINTS_ELSEWHERE = /^(?:it|its|this|that|these|those|them|they|he|she
  * acknowledgement" and "the four-hour acknowledgement" as two rows. A name is compared without a leading "a", "an" or
  * "the", and without its case.
  */
-export const theSameName = (name: string | null | undefined): string => squash(String(name ?? '').replace(/^\s*(?:a|an|the)\s+/i, ''));
+/* And "to improve our customer retention" is "improve our customer retention" (the where-next board's themes). */
+export const theSameName = (name: string | null | undefined): string => squash(String(name ?? '').replace(/^\s*(?:a|an|the|to)\s+/i, ''));
 
 export function aNameThatNamesSomething(name: string | null | undefined): boolean {
   const n = (name ?? '').trim().replace(/[.,;:!?]+$/, '');
