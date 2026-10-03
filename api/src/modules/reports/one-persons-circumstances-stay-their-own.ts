@@ -129,6 +129,12 @@ function named(sentence: string, names: string[]): boolean {
   return names.some((n) => n && n.length > 1 && new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(sentence));
 }
 
+/* When the served report does not say who the lead is, a sentence that opens with a full name (all the others' names
+   are already out of it), or with the stand-in for an unnamed person, is the lead's: the only one named to everybody. */
+function startsWithAPersonsName(sentence: string): boolean {
+  return /^(?:[A-Z][\p{L}'’-]+(?:\s+[A-Z][\p{L}'’-]+)+|Somebody in this check-in)\b/u.test(sentence.trim());
+}
+
 type TheKinds = { others: TheOthers; lead: string[]; ownVoice: boolean };
 
 /** Which of the three a sentence is, if any. */
@@ -136,7 +142,10 @@ function whatItIsAbout(sentence: string, k: TheKinds): 'reader' | 'several' | 'p
   const s = sentence.trim().replace(/^[;:,\s]+/, '');
   if (!s) return null;
   /* The lead's sentence stays only as their aim. */
-  if (named(s, k.lead)) return AN_AIM.test(s) && !THE_LEADS_DOUBT_OR_VIEW.test(s) ? 'purpose' : null;
+  /* The lead is named to everybody, so what the lead says or does stays, as it always has, except their doubt about, or
+     view of, the people in it, which a participant never reads (run-26: "Amaka wants to understand if there is an issue
+     with the selection process for loan qualification"). */
+  if (named(s, k.lead) || (!k.lead.length && startsWithAPersonsName(s))) return THE_LEADS_DOUBT_OR_VIEW.test(s) ? null : 'purpose';
   if (THE_READER.test(s) || (k.ownVoice && THE_READER_IN_THEIR_OWN_VOICE.test(s))) return 'reader';
   if (SEVERAL_PEOPLE.test(s)) return 'several';
   if (THE_SHARED_PURPOSE.test(s)) return 'purpose';
