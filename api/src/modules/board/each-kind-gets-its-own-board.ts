@@ -2,6 +2,7 @@ import { aDayPeopleRead } from './one-count-for-the-sessions';
 import { someOfThemHave } from '../reports/some-of-them-has-or-have';
 import { WHAT_A_NUMBER_IS_NOT } from '../public-api/a-number-does-not-argue';
 import type { KindOfWork } from './the-kind-of-work';
+import { peopleSaidDifferentThingsAbout } from '../reports/what-people-said-differently-about';
 
 /**
  * FIVE KINDS OF WORK GET THEIR OWN BOARD SHAPE (request 105; the prototype's examples in
@@ -216,6 +217,22 @@ function whereTheCohortStands(i: WhatTheKindsBoardIsBuiltFrom) {
  * A LAW FIRM MATTER
  * ---------------------------------------------------------------------------------------------- */
 
+/*
+ * WHAT NEEDS DECIDING, FROM THE BOARD'S OWN LIST, OR FROM WHAT IS STILL OPEN BETWEEN PEOPLE (item 21, the law firm
+ * matter). A contract review's board has no list of decisions, so Adaeze read "Nothing is waiting for a decision yet."
+ * over a board whose own difference was still open. Where there is no list, each difference still open is one.
+ */
+function whatNeedsDeciding(i: WhatTheKindsBoardIsBuiltFrom): { question: string; why: string | null; owner: string | null }[] {
+  if (Array.isArray(i.board.decisions)) return (i.board.decisions as any[]).map((d) => ({ question: d.question, why: d.why ?? null, owner: d.owner ?? null }));
+  const open = ((i.board.divergence?.stillOpen ?? []) as unknown[]).filter((t): t is string => typeof t === 'string' && !!t.trim());
+  const lead = i.people.find((p) => p.isLead);
+  return open.map((t) => ({
+    question: `${peopleSaidDifferentThingsAbout(t)} This needs settling.`,
+    why: 'What people said about this does not match, so nobody can assume it is agreed.',
+    owner: i.readerIsTheLead ? 'You' : (lead?.name ?? null),
+  }));
+}
+
 function whereTheMatterStands(i: WhatTheKindsBoardIsBuiltFrom, now: Date) {
   const heading = 'Where the matter stands';
   const says: string[] = [];
@@ -223,7 +240,7 @@ function whereTheMatterStands(i: WhatTheKindsBoardIsBuiltFrom, now: Date) {
   for (const d of deadlines) says.push(`${atTheStart(String(d.name).trim())} is due on ${asADay(d.due, now)}.`);
   const open = ((i.board.blockers ?? []) as any[]).length;
   says.push(open ? `${plural(open, 'thing is', 'things are')} in the way and not cleared yet.` : 'Nothing is in the way that has not been cleared.');
-  const toDecide = ((i.board.decisions ?? []) as any[]).length;
+  const toDecide = whatNeedsDeciding(i).length;
   if (toDecide) says.push(`${plural(toDecide, 'thing is', 'things are')} waiting for a decision.`);
   if (!deadlines.length) says.unshift('No deadline is on record yet.');
   return { heading, says };
@@ -231,7 +248,7 @@ function whereTheMatterStands(i: WhatTheKindsBoardIsBuiltFrom, now: Date) {
 
 function whatYouNeedToDecide(i: WhatTheKindsBoardIsBuiltFrom) {
   const heading = i.readerIsTheLead ? 'What you need to decide' : 'What needs deciding';
-  const items = ((i.board.decisions ?? []) as any[]).map((d) => ({ question: d.question, why: d.why ?? null, owner: d.owner ?? null }));
+  const items = whatNeedsDeciding(i);
   if (!items.length) return { heading, state: 'none-yet' as const, says: 'Nothing is waiting for a decision yet.' };
   return { heading, state: 'filled' as const, items };
 }
@@ -244,6 +261,11 @@ function whatChangedThisWeek(i: WhatTheKindsBoardIsBuiltFrom) {
   const rows = ((i.board.whoOwnsWhat ?? []) as any[]).flatMap((r) => ((r.items ?? []) as any[]).map((it) => ({ ...it, participantId: r.participantId, who: r.name })));
   const newest = rows.reduce((m, it) => Math.max(m, typeof it.sessionNumber === 'number' ? it.sessionNumber : 0), 0);
   const lines = rows.filter((it) => newest > 0 && it.sessionNumber === newest && it.type !== 'SUCCESS_DEFINITION');
+  /* "Nothing has been said" only where nobody has answered (item 21): Adaeze read it after both people had, on a board
+     that does not list each person's lines. */
+  if (!lines.length && !Array.isArray(i.board.whoOwnsWhat) && i.people.some((p) => p.answered)) {
+    return { heading, state: 'not-known' as const, why: 'This board does not list what each person said, so what changed this week is not shown here. It is in the report.' };
+  }
   if (!lines.length) return { heading, state: 'none-yet' as const, says: 'Nothing has been said about the matter yet.' };
   return {
     heading,
