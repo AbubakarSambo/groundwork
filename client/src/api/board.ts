@@ -539,6 +539,8 @@ export interface AServedWorkRow {
    * lead added, and null when `from` is "lead".
    */
   saidBy?: string | null
+  /** The whole line the engine says for this reader: "In your words," on their own line, else "In Baraka's words,". Print it as sent. */
+  saidByLine?: string | null
   /** The id behind `saidBy`, or null for "a colleague" and for a record the lead added. */
   saidByParticipantId?: string | null
   /**

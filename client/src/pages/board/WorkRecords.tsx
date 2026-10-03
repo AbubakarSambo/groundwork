@@ -317,7 +317,7 @@ function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow
   const saidBy = row.saidBy?.trim()
   return (
     <div className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>
-      <div>{saidBy ? `In ${saidBy}'s words,` : 'In the words of someone in this check-in,'}</div>
+      <div>{row.saidByLine?.trim() || (saidBy ? `In ${saidBy}'s words,` : 'In the words of someone in this check-in,')}</div>
       {row.said && <p className="gwui-mt-2" style={{fontStyle: 'italic'}}>{`“${row.said}”`}</p>}
     </div>
   )

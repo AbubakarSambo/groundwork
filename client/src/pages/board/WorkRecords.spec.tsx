@@ -55,6 +55,12 @@ describe('a work record says whose words it is, by name', () => {
     expect(screen.getByText("In a colleague's words,")).toBeTruthy()
   })
 
+  it('prints the engine\'s own line for the reader\'s own record, never "In You\'s words,"', () => {
+    renderSections([dealGrid({ said: 'Hold 30 Sep as the date.', saidBy: 'You', saidByLine: 'In your words,', saidByParticipantId: 'p-me' })])
+    expect(screen.getByText('In your words,')).toBeTruthy()
+    expect(screen.queryByText("In You's words,")).toBeNull()
+  })
+
   it('falls back to the old sentence when an older server sends no saidBy at all', () => {
     renderSections([dealGrid({ said: 'Hold 30 Sep as the date.' })])
     expect(screen.getByText('In the words of someone in this check-in,')).toBeTruthy()
