@@ -196,7 +196,21 @@ Run-25 was stopped: decision 86's reversals change what the engine writes, so it
 - Should the person be able to say they handed in the receipt? Today only finance ticks it.
 - Should the person be told on WhatsApp when a request is paid?
 
-Now running: run-25 on `a7e0f76f`, and timesheets (rules, a billing export, and a week drafted from the record), plus a fault where a WhatsApp reply held for a yes or no is lost after ten minutes. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Timesheets, as decision 85 describes them** (`b8778d2f` to `e2aebc00`; migration 80, local only; 3,955 tests pass, none changed).
+- **Rules:** an admin sets who keeps a time sheet, how often, hours asked a week, a cut-off in Lagos time, and what is billable.
+- **The person** reads "You have recorded 31 hours this week. You still need 9 hours by Friday at 17:00." on Today and in Ask Groundwork.
+- **Billing:** an admin or finance exports approved billable hours as CSV or Excel.
+- **A drafted week:** Groundwork drafts the week from the person's own record ("I have enough to draft this week's hours. Here is what I found."), says plainly that the record holds no durations, and nothing is sent without their yes.
+- Hours never feed a report, a signal or a review (decision 10). With no rules set, everything is as before.
+
+**Also fixed:** a WhatsApp message held for a yes or no was lost after ten minutes. It now goes into the check-in at the person's next message: "You did not answer my question within ten minutes, so I have added what you wrote earlier to your check-in."
+
+**For Hafsah:**
+- The draft shares out the hours asked a week across the days the record shows, because it holds no durations, and says so. Acceptable, or only list what was found and always ask for the hours?
+- Should finance be able to export the billing file, or only admins?
+- A lead in a team that keeps time sheets also gets "You still need…" about their own hours on Today. Wanted?
+
+Now running: run-25 on `a7e0f76f`, and reviews as the record interpreted, with the person correcting it, plus a separate briefing for the manager (decision 85, steps 12 and 13). Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
