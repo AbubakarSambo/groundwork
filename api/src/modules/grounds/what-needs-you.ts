@@ -336,17 +336,38 @@ export function whatNeedsYou(
      * check-in can be a round ahead of the team's.
      */
     if (!over) {
-      const future = sessions
-        .filter((c) => (mayName ? c.sessionNumber > teamRound : me && c.participantId === me.id))
-        .filter((c) => {
-          const t = time(c.availableFrom);
-          /* A session somebody has started has opened; it is not "coming up" (request 86). */
-          return t !== null && t > at && t <= at + AHEAD && c.status !== 'IN_PROGRESS' && c.status !== 'COMPLETED';
-        })
-        .sort((a, b) => (time(a.availableFrom) ?? 0) - (time(b.availableFrom) ?? 0))[0];
+      let future: { sessionNumber: number; at: number } | undefined;
+      if (mayName) {
+        /*
+         * THE TEAM'S NEXT CHECK-IN IS THE BOARD'S (request 122, part 2): the first session after the open round that has
+         * not opened for anybody, on the earliest day it opens. Today said "The second check-in for Sales team, Q3
+         * opens." on 4 October while the board said "Session 2 opened on 30 September." and "Session 3 opens on
+         * 7 October.", because one person's later row for a session that had already opened for the others was read as
+         * the team's next. Somebody not let in yet is not part of the team's clock (decision 77).
+         */
+        const held = new Set((g.participants ?? []).filter(isNotLetInYet).map((p) => p.id));
+        const team = sessions.filter((c) => !held.has(c.participantId));
+        for (const n of [...new Set(team.filter((c) => c.sessionNumber > teamRound).map((c) => c.sessionNumber))].sort((a, b) => a - b)) {
+          const rowsOfIt = team.filter((c) => c.sessionNumber === n);
+          if (rowsOfIt.some((c) => hasOpened(c, at))) continue;
+          const day = rowsOfIt.map((c) => time(c.availableFrom)).filter((t): t is number => t !== null && t > at).sort((a, b) => a - b)[0];
+          if (day !== undefined && day <= at + AHEAD) future = { sessionNumber: n, at: day };
+          break;
+        }
+      } else if (me) {
+        const mineNext = sessions
+          .filter((c) => c.participantId === me.id)
+          .filter((c) => {
+            const t = time(c.availableFrom);
+            /* A session somebody has started has opened; it is not "coming up" (request 86). */
+            return t !== null && t > at && t <= at + AHEAD && c.status !== 'IN_PROGRESS' && c.status !== 'COMPLETED';
+          })
+          .sort((a, b) => (time(a.availableFrom) ?? 0) - (time(b.availableFrom) ?? 0))[0];
+        if (mineNext) future = { sessionNumber: mineNext.sessionNumber, at: time(mineNext.availableFrom)! };
+      }
       if (future) {
         comingUp.push({
-          at: new Date(time(future.availableFrom)!).toISOString(),
+          at: new Date(future.at).toISOString(),
           what: mayName ? `${cap(theCheckIn(future.sessionNumber))} for ${g.label} opens.` : `${yourCheckIn(future.sessionNumber)} for ${g.label} opens.`,
           to: `/grounds/${g.id}`,
         });
