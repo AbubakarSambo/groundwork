@@ -178,7 +178,7 @@ export function whichRoleMap(
   if (!map) {
     return {
       map: null,
-      why: 'What kind of work this is has not been read from the record yet, so this is about where you are rather than about the role.',
+      why: 'Nothing here says what kind of work this is, because it has not been read from the record yet. This is about where you are, not about the role.',
     };
   }
   if ((confidence ?? 0) < MIN_COACHING_CONFIDENCE) {

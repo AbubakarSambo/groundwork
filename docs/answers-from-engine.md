@@ -3616,3 +3616,15 @@ What a person now reads, in place of what they read before. Nothing is hidden on
 - **A wait cleared on the day it began.** Before: "... until it was cleared on 2 September, 0 days in all." Now: "Ngozi Eze waited on the Head of Credit for the reply on 2 September, and it was cleared the same day."
 
 Tests: `board/run-26-wording-faults.spec.ts`, `board/onboarding-wording-faults.spec.ts`. Not done in this change: "2 waiting" against four waits and "Tobi says that Tobi ..." in the onboarding board were not found in the saved work and are still open.
+
+## Request 119: the client's wording guard (3 October 2026)
+
+The guard counted 65 lines in the shape it forbids against a ceiling of 60. It counts 60 now. Five lines in the engine's files were reworded; the guard itself is untouched. What a person now reads:
+
+- The deal stages with no rules: "Nothing on record says what a deal must show at each stage. The board counts what people reported, and how much of it has a document behind it. It cannot count how many meet the rules."
+- An objective with nothing above it: "Nothing above this has been named yet. These objectives stand on their own, and there is nothing to check them against. Say what they serve, if it is something wider, and they can be checked."
+- Support work, in the role map: "Support work goes unseen when it goes well. When a problem is solved cleanly, nobody hears about it. People who count outputs may read this person as low-value. The escalations that never happened leave no record unless somebody asks for them."
+- Coaching with no kind of work read yet: "Nothing here says what kind of work this is, because it has not been read from the record yet. This is about where you are, not about the role."
+- The instruction that tells the model whether a person confirmed their role: "Says whether the person confirmed or corrected a plain question about their own role. Judge it from their reply alone."
+
+Two fixture files (`board/__fixtures__/sales-board-review-5.ts`, `a-page-that-contradicts-itself.ts`) hold what the reviews saw word for word, and still add three lines to the count; they are left as they are, so the other lines were reworded to make room.

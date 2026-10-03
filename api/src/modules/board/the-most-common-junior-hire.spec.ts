@@ -119,7 +119,7 @@ describe('the map itself, held to the same standard as the other nine', () => {
   it('protects against being read as low-value, not against being read as failing', () => {
     // The thing that is actually unfair to these people: the reward for solving
     // something cleanly is that nobody hears about it.
-    expect(map.protectAgainst).toMatch(/invisible when it goes well/);
+    expect(map.protectAgainst).toMatch(/goes unseen when it goes well/);
     expect(map.protectAgainst).toMatch(/escalations that never happened/);
   });
 

@@ -334,7 +334,7 @@ Never invent a role they did not say. "unclear" is a correct and common answer -
 
 export const ROLE_CONFIRMATION_READ_SCHEMA = {
   name: 'role_confirmation_read',
-  description: 'Whether a person confirmed or corrected a plain question about their own role, from their reply alone.',
+  description: 'Says whether the person confirmed or corrected a plain question about their own role. Judge it from their reply alone.',
   input_schema: {
     type: 'object',
     properties: {

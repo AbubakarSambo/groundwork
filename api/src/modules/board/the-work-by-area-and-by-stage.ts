@@ -75,7 +75,7 @@ export interface ReportedAtEachStage {
 /** Said once where no stage has a deal in it (request 115 f). */
 export const NO_DEAL_REPORTED_YET = 'Nobody has reported a deal at any stage yet.';
 
-export const NO_STAGE_RULES = 'Nothing on record says what a deal must show to be at each stage, so the board counts what people reported and how much of it has a document behind it, but not how many meet the rules.';
+export const NO_STAGE_RULES = 'Nothing on record says what a deal must show at each stage. The board counts what people reported, and how much of it has a document behind it. It cannot count how many meet the rules.';
 
 export function reportedAgainstTheRules(kind: KindOfWork | null, sections: AServedSection[] | null | undefined): ReportedAtEachStage | null {
   if (kind !== 'sales org') return null;
