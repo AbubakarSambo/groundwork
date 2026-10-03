@@ -66,3 +66,37 @@ describe('fix 3: every workRecords section not-known, same why', () => {
     expect(screen.queryByText('Work plan')).toBeNull()
   })
 })
+
+const ENG_PARTICIPANT_BOARD = {
+  groundId: 'g2', renders: true, mode: 'SHARED', family: 'DELIVERY', title: 'Engineering release, test', scenario: 'NEW_PROJECT',
+  coverageVariant: 'text', lastChangedAt: '2026-09-29T18:02:00.000Z',
+  sections: [],
+  myParticipantId: 'p-aisha', canEditFrame: false, readOnlyNote: null,
+  kindOfWork: 'engineering release' as const,
+  participants: [
+    { id: 'p-lead', name: 'Wanjiru Lead', role: null, managingOnly: true, signedOffAt: null },
+    { id: 'p-aisha', name: 'Aisha Wanjiku', role: null, managingOnly: false, signedOffAt: null },
+  ],
+  headline: null,
+  workRecords: [
+    { section: 'Deal grid', holds: 'releases and tasks', state: 'none-yet' as const, stages: ['Worked on', 'Written', 'Merged', 'Tested', 'Deployed', 'Used'], rows: [], onlyYours: 'Only yours.' },
+  ],
+}
+
+/**
+ * PROJECT BOARD REVIEW 1, FIX 9.
+ *
+ * Fixture shape copied from the review's own capture: the engineering release's participant
+ * (Aisha, 555ac67d) gets her own "Deal grid" back as `state: 'none-yet'` with
+ * `onlyYours: 'Only yours.'`.
+ */
+describe('fix 9: "or", and the engine\'s own "Only yours" note', () => {
+  it('reads "No releases or tasks have come up yet." with "Only yours." beside the heading', async () => {
+    me = { id: 'p-aisha', firstName: 'Aisha', role: 'MEMBER' }
+    renderBoard(ENG_PARTICIPANT_BOARD)
+    await screen.findByRole('heading', { name: 'Engineering release, test' })
+    expect(screen.getByText(/No releases or tasks have come up yet\./)).toBeTruthy()
+    expect(screen.queryByText(/No releases and tasks have come up yet\./)).toBeNull()
+    expect(screen.getByText('Only yours.')).toBeTruthy()
+  })
+})

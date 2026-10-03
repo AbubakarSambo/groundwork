@@ -219,6 +219,19 @@ export function sectionHeading(kindOfWork: KindOfWork | null, section: AServedWo
 const dueSentence = (due: string | null) => (due ? `Due on ${whenItWas(due, 'dayAndMonthLong')}.` : null)
 
 /**
+ * PROJECT BOARD REVIEW 1, FIX 9: "NO RELEASES OR TASKS HAVE COME UP YET.", NOT "AND". The
+ * engineering kind's `holds` ("releases and tasks") is a plain label joining the two item kinds it
+ * covers - right as a heading, but read inside "No {holds} have come up yet.", "and" says neither
+ * has come up only together, where the true meaning is that neither has come up at all: "or" is
+ * the correct word. A small, named exception rather than a general rule, so every other kind's own
+ * "No ... have come up yet." sentence (e.g. "commitments and decisions") is unchanged.
+ */
+const NONE_YET_HOLDS_SAYS: Record<string, string> = {
+  'releases and tasks': 'releases or tasks',
+}
+const noneYetHoldsSentence = (holds: string) => NONE_YET_HOLDS_SAYS[holds] ?? holds
+
+/**
  * THE KIND OF WORK, NEAR THE TOP OF THE BOARD (item 4). One plain sentence, said once. The lead, or
  * an admin of this organisation, can change it and its stage names; a participant reads it and
  * cannot change it. A name the server refuses is shown exactly as it says it.
@@ -906,7 +919,15 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
    * once the engine has actually put the rows into groups.
    */
   const dealGroups = section.state === 'filled' || section.state === 'none-yet' ? section.groups : undefined
-  const note = (isDealGrid && kindOfWork && dealGroups?.length ? DEAL_GRID_NOTE[kindOfWork] : undefined) ?? undefined
+  /*
+   * PROJECT BOARD REVIEW 1, FIX 9: THE ENGINE'S OWN "ONLY YOURS" NOTE. A participant's own board
+   * already has each section filtered server-side to just their rows (`a-participants-board-is-
+   * their-own.ts`), which sends `onlyYours: 'Only yours.'` on that section - drawn nowhere here
+   * before, so a participant read the whole kind-of-work record with no sign it had already been
+   * narrowed to theirs.
+   */
+  const onlyYours = section.state !== 'not-known' ? section.onlyYours ?? undefined : undefined
+  const note = (isDealGrid && kindOfWork && dealGroups?.length ? DEAL_GRID_NOTE[kindOfWork] : undefined) ?? onlyYours ?? undefined
 
   if (section.state === 'not-known') {
     return (
@@ -922,7 +943,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
     return (
       <Section heading={heading} note={note}>
         <p className="gwui-ink-sub gwui-fs-15" style={{lineHeight: 1.55}}>
-          {`No ${section.holds} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`}
+          {`No ${noneYetHoldsSentence(section.holds)} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`}
         </p>
         {canAdd && (
           <div className="gwui-mt-10">

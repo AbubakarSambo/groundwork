@@ -614,6 +614,8 @@ export type AServedWorkSection =
       groups?: { group: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'won'; heading: string; reason: string; rowIds: string[] }[]
       /** What the record cannot support, said plainly once under the grid - never claimed by a group. */
       groupsNote?: string[]
+      /** Present only on a participant's own board, where this section already holds only their own rows ("Only yours."). */
+      onlyYours?: string | null
     }
 
 /** What the lead sends to add or change a record of the kind of work. */
