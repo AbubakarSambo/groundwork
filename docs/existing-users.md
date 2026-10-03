@@ -133,6 +133,11 @@ Rolling back is a restore, not a reverse migration, because the API runs `prisma
 
 **Cannot be undone by a migration:** 8 (a column dropped), 9, 13, 46, 59, 70 and 71 (rows filled or written; the old values were not kept) and 73 (three columns now allow empty; restoring "not empty" fails once any is empty). Everything else only adds empty columns or tables and can be dropped by hand, losing what was written there after release. A restore undoes all of them.
 
+## Hafsah's decision 90 (4 October)
+
+- Existing clients get the whole new build on the same terms as the paid client. It must work at least as well as today on their existing data (check-ins, boards, reports, Company page, suites, Ask Groundwork); the check below proves it on existing local check-ins. Nothing gets worse, no use case is lost, running check-ins carry on as scheduled, and stalled check-ins stay as the live main line leaves them, with no messages.
+- **Rollback:** restore the backup and the old code together, never the code alone.
+
 ## Decided for Hafsah to confirm
 
-- Nothing new on WhatsApp reaches an existing client until that organisation turns WhatsApp on. The morning reminder, the reminder before a session opens and the lead's daily summary go only to people in an organisation whose WhatsApp add-on is on, while the platform's WhatsApp switch is on. This holds whether or not the paid-add-on switch (decision 78) is on.
+- ~~Nothing new on WhatsApp reaches an existing client until that organisation turns WhatsApp on.~~ **Replaced by Hafsah's decision 90 (4 October):** existing clients get the whole new build, WhatsApp included, on the same terms as the paid client. The one rule for everybody stays: the new WhatsApp jobs send only for an organisation whose WhatsApp add-on is on, while the platform's WhatsApp switch is on (`whatsapp/only-where-whatsapp-is-turned-on.ts`). Stalled check-ins get no message of any kind.
