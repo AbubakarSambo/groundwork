@@ -72,14 +72,30 @@ export interface LeaveWaiting {
   alsoOff: string[]
   standIn: string | null
   mayDecide: boolean
+  /** The kind of leave ("Annual leave"), or null when the organisation has set no kinds. */
+  leaveKind: string | null
+  /** Each leave rule that applies, in full sentences with the person's name. */
+  rules: string[]
+  /** Where it is, in a full sentence for this reader: "Wairimu has approved it, and it is now waiting for you." */
+  where: string
+  /** What the person owns in those days, each a full sentence. */
+  owns: string[]
+  /** Each question asked about it, and the answer, in full sentences. */
+  questions: string[]
+  /** The whole request as this reader reads it: the days, the days left, who else is off, the stand-in, what the person owns, the questions. */
+  said: string[]
 }
-export interface LeaveOff { id: string; name: string; startsOn: string; endsOn: string; kind: 'annual' }
-export interface LeaveBoard { waiting: LeaveWaiting[]; off: LeaveOff[] }
+export interface LeaveOff { id: string; name: string; startsOn: string; endsOn: string; kind: string; kindName?: string | null }
+/** A request whoever holds the HR duty is told of; served only to that person. */
+export interface LeaveToldToHr { id: string; name: string; startsOn: string; endsOn: string; status: 'waiting' | 'approved'; kindName: string | null; said: string[] }
+export interface LeaveBoard { reader?: 'admin' | 'lead' | 'approver' | 'hr'; waiting: LeaveWaiting[]; off: LeaveOff[]; toldToHr?: LeaveToldToHr[] }
 
 export const leaveBoardApi = {
   get: async (): Promise<LeaveBoard> => (await apiClient.get('/suites/leave/board')).data,
   decide: async (id: string, outcome: 'approve' | 'decline'): Promise<LeaveBoard> =>
     (await apiClient.post(`/suites/leave/requests/${id}/${outcome}`)).data,
+  ask: async (id: string, question: string): Promise<LeaveBoard> =>
+    (await apiClient.post(`/suites/leave/requests/${id}/question`, { question })).data,
 }
 
 /** Time sheets (GET /suites/time/board). For billing only. */
@@ -241,6 +257,14 @@ export interface SpendWaiting {
   over: boolean
   approver: SpendApprover
   mayDecide: boolean
+  /** Where it is, in a full sentence for this reader: "Wairimu has approved it, and it is now waiting for Omar in finance." */
+  where: string
+  /** The category it is for, when the spending rules have categories. */
+  category: string | null
+  /** The evidence the rules ask for, in full sentences: "Spending on Fuel needs a receipt." */
+  needs: string[]
+  /** Each question asked about it, and the answer, in full sentences. */
+  questions: string[]
 }
 export interface SpendBoard {
   reader?: 'admin' | 'lead' | 'approver'
@@ -255,6 +279,8 @@ export const spendApi = {
   get: async (): Promise<SpendBoard> => (await apiClient.get('/suites/spend/board')).data,
   decide: async (id: string, outcome: 'approve' | 'decline'): Promise<SpendBoard> =>
     (await apiClient.post(`/suites/spend/requests/${id}/${outcome}`)).data,
+  ask: async (id: string, question: string): Promise<SpendBoard> =>
+    (await apiClient.post(`/suites/spend/requests/${id}/question`, { question })).data,
   setBudget: async (team: string, amount: number): Promise<SpendBoard> =>
     (await apiClient.put('/suites/spend/budgets', { team, amount })).data,
 }

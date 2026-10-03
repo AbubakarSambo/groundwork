@@ -24,21 +24,3 @@ export function theDaysShort(from: string, to: string): string {
   const start = sameMonth ? `${say(from, 'shortWeekday')} ${say(from, 'dayOfMonth')}` : say(from, 'shortWeekdayAndDay')
   return `${start} to ${say(to, 'shortWeekdayAndDay')}`
 }
-
-const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
-const aNumber = (n: number) => WORDS[n] ?? String(n)
-const joinAnd = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
-
-/** The line under a request: its days left, who else in the team is off, and who stands in. */
-export function whatToKnow(w: { startsOn: string; endsOn: string; daysLeft: number | null; team: string | null; alsoOff: string[]; standIn: string | null }): string {
-  const one = w.startsOn === w.endsOn
-  const when = one ? 'that day' : 'those days'
-  const parts: string[] = []
-  if (w.daysLeft != null) parts.push(w.daysLeft === 1 ? '1 day left.' : `${w.daysLeft} days left.`)
-  if (w.team && w.alsoOff.length === 0) parts.push(`Nobody else in ${w.team} is off ${when}.`)
-  if (w.team && w.alsoOff.length > 0) {
-    parts.push(`${joinAnd(w.alsoOff)} ${w.alsoOff.length === 1 ? 'is' : 'are'} also off ${when}, so ${w.team} would be ${aNumber(w.alsoOff.length + 1)} short.`)
-  }
-  if (w.standIn) parts.push(`${w.standIn} stands in.`)
-  return parts.join(' ')
-}

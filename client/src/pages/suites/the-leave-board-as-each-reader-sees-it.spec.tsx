@@ -3,7 +3,7 @@ import { render, screen, within, fireEvent, waitFor } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { LeaveBoardPage } from './LeaveBoardPage'
-import { theDaysInFull, theDaysShort, whatToKnow } from './the-days-someone-is-off'
+import { theDaysInFull, theDaysShort } from './the-days-someone-is-off'
 import { useAuthStore } from '@/stores/auth'
 import type { LeaveBoard } from '@/api/suites'
 
@@ -13,11 +13,26 @@ import type { LeaveBoard } from '@/api/suites'
  * person reads, in the prototype's words (suite-leave.txt), and that only the approver is offered
  * Approve and Decline.
  */
-vi.mock('@/api/suites', () => ({ leaveBoardApi: { get: vi.fn(), decide: vi.fn() } }))
+vi.mock('@/api/suites', () => ({ leaveBoardApi: { get: vi.fn(), decide: vi.fn(), ask: vi.fn() } }))
 import { leaveBoardApi } from '@/api/suites'
 
-const AISHA = { id: 'r-aisha', name: 'Aisha Otieno', startsOn: '2026-10-01', endsOn: '2026-10-02', days: 2, daysLeft: 16, team: 'Sales', alsoOff: [], standIn: null, mayDecide: true }
-const SAMUEL = { id: 'r-samuel', name: 'Samuel Njoroge', startsOn: '2026-10-05', endsOn: '2026-10-05', days: 1, daysLeft: null, team: 'Sales', alsoOff: ['Brian'], standIn: null, mayDecide: true }
+/* The shape and the sentences the server writes (the-leave-board.service.ts, a-leave-request-as-the-approver-reads-it.ts). */
+const AISHA = {
+  id: 'r-aisha', name: 'Aisha Otieno', startsOn: '2026-10-01', endsOn: '2026-10-02', days: 2, daysLeft: 16, team: 'Sales', alsoOff: [], standIn: null, mayDecide: true,
+  leaveKind: null, rules: [], where: 'It is waiting for you.',
+  owns: ['Aisha owns “Project X milestone” on Sales, Q3, due on Thursday 15 October.'], questions: [],
+  said: [
+    'Aisha asked for leave from Thursday 1 October to Friday 2 October, which is 2 working days.',
+    'Aisha has 16 days left.',
+    'Nobody else in Sales is off those days.',
+    'Aisha owns “Project X milestone” on Sales, Q3, due on Thursday 15 October.',
+  ],
+}
+const SAMUEL = {
+  id: 'r-samuel', name: 'Samuel Njoroge', startsOn: '2026-10-05', endsOn: '2026-10-05', days: 1, daysLeft: null, team: 'Sales', alsoOff: ['Brian'], standIn: null, mayDecide: true,
+  leaveKind: null, rules: [], where: 'Wairimu has approved it, and it is now waiting for you.', owns: [], questions: [],
+  said: ['Samuel asked for leave on Monday 5 October, which is 1 working day.', 'Brian is also off that day, so Sales would be two short.'],
+}
 const WAIRIMUS: LeaveBoard = {
   waiting: [AISHA, SAMUEL],
   off: [
@@ -67,9 +82,9 @@ describe('Wairimu, the lead who approves, reads the leave board', () => {
   it('reads each request as the prototype has it, with Approve and Decline', async () => {
     open(WAIRIMU, WAIRIMUS)
     await screen.findByRole('heading', { level: 2, name: 'Waiting for approval' })
-    expect(rows().map(r => [r.querySelector('b')?.textContent, r.querySelector('p')?.textContent])).toEqual([
-      ['Aisha Otieno: Thursday 1 and Friday 2 October', '16 days left. Nobody else in Sales is off those days.'],
-      ['Samuel Njoroge: Monday 5 October', 'Brian is also off that day, so Sales would be two short.'],
+    expect(rows().map(r => [r.querySelector('b')?.textContent, [...r.querySelectorAll('p')].map(p => p.textContent)])).toEqual([
+      ['Aisha Otieno: Thursday 1 and Friday 2 October', ['It is waiting for you.', ...AISHA.said]],
+      ['Samuel Njoroge: Monday 5 October', ['Wairimu has approved it, and it is now waiting for you.', ...SAMUEL.said]],
     ])
     expect(within(rows()[0]).getByRole('button', { name: 'Approve Aisha Otieno’s request' })).toHaveTextContent('Approve')
     expect(within(rows()[0]).getByRole('button', { name: 'Decline Aisha Otieno’s request' })).toHaveTextContent('Decline')
@@ -100,10 +115,90 @@ describe('Wairimu, the lead who approves, reads the leave board', () => {
     expect(await within(rows()[0]).findByRole('alert')).toHaveTextContent('This request has already been decided.')
   })
 
-  it('never shows the prototype’s example chat, which is sample data', async () => {
+  /* Changed: this used to say the page never mentions how people ask, because asking in chat did not work
+     yet (requests 21 and 26). Both are done, so the page now says where people ask. The example chat stays
+     out, as it is made-up days and names. */
+  it('says where people ask, without the prototype’s example chat, which is sample data', async () => {
+    open(WAIRIMU, WAIRIMUS)
+    const how = await screen.findByRole('region', { name: 'How people ask' })
+    expect(how.textContent).toBe('How people askIn their check-in, in chat, or on WhatsApp. Nobody fills in a form.')
+    expect(text()).not.toMatch(/I need next Thursday|Shall I send it to/)
+  })
+
+  it('a request waiting for finance never says the lead can approve it: the server’s sentence is drawn', async () => {
+    open(KAMAU, { waiting: [{ ...SAMUEL, id: 'r-w', name: 'Otieno Ouma', mayDecide: false, where: 'Wairimu has approved it, and it is now waiting for Omar in finance.' }], off: [] })
+    await screen.findByRole('heading', { level: 2, name: 'Waiting for approval' })
+    expect(rows()[0].textContent).toContain('Wairimu has approved it, and it is now waiting for Omar in finance.')
+    expect(rows()[0].textContent).not.toMatch(/lead can approve/)
+  })
+
+  it('reads the kind of leave beside the request, what the person owns, and each question with its answer', async () => {
+    open(WAIRIMU, { waiting: [{
+      ...AISHA, leaveKind: 'Sick leave',
+      questions: ['You asked Aisha on 5 October, “Who will cover the milestone?”', 'Aisha answered on 6 October, “Brian will.”'],
+      said: [...AISHA.said, 'You asked Aisha on 5 October, “Who will cover the milestone?”', 'Aisha answered on 6 October, “Brian will.”'],
+    }], off: [] })
+    await screen.findByRole('heading', { level: 2, name: 'Waiting for approval' })
+    const row = rows()[0]
+    expect(within(row).getByText('Sick leave')).toBeInTheDocument()
+    expect(within(row).getByText('Aisha owns “Project X milestone” on Sales, Q3, due on Thursday 15 October.')).toBeInTheDocument()
+    expect(within(row).getByText('You asked Aisha on 5 October, “Who will cover the milestone?”')).toBeInTheDocument()
+    expect(within(row).getByText('Aisha answered on 6 October, “Brian will.”')).toBeInTheDocument()
+    expect(text()).not.toContain('Annual leave')
+  })
+
+  it('asks the person a question, and reads the server’s board with the question in it', async () => {
+    open(WAIRIMU, WAIRIMUS)
+    const after = { ...WAIRIMUS, waiting: [{ ...AISHA, said: [...AISHA.said, 'You asked Aisha on 4 October, “Who will cover the milestone?”'] }, SAMUEL] }
+    ;(leaveBoardApi.ask as any).mockResolvedValue(after)
+    await screen.findByRole('heading', { level: 2, name: 'Waiting for approval' })
+    fireEvent.click(within(rows()[0]).getByRole('button', { name: 'Ask Aisha Otieno a question' }))
+    const send = within(rows()[0]).getByRole('button', { name: 'Send the question' })
+    expect(send).toBeDisabled()
+    fireEvent.change(within(rows()[0]).getByLabelText('Your question'), { target: { value: 'Who will cover the milestone?' } })
+    fireEvent.click(send)
+    await waitFor(() => expect(leaveBoardApi.ask).toHaveBeenCalledWith('r-aisha', 'Who will cover the milestone?'))
+    expect(await within(rows()[0]).findByText('You asked Aisha on 4 October, “Who will cover the milestone?”')).toBeInTheDocument()
+  })
+
+  it('offers no question where the reader does not decide', async () => {
+    open(KAMAU, KAMAUS)
+    await screen.findByRole('heading', { level: 2, name: 'Waiting for approval' })
+    expect(screen.queryByRole('button', { name: /question/i })).toBeNull()
+  })
+
+  it('who is off reads the kind of leave the server names, and Annual leave only when it names none', async () => {
+    open(WAIRIMU, { waiting: [], off: [
+      { id: 'o1', name: 'Brian Mwangi', startsOn: '2026-10-05', endsOn: '2026-10-05', kind: 'sick', kindName: 'Sick leave' },
+      { id: 'o2', name: 'Grace Achieng', startsOn: '2026-10-08', endsOn: '2026-10-09', kind: 'annual' },
+    ] })
+    const region = await screen.findByRole('region', { name: 'Who’s off' })
+    expect([...region.querySelectorAll('li')].map(li => [...li.children].map(c => c.textContent))).toEqual([
+      ['Brian Mwangi', 'Mon 5 Oct', 'Sick leave'],
+      ['Grace Achieng', 'Thu 8 to Fri 9 Oct', 'Annual leave'],
+    ])
+  })
+
+  it('Joy, who looks after HR, reads the leave she is told about, in the server’s sentences, and nothing to decide', async () => {
+    open({ id: 'u-j', firstName: 'Joy', role: 'MEMBER', organizationName: 'Baridi Appliances' }, {
+      reader: 'hr', waiting: [], off: [],
+      toldToHr: [{
+        id: 'r-aisha', name: 'Aisha Otieno', startsOn: '2026-10-08', endsOn: '2026-10-09', status: 'approved', kindName: 'Annual leave',
+        said: ['Aisha Otieno asked for annual leave from Thursday 8 October to Friday 9 October, which is 2 working days.', 'Wairimu approved it.'],
+      }],
+    })
+    const region = await screen.findByRole('region', { name: 'Leave you are told about' })
+    expect(within(region).getByText('Because you look after HR.')).toBeInTheDocument()
+    expect(within(region).getByText('Aisha Otieno: Thursday 8 and Friday 9 October')).toBeInTheDocument()
+    expect(within(region).getByText('Aisha Otieno asked for annual leave from Thursday 8 October to Friday 9 October, which is 2 working days.')).toBeInTheDocument()
+    expect(within(region).getByText('Wairimu approved it.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Approve|Decline/ })).toBeNull()
+  })
+
+  it('draws no "Leave you are told about" for a reader the server sends none to', async () => {
     open(WAIRIMU, WAIRIMUS)
     await screen.findByRole('heading', { level: 2, name: 'Waiting for approval' })
-    expect(text()).not.toMatch(/How people ask|I need next Thursday|Nobody fills in a form|WhatsApp/)
+    expect(screen.queryByRole('region', { name: 'Leave you are told about' })).toBeNull()
   })
 
   it('says so plainly when nothing is waiting and nobody is off', async () => {
@@ -135,7 +230,7 @@ describe('Aisha, a colleague, opens the address', () => {
   })
 })
 
-describe('the days, and the line under each request, in the prototype’s words', () => {
+describe('the days, in the prototype’s words', () => {
   it('say one day, two days together, a longer stretch, and a stretch across two months', () => {
     expect(theDaysInFull('2026-10-05', '2026-10-05')).toBe('Monday 5 October')
     expect(theDaysInFull('2026-10-01', '2026-10-02')).toBe('Thursday 1 and Friday 2 October')
@@ -143,11 +238,5 @@ describe('the days, and the line under each request, in the prototype’s words'
     expect(theDaysInFull('2026-09-30', '2026-10-02')).toBe('Wednesday 30 September to Friday 2 October')
     expect(theDaysShort('2026-10-05', '2026-10-05')).toBe('Mon 5 Oct')
     expect(theDaysShort('2026-10-08', '2026-10-09')).toBe('Thu 8 to Fri 9 Oct')
-  })
-
-  it('name who else is off, the stand-in, and leave out what is not known', () => {
-    expect(whatToKnow({ startsOn: '2026-10-05', endsOn: '2026-10-06', daysLeft: 1, team: 'Sales', alsoOff: ['Brian', 'Grace'], standIn: 'Miriam Wanjiku' }))
-      .toBe('1 day left. Brian and Grace are also off those days, so Sales would be three short. Miriam Wanjiku stands in.')
-    expect(whatToKnow({ startsOn: '2026-10-05', endsOn: '2026-10-05', daysLeft: null, team: null, alsoOff: [], standIn: null })).toBe('')
   })
 })

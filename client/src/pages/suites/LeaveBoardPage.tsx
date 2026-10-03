@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { leaveBoardApi, type LeaveWaiting } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row } from '@/components/gw/ui'
-import { theDaysInFull, theDaysShort, whatToKnow } from './the-days-someone-is-off'
+import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row, Tag } from '@/components/gw/ui'
+import { theDaysInFull, theDaysShort } from './the-days-someone-is-off'
+import { AskAQuestion } from './AskAQuestion'
 
 /**
  * THE LEAVE BOARD (E2, #/suite/leave, group 2 piece 4). The wording is copied from
@@ -18,10 +19,13 @@ import { theDaysInFull, theDaysShort, whatToKnow } from './the-days-someone-is-o
  * `note`), `RowList`/`Row` for both lists, `Button` for Approve/Decline, and `Note`/`Empty` for the
  * loading, error and empty states. No new parts were needed.
  *
- * NOT DRAWN HERE, ON PURPOSE (docs/morning-report-ui.md, item 28):
- *   - "How people ask", with its example chat and "In their check-in, in chat, or on WhatsApp. Nobody
- *     fills in a form.": nobody can ask by talking to Groundwork until the engine takes requests
- *     (request 21), and the example is sample data.
+ * UNDER EACH REQUEST IS THE SERVER'S, NOT THE SCREEN'S (4 October review, L2 and L4): `where` ("Wairimu
+ * has approved it, and it is now waiting for you."), the kind of leave, and `said`, the request as this
+ * reader reads it, which already holds the days left, who else is off, the stand-in, what the person
+ * owns in those days (decision 85.1), the rules that apply, and each question with its answer. Whoever
+ * decides it can also ask a question. Whoever holds HR reads "Leave you are told about" (`toldToHr`).
+ * "How people ask" says where requests are made (requests 21 and 26 are done), without the prototype's
+ * example chat, which is sample data with made-up days and names.
  *
  * WORDING NO SCREEN SHOWS (item 28): "Nothing is waiting for approval.", "Nobody is off in the next
  * two weeks.", "... stands in.", "The board did not load.", and the days left on every request.
@@ -79,12 +83,31 @@ export function LeaveBoardPage() {
                     <Row key={o.id} columns="minmax(0, 1fr) auto auto">
                       <b>{o.name}</b>
                       <span>{theDaysShort(o.startsOn, o.endsOn)}</span>
-                      <span>Annual leave</span>
+                      <span>{o.kindName ?? 'Annual leave'}</span>
                     </Row>
                   ))}
                 </RowList>
               )}
           </Section>
+
+          <Section heading="How people ask">
+            <p className="gwui-panel-text">In their check-in, in chat, or on WhatsApp. Nobody fills in a form.</p>
+          </Section>
+
+          {(data.toldToHr ?? []).length > 0 && (
+            <Section heading="Leave you are told about" note="Because you look after HR.">
+              <RowList label="Leave you are told about">
+                {data.toldToHr!.map(t => (
+                  <Row key={t.id} columns="minmax(0, 1fr)">
+                    <div>
+                      <b>{`${t.name}: ${theDaysInFull(t.startsOn, t.endsOn)}`}</b>
+                      {t.said.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
+                    </div>
+                  </Row>
+                ))}
+              </RowList>
+            </Section>
+          )}
         </>
       )}
     </Page>
@@ -99,12 +122,18 @@ function ARequest({ w }: { w: LeaveWaiting }) {
     onSuccess: (board) => { setProblem(null); qc.setQueryData(['suite-leave'], board) },
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
-  const line = whatToKnow(w)
+  /* Everything under the title is the server's own sentences: where the request stands, then the request as this
+     reader reads it (the days left, who else is off, the stand-in, what the person owns, the rules, the questions). */
   return (
     <Row columns="minmax(0, 1fr) auto">
       <div>
         <b>{`${w.name}: ${theDaysInFull(w.startsOn, w.endsOn)}`}</b>
-        {line && <p className="gwui-panel-text">{line}</p>}
+        {w.leaveKind && <Tag>{w.leaveKind}</Tag>}
+        <p className="gwui-panel-text">{w.where}</p>
+        {w.said.map((line, i) => <p key={i} className="gwui-panel-text">{line}</p>)}
+        {w.mayDecide && (
+          <AskAQuestion id={w.id} who={w.name} send={async q => qc.setQueryData(['suite-leave'], await leaveBoardApi.ask(w.id, q))} />
+        )}
         {problem && <Note tone="error">{problem}</Note>}
       </div>
       {w.mayDecide && (

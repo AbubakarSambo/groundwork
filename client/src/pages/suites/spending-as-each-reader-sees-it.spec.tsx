@@ -12,16 +12,18 @@ import type { SpendBoard } from '@/api/suites'
  * prototype's words (suite-spend.txt), word for word, for Grace (an admin) and Fatuma (a lead), and
  * what everybody else reads.
  */
-vi.mock('@/api/suites', () => ({ spendApi: { get: vi.fn(), decide: vi.fn(), setBudget: vi.fn() } }))
+vi.mock('@/api/suites', () => ({ spendApi: { get: vi.fn(), decide: vi.fn(), setBudget: vi.fn(), ask: vi.fn() } }))
 import { spendApi } from '@/api/suites'
 
 const KAMAU = {
   id: 's-1', name: 'Kamau Njenga', firstName: 'Kamau', amount: 18000, what: 'fuel for Kisumu deliveries', team: 'Operations',
   left: 38000, over: false, approver: { kind: 'manager' as const }, mayDecide: false,
+  where: 'It is waiting for Fatuma.', category: null as string | null, needs: [] as string[], questions: [] as string[],
 }
 const LINA = {
   id: 's-2', name: 'Lina Mutua', firstName: 'Lina', amount: 95000, what: 'a new laptop', team: 'Product',
   left: 60000, over: true, approver: { kind: 'person' as const, firstName: 'Grace' }, mayDecide: true,
+  where: 'It is waiting for you.', category: null as string | null, needs: [] as string[], questions: [] as string[],
 }
 const GRACES: SpendBoard = {
   currency: 'KES', limit: 20000, waiting: [KAMAU, LINA],
@@ -57,7 +59,7 @@ const refusal = (status: number, message: string) => Object.assign(new Error(Str
    place of the page's prior .gw-leave-row class - found by its list's accessible name instead. */
 const requests = () => {
   const list = screen.queryByRole('list', { name: 'Waiting for a yes or no' })
-  return list ? [...list.querySelectorAll('li')].map(li => [li.querySelector('b')?.textContent, li.querySelector('p')?.textContent]) : []
+  return list ? [...list.querySelectorAll('li')].map(li => [li.querySelector('b')?.textContent, [...li.querySelectorAll('p')].map(p => p.textContent).join(' ')]) : []
 }
 const rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(c => c.textContent))
 
@@ -78,8 +80,8 @@ describe('Grace, an admin', () => {
     open(GRACE, GRACES)
     await screen.findByText('Kamau: KES 18,000 for fuel for Kisumu deliveries')
     expect(requests()).toEqual([
-      ['Kamau: KES 18,000 for fuel for Kisumu deliveries', 'Operations has KES 38,000 left this month. Kamau’s lead can approve this.'],
-      ['Lina: KES 95,000 for a new laptop', 'This is over KES 20,000, so Grace must approve it. Product has KES 60,000 left this month.'],
+      ['Kamau: KES 18,000 for fuel for Kisumu deliveries', 'Operations has KES 38,000 left this month. It is waiting for Fatuma.'],
+      ['Lina: KES 95,000 for a new laptop', 'This is over KES 20,000. Product has KES 60,000 left this month. It is waiting for you.'],
     ])
     expect(screen.queryByRole('button', { name: 'Approve Kamau’s request' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Approve Lina’s request' })).toHaveTextContent('Approve')
@@ -98,7 +100,6 @@ describe('Grace, an admin', () => {
     ])
     expect(screen.getByText('Spending comes from the requests people make here.')).toBeInTheDocument()
     expect(screen.queryByText(/accounting tool/)).toBeNull()
-    expect(screen.queryByText('How people use it')).toBeNull()
   })
 
   it('approves Lina’s, and reads the board the server gives back', async () => {
@@ -127,8 +128,8 @@ describe('Grace, an admin', () => {
     })
     await screen.findByRole('table')
     expect(requests()).toEqual([
-      ['Lina: KES 95,000 for a new laptop', 'This is over KES 20,000, so an admin must approve it. Product is KES 35,000 over its budget this month.'],
-      ['Kamau: KES 18,000 for fuel for Kisumu deliveries', 'An admin can approve this.'],
+      ['Lina: KES 95,000 for a new laptop', 'This is over KES 20,000. Product is KES 35,000 over its budget this month. It is waiting for you.'],
+      ['Kamau: KES 18,000 for fuel for Kisumu deliveries', 'It is waiting for Fatuma.'],
     ])
     expect(rows()).toEqual([['Product', '120,000', '155,000', '35,000 over']])
   })
@@ -143,6 +144,46 @@ describe('Grace, an admin', () => {
     open(GRACE, GRACES)
     await screen.findByRole('table')
     expect(document.body.textContent).not.toMatch(/\b(PIP|exit|at risk|score|rating)\b/i)
+  })
+})
+
+describe('what the server says about each request is drawn, not the screen’s own line', () => {
+  const FUEL = {
+    ...KAMAU, id: 's-3', name: 'Chidi Okeke', firstName: 'Chidi', amount: 12000, what: 'fuel for the Kisumu trip', team: 'Sales', left: 26000,
+    mayDecide: false, where: 'Wairimu has approved it, and it is now waiting for Omar in finance.', category: 'Fuel',
+    needs: ['Spending on Fuel needs a receipt.'],
+    questions: ['You asked Chidi on 5 October, “Is this for the Kisumu van?”', 'Chidi answered on 6 October, “Yes, the van.”'],
+  }
+  it('a request waiting for finance never says the lead can approve it', async () => {
+    open(GRACE, { ...GRACES, waiting: [FUEL] })
+    await screen.findByRole('table')
+    expect(requests()).toEqual([[
+      'Chidi: KES 12,000 for fuel for the Kisumu trip',
+      'Sales has KES 26,000 left this month. Wairimu has approved it, and it is now waiting for Omar in finance. Spending on Fuel needs a receipt. You asked Chidi on 5 October, “Is this for the Kisumu van?” Chidi answered on 6 October, “Yes, the van.”',
+    ]])
+    expect(document.body.textContent).not.toMatch(/lead can approve|An admin can approve/)
+    expect(screen.getByText('Fuel')).toBeInTheDocument()
+  })
+
+  it('asks the person a question and reads the server’s board with the question in it', async () => {
+    const asked = { ...KAMAU, mayDecide: true, questions: ['You asked Kamau on 4 October, “Is this for the Kisumu van?”'] }
+    ;(spendApi.ask as any).mockResolvedValue({ ...FATUMAS, waiting: [asked] })
+    open(FATUMA, FATUMAS)
+    await screen.findByText('Kamau: KES 18,000 for fuel for Kisumu deliveries')
+    fireEvent.click(screen.getByRole('button', { name: 'Ask Kamau a question' }))
+    fireEvent.change(screen.getByLabelText('Your question'), { target: { value: 'Is this for the Kisumu van?' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send the question' }))
+    await waitFor(() => expect(spendApi.ask).toHaveBeenCalledWith('s-1', 'Is this for the Kisumu van?'))
+    expect(await screen.findByText('You asked Kamau on 4 October, “Is this for the Kisumu van?”')).toBeInTheDocument()
+  })
+
+  /* Changed: this used to say "How people use it" was never drawn, because asking in chat did not work
+     yet (request 26). It is done, so the page now says where people ask, without the example chat. */
+  it('says where people ask, without the prototype’s example chat', async () => {
+    open(GRACE, GRACES)
+    const how = await screen.findByRole('region', { name: 'How people use it' })
+    expect(how.textContent).toBe('How people use itIn their check-in, in chat, or on WhatsApp. Nobody fills in a form.')
+    expect(document.body.textContent).not.toMatch(/Can I spend KES 18,000|I have sent it to your lead/)
   })
 })
 
