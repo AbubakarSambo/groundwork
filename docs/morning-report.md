@@ -244,9 +244,14 @@ Not checked by the run: the admin's view, because the run keeps only the lead's 
 
 **For Hafsah:** the rest of the names said twice ("Musa says Musa never received the grinding machine") can only be fixed with "they" or with "he" or "she". Groundwork never guesses "he" or "she". May it say "they" there?
 
-Six tests were already failing before this work, mostly expecting a date that has moved on; they are being fixed now. The builder also noticed that "what the room is about" carries names and might reach a borrower where people do not see each other; that is being checked now, against decision 75 item 14.
+**"What the room is about" leaked, and is fixed** (`4589925c`). Loans has no such section, but on every other kind of check-in that has one, where the lead keeps people apart, a participant was served the others' aims by name ("Musa Danjuma wants the grinding machine he was promised to be delivered.", "Yakubu Sani wants help after his tricycle was stolen."). Now a participant reads their own ("You are trying to catch up on the three repayments you missed."), aims shared by several ("The borrowers want the first repayment to start once the asset earns.", with a count of others), and the lead's; nothing about Musa or Yakubu. The lead and admins read it whole. **The old failing tests pass** with a fixed clock (`f5ddd1fc`), and "waiting on The customers" now reads "waiting on the customers" (`49d6a074`). 6,602 of 6,603 tests pass in reports, board, grounds and suites.
 
-Now running: that check and the failing tests, and "proof asked for": whether a change caused the drop or the model varies, with repeated runs. If it does not come back, it goes to Hafsah. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**For Hafsah:**
+- "What the room is about" is kept on the check-in with full names, and served outside the wrapper that handles names and anonymous sharing. Should it be stored with labels and named only when served, like reports?
+- The one failing test (`a-number-with-a-name-on-it-goes-through-one-rule`) flags four new suites files that read a goal's numbers outside the one rule. The builder judges each a fair exception (a test fixture; the person's own drafted week; leave reading only a goal's name and date; a review reading the person's own goals). May they be added to its list of exceptions?
+- A review shows a person's goal figures only to the person and whoever runs that check-in. Decision 86 says admins see the figures. Should an admin who opens the review see them too?
+
+Now running: "proof asked for": whether a change caused the drop or the model varies, with repeated runs. If it does not come back, it goes to Hafsah. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
