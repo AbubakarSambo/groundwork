@@ -4,6 +4,15 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## Where it stopped (3 October, the weekly limit reached)
+
+- **Sales board:** done, matched on the engine's code at ea5e2a54.
+- **Onboarding board** ("Engagement Director, first 90 days", e2cfd3d8): the third review says the lead's board matches what the prototype shows for a new hire, apart from requests 123 and 124. The new hire's board has one fault left: his Reports rows read "1 of 1 checked in" because `client/src/lib/session-rows.ts` counts `ground.participants`, and `GET /grounds/:id` sends him only himself. A builder started the fix and was cut off by the spend limit. Its unfinished, **untested** changes to `client/src/lib/session-rows.ts` and `client/src/components/gw/TheReportIsAListOfSessions.tsx` are committed as work in progress. Next: check them, run `cd client && npx vitest run` and `npx tsc --noEmit`, finish the fix (count from the board's own participants, or draw no count), then a fourth review of both readers. Captures are in the scratchpad's `pictures/review-onboard-3/`.
+- **Then:** the two project boards (`NEW_PROJECT`, engineering `555ac67d`; `DRIFT`, `dac969d3`), using the engine's item 21 notes now in `docs/tasks-ui.md`; then the check of every place the screen hides a field the engine sends, against `docs/privacy-restrictions-for-hafsah.md`.
+- **Merged:** the engine up to 48baf9c2, its migrations applied locally; the local API and client were running on it. The wording guard (request 119) still fails, now at 66 against 60, on the engine's lines.
+- **Needs Hafsah:** request 124 (what the new hire reads of his lead), the three restrictions at the top of the morning report, and the engine's list in `docs/privacy-restrictions-for-hafsah.md`.
+- **Not mine:** `.claude/hooks/guard.py` shows as changed in the working tree. This workspace never edits `.claude/`, so it was left uncommitted, as found.
+
 ## Where every screen stands
 
 ### Done and matching the prototype (reviewed)

@@ -22,6 +22,24 @@ export function buildSessionRows(
   ground: { participants?: any[]; checkIns?: any[]; roundCompletions?: any[]; scenario?: string | null } | null | undefined,
   userId: string | null | undefined,
   labelInASentence: (p: any) => string,
+  /**
+   * THE FULL ROSTER, WHEN `ground.participants` DOES NOT CARRY IT.
+   *
+   * `GET /grounds/:id` sends a participant only their own row, never anyone else's - so for a
+   * participant, `ground.participants` has one entry even on a two-person check-in, where the
+   * board's own answer (`GET /grounds/:id/board`) sends every party's name to everybody on it (the
+   * lead is not a peer whose visibility this withholds, and a party's own name on a roster they are
+   * already on is nothing new). Pass that list here, when it is to hand, and a restricted row counts
+   * from it instead of the one-person list.
+   *
+   * Onboarding board review, 3 October: Tobi Adewale's four "Reports" rows read "1 of 1 checked
+   * in" - true of the one row his own `ground.participants` carried, false of the check-in, which
+   * has two people, both of whom answered every session (his own board said "Everybody has
+   * answered this round."). Where no full roster is to hand (the check-in page's Report tab fetches
+   * no board data), a restricted row draws no count at all, rather than the smaller, false one -
+   * see `answered`/`total` turning `null` below.
+   */
+  fullParticipants?: { id: string; managingOnly?: boolean | null; notLetInYet?: boolean | null }[] | null,
 ): SessionRow[] {
   const everybody = (ground?.participants ?? []) as any[]
   const checkIns = (ground?.checkIns ?? []) as any[]
@@ -32,6 +50,11 @@ export function buildSessionRows(
   return numbers.map((n) => {
     /* Who this round counts: a managing-only lead is in session 1 and not after. See who-is-in-this-round. */
     const parties = whoIsInRound(everybody, n, ground?.scenario)
+    const fullParties = fullParticipants ? whoIsInRound(fullParticipants, n, ground?.scenario) : null
+    /* `ground.participants` is restricted to the viewer's own row when it is shorter than the full
+       roster the board sent for the same round - the only case this read can be too small. */
+    const restricted = !!fullParties && fullParties.length > parties.length
+    const closed = ((ground?.roundCompletions ?? []) as any[]).some((r) => r.sessionNumber === n)
     const answeredIds = new Set(
       checkIns.filter((c) => c.sessionNumber === n && c.status === 'COMPLETED').map((c) => c.participantId),
     )
@@ -42,9 +65,17 @@ export function buildSessionRows(
     return {
       sessionNumber: n,
       myCheckInId: mine?.id ?? null,
-      answered: parties.filter((p) => answeredIds.has(p.id)).length,
-      total: parties.length,
-      closed: ((ground?.roundCompletions ?? []) as any[]).some((r) => r.sessionNumber === n),
+      /*
+       * A CLOSED ROUND MEANS EVERYBODY IN IT ANSWERED - that is what "closed" is (see
+       * TheReportIsAListOfSessions.tsx's own note: "shared" and "closed" are the same fact, and a
+       * round only closes once the server has every required account). So a restricted, closed
+       * round can still say "N of N checked in" truthfully, with N the full roster's count - it is
+       * only an OPEN round, restricted, where this reader cannot know how many of the others have
+       * answered, and draws no count at all rather than guess at it.
+       */
+      answered: restricted ? (closed ? fullParties!.length : null) : parties.filter((p) => answeredIds.has(p.id)).length,
+      total: restricted ? fullParties!.length : parties.length,
+      closed,
       /* The reader is "you", never their own name (the wording rule); everybody else as labelled. */
       waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => (p.userId && p.userId === userId ? 'you' : labelInASentence(p))),
       /* WHEN THIS SESSION REALLY OPENED, for the row's "Wed, 23 Sept" (U.9).

@@ -30,9 +30,13 @@ export interface SessionRow {
   sessionNumber: number
   /** The check-in id of the reader's OWN session at this number, when they have one. */
   myCheckInId: string | null
-  /** How many people have answered this session, and how many the report is waiting for. */
-  answered: number
-  total: number
+  /**
+   * How many people have answered this session, and how many the report is waiting for. `null`
+   * when this reader's own data cannot say - a restricted roster, on a round still open - rather
+   * than a smaller, false count (lib/session-rows.ts).
+   */
+  answered: number | null
+  total: number | null
   /** True once the round closed and its report went out to everyone in it. */
   closed: boolean
   /** Names of the people who have not answered yet, for the line under the row. */
@@ -60,7 +64,9 @@ export function sessionDay(d: string | Date): string {
   return whenItWas(d, 'shortWeekdayAndDay').replace(/^(\S+) /, '$1, ')
 }
 
-export function checkedIn(answered: number, total: number): string {
+/** `null` when this reader has no count to give, truthfully - see `SessionRow.answered`. */
+export function checkedIn(answered: number | null, total: number | null): string | null {
+  if (answered == null || total == null) return null
   return `${answered} of ${total} checked in`
 }
 
@@ -134,7 +140,9 @@ export function TheReportIsAListOfSessions({
                 {r.opened
                   ? <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>{sessionDay(r.opened)}</span>
                   : r.opensOn && <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>opens on {sessionDay(r.opensOn)}</span>}
-                <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>{checkedIn(r.answered, r.total)}</span>
+                {checkedIn(r.answered, r.total) && (
+                  <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>{checkedIn(r.answered, r.total)}</span>
+                )}
                 {!r.closed && r.waitingOn.length > 0 && (
                   <span style={{ flexBasis: '100%', fontSize: 13, color: 'var(--gw-sub)' }}>{stillToCheckIn(r.waitingOn)}</span>
                 )}
