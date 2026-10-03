@@ -1191,6 +1191,26 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
   canEdit: boolean
 }) {
   if (!sections?.length) return null
+
+  /*
+   * PROJECT BOARD REVIEW 1, FIX 3: NO KIND OF WORK, ONE SENTENCE, NOT SIX HEADED SECTIONS. A
+   * check-in with no kind of work chosen yet (the DRIFT fixture, dac969d3) gets every section back
+   * as "not-known" with the exact same `why` ("Groundwork does not know what kind of work this
+   * check-in is about yet, so it keeps no records of this kind."). Drawn as before, that repeated
+   * the same italic sentence six times, each under its own heading - and four of those headings
+   * were the switchboard's own internal names ("Deal grid", "Forecast", "Themes", "Work plan"),
+   * never a sentence a person reads. Where every section is not-known for the same reason, this
+   * says that sentence once, with no heading at all, instead of once per section.
+   */
+  const allNotKnownSameWhy = sections.length > 1 && sections.every((s) => s.state === 'not-known') && sections.every((s) => s.state === 'not-known' && s.why === (sections[0] as { why: string }).why)
+  if (allNotKnownSameWhy) {
+    return (
+      <div className="gwui-page-wrap">
+        <p className="gwui-fs-13-5 gwui-ink-muted" style={{fontStyle: 'italic', lineHeight: 1.5}}>{(sections[0] as { why: string }).why}</p>
+      </div>
+    )
+  }
+
   return (
     <div className="gwui-page-wrap">
       {sections.map((s) => (
