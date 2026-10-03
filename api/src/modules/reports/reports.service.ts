@@ -3321,6 +3321,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       theFirstBlocker: held.theFirstBlocker,
       worries: held.worries,
       theFirstWorry: held.theFirstWorry,
+      waitsFromEarlier: held.waitsFromEarlier,
       saidInAll,
       documentedInAll,
       /* Everybody the session counts, from the one definition (how-many-have-answered.ts): the

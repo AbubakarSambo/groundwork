@@ -228,6 +228,8 @@ export interface SessionReportInputs {
   theFirstBlocker?: string | null;
   worries?: number;
   theFirstWorry?: string | null;
+  /** Waits raised before this session and still open (see whatThisSessionHolds). */
+  waitsFromEarlier?: number;
   /** Everybody this session counts, so a person who answered nothing specific still gets a line. */
   answeredThisSession: { who: string; isYou: boolean }[];
   /** How many people the session counts in all, answered or not, for the confidence read. */
@@ -530,6 +532,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     theBlocker: input.theFirstBlocker ?? null,
     worries: input.worries ?? 0,
     theWorry: input.theFirstWorry ?? null,
+    waitsFromEarlier: input.waitsFromEarlier ?? 0,
   });
 
   /**

@@ -1786,6 +1786,7 @@ export class BoardService {
           theBlocker: held.theFirstBlocker,
           worries: held.worries,
           theWorry: held.theFirstWorry,
+          waitsFromEarlier: held.waitsFromEarlier,
         });
       }
       /* The same first blocker as the top line, from the one place that picks it (request 88). */
@@ -3779,6 +3780,7 @@ export class BoardService {
       theFirstBlocker: held.theFirstBlocker,
       worries: held.worries,
       theFirstWorry: held.theFirstWorry,
+      waitsFromEarlier: held.waitsFromEarlier,
       answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A colleague', isYou: false })),
       peopleInAll: whoAnswered.expected,
     });
