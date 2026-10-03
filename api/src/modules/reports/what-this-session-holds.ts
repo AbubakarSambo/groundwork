@@ -5,6 +5,7 @@ import { peopleSaidDifferentThingsAbout } from './what-people-said-differently-a
 import { cleanText } from './what-the-record-actually-holds';
 import { PrismaService } from '../prisma/prisma.service';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
+import { anArticleSaidMidSentence } from '../board/a-holder-in-their-own-words';
 
 /*
  * A TILE SHOWS A WHOLE SENTENCE, OR NONE.
@@ -259,7 +260,7 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
   /* The person it sits with, unless the line already says it: "legal to look at the contract, on
      legal" is the tile telling somebody the same word twice. */
   const what = first?.what?.trim() ?? '';
-  const on = first?.onLabel?.trim() ?? '';
+  const on = anArticleSaidMidSentence(first?.onLabel?.trim() ?? '');
   const alreadySaid = !!on && what.toLowerCase().includes(on.toLowerCase());
   const theFirstBlocker = what ? `${what}${on && !alreadySaid ? `, which waits on ${on}` : ''}` : null;
 

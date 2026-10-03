@@ -31,6 +31,7 @@ import { someOfThemHave } from './some-of-them-has-or-have';
 import { THE_LEADS_LABEL } from './party-labels';
 import { theNumbersPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
 import { whatWasTried, somebodyWentBackAboutIt, itWasTakenFurther } from './what-they-said-they-did-about-it';
+import { anArticleSaidMidSentence } from '../board/a-holder-in-their-own-words';
 
 export interface ACommitmentOverTime {
   participantId: string | null;
@@ -372,8 +373,8 @@ export function dependenciesOverTime(
     .filter((d) => String(d.status).toUpperCase() !== 'CLEARED')
     .map((d) => {
       /* A thing is not somebody: "the data structure decision" is what is waited for, not who holds it (request 107 b). */
-      const on = d.onParticipantId ? labelOf(d.onParticipantId) : (aPartyOutside(d) ? (d.onLabel ?? null) : null);
-      const aThingItWaitsOn = !d.onParticipantId && d.onLabel?.trim() && !aPartyOutside(d) && !theSameThing(d.onLabel, d.what) ? d.onLabel.trim() : null;
+      const on = d.onParticipantId ? labelOf(d.onParticipantId) : (aPartyOutside(d) ? (d.onLabel ? anArticleSaidMidSentence(d.onLabel) : null) : null);
+      const aThingItWaitsOn = !d.onParticipantId && d.onLabel?.trim() && !aPartyOutside(d) && !theSameThing(d.onLabel, d.what) ? anArticleSaidMidSentence(d.onLabel.trim()) : null;
       const from = labelOf(d.fromParticipantId);
       const stated = d.statedInSession ?? null;
       const sessionsWaiting = stated !== null ? Math.max(0, sessionsSoFar - stated) : null;

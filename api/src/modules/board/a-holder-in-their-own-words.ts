@@ -11,10 +11,23 @@
  */
 const MINE = /^\s*(my|our)\s+(.+)$/i;
 
+/*
+ * A HOLDER IS SAID MID-SENTENCE (run-25, sales). Femi said he was waiting on "The customers", kept with its capital,
+ * and the board said "Femi Okonkwo is waiting on The customers for their documents" and "with The customers, and
+ * nothing on record says ...", 47 times. A holder is always said inside a sentence ("waiting on ...", "with ...") or
+ * given its capital where it opens one (`holdsItSaid`), so a leading "The", "A" or "An" before a lower-case word is
+ * said in lower case. A name keeps its capitals: "The Gambia", "The Body Shop", "A Plus Logistics".
+ */
+const AN_ARTICLE_BEFORE_A_WORD = /^(\s*)(The|A|An)(\s+)(?=[a-z])/;
+
+export function anArticleSaidMidSentence(holder: string): string {
+  return holder.replace(AN_ARTICLE_BEFORE_A_WORD, (_m, lead: string, article: string, gap: string) => `${lead}${article.toLowerCase()}${gap}`);
+}
+
 export function aHolderInTheirOwnWords(onLabel: string | null | undefined, readerIsTheOneWaiting: boolean): string | null | undefined {
   if (typeof onLabel !== 'string') return onLabel;
   const m = onLabel.match(MINE);
-  if (!m) return onLabel;
+  if (!m) return anArticleSaidMidSentence(onLabel);
   const rest = m[2].trim();
   return readerIsTheOneWaiting ? `your ${rest}` : `their own ${rest}`;
 }

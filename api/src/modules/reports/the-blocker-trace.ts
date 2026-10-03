@@ -1,4 +1,5 @@
 import { peersAreNamedOn } from './peers-are-named';
+import { anArticleSaidMidSentence } from '../board/a-holder-in-their-own-words';
 
 /**
  * WHERE THE BLOCKER STARTED, AS ONE READER MAY READ IT (request 18, D3 trace.txt).
@@ -105,6 +106,6 @@ export function whichTeamItIsWaitingOn(
   dayInWords: (d: Date) => string,
 ): string | null {
   if (!anchor?.waitingOnGroundId || !hiddenGroundIds.includes(anchor.waitingOnGroundId)) return null;
-  const team = !anchor.onParticipantId ? (anchor.onLabel ?? '').trim().replace(/[.\s]+$/, '') : '';
+  const team = !anchor.onParticipantId ? anArticleSaidMidSentence((anchor.onLabel ?? '').trim().replace(/[.\s]+$/, '')) : '';
   return `This is waiting on ${team || 'another team'} since ${dayInWords(new Date(anchor.createdAt))}.`;
 }

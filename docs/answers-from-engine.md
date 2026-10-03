@@ -3301,3 +3301,14 @@ For a participant where people do not see each other (never the lead, the admin 
 The lead and admins read the room exactly as before, with every name. Where people see each other, nothing changes.
 
 Tests: `api/src/modules/board/what-the-room-is-about-where-people-do-not-see-each-other.spec.ts`, on the served board as Sunday, Amaka and an admin, with run-25's loans people. No existing test changed.
+
+## "Waiting on the customers", not "waiting on The customers" (3 October)
+
+**Run-25, sales: Femi said he was waiting on "The customers", and the holder was kept with its capital, so every reader read "Femi Okonkwo is waiting on The customers for their documents", "On 30 September, Femi Okonkwo said the work was waiting on The customers ..." and "What they say is in the way sits outside this check-in, with The customers, and nothing on record says anybody has chased it." 47 times in the run. A leading "The", "A" or "An" in what somebody is waiting on is now said in lower case wherever it lands mid-sentence** (this commit).
+
+- **Bisi and admins now read:** "Femi Okonkwo is waiting on the customers." and "Femi Okonkwo is waiting on the customers for their documents, especially the bank statements." **Femi reads:** "You are waiting on the customers." and "... sits outside this check-in, with the customers, and nothing on record says anybody has chased it."
+- **The field `dependencies[].on` on the board** now carries "the customers" in lower case, as a holder said in the person's own words already did ("their own direct reports"). Where it opens a line, please give it its capital, as `holdsItSaid` does: "The customers hold it."
+- **The same on the session report's Blockers tile** ("..., which waits on the customers"), Today's page ("waiting on the customers"), the record over time and the blocker trace ("This is waiting on the customers since ...").
+- **A name keeps its capitals:** "The Gambia office", "The Body Shop" and "A Plus Logistics" are left as they are, because the word after the article has a capital.
+
+Tests: `api/src/modules/board/a-holder-with-the-is-said-in-lower-case-mid-sentence.spec.ts`, on the served sales board as Bisi, Femi and an admin. No existing test changed.

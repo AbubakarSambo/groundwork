@@ -25,6 +25,7 @@ import {
   classifyCoverageReason,
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor, priorFunctionFromRole } from './role-maps';
+import { anArticleSaidMidSentence } from './a-holder-in-their-own-words';
 
 // ---------------------------------------------------------------------------
 // Input shapes - plain data, no Prisma client, no ground object.
@@ -708,7 +709,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         reasonParts.push(
           somebodyHoldsIt
             ? 'Part of this is blocked on someone else (see what people are waiting on), which is different from being behind. Separate the two before reading anything into it.'
-            : `What they say is in the way sits outside this check-in${theirs[0]?.onLabel ? `, with ${theirs[0].onLabel}` : ''}, and nothing on record says anybody has chased it. That is a thing to ask about, not a reason to read this as blocked.`,
+            : `What they say is in the way sits outside this check-in${theirs[0]?.onLabel ? `, with ${anArticleSaidMidSentence(theirs[0].onLabel)}` : ''}, and nothing on record says anybody has chased it. That is a thing to ask about, not a reason to read this as blocked.`,
         );
       }
       /*
