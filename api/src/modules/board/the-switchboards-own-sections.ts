@@ -445,7 +445,8 @@ export function thePersonHistory(
     const theirOwn = !!r.meId && p.id === r.meId;
     const summary = total
       ? `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')} and made ${plural(total, 'commitment', 'commitments')}.${theirOwn ? ` ${doneCount} ${doneCount === 1 ? 'is' : 'are'} done, ${notDone} ${notDone === 1 ? 'is' : 'are'} not done or dropped, and ${open} ${open === 1 ? 'is' : 'are'} still open.` : ''}`
-      : `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')}, and the record holds no commitment from ${midSentence(who)} yet.`;
+      /* The name once (run-25): "Kwame Mensah has answered 1 session, and the record holds no commitment from Kwame Mensah yet." */
+      : `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')}, and ${who === 'You' ? 'have' : 'has'} made no commitment on record yet.`;
     out.push({ participantId: p.id, who, says: summary, sessions: perSession });
   }
   return out;

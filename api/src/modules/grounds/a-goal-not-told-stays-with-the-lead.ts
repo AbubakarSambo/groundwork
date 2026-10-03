@@ -96,7 +96,8 @@ export function theLeadIsNudgedToTell(personName: string, area: string): { decid
  */
 export function theConversationPointForTheLead(personName: string): string {
   const name = (personName ?? 'They').trim() || 'They';
-  return `${name} has not been told about this goal yet, so talk it through with ${name} before reading anything into it.`;
+  /* The name once (run-25): it read "... so talk it through with Zainab Suleiman before reading anything into it." after the same name. */
+  return `${name} has not been told about this goal yet. Talk it through together before reading anything into it.`;
 }
 
 /**

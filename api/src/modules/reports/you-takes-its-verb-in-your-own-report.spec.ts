@@ -25,9 +25,10 @@ describe('"you" takes its verb in your own report', () => {
     );
   });
 
+  /* Run-25: a name is said once in a sentence about that person, so the joined clause loses its second "Miriam". */
   it('the lead reads Miriam\'s name and her verbs as they were', () => {
     expect(read('p-lead', true)).toBe(
-      'Your plan counts on 4 sales from Miriam Wanjiku, but Miriam forecasts that only 3 of them are realistic this quarter. Miriam forecasts 3 sales in total, and Miriam identifies Westgate Deli as the next one.',
+      'Your plan counts on 4 sales from Miriam Wanjiku, but Miriam forecasts that only 3 of them are realistic this quarter. Miriam forecasts 3 sales in total, and identifies Westgate Deli as the next one.',
     );
   });
 

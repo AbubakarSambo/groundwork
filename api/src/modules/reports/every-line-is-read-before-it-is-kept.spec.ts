@@ -56,7 +56,8 @@ describe('every line is read, as each person reads it, before the report is kept
     expect(out.done[0].outcome).toBe('rewritten');
     /* What Nathan now reads, and what his lead reads. */
     expect(served(out.report, READERS[1]).findings[0].text).toBe('You say your goal is to exceed the targets you are given.');
-    expect(served(out.report, READERS[0]).findings[0].text).toBe("Nathan Owusu says Nathan's goal is to exceed the targets Nathan is given.");
+    /* Run-25: the second "Nathan's" in a sentence about Nathan is "their own". */
+    expect(served(out.report, READERS[0]).findings[0].text).toBe('Nathan Owusu says their own goal is to exceed the targets Nathan is given.');
   });
 
   it('a pattern used as a label on the reader is rewritten to say what happened, not who they are (decision 11)', async () => {

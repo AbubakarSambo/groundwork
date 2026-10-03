@@ -399,7 +399,7 @@ describe('decision 56, item 3: an untold goal counts against Daniel, so Wairimu 
     await svc.addSide(id, as('daniel'), { side: 'Most of my time goes on cleaning the customer records.' });
     const wairimuSees: any = (await svc.forGround('g-daniel', as('wairimu'))).suggestions[0];
     expect(wairimuSees.conversationPoints).toEqual([
-      'Daniel has not been told about this goal yet, so talk it through with Daniel before reading anything into it.',
+      'Daniel has not been told about this goal yet. Talk it through together before reading anything into it.',
     ]);
 
     const danielSees: any = (await svc.forGround('g-daniel', as('daniel'))).suggestions[0];

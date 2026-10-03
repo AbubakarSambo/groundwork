@@ -29,3 +29,52 @@ export function aNameSaidTwiceInARow(text: string, names: Iterable<string>): str
   }
   return out;
 }
+
+/**
+ * AND A NAME IS SAID ONCE IN A SENTENCE ABOUT THAT PERSON (run-25: 406 sentences said one name twice, up from 362).
+ *
+ * The report is written in labels, and a label has no pronoun, so the model writes it again where a person would
+ * not: "Participant C is concerned that the targets have not been progressed, and Participant C has not reviewed
+ * progress since then." Named, the lead read "Nadia Haddad is concerned ..., and Nadia has not reviewed progress since
+ * then.", "Grace Oyelaran took a loan to get a freezer for Grace's business." and "Musa says it is not Musa's job to
+ * get the machine". Two shapes are said once, and only in a sentence that opens with that person doing something:
+ *
+ *  - The same person again as the subject of a joined clause ("..., and Nadia has", "but Mei is") loses the name,
+ *    because the clause shares the sentence's own subject: "Nadia Haddad is concerned ..., and has not reviewed
+ *    progress since then." Not where somebody else is named before it, who the clause could then be about.
+ *  - The same person's name again as an owner ("Grace's business") is "their own", once, and "the" after that:
+ *    "Grace Oyelaran took a loan to get a freezer for their own business." No pronoun that says a man or a woman
+ *    is ever guessed.
+ *
+ * Everything else is left as it was. Never inside a quotation: the caller runs outside quotes.
+ */
+export function aNameSaidAgainInOneSentence(text: string, names: Iterable<string>): string {
+  if (!text) return text;
+  const people = [...new Set([...names].map((n) => (n ?? '').trim()).filter((n) => n.length > 1))].sort((a, b) => b.length - a.length);
+  if (!people.length) return text;
+  const formsOf = (full: string) => [...new Set([full, theShortNameOf(full)].filter(Boolean))].sort((a, b) => b.length - a.length).map(escapeRe).join('|');
+  return text.split(/(?<=[.!?])(\s+)/).map((sentence) => {
+    for (const full of people) {
+      const forms = formsOf(full);
+      const opens = new RegExp(`^\\s*(?:${forms})(?=\\s+\\p{Ll})`, 'u').exec(sentence);
+      if (!opens) continue;
+      const others = people.filter((p) => p !== full).flatMap((p) => [p, theShortNameOf(p)]).filter((n) => n && n.length > 1);
+      const somebodyElseBefore = (upTo: number) => others.some((o) => new RegExp(`(?<![\\p{L}])${escapeRe(o)}(?![\\p{L}])`, 'u').test(sentence.slice(0, upTo)));
+      let out = sentence.replace(
+        new RegExp(`(,?\\s+(?:and|but)\\s+)(?:${forms})\\s+(?=\\p{Ll})`, 'gu'),
+        (m: string, joint: string, offset: number) => (offset > opens[0].length && !somebodyElseBefore(offset) ? joint : m),
+      );
+      let owned = 0;
+      out = out.replace(
+        new RegExp(`(?<=\\s)(?:${forms})['’]s\\s+(?=\\p{Ll})`, 'gu'),
+        (m: string, offset: number) => {
+          if (offset <= opens[0].length || somebodyElseBefore(offset)) return m;
+          owned += 1;
+          return owned === 1 ? 'their own ' : 'the ';
+        },
+      );
+      return out;
+    }
+    return sentence;
+  }).join('');
+}

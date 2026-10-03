@@ -13,7 +13,7 @@ import { theJudgementWithItsConversationPoints } from './the-judgement-and-a-goa
  * who only reads.
  */
 
-const POINT = 'Tobi has not been told about this goal yet, so talk it through with Tobi before reading anything into it.';
+const POINT = 'Tobi has not been told about this goal yet. Talk it through together before reading anything into it.';
 const TOBI_UNTOLD = { participantId: 'p2', text: 'Take over the scheduling.', awareness: 'NOT_TOLD', authoredBy: 'LEAD' };
 
 function makeParticipant(overrides: Partial<Record<string, any>> = {}) {
