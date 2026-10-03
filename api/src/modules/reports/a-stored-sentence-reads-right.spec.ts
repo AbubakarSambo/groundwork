@@ -30,6 +30,11 @@ describe('a stored sentence reads right when it is served', () => {
     expect(aStoredSentenceReadsRight(theirs)).toBe('Sofia said "the plan is dead. is it?" and nothing on record says anybody has chased it since.');
   });
 
+  it('leaves an unquoted quotation for the check that reads every line before it is kept', () => {
+    const unquoted = 'Whether The three partnerships have had no progress since the sales work began. is still true.';
+    expect(aStoredSentenceReadsRight(unquoted)).toBe(unquoted);
+  });
+
   it('keeps a real abbreviation and a normal sentence as they are', () => {
     const fine = 'Ravi wants the cheaper supplier, e.g. the one in Kano, vs the one in Lagos, etc. and a date.';
     expect(aStoredSentenceReadsRight(fine)).toBe(fine);

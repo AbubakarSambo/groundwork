@@ -24,7 +24,14 @@ const A_LABEL_ENDS_ITS_FULL_STOP = new RegExp(`\\b([A-Za-z][A-Za-z-]*)\\.(?=,| (
 const ABBREVIATIONS = new Set(['vs', 'etc', 'e.g', 'i.e', 'no', 'approx', 'inc', 'ltd', 'co', 'mr', 'mrs', 'ms', 'dr', 'st', 'jr', 'sr']);
 
 export function aLabelEndsWithoutAFullStop(text: string): string {
-  return text.replace(A_LABEL_ENDS_ITS_FULL_STOP, (m, word: string) => (ABBREVIATIONS.has(word.toLowerCase()) ? m : word));
+  return text.replace(A_LABEL_ENDS_ITS_FULL_STOP, (m, word: string, offset: number, whole: string) => {
+    if (ABBREVIATIONS.has(word.toLowerCase())) return m;
+    /* A capital after a lower-case lead-in ("Whether The three partnerships ... began.") is a quotation that lost its marks, not a
+       label: it is left for the check that reads every line before it is kept (every-line-is-read-before-it-is-kept). */
+    const sentence = whole.slice(Math.max(whole.lastIndexOf('. ', offset) + 2, 0), offset);
+    if (/[a-z] (?:The|A|An|This|These|Those|It|They|We|I)\b/.test(sentence)) return m;
+    return word;
+  });
 }
 
 const THAT_NOBODY_CHASED = 'Nothing on record says anybody has chased it since';
