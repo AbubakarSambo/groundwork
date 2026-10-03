@@ -3730,3 +3730,13 @@ Five questions used to get "I cannot answer that one yet. Here is what I can do 
 - **"Who is off next week?"** used to read "I do not have anybody called "off next week"." It is now read as a question about who is away. An admin reads everyone's approved leave, a lead reads their own team's (both exactly as the leave board serves them): "One person is off next week, from approved leave." and "Baraka Mutua is off from Thursday 8 October to Friday 9 October." Nobody: "Nobody is off next week, as far as approved leave goes." A member or a guest reads only their own leave and "I can only tell you about other people’s leave if you are an admin or a lead." (decision 75, item 28). Dates only, never a reason or a kind of leave.
 
 Tests: `assistant/your-own-requests-through-ask-groundwork.spec.ts`, read as a member, a lead, an admin and a guest.
+
+## Ask Groundwork: leave, spending and hours are read in the ways people say them (4 October 2026 review, item S8)
+
+The same rules, widened, with the rule that nothing is guessed. Five or more phrasings each are tested.
+
+- **Spending.** "Can I buy a new laptop for 95,000?" used to read "I cannot answer that one yet. Here is what I can do with ...". It now reads "You asked to spend KES 95,000 on a new laptop. That is over the Operations budget left for October, which is KES 38,000. Shall I still send it to Wairimu to approve?" (with enough budget: "... Operations has KES 38,000 left for October, so that fits. Shall I send it to Wairimu to approve?"). Also read now: "I need 5000 for airtime", "I’d like to buy a projector for KES 60,000", "Please can I get 15,000 for the team lunch?", "Could I claim 3,500 for taxi fares?", "I want to pay 20k for the venue deposit" and "Can we order 12 chairs for 30,000?" (the 12 is a quantity, the 30,000 is the money). A plain quantity is not read as money: "I need 10 chairs for the office" is not a request to spend.
+- **Leave.** "I want to take a week off from 19 October" was read as the one day, 19 October; it is now Monday 19 October to Sunday 25 October, and the say-back shows the exact days before anything is sent. "Could I have the 23rd off?" was not read; it is now read as the next 23rd.
+- **Hours.** "Spent 2 hours on Lakeside this morning" (no "I") and "Add 3 hours to Atlas for yesterday" were not read. They are now, and "this morning", "this afternoon", "just now" and "earlier" mean today. "I just worked 4 hours on Lakeside today" is read as well.
+
+Tests: `assistant/ways-people-really-ask-for-leave-spending-and-hours.spec.ts`.

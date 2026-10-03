@@ -62,7 +62,7 @@ export function soundsLikeLeave(message: string): boolean {
   const t = (message ?? '').trim();
   if (!ASKS_FOR_TIME_OFF.test(t) || !FIRST_PERSON.test(t)) return false;
   /* "Off" alone is too common ("kick off", "sign off"): it needs a day, a date or "next week" beside it. */
-  return new RegExp(`${WEEKDAY_RE}|${MONTH_RE}|\\d{4}-\\d{2}-\\d{2}|tomorrow|next week`, 'i').test(t);
+  return new RegExp(`${WEEKDAY_RE}|${MONTH_RE}|\\d{4}-\\d{2}-\\d{2}|tomorrow|next week|\\bthe\\s+\\d{1,2}(?:st|nd|rd|th)\\b`, 'i').test(t);
 }
 
 function dateOn(day: number, month: number, today: Date, year?: number): Date | null {
@@ -91,6 +91,28 @@ function weekdayFrom(name: string, how: 'next' | 'this', today: Date): Date {
   const t = midnight(today);
   const ahead = ((want - t.getUTCDay() + 7) % 7) || 7;
   return new Date(t.getTime() + ahead * DAY_MS);
+}
+
+/**
+ * HOW LONG, WHEN A WEEK OR MORE IS SAID (found in the 4 October review): "a week off from 19 October"
+ * was read as the one day, 19 October. Whole weeks only; any other length is not read, so it is asked.
+ */
+const WORDS: Record<string, number> = { a: 1, one: 1, '1': 1, two: 2, '2': 2, three: 3, '3': 3, four: 4, '4': 4 };
+function weeksSaid(t: string): number | null {
+  const m = /\b(a|one|two|three|four|[1-4])\s+(?:whole\s+)?weeks?\b(?!\s+(?:from\s+now|ago))/.exec(t);
+  return m ? WORDS[m[1]] : null;
+}
+const endOf = (start: Date, weeks: number | null) => (weeks ? new Date(start.getTime() + (weeks * 7 - 1) * DAY_MS) : start);
+
+/** "the 23rd": the next time that day of the month comes round, never one already gone. */
+function theNextDayNumbered(day: number, today: Date): Date | null {
+  if (day < 1 || day > 31) return null;
+  const t = midnight(today);
+  for (let m = 0; m < 13; m++) {
+    const d = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + m, day));
+    if (d.getUTCDate() === day && d >= t) return d;
+  }
+  return null;
 }
 
 /** The days a message asks for, or null when they cannot be read without guessing. */
@@ -144,7 +166,13 @@ export function readLeaveDates(message: string, today: Date = new Date()): Leave
     const month = monthNo(one[2] ?? one[4]);
     const year = one[3] ?? one[6];
     const d = dateOn(day, month, today, year ? +year : undefined);
-    return out(d, d);
+    return out(d, d && endOf(d, weeksSaid(t)));
+  }
+  /* The 23rd, with no month said. */
+  const numbered = /\bthe\s+(\d{1,2})(?:st|nd|rd|th)\b/.exec(t);
+  if (numbered) {
+    const d = theNextDayNumbered(+numbered[1], today);
+    return out(d, d && endOf(d, weeksSaid(t)));
   }
 
   /* Next Thursday and Friday, this Monday to Wednesday, Thursday. */
@@ -152,7 +180,7 @@ export function readLeaveDates(message: string, today: Date = new Date()): Leave
   if (wd) {
     const how = wd[1] === 'next' ? 'next' : 'this';
     const first = weekdayFrom(wd[2], how, today);
-    if (!wd[4]) return out(first, first);
+    if (!wd[4]) return out(first, endOf(first, weeksSaid(t)));
     const want = WEEKDAYS.indexOf(wd[4]);
     const ahead = (want - first.getUTCDay() + 7) % 7;
     const second = new Date(first.getTime() + ahead * DAY_MS);
