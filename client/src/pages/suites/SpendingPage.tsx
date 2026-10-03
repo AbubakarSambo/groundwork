@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { spendApi, type SpendBoard, type SpendWaiting } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
 import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, Select, TextField } from '@/components/gw/ui'
@@ -81,6 +82,9 @@ export function SpendingPage() {
 
       {data && (
         <>
+          {data.reader === 'admin' && (
+            <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/spend/finance">Open the requests for finance</Link></p>
+          )}
           <Section heading="Waiting for a yes or no">
             {data.waiting.length === 0
               ? <Empty>Nothing is waiting for a yes or no.</Empty>

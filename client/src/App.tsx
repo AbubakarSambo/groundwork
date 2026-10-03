@@ -48,6 +48,7 @@ import { ReviewPage } from '@/pages/suites/ReviewPage'
 import { LeavingBoardPage } from '@/pages/suites/LeavingBoardPage'
 import { RoleMapPage } from '@/pages/suites/RoleMapPage'
 import { SpendingPage } from '@/pages/suites/SpendingPage'
+import { FinancePage } from '@/pages/suites/FinancePage'
 import { TodosPage } from '@/pages/suites/TodosPage'
 import { CustomersPage } from '@/pages/suites/CustomersPage'
 import { EquipmentPage } from '@/pages/suites/EquipmentPage'
@@ -484,6 +485,7 @@ export default function App() {
             <Route path="/suite/leaving" element={<RequireOrgSetup><LeavingBoardPage /></RequireOrgSetup>} />
             <Route path="/suite/roles" element={<RequireOrgSetup><RoleMapPage /></RequireOrgSetup>} />
             <Route path="/suite/spend" element={<RequireOrgSetup><SpendingPage /></RequireOrgSetup>} />
+            <Route path="/suite/spend/finance" element={<RequireOrgSetup><FinancePage /></RequireOrgSetup>} />
             <Route path="/suite/todos" element={<RequireOrgSetup><TodosPage /></RequireOrgSetup>} />
             <Route path="/suite/customers" element={<RequireOrgSetup><CustomersPage /></RequireOrgSetup>} />
             <Route path="/suite/equipment" element={<RequireOrgSetup><EquipmentPage /></RequireOrgSetup>} />

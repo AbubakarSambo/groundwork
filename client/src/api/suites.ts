@@ -198,6 +198,7 @@ export interface SpendWaiting {
   mayDecide: boolean
 }
 export interface SpendBoard {
+  reader?: 'admin' | 'lead' | 'approver'
   currency: string | null
   limit: number | null
   waiting: SpendWaiting[]
@@ -243,4 +244,46 @@ export const equipmentApi = {
     (await apiClient.post('/suites/equipment/items', item)).data,
   change: async (id: string, change: { holderId: string | null; condition: string | null }): Promise<EquipmentBoard> =>
     (await apiClient.put(`/suites/equipment/items/${id}`, change)).data,
+}
+
+/** One approved request to spend, as finance reads it: only what is on the request itself (GET /suites/spend/finance). */
+export interface FinanceRequest {
+  id: string
+  name: string
+  team: string | null
+  amount: number
+  what: string
+  category: string | null
+  askedOn: string
+  approvedBy: string[]
+  approvedOn: string | null
+  evidenceNeeded: string[]
+  evidenceGiven: string[]
+  checked: { by: string; on: string } | null
+  code: string | null
+  paidOn: string | null
+  /** The request in full sentences, with "you" for the reader. */
+  said: string[]
+}
+export interface FinanceView {
+  reader: 'finance' | 'admin'
+  currency: string | null
+  toPay: FinanceRequest[]
+  paid: FinanceRequest[]
+  /** Budget lines finance may choose from. Finance may also write its own. */
+  lines: string[]
+}
+
+export const financeApi = {
+  get: async (): Promise<FinanceView> => (await apiClient.get('/suites/spend/finance')).data,
+  check: async (id: string): Promise<FinanceView> => (await apiClient.post(`/suites/spend/requests/${id}/check`)).data,
+  code: async (id: string, code: string): Promise<FinanceView> => (await apiClient.put(`/suites/spend/requests/${id}/code`, { code })).data,
+  evidence: async (id: string, what: string): Promise<FinanceView> => (await apiClient.post(`/suites/spend/requests/${id}/evidence`, { what })).data,
+  paid: async (id: string, on: string): Promise<FinanceView> => (await apiClient.post(`/suites/spend/requests/${id}/paid`, { on })).data,
+  /** The approved requests not yet paid, as a file to take away. */
+  file: async (format: 'csv' | 'xlsx'): Promise<{ blob: Blob; fileName: string }> => {
+    const res = await apiClient.get('/suites/spend/finance/export', { params: { format }, responseType: 'blob' })
+    const named = /filename="([^"]+)"/.exec(String(res.headers?.['content-disposition'] ?? ''))
+    return { blob: res.data as Blob, fileName: named?.[1] ?? `requests-to-pay.${format}` }
+  },
 }

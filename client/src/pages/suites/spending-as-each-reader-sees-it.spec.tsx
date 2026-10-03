@@ -146,6 +146,18 @@ describe('Grace, an admin', () => {
   })
 })
 
+describe('the way to the requests for finance', () => {
+  it('Grace, an admin, is offered the requests for finance, and Fatuma, a lead, is not', async () => {
+    const { unmount } = open(GRACE, { ...GRACES, reader: 'admin' })
+    const link = await screen.findByRole('link', { name: 'Open the requests for finance' })
+    expect(link).toHaveAttribute('href', '/suite/spend/finance')
+    unmount()
+    open(FATUMA, { ...FATUMAS, reader: 'lead' })
+    await screen.findByText('Kamau: KES 18,000 for fuel for Kisumu deliveries')
+    expect(screen.queryByRole('link', { name: 'Open the requests for finance' })).toBeNull()
+  })
+})
+
 describe('Fatuma, a lead', () => {
   it('reads only her team’s request and budget, decides Kamau’s, and cannot set a budget', async () => {
     open(FATUMA, FATUMAS)
