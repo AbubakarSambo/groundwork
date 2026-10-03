@@ -274,7 +274,13 @@ Not checked by the run: the admin's view, because the run keeps only the lead's 
 
 **Needs Hafsah (safety check):** on 4 October the safety check refused my morning-report entry for item 21, because one listed prototype section was named with words it watches for. As the rules say, it was not reworded or written another way. Item 21 is finished in 38 commits from `a9890cc9` to `3b884e64`, each written up in `docs/answers-from-engine.md`; the builder's full report, with its questions on the prototype sections the engine does not build and on how a loan cohort is read, is held for Hafsah in this chat.
 
-Now running: pattern questions back in the lead's "what to settle first" after the person's turn (decision 86), and records given to the person the speaker names.
+**Pattern questions are back for the lead, and records go to the owner named** (`b804c57c`, `71a94bda`; 7,226 of 7,227 tests pass, the one failure waiting on Hafsah's answer on the four suites files).
+- **Pattern questions:** after the person's answer or the usual 3 or 7 days, Amina's "what to settle first" now includes, for example, "“Steps in to stop things failing” keeps coming up in Rukia Mwangi’s check-ins. This came up in 3 check-ins, in sessions 1, 2 and 3. Rukia Mwangi said, “Nobody else was on call that week.” Ask Rukia Mwangi what has changed since then."
+- **Records:** Ada's "Tunde is taking on everything engineering" is now Tunde's record, not Ada's.
+
+A three-scenario check showed sales' "blocker checked" 16 to 10 and "commitments recorded" 32 to 29. Neither change touches the conversation or what writes commitments, and sales' commitments per session (2, 8, 19 against 6, 10, 16) move as the model varies. The full run below will show it.
+
+Now running: run-26, all 24 scenarios on `71a94bda`, to measure everything since run-25.
 
 Now running: "proof asked for": whether a change caused the drop or the model varies, with repeated runs. If it does not come back, it goes to Hafsah. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
