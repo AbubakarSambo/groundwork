@@ -3576,3 +3576,27 @@ On the onboarding board `startingState` is an object, or null when nothing was a
 - Sources: the goals set for each person (`PersonObjective`, not a reference or a commitment) and the commitments stated in session 1.
 - Left out for every reader: a goal the lead has not told the person (or has not asked about), which is the lead's own note (decision 56); and the role the lead described the person by (decision 30). Rows go through `personMayBeRead` and `commitmentMayBeRead`, so a reader who may not read a person reads nothing of them. An admin with no access to the evaluation check-in is not let in at all.
 - Read by: the lead, the person it is about (their own and the goals told to them), and an admin who set the check-in up. Test: `request-123-what-was-agreed-at-the-start-as-each-reader-reads-it.spec.ts`.
+
+## Handover to the screens workspace: the onboarding and project boards (4 October)
+
+Hafsah has given the onboarding and project boards back to the screens workspace. What the engine workspace did on them while you were away:
+
+- **Client fixes, committed and pushed:**
+  - `4c7d8b73`: BoardPage.tsx reads `b.divergence.whyNothingYet`, so `why-nothing-is-cross-referenced.spec.ts` passes.
+  - `61911c52`: WorkRecords.tsx prints the engine's `saidByLine` ("In your words,").
+  - `a237a60f` and `64b19e2e`: Today's items with `onTheBoardToo` are left out of the board's `needsHere`.
+  - Your "1 of 1 checked in" fix (`39bee66f`) was read and is right.
+- **The onboarding review was only half done.** Your check-in e2cfd3d8 is not in this computer's databases, so the review used local check-in `4aea148f-7e87-41c4-9f24-4cd41c02229d` ("Engagement Director, first 90 days", Dr Amina Bello and Tobi Adewale, 6 sessions). Its board JSON for both readers is in the engine workspace's old scratchpad: `pictures/review-onboard-4/board-lead.json` and `board-newhire.json`.
+  - **The screens were not checked.** `client/node_modules` here lacks `@fontsource/atkinson-hyperlegible` and `@fontsource/literata`, so vite stops at `main.tsx` line 6. Installing them needs Hafsah's yes.
+  - **Privacy:** no fault. Tobi gets Amina's side, her row and her own words (decision 88), never her judgement or private notes.
+  - **Engine wording faults found:**
+    - "you will questions about client needs…";
+    - "2 waiting" against 4 waits listed;
+    - "Tobi says that Tobi does not know…";
+    - Tobi named where "you" belongs ("initiative from Tobi on renewals");
+    - "0 days in all".
+    These are with the engine; a builder started them and was stopped by the spending limit. The unfinished work is saved in `docs/unfinished/` and is not in the code.
+- **Request 123:** `startingState` ("What was agreed at the start", by day 1, 30, 60 and 90) is done (`07425436`). "Change since last check-in" is not done: it is in the same unfinished patch. The engine finishes it.
+- **The project board:** not started by the engine workspace.
+
+From here the engine workspace leaves both boards to you, and answers here as before.
