@@ -72,9 +72,9 @@ describe('a goal not told stays with the lead, on the check-in page', () => {
     expect(names(page)).toContain('Keep the team on one calendar.');
   });
 
-  it('an admin who only reads does not read it either', async () => {
+  it('an admin of the organisation reads it: admins read every board and report, and it is hidden from the person only (decisions 5, 48, 56 and 86)', async () => {
     const page = await pageFor(ADMIN, 'ADMIN');
-    expect(names(page)).not.toContain(UNTOLD);
+    expect(names(page)).toContain(UNTOLD);
   });
 });
 
@@ -105,10 +105,10 @@ describe('the report, which WhatsApp and the API serve as well', () => {
     return svc.whatTheLeadHasNotShared('g1', userId, 'org1', { sharedPicture: SAID_IN_THE_REPORT }) as Promise<any>;
   };
 
-  it('Amina reads the sentence, Tobi and an admin do not', async () => {
+  it('Amina and an admin of the organisation read the sentence, Tobi does not', async () => {
     expect((await reportAs(AMINA, 'MEMBER')).sharedPicture).toContain('renewal process');
     expect(JSON.stringify(await reportAs(TOBI, 'MEMBER'))).not.toContain('renewal process');
-    expect(JSON.stringify(await reportAs(ADMIN, 'ADMIN'))).not.toContain('renewal process');
+    expect(JSON.stringify(await reportAs(ADMIN, 'ADMIN'))).toContain('renewal process');
   });
 });
 
@@ -145,10 +145,10 @@ describe('Today, "Since the last round"', () => {
     return JSON.stringify(await sinceLastFrom(prisma, 'g1', { ground: g, participants: g.participants, checkIns, nameOf: (pid: string) => (pid === 'p-tobi' ? 'Tobi' : 'Amina') } as any, { userId, isAdmin }));
   };
 
-  it('Amina reads the count that moved on it; Tobi and an admin do not', async () => {
+  it('Amina and an admin of the organisation read the count that moved on it; Tobi does not', async () => {
     expect(await readAs(AMINA, false)).toContain('renewal process');
     expect(await readAs(TOBI, false)).not.toContain('renewal process');
-    expect(await readAs(ADMIN, true)).not.toContain('renewal process');
+    expect(await readAs(ADMIN, true)).toContain('renewal process');
   });
 });
 
@@ -226,10 +226,10 @@ describe('the board', () => {
       .get('g1', userId) as Promise<any>;
   };
 
-  it('Amina reads the target; Tobi and an admin read neither it nor a sentence that gives it', async () => {
+  it('Amina and an admin of the organisation read the target; Tobi reads neither it nor a sentence that gives it', async () => {
     expect(JSON.stringify(await boardAs(AMINA, 'MEMBER'))).toContain('renewal process');
     expect(JSON.stringify(await boardAs(TOBI, 'MEMBER'))).not.toContain('renewal process');
-    expect(JSON.stringify(await boardAs(ADMIN, 'ADMIN'))).not.toContain('renewal process');
+    expect(JSON.stringify(await boardAs(ADMIN, 'ADMIN'))).toContain('renewal process');
   });
 });
 

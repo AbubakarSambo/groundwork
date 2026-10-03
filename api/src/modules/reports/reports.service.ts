@@ -3224,8 +3224,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       whatThisSessionHolds(this.prisma, groundId, sessionNumber, {
         participantId: me?.id ?? null,
         isLead: viewerIsLead,
-        /* A goal not told is read by whoever runs the check-in, not by every admin who reads (decisions 5 and 86). */
-        runsIt: theyRunThisCheckIn(requestingUserId, ground as any),
+        /* A goal not told is read by whoever runs the check-in and by every admin of the organisation who reads it (decisions 5 and 86). */
+        runsIt: theyRunThisCheckIn(requestingUserId, ground as any) || isOrgAdmin,
         /* A colleague's own words are walled from the person an evaluation is about, and from an admin without access to it. */
         colleaguesWordsWalled: viewerIsTheSubjectOfAnEvaluationCheckIn({
           scenario: (ground as any).scenario,
@@ -6756,8 +6756,8 @@ happened, and what is in the way.`;
        saying "Participant B" hid nothing (read live, 28 Sep 2026). */
     /* A goal the lead has not told somebody about is in no sentence anybody but the lead reads. See
        grounds/a-goal-not-told-stays-with-the-lead. Its words carry no label, so this can go first. */
-    /* Whoever runs it reads a goal not told: the lead, and the admin who set it up (decisions 5 and 86). */
-    if (!theyRunThisCheckIn(requestingUserId, ground)) {
+    /* Whoever runs it reads a goal not told: the lead, the admin who set it up and every admin of the organisation who reads this check-in (decisions 5 and 86). */
+    if (!(theyRunThisCheckIn(requestingUserId, ground) || isOrgAdmin)) {
       const notTold = await ((this.prisma as any).personObjective?.findMany?.({
         where: { groundId, awareness: 'NOT_TOLD' },
         select: { participantId: true, text: true, awareness: true, authoredBy: true },

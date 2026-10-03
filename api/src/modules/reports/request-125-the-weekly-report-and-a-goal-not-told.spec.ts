@@ -35,10 +35,16 @@ async function readAs(userId: string, role: string, createdBy = AMINA) {
 const said = (o: any) => JSON.stringify(o);
 
 describe('the weekly report and a goal Amina has not told Tobi about', () => {
-  it.each([['Tobi', TOBI, 'MEMBER', AMINA], ['Chidi, a colleague', CHIDI, 'MEMBER', AMINA], ['an admin who only reads', ADMIN, 'ADMIN', AMINA]] as [string, string, string, string][])('%s does not read it, in the numbers or in what changed', async (_n, u, r, c) => {
+  it.each([['Tobi', TOBI, 'MEMBER', AMINA], ['Chidi, a colleague', CHIDI, 'MEMBER', AMINA]] as [string, string, string, string][])('%s does not read it, in the numbers or in what changed', async (_n, u, r, c) => {
     const out: any = await readAs(u, r, c);
     expect(said(out)).not.toMatch(/8 renewals/);
     /* ... and the goal Amina did tell Tobi about is still there. */
+    expect(said(out.inNumbers)).toContain('lead the client conversations fully');
+  });
+
+  it('an admin of the organisation who only reads reads it too (decisions 5 and 86)', async () => {
+    const out: any = await readAs(ADMIN, 'ADMIN', AMINA);
+    expect(said(out)).toContain('8 renewals per quarter');
     expect(said(out.inNumbers)).toContain('lead the client conversations fully');
   });
 

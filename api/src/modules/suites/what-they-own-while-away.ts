@@ -162,7 +162,7 @@ async function theCheckInsThisReaderMayRead(prisma: PrismaService, reader: Reade
       participants: g.participants, status: g.status, approvedById: g.approvedById, leadDepartment: department(g.initiatorId),
     };
     const level = whatTheyMayRead(reader.userId, viewer, view);
-    if (level === 'lead' || level === 'shared') out.set(g.id, { label: (g.label ?? '').trim(), ended: ENDED.has(g.status), runs: theyRunThisCheckIn(reader.userId, g) });
+    if (level === 'lead' || level === 'shared') out.set(g.id, { label: (g.label ?? '').trim(), ended: ENDED.has(g.status), runs: theyRunThisCheckIn({ userId: reader.userId, role: reader.role, organizationId: reader.organizationId }, g) });
   }
   return out;
 }

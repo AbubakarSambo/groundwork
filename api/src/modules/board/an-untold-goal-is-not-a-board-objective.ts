@@ -1,4 +1,4 @@
-import { runsOrSetItUp } from '../grounds/who-may-read-this-check-in';
+import { runsOrSetItUp, readsAsAnAdmin, type CheckInInView } from '../grounds/who-may-read-this-check-in';
 import { notToldYet, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek, theNumberAndWorkOfAGoal } from '../grounds/a-goal-not-told-stays-with-the-lead';
 
 /**
@@ -43,12 +43,28 @@ export interface AnObjectiveRow {
 }
 
 /**
- * WHO READS A GOAL THE LEAD HAS NOT TOLD THEM ABOUT: whoever runs the check-in (decisions 5 and 86), which is the
- * lead and the admin who set it up. Every caller asks this and passes the answer as `isTheLead`, so nobody
- * answers it from `initiatorId` alone. An admin who only reads, and a lead of the same department, do not run it.
+ * WHO READS A GOAL THE LEAD HAS NOT TOLD THEM ABOUT (decisions 3, 5, 48, 56 and 86): the lead who runs the check-in, the admin who set
+ * it up, and every admin of the organisation, who read every board and report (decision 5) and the aims and limits (decision 86.3).
+ * The goal is hidden from "that person" (decisions 48 and 56), not from the people who run the work. The one exception is the
+ * exception to everything an admin reads: on a performance plan, a promotion, a renewal or a probation an admin was not given access
+ * to, they read none of that check-in (decision 5), so they read no goal in it either.
+ *
+ * Every caller asks this and passes the answer as `isTheLead`, so nobody answers it from `initiatorId` alone. The reader is
+ * `{ userId, role, organizationId }`; the check-in carries its own organisation and scenario (and status and approver, so the admin
+ * asked to approve an evaluation check-in reads it as they read the rest of it). A reader given only a user id is read as a person
+ * with no role, so only the lead and the admin who set it up pass. An admin who takes part as a person is read as that person. A lead of the same department, a colleague and the person it is
+ * about do not (colleagues: row 24 of `docs/privacy-restrictions-for-hafsah.md`).
  */
-export function theyRunThisCheckIn(userId: string | null | undefined, checkIn: { initiatorId?: string | null; createdByUserId?: string | null }): boolean {
-  return runsOrSetItUp(userId, checkIn);
+export function theyRunThisCheckIn(
+  reader: string | null | undefined | { userId?: string | null; role?: string | null; organizationId?: string | null },
+  checkIn: Omit<Partial<CheckInInView>, 'participants'> & { initiatorId?: string | null; createdByUserId?: string | null; participants?: { userId: string | null; managingOnly?: boolean | null }[] },
+): boolean {
+  const viewer = reader && typeof reader === 'object' ? reader : { userId: reader ?? null };
+  if (runsOrSetItUp(viewer.userId, checkIn)) return true;
+  if (!checkIn.organizationId) return false;
+  /* An admin who takes part in it as a person is, for this, a person in it: the goal is hidden from that person (decisions 48 and 56). */
+  if ((checkIn.participants ?? []).some((p) => !!viewer.userId && p.userId === viewer.userId && !p.managingOnly)) return false;
+  return readsAsAnAdmin(viewer, { ...checkIn, organizationId: checkIn.organizationId, scenario: checkIn.scenario, initiatorId: checkIn.initiatorId ?? null });
 }
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

@@ -42,7 +42,7 @@ export function pageFor(userId: string, role: string, createdBy = AMINA, goals: 
 const names = (page: any): string[] => (page.objectives ?? []).map((o: any) => o.name);
 
 describe('on the check-in page only the goal not told is left out', () => {
-  it.each([['Tobi', TOBI, 'MEMBER', AMINA], ['Chidi, a colleague who sees everybody\'s targets', CHIDI, 'MEMBER', AMINA], ['an admin who only reads', ADMIN, 'ADMIN', AMINA]] as [string, string, string, string][])('%s reads the goal Amina told Tobi about, and not the other', async (_n, u, r, c) => {
+  it.each([['Tobi', TOBI, 'MEMBER', AMINA], ['Chidi, a colleague who sees everybody\'s targets', CHIDI, 'MEMBER', AMINA]] as [string, string, string, string][])('%s reads the goal Amina told Tobi about, and not the other', async (_n, u, r, c) => {
     const page = await pageFor(u, r, c);
     expect(names(page)).toContain('Lead the client conversations fully.');
     expect(JSON.stringify(page)).not.toContain('8 renewals');
@@ -54,10 +54,12 @@ describe('on the check-in page only the goal not told is left out', () => {
 });
 
 describe('the admin who set the check-in up runs it, so she reads the goal not told', () => {
-  it('reads both goals on the check-in page when she created it, and one when she only reads', async () => {
+  it('reads both goals on the check-in page when she created it, and also when she only reads, since every admin of the organisation reads it (decisions 5 and 86)', async () => {
     const setUp = await pageFor(ADMIN, 'ADMIN', ADMIN);
     expect(names(setUp).join(' | ')).toContain('Lead the client conversations fully.');
     expect(names(setUp).join(' | ')).toContain('8 renewals');
-    expect(names(await pageFor(ADMIN, 'ADMIN', AMINA)).join(' | ')).not.toContain('8 renewals');
+    const reads = await pageFor(ADMIN, 'ADMIN', AMINA);
+    expect(names(reads).join(' | ')).toContain('Lead the client conversations fully.');
+    expect(names(reads).join(' | ')).toContain('8 renewals');
   });
 });

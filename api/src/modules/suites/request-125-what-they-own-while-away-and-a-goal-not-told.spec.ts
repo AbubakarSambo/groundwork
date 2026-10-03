@@ -33,10 +33,15 @@ async function readAs(userId: string, role: string, createdBy = AMINA) {
 }
 
 describe('what Tobi owns while he is away, and a goal Amina has not told him about', () => {
-  it.each([['an admin who only reads', ADMIN, 'ADMIN'], ['a lead of the same department who is not in it', JUMA, 'LEAD']] as [string, string, string][])('%s does not read it, and reads the goal Tobi was told about', async (_n, u, r) => {
+  it.each([['a lead of the same department who is not in it', JUMA, 'LEAD']] as [string, string, string][])('%s does not read it', async (_n, u, r) => {
     const said = (await readAs(u, r)).join(' ');
     expect(said).not.toContain('8 renewals');
-    if (r === 'ADMIN') expect(said).toContain('Lead the client conversations fully');
+  });
+
+  it('an admin of the organisation who only reads reads it, and the goal Tobi was told about (decisions 5 and 86)', async () => {
+    const said = (await readAs(ADMIN, 'ADMIN')).join(' ');
+    expect(said).toContain('8 renewals');
+    expect(said).toContain('Lead the client conversations fully');
   });
 
   it('Amina, and the admin who set the check-in up, read both', async () => {

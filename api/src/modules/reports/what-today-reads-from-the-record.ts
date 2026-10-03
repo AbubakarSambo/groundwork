@@ -169,7 +169,7 @@ export async function sinceLastFrom(prisma: any, groundId: string, l: Loaded, re
     me?.id ?? null,
     ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
     { isLead: runsIt },
-  ).shown as any[], (ground.personObjectives ?? []) as any[], participants as any[], theyRunThisCheckIn(reader.userId, ground)).kept as any[];
+  ).shown as any[], (ground.personObjectives ?? []) as any[], participants as any[], theyRunThisCheckIn(reader.userId, ground) || (!!reader.isAdmin && !me)).kept as any[];
   /*
    * WHAT MOVED IS READ ONE WAY, FOR EVERY SURFACE (review of 1 October 2026, re-d, sales, session 2).
    * This read `count` against `prevCount`, and the Movement tile on the same page read the snapshots:
