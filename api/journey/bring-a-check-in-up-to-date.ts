@@ -163,15 +163,19 @@ export async function whatWouldChange(prisma: any, onlyCheckIn: string | null = 
     const gone = new Set<string>();
     for (const o of objs) {
       if (gone.has(o.id)) continue;
+      /* The lead's own aim, said again, belongs here too (request 121, part 2): "I want to get 12 shops onboarded" was stored as
+         the lead's own, with no number, though its own name holds the team's 12. Somebody else's own aim with no number is theirs, and stays. */
+      const mayReadFigureFromName = !o.ownerParticipantId || (!!lead && o.ownerParticipantId === lead.id);
+      const figure = o.target ?? (mayReadFigureFromName ? theCountTheNameAimsAt(o.name) : null);
       const aims = team.filter((t) => t.id !== o.id && !gone.has(t.id) && t.order < o.order);
-      const theTeams = aims.find((t) => !theAimsThatAreNew([{ name: o.name, target: o.target }], [{ name: t.name, target: t.target }]).length);
+      const theTeams = aims.find((t) => !theAimsThatAreNew([{ name: o.name, target: figure }], [{ name: t.name, target: t.target }]).length);
       if (!theTeams) continue;
       /*
        * ONLY THE SAME FIGURE, AS THE RULE THE ENGINE WRITES BY (putOwnedTargetsOnTheRecord): the team's number said
        * again. Two names with no number, or two different numbers, are left as they are: read over this Mac's test
        * database, matching on words alone would have merged "new client engagements" into "revenue coming in".
        */
-      if (o.target == null || theTeams.target == null || o.target !== theTeams.target) continue;
+      if (figure == null || theTeams.target == null || figure !== theTeams.target) continue;
       /* A count the team's aim does not hold is not thrown away here: the lead removes that one herself. */
       if (o.count > 0 && o.count !== theTeams.count) {
         out.left.push(`${label}: the target ${inMarks(o.name)} is the team's aim ${inMarks(theTeams.name)} said again, but it holds a count of ${o.count} that the team's aim does not, so it is left for the lead to remove.`);

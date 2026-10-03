@@ -128,3 +128,45 @@ describe('the write, and the board afterwards', () => {
     expect(JSON.stringify(amani)).not.toMatch(/12 now, up from 0/);
   });
 });
+
+/**
+ * REQUEST 121, PART 2: the lead's own aim, said again with no number, was left behind.
+ * "You want to get 12 shops onboarded." was stored as Rukia's own aim with no number, though its name holds the team's 12.
+ */
+describe('the lead\'s own aim, said again with no number (request 121, part 2)', () => {
+  const theLeadsOwn = () => {
+    const db = theStoredCheckIn();
+    const base = REVIEW_5_OBJECTIVES.find((o) => o.id === 'o-onboarded')!;
+    db.rows.groundObjective.push({ ...base, id: 'o-rukia-onboarded', name: 'get 12 shops onboarded', target: null, ownerParticipantId: 'p-rukia', setByParticipantId: 'p-rukia', sortOrder: 5 });
+    return db;
+  };
+
+  it('the dry run lists it, and the write takes it off', async () => {
+    const db = theLeadsOwn();
+    const said: string[] = [];
+    await run({ url: LOCAL, args: ['--dry-run'], prismaFor: () => db.prisma, ask: async () => null, say: (l) => said.push(l) });
+    expect(said).toContain('Sales team, Q3: the target "get 12 shops onboarded" is the team\'s aim "Sign 12 shops for kitchen appliances in Nairobi" said again. It would be taken off.');
+    await writeTheChanges(db.prisma, await whatWouldChange(db.prisma));
+    expect(db.rows.groundObjective.map((o) => o.id)).toEqual(['o-team', 'o-amani', 'o-neema']);
+    expect(whatWouldChangeSays(await whatWouldChange(db.prisma))).toEqual(['1 check-in was read. Nothing would change.']);
+  });
+
+  it('nobody reads it on the board afterwards, as Rukia, Amani or the admin who set it up', async () => {
+    const db = theLeadsOwn();
+    await writeTheChanges(db.prisma, await whatWouldChange(db.prisma));
+    const setup = review5({ objectives: db.rows.groundObjective, dependencies: db.rows.groundDependency, items: db.rows.workItem });
+    for (const reader of [RUKIA_RUNS_IT, AMANI, GRACE_SET_IT_UP]) {
+      const b = await boardAs(setup, reader[0], reader[1]);
+      expect(JSON.stringify(b.objectives)).not.toMatch(/wants to get 12 shops onboarded|You want to get 12 shops onboarded/);
+      expect(JSON.stringify(b)).not.toMatch(/7 targets are set|No number is set yet/);
+    }
+  });
+
+  it('somebody else\'s own aim with no number is theirs, and stays', async () => {
+    const db = theStoredCheckIn();
+    const base = REVIEW_5_OBJECTIVES.find((o) => o.id === 'o-onboarded')!;
+    db.rows.groundObjective.push({ ...base, id: 'o-amani-onboarded', name: 'get 12 shops onboarded', target: null, ownerParticipantId: 'p-amani', setByParticipantId: 'p-amani', sortOrder: 5 });
+    await writeTheChanges(db.prisma, await whatWouldChange(db.prisma));
+    expect(db.rows.groundObjective.map((o) => o.id)).toContain('o-amani-onboarded');
+  });
+});
