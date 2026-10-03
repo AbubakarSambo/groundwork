@@ -47,7 +47,11 @@ const NOT_WIRED_ON_PURPOSE: Record<string, string> = {
   'main.ts': 'the entrypoint - nothing imports it, it imports everything',
   // Screens request 93: shared set-up for the request 92 specs, in assistant/ and grounds/, used by tests only.
   // Request 70: shared set-up for the board's seven new section specs, used by tests only.
-  'the-switchboards-sections-harness.ts': 'test-only set-up shared by the request 70 board section specs; nothing in the product should import it',
+  'an-organisation-to-set-up-for-specs.ts': 'test-only stand-in organisation shared by the assistant specs; nothing in the product should import it',
+  'a-leave-organisation-for-specs.ts': 'test-only stand-in organisation shared by the leave specs; nothing in the product should import it',
+  'a-spending-organisation-for-specs.ts': 'test-only stand-in organisation shared by the spending specs; nothing in the product should import it',
+  'a-time-sheets-organisation-for-specs.ts': 'test-only stand-in organisation shared by the time sheet specs; nothing in the product should import it',
+  'a-whatsapp-inbound-harness.ts': 'test-only set-up shared by the WhatsApp inbound specs; nothing in the product should import it',
   // Week 26: the wording rules every product sentence is held to, run by the board and report specs.
   'a-product-sentence-is-plain.ts': 'the wording check the board and report specs run over every product sentence; a rule read by tests, not served',
   'request-92-harness.ts': 'test-only set-up shared by the request 92 specs in assistant/ and grounds/; nothing in the product should import it',
