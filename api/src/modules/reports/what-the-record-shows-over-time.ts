@@ -218,13 +218,22 @@ export function looksLikeATimeOrADate(s: string): boolean {
  * not the "I" of this sentence any more. Null tells the caller to fall back to a sentence with no
  * text in it at all.
  */
-const FIRST_PERSON_FRAME = /^(?:i will|i'll|i am going to|i'm going to|i plan to|we will|we'll)\s+/i;
+/*
+ * AND THE OTHER WAYS PEOPLE SAY THEY WILL (item 21, the founder's board). "I just need to schedule a dedicated call
+ * for that exact topic." and "I am continuing to assess the documentation and codebases" kept their "I", so the
+ * board said "you made a commitment, which is in the record." with nothing in it. Each of these frames is taken off
+ * the same way, with up to two small words between ("I just need to", "I will definitely").
+ */
+const FIRST_PERSON_FRAME = /^(?:i|we)(?:\s+will|['’]ll|\s+am going to|['’]m going to|\s+are going to|['’]re going to|\s+plan to|\s+need to|\s+have to|\s+must|\s+intend to|\s+want to|\s+would like to|['’]d like to|\s+(?:just|still|also|really|definitely|now|then|first)(?:\s+(?:just|still|also|really|definitely|now|then|first))?\s+(?:will|need to|have to|must|want to|plan to))(?:\s+(?:just|still|also|really|definitely|now|then|first|be sure to|make sure to)){0,2}\s+/i;
+/* "I am continuing to assess ..." is a promise to continue: "continue to assess ...". */
+const FIRST_PERSON_CONTINUING = /^(?:i am|i['’]m|we are|we['’]re)\s+(?:still\s+)?continuing\s+(?=to\s)/i;
 const FIRST_PERSON_WORD = /\b(?:i|me|my|mine|myself|we|us|our|ours|ourselves)\b/i;
 export function inOurVoice(what: string | null | undefined): string | null {
   const trimmed = String(what ?? '').trim();
   if (!trimmed) return null;
-  const frame = FIRST_PERSON_FRAME.exec(trimmed);
-  const rest = (frame ? trimmed.slice(frame[0].length) : trimmed).trim().replace(/[.!?]+$/, '');
+  const continuing = FIRST_PERSON_CONTINUING.exec(trimmed);
+  const frame = continuing ? null : FIRST_PERSON_FRAME.exec(trimmed);
+  const rest = (continuing ? `continue ${trimmed.slice(continuing[0].length)}` : frame ? trimmed.slice(frame[0].length) : trimmed).trim().replace(/[.!?]+$/, '');
   if (!rest || FIRST_PERSON_WORD.test(rest)) return null;
   return rest[0].toLowerCase() + rest.slice(1);
 }
