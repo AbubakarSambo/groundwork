@@ -1,4 +1,4 @@
-import { boardAs, answered, AMINA, BARAKA, RUKIA, JUMA, SETUP_ADMIN, handoff } from './the-switchboards-sections-harness';
+import { boardAs, answered, AMINA, BARAKA, RUKIA, JUMA, SETUP_ADMIN, handoff, THE_BOARDS_CLOCK } from './the-switchboards-sections-harness';
 
 /**
  * REQUEST 115 (d): SOMEBODY WAITING ON A COLLEAGUE IS NOT "NOTHING TO DO".
@@ -8,7 +8,8 @@ import { boardAs, answered, AMINA, BARAKA, RUKIA, JUMA, SETUP_ADMIN, handoff } f
  * the screen draws beside the name, while the same row said they still had something in the way. Now
  * the reason is "waiting on someone", and the row says on whom and for what, in a full sentence.
  */
-const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000);
+/* Two days before the clock the board is read at, so the date reads the same on any day the tests run. */
+const twoDaysAgo = new Date(THE_BOARDS_CLOCK.getTime() - 2 * 86_400_000);
 const setup = {
   createdByUserId: 'u-setup',
   checkIns: [answered('p-rukia', 1), answered('p-baraka', 1)],

@@ -1,6 +1,6 @@
 import { ReportsService } from '../reports/reports.service';
 import { BoardService } from './board.service';
-import { prismaFor } from './__fixtures__/a-page-that-contradicts-itself';
+import { prismaFor, THE_CLOCK } from './__fixtures__/a-page-that-contradicts-itself';
 import { theDisagreementTheReportOpensWith } from './the-quick-read-agrees-with-the-report';
 
 /**
@@ -12,7 +12,7 @@ async function boardFor(which: 'sales' | 'contract', userId: string, role = 'MEM
   const { prisma } = prismaFor(which, role);
   const reports = Object.create(ReportsService.prototype) as ReportsService;
   const svc = new BoardService(prisma, { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, reports);
-  return (await svc.get(which === 'sales' ? 'g-credit' : 'g-contract', userId)) as any;
+  return (await svc.get(which === 'sales' ? 'g-credit' : 'g-contract', userId, undefined, { now: THE_CLOCK })) as any;
 }
 
 const readers = {
