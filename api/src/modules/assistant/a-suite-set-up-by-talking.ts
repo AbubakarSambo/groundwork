@@ -34,7 +34,7 @@ export const SUITE_SETUP_CONFIRM_KIND = 'suite_setup_confirm';
 export type SetUpSuite = 'leave' | 'spend' | 'time' | 'reviews';
 export const SET_UP_SUITES: SetUpSuite[] = ['leave', 'spend', 'time', 'reviews'];
 /** The suites that can be set up by talking so far. The others are answered as before, by the router's other lanes. */
-export const OFFERED: SetUpSuite[] = ['leave'];
+export const OFFERED: SetUpSuite[] = ['leave', 'spend'];
 
 /** The suite as the admin reads it in a sentence. */
 export const SUITE_IN_WORDS: Record<SetUpSuite, string> = {
@@ -450,7 +450,7 @@ export function nextQuestion(plan: Plan, known: WhatIsKnown): AQuestion | null {
       if (!plan.currency) return { key: 'currency', ask: 'Which currency do people spend in?' };
       if (!plan.steps) return { key: 'approver', ask: 'Who approves a request to spend?' };
       if (!plan.after) return { key: 'after', ask: `Does anybody approve it after ${firstSaid}, for example finance? You can say no.` };
-      if (plan.limit === undefined) return { key: 'limit', ask: `What is the most ${firstSaid} may approve${plan.steps.length > 1 ? ' that way' : ' on their own'}?` };
+      if (plan.limit === undefined) return { key: 'limit', ask: plan.steps.length > 1 ? 'Up to what amount does a request go this way? Above that amount, somebody else approves it.' : `What is the most ${firstSaid} may approve on their own?` };
       if (!plan.stepsAbove) return { key: 'above', ask: `Who approves anything above ${money(plan.currency, plan.limit)}?` };
       if (plan.escalateAfter === undefined) return { key: 'escalate', ask: `What happens if ${firstSaid} doesn't respond within two working days?` };
       break;
@@ -696,18 +696,21 @@ function tokensHaveARule(t: string, known: WhatIsKnown): boolean {
 
 const WHAT: Record<Exclude<SetUpSuite, 'reviews'>, string> = { leave: 'A leave request', spend: 'A request to spend', time: 'A week of hours' };
 
+/** "Omar, who looks after finance," when more of the sentence follows. */
+const inTheMiddle = (said: string) => (said.includes(', ') ? `${said},` : said);
+
 /** The steps said in sentences: who it goes to, in turn, and who it goes to when nobody holds a job. */
 function stepsSaid(what: string, steps: Rule[][], d: Duties, known: WhatIsKnown): string[] {
   const out: string[] = [];
-  out.push(`${what} goes to ${ruleSaid(steps[0][0], d, known)}${steps.length > 1 ? ' first' : ''}.`);
+  out.push(`${what} goes to ${steps.length > 1 ? `${inTheMiddle(ruleSaid(steps[0][0], d, known))} first` : ruleSaid(steps[0][0], d, known)}.`);
   for (let i = 1; i < steps.length; i++) {
-    out.push(`When ${ruleShort(steps[i - 1][0], d, known)} has approved it, it goes to ${ruleSaid(steps[i][0], d, known)} to approve as well.`);
+    out.push(`When ${ruleShort(steps[i - 1][0], d, known)} has approved it, it goes to ${inTheMiddle(ruleSaid(steps[i][0], d, known))} to approve as well.`);
   }
   if (steps.length > 1) out.push(`It is approved only when ${ruleShort(steps[steps.length - 1][0], d, known)} approves it, and a no from anybody on the way ends it.`);
   const seen = new Set<string>();
   for (const s of steps) {
     if (s.length < 2 || s[0] === 'admin') continue;
-    const line = `If ${nobodyFor(s[0])}, it goes to ${ruleSaid(s[1], d, known)} instead.`;
+    const line = `If ${nobodyFor(s[0])}, it goes to ${inTheMiddle(ruleSaid(s[1], d, known))} instead.`;
     if (!seen.has(line)) { seen.add(line); out.push(line); }
   }
   return out;
@@ -853,8 +856,16 @@ export function whatToWrite(plan: Plan, known: WhatIsKnown): WhatToWrite | null 
   }
   if (!checkAnswers(suite, answers, people)) return null;
 
-  const hasDuties = Object.keys(plan.duties).length > 0;
-  if (hasDuties && 'refused' in changeDuties(known.duties ?? {}, plan.duties, people, new Set(known.teams))) return null;
+  /* Only the jobs the said-back names are written: a job named on the way and then no longer used is not kept. */
+  const used = new Set(rulesThatNeedSomebody(plan));
+  const duties: Duties = {};
+  if (used.has('finance') && plan.duties.finance) duties.finance = plan.duties.finance;
+  if (used.has('hr') && plan.duties.hr) duties.hr = plan.duties.hr;
+  if (used.has('chiefExecutive') && plan.duties.chiefExecutive) duties.chiefExecutive = plan.duties.chiefExecutive;
+  if (used.has('departmentHead') && plan.duties.departmentHeads) duties.departmentHeads = plan.duties.departmentHeads;
+  if (used.has('budgetOwner') && plan.duties.budgetOwners) duties.budgetOwners = plan.duties.budgetOwners;
+  const hasDuties = Object.keys(duties).length > 0;
+  if (hasDuties && 'refused' in changeDuties(known.duties ?? {}, duties, people, new Set(known.teams))) return null;
 
   let workflows: Record<string, unknown> | null = null;
   if (plan.suite !== 'reviews') {
@@ -873,7 +884,7 @@ export function whatToWrite(plan: Plan, known: WhatIsKnown): WhatToWrite | null 
     timeRules = { every: 'week', hoursAWeek: plan.hoursAWeek ?? null, cutOff: plan.cutOff ?? null };
     if ('refused' in changeTimeRules({}, timeRules, { people, teams: new Set(known.teams), clients: plan.clients ?? [] })) return null;
   }
-  return { answers, duties: hasDuties ? plan.duties : null, workflows, leaveRules, timeRules };
+  return { answers, duties: hasDuties ? duties : null, workflows, leaveRules, timeRules };
 }
 
 /** What the services returned after the yes, read back as a plan, so the reply says what was stored. */
