@@ -1101,7 +1101,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       )}
 
       {isEngineeringDealGrid && (
-        <div style={{ marginTop: 14 }}>
+        <div>
           <Link to={`/grounds/${groundId}?tab=chat`} className="gwui-plain-link">Not right? Tell the check-in</Link>
         </div>
       )}

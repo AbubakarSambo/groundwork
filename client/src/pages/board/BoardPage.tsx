@@ -1723,10 +1723,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               <SubHeading>Where each target stands</SubHeading>
               <Stack gap={10}>
                 {b.objectives.map((o) => (
-                  <div key={o.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                    <Note tone="muted"><span style={{ flex: 1, minWidth: 140, display: 'inline-block' }}>{o.name}</span></Note>
-                    <Note tone="muted"><span style={{ flex: 2, minWidth: 180, display: 'inline-block' }}>{o.journey?.say ?? ''}</span></Note>
-                  </div>
+                  <Stack key={o.id} gap={2}>
+                    <Note tone="muted">{o.name}</Note>
+                    <Note tone="muted">{o.journey?.say ?? ''}</Note>
+                  </Stack>
                 ))}
               </Stack>
             </Stack>
