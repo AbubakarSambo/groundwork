@@ -136,7 +136,6 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
       'Here is how leave requests will work. Leave requests will be switched on.',
       'Each person has 25 days of leave a year.',
       'A leave request goes to Omar, who looks after finance.',
-      'If nobody is named to look after finance, it goes to an admin instead.',
       'HR is not shown leave requests.',
       'If somebody does not answer, it waits for them. Groundwork does not pass it on by itself.',
       'Shall I set it up like this? Nothing changes until you say yes.',
@@ -155,13 +154,22 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
       'Here is how leave requests will work. Leave requests will be switched on.',
       'Each person has 21 days of leave a year.',
       'A leave request goes to you.',
-      'If nobody is named to look after HR, it goes to an admin instead.',
       'You look after HR, so that part comes to you.',
       'HR is not shown leave requests.',
       'If you have not answered after three working days, or are on leave that day, it goes to an admin.',
       'Shall I set it up like this? Nothing changes until you say yes.',
     ].join(' '));
     expect(r.join(' ')).not.toMatch(/Grace/);
+  });
+
+  it('the fallback for HR is said only when nobody looks after HR', async () => {
+    const nobody = anOrganisationToSetUp();
+    const r1 = await nobody.talk('u-grace', ['Set up our employee leave process', '21', 'HR', 'No', 'No', 'It waits', 'Nobody yet']);
+    expect(r1[r1.length - 1]).toContain('If nobody is named to look after HR, it goes to an admin instead.');
+    const joy = anOrganisationToSetUp({ suites: { duties: { isOn: false, answers: { hr: 'u-miriam' } } } });
+    const r2 = await joy.talk('u-grace', ['Set up our employee leave process', '21', 'HR', 'No', 'No', 'It waits']);
+    expect(r2[r2.length - 1]).toContain('A leave request goes to Miriam, who looks after HR.');
+    expect(r2.join(' ')).not.toContain('If nobody is named to look after HR');
   });
 
   it('the question after the first approver never offers that same job as its example', async () => {

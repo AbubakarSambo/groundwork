@@ -852,6 +852,8 @@ function stepsSaid(what: string, steps: Rule[][], d: Duties, known: WhatIsKnown,
   if (steps.length > 1) out.push(`It is approved only when ${last} ${agree(last, 'approve', 'approves')} it, and a no from anybody on the way ends it.`);
   for (const s of steps) {
     if (s.length < 2 || s[0] === 'admin') continue;
+    /* The fallback is said only when nobody holds that job: with Omar looking after finance, "if nobody is named to look after finance" is not true. */
+    if ((s[0] === 'finance' || s[0] === 'hr' || s[0] === 'chiefExecutive') && d[s[0]]) continue;
     const line = `If ${nobodyFor(s[0])}, it goes to ${inTheMiddle(ruleSaid(s[1], d, known))} instead.`;
     if (!seen.has(line)) { seen.add(line); out.push(line); }
   }

@@ -3453,3 +3453,13 @@ Tests: the four set-up-by-talking specs in `api/src/modules/assistant/` now pin 
 - **Time sheets** (the same order): after finance, "Does anybody approve the hours after finance, for example the head of the person’s team? You can say no."
 
 Tests: one new test in each of the leave, spending and time-sheets set-up specs. One existing test changed, in the HR-or-finance set-up spec, because it pinned the odd question itself ("after the head of the team, for example the head of the person’s team").
+
+## The fallback for a job is said only when nobody holds it (3 October)
+
+**In Ask Groundwork, setting up a suite by talking said "If nobody is named to look after HR, it goes to an admin instead." even when somebody looked after HR, and the same for finance and the chief executive. That sentence is now said only when nobody holds that job. The stored steps are unchanged (an admin still takes it if the job is ever left empty). No field changed; only the text of the said-back** (this commit).
+
+- **With Miriam looking after HR**, Grace reads: "A leave request goes to Miriam, who looks after HR." and no "If nobody is named to look after HR" sentence.
+- **With nobody looking after HR**, Grace reads, as before: "If nobody is named to look after HR, it goes to an admin instead."
+- **Spending, with Omar looking after finance and Grace the chief executive**, Grace no longer reads "If nobody is named to look after finance, it goes to an admin instead." or "If nobody is named as the chief executive, it goes to an admin instead."
+
+Tests: a new test in `api/src/modules/assistant/leave-set-up-by-talking-as-each-reader-reads-it.spec.ts`. Existing tests changed, because they pinned the untrue sentence: two in the leave set-up spec (Omar looking after finance, Grace looking after HR) and the spending set-up spec's said-back (Omar for finance, Grace the chief executive).
