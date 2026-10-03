@@ -90,7 +90,12 @@ export function aboutTheSpeaker(text: string, speaker: string): string {
     .replace(/(^|[^\p{L}'’])I(?:'|’)ve\b/gu, `$1${S} has`)
     .replace(/(^|[^\p{L}'’])I(?:'|’)ll\b/gu, `$1${S} will`)
     .replace(/(^|[^\p{L}'’])I(?:'|’)d\b/gu, `$1${S} would`)
-    .replace(/(^|[^\p{L}'’])I ([a-z][a-z'’]*)\b/gu, (_m, before: string, verb: string) => `${before}${S} ${forOnePerson(verb)}`)
+    /* A small word between "I" and the verb stays as it is (item 21, the support desk board): "I still do about 30 of
+       those a week myself" read "Daniel Park stills do about 30 of those a week myself". */
+    .replace(/(^|[^\p{L}'’])I ((?:(?:still|also|just|really|always|never|often|usually|already|only|now|then|actually|definitely|probably|mostly|sometimes|even) )*)([a-z][a-z'’]*)\b/gu,
+      (_m, before: string, small: string, verb: string) => `${before}${S} ${small}${forOnePerson(verb)}`)
+    /* "myself" said about them is left out: "Daniel Park still does about 30 of those a week." */
+    .replace(/,?\s+myself\b/g, '')
     .replace(/\bthe speaker(?:'|’)s\b/gi, `${S}'s`)
     .replace(/\bthe speaker\b/gi, S)
     .replace(/^The person\b/, S)
