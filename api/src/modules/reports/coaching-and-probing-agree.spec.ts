@@ -59,7 +59,7 @@ describe('neither surface passes a verdict', () => {
   });
 
   it('and silence in the record is reported as silence, never as not having tried', () => {
-    expect(lead.triedToUnblock).toContain('no escalation');
+    expect(lead.triedToUnblock).toContain('nothing on record shows it was taken any further');
     expect(lead.triedToUnblock).toContain('does not say whether anything happened outside');
   });
 });

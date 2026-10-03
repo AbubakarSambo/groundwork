@@ -1,3 +1,4 @@
+import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { Injectable } from '@nestjs/common';
 import { CheckInStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -47,9 +48,9 @@ export class WhatIsTrueService {
       }),
       this.prisma.commitment.findMany({
         where: { organizationId, personExternalId: person.externalId, ...notFromAKeptCheckIn(kept, 'sourceGroundId') },
-        select: { text: true, dueSaid: true, state: true },
+        select: { text: true, dueSaid: true, state: true, sourcePersonObjectiveId: true },
         orderBy: { statedAt: 'desc' },
-      }),
+      }).then((rows) => withoutCommitmentsFromGoalsNotToldYet(this.prisma, rows)),
       this.sessionsFor(organizationId, person),
       this.prisma.knowledgeCard.findMany({
         /* `effectiveTo: null` is the current version — exactly one per key has

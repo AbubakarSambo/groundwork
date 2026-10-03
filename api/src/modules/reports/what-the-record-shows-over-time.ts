@@ -32,6 +32,7 @@ import { THE_LEADS_LABEL } from './party-labels';
 import { theNumbersPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
 import { whatWasTried, somebodyWentBackAboutIt, itWasTakenFurther } from './what-they-said-they-did-about-it';
 import { anArticleSaidMidSentence } from '../board/a-holder-in-their-own-words';
+import { oldWordingPutPlain } from './a-stored-sentence-reads-right';
 
 export interface ACommitmentOverTime {
   participantId: string | null;
@@ -904,17 +905,17 @@ export function overTimeAsServed(
     /* A wait's line that lost the sentence naming it is not served (item 18): Amina read "Nothing on record says
        anybody has chased it since. This is work you owe Tobi Adewale, not the other way round." about nothing. */
     dependencies: Array.isArray(it.dependencies)
-      ? it.dependencies.map((d: any) => (d && typeof d.say === 'string' && !theThingIsNamed(d.say) ? { ...d, say: null } : d))
+      ? it.dependencies.map((d: any) => (d && typeof d.say === 'string' ? (!theThingIsNamed(d.say) ? { ...d, say: null } : { ...d, say: oldWordingPutPlain(d.say) }) : d))
       : it.dependencies,
     commitments,
-    stillOpen: (rebuilt as unknown[]).filter(theThingIsNamed) as string[],
+    stillOpen: (rebuilt as unknown[]).filter(theThingIsNamed).map((x) => oldWordingPutPlain(String(x))),
     patterns: [],
     /* And by its count too (item 21, the support desk board): where the person asked is the reader, the question's end has
        already become "Your own account of this is not in this check-in." by the time it is read here, so Maria read "The
        record names another person positively with specific evidence of their contribution. Seen in 1 sessions. Your own
        account of this is not in this check-in." */
     toSettleFirst: (it.toSettleFirst ?? []).filter((q) => !String(q).endsWith(A_QUESTION_BUILT_FROM_A_PATTERN_ENDS)
-      && !/(?:^|[.!?]\s+)(?:It was seen|Seen) in (?:one session|\d+ sessions?)\.\s/.test(String(q))),
+      && !/(?:^|[.!?]\s+)(?:It was seen|Seen) in (?:one session|\d+ sessions?)\.\s/.test(String(q))).map((q) => oldWordingPutPlain(String(q))),
   };
 }
 
@@ -974,7 +975,7 @@ export function overTimeForThisReader(
     sessions: it.sessions,
     inSessions: inSessions(it.sessions),
     commitments: (it.commitments ?? []).filter((c) => c.participantId === mine),
-    dependencies: (it.dependencies ?? []).filter((d) => d.fromParticipantId === mine || d.onParticipantId === mine),
+    dependencies: (it.dependencies ?? []).filter((d) => d.fromParticipantId === mine || d.onParticipantId === mine).map((d) => (typeof d.say === 'string' ? { ...d, say: oldWordingPutPlain(d.say) } : d)),
     /* Reads about people, all of them the lead's. */
     patterns: [],
     gaps: [],
