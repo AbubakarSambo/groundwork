@@ -61,31 +61,55 @@ function namesOf(p: ABoardPerson | undefined): string[] {
 }
 
 /**
+ * DO THE OBJECTIVE'S WORDS SAY THE GOAL'S WORK? By the number, where the goal has one: the objective must carry the same number,
+ * and, where the goal names any work (a word of five letters or more that is not somebody's name), a word of the same work. A goal
+ * with a number and no such word ("Sell 200 bags a week.") is matched on the number alone. By the work, where the goal has no number:
+ * the objective must share more than one meaningful word (or all of them, where the goal has only one), because one shared word such
+ * as "client" is the same department, not the same goal. A goal with neither a number nor a word of work ("Do more.") matches nothing
+ * by its words: it is told apart from the person's other objectives by nothing, so it hides nothing beyond its own words (decision 86).
+ */
+function theObjectiveSaysTheWorkOf(name: string, target: unknown, said: string, namesToIgnore: ReadonlySet<string>): boolean {
+  const want = theNumberAndWorkOfAGoal(said);
+  const have = theNumberAndWorkOfAGoal(`${name} ${target ?? ''}`);
+  const work = [...want.work].filter((w) => !namesToIgnore.has(w));
+  if (want.numbers.size) {
+    if (![...want.numbers].some((n) => have.numbers.has(n))) return false;
+    return !work.length || work.some((w) => have.work.has(w));
+  }
+  if (!work.length) return false;
+  return work.filter((w) => have.work.has(w)).length >= Math.min(2, work.length);
+}
+
+function theObjectiveIsThisGoal(o: { id?: string | null; name?: string | null; target?: number | string | null }, goal: AnUntoldGoalRow, namesToIgnore: ReadonlySet<string>): boolean {
+  if (o.id && goal.id && o.id === goal.id) return true;
+  const said = String(goal.text ?? '');
+  if (!said.trim()) return false;
+  const name = String(o.name ?? '');
+  const p = plainWords(name);
+  const g = plainWords(said);
+  if (g.length >= 12 && p.length >= 12 && (p.includes(g) || g.includes(p))) return true;
+  return theObjectiveSaysTheWorkOf(name, o.target, said, namesToIgnore);
+}
+
+/**
  * IS THIS OBJECTIVE THE GOAL THE LEAD HAS NOT TOLD THEM ABOUT? By its id where the two share one; otherwise by the
- * goal's own words appearing in it, or by the same number beside words about the same work, or (a goal with no
- * number) by at least one word of the work they share. People's names are not the work. A goal with no word of
- * work in it at all cannot be told apart from the person's other objectives, so every one the lead set for them
- * is read as it (the more private way, as before). Never by a guess at the topic beyond that.
+ * goal's own words appearing in it, or by what `theObjectiveSaysTheWorkOf` finds. People's names are not the work. Never an
+ * objective that is one of the goals the person WAS told (`told`): it matches those the same way, and is kept (decision 86).
  */
 export function isThisTheUntoldGoal(
   o: { id?: string | null; name?: string | null; target?: number | string | null },
   goal: AnUntoldGoalRow,
   namesToIgnore: ReadonlySet<string> = new Set(),
+  told: readonly AnUntoldGoalRow[] = [],
 ): boolean {
   if (o.id && goal.id && o.id === goal.id) return true;
-  const said = String(goal.text ?? '');
+  if (!String(goal.text ?? '').trim()) return false;
   const name = String(o.name ?? '');
-  if (!said.trim()) return false;
   const p = plainWords(name);
-  const g = plainWords(said);
+  const g = plainWords(String(goal.text ?? ''));
   if (g.length >= 12 && p.length >= 12 && (p.includes(g) || g.includes(p))) return true;
-  const want = theNumberAndWorkOfAGoal(said);
-  const have = theNumberAndWorkOfAGoal(`${name} ${o.target ?? ''}`);
-  const work = [...want.work].filter((w) => !namesToIgnore.has(w));
-  if (!work.length) return !want.numbers.size;
-  const sharesWork = work.some((w) => have.work.has(w));
-  if (want.numbers.size) return sharesWork && [...want.numbers].some((n) => have.numbers.has(n));
-  return sharesWork;
+  if (told.some((t) => theObjectiveIsThisGoal(o, t, namesToIgnore))) return false;
+  return theObjectiveSaysTheWorkOf(name, o.target, String(goal.text ?? ''), namesToIgnore);
 }
 
 const plainWords = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N} ]+/gu, ' ').replace(/\s+/g, ' ').trim();
@@ -112,8 +136,9 @@ export function withoutWhatTheLeadHasNotToldThemAbout<T extends AnObjectiveRow>(
       if (o.setByParticipantId && o.setByParticipantId === id) continue;
       const theirs = o.ownerParticipantId === id || (aboutThem.get(id) ?? []).some((re) => re.test(o.name ?? ''));
       if (!theirs) continue;
+      const told = untold.filter((g) => g.participantId === id && !notToldYet(g));
       /* Only the untold goal itself goes (request 125): their other objectives, which they were told, stay. */
-      if (untold.some((g) => g.participantId === id && notToldYet(g) && isThisTheUntoldGoal(o, g, ignore.get(id)))) return false;
+      if (untold.some((g) => g.participantId === id && notToldYet(g) && isThisTheUntoldGoal(o, g, ignore.get(id), told))) return false;
     }
     return true;
   });

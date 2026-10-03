@@ -114,7 +114,7 @@ describe('the report, which WhatsApp and the API serve as well', () => {
 
 describe('the You board', () => {
   const youBoardAs = (userId: string, role: string) => {
-    const ground = { id: 'g1', label: 'Engagement Director, first 90 days', status: 'ACTIVE', organizationId: 'org1', initiatorId: AMINA, closedAt: null, resolvedAt: null, participants: people().map((p) => ({ id: p.id, userId: p.userId })), checkIns: [] };
+    const ground = { id: 'g1', label: 'Engagement Director, first 90 days', status: 'ACTIVE', organizationId: 'org1', initiatorId: AMINA, closedAt: null, resolvedAt: null, participants: people().map((p) => ({ id: p.id, userId: p.userId, nameGiven: p.nameGiven, user: p.user })), checkIns: [] };
     const table = (rows: any[]) => ({ findMany: jest.fn(async ({ where }: any) => rows.filter((r) => (!where?.participantId?.in || where.participantId.in.includes(r.participantId ?? r.ownerParticipantId)) && (!where?.awareness || r.awareness === where.awareness))), findFirst: jest.fn(async () => null) });
     const targets = [{ id: 'go1', groundId: 'g1', name: UNTOLD, target: 1, count: 0, ownerParticipantId: 'p-tobi', isADecisionAboutAPerson: false }, { id: 'go2', groundId: 'g1', name: TOLD, target: 1, count: 0, ownerParticipantId: 'p-amina', isADecisionAboutAPerson: false }];
     const prisma: any = {
