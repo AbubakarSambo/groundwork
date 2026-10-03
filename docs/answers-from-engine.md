@@ -3054,3 +3054,14 @@ Tests: `api/src/modules/suites/a-question-about-spending-as-each-reader-reads-it
 - **Today, for whoever looks after finance only:** "Two approved requests to spend are waiting for you in finance.", detail "Two have not been checked yet." or "One has not been checked yet, and one is checked and waiting to be paid.", action "Open them" to `/suite/spend`. Never whose.
 
 Tests: `api/src/modules/suites/finance-and-a-request-to-spend-as-each-reader-reads-it.spec.ts` (Omar who looks after finance, Grace the admin, Kamau who asked, Fatuma his manager, Joseph who holds the budget, Miriam a colleague, a guest; the CSV and Excel files; Today). Every test fails on the old code, where none of this existed. No existing test changed.
+
+## A WhatsApp reply held for a yes or a no is never lost (3 October)
+
+**When a person in a check-in on WhatsApp was asked "Shall I treat this as a leave request?" (or hours, or spending) or "Is this your answer to Wairimu's question about your leave?", and said neither yes nor no within ten minutes, their words were wiped by the next WhatsApp message anybody sent, and went nowhere. Now, at the person's own next message after the ten minutes, on whichever copy of the API reads it, their words go into the check-in they were held from, as a "no" puts them, and then the new message is handled as it always was** (this commit).
+
+- **WhatsApp, for the person, before the reply to their new message:** "You did not answer my question within ten minutes, so I have added what you wrote earlier to your check-in: "I want leave on 20 October"" followed by the check-in's own reply to those words.
+- **If that check-in has closed since:** "What you wrote earlier was not added to a check-in, because that check-in is no longer open. You wrote: "I want leave on 20 October". You can send it again in your next check-in, or write "ask" to send it to Ask Groundwork."
+- While the person is in Ask Groundwork ("ask"), the words wait until they come back to the check-in.
+- Nothing changes in the app's screens. The question about a leave answer is still asked only once.
+
+Tests: `api/src/modules/whatsapp/a-reply-held-for-a-yes-or-no-is-never-lost.spec.ts`, each held on one copy and answered on a fresh copy after the ten minutes. Five of its six tests fail on the old code; "nine minutes on, nothing goes into the check-in yet" passes on both, as it should. No existing test changed.

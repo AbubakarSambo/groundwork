@@ -3283,7 +3283,7 @@ model WhatsAppThread {
   /// request?"), waiting for the person's yes or no (decision 82, item 2). Kept here, not in one copy
   /// of the API's memory, so the answer finds it after a restart or on another copy. The kind
   /// (`leave`, `hours`, `spending`), the words (the yes hands them to Ask Groundwork, the no puts them
-  /// in the check-in), and when it was asked. All three are cleared on the answer, and after ten minutes.
+  /// in the check-in), and when it was asked. All three are cleared on the answer. After ten minutes with no answer, the next message puts the words in the check-in.
   /// The kind `answer` is a reply that may be the person's answer to a question about their own request.
   requestKind    String?   @map("request_kind")
   requestWords   String?   @map("request_words")

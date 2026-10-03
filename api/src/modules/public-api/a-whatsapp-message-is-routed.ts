@@ -233,3 +233,11 @@ export function shallITreatThisAs(kind: ARequest): string {
   return kind === 'leave' ? 'Shall I treat this as a leave request?' : kind === 'spending' ? 'Shall I treat this as a spending request?' : 'Shall I treat this as hours?';
 }
 export const YES_OR_NO = (kind: ARequest) => `Please reply yes or no. ${shallITreatThisAs(kind)}`;
+
+/*
+ * WORDS HELD FOR A YES OR A NO, AFTER TEN MINUTES WITH NO ANSWER. They go into the check-in they were
+ * held from, as a "no" puts them, and the person is told so, in their own words.
+ */
+export const HELD_WORDS_PUT_IN = (words: string) => `You did not answer my question within ten minutes, so I have added what you wrote earlier to your check-in: "${words}"`;
+/** The check-in the words were held from has closed since, so they are given back to the person. */
+export const heldWordsNotPut = (words: string) => `What you wrote earlier was not added to a check-in, because that check-in is no longer open. You wrote: "${words}". You can send it again in your next check-in, or write "ask" to send it to Ask Groundwork.`;

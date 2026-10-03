@@ -20,7 +20,7 @@ import { aDecisionIn } from '../suites/a-request-in-words';
 import { BACK_TO_THE_CHECK_IN, YES_OR_NO_TO_AN_ANSWER, isThisYourAnswer, type AQuestionWaiting } from '../suites/a-question-about-a-request';
 import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
   AN_ASK_WORD, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
-  ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, type ARequest,
+  ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest,
 } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING } from '../whatsapp/a-message-outside-the-window';
 import { keptOffThePhone, answerItInTheApp } from '../whatsapp/a-check-in-kept-off-the-phone';
@@ -203,6 +203,22 @@ export class WhatsAppForAnOrganisationService {
     const inTheApp = everyOpen.filter((c) => c.keptOffThePhone);
     const thread = await this.prisma.whatsAppThread.findUnique({ where: { organizationId_phone: { organizationId, phone: WhatsAppService.normalize(from) } } }).catch(() => null);
     const said = arrived.kind === 'text' ? arrived.text : '';
+
+    /*
+     * WORDS HELD FOR A YES OR A NO ARE NEVER LOST. "Shall I treat this as a leave request?" or "Is this
+     * your answer to Wairimu's question about your leave?" holds the person's words for ten minutes.
+     * When nobody answered in time, the words were wiped, and they went nowhere. Now, at the person's
+     * next message after the ten minutes, on whichever copy of the API reads it, the words go where
+     * they would have gone without the question, which is the check-in they were held from, as the
+     * "no" does. Then this message is handled as it always was. While the person is in Ask
+     * Groundwork the words wait until they come back to the check-in.
+     */
+    if (userId && !isAsking(thread?.checkInId) && this.aHoldHasExpired(thread)) {
+      await this.forgetTheRequest(organizationId, from);
+      const heldFrom = open.find((c) => c.id === thread!.checkInId);
+      if (heldFrom) await say(await this.putInTheCheckIn(heldFrom, userId, thread!.requestWords!));
+      else await say(heldWordsNotPut(thread!.requestWords!));
+    }
 
     /*
      * "ASK" REACHES ASK GROUNDWORK, AND "BACK" RETURNS (survey item 2). Ask Groundwork was blocked
@@ -606,7 +622,8 @@ export class WhatsAppForAnOrganisationService {
    * on another copy, the yes or no went into the check-in as an answer. The words are kept because
    * the answer needs them: a yes hands them to Ask Groundwork, which reads the days or the amount
    * from them, and a no puts them in the check-in as they would have gone. They are cleared on the
-   * answer, and once ten minutes have passed, by the next message anybody sends on WhatsApp.
+   * answer. Once ten minutes have passed with no answer, the person's next message puts them in the
+   * check-in they were held from, as a no does, so they are never lost.
    */
   private static readonly A_REQUEST_WAITS_MS = 10 * 60 * 1000;
   private static readonly NO_REQUEST = { requestKind: null, requestWords: null, requestAskedAt: null };
@@ -624,15 +641,34 @@ export class WhatsAppForAnOrganisationService {
     from: string,
     thread: { requestKind?: string | null; requestWords?: string | null; requestAskedAt?: Date | string | null; questionAskedAbout?: string | null } | null,
   ): Promise<{ text: string; kind: ARequest | 'answer'; questionId?: string | null } | null> {
-    const cutoff = new Date(Date.now() - WhatsAppForAnOrganisationService.A_REQUEST_WAITS_MS);
-    /* Every request left unanswered past its ten minutes, this person's or anybody's, is forgotten. */
-    await this.prisma.whatsAppThread.updateMany({
-      where: { requestAskedAt: { lt: cutoff } },
-      data: WhatsAppForAnOrganisationService.NO_REQUEST,
-    }).catch(() => undefined);
+    /*
+     * Nobody else's held words are wiped here any more: an unanswered request past its ten minutes
+     * waits on its own thread until that person writes again, and then goes into their check-in
+     * (aHoldHasExpired, in route). Here only a hold still inside its ten minutes counts.
+     */
     if (!thread?.requestAskedAt || !thread.requestKind || thread.requestWords == null) return null;
-    if (new Date(thread.requestAskedAt).getTime() < cutoff.getTime()) return null;
+    if (this.aHoldHasExpired(thread)) return null;
     return { text: thread.requestWords, kind: thread.requestKind as ARequest | 'answer', questionId: thread.questionAskedAbout ?? null };
+  }
+  /** Words were held for a yes or a no, and the ten minutes passed with no answer. */
+  private aHoldHasExpired(thread: { requestKind?: string | null; requestWords?: string | null; requestAskedAt?: Date | string | null } | null): boolean {
+    if (!thread?.requestAskedAt || !thread.requestKind || thread.requestWords == null) return false;
+    return new Date(thread.requestAskedAt).getTime() < Date.now() - WhatsAppForAnOrganisationService.A_REQUEST_WAITS_MS;
+  }
+  /**
+   * The words go into the check-in as an answer, as the "no" puts them, and the check-in's reply is
+   * what the person reads. A check-in not yet started is opened first. A refusal is said, never lost.
+   */
+  private async putInTheCheckIn(c: AnOpenCheckIn, userId: string, words: string): Promise<string> {
+    try {
+      const opened = await this.openIfWaiting(c, userId);
+      const r = await this.conversation.sendMessage(c.id, userId, words, { door: 'whatsapp' });
+      const reply = `${HELD_WORDS_PUT_IN(words)}\n\n${r.reply}`;
+      return opened ? `${sessionHeader(c)} ${THE_WORDS}\n\n${opened}\n\n${reply}` : reply;
+    } catch (e: any) {
+      const refused = e?.response?.message ?? e?.message;
+      return `${heldWordsNotPut(words)}${refused ? ` ${Array.isArray(refused) ? refused.join(' ') : refused}` : ''}`;
+    }
   }
   /**
    * The person's reply held while they are asked whether it is their answer to a question about their
