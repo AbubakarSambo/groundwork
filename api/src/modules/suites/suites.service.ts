@@ -476,6 +476,21 @@ export class SuitesService {
     const nameOf = new Map(people.map((p) => [p.id, p.name]));
     const firstOf = (id: string | null | undefined) => (id && nameOf.get(id)?.split(/\s+/)[0]) || null;
     const teams = await this.teams(reader.organizationId);
+    /*
+     * Who looked after HR when the leave rules changed: the duties as they stood after the last change
+     * of duties at or before it, or else as they are now. Read so the leave rules history names them
+     * ("Joy Mutua, who looks after HR, is told of each approved request") instead of nobody.
+     */
+    const hrNow = (await readDuties(this.prisma, reader.organizationId)).hr ?? null;
+    const hrAt = (at: Date): string | null => {
+      const t = new Date(at).getTime();
+      const duties = rows.filter((x) => x.suite === DUTIES_ROW);
+      /* The last change of duties at or before it says who held HR then; else the first change after it, as it was before; else now. */
+      const before = duties.find((x) => new Date(x.changedAt).getTime() <= t);
+      const after = [...duties].reverse().find((x) => new Date(x.changedAt).getTime() > t);
+      const id = before ? dutiesFrom(before.after?.answers).hr ?? null : after ? dutiesFrom(after.before?.answers).hr ?? null : hrNow;
+      return id ? nameOf.get(id) ?? null : null;
+    };
     return {
       changes: rows.map((r) => {
         const by = firstOf(r.changedById);
@@ -493,7 +508,7 @@ export class SuitesService {
           : `${who} changed the answers for ${name} on ${on}.`;
         return {
           suite: r.suite, by: by ?? null, at: new Date(r.changedAt).toISOString(), said,
-          details: this.whatChanged(r.suite, r.before?.answers ?? null, r.after?.answers ?? {}, nameOf, teams),
+          details: this.whatChanged(r.suite, r.before?.answers ?? null, r.after?.answers ?? {}, nameOf, teams, r.suite === LEAVE_RULES_ROW ? hrAt(r.changedAt) : null),
           before: r.before ?? null, after: r.after,
         };
       }),
@@ -514,7 +529,7 @@ export class SuitesService {
   }
 
   /** What changed between two sets of answers, each in a full sentence, with people by name. */
-  private whatChanged(suite: string, before: any, after: any, nameOf: Map<string, string>, teams: string[]): string[] {
+  private whatChanged(suite: string, before: any, after: any, nameOf: Map<string, string>, teams: string[], hr: string | null = null): string[] {
     const b = (before ?? {}) as Record<string, any>;
     const a = (after ?? {}) as Record<string, any>;
     const person = (v: unknown) => (typeof v === 'string' ? nameOf.get(v) ?? 'somebody no longer here' : null);
@@ -532,7 +547,7 @@ export class SuitesService {
         out.push(line(`Who heads ${t}?`, person(b.departmentHeads?.[t]), person(a.departmentHeads?.[t])));
       }
     } else if (suite === LEAVE_RULES_ROW) {
-      const said = (x: unknown) => theLeaveRulesSaid(leaveRulesFrom(x), null, null).filter((l) => !/^There are no kinds|^No notice|^A rule never|^If leave is longer than two|^Shorter leave follows/.test(l));
+      const said = (x: unknown) => theLeaveRulesSaid(leaveRulesFrom(x), null, hr).filter((l) => !/^There are no kinds|^No notice|^A rule never|^If leave is longer than two|^Shorter leave follows/.test(l));
       const from = said(before);
       const to = said(after);
       for (const l of to) if (!from.includes(l)) out.push(`This was added. ${l}`);

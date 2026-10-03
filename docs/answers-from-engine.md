@@ -3421,3 +3421,13 @@ Tests: `api/src/modules/suites/whoever-holds-hr-or-finance-sets-up-their-suites-
 - **Nothing changes when nobody repeats**: a request whose next approver has not approved it before moves exactly as before.
 
 Tests: `api/src/modules/suites/the-same-approver-twice-as-each-reader-reads-it.spec.ts` (leave as Aisha, Wairimu and Joy, with a passing-on; spending as Kamau; time sheets as Aisha). No existing test changed.
+
+## The leave rules history names whoever looks after HR (3 October)
+
+**`GET /suites/rules/history`: a change of the leave rules that tells HR always read "HR is to be told of each approved request, but nobody is named for HR yet. Name somebody under who holds each duty.", even when somebody looked after HR, because the history passed no name. It now names whoever looked after HR when the rules changed** (this commit).
+
+- **Grace now reads:** "This was added. Joy Mutua, who looks after HR, is told of each approved request, on the leave board."
+- **Who looked after HR then**, not now: read from the last change of who holds each duty at or before the leave rules changed, or else from the first change after it, as it was before that change, or else who looks after HR now. So when Aisha takes over HR later, Grace still reads Joy on the earlier change.
+- **With nobody named for HR**, the sentence is as before.
+
+Tests: `api/src/modules/suites/the-leave-rules-history-names-hr-as-each-reader-reads-it.spec.ts`, as Grace. No existing test changed.
