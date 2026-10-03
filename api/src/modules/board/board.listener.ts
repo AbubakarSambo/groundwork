@@ -74,7 +74,8 @@ export class BoardListener {
       const already = await (this.prisma as any).workItem.findMany({ where: { groundId: e.groundId }, select: { id: true, kind: true, name: true, fields: true, ownerParticipantId: true } });
       for (const r of kept) {
         /* "a four-hour acknowledgement" and "the four-hour acknowledgement" are one record (item 21). */
-        const same = (already as any[]).find((a) => a.kind === r.kind && theSameName(a.name) === theSameName(r.name));
+        const same = (already as any[]).find((a) => a.kind === r.kind && (a.name.trim().toLowerCase() === r.name.trim().toLowerCase()
+          || (theSameName(a.name) === theSameName(r.name) && (a.ownerParticipantId ?? null) === (r.ownerParticipantId ?? null))));
         if (same) {
           await (this.prisma as any).workItem.update({
             where: { id: same.id },

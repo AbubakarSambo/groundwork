@@ -23,6 +23,22 @@ describe('the deadlines, as each reader reads them', () => {
   });
 });
 
+describe('two people\'s records under the same name', () => {
+  /* The loans board: Chinedu's "the tricycle" and Yakubu's "a tricycle" are two loans, and both are served. */
+  const loans = {
+    kindOfWork: 'asset loans',
+    checkIns: [answered('p-rukia', 1), answered('p-baraka', 1)],
+    items: [
+      { ...item('l-1', 'the tricycle', 'p-rukia', '2026-09-16T17:00:00Z'), kind: 'loan' },
+      { ...item('l-2', 'a tricycle', 'p-baraka', '2026-09-16T18:00:00Z'), kind: 'loan' },
+    ],
+  };
+  it.each([['Amina, who runs it', AMINA], ['Juma, an admin', JUMA]])('%s reads both', async (_w, reader) => {
+    const n = ((await boardAs(loans as any, ...(reader as readonly [string, string]))).workRecords ?? []).flatMap((s: any) => (s.rows ?? []).map((r: any) => r.name));
+    expect(n).toEqual(['the tricycle', 'a tricycle']);
+  });
+});
+
 describe('a theme said with "to" before it', () => {
   /* The where-next board (52d4fd15): Omar's themes held "improve our customer retention" and "to improve our customer retention". */
   const themes = {

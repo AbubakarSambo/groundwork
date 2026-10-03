@@ -223,7 +223,9 @@ export function theRecordSections(kind: KindOfWork | null, leadsStages: unknown,
     if (!s.itemKinds.length) return { section: s.section, holds: s.holds, state: 'not-known' as const, why: s.whyNotKnown ?? FROM_ANOTHER_SYSTEM };
     const seenNames = new Set<string>();
     const mine = rows.filter((r) => s.itemKinds.includes(r.kind) && aNameThatNamesSomething((r as any).name)).filter((r) => {
-      const key = `${r.kind}|${theSameName((r as any).name)}`;
+      /* Per person: two borrowers' tricycles are two loans, whatever article each was said with. A priority people name
+         together (the where-next board's themes) is one theme whoever named it. */
+      const key = `${r.kind}|${r.kind === 'priority' ? '' : ((r as any).ownerParticipantId ?? '')}|${theSameName((r as any).name)}`;
       if (seenNames.has(key)) return false;
       seenNames.add(key);
       return true;
@@ -349,8 +351,8 @@ export const theSameName = (name: string | null | undefined): string => squash(S
 
 export function aNameThatNamesSomething(name: string | null | undefined): boolean {
   const n = (name ?? '').trim().replace(/[.,;:!?]+$/, '');
-  /* "something I don't have" (the loans board): a name with "I" in it, or that starts with "something", names nothing. */
-  if (/(?:^|\s)I(?:['’]\w+)?(?=\s|$)/.test(n) || /^(?:something|anything|nothing|everything)\b/i.test(n)) return false;
+  /* "something I don't have" (the loans board): a name that starts with "something" names nothing. */
+  if (/^(?:something|anything|nothing|everything)\b/i.test(n)) return false;
   return !!n && !ONLY_POINTS_ELSEWHERE.test(n.charAt(0).toLowerCase() + n.slice(1));
 }
 
