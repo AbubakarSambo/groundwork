@@ -211,3 +211,53 @@ describe('run-25: one of them without a name, as each reader reads it', () => {
     expect(after.b.whatTheAnswersSay.thePicture).toMatch(/^Five of the eight businesses are operating/);
   });
 });
+
+/**
+ * RUN-26, LOANS: THE WALL HELD BY WHAT IT CAUGHT, AND DID NOT HOLD. Sunday still read bare sentences with no name and
+ * no "one participant" in them, each one a single borrower's story: "The pump was installed in the second month after
+ * a delay ...", "The supplier never delivered the machine.", "The tricycle was stolen in the fourth month." So the
+ * shared picture now keeps only what is about the reader, what is clearly about several people, and the lead's own
+ * aim or the shared purpose.
+ */
+const RUN26 = join(__dirname, '../../../journey/all-24/run-26/loans.json');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const run26 = existsSync(RUN26) ? require(RUN26) : null;
+const session26 = run26?.sessions?.[0];
+const ONE_OF_THEM_26 = /The pump was installed in the second month|The supplier never delivered the machine|The tricycle was stolen in the fourth month/;
+
+describe('run-26: bare sentences about one borrower, as each reader reads them', () => {
+  const PICTURE_26 = [
+    'All nine people have answered.',
+    'You expected the grinding machine to help you start a business.',
+    'Blessing Ade received a borehole pump. The pump was installed in the second month after a delay, and the business has been operating since the third month.',
+    'Musa Danjuma was promised a grinding machine. The supplier never delivered the machine.',
+    'Yakubu Sani received a tricycle. The tricycle was stolen in the fourth month.',
+    'Most borrowers started repaying before their asset was earning.',
+  ].join('\n\n');
+  const g26 = (over: any = {}) => ground({ report: { sharedPicture: PICTURE_26, sharedPictureLines: PICTURE_26.split(/\n\n|(?<=\.) /).map((text) => ({ text, mark: 'said' })) }, ...over });
+
+  it('Sunday keeps what is about him and what is about several people, and loses the bare sentences', () => {
+    const r = door().theReportAsItWasShared(g26(), 'p-sunday', false);
+    expect(r.sharedPicture).not.toMatch(ONE_OF_THEM_26);
+    expect(JSON.stringify(r.sharedPictureLines)).not.toMatch(ONE_OF_THEM_26);
+    expect(r.sharedPicture).toContain('All nine people have answered.');
+    expect(r.sharedPicture).toContain('You expected the grinding machine');
+    expect(r.sharedPicture).toContain('Most borrowers started repaying before their asset was earning.');
+  });
+
+  it('Amaka and an admin read every one of them', () => {
+    expect(door().theReportAsItWasShared(g26(), 'p-amaka', true).sharedPicture).toMatch(ONE_OF_THEM_26);
+    expect(door().theReportAsItWasShared(g26(), null, true).sharedPicture).toMatch(ONE_OF_THEM_26);
+  });
+
+  it('where people see each other, nothing changes', () => {
+    expect(door().theReportAsItWasShared(g26({ peersVisibleToEachOther: true }), 'p-sunday', false).sharedPicture).toMatch(ONE_OF_THEM_26);
+  });
+
+  (session26 ? it : it.skip)('the run as it was served to Sunday, through the wall', () => {
+    const served = { r: session26.participantReport, b: session26.participantBoard };
+    expect(JSON.stringify(served)).toMatch(ONE_OF_THEM_26);
+    const after = onlyCountsAndPatternsAboutTheOthers(served, { names: NAMES.slice(1) });
+    expect(JSON.stringify(after)).not.toMatch(ONE_OF_THEM_26);
+  });
+});
