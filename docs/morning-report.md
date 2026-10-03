@@ -257,7 +257,18 @@ Not checked by the run: the admin's view, because the run keeps only the lead's 
 - Should a model read a long description given in one message ("Employees can request annual leave. Their line manager approves it…")? Today only short answers and a few kinds of statement are read; anything else is asked.
 - Once spending is set up by talking, the Suites page's single "who approves anything above the limit" person is no longer used. Acceptable, or should that question become optional?
 
-Being built now from what this found: leave approved by length ("more than 10 working days, the department head also approves", your own example, which could not be stored); whoever holds HR or finance may set up their suites, as decision 85 says; a step skipped when the same person already approved; and the leave rules history naming who holds HR.
+**Built from what this found** (`2860bab5` to `43e12b1c`; 3,697 tests pass):
+- **Leave approved by length:** Grace says "If it's more than 10 working days, the department head also approves", and it is stored. Aisha asking for 12 days reads "This is more than ten working days, so Wairimu approves it first, and then Joseph, who heads Sales."
+- **HR and finance may set up their suites:** whoever looks after HR sets up leave and reviews, and whoever looks after finance sets up spending and time sheets. Naming who holds each job stays an admin's.
+- **The same approver twice:** when the same person already approved, the later step passes ("Wairimu had already approved it, so this step was passed.").
+- **The history names HR:** the leave rules history names who looks after HR.
+
+**For Hafsah:**
+- When the same person would approve twice, their one approval counts for both. Or should it skip them and go to the next person on that step's list?
+- Those who look after HR or finance may now read who holds each job, because their setup needs it. Right?
+- A member who looks after HR or finance now gets a Suites page of their own; the screens workspace needs to draw it.
+
+Being fixed now: the setup say-back names the reader ("Grace, who looks after HR, sees…" said to Grace) where it should say "you".
 
 Now running: "proof asked for": whether a change caused the drop or the model varies, with repeated runs. If it does not come back, it goes to Hafsah. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
