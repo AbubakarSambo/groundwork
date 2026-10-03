@@ -4497,11 +4497,16 @@ happened, and what is in the way.`;
       ...theOnesStillOpen(commitments).slice(0, 10).map((c) => c.say),
     ];
 
-    const answered = new Set((checkIns as any[]).map((c) => c.participantId)).size;
+    /* Somebody an admin has not let in yet cannot answer, so nobody counts them as missing (decision 77, request 121 part 5). */
+    const heldBack = await Promise.resolve((this.prisma.groundParticipant as any)?.findMany?.({
+      where: { groundId }, select: { id: true, userId: true, user: { select: { awaitingOrgApproval: true } } },
+    })).then((rows: any[]) => whoIsNotLetInYet(this.prisma, rows ?? [])).catch(() => new Map<string, unknown>());
+    const answeredIds = new Set((checkIns as any[]).map((c) => c.participantId));
+    const answered = answeredIds.size;
     const cannotTellYou = whatThisCannotTellYou({
       documentsAttached: Number(documents ?? 0),
       peopleWhoAnswered: answered,
-      peopleInvited: parties.filter((p) => !p.managingOnly).length,
+      peopleInvited: parties.filter((p) => !p.managingOnly && (!heldBack.has(p.id) || answeredIds.has(p.id))).length,
       /*
        * WHETHER ANYBODY ACTUALLY SAID WHO ARRANGED ANYTHING, read from the words.
        *
