@@ -1101,7 +1101,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       )}
 
       {isEngineeringDealGrid && (
-        <div className="gwui-mt-14">
+        <div style={{ marginTop: 14 }}>
           <Link to={`/grounds/${groundId}?tab=chat`} className="gwui-plain-link">Not right? Tell the check-in</Link>
         </div>
       )}
@@ -1245,7 +1245,7 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
   if (collapseWhenAllNotKnown) {
     return (
       <div className="gwui-page-wrap">
-        <p className="gwui-fs-13-5 gwui-ink-muted" style={{fontStyle: 'italic', lineHeight: 1.5}}>{(sections[0] as { why: string }).why}</p>
+        <Note tone="muted">{(sections[0] as { why: string }).why}</Note>
       </div>
     )
   }

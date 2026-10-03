@@ -1720,12 +1720,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!(b as any).headline && b.objectives && b.objectives.length > 0 && (
           <Panel>
             <Stack gap={10}>
-              <div className="gwui-fs-15 gwui-ink-dark" style={{ fontWeight: 700 }}>Where each target stands</div>
+              <SubHeading>Where each target stands</SubHeading>
               <Stack gap={10}>
                 {b.objectives.map((o) => (
-                  <div key={o.id} className="gwui-gap-12" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <p className="gwui-panel-text-muted" style={{ flex: 1, minWidth: 140 }}>{o.name}</p>
-                    <p className="gwui-panel-text-muted" style={{ flex: 2, minWidth: 180 }}>{o.journey?.say ?? ''}</p>
+                  <div key={o.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                    <Note tone="muted"><span style={{ flex: 1, minWidth: 140, display: 'inline-block' }}>{o.name}</span></Note>
+                    <Note tone="muted"><span style={{ flex: 2, minWidth: 180, display: 'inline-block' }}>{o.journey?.say ?? ''}</span></Note>
                   </div>
                 ))}
               </Stack>
