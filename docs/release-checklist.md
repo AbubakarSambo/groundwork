@@ -40,8 +40,8 @@ The engine workspace keeps this file current. The screens workspace reads it aft
 
 ## Existing clients
 - [x] **`docs/existing-users.md`**, covering every use case and where it lives, what they will notice, what each migration and script changes, proof their scheduled check-ins continue unchanged (`api/journey/existing-clients-carry-on.spec.ts`), a read-only check for staging (`api/journey/existing-clients-check.ts`, with its spec) and how to roll back. *Done.*
-- [ ] **Existing clients, Finding 1:** a check-in the live main line already stalled is treated as live by the new nightly jobs in `grounds.cron.ts` (session-ready email, report reminder, opened announcement, WhatsApp, summary). Keep `STALLED` out of every job that skips the finished list; then turn `FINDING 1` in the carry-on spec from `it.failing` into `it`. *Not done (the grounds files belong to the other builder).*
-- [ ] **Existing clients, Finding 2:** the 08:30 WhatsApp reminder and the lead's daily summary are new and need no opt-in. Decide: release with `whatsapp_enabled` off for the two existing clients, or hold both jobs behind the release moment for an existing check-in. Then turn `FINDING 2` into a plain test. *Not done, needs Hafsah's decision.*
+- [x] **Existing clients, Finding 1:** a check-in the live main line already stalled is left alone by every nightly and morning job, as before (`A_GROUND_THE_JOBS_LEAVE_ALONE`). Reopening still works. `FINDING 1` is a plain test. *Done.*
+- [x] **Existing clients, Finding 2:** the 08:30 reminder, the reminder before a session opens and the lead's daily summary reach only organisations that turned WhatsApp on. `FINDING 2` is a plain test. *Done; see "Decided for Hafsah to confirm" in `docs/existing-users.md`.*
 - [ ] **Run `api/journey/existing-clients-check.ts` on staging, on a copy of the live data**, and read its summary (every FAULT, LEAK and SCHEDULE line). *Not done.*
 - [ ] **Whatever that check shows is missing**, built. *Not done.*
 

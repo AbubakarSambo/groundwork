@@ -374,7 +374,7 @@ describe('release night, for a check-in that already exists', () => {
    * "opened" event, sent a reminder that their shared report is waiting, and its round is sent to
    * be written again. Decision 88 says nothing is emailed by surprise.
    */
-  it.failing('FINDING 1: sends nothing, and announces nothing, about a check-in the live main line already stalled (F)', aFindingNeedsTheDatabase((o) => {
+  it('FINDING 1: sends nothing, and announces nothing, about a check-in the live main line already stalled (F)', aFindingNeedsTheDatabase((o) => {
     const said = aboutIt(o, o.seeded.F).filter((c) => !c.method.startsWith('whatsapp.'));
     expect(said.map((c) => c.method)).toEqual([]);
   }));
@@ -386,7 +386,7 @@ describe('release night, for a check-in that already exists', () => {
    * sender then holds a message that is outside the 24-hour window until Meta approves the
    * templates, so most are recorded as not sent. Anything inside the window goes.)
    */
-  it.failing('FINDING 2: tries no WhatsApp message about a check-in that exists, on the first morning (A to E)', aFindingNeedsTheDatabase((o) => {
+  it('FINDING 2: tries no WhatsApp message about a check-in that exists, on the first morning (A to E)', aFindingNeedsTheDatabase((o) => {
     const said = ['A', 'B', 'C', 'D', 'E'].flatMap((k) => aboutIt(o, o.seeded[k]).filter((c) => c.method.startsWith('whatsapp.')).map((c) => `${k}: ${c.method}`));
     expect(said).toEqual([]);
   }));

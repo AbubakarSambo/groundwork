@@ -2,12 +2,13 @@ import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/co
 import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
+import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
 import { sendTheLeadsDailySummaries } from '../whatsapp/the-leads-daily-summary';
 import { onceAcrossCopies, theDay, theWeek } from '../prisma/once-across-copies';
 import { theReleaseMoment, reachedTheWarningPointBefore } from './the-release-moment';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { deadlineOf } from './when-the-clock-starts';
-import { A_GROUND_IS_OVER, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED } from './a-ground-that-has-ended';
+import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED } from './a-ground-that-has-ended';
 import { AN_ANSWER } from './an-answer-includes-a-refusal';
 import { recordRoundCompletion } from './round-completion';
 import { awayUntilOn, leaveOfThePeopleOn, whoOnACheckInIsAway } from '../suites/who-is-away';
@@ -36,7 +37,14 @@ const WARNING_WINDOW_START_MS = 11 * 60 * 60 * 1000;       // 11h of inactivity
 const WARNING_WINDOW_END_MS = 11.5 * 60 * 60 * 1000;       // 11h30m of inactivity
 
 /* One list, in one place: a-ground-that-has-ended.ts. */
-const TERMINAL: GroundStatus[] = A_GROUND_IS_OVER;
+/*
+ * ...and a check-in that already stalled is skipped by every job that skips an ended one, exactly as on
+ * the live main line, where STALLED sat in the ended list. Separating the two (so a person can reopen a
+ * stalled check-in) must not make these jobs treat a stalled check-in as a live one: on release morning
+ * that would email, remind, announce and WhatsApp people on check-ins that went quiet weeks ago. Once a
+ * lead gives it more time it is no longer STALLED, and every job picks it up again.
+ */
+const TERMINAL: GroundStatus[] = A_GROUND_THE_JOBS_LEAVE_ALONE;
 /**
  * AND A GROUND THAT HAS ALREADY STOPPED IS NOT STOPPED AGAIN.
  *
@@ -726,6 +734,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       },
       take: 500,
     });
+    const turnedOn = await organisationsThatTurnedWhatsAppOn(this.prisma, this.whatsapp, waiting.map((c) => c.ground.organizationId));
     const leave = await leaveOfThePeopleOn(this.prisma, [...new Set(waiting.map((c) => c.groundId))]);
     const hoursSince = (d: Date | null | undefined) => (d ? (now.getTime() - new Date(d).getTime()) / 3_600_000 : null);
 
@@ -734,6 +743,7 @@ export class GroundsCron implements OnApplicationBootstrap {
     for (const ci of waiting) {
       try {
         if (keptOffThePhone(ci.ground)) continue;
+        if (!turnedOn.has(ci.ground.organizationId)) continue;
         if (awayUntilOn(leave.get(ci.participantId), now)) continue;
         const user = ci.participant.user;
         if (user && (user.isActive === false || user.deletedAt)) continue;
@@ -840,11 +850,13 @@ export class GroundsCron implements OnApplicationBootstrap {
       },
       take: 200,
     });
+    const turnedOn = await organisationsThatTurnedWhatsAppOn(this.prisma, this.whatsapp, soon.map((c) => c.ground.organizationId));
     const leave = await leaveOfThePeopleOn(this.prisma, [...new Set(soon.map((c) => c.groundId))]);
     let sent = 0;
     for (const ci of soon) {
       try {
         if (keptOffThePhone(ci.ground)) continue;
+        if (!turnedOn.has(ci.ground.organizationId)) continue;
         if (awayUntilOn(leave.get(ci.participantId), new Date(ci.availableFrom))) continue;
         const user = ci.participant.user;
         if (user && (user.isActive === false || user.deletedAt)) continue;

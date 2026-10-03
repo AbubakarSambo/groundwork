@@ -149,11 +149,12 @@ function aCron(rows: any[], opts: { before?: any[]; onLeave?: boolean; session?:
         : rows)),
     },
     groundParticipant: { findMany: jest.fn(async () => rows.map((r) => ({ id: r.participantId, userId: 'u-1', ground: { organizationId: 'org-1' } }))) },
+    organization: { findMany: jest.fn(async () => [{ id: 'org-1' }]) },
     leaveRequest: { findMany: jest.fn(async () => (opts.onLeave ? [{ userId: 'u-1', organizationId: 'org-1', startsOn: new Date(Date.now() - DAY), endsOn: new Date(Date.now() + DAY) }] : [])) },
     whatsAppSend: { findMany: jest.fn(async () => opts.before ?? []), findFirst: jest.fn(async () => null) },
     person: { findFirst: jest.fn(async () => ({ phone: '+254712345678' })) },
   };
-  const cron = new GroundsCron(prisma, {} as any, { get: () => undefined } as any, {} as any, {} as any, { sendFor } as any, {} as any);
+  const cron = new GroundsCron(prisma, {} as any, { get: () => undefined } as any, {} as any, {} as any, { sendFor, isEnabled: async () => true } as any, {} as any);
   (cron as any).logger = { log: jest.fn(), warn: jest.fn(), error: jest.fn() };
   return { cron, sendFor };
 }

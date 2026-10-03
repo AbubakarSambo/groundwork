@@ -38,6 +38,7 @@
  * The engine work only ever runs this on the local test database gw_pw9_1786222102.
  */
 import * as readline from 'readline';
+import { A_GROUND_THE_JOBS_LEAVE_ALONE } from '../src/modules/grounds/a-ground-that-has-ended';
 import { hostOf, isOnThisMachine, theTypedHostMatches } from './stamp-said-word-for-word';
 import { whatToDoToday } from '../src/modules/conversation/chasing-belongs-to-the-lead';
 
@@ -401,9 +402,9 @@ export function theSummary(r: TheResult, where: string): string[] {
   ];
   const stalled = Object.entries(r.stalled).filter(([, v]) => v > 0);
   if (stalled.length) {
-    lines.push(`Stalled check-ins that the new nightly jobs would now pick up as if they were live: ${stalled.map(([k, v]) => `${v} for ${k}`).join(', ')}. This is finding 1 in docs/existing-users.md.`);
+    lines.push(`Stalled check-ins that the new nightly jobs would now pick up as if they were live: ${stalled.map(([k, v]) => `${v} for ${k}`).join(', ')}. This is finding 1 in docs/existing-users.md, and it should never print now.`);
   } else {
-    lines.push('No stalled check-in would be picked up by the new nightly jobs.');
+    lines.push('No stalled check-in is picked up by the nightly jobs, as on the live main line.');
   }
   for (const [why, c] of Object.entries(r.refusals).sort((a, b) => b[1] - a[1]).slice(0, 8)) lines.push(`Refused on purpose ${c} ${c === 1 ? 'time' : 'times'}, to a ${why}`);
   if (r.writesRefused.length) lines.push(`${n(r.writesRefused.length, 'write was', 'writes were')} refused: ${[...new Set(r.writesRefused)].join(', ')}.`);
@@ -484,6 +485,8 @@ export function dataFrom(prisma: any, opts: { limit: number | null; ground: stri
       },
       async whatTheNewJobsWouldPickUpOnStalled() {
         const now = new Date();
+        /* The jobs read the same list as the check: once STALLED is in it, no job picks a stalled check-in up. */
+        if ((A_GROUND_THE_JOBS_LEAVE_ALONE as string[]).includes('STALLED')) return {} as Record<string, number>;
         const stalled = { ground: { status: 'STALLED' as const } };
         return {
           'the "your check-in is open" email': await prisma.checkIn.count({ where: { sessionNumber: { gt: 1 }, status: 'NOT_STARTED', sessionReadyNotifiedAt: null, availableFrom: { lte: now }, participant: { userId: { not: null }, ...stalled } } }),

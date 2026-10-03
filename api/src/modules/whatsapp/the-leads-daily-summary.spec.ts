@@ -33,12 +33,13 @@ function aMorning(opts: { onLeave?: boolean; onlyThePlan?: boolean; waiting?: bo
   };
   const prisma: any = {
     ground: { findMany: jest.fn(async () => grounds) },
+    organization: { findMany: jest.fn(async () => [{ id: 'org-1' }]) },
     checkIn: { findMany: jest.fn(async ({ where }: any) => sessions[where.groundId] ?? []) },
     user: { findUnique: jest.fn(async () => ({ firstName: 'Wairimu', phoneNumber: null, deletedAt: null })), findMany: jest.fn(async () => []) },
     person: { findFirst: jest.fn(async () => ({ phone: '+254711000111' })), findMany: jest.fn(async () => []) },
     leaveRequest: { findMany: jest.fn(async () => (opts.onLeave ? [{ startsOn: new Date('2026-10-05'), endsOn: new Date('2026-10-06') }] : [])) },
   };
-  const whatsapp: any = { sendFor: jest.fn(async (org: string, to: string, text: string, context: any) => { sent.push({ org, to, text, context }); return { sent: true }; }) };
+  const whatsapp: any = { isEnabled: jest.fn(async () => true), sendFor: jest.fn(async (org: string, to: string, text: string, context: any) => { sent.push({ org, to, text, context }); return { sent: true }; }) };
   const boards: any = {
     leave: { board: jest.fn(async () => ({ waiting: opts.waiting === false ? [] : [{ id: 'l-1', name: 'Amina Yusuf', startsOn: '2026-10-05', endsOn: '2026-10-09', mayDecide: true }] })) },
   };
