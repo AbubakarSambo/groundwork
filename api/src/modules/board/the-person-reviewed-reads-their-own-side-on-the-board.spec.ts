@@ -53,8 +53,9 @@ describe('Where people differ, on a renewal, as the person reviewed reads it', (
     const sides = items(await boardAs(RECORD, ...RUKIA))[0].positions;
     const theColleague = sides.find((p: any) => /colleague/i.test(p.who));
     const theLead = sides.find((p: any) => p.who !== 'You' && !/colleague/i.test(p.who));
-    expect(theColleague.view).toBe("A colleague's own words are not shown to you here. What was found, and the decision with its reasons, are below.");
-    expect(theLead.view).toBe('The words your lead used are not shown to you here. What was found, and the decision with its reasons, are below.');
+    /* Changed 3 October (request 124): no decision has been made on this record, so no decision is said to be below. */
+    expect(theColleague.view).toBe("A colleague's own words are not shown to you here. What was found is below.");
+    expect(theLead.view).toBe('The words your lead used are not shown to you here. What was found is below.');
     expect(theLead.view).not.toMatch(/colleague/i);
   });
 

@@ -44,12 +44,16 @@
 
 import { quotationsIn, theRecordsWordsFor } from './a-quote-is-what-they-said';
 
-const THE_FACTS_ONLY =
-  "A colleague's own words are not shown to you here. What was found, and the decision with its reasons, are below.";
+/**
+ * THE SENTENCE THAT TAKES THE PLACE OF A SIDE'S WORDS. It says "and the decision with its reasons" only where a decision
+ * has been made (request 124, part 2): the person read "What was found, and the decision with its reasons, are below."
+ * where no decision had been made and none was below.
+ */
+const BELOW = (aDecisionIsBelow: boolean) => (aDecisionIsBelow ? 'What was found, and the decision with its reasons, are below.' : 'What was found is below.');
+const THE_FACTS_ONLY = (aDecisionIsBelow = false) => `A colleague's own words are not shown to you here. ${BELOW(aDecisionIsBelow)}`;
 
 /** The same, where the side that is not shown is the lead's own, who is not a colleague. */
-const THE_FACTS_ONLY_LEAD =
-  'The words your lead used are not shown to you here. What was found, and the decision with its reasons, are below.';
+const THE_FACTS_ONLY_LEAD = (aDecisionIsBelow = false) => `The words your lead used are not shown to you here. ${BELOW(aDecisionIsBelow)}`;
 
 /* A generic, plain sentence for the one case there is no way to keep the rest of a sentence
    grammatical once a colleague's quoted words come out of it. */
@@ -205,13 +209,14 @@ export function deeplyWithoutColleaguesQuotesForTheSubject<T>(value: T, subjectR
  */
 export function whatEachPersonSaidForTheSubject<T extends { isYou: boolean; lines?: unknown; lineMarks?: unknown; lineMarksSay?: unknown; saying?: string }>(
   rows: readonly T[] | null | undefined,
+  more: { aDecisionIsBelow?: boolean } = {},
 ): T[] {
   if (!Array.isArray(rows)) return (rows ?? []) as T[];
   return rows.map((row) => {
     if (!row || row.isYou) return row;
     const { lineMarks, lineMarksSay, ...rest } = row as any;
     const saying = typeof rest.saying === 'string' ? rest.saying.trim() : '';
-    return { ...rest, lines: [], saying: saying || THE_FACTS_ONLY };
+    return { ...rest, lines: [], saying: saying || THE_FACTS_ONLY(more.aDecisionIsBelow) };
   });
 }
 
@@ -226,13 +231,14 @@ export function whatEachPersonSaidForTheSubject<T extends { isYou: boolean; line
 export function whoOwnsWhatForTheSubject<T extends { participantId: string; items?: readonly any[] }>(
   rows: readonly T[] | null | undefined,
   subjectParticipantId: string | null,
+  more: { aDecisionIsBelow?: boolean } = {},
 ): T[] {
   if (!Array.isArray(rows)) return (rows ?? []) as T[];
   return rows.map((row) => {
     if (!row || row.participantId === subjectParticipantId || !Array.isArray(row.items)) return row;
     return {
       ...row,
-      items: row.items.map((item: any) => (item && typeof item.text === 'string' ? { ...item, text: THE_FACTS_ONLY } : item)),
+      items: row.items.map((item: any) => (item && typeof item.text === 'string' ? { ...item, text: THE_FACTS_ONLY(more.aDecisionIsBelow) } : item)),
     };
   });
 }
@@ -261,7 +267,7 @@ export function divergenceForTheSubject<T extends { positions?: readonly any[]; 
    * `subjectRecord`: the subject's own lines, so a quote of theirs inside the evidence stays and a colleague's
    * comes out. `leadNames`: how the lead's own side is named here, so it is not told as "a colleague".
    */
-  more: { subjectRecord?: readonly string[]; leadNames?: readonly (string | null | undefined)[] } = {},
+  more: { subjectRecord?: readonly string[]; leadNames?: readonly (string | null | undefined)[]; aDecisionIsBelow?: boolean } = {},
 ): T[] {
   if (!Array.isArray(items)) return (items ?? []) as T[];
   /* The reader's own side is always named "You" on the board, whatever their name is. */
@@ -274,7 +280,7 @@ export function divergenceForTheSubject<T extends { positions?: readonly any[]; 
   };
   const stripSide = (side: any) => {
     if (!side || typeof side !== 'object' || isTheirs(side)) return side;
-    const said = lead.has(labelOf(side)) ? THE_FACTS_ONLY_LEAD : THE_FACTS_ONLY;
+    const said = lead.has(labelOf(side)) ? THE_FACTS_ONLY_LEAD(more.aDecisionIsBelow) : THE_FACTS_ONLY(more.aDecisionIsBelow);
     const out = { ...side };
     if (typeof out.view === 'string' && out.view) out.view = said;
     if (typeof out.position === 'string' && out.position) out.position = said;

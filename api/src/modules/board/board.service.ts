@@ -2639,13 +2639,15 @@ export class BoardService {
         viewerParticipantId: me?.id ?? null,
         participants: ground.participants as any,
       }) || adminWithoutCheckInAccess) {
-        if (Array.isArray(walled.whoOwnsWhat)) walled.whoOwnsWhat = whoOwnsWhatForTheSubject(walled.whoOwnsWhat, me?.id ?? null);
+        if (Array.isArray(walled.whoOwnsWhat)) walled.whoOwnsWhat = whoOwnsWhatForTheSubject(walled.whoOwnsWhat, me?.id ?? null, { aDecisionIsBelow: !!((ground as any).resolvedAt || (ground as any).endState) });
         if (Array.isArray(walled.divergence?.items)) {
           walled.divergence = {
             ...walled.divergence,
             items: divergenceForTheSubject(walled.divergence.items, [me?.id ? nameOf(me.id) : null], {
               subjectRecord: me?.id ? ((await theRecordAQuoteMayComeFromByParticipant(this.prisma as any, groundId).catch(() => new Map<string, string[]>())).get(me.id) ?? []) : [],
               leadNames: [theLeadsRow ? nameOf(theLeadsRow) : null, 'Your lead', 'The lead', 'your lead', 'the lead'],
+              /* "...and the decision with its reasons, are below" only where a decision has been made (request 124, part 2). */
+              aDecisionIsBelow: !!((ground as any).resolvedAt || (ground as any).endState),
             }),
           };
         }

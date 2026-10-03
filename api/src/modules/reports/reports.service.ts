@@ -3417,7 +3417,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       viewerParticipantId: me?.id ?? null,
       participants: ground.participants as any,
     }) || (isOrgAdmin && !evaluationWordsRunsIt && isEvaluationCheckIn((ground as any).scenario))) {
-      shape.whatEachPersonSaid = whatEachPersonSaidForTheSubject(shape.whatEachPersonSaid as any[]) as any;
+      shape.whatEachPersonSaid = whatEachPersonSaidForTheSubject(shape.whatEachPersonSaid as any[], { aDecisionIsBelow: !!((ground as any).resolvedAt || (ground as any).endState) }) as any;
     }
 
     /**
