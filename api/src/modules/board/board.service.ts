@@ -128,6 +128,7 @@ import { theFirstNameFrom, theShortNameOf } from '../reports/a-title-is-not-a-fi
 import { aHolderInTheirOwnWords } from './a-holder-in-their-own-words';
 import { yourOwnRowsSayYou } from './your-own-read-says-you';
 import { theRoomAsThisReaderReadsIt } from './the-room-as-each-reader-reads-it';
+import { theRoomWithoutOneOfTheOthers } from './the-room-without-one-of-the-others';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -2524,6 +2525,21 @@ export class BoardService {
         const roomLabels = labelsForParties(ground.participants as any);
         const readerLabel = me?.id ? roomLabels.get(me.id) ?? null : null;
         const fullNameOf = (p: any) => [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim() || null;
+        /*
+         * WHERE PEOPLE DO NOT SEE EACH OTHER, ONE PERSON'S CIRCUMSTANCES NEVER REACH ANOTHER (decision 75, item 14), as
+         * the report's own wall: the reader's own rows, the lead's and several people's stay; one other person's go,
+         * and the other people's names are said as a count. Whoever runs it, and an admin, read it whole. See
+         * the-room-without-one-of-the-others.
+         */
+        if (whoMaySee.peersHidden && !isEvaluationCheckIn(ground.scenario)) {
+          const leadRow = (ground.participants as any[]).find((p) => p.id === theLeadsRow);
+          walled.whatTheRoomIsAbout = theRoomWithoutOneOfTheOthers(walled.whatTheRoomIsAbout, {
+            reader: me ? fullNameOf(me) : null,
+            lead: leadRow ? fullNameOf(leadRow) : null,
+            otherNames: (ground.participants as any[]).filter((p) => p.id !== me?.id && p.id !== theLeadsRow)
+              .flatMap((p) => [fullNameOf(p), (p.user?.firstName ?? '').trim().length > 2 ? p.user.firstName.trim() : null].filter(Boolean) as string[]),
+          });
+        }
         walled.whatTheRoomIsAbout = theRoomAsThisReaderReadsIt(walled.whatTheRoomIsAbout, {
           fullName: me ? fullNameOf(me) : null,
           otherNames: (ground.participants as any[]).filter((p) => p.id !== me?.id)

@@ -3285,3 +3285,19 @@ Tests: `api/src/modules/reports/a-name-said-once-in-a-sentence-as-each-reader-re
 - **Bisi and an admin read:** "Femi Okonkwo's own aim is twelve approved facilities this quarter." **Femi reads:** "Your own aim is twelve approved facilities this quarter." (`objectives[].name`, and Femi's `yourShare`).
 
 Tests: one new test in `api/src/modules/board/the-room-and-the-aims-as-each-reader-reads-them.spec.ts`, as Bisi and Femi. No existing test changed.
+
+## What the room is about, where people do not see each other (3 October)
+
+**Decision 75, item 14. The room's read (`whatTheRoomIsAbout`) is stored with names and never went through the report's wall for people who do not see each other. On a check-in with the people kept apart, once the team's picture was shared, a participant read another person's aims and circumstances with their name: "Musa Danjuma wants the grinding machine he was promised to be delivered.", held by `["Musa Danjuma"]`, and a place and a thing each named by one other person. On the loans cohort itself nothing leaked, because a cohort's board has no room section; it leaked on every other kind of check-in whose board has one, where the lead keeps people apart** (this commit).
+
+For a participant where people do not see each other (never the lead, the admin who set it up, or an admin):
+
+- **A row held or named by one other person alone is not sent.** Aims, places and things alike.
+- **The reader's own rows stay**, said to them: "You are trying to catch up on the three repayments you missed." with `held: ["You"]`.
+- **Rows several people hold or named stay**, with the other people's names taken out of `held` or `named` and said as a count in a new field, `andOthers`: `{ "aim": "The borrowers want the first repayment to start once the asset earns.", "held": ["You"], "andOthers": 2 }`, `{ "name": "repayment schedule", "named": [], "andOthers": 2 }`. Please show it as "You and 2 others" or "2 people". `andOthers` is only sent when there are others to count.
+- **The lead's rows stay, with the lead's name**, as in the report: `{ "aim": "The programme should learn when each asset starts earning.", "held": ["Amaka Nwachukwu"] }`.
+- **A sentence in a kept aim that names one of the others is taken out**, and the row goes if nothing is left.
+
+The lead and admins read the room exactly as before, with every name. Where people see each other, nothing changes.
+
+Tests: `api/src/modules/board/what-the-room-is-about-where-people-do-not-see-each-other.spec.ts`, on the served board as Sunday, Amaka and an admin, with run-25's loans people. No existing test changed.

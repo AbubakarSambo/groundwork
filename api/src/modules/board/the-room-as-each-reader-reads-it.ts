@@ -19,7 +19,7 @@
  */
 
 export interface TheRoomServed {
-  aims?: { aim: string; held: string[] }[];
+  aims?: { aim: string; held: string[]; andOthers?: number }[];
   places?: { name: string; named: string[] }[];
   things?: { name: string; named: string[] }[];
   [k: string]: unknown;
@@ -79,7 +79,7 @@ export function theRoomAsThisReaderReadsIt<T extends TheRoomServed | null | unde
       .map((a) => {
         const held = Array.isArray(a.held) ? a.held : [];
         let aim = reader.name(a.aim);
-        const onlyTheirs = !!reader.fullName && held.length === 1 && held[0].trim().toLowerCase() === reader.fullName.trim().toLowerCase();
+        const onlyTheirs = !!reader.fullName && !a.andOthers && held.length === 1 && held[0].trim().toLowerCase() === reader.fullName.trim().toLowerCase();
         if (onlyTheirs && /^You\b/.test(aim) && !namesSomebodyElse(aim, reader.otherNames)) aim = sheIsTheReaderToo(aim);
         return { ...a, aim, held: youInTheList(held, reader.fullName) };
       })
