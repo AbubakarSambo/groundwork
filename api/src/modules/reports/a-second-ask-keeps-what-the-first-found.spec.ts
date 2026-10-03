@@ -3,7 +3,7 @@ import { THE_LINES_REWRITTEN } from './every-line-is-read-before-it-is-kept';
 import { THE_PICTURE_SCHEMA } from './the-picture-in-plain-sentences';
 import { THE_JUDGEMENT_SCHEMA, THE_ROOM_JUDGEMENT_SCHEMA } from './the-judgement-over-the-answers';
 import { liftedRunIn, A_LINE_WE_COULD_NOT_RESTATE } from './said-in-its-own-words';
-import { keepWhatTheFirstFound } from './a-second-ask-keeps-what-the-first-found';
+import { keepWhatTheFirstFound, isAnEmptyReport } from './a-second-ask-keeps-what-the-first-found';
 
 /**
  * ASKING AGAIN MAY NOT LOSE WHAT THE FIRST DRAFT FOUND.
@@ -237,5 +237,29 @@ describe('keepWhatTheFirstFound', () => {
   it('changes nothing when nothing was lost', () => {
     const second = { agreements: ['a'], divergences: [{ topic: 'x' }], centralQuestion: 'q' };
     expect(keepWhatTheFirstFound({ agreements: ['a'], divergences: [{ topic: 'y' }], centralQuestion: 'p' }, second)).toEqual({ report: second, putBack: [] });
+  });
+});
+
+describe('a second answer with neither differences nor agreements', () => {
+  it('keeps both lists, and the central question, from the first draft', () => {
+    const first = { sharedPicture: 'A.', agreements: ['Both want it done.', 'Both trust the plan.'], divergences: [{ topic: 'Scope' }], centralQuestion: 'Is it in scope?' };
+    const second = { sharedPicture: 'B.', agreements: [], divergences: [], centralQuestion: 'What next?' };
+    const { report, putBack } = keepWhatTheFirstFound(first, second);
+    expect(report.agreements).toEqual(first.agreements);
+    expect(report.divergences).toEqual(first.divergences);
+    expect(report.centralQuestion).toBe('Is it in scope?');
+    expect(report.sharedPicture).toBe('B.');
+    expect(putBack).toEqual(['divergences', 'agreements']);
+  });
+
+  it('keeps a longer list from the second answer rather than the first', () => {
+    const { report } = keepWhatTheFirstFound({ agreements: ['One.'], divergences: [] } as any, { agreements: ['One.', 'Two.'], divergences: [{ topic: 'New' }] } as any);
+    expect(report.agreements).toHaveLength(2);
+    expect(report.divergences).toHaveLength(1);
+  });
+
+  it('knows an empty report, so it is never stored over a full one', () => {
+    expect(isAnEmptyReport({ sharedPicture: '', agreements: [], divergences: [], centralQuestion: '' })).toBe(true);
+    expect(isAnEmptyReport({ sharedPicture: '', agreements: ['x'], divergences: [], centralQuestion: '' })).toBe(false);
   });
 });

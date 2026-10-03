@@ -59,3 +59,17 @@ export function keepWhatTheFirstFound<T extends Record<string, any>>(first: T, s
   }
   return { report: report as T, putBack };
 }
+
+/** How much a draft holds, for the log: the part of a report that holds what it found, counted. */
+export function whatADraftHolds(r: Record<string, any> | null | undefined): string {
+  const n = (v: unknown) => (Array.isArray(v) ? v.length : isEmpty(v) ? 0 : 1);
+  return `${n(r?.divergences)} difference(s), ${n(r?.agreements)} agreement(s), central question ${n(r?.centralQuestion) ? 'present' : 'missing'}`;
+}
+
+/**
+ * A report with no picture, no agreements, no differences and no question says nothing. It is
+ * never stored over one that said something: the earlier report stays and the caller is told.
+ */
+export function isAnEmptyReport(r: Record<string, any> | null | undefined): boolean {
+  return isEmpty(r?.sharedPicture) && isEmpty(r?.agreements) && isEmpty(r?.divergences) && isEmpty(r?.centralQuestion);
+}

@@ -186,7 +186,7 @@ import { whatTheRosterSaysAbout } from './a-party-who-spoke-is-not-absent';
 import { THE_LEAD_ONLY_ASKS } from '../grounds/the-lead-who-only-asks';
 import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
 import { liftsInReport, withholdLiftsIn } from './said-in-its-own-words';
-import { keepWhatTheFirstFound } from './a-second-ask-keeps-what-the-first-found';
+import { keepWhatTheFirstFound, whatADraftHolds, isAnEmptyReport } from './a-second-ask-keeps-what-the-first-found';
 import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-was';
 import { whatThisSessionHolds } from './what-this-session-holds';
 import { adminsThisOrg, adminsTheOrg, readsAsAnAdmin, runsOrSetItUp } from '../grounds/who-may-read-this-check-in';
@@ -1565,6 +1565,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       throw new Error('Report synthesis failed - AI response could not be parsed. Please try again.');
     }
     if (!result) throw new Error('Report synthesis failed to return structured output');
+    this.logger?.log?.(`Ground ${groundId}: the first draft holds ${whatADraftHolds(result)}.`);
 
     // WORD COUNT VALIDATION: if the combined text fields exceed 500 words, make
     // one additional call asking for a shorter version. Max 2 total attempts.
@@ -1723,6 +1724,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
          * which also dropped every copied phrase in them, and so "won". What the first draft found
          * is put back; a copied phrase in it is restated or withheld just below.
          */
+        this.logger?.log?.(`Ground ${groundId}: the second attempt holds ${whatADraftHolds(secondPass)}.`);
         const kept = keepWhatTheFirstFound(result, secondPass);
         if (kept.putBack.length) this.logger?.warn?.(`Ground ${groundId}: the second attempt lost ${kept.putBack.join(', ')}; put back from the first draft.`);
         result = kept.report;
@@ -2615,6 +2617,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * own report never shows what a later session concluded. Items kept before they carried a session
      * belong to the session the report held when it was last written.
      */
+    this.logger?.log?.(`Ground ${groundId}: stored report holds ${whatADraftHolds(result)}.`);
+    if (isAnEmptyReport(result) && !isAnEmptyReport(priorReport as any)) {
+      throw new Error('Report synthesis came back empty; the report already stored is kept.');
+    }
     const holdsNow = await theSessionTheReportHolds(this.prisma, groundId);
     const heldWhenLastWritten = (priorReport as any)?.updatedAt
       ? (((await (this.prisma.checkIn?.aggregate?.({
