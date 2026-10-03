@@ -12,6 +12,7 @@ import {
 } from './the-record-read-for-a-review';
 import { monthsToDrawOn, theFirstCheckInOf, theOpenDecisionsAbout, whereItStandsSaid, type Stands } from './where-a-review-stands';
 import { SuggestionsService } from '../suggestions/suggestions.service';
+import { PATTERNS_NOTE, theBriefingsHeading, theCountsSaid, theEarlierReviews, thePatternsForTheBriefing, whoDecidesTheReview, type ABriefing } from './a-review-briefing';
 import type { ForTheLead } from '../suggestions/a-suggestion-told-like-a-signal';
 import { AReviewToldOnWhatsApp } from './a-review-told-on-whatsapp.service';
 import {
@@ -132,6 +133,13 @@ export interface ForTheWriter {
    * not write it, while the setting is off, and when the record does not reach the line.
    */
   recognise: RecogniseForTheWriter | null;
+  /**
+   * The manager's briefing (build step 13, a-review-briefing.ts): the counts, the person's patterns
+   * after their turn with their answer beside each, what changed after earlier conversations, and the
+   * person's corrections. Evidence and patterns only, never a verdict. Each reader reads only what they
+   * may already read: counts and corrections from check-ins they are in, patterns from ones they run.
+   */
+  briefing: ABriefing;
 }
 
 /** The person's own review: the facts, their own view, and the decision with its reasons. */
@@ -184,7 +192,12 @@ type Person = { externalId: string; userId: string | null; linkedUserId: string 
  *     through who-may-decide.ts) starts it, writes their own words, and decides with reasons;
  *   - the person it is about reads the facts, their own view, and the decision with its reasons,
  *     and writes their own view; never a verdict, a label, or how their answers were rated;
- *   - a colleague and a guest are refused.
+ *   - a colleague and a guest are refused;
+ *   - the record, interpreted (build step 12, the-record-read-for-a-review.ts): the person reads every
+ *     line and corrects it; anybody else reads only the lines from check-ins they are in (decision 4);
+ *   - the manager's briefing (build step 13, a-review-briefing.ts): everybody who may open the review
+ *     except the person, each limited to what they may already read; evidence and patterns, never a
+ *     verdict.
  * Hours and leave never feed a review (decisions rule 10): nothing here reads them.
  */
 @Injectable()
@@ -354,6 +367,8 @@ export class ReviewsService {
     const me = [...directory.values()].find((p) => p.userId === reader.userId) ?? null;
     const readsIt = writes || role === 'ADMIN' || (role === 'LEAD' && !!me && inTheLeadsTeam(me, person));
     if (!readsIt) throw new ForbiddenException(REVIEW_REFUSED.notYours);
+    const record = await this.theRecordServed(row, person, reader.userId, writerId, writerFirst);
+    const briefing = await this.theBriefing(row, person, reader.userId, writes, writerFirst, record);
     const suggestion = writes && person.userId && this.suggestions
       ? await this.suggestions.latestForTheLeadAbout(person.userId, reader).catch(() => null)
       : null;
@@ -362,9 +377,10 @@ export class ReviewsService {
       id: row.id, name: this.nameOf(person), firstName: this.firstOf(person),
       writtenWith: await this.fullNameOf(writerId, directory), writtenWithFirstName: writerFirst,
       dueOn, noticed: this.noticedOf(row.noticed, writes),
-      record: await this.theRecordServed(row, person, reader.userId, writerId, writerFirst),
+      record,
       managersWords: row.managersWords ?? null, theirView: row.theirView ?? null, decision, mayWrite: writes, suggestion,
       recognise: writes && recognising && theWriterMayReadIt({ theirView: row.theirView ?? null, startedAt: (row as any).startedAt }) ? recogniseForTheWriter(this.firstOf(person), recognising) : null,
+      briefing,
     };
   }
 
@@ -457,6 +473,37 @@ export class ReviewsService {
       db.ground?.findMany?.({ where: { id: { in: groundIds }, OR: [{ initiatorId: userId }, { createdByUserId: userId }] }, select: { id: true } }).catch(() => []),
     ]);
     return { isThePerson, inCheckIns: new Set(((ins ?? []) as any[]).map((x) => x.groundId)), runsCheckIns: new Set(((runs ?? []) as any[]).map((x) => x.id)) };
+  }
+
+  /** The lines of the record this reader may read. */
+  private async readableLines(row: any, person: Person, readerUserId: string): Promise<ARecordLine[]> {
+    const lines = theStoredRecord(row.recordRead);
+    const groundIds = [...new Set(lines.map((l) => l.groundId).filter((g): g is string => !!g))];
+    const access = await this.whatTheyAreIn(readerUserId, groundIds, person.userId === readerUserId);
+    return lines.filter((l) => mayReadTheLine(l, access));
+  }
+
+  /** The manager's briefing, as this reader may read it (build step 13). */
+  private async theBriefing(row: any, person: Person, readerUserId: string, writes: boolean, writerFirst: string | null, record: TheRecordServed | null): Promise<ABriefing> {
+    const first = this.firstOf(person) || 'this person';
+    const directory = await this.directory(row.organizationId);
+    const [lines, found, earlier] = await Promise.all([
+      this.readableLines(row, person, readerUserId),
+      thePatternsForTheBriefing(this.prisma, { organizationId: row.organizationId, personUserId: person.userId, readerUserId, first }),
+      theEarlierReviews(this.prisma, {
+        organizationId: row.organizationId, personExternalId: person.externalId, before: new Date(row.startedAt ?? Date.now()), first, readerUserId,
+        nameOf: (id) => this.firstNameOf(id, directory),
+      }),
+    ]);
+    return {
+      heading: theBriefingsHeading(writes, first),
+      counts: theCountsSaid(lines, first),
+      patterns: found.patterns,
+      patternsNote: found.patterns.length ? PATTERNS_NOTE(first) : null,
+      changedAfterEarlierConversations: [...found.talkedThrough, ...earlier],
+      corrections: (record?.parts ?? []).flatMap((p) => p.lines).filter((l) => l.correction).map((l) => ({ line: l.says, said: l.correction!.said, whatIsTrue: l.correction!.whatIsTrue })),
+      whoDecides: whoDecidesTheReview(writes, first, writerFirst),
+    };
   }
 
   /** The record, interpreted, as this reader may read it, with the person's corrections beside each line. */
