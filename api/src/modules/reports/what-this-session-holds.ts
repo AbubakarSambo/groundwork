@@ -35,7 +35,13 @@ const up = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : 
  * put inside a sentence of ours. A sentence somebody said stays theirs and only gets its capital.
  */
 const SAYS_SOMETHING = /^(?:I|We|They|He|She|It|There|Nobody|Nothing|Everyone)\b|\b(?:is|are|was|were|has|have|had|will|can|cannot|did|does|do|said|says|need|needs|waiting|stopped|heard)\b/;
-const blockerAsASentence = (b: string): string => (SAYS_SOMETHING.test(b) ? `${up(b)}.` : `Work is held up by ${inASentence(b)}.`);
+/* "The grinding machine they were approved for" is a thing with a clause about it, not a sentence (item 21, the loans
+   board): it read "The grinding machine I was approved for." on the tile. A phrase that opens with "the", "a", "their" and
+   the like, and whose only verb follows "I", "you" or "they", is a thing held up. */
+const A_THING_WITH_A_CLAUSE = /^(?:the|a|an|this|that|these|those|your|their|our|his|her|my)\s/i;
+const A_RELATIVE_CLAUSE = /\b(?:I|you|they|we|he|she)\s+(?:was|were|am|are|is|had|have|has|need|needs|asked|ordered|requested)\b/;
+const blockerAsASentence = (b: string): string => (SAYS_SOMETHING.test(b) && !(A_THING_WITH_A_CLAUSE.test(b) && A_RELATIVE_CLAUSE.test(b))
+  ? `${up(b)}.` : `Work is held up by ${inASentence(b)}.`);
 
 export function theFirstSentenceThatFits(s: string | null | undefined, max = A_TILE_HOLDS): string | null {
   const t = (s ?? '').trim().replace(/\s+/g, ' ');
