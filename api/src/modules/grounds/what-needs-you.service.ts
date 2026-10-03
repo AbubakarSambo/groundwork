@@ -1,4 +1,8 @@
 import { Injectable, Optional } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
+import { BoardService } from '../board/board.service';
+import { whatTheBoardAsksOfTheLead } from './what-the-board-asks-of-the-lead';
+import { isShut } from './a-ground-that-has-ended';
 import { isNotLetInYet, whoIsNotLetInYet } from './who-an-admin-did-not-let-in';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
@@ -33,7 +37,23 @@ export class WhatNeedsYouService {
     @Optional() private spend?: SpendingService,
     @Optional() private reviews?: ReviewsService,
     @Optional() private finance?: SpendingForFinanceService,
+    @Optional() private readonly moduleRef?: ModuleRef,
   ) {}
+
+  /**
+   * WHAT THE BOARD ASKS OF THIS READER, for each check-in they run (request 122): the board's own `leadActions` and
+   * `decisions`, read as this reader, so Today and the board say the same. Never an error on Today: a board that
+   * cannot be read is nothing here. See what-the-board-asks-of-the-lead.
+   */
+  private async whatTheirBoardsAsk(userId: string, here: any[]): Promise<Need[]> {
+    const board = this.moduleRef?.get(BoardService, { strict: false });
+    if (!board) return [];
+    const mine = here.filter((g) => !!g.initiatorId && g.initiatorId === userId && !isShut(g.status) && !g.closedAt && !g.resolvedAt);
+    const read = await Promise.all(mine.map((g) =>
+      Promise.resolve().then(() => board.get(g.id, userId)).then((b) => whatTheBoardAsksOfTheLead(b, g)).catch(() => [] as Need[]),
+    ));
+    return read.flat();
+  }
 
   /**
    * PERFORMANCE REVIEWS ON TODAY (item 16), from the reviews suite's own reads as this reader: their own
@@ -198,7 +218,7 @@ export class WhatNeedsYouService {
     }
     /* On approved leave today (week 23): their own check-in says the round does not wait for them. Dates only. */
     const awayUntil = (await whoIsAwayOn(this.prisma, [userId], organizationId).catch(() => new Map<string, string>())).get(userId) ?? null;
-    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance, ...hours]);
+    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...(await this.whatTheirBoardsAsk(userId, here as any[])), ...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance, ...hours]);
     /* A net: no address stands in for a name in any sentence on Today (week 12c). */
     const called = new Map<string, string>();
     for (const g of here as any[]) {

@@ -36,6 +36,11 @@ export interface Need {
   groundId: string;
   /** Whose organisation it belongs to, so "Choose an organisation" can count each one's. */
   organizationId: string;
+  /**
+   * Set when this item is also on the check-in's own board, under "What needs you in this check-in" (request 122).
+   * The board page draws Today's items for its check-in, so it leaves these out rather than say each one twice.
+   */
+  onTheBoardToo?: true;
 }
 
 export interface ComingUp {
