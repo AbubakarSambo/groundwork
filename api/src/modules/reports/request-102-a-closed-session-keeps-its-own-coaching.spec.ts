@@ -37,7 +37,8 @@ describe('session 1, closed, as each reader is sent it', () => {
     expect(r.coaching.beforeNextTime).toEqual(['Baraka Mwangi has been waiting on you for SESSION-ONE-WAIT a decision on the discount since 24 September. Either do it, or give a date you can do it by.']);
     expect(r.probes.map((p: any) => p.who)).toEqual(['Amani Wekesa', 'Baraka Mwangi', 'Neema Achieng']);
     expect(r.probes.find((p: any) => p.who === 'Baraka Mwangi').probe).toEqual([
-      'Baraka Mwangi has been waiting on you for SESSION-ONE-WAIT a decision on the discount since 24 September, and nothing on record says it was raised higher. This early, that is worth showing Baraka Mwangi rather than asking about.',
+      /* The wait is on Rukia, who reads it, so it is hers to answer, not Baraka's to raise higher (item 21). */
+      'Baraka Mwangi has been waiting on you for SESSION-ONE-WAIT a decision on the discount since 24 September. Give Baraka Mwangi an answer, or say when you will.',
     ]);
     /* Everybody answered session 1, so nobody is said not to have. */
     expect(JSON.stringify(r.probes)).not.toMatch(/has not answered this session/);

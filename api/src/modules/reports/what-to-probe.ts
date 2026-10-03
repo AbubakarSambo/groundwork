@@ -180,7 +180,23 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
         `${He} ${has} been waiting for ${andList(escalated.map((d) => theThing(d.what)))}${sinceOrHowLong(escalated)}, and ${has} raised it higher. Ask what happened after that.`,
       );
     }
-    if (notYet.length) {
+    /*
+     * A WAIT ON THE READER IS NOT ONE TO RAISE HIGHER (item 21, the founder's board). Ada read "Tunde Bakare has
+     * been waiting on you for the formalized agreement, ... since 30 September, and nothing on record says it was
+     * raised higher. Ask what has stopped Tunde Bakare raising it." The person who could move it is the one
+     * reading, so the sentence says that instead, in the words the board's own row uses.
+     */
+    const onTheReader = notYet.filter((d) => /^you$/i.test((d.who ?? '').trim()));
+    if (onTheReader.length && !you) {
+      const since = theOldestSince(onTheReader);
+      const things = andList([...new Map(onTheReader.map((d) => [theThing(d.what).toLowerCase(), theThing(d.what)] as const)).values()]);
+      probe.push(`${He} ${has} been waiting on you for ${things}${since ? ` since ${since}` : howLong(Math.max(...onTheReader.map((d) => d.daysOld)))}. Give ${them} an answer, or say when you will.`);
+      const kind = whatKindOfThing(onTheReader);
+      if (kind) probe.push(kind);
+    }
+    const elsewhere = onTheReader.length && !you ? notYet.filter((d) => !onTheReader.includes(d)) : notYet;
+    if (elsewhere.length) {
+      const notYet = elsewhere;
       const oldest = Math.max(...notYet.map((d) => d.daysOld));
       /* Each wait under whoever holds it, and each thing once (item 18). See each-wait-under-whoever-holds-it.ts. */
       const onEach = waitingOnEachHolder(eachWaitUnderWhoeverHoldsIt(notYet));
