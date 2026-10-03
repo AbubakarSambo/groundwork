@@ -3205,6 +3205,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
           viewerParticipantId: me?.id ?? null,
           participants: ground.participants as any,
         }) || (isOrgAdmin && !evaluationWordsRunsIt && isEvaluationCheckIn((ground as any).scenario)),
+        /* The Blockers tile names only the reader's own waits, as the board's header and tile do (ownWaitsOnly). */
+        ownWaitsOnly: !!me && !viewerIsLead && !evaluationWordsRunsIt
+          && (!this.peersAreNamed(ground as any, me.id) || isEvaluationCheckIn((ground as any).scenario)),
       }),
       this.prisma.recordEntry.count({ where: { disputedAt: null, participant: { groundId }, checkIn: { sessionNumber } } }),
       this.prisma.recordEntry.count({ where: { disputedAt: null, participant: { groundId }, checkIn: { sessionNumber }, recallBased: false, anchoredOrigin: { in: [...COUNTS_AS_A_SOURCE] as any } } }),

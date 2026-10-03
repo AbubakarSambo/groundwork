@@ -29,6 +29,11 @@ export const JUMA = ['u-juma', 'ADMIN'] as const;
 export const SETUP_ADMIN = ['u-setup', 'ADMIN'] as const;
 
 export interface Setup {
+  /**
+   * Whether the waits are also answered where they are read on their own (what this session holds), by the
+   * check-in that raised them. Off by default, so the specs written before it read the boards they always read.
+   */
+  waitsAreReadOnTheirOwn?: boolean;
   scenario?: GroundScenario;
   peersVisibleToEachOther?: boolean;
   commitments?: any[];
@@ -138,6 +143,12 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     conversationTurn: model({ findMany: jest.fn(async (args: any) => clone((setup.turns ?? []).filter((t) => (args?.where?.checkInId?.in ?? []).includes(t.checkInId)))) }),
     personObjective: model({ findMany: jest.fn(async (args: any) => clone((setup.personObjectives ?? []).filter((o: any) => !args?.where?.awareness || o.awareness === args.where.awareness))) }),
     groundCommitment: model({ findMany: jest.fn(async () => clone(setup.commitments ?? [])) }),
+    ...(setup.waitsAreReadOnTheirOwn ? {
+      groundDependency: model({ findMany: jest.fn(async (args: any) => clone((setup.dependencies ?? [])
+        .filter((d: any) => !args?.where?.sourceCheckInId?.in || args.where.sourceCheckInId.in.includes(d.sourceCheckInId))
+        .filter((d: any) => !args?.where?.status?.in || args.where.status.in.includes(d.status))
+        .filter((d: any) => !(args?.where && 'clearedAt' in args.where) || !d.clearedAt))) }),
+    } : {}),
     checkInGap: model({ findMany: jest.fn(async () => clone(setup.gaps ?? [])) }),
     workMention: model({ findMany: jest.fn(async () => clone(setup.mentions ?? [])) }),
     workItem: model({ findMany: jest.fn(async () => clone(setup.items ?? [])) }),

@@ -159,3 +159,47 @@ describe('the Movement tile says a number a person can read (re-d, sales, sessio
     expect(m.sub).toBe('2 targets changed this session.');
   });
 });
+
+/**
+ * RUN-25, LOANS: ANOTHER BORROWER'S WAIT ON SUNDAY'S BLOCKERS TILE. Borrowers do not see each other. Sunday's header
+ * said nothing was in his way, and the tile under it read "Work is held up by the grinding machine, which waits on
+ * the supplier.": Musa's wait. Where people do not see each other, the tile now counts and names the reader's own
+ * waits only, as the header does. Amaka, who runs it, and an admin, read every wait.
+ */
+describe('run-25: the Blockers tile, as each reader of the loans check-in reads it', () => {
+  const { whatThisSessionHolds, atAGlanceTiles } = require('./what-this-session-holds');
+  const MUSAS_WAIT = { status: 'BLOCKING', fromParticipantId: 'p-musa', onParticipantId: null, what: 'the grinding machine', onLabel: 'the supplier' };
+  const prisma = (deps: any[]) => ({
+    checkIn: { findMany: async () => [{ id: 'c1' }] },
+    groundDependency: { findMany: async () => deps },
+    groundObjective: { findMany: async () => [] },
+    groundObjectiveSnapshot: { findMany: async () => [] },
+    groundCommitment: { findMany: async () => [] },
+    ground: { findUnique: async () => ({ brief: null, participants: [] }) },
+    recordEntry: { findMany: async () => [] },
+  });
+  const tileFor = async (deps: any[], reader: any) => {
+    const held = await whatThisSessionHolds(prisma(deps), 'g', 1, reader);
+    return atAGlanceTiles({ agreed: 0, stillOpen: 0, movedOnTargets: null, blocked: held.blocked, waiting: held.waiting, backedPct: null, numberWasSaid: false, theBlocker: held.theFirstBlocker, worries: held.worries, theWorry: held.theFirstWorry })
+      .find((t: any) => t.label === 'Blockers');
+  };
+
+  it('Sunday reads that nothing of his is held up, not Musa\'s grinding machine', async () => {
+    const t = await tileFor([MUSAS_WAIT], { participantId: 'p-sunday', isLead: false, ownWaitsOnly: true });
+    expect(t.value).toBe('None');
+    expect(JSON.stringify(t)).not.toMatch(/grinding machine|supplier/);
+  });
+
+  it('Sunday\'s own wait is still his to read', async () => {
+    const t = await tileFor([MUSAS_WAIT, { ...MUSAS_WAIT, fromParticipantId: 'p-sunday', what: 'the spare blades', onLabel: 'the field officer' }], { participantId: 'p-sunday', isLead: false, ownWaitsOnly: true });
+    expect(t.value).toBe('1');
+    expect(t.sub).toBe('Work is held up by the spare blades, which waits on the field officer.');
+  });
+
+  it('Amaka, who runs it, and an admin read Musa\'s wait as before', async () => {
+    const lead = await tileFor([MUSAS_WAIT], { participantId: 'p-amaka', isLead: true });
+    expect(lead.sub).toBe('Work is held up by the grinding machine, which waits on the supplier.');
+    const admin = await tileFor([MUSAS_WAIT], { participantId: null, isLead: false });
+    expect(admin.sub).toBe('Work is held up by the grinding machine, which waits on the supplier.');
+  });
+});

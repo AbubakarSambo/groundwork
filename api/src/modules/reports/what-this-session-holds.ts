@@ -134,6 +134,14 @@ export interface WhoReadsTheMovement {
    * only how many worries there are, never a colleague's words.
    */
   colleaguesWordsWalled?: boolean;
+  /**
+   * WHETHER THE BLOCKERS TILE COUNTS AND NAMES ONLY THIS READER'S OWN WAITS (run-25, loans). Sunday, a borrower where
+   * people do not see each other, read "Work is held up by the grinding machine, which waits on the supplier.": Musa's
+   * wait, not his. The header above the tiles already said only his own (theGlanceAsThisReaderMayReadIt); the tile
+   * read every wait on the check-in. Set where the header is narrowed: a participant where people do not see each
+   * other, and anybody on an evaluation check-in who does not run it.
+   */
+  ownWaitsOnly?: boolean;
 }
 
 /**
@@ -241,7 +249,9 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     .filter((w): w is { who: string | null; line: string } => !!w.line && !/["“”]/.test(w.line) && quotesBuiltAtTheRead(w.line, quotable) === w.line)
     .map((w) => `${whoSaid(w.who)} said, "${/[.!?]$/.test(w.line) ? w.line : `${w.line}.`}"`)[0] ?? null;
   /* A wait on oneself, by id or as "themselves", is not a wait (request 111 e). */
-  const real = deps.filter((d) => !aWaitOnOneself(d));
+  const real = deps.filter((d) => !aWaitOnOneself(d))
+    /* What they wait on, or what waits on them, and nobody else's (ownWaitsOnly). */
+    .filter((d) => !reader.ownWaitsOnly || (!!reader.participantId && (d.fromParticipantId === reader.participantId || d.onParticipantId === reader.participantId)));
   const blocked = real.filter((d) => d.status === 'BLOCKING').length;
   const waiting = real.filter((d) => d.status === 'WAITING').length;
   /* The hard one first, because that is the one a lead acts on. */

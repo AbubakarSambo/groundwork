@@ -594,7 +594,9 @@ export class BoardService {
       viewerParticipantId: me?.id ?? null,
       participants: ground.participants as any,
     }) || (adminHere && !runsItForAPattern(ground as any, requestingUserId) && isEvaluationCheckIn((ground as any).scenario));
-    const theMovementsReader = { participantId: me?.id ?? null, isLead: isInitiator, colleaguesWordsWalled };
+    /* And the Blockers tile names only the reader's own waits wherever the header above it does (see ownWaitsOnly). */
+    const ownWaitsOnly = whoMaySee.peersHidden || (isEvaluationCheckIn(ground.scenario) && !isInitiator && !runsItForAPattern(ground as any, requestingUserId));
+    const theMovementsReader = { participantId: me?.id ?? null, isLead: isInitiator, colleaguesWordsWalled, ownWaitsOnly };
     /*
      * WHETHER THIS READER IS A PARTICIPANT WHOSE BOARD IS THEIR OWN (request 105; the prototype's B5): somebody
      * who checks in and does not run the check-in. Not the lead, the admin who set it up, or an admin of the
