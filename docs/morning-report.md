@@ -280,7 +280,9 @@ Not checked by the run: the admin's view, because the run keeps only the lead's 
 
 A three-scenario check showed sales' "blocker checked" 16 to 10 and "commitments recorded" 32 to 29. Neither change touches the conversation or what writes commitments, and sales' commitments per session (2, 8, 19 against 6, 10, 16) move as the model varies. The full run below will show it.
 
-Now running: run-26, all 24 scenarios on `71a94bda`, to measure everything since run-25.
+**Needs Hafsah (safety check):** on 4 October the safety check refused my morning-report entry for run-26, because it named a read-only command the check watches for. As the rules say, it was not reworded. Run-26's results and the reading of it are held for Hafsah in this chat. The run itself is in `api/journey/all-24/run-26` (not committed).
+
+Now running: fixes from run-26 (the loans privacy rule, a record given to the wrong person, the lead's words on a borrower's Blockers tile), and differences lost when a report is asked for a second time.
 
 Now running: "proof asked for": whether a change caused the drop or the model varies, with repeated runs. If it does not come back, it goes to Hafsah. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
