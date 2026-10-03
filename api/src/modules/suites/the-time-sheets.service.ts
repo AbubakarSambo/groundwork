@@ -11,6 +11,10 @@ import { ARequestToldOnWhatsApp } from './a-request-told-on-whatsapp.service';
 import { anHoursRequest, whereItIsOnTheBoard, whereYourRequestIs, type WhereItStands } from './a-request-in-words';
 import { firstNamesOf, readWorkflow, whoInWords, type AWorkflow } from './the-approval-steps';
 import { saidAsADay } from './who-is-away';
+import { readDuties } from './who-holds-each-duty';
+import { anyTimeRule, isAskedForHours, isBillable, lagosMonday, readTimeRules, stillNeedsHours, whereYouStand, type TimeRules } from './the-time-sheet-rules';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const XLSX = require('xlsx') as typeof import('xlsx');
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const TIME_REFUSED = {
@@ -24,6 +28,9 @@ export const TIME_REFUSED = {
   notAClient: 'That is not one of the clients or projects on the list.',
   badHours: 'Give a day and between a quarter of an hour and 24 hours for it.',
   badAgreement: 'Each agreement needs a client on the list, the work, the hours, and whether they are for the whole job or each month.',
+  onlyBilling: 'Only an admin, or whoever looks after finance, can take the billable hours away as a file.',
+  badFormat: 'Ask for the file as csv or xlsx.',
+  badRange: 'Give the first and last day as dates, such as 2026-09-01, with the first day not after the last.',
 };
 
 export interface Reader { userId: string; organizationId: string }
@@ -371,26 +378,123 @@ export class TimeSheetsService {
       const where = whereYourRequestIs(`Your hours for the week of ${saidAsADay(w)}`, await this.whereItStands(state, now, false, reader.userId), true);
       weeks.push({ weekOf: w, minutes, total, approved: state.approved, where });
     }
-    return { weeks };
+    /* Where they stand against the time sheet rules (build step 11), for this person only. Null with no rules. */
+    return { weeks, standing: (await this.standing(reader, today, role)).said };
+  }
+
+  /**
+   * WHERE THE PERSON STANDS THIS WEEK against the time sheet rules (decision 85, build step 11), for
+   * that person only: "You have recorded 31 hours this week. You still need 9 hours by Friday at
+   * 17:00." Null when no rule is set, or the rules do not ask this person for a time sheet. Read by
+   * `mine`, Today and Ask Groundwork. It says the hours they gave and what is asked, never how much
+   * they work (decision 10).
+   */
+  async standing(reader: Reader, today = new Date(), knownRole?: string | null): Promise<{ said: string | null; stillNeeds: boolean }> {
+    await this.suiteAnswers(reader.organizationId);
+    const rules = await readTimeRules(this.prisma, reader.organizationId);
+    if (!anyTimeRule(rules)) return { said: null, stillNeeds: false };
+    const role = knownRole !== undefined ? knownRole : await this.roleOf(reader);
+    const me = await theirRosterEntry(this.prisma, reader.organizationId, reader.userId, { department: true }).catch(() => null);
+    if (!isAskedForHours(rules, { userId: reader.userId, team: (me?.department as string | null) ?? null, role })) return { said: null, stillNeeds: false };
+    const monday = atMidnight(lagosMonday(today));
+    const entries = await this.prisma.timeEntry.findMany({
+      where: { organizationId: reader.organizationId, userId: reader.userId, onDay: { gte: monday, lt: new Date(monday.getTime() + 7 * DAY) } },
+      select: { minutes: true },
+    });
+    const minutes = entries.reduce((n, e) => n + e.minutes, 0);
+    return { said: whereYouStand(rules, minutes, today), stillNeeds: stillNeedsHours(rules, minutes) };
+  }
+
+  /**
+   * THE BILLABLE HOURS, AS A FILE FOR BILLING (decision 85, build step 11): every approved hour that is
+   * billable, between two days (by default the last eight weeks up to today), one line for each person,
+   * client or project and day, as CSV or Excel (the `xlsx` library the product already has). For an
+   * admin, who already reads everybody's hours, and for whoever looks after finance. Only approved
+   * weeks; billable as the person said of an entry, else as the rules say of its client, else every
+   * hour. Each week in the file is recorded as exported. Never how much anybody works (decision 10).
+   */
+  async billingExport(reader: Reader, format: unknown, range: { from?: string | null; to?: string | null } = {}, today = new Date()): Promise<{ fileName: string; contentType: string; body: Buffer }> {
+    const answers = await this.suiteAnswers(reader.organizationId);
+    if (format !== 'csv' && format !== 'xlsx') throw new BadRequestException(TIME_REFUSED.badFormat);
+    const role = await this.roleOf(reader);
+    const duties = await readDuties(this.prisma, reader.organizationId).catch(() => ({} as { finance?: string | null }));
+    if (role !== 'ADMIN' && !(role && role !== 'GUEST' && duties.finance === reader.userId)) throw new ForbiddenException(TIME_REFUSED.onlyBilling);
+    const isDay = (x: unknown): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && !Number.isNaN(atMidnight(x).getTime());
+    if ((range.from && !isDay(range.from)) || (range.to && !isDay(range.to))) throw new BadRequestException(TIME_REFUSED.badRange);
+    const from = range.from ? atMidnight(range.from) : new Date(mondayOf(today).getTime() - WEEKS_BACK * 7 * DAY);
+    const to = range.to ? atMidnight(range.to) : atMidnight(dayOf(today));
+    if (from.getTime() > to.getTime()) throw new BadRequestException(TIME_REFUSED.badRange);
+    const rules = await readTimeRules(this.prisma, reader.organizationId);
+
+    const entries = (await this.prisma.timeEntry.findMany({
+      where: { organizationId: reader.organizationId, onDay: { gte: mondayOf(from), lt: new Date(to.getTime() + DAY) } },
+      select: { userId: true, client: true, onDay: true, minutes: true, billable: true },
+    })) as (Entry & { billable?: boolean | null })[];
+    const weeksRows = (await this.prisma.timeWeek.findMany({
+      where: { organizationId: reader.organizationId, weekOf: { gte: mondayOf(from) } },
+    })) as (WeekRow & { approvedAt?: Date | null })[];
+    const totals = new Map<string, number>();
+    for (const e of entries) totals.set(`${dayOf(mondayOf(e.onDay))}|${e.userId}`, (totals.get(`${dayOf(mondayOf(e.onDay))}|${e.userId}`) ?? 0) + e.minutes);
+    const approvedRow = new Map<string, WeekRow & { approvedAt?: Date | null }>();
+    for (const [k, total] of totals) {
+      const [w, userId] = k.split('|');
+      const row = [...weeksRows].reverse().find((r) => r.userId === userId && dayOf(new Date(r.weekOf)) === w);
+      if (weekStateOf(row, total).approved && row) approvedRow.set(k, row);
+    }
+    const inFile = entries
+      .filter((e) => e.onDay.getTime() >= from.getTime() && e.onDay.getTime() <= to.getTime())
+      .filter((e) => approvedRow.has(`${dayOf(mondayOf(e.onDay))}|${e.userId}`))
+      .filter((e) => isBillable(rules, e.client, e.billable));
+    const names = await this.names([...inFile.map((e) => e.userId), ...[...approvedRow.values()].flatMap((r) => [...(r.approvedByIds ?? []), r.approvedById ?? ''].filter(Boolean))]);
+    /* One line for each person, client or project and day. */
+    const lines = new Map<string, { name: string; client: string; day: Day; minutes: number; weekOf: Day; userId: string }>();
+    for (const e of inFile) {
+      const k = `${e.userId}|${e.client}|${dayOf(e.onDay)}`;
+      const l = lines.get(k);
+      if (l) l.minutes += e.minutes;
+      else lines.set(k, { name: names.get(e.userId) ?? '', client: e.client, day: dayOf(e.onDay), minutes: e.minutes, weekOf: dayOf(mondayOf(e.onDay)), userId: e.userId });
+    }
+    const order = (c: string) => { const i = answers.clients.indexOf(c); return i < 0 ? answers.clients.length : i; };
+    const sorted = [...lines.values()].sort((a, b) => order(a.client) - order(b.client) || a.client.localeCompare(b.client) || a.day.localeCompare(b.day) || a.name.localeCompare(b.name));
+    const header = ['Client or project', 'Person', 'Day', 'Hours', 'Week of', 'Approved by', 'Approved on'];
+    const rows: (string | number)[][] = sorted.map((l) => {
+      const r = approvedRow.get(`${l.weekOf}|${l.userId}`)!;
+      const by = (r.approvedByIds?.length ? r.approvedByIds : [r.approvedById ?? '']).map((id) => names.get(id) ?? '').filter(Boolean).join(', ');
+      return [l.client, l.name, l.day, Math.round((l.minutes / 60) * 100) / 100, l.weekOf, by, r.approvedAt ? dayOf(new Date(r.approvedAt)) : ''];
+    });
+    for (const k of new Set(sorted.map((l) => `${l.userId}|${l.weekOf}`))) {
+      await recordIt(this.prisma, { organizationId: reader.organizationId, suite: 'time', ref: k, kind: 'exported', byUserId: reader.userId, basis: { row: 'time_entries', format } });
+    }
+    const all: (string | number)[][] = [header, ...rows];
+    const stamp = `${dayOf(from)}-to-${dayOf(to)}`;
+    if (format === 'csv') {
+      const cell = (x: unknown) => { const t = String(x ?? ''); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+      return { fileName: `billable-hours-${stamp}.csv`, contentType: 'text/csv; charset=utf-8', body: Buffer.from(`${all.map((row) => row.map(cell).join(',')).join('\n')}\n`, 'utf8') };
+    }
+    const sheet = XLSX.utils.aoa_to_sheet(all);
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, sheet, 'Billable hours');
+    return { fileName: `billable-hours-${stamp}.xlsx`, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', body: XLSX.write(book, { type: 'buffer', bookType: 'xlsx' }) as Buffer };
   }
 
   /**
    * For the engine's say-back (week 21): the clients and projects on the admin's list and the first
    * name of the person who would approve these hours (null when it is an admin). Reads no hours.
    */
-  async forChat(organizationId: string, userId: string): Promise<{ clients: string[]; approverFirstName: string | null }> {
+  async forChat(organizationId: string, userId: string): Promise<{ clients: string[]; approverFirstName: string | null; rules: TimeRules }> {
     const answers = await this.suiteAnswers(organizationId);
     const role = await this.roleOf({ userId, organizationId });
     if (!role || role === 'GUEST') throw new ForbiddenException(TIME_REFUSED.notInIt);
     const who = await whoApprovesFor(this.prisma, { organizationId, personUserId: userId, suite: 'time' });
-    return { clients: answers.clients, approverFirstName: who.kind === 'admin' ? null : who.firstName };
+    /* The time sheet rules (build step 11), for billable or not in the say-back. Empty with none set. */
+    return { clients: answers.clients, approverFirstName: who.kind === 'admin' ? null : who.firstName, rules: await readTimeRules(this.prisma, organizationId) };
   }
 
   /**
    * Hours somebody gave, as the engine will record them once the person has confirmed them
    * (docs/requests-to-engine.md, request 22). There is no route: "There is no grid to fill in."
    */
-  async record(organizationId: string, userId: string, entries: { client: string; onDay: Day; hours: number }[], said: { proposalId?: string | null } = {}) {
+  async record(organizationId: string, userId: string, entries: { client: string; onDay: Day; hours: number; billable?: boolean | null }[], said: { proposalId?: string | null } = {}) {
     const answers = await this.suiteAnswers(organizationId);
     const role = await this.roleOf({ userId, organizationId });
     if (!role || role === 'GUEST') throw new ForbiddenException(TIME_REFUSED.notInIt);
@@ -399,7 +503,8 @@ export class TimeSheetsService {
       if (!client) throw new BadRequestException(TIME_REFUSED.notAClient);
       const minutes = Math.round((e.hours ?? 0) * 60);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(e.onDay ?? '') || !(minutes >= 15 && minutes <= 24 * 60)) throw new BadRequestException(TIME_REFUSED.badHours);
-      return { organizationId, userId, client, onDay: atMidnight(e.onDay), minutes };
+      /* Billable or not only when the person said so of this entry (build step 11); otherwise it follows the rules. */
+      return { organizationId, userId, client, onDay: atMidnight(e.onDay), minutes, ...(typeof e.billable === 'boolean' ? { billable: e.billable } : {}) };
     });
     if (!rows.length) throw new BadRequestException(TIME_REFUSED.badHours);
     await this.prisma.timeEntry.createMany({ data: rows });

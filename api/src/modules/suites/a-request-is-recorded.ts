@@ -136,7 +136,7 @@ export function theRecordInWords(records: ARecord[], names: Map<string, string>,
         break;
       }
       case 'exported':
-        out.push(`${capital(by)} put ${it} in a file of requests to pay on ${on}.`);
+        out.push(suite === 'time' ? `${capital(by)} put ${it} in a file for billing on ${on}.` : `${capital(by)} put ${it} in a file of requests to pay on ${on}.`);
         break;
       case 'paid': {
         const paidOn = (r.basis as any)?.paidOn as string | undefined;

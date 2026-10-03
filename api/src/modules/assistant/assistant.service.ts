@@ -34,7 +34,8 @@ import { onWhatsApp, keptInTheApp, mayBeRead, notFromAKeptCheckIn, notAKeptCheck
 import { aDecisionIn, onlyTheDecision, aDecisionSaidBack, aDecisionDone, aDecisionNotMade, whichDecision, NOTHING_TO_DECIDE, HOURS_ARE_NOT_DECLINED, type AWaitingRequest } from '../suites/a-request-in-words';
 import { whatWaitsForYouToDecide } from '../suites/what-waits-for-you-to-decide';
 import { LEAVE_ANSWER_KIND, LEAVE_QUESTION_KIND, LONGEST, NO_QUESTION_WAITING, QUESTION_REFUSED, aDeclineWithAReasonSaidBack, aReasonIn, anAnswerNotSent, anAnswerSaidBack, anAnswerSent, noQuestionWaiting, type AQuestionWaiting, type QuestionSuite } from '../suites/a-question-about-a-request';
-import { HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
+import { HOURS_CAN_BE_TOLD_HERE, HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, asksWhereMyHoursStand, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
+import { billableSaidBack, billableSaidIn, type TimeRules } from '../suites/the-time-sheet-rules';
 import { SPEND_MISSING_KIND, SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
 import { theCategoryCalled, theCategoryIn, whichCategory, whichCategoryAgain, type SpendRules } from '../suites/the-spending-rules';
 import { NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
@@ -343,6 +344,15 @@ export class AssistantService {
     if (who && userId && soundsLikeSpending(message)) {
       const proposed = await this.proposeSpending(organizationId, who, userId, message);
       if (proposed) return proposed;
+    }
+    /*
+     * WHERE YOUR HOURS STAND (decision 85, build step 11): "how many hours have I logged this week?"
+     * answered from the person's own hours against the time sheet rules, for them only. With no rules
+     * set, or rules that do not ask this person, it falls through to what answered it before.
+     */
+    if (who && userId && asksWhereMyHoursStand(message) && this.timeSheets) {
+      const standing = await Promise.resolve(this.timeSheets.standing?.({ userId, organizationId })).catch(() => null);
+      if (standing?.said) return rules('log_hours', text(`${standing.said} ${HOURS_CAN_BE_TOLD_HERE}`));
     }
 
 
@@ -2884,14 +2894,17 @@ export class AssistantService {
    */
   private async proposeHours(organizationId: string, who: string, userId: string, message: string): Promise<Reply | null> {
     if (!this.timeSheets) return rules('log_hours', text(HOURS_SUITE_OFF));
-    let facts: { clients: string[]; approverFirstName: string | null };
+    let facts: { clients: string[]; approverFirstName: string | null; rules?: TimeRules };
     try { facts = await this.timeSheets.forChat(organizationId, userId); } catch { return rules('log_hours', text(HOURS_SUITE_OFF)); }
     const read = readHours(message, facts.clients);
     if (read.kind === 'none') return null;
     if (read.kind === 'ask') return rules('log_hours', text(read.say));
-    const say = hoursSaidBack(read.said, facts.approverFirstName);
+    /* Billable or not (build step 11): read from the words only when the rules say what is billable; said back before the yes. */
+    const billable = facts.rules?.billable ? billableSaidIn(message) : null;
+    const said: HoursSaid = { ...read.said, ...(billable !== null ? { billable } : {}) };
+    const say = hoursSaidBack(said, facts.approverFirstName, facts.rules ? billableSaidBack(facts.rules, said.entries, billable) : []);
     const row = await this.prisma.assistantProposal.create({
-      data: { organizationId, personExternalId: who, kind: 'hours_entry', summary: say, payload: { ...read.said } as never },
+      data: { organizationId, personExternalId: who, kind: 'hours_entry', summary: say, payload: { ...said } as never },
       select: { id: true },
     });
     return { lane: 'log_hours', composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
@@ -2912,7 +2925,7 @@ export class AssistantService {
     try {
       if (!this.timeSheets) throw new Error(HOURS_SUITE_OFF);
       const facts = await this.timeSheets.forChat(organizationId, person.linkedUserId);
-      await this.timeSheets.record(organizationId, person.linkedUserId, said.entries.map((e) => ({ client: e.client, onDay: said.onDay, hours: e.hours })), { proposalId: parked.id });
+      await this.timeSheets.record(organizationId, person.linkedUserId, said.entries.map((e) => ({ client: e.client, onDay: said.onDay, hours: e.hours, ...(typeof said.billable === 'boolean' ? { billable: said.billable } : {}) })), { proposalId: parked.id });
       reply = hoursSent(said, facts.approverFirstName);
     } catch (err: any) {
       reply = typeof err?.message === 'string' && err.message && err.message !== HOURS_SUITE_OFF ? `I could not send it. ${err.message}` : HOURS_SUITE_OFF;

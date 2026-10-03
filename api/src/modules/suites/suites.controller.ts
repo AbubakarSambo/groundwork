@@ -95,6 +95,14 @@ class SpendRulesDto {
   @IsOptional() @IsArray() thresholds?: Record<string, unknown>[] | null;
 }
 
+class TimeRulesDto {
+  @IsOptional() @IsObject() submitters?: Record<string, unknown> | null;
+  @IsOptional() @IsString() @MaxLength(10) every?: string | null;
+  @IsOptional() @IsNumber() hoursAWeek?: number | null;
+  @IsOptional() @IsObject() cutOff?: Record<string, unknown> | null;
+  @IsOptional() @IsObject() billable?: Record<string, unknown> | null;
+}
+
 class FinanceCodeDto {
   @IsString() @MaxLength(80) code!: string;
 }
@@ -222,6 +230,28 @@ export class SuitesController {
   @ApiOperation({ summary: 'Who did what on one person’s week of hours, in plain sentences, for the people who may already read it' })
   timeHistory(@Param('weekOf') weekOf: string, @Param('personId') personId: string, @CurrentUser() user: CurrentUserData) {
     return this.time.history({ userId: user.id, organizationId: user.organizationId }, personId, weekOf);
+  }
+
+  @Get('time/rules')
+  @ApiOperation({ summary: 'The time sheet rules: who keeps a time sheet, how often, the hours asked a week, the cut-off in Lagos time, and what is billable. For an admin only.' })
+  timeRules(@CurrentUser() user: CurrentUserData) {
+    return this.suites.timeRules({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Put('time/rules')
+  @ApiOperation({ summary: 'An admin sets the time sheet rules. A part given as null is cleared; one left out is kept.' })
+  setTimeRules(@CurrentUser() user: CurrentUserData, @Body() dto: TimeRulesDto) {
+    return this.suites.setTimeRules({ userId: user.id, organizationId: user.organizationId }, dto);
+  }
+
+  @Get('time/billing/export')
+  @ApiOperation({ summary: 'Approved billable hours as a CSV or Excel file (format=csv or format=xlsx, from and to as YYYY-MM-DD). For an admin, or whoever looks after finance. For billing only.' })
+  async timeBillingExport(@CurrentUser() user: CurrentUserData, @Query('format') format: string, @Query('from') from: string, @Query('to') to: string, @Res() res: Response) {
+    const file = await this.time.billingExport({ userId: user.id, organizationId: user.organizationId }, format || 'csv', { from: from || null, to: to || null });
+    res.status(HttpStatus.OK)
+      .setHeader('Content-Type', file.contentType)
+      .setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`)
+      .send(file.body);
   }
 
   @Put('time/agreements')

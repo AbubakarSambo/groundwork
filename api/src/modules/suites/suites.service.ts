@@ -7,6 +7,7 @@ import { theStepsFor, type Step } from './who-may-decide';
 import { saidAsADate } from './a-request-is-recorded';
 import { LEAVE_RULES_REFUSED, LEAVE_RULES_ROW, changeLeaveRules, leaveRulesFrom, theLeaveRulesSaid, type LeaveRules } from './the-leave-rules';
 import { SPEND_RULES_REFUSED, SPEND_RULES_ROW, changeSpendRules, spendRulesFrom, theSpendRulesSaid, type SpendRules } from './the-spending-rules';
+import { TIME_RULES_REFUSED, TIME_RULES_ROW, changeTimeRules, timeRulesFrom, theTimeRulesSaid, type TimeRules } from './the-time-sheet-rules';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const REFUSED = {
@@ -94,6 +95,13 @@ export interface TheLeaveRules {
 export interface TheSpendRules {
   rules: SpendRules;
   /** The rules said back in full sentences. */
+  said: string[];
+}
+
+/** The time sheet rules (the-time-sheet-rules.ts), as the admin who sets them reads them. */
+export interface TheTimeRules {
+  rules: TimeRules;
+  /** The rules said back in full sentences, with the approval steps the hours go through. */
   said: string[];
 }
 
@@ -338,6 +346,48 @@ export class SuitesService {
     return this.spendRules(reader);
   }
 
+  /** The time sheet rules, for the admin who sets them. Nobody else reads this. */
+  async timeRules(reader: Reader): Promise<TheTimeRules> {
+    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(TIME_RULES_REFUSED.onlyAnAdmin);
+    const rows = await this.rows(reader.organizationId);
+    const rules = timeRulesFrom(rows.get(TIME_RULES_ROW)?.answers);
+    const nameOf = new Map((await this.people(reader.organizationId)).map((p) => [p.id, p.name]));
+    /* Who approves is the approval steps, through the one resolver (who-may-decide.ts); said, never set, here. */
+    const time = (rows.get('time')?.answers ?? {}) as Record<string, unknown>;
+    const workflow = workflowsFrom(rows.get(WORKFLOWS_ROW)?.answers).time;
+    const approval = `${aWorkflowSaid('time', theStepsFor('time', { ...time, workflow }), null, workflow?.escalateAfter)[0]} An admin changes who approves under the approval steps.`;
+    return { rules, said: theTimeRulesSaid(rules, approval, (id) => nameOf.get(id) ?? null) };
+  }
+
+  /**
+   * An admin sets the time sheet rules: who keeps a time sheet, how often, the hours asked a week, the
+   * cut-off in Lagos time, and billable or not for each client or project. A part given as null is
+   * cleared; one left out is kept. Who approves stays with the approval steps.
+   */
+  async setTimeRules(reader: Reader, input: unknown): Promise<TheTimeRules> {
+    if ((await this.roleOf(reader)) !== 'ADMIN') throw new ForbiddenException(TIME_RULES_REFUSED.onlyAnAdmin);
+    const org = reader.organizationId;
+    const where = { organizationId_suite: { organizationId: org, suite: TIME_RULES_ROW } };
+    const row = await this.prisma.organizationSuite.findUnique({ where, select: { answers: true } });
+    const time = await this.prisma.organizationSuite.findUnique({ where: { organizationId_suite: { organizationId: org, suite: 'time' } }, select: { answers: true } });
+    const listed = (time?.answers as Record<string, unknown> | null)?.clients;
+    const clients = Array.isArray(listed) ? listed.filter((c): c is string => typeof c === 'string') : [];
+    const changed = changeTimeRules(timeRulesFrom(row?.answers), input, {
+      people: new Set((await this.people(org)).map((p) => p.id)),
+      teams: new Set(await this.teams(org)),
+      clients,
+    });
+    if ('refused' in changed) throw new BadRequestException(changed.refused);
+    const answers = changed.rules as TimeRules as never;
+    await this.prisma.organizationSuite.upsert({
+      where,
+      create: { organizationId: org, suite: TIME_RULES_ROW, isOn: false, answers, changedById: reader.userId },
+      update: { answers, changedById: reader.userId },
+    });
+    await this.keepTheChange(reader, TIME_RULES_ROW, row ? { isOn: false, answers: row.answers } : null, { isOn: false, answers });
+    return this.timeRules(reader);
+  }
+
   /**
    * Each change of the suites' rules, newest first, for an admin only (decision 85, build step 5):
    * who changed it, when, and from what to what, in full sentences. `OrganizationSuite` keeps only the
@@ -364,6 +414,7 @@ export class SuitesService {
           : r.suite === WORKFLOWS_ROW ? `${who} changed the approval steps on ${on}.`
           : r.suite === LEAVE_RULES_ROW ? `${who} changed the leave rules on ${on}.`
           : r.suite === SPEND_RULES_ROW ? `${who} changed the spending rules on ${on}.`
+          : r.suite === TIME_RULES_ROW ? `${who} changed the time sheet rules on ${on}.`
           : !r.before?.isOn && r.after?.isOn ? `${who} switched on ${name} on ${on}.`
           : r.before?.isOn && !r.after?.isOn ? `${who} switched off ${name} on ${on}.`
           : `${who} changed the answers for ${name} on ${on}.`;
@@ -415,6 +466,12 @@ export class SuitesService {
       for (const l of from) if (!to.includes(l)) out.push(`This was taken away. ${l}`);
     } else if (suite === SPEND_RULES_ROW) {
       const said = (x: unknown) => theSpendRulesSaid(spendRulesFrom(x), null).filter((l) => !/^There are no categories|^Groundwork keeps only|^A request over more than one/.test(l));
+      const from = said(before);
+      const to = said(after);
+      for (const l of to) if (!from.includes(l)) out.push(`This was added. ${l}`);
+      for (const l of from) if (!to.includes(l)) out.push(`This was taken away. ${l}`);
+    } else if (suite === TIME_RULES_ROW) {
+      const said = (x: unknown) => theTimeRulesSaid(timeRulesFrom(x), null, (id) => nameOf.get(id) ?? null).filter((l) => !/^Hours are for billing only/.test(l));
       const from = said(before);
       const to = said(after);
       for (const l of to) if (!from.includes(l)) out.push(`This was added. ${l}`);

@@ -2740,6 +2740,10 @@ model TimeEntry {
   client         String   @db.VarChar(120)
   onDay          DateTime @map("on_day") @db.Date
   minutes        Int
+  /// Billable or not, as the person said of this one entry ("3 hours on Internal, not billable").
+  /// Null: it follows the time sheet rules for its client or project (the-time-sheet-rules.ts), and
+  /// with no rules set every hour is billable. For billing only (decision 10).
+  billable       Boolean?
   createdAt      DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

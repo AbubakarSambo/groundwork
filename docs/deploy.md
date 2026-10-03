@@ -129,6 +129,7 @@ Every migration, in order, in one sentence each:
 | 77 | `20261003200000_spending_rules_categories_and_evidence` | Decision 85, build step 9. Adds two columns to requests to spend: the category it is for, when an admin has named categories, and which evidence (a receipt, a quote) the spending rules asked for. Only that it is needed; no file. Both empty on every request already kept. | Untouched |
 | 78 | `20261003210000_a_question_about_spending_and_a_reason_for_a_decline` | Decision 85, build step 9. Adds an empty column `decline_reason` on requests to spend, for the reason given with a decline, told to the person. A question about a request to spend goes in the existing `suite_questions` table. | Untouched |
 | 79 | `20261003220000_finance_checks_codes_and_pays_a_request_to_spend` | Decision 85, build step 10. Adds six empty columns to requests to spend for finance's part after the last approval: who checked it and when, the budget line it is paid from, the receipt or quote finance has had (only that; no file), the day it was paid and who marked it. Who did each step is also kept in the existing `suite_events`. | Untouched |
+| 80 | `20261003230000_time_sheet_rules_billable_entries` | Decision 85, build step 11. Adds one empty column `billable` to hours (`time_entries`): billable or not, only when the person said so of that entry. Empty means it follows the time sheet rules for its client or project, and with no rules every hour is billable. The rules themselves are kept in the existing `organization_suites` table (a `timeRules` row), so they need no table. | Untouched |
 
 The prices and limits migration 71 writes, all editable afterwards at Admin, System, Pricing (`PATCH /admin/pricing/:plan` with `whatsappAddOnCents` and `whatsappMonthlyLimit`):
 
@@ -147,7 +148,7 @@ Things worth knowing about how they run:
 - Columns added with a fixed default (`false`, an empty list) do not rewrite the table on Postgres 11 or later, so none of these should lock a table for long.
 - The new unique indexes on existing tables (`organizations.join_domain`, `organizations.invite_link_code`) are on new columns that start empty, so they cannot fail on existing data.
 - Two pairs of migrations share a timestamp (`20260927180000_*` and `20260927190000_*`). Prisma runs them in full name order, which is the order above.
-- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261003220000_finance_checks_codes_and_pays_a_request_to_spend`.
+- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261003230000_time_sheet_rules_billable_entries`.
 
 ## 3. Settings and environment variables
 

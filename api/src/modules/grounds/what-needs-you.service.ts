@@ -122,6 +122,27 @@ export class WhatNeedsYouService {
   }
 
   /**
+   * YOUR OWN HOURS THIS WEEK (decision 85, build step 11), for the person only, from the time sheets
+   * suite's own read (`standing`): only when the time sheet rules ask this person for a number of hours
+   * a week and some are still to come. "You have recorded 31 hours this week. You still need 9 hours by
+   * Friday at 17:00." With no rules set, or a suite that is off, nothing here, never an error.
+   */
+  private async hoursFor(userId: string, organizationId: string): Promise<Need[]> {
+    if (!this.time?.standing) return [];
+    const s = await Promise.resolve().then(() => this.time!.standing({ userId, organizationId })).catch(() => null);
+    if (!s?.said || !s.stillNeeds) return [];
+    return [{
+      key: 'time-standing',
+      kind: 'look' as const,
+      title: s.said,
+      detail: 'Tell Groundwork your hours in your check-in or in Ask Groundwork. There is no grid to fill in.',
+      action: { label: 'See your hours', to: '/suite/time' },
+      groundId: '',
+      organizationId,
+    }];
+  }
+
+  /**
    * WHAT IS WAITING FOR THIS READER TO APPROVE (week 21): leave, hours and spending, from each
    * board's own read, which says row by row whether this reader is the one who approves it. Every
    * reader's boards are asked, because the rules can name a member to decide (decisions 85 and 86),
@@ -140,7 +161,7 @@ export class WhatNeedsYouService {
   }
 
   async forReader(userId: string, email: string, organizationId: string, role: string): Promise<WhatNeedsYou> {
-    const [list, waiting, me, toApprove, reviews, leaveQuestions, spendQuestions, finance] = await Promise.all([
+    const [list, waiting, me, toApprove, reviews, leaveQuestions, spendQuestions, finance, hours] = await Promise.all([
       this.grounds.list(organizationId, userId, email, role),
       role === 'ADMIN' ? this.grounds.listAwaitingApproval(organizationId, userId) : Promise.resolve([]),
       /**
@@ -156,6 +177,7 @@ export class WhatNeedsYouService {
       this.leaveQuestionsFor(userId, organizationId),
       this.spendQuestionsFor(userId, organizationId),
       this.financeFor(userId, organizationId),
+      this.hoursFor(userId, organizationId),
     ]);
     /*
      * ONLY THIS ORGANISATION'S (U.5 review). The list also carries check-ins in other organisations
@@ -176,7 +198,7 @@ export class WhatNeedsYouService {
     }
     /* On approved leave today (week 23): their own check-in says the round does not wait for them. Dates only. */
     const awayUntil = (await whoIsAwayOn(this.prisma, [userId], organizationId).catch(() => new Map<string, string>())).get(userId) ?? null;
-    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance]);
+    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval, awayUntil }, waiting.map((w) => ({ ...w, organizationId })), new Date(), [...reviews, ...leaveQuestions, ...spendQuestions, ...toApprove, ...finance, ...hours]);
     /* A net: no address stands in for a name in any sentence on Today (week 12c). */
     const called = new Map<string, string>();
     for (const g of here as any[]) {

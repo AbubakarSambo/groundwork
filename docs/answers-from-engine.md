@@ -3065,3 +3065,39 @@ Tests: `api/src/modules/suites/finance-and-a-request-to-spend-as-each-reader-rea
 - Nothing changes in the app's screens. The question about a leave answer is still asked only once.
 
 Tests: `api/src/modules/whatsapp/a-reply-held-for-a-yes-or-no-is-never-lost.spec.ts`, each held on one copy and answered on a fresh copy after the ten minutes. Five of its six tests fail on the old code; "nine minutes on, nothing goes into the check-in yet" passes on both, as it should. No existing test changed.
+
+## The time sheet rules, where you stand, and the billing file (3 October, decision 85, build step 11)
+
+**An admin now sets the time sheet rules: who keeps a time sheet, how often hours are sent, the hours asked of each person a week, a cut-off day and time in Lagos time, and what is billable for each client or project. Who approves stays with the approval steps (`PUT /suites/workflows`, the one resolver). The person reads where they stand on Today, under their hours and in Ask Groundwork. An admin, or whoever looks after finance, takes the approved billable hours away as CSV or Excel. With nothing set, every reader reads exactly what they read before** (this commit).
+
+- **New route `GET /suites/time/rules`**, for an admin only ("Only an admin can set the time sheet rules."). It answers `{ rules, said }`. `said`, with nothing set:
+  - "Everybody in the organisation who is not a guest keeps a time sheet."
+  - "Hours are sent each week."
+  - "No number of hours is asked for each week."
+  - "There is no cut-off."
+  - "Every hour is billable, so the billing file holds every approved hour."
+  - "A week of hours goes to the person’s manager, or else an admin. An admin changes who approves under the approval steps."
+  - "Hours are for billing only. They never appear in anyone’s check-in report, their signals or a review."
+  With rules set, for example: "People in Sales keep a time sheet, and so does Kamau Njenga. Anybody else may still give their hours.", "Each person is asked for 40 hours a week.", "The cut-off is Friday at 17:00, Lagos time, each week." (or "The cut-off is the last day of each month at 12:00, Lagos time."), "Hours on Internal are not billable.", "Hours on every other client or project are billable.", "A person can say that one entry is billable or not billable, and that entry follows what they said."
+- **New route `PUT /suites/time/rules`**, for an admin, with any of `{ submitters: { teams: string[], people: userId[] }, every: 'week' | 'month', hoursAWeek: 1..80, cutOff: { day: 'friday' | 1..28 | 'last', time: 'HH:MM' }, billable: { clients: { [client]: boolean }, otherwise: boolean } }`. A part given as null is cleared; one left out is kept. Refusals in full sentences, for example "Give the hours asked of each person a week as a number from 1 to 80." and "Give the cut-off as a day and a time such as 17:00. ...". Please give Grace a form for these on the time sheets suite, with the `said` lines shown back before she saves.
+- **The rules history** (`GET /suites/rules/history`) gains "Grace changed the time sheet rules on 7 October.", with "This was added. ..." and "This was taken away. ..." lines.
+- **`GET /suites/time/mine`, for the person only:** new `standing: string | null`. Null with no rules, or when the rules do not ask this person. Otherwise, for example: "You have recorded 31 hours this week. You still need 9 hours by Friday at 17:00." After the cut-off: "You have recorded 31 hours this week. You still need 9 hours. The cut-off was Friday at 17:00, so please send them as soon as you can." When done: "You have recorded 40 hours this week. That is the 40 hours a week your organisation asks for." With a monthly time sheet it adds "Please send October's hours by Saturday 31 October at 17:00." With no hours yet: "You have not recorded any hours this week. ..." Please show it above the person's weeks.
+- **Today, for the person only, while hours are still asked this week:** key `time-standing`, kind `look`, title the same sentence ("You have recorded 31 hours this week. You still need 9 hours by Friday at 17:00."), detail "Tell Groundwork your hours in your check-in or in Ask Groundwork. There is no grid to fill in.", action "See your hours" to `/suite/time`. Nobody else's Today ever has it; a lead in the same team reads only their own.
+- **Ask Groundwork, for the person:** "How many hours have I logged this week?" (or "my hours", "my time sheet") answers the same sentence, then "You can tell me your hours here at any time, for example "I spent 3 hours on a client today"." With no rules, the question is answered as before.
+- **The hours say-back, only when the rules say what is billable:** "Shall I log 3 hours on Internal for Wednesday 7 October and send it to Wairimu to approve? The hours on Internal are not billable." and, when the person says "not billable" of an entry, "... The hours on Naivas are not billable." Kept on that entry. With no billable rule the say-back is exactly as before.
+- **New route `GET /suites/time/billing/export?format=csv|xlsx&from=YYYY-MM-DD&to=YYYY-MM-DD`** (both days optional; by default the last eight weeks to today), for an admin or whoever looks after finance ("Only an admin, or whoever looks after finance, can take the billable hours away as a file."). A file `billable-hours-2026-08-10-to-2026-10-07.csv` (or `.xlsx`, sheet "Billable hours") of approved weeks only, billable entries only, one line for each person, client or project and day. Columns: Client or project, Person, Day, Hours, Week of, Approved by, Approved on. Please offer "Download billable hours (CSV)" and "(Excel)" on the time sheets board for Grace, and for finance.
+- **The record of a week** (`GET /suites/time/weeks/:weekOf/people/:personId/history`) gains "Grace put these hours in a file for billing on 7 October."
+- **Unchanged:** the board for every reader, approving, the agreements, and who reads what. Hours never reach a check-in, a report, a signal or a review (decision 10).
+
+**The before and after, with nothing set** (an absent rules row and an empty one, both tested):
+
+| Reader | Before | After, with nothing set |
+| --- | --- | --- |
+| Aisha, her own hours | `{ weeks }` | `{ weeks, standing: null }`, the weeks the same |
+| Aisha, say-back "I spent 3 hours on Internal today, not billable" | "Shall I log 3 hours on Internal for Wednesday 7 October and send it to Wairimu to approve?" | The same, kept with no billable mark |
+| Aisha, "How many hours have I logged this week?" | not answered from the time sheet | The same |
+| Aisha, Today | no line about her hours | The same |
+| Wairimu, the board | Aisha's row, "They are waiting for you." | The same |
+| Grace, the billing file | did not exist | every approved hour, Internal too |
+
+Tests: `api/src/modules/suites/the-time-sheet-rules-as-each-reader-reads-them.spec.ts` (Grace the admin; Aisha in Sales; Kamau in Operations, not asked; Wairimu who approves; Omar in finance; a guest; the CSV and Excel files; Today and Ask Groundwork). No existing test changed.
