@@ -1833,6 +1833,7 @@ export class AssistantService {
       answers: known.answers,
       steps: wf?.steps ?? null, stepsAbove: wf?.stepsAbove ?? null, escalateAfter: wf?.escalateAfter ?? null,
       tellHr: leave?.rules.tellHr ?? null,
+      thresholds: leave?.rules.thresholds ?? null,
       hoursAWeek: time?.rules.hoursAWeek ?? null,
       cutOff: time?.rules.cutOff && typeof time.rules.cutOff.day === 'string' ? { day: time.rules.cutOff.day as Weekday, time: time.rules.cutOff.time } : null,
     });

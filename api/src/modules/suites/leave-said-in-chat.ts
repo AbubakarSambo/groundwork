@@ -2,8 +2,11 @@ import type { PrismaService } from '../prisma/prisma.service';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { workingDays, type Day } from './the-leave-board.service';
 import { whoApprovesFor } from './who-approves';
+import { readWorkflow, whoInWords } from './the-approval-steps';
+import { theStepsFor, whoDecidesNow } from './who-may-decide';
+import { theThresholdCrossed } from './the-spending-rules';
 import { theirRosterEntries, theirRosterEntry } from './a-roster-entry-and-its-sign-in';
-import { hereSince, inASentence, readLeaveRules, theKindOf, theKindSaid, theRulesThatApply } from './the-leave-rules';
+import { hereSince, inASentence, moreThanWorkingDays, readLeaveRules, theKindOf, theKindSaid, theRulesThatApply, type LeaveRules } from './the-leave-rules';
 
 /**
  * LEAVE DATES SAID IN CHAT GO TO THE LEAVE SUITE, NEVER TO THE RECORD (week 20, request 21).
@@ -178,11 +181,33 @@ interface LeaveLike {
 const firstName = (p: { givenName?: string | null; displayName?: string | null } | null | undefined) =>
   (p?.givenName?.trim() || p?.displayName?.trim().split(/\s+/)[0] || '') || null;
 
-/** Whom the person asks (the one answer in who-approves.ts: their line manager, or an admin) and their team, for the say-back. */
-async function whoApproves(prisma: PrismaService, organizationId: string, userId: string) {
+/**
+ * Whom the person asks (the one answer in who-approves.ts: their line manager, or an admin) and their
+ * team, for the say-back. `days` is the request's working days, so leave by length is read.
+ */
+async function whoApproves(prisma: PrismaService, organizationId: string, userId: string, days?: number) {
   const me = await theirRosterEntry(prisma, organizationId, userId, { department: true, managerExternalId: true });
-  const who = await whoApprovesFor(prisma, { organizationId, personUserId: userId, managerExternalId: me?.managerExternalId ?? null });
-  return { name: who.kind === 'admin' ? null : who.firstName, team: me?.department?.trim() || null };
+  const who = await whoApprovesFor(prisma, { organizationId, personUserId: userId, managerExternalId: me?.managerExternalId ?? null, ...(days != null ? { days } : {}) });
+  return { name: who.kind === 'admin' ? null : who.firstName, team: me?.department?.trim() || null, managerExternalId: me?.managerExternalId ?? null };
+}
+
+/**
+ * LEAVE BY LENGTH (the-leave-rules.ts). When the request is longer than a threshold whose steps are more
+ * than one, the say-back names who approves after the first person, as spending does over a threshold:
+ * "This is more than ten working days, so Wairimu approves it first, and then Joseph, who heads Sales."
+ * Null when no threshold is crossed, or its steps are one.
+ */
+async function longerLeaveSaid(prisma: PrismaService, organizationId: string, userId: string, rules: LeaveRules, days: number, first: string | null, managerExternalId: string | null): Promise<string | null> {
+  const crossed = theThresholdCrossed(rules, days);
+  if (!crossed || crossed.steps.length < 2) return null;
+  const workflow = await readWorkflow(prisma, organizationId, 'leave');
+  const steps = theStepsFor('leave', { workflow, rules }, days);
+  const then: string[] = [];
+  for (let step = 1; step < steps.length; step++) {
+    const later = await whoDecidesNow(prisma, steps, { organizationId, requesterUserId: userId, managerExternalId }, { step });
+    then.push(await whoInWords(prisma, later.who, later.team, userId));
+  }
+  return `This is ${moreThanWorkingDays(crossed.above)}, so ${first ?? 'an admin'} approves it first, and then ${then.join(', and then ')}.`;
 }
 
 /** Who else in the person's team is off on any of those days, by first name. */
@@ -227,9 +252,10 @@ export async function sayBackLeave(
   if (!mine) return { ok: false, say: LEAVE_SUITE_OFF };
 
   const n = workingDays(new Date(`${dates.startsOn}T00:00:00.000Z`), new Date(`${dates.endsOn}T00:00:00.000Z`));
-  const { name, team } = await whoApproves(prisma, reader.organizationId, reader.userId);
+  const { name, team, managerExternalId } = await whoApproves(prisma, reader.organizationId, reader.userId, n);
   const off = await alsoOff(prisma, reader.organizationId, reader.userId, team, dates);
-  const rules = await readLeaveRules(prisma, reader.organizationId).catch(() => ({}));
+  const rules: LeaveRules = await readLeaveRules(prisma, reader.organizationId).catch(() => ({}));
+  const longer = await longerLeaveSaid(prisma, reader.organizationId, reader.userId, rules, n, name, managerExternalId).catch(() => null);
   const kind = theKindSaid(said, rules);
   const daysLeft = kind ? (mine.kinds?.find((k) => k.key === kind.key)?.daysLeft ?? null) : mine.daysLeft;
 
@@ -246,7 +272,7 @@ export async function sayBackLeave(
   const ask = applies.length ? `Shall I still send it to ${name ?? 'an admin'}?` : `Shall I send it to ${name ?? 'an admin'} to approve?`;
   return {
     ok: true,
-    say: `You asked for ${kind ? inASentence(kind) : 'leave'} ${theDaysAsRead(dates)}, which is ${days(n)}. ${middle ? `${middle} ` : ''}${applies.length ? `${applies.join(' ')} ` : ''}${ask}`,
+    say: `You asked for ${kind ? inASentence(kind) : 'leave'} ${theDaysAsRead(dates)}, which is ${days(n)}. ${middle ? `${middle} ` : ''}${applies.length ? `${applies.join(' ')} ` : ''}${longer ? `${longer} ` : ''}${ask}`,
     ...(kind ? { kind: kind.key } : {}),
   };
 }
@@ -271,7 +297,8 @@ export async function sendLeave(
   } catch (err: any) {
     return typeof err?.message === 'string' && err.message ? `I could not send it. ${err.message}` : 'I could not send it.';
   }
-  const { name } = await whoApproves(prisma, reader.organizationId, reader.userId);
+  const n = workingDays(new Date(`${dates.startsOn}T00:00:00.000Z`), new Date(`${dates.endsOn}T00:00:00.000Z`));
+  const { name } = await whoApproves(prisma, reader.organizationId, reader.userId, n);
   const kind = dates.kind ? theKindOf(dates.kind, await readLeaveRules(prisma, reader.organizationId).catch(() => ({}))) : null;
   const what = kind ? `request for ${inASentence(kind)}` : 'leave request';
   return `I have sent your ${what} ${theDaysAsRead(dates)} to ${name ?? 'an admin'}. It is not approved until they decide, and you will see it under your leave.`;

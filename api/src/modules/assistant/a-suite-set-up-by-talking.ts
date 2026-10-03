@@ -2,7 +2,7 @@ import type { Rule, Step } from '../suites/who-may-decide';
 import { CURRENCIES, checkAnswers, suiteOf } from '../suites/the-ten-suites';
 import { changeDuties, type Duties } from '../suites/who-holds-each-duty';
 import { changeWorkflows } from '../suites/the-approval-steps';
-import { changeLeaveRules } from '../suites/the-leave-rules';
+import { changeLeaveRules, moreThanWorkingDays } from '../suites/the-leave-rules';
 import { WEEKDAYS, changeTimeRules, type Weekday } from '../suites/the-time-sheet-rules';
 
 /**
@@ -99,6 +99,13 @@ export interface Plan {
   escalateAfter?: number | null;
   /** Leave: HR sees every request, each approved one, or none. */
   tellHr?: 'every' | 'approved' | null;
+  /**
+   * Leave by length (the-leave-rules.ts): leave longer than `above` working days goes to other people.
+   * With `also`, `add` comes after the steps every leave request takes ("the head of their team also
+   * approves"); without it, `add` is the whole of the steps for longer leave. Kept as a threshold of
+   * the leave rules on the yes.
+   */
+  longer?: { above?: number; add?: Rule[][]; also: boolean } | null;
   /** Spending. */
   currency?: string;
   limit?: number;
@@ -143,6 +150,8 @@ const NUMBER_WORDS: Record<string, number> = {
 };
 const IN_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 const inWords = (n: number) => (n >= 0 && n <= 10 ? IN_WORDS[n] : String(n));
+/** "ten working days", "one working day". */
+const upToWorkingDays = (n: number) => `${inWords(n)} working ${n === 1 ? 'day' : 'days'}`;
 
 /** The first whole number in the words, written in figures or as a word, or null. */
 export function aNumberIn(t: string): number | null {
@@ -378,9 +387,49 @@ function aCutOffIn(t: string): { day: Weekday; time: string } | 'no time' | null
   return { day, time: `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}` };
 }
 
-const LONGER_LEAVE = /\b(?:longer|more)\s+than\s+\w+\s+(?:working\s+)?days?\b|\bover\s+\w+\s+(?:working\s+)?days?\b|\blong\s+leave\b/i;
-const NOT_BY_LENGTH =
-  'I cannot yet set a different approver only for longer leave. I can have somebody approve every leave request after the first person, or nobody. Who should approve it after them, if anybody? You can say no.';
+/** "more than 10 working days", "longer than two weeks' worth of days", "over ten days", "longer leave". */
+const LONGER_LEAVE = /\b(?:longer|more)\s+than\s+[\w-]+\s+(?:working\s+)?days?\b|\bover\s+[\w-]+\s+(?:working\s+)?days?\b|\blong(?:er)?\s+leave\b/i;
+const LENGTH_IN = /\b(?:longer|more)\s+than\s+([\w-]+)\s+(?:working\s+)?days?\b|\bover\s+([\w-]+)\s+(?:working\s+)?days?\b/i;
+const ALSO = /\balso\b|\btoo\b|\bas\s+well\b|\bafter\b|\bthen\b|\bas\s+a\s+second\b/i;
+
+/** Leave by length said in an answer: the working days, if said, and who approves longer leave, if said. */
+interface LongerSaid { above?: number; add?: Rule[][]; also: boolean; rest: string }
+
+/**
+ * Reads "If it's more than 10 working days, the department head also approves" into a length and the
+ * people for longer leave. The part of the words about longer leave is the clause with the length in
+ * it, with the next clause (or else the one before) when the length's own clause names nobody. What is
+ * left (`rest`) is about every leave request. `alsoByDefault` is true when the question was who approves
+ * after the first person, so whoever is named comes after them.
+ */
+function longerLeaveIn(t: string, plan: Plan, known: WhatIsKnown, alsoByDefault: boolean): Read<LongerSaid> | null {
+  if (!LONGER_LEAVE.test(t)) return null;
+  const clauses = t.split(/\s*(?:[,;]|\.\s|\bbut\b|\band\s+(?=if\b|when\b|for\b))\s*/i).filter((x) => x.trim());
+  const at = clauses.findIndex((c) => LONGER_LEAVE.test(c));
+  const names = (c: string) => tokensHaveARule(c, known);
+  let take = [at];
+  if (!names(clauses[at])) {
+    if (at + 1 < clauses.length && names(clauses[at + 1])) take = [at, at + 1];
+    else if (at > 0 && names(clauses[at - 1])) take = [at - 1, at];
+  }
+  const about = take.map((i) => clauses[i]).join(' ');
+  const rest = clauses.filter((_, i) => !take.includes(i)).join(', ');
+  const m = LENGTH_IN.exec(about);
+  /* "more than 10 working days"; or, about longer leave already named, "make it 15 working days for longer leave". */
+  const n = m ? aNumberIn(m[1] ?? m[2] ?? '') : /\bdays?\b/i.test(about) ? aNumberIn(about) : null;
+  const above = n != null && Number.isInteger(n) && n >= 1 && n <= 365 ? n : undefined;
+  const also = alsoByDefault || ALSO.test(about);
+  if (!names(about)) return { ok: { above, also, rest } };
+  const s = stepsFrom(about.replace(LENGTH_IN, ' '), plan, known);
+  if (!('ok' in s)) return s;
+  return { ok: { above, add: s.ok, also, rest } };
+}
+
+/** The steps longer leave takes, from what was said: after every leave request's steps, or in place of them. */
+export function longerSteps(plan: Plan): Rule[][] | null {
+  if (!plan.longer?.above || !plan.longer.add?.length) return null;
+  return plan.longer.also ? [...(plan.steps ?? [['manager', 'admin']]), ...plan.longer.add] : plan.longer.add;
+}
 
 // ---------------------------------------------- the questions ----------------------------------------------
 
@@ -427,7 +476,7 @@ const money = (currency: string | undefined, n: number) => `${currency ? `${curr
 
 /** Every rule the plan uses that needs somebody named. */
 function rulesThatNeedSomebody(plan: Plan): Rule[] {
-  const rs = [...(plan.steps ?? []).flat(), ...(plan.stepsAbove ?? []).flat()];
+  const rs = [...(plan.steps ?? []).flat(), ...(plan.stepsAbove ?? []).flat(), ...(plan.longer?.add ?? []).flat()];
   if (plan.suite === 'leave' && plan.tellHr) rs.push('hr');
   return [...new Set(rs)].filter((r) => r !== 'manager' && r !== 'admin');
 }
@@ -442,8 +491,14 @@ export function nextQuestion(plan: Plan, known: WhatIsKnown): AQuestion | null {
   switch (plan.suite) {
     case 'leave':
       if (plan.days === undefined) return { key: 'days', ask: 'How many days of leave does each person have in a year?' };
-      if (!plan.steps) return { key: 'approver', ask: 'Who approves annual leave?' };
+      if (!plan.steps) return { key: 'approver', ask: plan.longer?.above ? `Who approves leave of up to ${upToWorkingDays(plan.longer.above)}?` : 'Who approves annual leave?' };
       if (!plan.after) return { key: 'after', ask: `Does anybody approve it after ${firstSaid}, for example the head of the person’s team? You can say no.` };
+      if (plan.longer && !plan.longer.above) return { key: 'longerDays', ask: 'How long does leave need to be for that? For example, more than 10 working days.' };
+      if (plan.longer?.above && !plan.longer.add?.length) {
+        return { key: 'longerWho', ask: plan.longer.also
+          ? `Who approves leave of ${moreThanWorkingDays(plan.longer.above)} after ${firstSaid}?`
+          : `Who approves leave of ${moreThanWorkingDays(plan.longer.above)}?` };
+      }
       if (plan.tellHr === undefined) return { key: 'tellHr', ask: 'Does HR need to see all requests?' };
       if (plan.escalateAfter === undefined) return { key: 'escalate', ask: `What happens if ${firstSaid} doesn't respond within two working days?` };
       break;
@@ -553,15 +608,36 @@ export function takeAnswer(plan: Plan, key: string, message: string, known: What
       if (n == null || n < 0 || n > 1_000_000_000) return { again: 'What is the most they may approve? Give an amount, for example 20,000.' };
       return { plan: { ...p, limit: Math.round(n) } };
     }
-    case 'approver':
-      if (p.suite === 'leave' && LONGER_LEAVE.test(t)) return { again: `${NOT_BY_LENGTH.replace(' after the first person', '')}` };
-      return viaSteps(stepsFrom(t, p, known), (steps) => ({ ...p, steps, after: steps.length > 1 ? true : p.after }));
+    case 'approver': {
+      /* Leave by length said here ("leave of more than 10 days goes to the head of their team"): kept, and the rest read as who approves every leave request. */
+      const longer = p.suite === 'leave' ? longerLeaveIn(t, p, known, false) : null;
+      if (longer && !('ok' in longer)) return viaSteps(longer as Read<never>, () => p);
+      const withLonger = longer && 'ok' in longer ? { ...p, longer: { above: longer.ok.above, add: longer.ok.add, also: longer.ok.also } } : p;
+      const words = longer && 'ok' in longer ? longer.ok.rest : t;
+      if (longer && !tokensHaveARule(words, known)) return { plan: withLonger };
+      return viaSteps(stepsFrom(words, withLonger, known), (steps) => ({ ...withLonger, steps, after: steps.length > 1 ? true : withLonger.after }));
+    }
     case 'after': {
+      /* "If it's more than 10 working days, the department head also approves" (decision 85): leave by length, after the first person. */
+      const longer = p.suite === 'leave' && !/\balways\b|\bevery\b/i.test(t) ? longerLeaveIn(t, p, known, true) : null;
+      if (longer && !('ok' in longer)) return viaSteps(longer as Read<never>, () => p);
+      if (longer && 'ok' in longer) {
+        const withLonger: Plan = { ...p, longer: { above: longer.ok.above, add: longer.ok.add, also: true }, after: true };
+        const rest = longer.ok.rest.replace(/^(?:y|yes|yep|yeah|no|nope|only|just)\b[\s,.]*/i, '');
+        if (!tokensHaveARule(rest, known)) return { plan: withLonger };
+        return viaSteps(stepsFrom(rest, withLonger, known), (more) => ({ ...withLonger, steps: [...(p.steps ?? []), ...more] }));
+      }
       if (NO_LIKE.test(t) || /^(?:just|only)\s+(?:them|the\s+manager|that)\b/i.test(t)) return { plan: { ...p, after: true } };
       if (YES_LIKE.test(t) && !tokensHaveARule(t, known)) return { again: 'Who approves it after them? For example, “the head of the person’s team”, “HR”, “finance” or a person’s name.' };
-      if (p.suite === 'leave' && LONGER_LEAVE.test(t) && !/\balways\b|\bevery\b/i.test(t)) return { again: NOT_BY_LENGTH };
       return viaSteps(stepsFrom(t, p, known), (more) => ({ ...p, steps: [...(p.steps ?? []), ...more], after: true }));
     }
+    case 'longerDays': {
+      const n = aNumberIn(t);
+      if (n == null || !Number.isInteger(n) || n < 1 || n > 365) return { again: 'How many working days? Give a whole number, for example 10, and leave longer than that goes to the people you named.' };
+      return { plan: { ...p, longer: { ...(p.longer ?? { also: true }), above: n } } };
+    }
+    case 'longerWho':
+      return viaSteps(stepsFrom(t, p, known), (add) => ({ ...p, longer: { ...(p.longer ?? { also: true }), add } }));
     case 'above':
       return viaSteps(stepsFrom(t, p, known), (stepsAbove) => ({ ...p, stepsAbove }));
     case 'tellHr': {
@@ -647,6 +723,17 @@ export function takeAChange(plan: Plan, message: string, known: WhatIsKnown): Pl
     changed = tryKey('tellHr', t.replace(/^.*?\b(?:hr|human resources)\b\s*(?:only\s+)?(?:needs?\s+to\s+)?(?:sees?|is\s+told\s+of|knows?\s+about)?\s*/i, ''));
     if (changed && /\bonly\b.*\bapproved\b|\bapproved\b/i.test(t)) changed = { ...changed, tellHr: 'approved' };
     else if (changed && /\bnot\b|\bno\b|\bnever\b/i.test(t)) changed = { ...changed, tellHr: null };
+  } else if (plan.suite === 'leave' && plan.longer && /\b(?:no|drop|remove|forget|take\s+away)\b.*\blong(?:er)?\b|\bsame\s+for\s+all\s+leave\b/i.test(t)) {
+    /* "Drop the rule for longer leave": every leave request takes the same steps again. */
+    changed = { ...(jobs ?? plan), longer: null };
+  } else if (plan.suite === 'leave' && LONGER_LEAVE.test(t)) {
+    /* Leave by length said after the said-back: "If it's more than 10 working days, the head of their team also approves." */
+    const r = longerLeaveIn(t, jobs ?? plan, known, false);
+    if (r && 'ok' in r && (r.ok.above || r.ok.add)) {
+      const was = plan.longer ?? null;
+      const longer = { above: r.ok.above ?? was?.above, add: r.ok.add ?? was?.add, also: r.ok.add ? r.ok.also : was?.also ?? true };
+      changed = longer.above && longer.add ? { ...(jobs ?? plan), longer } : null;
+    }
   } else if (plan.suite === 'leave' && /\bdays?\b.*\b(?:a|per|each)\s+year\b|\bdays?\s+of\s+leave\b/i.test(t)) {
     changed = tryKey('days');
   } else if (/\bworking\s+days?\b|\b(?:doesn'?t|does\s+not|not)\s+(?:respond|answer)\b|\bpass(?:ed)?\s+on\b|\bwaits?\b/i.test(t) && plan.suite !== 'reviews') {
@@ -701,14 +788,13 @@ const WHAT: Record<Exclude<SetUpSuite, 'reviews'>, string> = { leave: 'A leave r
 const inTheMiddle = (said: string) => (said.includes(', ') ? `${said},` : said);
 
 /** The steps said in sentences: who it goes to, in turn, and who it goes to when nobody holds a job. */
-function stepsSaid(what: string, steps: Rule[][], d: Duties, known: WhatIsKnown): string[] {
+function stepsSaid(what: string, steps: Rule[][], d: Duties, known: WhatIsKnown, seen = new Set<string>()): string[] {
   const out: string[] = [];
   out.push(`${what} goes to ${steps.length > 1 ? `${inTheMiddle(ruleSaid(steps[0][0], d, known))} first` : ruleSaid(steps[0][0], d, known)}.`);
   for (let i = 1; i < steps.length; i++) {
     out.push(`When ${ruleShort(steps[i - 1][0], d, known)} has approved it, it goes to ${inTheMiddle(ruleSaid(steps[i][0], d, known))} to approve as well.`);
   }
   if (steps.length > 1) out.push(`It is approved only when ${ruleShort(steps[steps.length - 1][0], d, known)} approves it, and a no from anybody on the way ends it.`);
-  const seen = new Set<string>();
   for (const s of steps) {
     if (s.length < 2 || s[0] === 'admin') continue;
     const line = `If ${nobodyFor(s[0])}, it goes to ${inTheMiddle(ruleSaid(s[1], d, known))} instead.`;
@@ -751,10 +837,16 @@ export function theSetUpSaid(plan: Plan, known: WhatIsKnown): string[] {
   const d = dutiesNow(plan, known);
   const out: string[] = [];
   const steps = plan.steps ?? [['manager', 'admin']];
-  const uses = (r: Rule) => [...steps.flat(), ...(plan.stepsAbove ?? []).flat()].includes(r);
+  const longer = plan.suite === 'leave' ? longerSteps(plan) : null;
+  const uses = (r: Rule) => [...steps.flat(), ...(plan.stepsAbove ?? []).flat(), ...(longer ?? []).flat()].includes(r);
   if (plan.suite === 'leave') {
     out.push(`Each person has ${plan.days} ${plan.days === 1 ? 'day' : 'days'} of leave a year.`);
-    out.push(...stepsSaid(WHAT.leave, steps, d, known));
+    if (longer && plan.longer?.above) {
+      /* Leave by length: up to the length, the steps every request takes; above it, its own. */
+      const seen = new Set<string>();
+      out.push(...stepsSaid(`${WHAT.leave} of up to ${upToWorkingDays(plan.longer.above)}`, steps, d, known, seen));
+      out.push(...stepsSaid(`${WHAT.leave} of ${moreThanWorkingDays(plan.longer.above)}`, longer, d, known, seen));
+    } else out.push(...stepsSaid(WHAT.leave, steps, d, known));
   } else if (plan.suite === 'spend') {
     out.push(`People ask to spend in ${plan.currency}.`);
     out.push(...stepsSaid(`${WHAT.spend} of up to ${money(plan.currency, plan.limit ?? 0)}`, steps, d, known));
@@ -788,7 +880,7 @@ export function theSetUpSaid(plan: Plan, known: WhatIsKnown): string[] {
     else if (plan.tellHr === 'approved') out.push(`${hr} sees each approved leave request on the leave board.`);
     else out.push('HR is not shown leave requests.');
   }
-  out.push(...escalationSaid([...steps, ...(plan.stepsAbove ?? [])], plan.escalateAfter, d, known));
+  out.push(...escalationSaid([...steps, ...(plan.stepsAbove ?? []), ...(longer ?? [])], plan.escalateAfter, d, known));
   return out;
 }
 
@@ -877,7 +969,9 @@ export function whatToWrite(plan: Plan, known: WhatIsKnown): WhatToWrite | null 
   }
   let leaveRules: Record<string, unknown> | null = null;
   if (plan.suite === 'leave') {
-    leaveRules = { tellHr: plan.tellHr ?? null };
+    /* Leave by length is kept as a threshold of the leave rules; none said, none kept, so what is stored is what was said back. */
+    const longer = longerSteps(plan);
+    leaveRules = { tellHr: plan.tellHr ?? null, thresholds: longer && plan.longer?.above ? [{ above: plan.longer.above, steps: longer }] : null };
     if ('refused' in changeLeaveRules({}, leaveRules)) return null;
   }
   let timeRules: Record<string, unknown> | null = null;
@@ -895,13 +989,18 @@ export function planFromStored(suite: SetUpSuite, stored: {
   stepsAbove?: Step[] | null;
   escalateAfter?: number | null;
   tellHr?: 'every' | 'approved' | null;
+  /** Leave by length as stored. The conversation sets one; the first is read back. */
+  thresholds?: { above: number; steps: Step[] }[] | null;
   hoursAWeek?: number | null;
   cutOff?: { day: unknown; time: string } | null;
 }): Plan {
   const a = stored.answers ?? {};
   const rulesOnly = (s: Step[] | null | undefined) => (s ? s.map((x) => x.filter((r): r is Rule => typeof r === 'string')) : undefined);
   const plan: Plan = { suite, duties: {}, skipped: [], after: true };
-  if (suite === 'leave') Object.assign(plan, { days: a.days, tellHr: stored.tellHr ?? null });
+  if (suite === 'leave') {
+    const t = stored.thresholds?.[0];
+    Object.assign(plan, { days: a.days, tellHr: stored.tellHr ?? null, longer: t ? { above: t.above, add: rulesOnly([...t.steps]), also: false } : null });
+  }
   if (suite === 'spend') Object.assign(plan, { currency: a.currency, limit: a.limit, stepsAbove: rulesOnly(stored.stepsAbove) });
   if (suite === 'time') Object.assign(plan, { clients: a.clients, hoursAWeek: stored.hoursAWeek ?? null, cutOff: stored.cutOff ?? null });
   if (suite === 'reviews') Object.assign(plan, { every: a.every, writer: a.writer });

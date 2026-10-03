@@ -202,7 +202,7 @@ export class LeaveBoardService {
      * other member, and a guest, are refused, as before.
      */
     const asApprover = role !== 'ADMIN' && role !== 'LEAD';
-    const mayBeNamed = asApprover && role === 'MEMBER' && (await couldBeNamed(this.prisma, everyRuleIn(theStepsFor('leave', answers)), reader.organizationId, { userId: reader.userId, role }));
+    const mayBeNamed = asApprover && role === 'MEMBER' && (await couldBeNamed(this.prisma, [...everyRuleIn(theStepsFor('leave', answers)), ...(answers.rules.thresholds ?? []).flatMap((t) => everyRuleIn(t.steps))], reader.organizationId, { userId: reader.userId, role }));
     if (asApprover && !mayBeNamed && !holdsHr) {
       throw new ForbiddenException(LEAVE_REFUSED.onlyAdminsAndLeads);
     }
@@ -495,7 +495,7 @@ export class LeaveBoardService {
     const people = await this.directory(organizationId, rows);
     const out: PassedOn[] = [];
     for (const r of rows) {
-      const n = await whoComesNext(this.prisma, theStepsFor('leave', answers), {
+      const n = await whoComesNext(this.prisma, theStepsFor('leave', answers, workingDays(r.startsOn, r.endsOn)), {
         organizationId, requesterUserId: r.userId,
         managerExternalId: people.get(r.userId)?.managerExternalId ?? null, team: people.get(r.userId)?.department ?? null,
       }, r);
@@ -533,7 +533,7 @@ export class LeaveBoardService {
   }
 
   /** Whoever decides the step a request is on is told on WhatsApp (decision 82, item 1). */
-  async tellWhoDecides(row: Row, people?: Map<string, any>, answers?: { perYear: number | null; approver: string | null; workflow?: AWorkflow }): Promise<void> {
+  async tellWhoDecides(row: Row, people?: Map<string, any>, answers?: { perYear: number | null; approver: string | null; workflow?: AWorkflow; rules?: LeaveRules }): Promise<void> {
     if (!this.told) return;
     try {
       const a = answers ?? (await this.suiteAnswers(row.organizationId));
@@ -654,8 +654,9 @@ export class LeaveBoardService {
   }
 
   /** Who decides this request now, from the step it is on, by the one approval resolver (who-may-decide.ts). */
-  private now(r: Row, people: Map<string, any>, answers: { approver: string | null; workflow?: AWorkflow }): Promise<DecidesNow> {
-    return whoDecidesNow(this.prisma, theStepsFor('leave', answers), {
+  private now(r: Row, people: Map<string, any>, answers: { approver: string | null; workflow?: AWorkflow; rules?: LeaveRules }): Promise<DecidesNow> {
+    /* Leave by length (the-leave-rules.ts): the request's working days choose the steps. No thresholds: as before. */
+    return whoDecidesNow(this.prisma, theStepsFor('leave', answers, workingDays(r.startsOn, r.endsOn)), {
       organizationId: r.organizationId, requesterUserId: r.userId,
       managerExternalId: people.get(r.userId)?.managerExternalId ?? null, team: people.get(r.userId)?.department ?? null,
     }, r);

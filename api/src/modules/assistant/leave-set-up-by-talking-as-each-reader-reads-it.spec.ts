@@ -144,16 +144,109 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
     expect((await o.suites.workflows(o.as('u-grace'))).suites.find((s) => s.key === 'leave')!.steps).toEqual([['finance', 'admin']]);
   });
 
-  it('a different approver only for longer leave is said plainly to be something it cannot set yet', async () => {
+  it('when the length of longer leave is said without who approves it, who is asked as a real question', async () => {
     const o = anOrganisationToSetUp();
     const r = await o.talk('u-grace', ['Set up our employee leave process', '21', 'Their manager', 'What about leave longer than 10 working days?']);
-    expect(r[3]).toBe('I cannot yet set a different approver only for longer leave. I can have somebody approve every leave request after the first person, or nobody. Who should approve it after them, if anybody? You can say no.');
+    expect(r[3]).toBe('Who approves leave of more than ten working days after the manager?');
+    expect(o.writes).toEqual([]);
+  });
+
+  it('when who approves longer leave is said without the length, the length is asked', async () => {
+    const o = anOrganisationToSetUp();
+    const r = await o.talk('u-grace', ['Set up our employee leave process', '21', 'Their manager', 'The head of their team also approves longer leave', '10']);
+    expect(r[3]).toBe('How long does leave need to be for that? For example, more than 10 working days.');
+    expect(r[4]).toBe('Does HR need to see all requests?');
+  });
+
+  it('longer leave said as the first answer: the rest of leave is asked for by its length', async () => {
+    const o = anOrganisationToSetUp();
+    const r = await o.talk('u-grace', ['Set up our employee leave process', '21', 'Leave of more than 10 days is approved by the head of their team', 'the manager', 'no', 'no', 'it waits', 'nobody yet', 'nobody yet']);
+    expect(r[2]).toBe('Who approves leave of up to ten working days?');
+    expect(r[8]).toBe([
+      'Here is how leave requests will work. Leave requests will be switched on.',
+      'Each person has 21 days of leave a year.',
+      'A leave request of up to ten working days goes to the person’s manager.',
+      'If the person has no manager in Groundwork, it goes to an admin instead.',
+      'A leave request of more than ten working days goes to the head of the person’s team.',
+      'If nobody is named as the head of the person’s team, it goes to an admin instead.',
+      'Fatuma heads Operations.',
+      'Nobody is named as the head of Finance and Sales yet, so for people in those teams that part goes to the next person on the list.',
+      'HR is not shown leave requests.',
+      'If somebody does not answer, it waits for them. Groundwork does not pass it on by itself.',
+      'Shall I set it up like this? Nothing changes until you say yes.',
+    ].join(' '));
+  });
+
+  it('a change before the yes can add, move or drop leave by length, and nothing is written until the yes', async () => {
+    const o = anOrganisationToSetUp();
+    await o.talk('u-grace', GRACES_ANSWERS);
+    const added = await o.says('u-grace', "If it's more than 10 working days, the chief executive also approves");
+    expect(added).toBe('I have changed that. Who is the chief executive? You can say nobody yet.');
+    const said = await o.says('u-grace', 'nobody yet');
+    expect(said).toContain('A leave request of up to ten working days goes to the person’s manager first.');
+    expect(said).toContain('When the head of the team has approved it, it goes to the chief executive to approve as well. It is approved only when the chief executive approves it');
+    expect(said).toContain('Nobody is named as the chief executive yet, so that part goes to the next person on the list.');
+    const longer = await o.says('u-grace', 'make it 15 working days for longer leave');
+    expect(longer).toContain('A leave request of more than 15 working days goes to the person’s manager first.');
+    const dropped = await o.says('u-grace', 'drop the rule for longer leave');
+    expect(dropped).not.toContain('working days goes to');
     expect(o.writes).toEqual([]);
   });
 
   it('when leave is already on, the days already set are not asked again', async () => {
     const o = anOrganisationToSetUp({ suites: { leave: { isOn: true, answers: { days: 18, approver: 'Their manager' } } } });
     expect(await o.says('u-grace', 'set up leave requests')).toBe('I will ask you a few questions about how leave requests work, one at a time, and I will not set anything until you say yes. Who approves annual leave?');
+  });
+});
+
+/** Hafsah's own example of decision 85: "If it's more than 10 working days, department head also approves." */
+const LONGER_ANSWERS = ['Set up our employee leave process', '21', 'Their manager', "If it's more than 10 working days, the department head also approves", 'Yes', 'It waits', 'Wairimu', 'Omar', 'me'];
+
+const LONGER_SAID = [
+  'Each person has 21 days of leave a year.',
+  'A leave request of up to ten working days goes to the person’s manager.',
+  'If the person has no manager in Groundwork, it goes to an admin instead.',
+  'A leave request of more than ten working days goes to the person’s manager first.',
+  'When the manager has approved it, it goes to the head of the person’s team to approve as well.',
+  'It is approved only when the head of the team approves it, and a no from anybody on the way ends it.',
+  'If nobody is named as the head of the person’s team, it goes to an admin instead.',
+  'Wairimu heads Finance, Fatuma heads Operations, and Omar heads Sales.',
+  'Grace, who looks after HR, sees every leave request on the leave board, when it is asked for and when it is decided.',
+  'If somebody does not answer, it waits for them. Groundwork does not pass it on by itself.',
+].join(' ');
+
+describe('Grace sets up leave by length, as Hafsah said it', () => {
+  it('is asked only what is missing, and reads the two lengths said back', async () => {
+    const o = anOrganisationToSetUp();
+    const r = await o.talk('u-grace', LONGER_ANSWERS);
+    expect(r.slice(3)).toEqual([
+      'Does HR need to see all requests?',
+      "What happens if the manager doesn't respond within two working days?",
+      'Who heads Finance? You can say nobody yet.',
+      'Who heads Sales? You can say nobody yet.',
+      'Who looks after HR? You can say nobody yet.',
+      `Here is how leave requests will work. Leave requests will be switched on. ${LONGER_SAID} Shall I set it up like this? Nothing changes until you say yes.`,
+    ]);
+    expect(o.writes).toEqual([]);
+  });
+
+  it('on her yes, the length is kept as a threshold of the leave rules, and she reads back what she agreed to', async () => {
+    const o = anOrganisationToSetUp();
+    await o.talk('u-grace', LONGER_ANSWERS);
+    expect(await o.says('u-grace', 'yes')).toBe(`I have set it up, and leave requests are switched on. ${LONGER_SAID} You can change any of it by telling me, or on the Suites page.`);
+    const grace = o.as('u-grace');
+    expect((await o.suites.leaveRules(grace)).rules).toEqual({ tellHr: 'every', thresholds: [{ above: 10, steps: [['manager', 'admin'], ['departmentHead', 'admin']] }] });
+    expect((await o.suites.workflows(grace)).suites.find((s) => s.key === 'leave')!.steps).toEqual([['manager', 'admin']]);
+    expect((await o.assistant.theSetUpAsStored(grace, 'leave')).join(' ')).toBe(LONGER_SAID);
+    const history = await o.suites.rulesHistory(grace);
+    expect(history.changes[0].details).toContain('This was added. Leave of more than ten working days goes first to the person’s manager, or else an admin, and then to whoever heads their team, or else an admin.');
+  });
+
+  it('setting leave up again without a length takes the length away, as the said-back says', async () => {
+    const o = anOrganisationToSetUp();
+    await o.talk('u-grace', [...LONGER_ANSWERS, 'yes']);
+    await o.talk('u-grace', ['Set up our employee leave process', 'Their manager', 'No', 'Yes', 'It waits', 'yes']);
+    expect((await o.suites.leaveRules(o.as('u-grace'))).rules).toEqual({ tellHr: 'every' });
   });
 });
 

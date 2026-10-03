@@ -1,6 +1,7 @@
 import type { PrismaService } from '../prisma/prisma.service';
 import { decidesIt, theOneWhoDecides, theStepsFor } from './who-may-decide';
 import { readWorkflow } from './the-approval-steps';
+import { readLeaveRules } from './the-leave-rules';
 
 /**
  * WHO APPROVES LEAVE AND HOURS FOR ONE PERSON (decided 1 October 2026): the person's line manager in
@@ -13,14 +14,18 @@ export type Approver = { kind: 'manager' | 'person'; userId: string; firstName: 
 /**
  * Who first approves leave or hours for this person: the first step of the suite's steps, as the admin
  * set them (the-approval-steps.ts), or the manager, else an admin. Pass `managerExternalId` when the
- * directory row is already read; leave it out and the person's own row is read.
+ * directory row is already read; leave it out and the person's own row is read. For leave, pass the
+ * request's working `days` and leave by length is read (the-leave-rules.ts); leave it out and the
+ * steps are those for any length, as before.
  */
 export async function whoApprovesFor(
   prisma: PrismaService,
-  input: { organizationId: string; personUserId: string; managerExternalId?: string | null; suite?: 'leave' | 'time' },
+  input: { organizationId: string; personUserId: string; managerExternalId?: string | null; suite?: 'leave' | 'time'; days?: number },
 ): Promise<Approver> {
-  const workflow = await readWorkflow(prisma, input.organizationId, input.suite ?? 'leave');
-  const who = await theOneWhoDecides(prisma, theStepsFor(input.suite ?? 'leave', { workflow })[0], {
+  const suite = input.suite ?? 'leave';
+  const workflow = await readWorkflow(prisma, input.organizationId, suite);
+  const rules = suite === 'leave' && input.days != null ? await readLeaveRules(prisma, input.organizationId).catch(() => ({})) : undefined;
+  const who = await theOneWhoDecides(prisma, theStepsFor(suite, { workflow, rules }, input.days)[0], {
     organizationId: input.organizationId, requesterUserId: input.personUserId, managerExternalId: input.managerExternalId,
   });
   if (who.kind === 'manager') return { kind: 'manager', userId: who.userId, firstName: who.firstName };

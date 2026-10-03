@@ -39,6 +39,9 @@ import { theThresholdCrossed, type AThreshold } from './the-spending-rules';
  *   - spending up to the limit: the manager, else an admin;
  *   - spending above the limit: the team's budget owner, then finance, then the person the admin
  *     named, then an admin (as b7ff00b4 decided).
+ * Thresholds are laid over these: spending by amount (the-spending-rules.ts) and leave by working days
+ * (the-leave-rules.ts). Leave takes its length as the third argument; with no length, or no
+ * thresholds, its steps are exactly as above.
  */
 
 export type Rule = 'manager' | 'budgetOwner' | 'departmentHead' | 'finance' | 'hr' | 'chiefExecutive' | 'admin';
@@ -194,7 +197,7 @@ export async function couldBeNamed(prisma: PrismaService, steps: ARule[], organi
  * set (the-approval-steps.ts), which the services pass as `answers.workflow`. With no workflow, one
  * step, exactly the list each suite had before steps existed.
  */
-export function theStepsFor(suite: 'leave' | 'time', answers?: { workflow?: AWorkflow | null } | unknown): Step[];
+export function theStepsFor(suite: 'leave' | 'time', answers?: { workflow?: AWorkflow | null } | unknown, days?: number): Step[];
 export function theStepsFor(suite: 'reviews', answers: { writer: string | null }): Step[];
 export function theStepsFor(suite: 'spend', answers: { limit: number | null; above: string | null; workflow?: AWorkflow | null; thresholds?: AThreshold[] | null }, amount: number): Step[];
 export function theStepsFor(suite: 'leave' | 'time' | 'reviews' | 'spend', answers?: any, amount?: number): Step[] {
@@ -203,6 +206,9 @@ export function theStepsFor(suite: 'leave' | 'time' | 'reviews' | 'spend', answe
   /* The spending rules' thresholds (build step 9): above one, its own steps; above two, the higher one's. None set: as before. */
   const crossed = suite === 'spend' ? theThresholdCrossed({ thresholds: answers?.thresholds ?? undefined }, Number(amount ?? 0)) : null;
   if (crossed) return crossed.steps;
+  /* Leave by length (the-leave-rules.ts): longer than a threshold of working days, its own steps; longer than two, the higher one's. None set, or no length given: as before. */
+  const longer = suite === 'leave' && amount != null ? theThresholdCrossed({ thresholds: answers?.rules?.thresholds ?? answers?.thresholds ?? undefined }, Number(amount)) : null;
+  if (longer) return longer.steps;
   if (suite === 'spend' && answers?.limit != null && Number(amount ?? 0) > answers.limit) {
     if (workflow?.stepsAbove?.length) return workflow.stepsAbove;
     return [['budgetOwner', 'finance', ...(answers.above ? [{ named: answers.above as string }] : []), 'admin']];

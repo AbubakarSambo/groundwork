@@ -459,7 +459,7 @@ export class SuitesService {
         out.push(line(`Who heads ${t}?`, person(b.departmentHeads?.[t]), person(a.departmentHeads?.[t])));
       }
     } else if (suite === LEAVE_RULES_ROW) {
-      const said = (x: unknown) => theLeaveRulesSaid(leaveRulesFrom(x), null, null).filter((l) => !/^There are no kinds|^No notice|^A rule never/.test(l));
+      const said = (x: unknown) => theLeaveRulesSaid(leaveRulesFrom(x), null, null).filter((l) => !/^There are no kinds|^No notice|^A rule never|^If leave is longer than two|^Shorter leave follows/.test(l));
       const from = said(before);
       const to = said(after);
       for (const l of to) if (!from.includes(l)) out.push(`This was added. ${l}`);

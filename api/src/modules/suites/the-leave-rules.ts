@@ -1,5 +1,7 @@
 import type { PrismaService } from '../prisma/prisma.service';
 import { saidAsADay } from './who-is-away';
+import { stepsFrom, stepsSaid, MAX_STEPS } from './the-approval-steps';
+import type { Step } from './who-may-decide';
 
 /**
  * THE LEAVE RULES AN ADMIN SETS (decision 85, item 1; build step 8 of
@@ -12,7 +14,13 @@ import { saidAsADay } from './who-is-away';
  *   - who may take leave: only after a number of days here (for example the first 90);
  *   - a document needed for a kind after a number of working days (for example a sick note after two);
  *   - HR told: whoever holds the HR duty (who-holds-each-duty.ts) is told of each approved request, or
- *     of each request, as the admin chooses.
+ *     of each request, as the admin chooses;
+ *   - leave by length (decision 85, Hafsah's example: "If it's more than 10 working days, department
+ *     head also approves"): thresholds by working days, the way spending has thresholds by amount, each
+ *     with its own approval steps, through the same steps and resolver every request uses
+ *     (who-may-decide.ts, `theStepsFor('leave', answers, days)`). A request longer than a threshold
+ *     takes that threshold's steps; longer than two, the higher one's. With none set, every request
+ *     takes the approval steps exactly as before.
  *
  * NOTHING CHANGES BY ITSELF. With nothing set, every request is "leave", one number of days a year
  * from the suite's own answer, no notice, no blackout, nobody is turned away and HR is told nothing:
@@ -53,9 +61,18 @@ export interface LeaveRules {
   blackouts?: { from: Day; to: Day; why?: string }[];
   eligibleAfterDays?: number;
   tellHr?: 'approved' | 'every';
+  /** Leave by length: longer than `above` working days, these steps. Lowest first. */
+  thresholds?: ALeaveThreshold[];
+}
+
+/** Leave longer than this many working days takes these steps. */
+export interface ALeaveThreshold {
+  above: number;
+  steps: Step[];
 }
 
 export const MAX_KINDS = 12;
+export const MAX_LEAVE_THRESHOLDS = 5;
 export const MAX_BLACKOUTS = 20;
 
 export const LEAVE_RULES_REFUSED = {
@@ -67,6 +84,7 @@ export const LEAVE_RULES_REFUSED = {
   badBlackouts: `Give up to ${MAX_BLACKOUTS} blackout periods, each with a first and a last day, the last on or after the first, and a reason of up to 120 letters if you want one.`,
   badEligibility: 'Give the number of days somebody must have been here before they take leave, from 0 to 730.',
   badTellHr: 'Say whether HR is told of each approved request or of each request.',
+  badThresholds: `Give up to ${MAX_LEAVE_THRESHOLDS} lengths of leave, each a whole number of working days from 1 to 365 that no other length has, and between one and ${MAX_STEPS} steps chosen from the person's manager, the head of their team, whoever holds their team's budget, finance, HR, the chief executive and an admin.`,
 };
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -108,6 +126,19 @@ function kindFrom(v: any): ALeaveKind | 'bad' | 'bad document' {
   return out;
 }
 
+/** Leave thresholds as given, lowest first, or null when any is not valid. */
+function leaveThresholdsFrom(v: unknown): ALeaveThreshold[] | null {
+  if (!Array.isArray(v) || v.length > MAX_LEAVE_THRESHOLDS) return null;
+  const out: ALeaveThreshold[] = [];
+  for (const t of v as any[]) {
+    const above = wholeIn(t?.above, 1, 365);
+    const steps = stepsFrom(t?.steps);
+    if (above === null || !steps || out.some((x) => x.above === above)) return null;
+    out.push({ above, steps });
+  }
+  return out.sort((a, b) => a.above - b.above);
+}
+
 /** What is kept, read with care: anything that is not valid is left out. */
 export function leaveRulesFrom(answers: unknown): LeaveRules {
   const a = (answers && typeof answers === 'object' && !Array.isArray(answers) ? answers : {}) as Record<string, any>;
@@ -126,6 +157,10 @@ export function leaveRulesFrom(answers: unknown): LeaveRules {
   const eligible = wholeIn(a.eligibleAfterDays, 0, 730);
   if (eligible) out.eligibleAfterDays = eligible;
   if (a.tellHr === 'approved' || a.tellHr === 'every') out.tellHr = a.tellHr;
+  if (Array.isArray(a.thresholds)) {
+    const t = leaveThresholdsFrom(a.thresholds.filter((x: any) => wholeIn(x?.above, 1, 365) !== null && stepsFrom(x?.steps)));
+    if (t?.length) out.thresholds = t;
+  }
   return out;
 }
 
@@ -192,6 +227,14 @@ export function changeLeaveRules(kept: LeaveRules, input: unknown): { rules: Lea
     else if (g.tellHr === 'approved' || g.tellHr === 'every') next.tellHr = g.tellHr;
     else return { refused: LEAVE_RULES_REFUSED.badTellHr };
   }
+  if (g.thresholds !== undefined) {
+    if (g.thresholds === null || (Array.isArray(g.thresholds) && !g.thresholds.length)) delete next.thresholds;
+    else {
+      const t = leaveThresholdsFrom(g.thresholds);
+      if (!t) return { refused: LEAVE_RULES_REFUSED.badThresholds };
+      next.thresholds = t;
+    }
+  }
   return { rules: next };
 }
 
@@ -223,6 +266,9 @@ export const inASentence = (k: ALeaveKind) => `${k.name.charAt(0).toLowerCase()}
 
 const NUMBERS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 const inWords = (n: number) => (n >= 0 && n <= 10 ? NUMBERS[n] : String(n));
+
+/** "more than ten working days", "more than one working day". */
+export const moreThanWorkingDays = (n: number) => `more than ${inWords(n)} working ${n === 1 ? 'day' : 'days'}`;
 
 /** "two weeks’ notice", "one day’s notice", "10 days’ notice". */
 export function noticeInWords(days: number): string {
@@ -316,7 +362,10 @@ export function theLeaveRulesSaid(rules: LeaveRules, perYear: number | null, hr:
     const each = rules.tellHr === 'approved' ? 'each approved request' : 'each request, when it is asked for and when it is decided';
     out.push(hr ? `${hr}, who looks after HR, is told of ${each}, on the leave board.` : `HR is to be told of ${each}, but nobody is named for HR yet. Name somebody under who holds each duty.`);
   }
-  if (!rules.noticeDays && !rules.blackouts?.length && !rules.eligibleAfterDays && !rules.kinds?.some((k) => k.noticeDays || k.document)) {
+  for (const t of rules.thresholds ?? []) out.push(`Leave of ${moreThanWorkingDays(t.above)} ${stepsSaid(t.steps)}.`);
+  if ((rules.thresholds?.length ?? 0) > 1) out.push('If leave is longer than two of these lengths, the longest one counts. Leave that is not longer than any of them follows the approval steps as they are.');
+  else if (rules.thresholds?.length) out.push('Shorter leave follows the approval steps as they are.');
+  if (!rules.noticeDays && !rules.blackouts?.length && !rules.eligibleAfterDays && !rules.thresholds?.length && !rules.kinds?.some((k) => k.noticeDays || k.document)) {
     out.push('No notice, blackout periods or other rules are set, so Groundwork only checks the days left and who else is off. A rule never stops a request; the person and whoever decides it are told when one applies.');
   } else {
     out.push('A rule never stops a request. The person is told when one applies, before they send it, and so is whoever decides it.');
