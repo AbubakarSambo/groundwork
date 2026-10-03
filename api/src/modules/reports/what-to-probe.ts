@@ -62,6 +62,7 @@ export interface WhatToProbe {
   triedToUnblock: string;
 }
 import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
+import { aThingInTheirOwnWords } from '../board/a-holder-in-their-own-words';
 import { eachWaitUnderWhoeverHoldsIt, waitingOnEachHolder } from './each-wait-under-whoever-holds-it';
 
 /**
@@ -92,7 +93,9 @@ const sinceOrHowLong = (xs: { daysOld: number; since?: string | null }[]): strin
  * produced "waiting 0 days for to be paid for the nights". Anything that concatenates a preposition
  * onto captured text will do this eventually. A colon takes whatever the text is.
  */
-const theThing = (what: string) => what.replace(/[.\s]+$/, '');
+/** What somebody waits for, said from the reader's side: "my" in their words is "your" to them and "their" to anybody else. */
+const theThing = (what: string, theirOwn?: boolean) =>
+  (theirOwn === undefined ? what : aThingInTheirOwnWords(what, theirOwn) ?? what).replace(/[.\s]+$/, '');
 
 /**
  * WHAT KIND OF THING IS IN THE WAY, SAID ONCE FOR THE GROUP.
@@ -159,7 +162,7 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     const Who = `${who.charAt(0).toUpperCase()}${who.slice(1)}`;
     const many = named.length > 1 || /^you$/i.test(who);
     /* Each thing once: a wait recorded twice is one thing (item 18). */
-    const items = andList([...new Map(i.holdingUp.map((d) => [theThing(d.what).toLowerCase(), theThing(d.what)] as const)).values()]);
+    const items = andList([...new Map(i.holdingUp.map((d) => [theThing(d.what, false).toLowerCase(), theThing(d.what, false)] as const)).values()]);
     const since = theOldestSince(i.holdingUp);
     probe.push(
       !since
@@ -177,7 +180,7 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     const notYet = i.waitingOn.filter((d) => !d.escalated);
     if (escalated.length) {
       probe.push(
-        `${He} ${has} been waiting for ${andList(escalated.map((d) => theThing(d.what)))}${sinceOrHowLong(escalated)}, and ${has} raised it higher. Ask what happened after that.`,
+        `${He} ${has} been waiting for ${andList(escalated.map((d) => theThing(d.what, you)))}${sinceOrHowLong(escalated)}, and ${has} raised it higher. Ask what happened after that.`,
       );
     }
     /*
@@ -189,7 +192,7 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     const onTheReader = notYet.filter((d) => /^you$/i.test((d.who ?? '').trim()));
     if (onTheReader.length && !you) {
       const since = theOldestSince(onTheReader);
-      const things = andList([...new Map(onTheReader.map((d) => [theThing(d.what).toLowerCase(), theThing(d.what)] as const)).values()]);
+      const things = andList([...new Map(onTheReader.map((d) => [theThing(d.what, false).toLowerCase(), theThing(d.what, false)] as const)).values()]);
       probe.push(`${He} ${has} been waiting on you for ${things}${since ? ` since ${since}` : howLong(Math.max(...onTheReader.map((d) => d.daysOld)))}. Give ${them} an answer, or say when you will.`);
       const kind = whatKindOfThing(onTheReader);
       if (kind) probe.push(kind);

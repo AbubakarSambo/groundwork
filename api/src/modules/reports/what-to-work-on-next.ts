@@ -4,6 +4,7 @@ import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CO
 import { plainNameOf } from '../patterns/plain-pattern-names';
 import { roleMapFor, MIN_COACHING_CONFIDENCE, type RoleMap } from '../board/role-maps';
 import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
+import { aThingInTheirOwnWords, aThingWithoutItsHolder } from '../board/a-holder-in-their-own-words';
 
 /**
  * THE COACHING NOTE. THE ONE PART OF A REPORT THAT SPEAKS TO THE PERSON READING IT.
@@ -217,7 +218,8 @@ export function thePair(map: RoleMap, noticed: string | null): { noticed: string
 const howLong = (n: number) => (n <= 0 ? '' : n === 1 ? ' since yesterday' : ` for ${n} days`);
 
 /** `what` is text somebody said, so nothing is concatenated onto the front of it. */
-const theThing = (what: string) => what.replace(/[.\s]+$/, '');
+const theThing = (what: string, theirOwn?: boolean) =>
+  (theirOwn === undefined ? what : aThingInTheirOwnWords(what, theirOwn) ?? what).replace(/[.\s]+$/, '');
 
 /**
  * WHAT KIND OF THING IS IN THE WAY, SAID ONCE FOR THE GROUP.
@@ -247,7 +249,7 @@ export const andList = (xs: string[]): string =>
  */
 function aboutWaiting(d: Dependency): string {
   const from = d.who ? ` from ${d.who}` : '';
-  const it = theThing(d.what);
+  const it = theThing(aThingWithoutItsHolder(d.what, d.who), true);
   if (d.escalated) {
     return `You have already taken ${it} to somebody above them. Put a date on when you need it by, and say what you will do if it does not arrive.`;
   }
@@ -281,9 +283,18 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   const aboutYou = i.aboutYou ?? [];
   /* Somebody who runs their own business has no office map to be read against, and does not need to be told
      that "what kind of work this is has not been read yet": the note is about where they are. */
+  /*
+   * NOBODY SAID WHAT THEIR ROLE IS, SO NO ROLE IS NAMED (run-26, asset loans). A borrower with no role of their own was
+   * read as a founder or CEO from the words in the account, and was told "you are in session 1 of 1 of your founder or CEO
+   * work". What the engine detects is unchanged. Where the person's own role is empty, the note is about where they are,
+   * and says so, instead of naming a role nobody gave.
+   */
+  const theyGaveNoRole = !(i.roleToSay ?? i.role ?? '').toString().trim();
   const { map, why: whyNoRoleMap } = runsTheirOwnBusiness(i.role)
     ? { map: null, why: null }
-    : whichRoleMap(i.detectedFunction, i.functionConfidence);
+    : theyGaveNoRole && whichRoleMap(i.detectedFunction, i.functionConfidence).map
+      ? { map: null, why: 'No role was given, so this is about where you are in the check-in rather than about a kind of work.' }
+      : whichRoleMap(i.detectedFunction, i.functionConfidence);
   const pair = map ? thePair(map, i.noticedBehaviour) : null;
   /* "Session 6 of 3" is never said: past the planned count, the session is said alone (item 21). */
   const where = i.totalSessions && i.totalSessions >= i.sessionNumber ? `session ${i.sessionNumber} of ${i.totalSessions}` : `session ${i.sessionNumber}`;
@@ -325,7 +336,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   if (i.holdingUp.length) {
     const named = [...new Set(i.holdingUp.map((d) => d.who).filter(Boolean))] as string[];
     const who = named.length === 1 ? named[0] : named.length ? `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}` : 'Somebody';
-    const items = i.holdingUp.map((d) => theThing(d.what));
+    const items = i.holdingUp.map((d) => theThing(d.what, false));
     const oldest = Math.max(...i.holdingUp.map((d) => d.daysOld));
     const since = [...i.holdingUp].sort((a, b) => b.daysOld - a.daysOld)[0]?.since ?? null;
     const doIt = `Either do ${items.length > 1 ? 'them' : 'it'}, or give a date you can do ${items.length > 1 ? 'them' : 'it'} by.`;
@@ -363,7 +374,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     }
     if (escalated.length) {
       actions.push(
-        `You have already taken ${andList(escalated.map((d) => theThing(d.what)))} to somebody above them. Put a date on when you need ${escalated.length > 1 ? 'them' : 'it'} by, and say what you will do if nothing arrives.`,
+        `You have already taken ${andList(escalated.map((d) => theThing(d.what, true)))} to somebody above them. Put a date on when you need ${escalated.length > 1 ? 'them' : 'it'} by, and say what you will do if nothing arrives.`,
       );
     }
   }

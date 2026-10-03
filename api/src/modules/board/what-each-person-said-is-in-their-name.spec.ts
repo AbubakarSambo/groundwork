@@ -60,7 +60,7 @@ describe('who owns what: only words a person said go inside quotation marks', ()
 
   it('Kwame reads his own lines as "You said", and "You have" where none of his words are kept', async () => {
     const seen = await whoOwnsWhatAs('u-kwame');
-    expect(seen['Kwame Mensah']).toEqual([
+    expect(seen['You']).toEqual([
       'You said, "I\'m aiming to have all the documents submitted by Friday."',
       'You said, "I\'ve also had follow-up conversations with all 22 of my applications."',
       'You have said what you intend to do.',

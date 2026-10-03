@@ -59,7 +59,9 @@ export function sheIsTheReaderToo(text: string): string {
     .replace(new RegExp(String.raw`\b(?:she|he)(\s+(?:${LITTLE_WORDS}\s+)?)([a-z’']+)`, 'g'), (_m, gap: string, verb: string) => `you${gap}${withYou(verb)}`)
     .replace(new RegExp(String.raw`\b(?:She|He)(\s+(?:${LITTLE_WORDS}\s+)?)([a-z’']+)`, 'g'), (_m, gap: string, verb: string) => `You${gap}${withYou(verb)}`)
     .replace(/\b(?:herself|himself)\b/g, 'yourself')
-    .replace(/\b(?:her|his)\s+(?=[a-z])/g, 'your ');
+    .replace(/\b(?:her|his)\s+(?=[a-z])/g, 'your ')
+    /* "falls to her." and "would go to him" end the sentence or the clause, so they are the reader too (run-26). */
+    .replace(/\b(?:her|him)(?=\s*(?:[.,;:!?]|$))/g, 'you');
 }
 
 const namesSomebodyElse = (text: string, others: string[]): boolean =>
@@ -80,7 +82,7 @@ export function theRoomAsThisReaderReadsIt<T extends TheRoomServed | null | unde
         const held = Array.isArray(a.held) ? a.held : [];
         let aim = reader.name(a.aim);
         const onlyTheirs = !!reader.fullName && !a.andOthers && held.length === 1 && held[0].trim().toLowerCase() === reader.fullName.trim().toLowerCase();
-        if (onlyTheirs && /^You\b/.test(aim) && !namesSomebodyElse(aim, reader.otherNames)) aim = sheIsTheReaderToo(aim);
+        if (onlyTheirs && /\b[Yy]ou(?:r|rs|rself)?\b/.test(aim) && !namesSomebodyElse(aim, reader.otherNames)) aim = sheIsTheReaderToo(aim);
         return { ...a, aim, held: youInTheList(held, reader.fullName) };
       })
     : room.aims;

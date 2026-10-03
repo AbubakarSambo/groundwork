@@ -3600,3 +3600,19 @@ Hafsah has given the onboarding and project boards back to the screens workspace
 - **The project board:** not started by the engine workspace.
 
 From here the engine workspace leaves both boards to you, and answers here as before.
+
+## The smaller wording faults of run 26 and the onboarding review (3 October 2026)
+
+What a person now reads, in place of what they read before. Nothing is hidden on screen only; every change is made where the sentence is built.
+
+- **A wait on "Everyone involved in the project".** Before: "You are waiting on Everyone involved in the project for ...". Now: "You are waiting on everyone involved in the project for ...". A single word on its own ("Everyone") is left as it is.
+- **A held-up thing that is not something to do.** Before: "Once it is cleared, Samuel Otieno will testing and deployment." and "Once it is cleared, you will people can write code." Now: "Once it is cleared, testing and deployment can go ahead." and "Once it is cleared, people can write code." A line that already holds its own verb, such as "questions about client needs would go to Tobi", is said as it is, with no "you will" in front.
+- **The holder said twice.** Before: "Samuel Otieno is waiting on the provider for the sandbox credentials from the provider." Now: "Samuel Otieno is waiting on the provider for the sandbox credentials." This is only done in the sentences that say the holder too (the Blockers, the work plan, the timeline, who waited on whom, the obligations, and the coaching note); a sentence that does not say the holder keeps "from Lakeside".
+- **"My" outside quotation marks, in the coaching and the questions.** Before: "He has been waiting for my loan cleared". Now: "He has been waiting for their loan cleared." The coaching note read by the person waiting says "your". Words inside quotation marks are never changed.
+- **The reader's own name where "you" belongs.** Before: "Tunde Bakare committed to clarify this with Ada directly." read by Ada. Now: "Tunde Bakare committed to clarify this with you directly." Her name with 's becomes "your". A longer name that holds hers ("Adaeze") is not touched. "It falls to her" and "That would go to him" read by that person now say "to you".
+- **Things people disagree on.** Before: "They disagree on three things: The schedule is wrong.; The scope is not agreed.; ..." Now each is a sentence: "They disagree on three things. The schedule is wrong. The scope is not agreed." This is also done in the stored text of an older report when it is served.
+- **A line with no words.** A line of the shared picture that is empty after the privacy rules have run is no longer served.
+- **A borrower with no role.** Before: "you are in session 1 of 1 of your founder or CEO work." Now, where nobody gave the person a role: "No role was given, so this is about where you are in the check-in rather than about a kind of work." What the engine detects is unchanged and stored as before.
+- **A wait cleared on the day it began.** Before: "... until it was cleared on 2 September, 0 days in all." Now: "Ngozi Eze waited on the Head of Credit for the reply on 2 September, and it was cleared the same day."
+
+Tests: `board/run-26-wording-faults.spec.ts`, `board/onboarding-wording-faults.spec.ts`. Not done in this change: "2 waiting" against four waits and "Tobi says that Tobi ..." in the onboarding board were not found in the saved work and are still open.
