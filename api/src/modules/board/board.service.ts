@@ -1830,6 +1830,7 @@ export class BoardService {
           ((readInput as any).entries ?? []).map((e: any) => ({ participantId: e.participantId, text: cleanText(e.text ?? '') })),
           ground.participants as any[],
           (pid) => nameOf(pid),
+          me?.id ?? null,
         );
         if (help) out.helpNobodyMentioned = help;
       }

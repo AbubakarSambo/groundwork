@@ -35,6 +35,8 @@ export function helpNobodyMentioned(
   lines: { participantId: string; text: string }[],
   people: { id: string; managingOnly?: boolean }[],
   nameOf: (participantId: string) => string | null,
+  /* Who is reading: their own line says "you" (item 21: Ada read "Ada Nwosu did not mention it in their own check-ins."). */
+  readerParticipantId: string | null = null,
 ): { lines: string[]; why: string } | null {
   const out: string[] = [];
   for (const p of people) {
@@ -46,7 +48,10 @@ export function helpNobodyMentioned(
       && !saidItThemselves(m.text, theirs, [name]));
     const colleagues = new Set(credits.map((m) => m.sourceParticipantId)).size;
     if (!colleagues) continue;
-    out.push(`${colleagues === 1 ? 'A colleague' : `${colleagues} colleagues`} said ${name} helped them. ${name} did not mention it in their own check-ins.`);
+    const who = colleagues === 1 ? 'A colleague' : `${colleagues} colleagues`;
+    out.push(readerParticipantId && p.id === readerParticipantId
+      ? `${who} said you helped them. You did not mention it in your own check-ins.`
+      : `${who} said ${name} helped them. ${name} did not mention it in their own check-ins.`);
   }
   return out.length ? { lines: out, why: YOU_SEE_THE_HELP } : null;
 }
