@@ -132,6 +132,37 @@ describe('Wairimu, who runs several check-ins', () => {
   })
 })
 
+describe('the three questions under the opening line', () => {
+  const asked = () => within(screen.getByRole('group', { name: 'Questions you could ask' })).getAllByRole('button').map(b => b.textContent)
+
+  it('Wairimu, who has asked nothing yet, reads the opening line and then the three questions', async () => {
+    panel(WAIRIMUS, '/grounds/g-sales/board')
+    await screen.findByText('Ask me about Sales team, Q3: a deal, a target, or what to do next.')
+    expect(asked()).toEqual(['What should I do next?', 'What is due?', 'Will we reach our target?'])
+  })
+
+  it('pressing one asks it as her own question, about the check-in she is reading, and the three go away', async () => {
+    ;vi.mocked(askApi.ask).mockResolvedValue({ lane: 'what_is_due', composedBy: 'rules', blocks: [{ type: 'text', body: 'Nothing is due.' }] })
+    panel(WAIRIMUS, '/grounds/g-sales/board')
+    fireEvent.click(await screen.findByRole('button', { name: 'What is due?' }))
+    await waitFor(() => expect(askApi.ask).toHaveBeenCalledWith('What is due?', 'g-sales'))
+    expect(await screen.findByText('Nothing is due.')).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Questions you could ask' })).toBeNull()
+  })
+
+  it('Miriam, who has asked before, reads her own questions and not the three', async () => {
+    panel(MIRIAMS)
+    await screen.findByText('Green Mart said January, in writing.')
+    expect(screen.queryByRole('group', { name: 'Questions you could ask' })).toBeNull()
+  })
+
+  it('Tom, whom Ask Groundwork cannot answer yet, reads why and is offered no question', async () => {
+    panel(TOMS, '/today')
+    await screen.findByText(TOMS.why!)
+    expect(screen.queryByRole('group', { name: 'Questions you could ask' })).toBeNull()
+  })
+})
+
 describe('somebody Ask Groundwork cannot answer yet', () => {
   it('reads why, in the server’s words, and is offered no box to type in', async () => {
     panel(TOMS, '/today')

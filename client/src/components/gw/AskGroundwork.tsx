@@ -7,7 +7,7 @@ import { groundsApi } from '@/api/grounds'
 import { UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
 import { Mark } from './kit'
 import { Composer } from './ui/Composer'
-import { PRIVATE_LINE, openingLine } from './what-ask-groundwork-says'
+import { PRIVATE_LINE, openingLine, SUGGESTED_QUESTIONS } from './what-ask-groundwork-says'
 
 /** What the Context page already says while a document's read has not landed yet (AddADocument.tsx). */
 const STILL_READING = 'Reading it now.'
@@ -23,7 +23,11 @@ const SAID_AFTER_UPLOAD = "I've uploaded it."
  * questions are served to you alone, and a request is done only after you say yes to it: both are
  * the server's rules (api/src/modules/ask), not this screen's.
  *
- * Not drawn, because nothing serves them yet: the suggested questions under the opening line.
+ * THE THREE SUGGESTED QUESTIONS under the opening line (ask-on-a-phone.txt) are drawn while nothing has
+ * been asked yet, and press as the person's own question. The prototype's own three name one example
+ * deal and one example target ("Why is Green Mart next quarter?", "Will we reach 25?"), which would be
+ * made-up for any real check-in, so the screen's three are questions that make sense in any check-in
+ * (what-ask-groundwork-says.ts). The engine is asked, in docs/answers-from-engine.md, to serve real ones.
  *
  * ADDING A DOCUMENT THROUGH THIS PANEL (decision 50, docs/answers-from-engine.md, 30 September). The
  * assistant's `next_step` block with `kind: 'upload_a_document'` opens the same file picker and the
@@ -380,6 +384,13 @@ export function AskGroundwork({
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--gw-page)' }}>
         {page.data && !page.data.canAsk && page.data.why && <p style={bubble(false)}>{page.data.why}</p>}
         {page.data?.canAsk && label && <p style={bubble(false)}>{openingLine(label)}</p>}
+        {page.data?.canAsk && label && (page.data?.turns ?? []).length === 0 && said.length === 0 && (
+          <div role="group" aria-label="Questions you could ask" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {SUGGESTED_QUESTIONS.map((q) => (
+              <button key={q} type="button" style={chip} disabled={sending || reading} onClick={() => ask(q)}>{q}</button>
+            ))}
+          </div>
+        )}
         {(page.data?.turns ?? []).map((t, i) => (
           <p key={`t-${i}`} style={bubble(t.from === 'you')}>{t.says}</p>
         ))}
