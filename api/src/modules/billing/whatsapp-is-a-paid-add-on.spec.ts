@@ -66,6 +66,8 @@ function world(opts: { trial?: any; org?: any; sent?: number; stripeConfigured?:
       findUnique: jest.fn(async (q: any) => {
         if (q.where.key === 'pricing.freeTrial') return { value: trial };
         if (q.where.key === 'pricing.freeMemberLimit') return { value: 5 };
+        /* The add-on's price, use and limit are hidden at release; this spec proves them, so they are turned on here. */
+        if (q.where.key === 'release.planAndBillingNewParts') return { value: { on: true } };
         return null;
       }),
     },
