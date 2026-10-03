@@ -30,7 +30,10 @@ describe('the shorter-version pass', () => {
   it('keeps what it had when the retry fails', () => {
     /* The catch returns null, and null is not adopted - so `result` stays the long version. */
     expect(brevity).toMatch(/return null/);
-    expect(brevity).toMatch(/if \(retry\) result = retry/);
+    /* Changed 3 October 2026: a retry is adopted only through keepWhatTheFirstFound, so a shorter
+       version cannot lose a difference or an agreement either. See a-second-ask-keeps-what-the-first-found. */
+    expect(brevity).toMatch(/if \(retry\) \{\s*const kept = keepWhatTheFirstFound\(result, retry\)/);
+    expect(brevity).toMatch(/result = kept\.report/);
   });
 
   it('and says so, rather than failing silently', () => {
