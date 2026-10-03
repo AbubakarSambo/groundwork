@@ -2060,11 +2060,11 @@ export class BoardService {
        * colleague and an admin who only reads never see `eachPersonToday` at all.
        */
       const nameByParticipant = new Map((out.eachPerson as any[]).map((row) => [row.participantId, String(row.who ?? '').trim()]));
+      /* One point per person, with how many goals, never the same sentence once per goal (item 21). */
+      const untoldCount = new Map<string, number>();
+      for (const g of await this.goalsNotToldYetByParticipant(groundId)) untoldCount.set(g.participantId, (untoldCount.get(g.participantId) ?? 0) + 1);
       const untoldByParticipant = new Map<string, string[]>();
-      for (const g of await this.goalsNotToldYetByParticipant(groundId)) {
-        const name = nameByParticipant.get(g.participantId) || 'This person';
-        untoldByParticipant.set(g.participantId, [...(untoldByParticipant.get(g.participantId) ?? []), theConversationPointForTheLead(name)]);
-      }
+      for (const [pid, n] of untoldCount) untoldByParticipant.set(pid, [theConversationPointForTheLead(nameByParticipant.get(pid) || 'This person', n)]);
       out.eachPersonToday = (out.eachPerson as any[]).map((row) => {
         const k = firstFor.get(row.participantId);
         const said = String(row.says ?? '');
