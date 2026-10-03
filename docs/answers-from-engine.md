@@ -3180,3 +3180,36 @@ Tests: `api/src/modules/suites/the-record-in-a-review-as-each-reader-reads-it.sp
 - The list of check-ins and Today take the same line, from the same place.
 
 Tests: `api/src/modules/board/their-documents-are-not-a-colleagues.spec.ts`, on the served board as Bisi, Femi, Ngozi and an admin, and the rule itself. The four board tests fail on the old code. No existing test changed.
+
+## "On-the-ground" stays whole (3 October)
+
+**Run-25 served "on, the-ground" 31 times, to every reader: "Amaka Nwachukwu relies on a team for on, the-ground communication." and "The role of on, the-ground support is seen differently." The rule that turns a hyphen doing a dash's job into a comma looked at two parts only, and "the" opens a clause. A compound of three or more parts is now left whole (on-the-ground, like-for-like, word-for-word, back-and-forth, free-for-all), and so are a few two-part ones (know-how, to-do, must-have, either-or). A range between two numbers with an en dash, which became a comma ("10, 12 shops"), now reads "10 to 12 shops"** (this commit).
+
+- **Amaka reads:** "You rely on a team for on-the-ground communication." **Sunday and an admin read:** "Amaka Nwachukwu relies on a team for on-the-ground communication."
+- **The payments project reads:** "a like-for-like swap to a new gateway", where it read "a like, for-like swap".
+- A hyphen between two clauses is still a comma: "the cost per delivery is down, for example, under 500".
+
+Tests: `api/src/modules/reports/a-hyphen-doing-a-dashs-job.spec.ts`, eight new, three of them through the report door as Amaka, an admin and Sunday. Seven fail on the old code. No existing test changed.
+
+## The manager's briefing for a review (3 October, decision 85, item 4, build step 13)
+
+**`GET /suites/reviews/:id` now carries `briefing` for every reader who may open the review and is not the person it is about. It holds the counts (decision 86, item 2), the person's patterns after their turn with their answer beside each (decision 86, item 1), what changed after earlier conversations, and the person's corrections from the record (build step 12). It is built from the record, never by a model, and never holds a verdict, a label, a score or a rating. "Groundwork suggests recognising" is unchanged and stays behind its setting** (this commit).
+
+- **The field:** `briefing: { heading, counts, patterns, patternsNote, changedAfterEarlierConversations, corrections, whoDecides }`. `counts` is a string or null. `patterns` is a list of `{ heading, whatHappened, howOften, checkIn, theirAnswer }`. `patternsNote` is a string when there are patterns, else null. `changedAfterEarlierConversations` is a list of sentences. `corrections` is a list of `{ line, said, whatIsTrue }`. The person's own review has no `briefing` key.
+- **Each reader reads only what they may already read.** The counts and corrections come only from check-ins the reader is in (the lines of the record they read), the patterns only from check-ins they run, through `servedPatterns`, after the person has answered or after the usual 3 or 7 days. The lead's own mark on a pattern, "Two separate reads of the record found this." and the coaching lines are not in the briefing.
+
+Wairimu, who writes Aisha's review and runs "Sales team, Q3", reads:
+
+| Part | What Wairimu reads |
+| --- | --- |
+| `heading` | "Your briefing for Aisha’s review" |
+| `counts` | "In the check-ins you are in with Aisha, Aisha made 5 commitments between 6 April 2026 and 28 September 2026. Aisha kept 2 of them, 1 was not done, 1 was dropped and 1 was still open when this review started. Of them, 2 took longer than first said, because they were not done, or Aisha said them again in a later check-in." |
+| A pattern | heading "Problems are mostly put down to things outside the team", whatHappened "Aisha put the missed orders down to the stock arriving late.", howOften "This came up in 3 check-ins, in sessions 2, 3 and 4.", checkIn "Sales team, Q3", theirAnswer "Aisha’s answer: “The stock came three weeks late, so I could not sell.”" (the prototype's words; unanswered, "Aisha hasn’t answered this yet.") |
+| `patternsNote` | "These only appear after three check-ins. Aisha sees them first and can answer, and they never go anywhere on their own." |
+| `changedAfterEarlierConversations` | "You talked with Aisha about “Problems are mostly put down to things outside the team” on 25 September 2026. It came up again in 1 check-in after that." (or "It has not come up since.") and "You decided Aisha’s review on 15 March 2026. The decision was “Aisha leads the butchery accounts.” The reason given was “She closed every butchery sale she was given.”" |
+| A correction | line "On 4 May 2026, in “Sales team, Q3”, Aisha committed to send the price list to Carrefour. It was marked as not done on 18 May 2026.", said "Aisha marked this as wrong on 1 October 2026, and said what is true.", whatIsTrue her words |
+| `whoDecides` | "There are no scores. Groundwork gives you the evidence and the patterns, and you decide. Aisha sees your reasons." |
+
+Grace (an admin) and Juma (another lead of Sales), in and running no check-in with Aisha, read heading "The briefing for Aisha’s review", `counts` null, no patterns, no corrections, the earlier review said with "Wairimu decided Aisha’s review on 15 March 2026. ...", and "There are no scores. Groundwork gives the evidence and the patterns, and Wairimu decides. Aisha sees the reasons." Aisha, a colleague and a lead of another team: unchanged (no briefing; refused).
+
+Tests: `api/src/modules/suites/the-briefing-for-a-review-as-each-reader-reads-it.spec.ts` (Wairimu, before and after Aisha's three days; her corrections; Grace; Juma; Aisha; Miriam; Kamau; no labels; patterns only through `servedPatterns`). Every test fails on the old code, where there was no briefing. The fixture both review specs use moved to `api/src/modules/suites/__fixtures__/aisha-review.ts`. No existing test changed.
