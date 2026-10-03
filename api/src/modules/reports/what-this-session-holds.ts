@@ -273,10 +273,8 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
     .filter((w: any) => !reader.colleaguesWordsWalled || (!!w.participantId && w.participantId === reader.participantId))
     /* A participant never reads the lead's judgement (run-26: Sunday's tile quoted Amaka's doubt about who should have
        qualified for a loan). Where people do not see each other the tile holds only the reader's own worries; and
-       whoever checks in without running it never reads the lead's worry as the tile's example. The count stays. */
+       where people see each other the lead's words are said in her name, as a colleague's are (decisions 4 and 88). The count stays. */
     .filter((w: any) => !(reader.ownWaitsOnly && !reader.isLead) || (!!w.participantId && w.participantId === reader.participantId))
-    .filter((w: any) => reader.isLead || !reader.participantId || !w.participantId || w.participantId === reader.participantId
-      || !parties.some((p: any) => p.id === w.participantId && p.partyType === 'INITIATOR'))
     .map((w: any) => ({ who: w.participantId as string | null, line: theFirstSentenceThatFits(w?.text ? cleanText(w.text) : null) }))
     .filter((w): w is { who: string | null; line: string } => !!w.line && !/["“”]/.test(w.line) && quotesBuiltAtTheRead(w.line, quotable) === w.line)
     .map((w) => `${whoSaid(w.who)} said, "${/[.!?]$/.test(w.line) ? w.line : `${w.line}.`}"`)[0] ?? null;

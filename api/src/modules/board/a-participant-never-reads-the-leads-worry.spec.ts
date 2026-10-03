@@ -52,8 +52,13 @@ describe('the Blockers tile, where people do not see each other', () => {
     const t = await tileFor({ participantId: null, isLead: false });
     expect(t.sub).toMatch(/^Amaka Nwachukwu said, "I need to understand/);
   });
-  it('where people see each other, a participant still never reads the lead\'s worry as the example', async () => {
+  it('where people see each other, Sunday reads the lead\'s words in her name, as he reads a colleague\'s (decisions 4 and 88)', async () => {
     const t = await tileFor({ participantId: 'p-sunday', isLead: false }, WORRIES, true);
-    expect(t.sub).not.toMatch(/selection process/);
+    expect(t.sub).toMatch(/^Amaka Nwachukwu said, "I need to understand if this is an issue with our selection process for who qualifies for the loans\."/);
+  });
+  it('where people see each other, a new hire reads his lead\'s own worry, and his own is still "You said"', async () => {
+    const lonely = [WORRIES[0]];
+    expect((await tileFor({ participantId: 'p-sunday', isLead: false }, lonely, true)).sub).toMatch(/^Amaka Nwachukwu said, "I need to understand/);
+    expect((await tileFor({ participantId: 'p-sunday', isLead: false }, [WORRIES[1]], true)).sub).toMatch(/^You said, "I missed the first three repayments\."/);
   });
 });
