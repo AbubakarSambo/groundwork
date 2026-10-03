@@ -5,7 +5,7 @@ import { isAWholeSentence } from '../reports/what-people-said-differently-about'
 import { aPartyOutside, aWaitOnOneself } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
 import { whoSeesThisDifferently } from './who-sees-this-differently';
-import { whatEachSessionSays } from './one-count-for-the-sessions';
+import { theRoundCappedAtThePlan, whatEachSessionSays } from './one-count-for-the-sessions';
 import { aWaitSaidInFull } from './a-wait-said-in-full';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
@@ -975,7 +975,7 @@ export class BoardService {
        * See one-count-for-the-sessions.
        */
       const planned = totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null;
-      const theRound = planned && planned > 0 ? Math.min(openRound, planned) : openRound;
+      const theRound = theRoundCappedAtThePlan(openRound, planned, mine as any[]);
       const roundNumbers = Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b);
       /* The header is drawn from these two numbers ("Session 1 of 12."); see theHeaderSays for its words. */
       out.phaseSpine = {
