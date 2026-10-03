@@ -249,11 +249,13 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
   }
   if (i.documentsAttached > 0) {
     encourage.push(
-      `Attached ${i.documentsAttached === 1 ? 'a document' : `${i.documentsAttached} documents`}, so their side can be checked rather than taken on trust.`,
+      /* With its person in it (item 21, the distribution operations board): "Attached a document, ..." had no subject. */
+      `${He} attached ${i.documentsAttached === 1 ? 'a document' : `${i.documentsAttached} documents`}, so ${you ? 'your' : 'their'} side can be checked rather than taken on trust.`,
     );
   }
   if (i.answeredThisSession && !encourage.length && (i.waitingOn.length || i.patterns.length)) {
-    encourage.push('Named a problem out loud rather than reporting everything as fine.');
+    /* Kwabena read "Named a problem out loud rather than reporting everything as fine." with nobody in it (item 21). */
+    encourage.push(`${He} named a problem out loud rather than reporting everything as fine.`);
   }
 
   /*

@@ -568,7 +568,12 @@ export function theBusyOrMoving(
     /* Counts of what was said, never of how many were kept: that tally is the person's own (decision 24). */
     const parts: string[] = [];
     if (mine.length) parts.push(`${who} has made ${plural(mine.length, 'commitment', 'commitments')} across ${plural(answered, 'answered session', 'answered sessions')}.`);
-    if (waits.length) parts.push(`${who} also named ${plural(waits.length, 'thing', 'things')} the work was waiting on.`);
+    /* "also" only after the commitments (item 21): Kwabena read "Blessing Okafor also named 1 thing ..." with nothing before it. */
+    if (waits.length) {
+      parts.push(mine.length
+        ? `${who} also named ${plural(waits.length, 'thing', 'things')} the work was waiting on.`
+        : `${who} named ${plural(waits.length, 'thing', 'things')} the work was waiting on, across ${plural(answered, 'answered session', 'answered sessions')}.`);
+    }
     eachPerson.push({ participantId: p.id, who, says: parts.join(' ') });
   }
   if (!eachPerson.length) return null;
