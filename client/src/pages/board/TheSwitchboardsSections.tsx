@@ -402,6 +402,7 @@ export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn
  */
 const BY_AREA_HEADING: Partial<Record<string, string>> = {
   'support desk': 'By queue',
+  'distribution operations': 'By site',
 }
 
 /**

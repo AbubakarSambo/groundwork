@@ -1241,11 +1241,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     whoCheckedInEarly?: boolean
     /** "Open issues" draws only in the end fold, never in its usual place on the main board. */
     openIssuesInFold?: boolean
+    /** "The shape of the work" and its "By area" section draw right after "The team today", not in the end fold. */
+    themesAndAreaAfterTheTeam?: boolean
   }>> = {
-    'support desk': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true },
+    'support desk': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true, themesAndAreaAfterTheTeam: true },
+    'distribution operations': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true, themesAndAreaAfterTheTeam: true },
   }
   const layoutFor = (k: string | null) => (k ? kindLayout[k] : undefined)
-  const isSupportDesk = kindOfWorkKey === 'support desk'
+  const themesAndAreaAfterTheTeam = Boolean(layoutFor(kindOfWorkKey)?.themesAndAreaAfterTheTeam)
   /*
    * SUPPORT DESK BOARD FIX 2: "THE SHAPE OF THE WORK" AND "BY QUEUE", RIGHT AFTER "THE TEAM
    * TODAY" - support.txt's own place for them, not the end fold both sit in today. Pulled out of
@@ -1287,10 +1290,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    */
   const dealGridSections = isSalesOrg
     ? (b.workRecords ?? []).filter((s) => s.section === 'Deal grid')
-    : (b.workRecords ?? []).filter((s) => s.state !== 'not-known' && !(isSupportDesk && s.section === 'Themes'))
+    : (b.workRecords ?? []).filter((s) => s.state !== 'not-known' && !(themesAndAreaAfterTheTeam && s.section === 'Themes'))
   const restOfWorkRecordSections = isSalesOrg
     ? (b.workRecords ?? []).filter((s) => s.section !== 'Deal grid')
-    : (b.workRecords ?? []).filter((s) => s.state === 'not-known' && !(isSupportDesk && s.section === 'Themes'))
+    : (b.workRecords ?? []).filter((s) => s.state === 'not-known' && !(themesAndAreaAfterTheTeam && s.section === 'Themes'))
   const myWorkTab = viewerRunsThisCheckIn ? 'sessions' : 'record'
   const headerTabs = [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
@@ -2135,7 +2138,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           txt's own place for both, straight after "The team today" and before "Who checked in".
           Both render in the end fold for every other kind of work still, unchanged.
         */}
-        {isSupportDesk && themesSection && (
+        {themesAndAreaAfterTheTeam && themesSection && (
           <WorkRecordsSections
             groundId={id!}
             kindOfWork={kindOfWorkKey as any}
@@ -2146,7 +2149,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             canEdit={b.canEditFrame}
           />
         )}
-        {isSupportDesk && <ByAreaSection data={(b as any).byArea} kindOfWork={kindOfWorkKey} />}
+        {themesAndAreaAfterTheTeam && <ByAreaSection data={(b as any).byArea} kindOfWork={kindOfWorkKey} />}
 
         {/*
           BLOCKERS (board-as-lead.txt, "Blockers"; request 105 part 2 and 107 b/c): one section,
@@ -2594,7 +2597,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           />
         )}
         {/* SUPPORT DESK BOARD FIX 2: ALREADY DRAWN ABOVE, RIGHT AFTER "THE TEAM TODAY" - never twice. */}
-        {!isSupportDesk && <ByAreaSection data={(b as any).byArea} />}
+        {!themesAndAreaAfterTheTeam && <ByAreaSection data={(b as any).byArea} />}
         {/*
           REQUEST 70: THE SWITCHBOARD'S OWN SECTIONS, THE 13 THAT NOW HAVE A SERVED FIELD. Each
           component draws nothing when its own rows are empty, so there is no heading-with-nothing-
@@ -3265,7 +3268,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </div>
                   <div className="gwui-pt-2 gwui-pr-15 gwui-pb-10 gwui-pl-15">
                     {(() => { const said = p.items.filter((it) => theWordsOfALine(it.text)); return said.length === 0 ? (
-                      <div className="gwui-fs-15 gwui-ink-muted gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0">{b.family === 'UPDATE' ? 'Has not answered yet.' : 'Nobody has said anything about this yet.'}</div>
+                      <div className="gwui-fs-15 gwui-ink-muted gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0">
+                        {b.family === 'UPDATE' ? 'Has not answered yet.' : (
+                          /*
+                           * BOARD REVIEW, OPS BOARD, ITEM 6: "NOBODY HAS SAID ANYTHING ABOUT THIS
+                           * YET." EVEN UNDER A PERSON WHO DID ANSWER. The sentence claimed nobody
+                           * said anything, when it really means nothing this person said fits
+                           * "who owns what" - so it names the person it is about, "you" for the
+                           * reader's own card (same check the heading above already uses).
+                           */
+                          p.participantId === b.myParticipantId
+                            ? 'Nothing you said is listed here yet.'
+                            : `Nothing ${nameOnTheBoard(b, p.participantId, p.name)} said is listed here yet.`
+                        )}
+                      </div>
                     ) : said.map((it) => (
                       <div key={it.id} className="gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0 gwui-inner-row">
                         <div className="gwui-fs-15" style={{lineHeight: 1.45}}>{theWordsOfALine(it.text)}</div>

@@ -157,6 +157,8 @@ const THEMES_HEADING: Partial<Record<KindOfWork, string>> = {
   'MarketView where next': 'Where next, ranked',
   /* Support desk board fix 2: support.txt's own heading, right after "The team today". */
   'support desk': 'The shape of the work',
+  /* Distribution operations board: ops.txt's own heading, right after "The team today". */
+  'distribution operations': 'The shape of the work',
 }
 
 /**
@@ -166,6 +168,7 @@ const THEMES_HEADING: Partial<Record<KindOfWork, string>> = {
  */
 const THEMES_NOTE: Partial<Record<KindOfWork, string>> = {
   'support desk': 'Volume from the helpdesk, causes from the check-ins.',
+  'distribution operations': 'Incidents by site and type, last 8 weeks.',
 }
 
 /** The word for one row's kind, at the head of its own column ("Deal", "Task", "Item", "Trader"...). */
@@ -961,10 +964,21 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   const canAdd = canEdit && !!ITEM_KINDS_FOR_HOLDS[section.holds]?.length
 
   if (section.state === 'none-yet') {
+    /*
+     * BOARD REVIEW, OPS BOARD, ITEM 5: A PARTICIPANT WHOSE OWN ROWS ARE EMPTY STILL READS "NO
+     * {RECORD}S HAVE COME UP YET.", EVEN WHEN THE LEAD HAS ALREADY ADDED ONE FOR SOMEBODY ELSE. The
+     * sentence is true of the whole check-in, not of what this reader was actually sent - this
+     * section is already narrowed to "only yours" (`onlyYours` above), so an empty `section.rows`
+     * here means none of those rows is this reader's own, not that nothing has been said at all.
+     */
+    const holdsWord = noneYetHoldsSentence(section.holds)
+    const sentence = onlyYours
+      ? `None of the ${holdsWord} so far is yours. Yours appear here when you name one in a check-in${canAdd ? ', or when you add one below.' : '.'}`
+      : `No ${holdsWord} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`
     return (
       <Section heading={heading} note={note}>
         <p className="gwui-ink-sub gwui-fs-15" style={{lineHeight: 1.55}}>
-          {`No ${noneYetHoldsSentence(section.holds)} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`}
+          {sentence}
         </p>
         {canAdd && (
           <div className="gwui-mt-10">

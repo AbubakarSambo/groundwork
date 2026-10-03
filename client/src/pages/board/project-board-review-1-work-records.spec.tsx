@@ -91,12 +91,18 @@ const ENG_PARTICIPANT_BOARD = {
  * `onlyYours: 'Only yours.'`.
  */
 describe('fix 9: "or", and the engine\'s own "Only yours" note', () => {
-  it('reads "No releases or tasks have come up yet." with "Only yours." beside the heading', async () => {
+  /*
+   * OPS BOARD REVIEW, ITEM 5: WHEN THE SECTION IS ALREADY NARROWED TO THIS READER'S OWN ROWS
+   * (`onlyYours` sent), "No releases or tasks have come up yet." is not true of the check-in as a
+   * whole - the lead may well have added one for somebody else. The body sentence now says so
+   * ("None of the releases or tasks so far is yours."), beside the same "Only yours." note.
+   */
+  it('reads "None of the releases or tasks so far is yours." with "Only yours." beside the heading', async () => {
     me = { id: 'p-aisha', firstName: 'Aisha', role: 'MEMBER' }
     renderBoard(ENG_PARTICIPANT_BOARD)
     await screen.findByRole('heading', { name: 'Engineering release, test' })
-    expect(screen.getByText(/No releases or tasks have come up yet\./)).toBeTruthy()
-    expect(screen.queryByText(/No releases and tasks have come up yet\./)).toBeNull()
+    expect(screen.getByText(/None of the releases or tasks so far is yours\./)).toBeTruthy()
+    expect(screen.queryByText(/None of the releases and tasks so far is yours\./)).toBeNull()
     expect(screen.getByText('Only yours.')).toBeTruthy()
   })
 })
