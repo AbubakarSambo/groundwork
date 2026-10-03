@@ -113,9 +113,9 @@ describe('(b) where the strategy is not reaching the work', () => {
   const items = notReachingFrom(input);
   it('reads the shape of the organisation and asks one question of the right person', () => {
     expect(items.map((i) => [i.observation, i.question, i.forWhom])).toEqual([
-      ['Priority 3 has no owner and nothing underneath it.', 'Who owns priority 3, Build a stronger organisation?', { kind: 'leadership' }],
-      ['The customer portal sits under no current priority.', 'Which priority does The customer portal serve?', { kind: 'owner', externalId: 'x-lina' }],
-      ['Open the second warehouse is still open, and its date has passed.', 'Should Open the second warehouse get a new date, or be closed?', { kind: 'owner', externalId: 'x-otieno' }],
+      ['Priority 3 has no owner and nothing underneath it.', 'Who owns priority 3, “Build a stronger organisation”?', { kind: 'leadership' }],
+      ['“The customer portal” sits under no current priority.', 'Which priority does “The customer portal” serve?', { kind: 'owner', externalId: 'x-lina' }],
+      ['“Open the second warehouse” is still open, and its date has passed.', 'Should “Open the second warehouse” get a new date, or be closed?', { kind: 'owner', externalId: 'x-otieno' }],
     ]);
   });
   it('rests on no check-in and holds no person\'s name', () => {
@@ -336,9 +336,9 @@ describe('as each reader reads it', () => {
       { tag: 'Nobody owns it yet', says: 'Nobody owns this priority yet and no check-in feeds it.' },
     ]);
     expect(page.notReaching.map((n) => [n.observation, n.question, n.forWhom])).toEqual([
-      ['Priority 3 has no owner and nothing underneath it.', 'Who owns priority 3, Build a stronger organisation?', 'For you'],
-      ['The customer portal sits under no current priority.', 'Which priority does The customer portal serve?', 'For Lina Ali, Product lead'],
-      ['Open the second warehouse is still open, and its date has passed.', 'Should Open the second warehouse get a new date, or be closed?', 'For Otieno Ouma'],
+      ['Priority 3 has no owner and nothing underneath it.', 'Who owns priority 3, “Build a stronger organisation”?', 'For you'],
+      ['“The customer portal” sits under no current priority.', 'Which priority does “The customer portal” serve?', 'For Lina Ali, Product lead'],
+      ['“Open the second warehouse” is still open, and its date has passed.', 'Should “Open the second warehouse” get a new date, or be closed?', 'For Otieno Ouma'],
     ]);
     expect(page.namedByTeams).toHaveLength(1);
     expect(page.namedByTeams[0].teams.map((t) => t.team)).toEqual(['Customers', 'Operations', 'Sales']);

@@ -97,7 +97,7 @@ export class CompanyPictureService {
         where: { organizationId },
         select: { userId: true, team: true, user: { select: { firstName: true, lastName: true, email: true } } },
       }),
-      this.prisma.person.findMany({ where: { organizationId }, select: { displayName: true, givenName: true, familyName: true, email: true } }),
+      this.prisma.person.findMany({ where: { organizationId }, select: { externalId: true, displayName: true, givenName: true, familyName: true, email: true } }),
       this.prisma.groundParticipant.findMany({ where: { ground: { organizationId } }, select: { nameGiven: true, email: true } }),
     ]);
 
@@ -114,6 +114,10 @@ export class CompanyPictureService {
       return seen;
     };
 
+    /* An owner the organisation's system names but nobody here matches is not an owner Groundwork can ask (4 October 2026 review, item C1). */
+    const knownPeople = new Set((persons as any[]).map((p) => p.externalId).filter(Boolean));
+    const ownerIsKnown = (externalId: string | null | undefined) => !externalId || knownPeople.has(externalId);
+
     const teamOfUser = new Map<string, string>();
     for (const m of memberships as any[]) if (m.team?.trim()) teamOfUser.set(m.userId, m.team.trim());
     const gs = (grounds as any[]).map((g) => ({ ...g, team: teamOfUser.get(g.initiatorId) ?? null }));
@@ -125,7 +129,7 @@ export class CompanyPictureService {
       const feeding = gs.filter((g) => g.subjectExternalId && branch.has(g.subjectExternalId));
       const open = feeding.flatMap((g) => g.dependencies);
       return {
-        id: s.id, number: i + 1, title: s.title, ownerExternalId: s.ownerExternalId ?? null,
+        id: s.id, number: i + 1, title: s.title, ownerExternalId: s.ownerExternalId ?? null, ownerKnown: ownerIsKnown(s.ownerExternalId),
         overdue: !!s.dueDate && s.dueDate.getTime() < now.getTime() && !DONE.test(s.status ?? ''),
         hasChildren: branch.size > 1,
         feedingGroundIds: feeding.map((g) => g.id),
@@ -144,7 +148,7 @@ export class CompanyPictureService {
 
     const onPriorities = gs.filter((g) => priorities.some((p) => p.feedingGroundIds.includes(g.id)));
     const subjects: SubjectFact[] = live.map((s) => ({
-      id: s.id, externalId: s.externalId, type: s.type, title: s.title, ownerExternalId: s.ownerExternalId ?? null,
+      id: s.id, externalId: s.externalId, type: s.type, title: s.title, ownerExternalId: s.ownerExternalId ?? null, ownerKnown: ownerIsKnown(s.ownerExternalId),
       parentExternalId: s.parentExternalId ?? null, measure: s.measure ?? null,
       overdue: !!s.dueDate && s.dueDate.getTime() < now.getTime() && !DONE.test(s.status ?? ''),
     }));
