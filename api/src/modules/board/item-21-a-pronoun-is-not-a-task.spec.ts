@@ -17,7 +17,9 @@ const setup = {
   checkIns: [answered('p-rukia', 1), answered('p-baraka', 1)],
   items: [item('w-1', 'it', 'p-rukia'), item('w-2', 'that migration', 'p-rukia'), item('w-3', 'Payment integration', 'p-rukia'),
     /* The support desk board's tickets: "which tickets" and "30 of those". */
-    item('w-4', 'which tickets', 'p-rukia'), item('w-5', '30 of those', 'p-rukia')],
+    item('w-4', 'which tickets', 'p-rukia'), item('w-5', '30 of those', 'p-rukia'),
+    /* The loans board: "something I don't have". */
+    item('w-6', "something I don't have", 'p-rukia')],
 };
 const names = async (reader: readonly [string, string]) => ((await boardAs(setup as any, ...reader)).workRecords ?? []).flatMap((s: any) => (s.rows ?? []).map((r: any) => r.name));
 

@@ -335,6 +335,8 @@ const squash = (s: string) => s.toLowerCase().replace(/[‘’“”'"]/g, '').r
 const ONLY_POINTS_ELSEWHERE = /^(?:it|its|this|that|these|those|them|they|he|she|him|her|one|ones|something|everything|anything|the same|(?:this|that|these|those|which|what)(?:\s+[\p{Ll}-]+){1,2}|(?:\d+|some|all|most|many|few|each|one|two|three|four|five|six|seven|eight|nine|ten)\s+of\s+(?:those|these|them|it|that))$/u;
 export function aNameThatNamesSomething(name: string | null | undefined): boolean {
   const n = (name ?? '').trim().replace(/[.,;:!?]+$/, '');
+  /* "something I don't have" (the loans board): a name with "I" in it, or that starts with "something", names nothing. */
+  if (/(?:^|\s)I(?:['’]\w+)?(?=\s|$)/.test(n) || /^(?:something|anything|nothing|everything)\b/i.test(n)) return false;
   return !!n && !ONLY_POINTS_ELSEWHERE.test(n.charAt(0).toLowerCase() + n.slice(1));
 }
 
