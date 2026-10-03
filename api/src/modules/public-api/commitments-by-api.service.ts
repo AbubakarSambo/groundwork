@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from '../prisma/prisma.service';
 import { hasSlipped } from '../assistant/what-somebody-said-they-would-do';
 import { addACommitment, markACommitmentDone } from '../assistant/a-commitment-has-one-writer';
+import { withoutCommitmentsFromGoalsNotToldYet } from '../grounds/a-commitment-from-a-goal-not-told-is-not-read-by-its-person';
 import { Fence, mayTouch, OUTSIDE_THE_FENCE } from './a-fence-around-a-credential';
 
 /**
@@ -58,11 +59,12 @@ export class CommitmentsByApiService {
 
   private async listFor(organizationId: string, personExternalId: string) {
     const now = new Date();
-    const rows = await this.prisma.commitment.findMany({
+    /* A copy of a goal the lead has not told this person about is not listed, including rows copied before that rule (decisions 48 and 56). */
+    const rows = await withoutCommitmentsFromGoalsNotToldYet(this.prisma, await this.prisma.commitment.findMany({
       where: { organizationId, personExternalId },
       orderBy: [{ state: 'asc' }, { dueAt: 'asc' }, { statedAt: 'desc' }],
       take: 100,
-    });
+    }));
     const open = rows.filter((r) => r.state === 'OPEN');
     return {
       open: open.map((c) => this.shape(c, now)),
