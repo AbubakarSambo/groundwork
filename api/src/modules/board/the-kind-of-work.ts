@@ -221,7 +221,7 @@ export function theRecordSections(kind: KindOfWork | null, leadsStages: unknown,
   }
   return RECORDS_FOR_EACH_KIND[kind].map((s) => {
     if (!s.itemKinds.length) return { section: s.section, holds: s.holds, state: 'not-known' as const, why: s.whyNotKnown ?? FROM_ANOTHER_SYSTEM };
-    const mine = rows.filter((r) => s.itemKinds.includes(r.kind));
+    const mine = rows.filter((r) => s.itemKinds.includes(r.kind) && aNameThatNamesSomething((r as any).name));
     const stages = stagesFor(s, leadsStages);
     return {
       section: s.section,
@@ -326,6 +326,18 @@ export interface AnOfferedRecord {
 
 const squash = (s: string) => s.toLowerCase().replace(/[‘’“”'"]/g, '').replace(/\s+/g, ' ').trim();
 
+/*
+ * A WORD THAT POINTS AT SOMETHING ELSE IS NOT A RECORD'S NAME (item 21, the engineering board). Ifeoma's task list
+ * held rows named "it" ("I expect it to take about five weeks."), "that migration" and "this": a name that is only a
+ * pronoun, or "that", "this", "these" or "those" before one or two words, names nothing anybody could find again. Not
+ * kept when a check-in is read, and not served from rows already stored.
+ */
+const ONLY_POINTS_ELSEWHERE = /^(?:it|its|this|that|these|those|them|they|he|she|him|her|one|ones|something|everything|anything|the same|(?:this|that|these|those)(?:\s+[\p{Ll}-]+){1,2})$/u;
+export function aNameThatNamesSomething(name: string | null | undefined): boolean {
+  const n = (name ?? '').trim().replace(/[.,;:!?]+$/, '');
+  return !!n && !ONLY_POINTS_ELSEWHERE.test(n.charAt(0).toLowerCase() + n.slice(1));
+}
+
 /**
  * ONLY WHAT THE LINE SAYS. A record the model offers is kept only when its line is one of the lines
  * it was given, its kind belongs to this kind of work, and its name is in that line's words. A stage
@@ -344,7 +356,7 @@ export function onlyRecordsTheLinesSay(
   for (const r of offered ?? []) {
     const line = r.lineId ? byId.get(r.lineId) : undefined;
     const name = (r.name ?? '').trim();
-    if (!line || !r.kind || !allowed.has(r.kind) || !name || name.length > 120) continue;
+    if (!line || !r.kind || !allowed.has(r.kind) || !name || name.length > 120 || !aNameThatNamesSomething(name)) continue;
     if (!squash(line.text).includes(squash(name))) continue;
     const section = RECORDS_FOR_EACH_KIND[kind].find((s) => s.itemKinds.includes(r.kind!))!;
     const stages = stagesFor(section, leadsStages) ?? [];
