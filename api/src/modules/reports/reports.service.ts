@@ -121,7 +121,7 @@ function theOtherPeoplesNames(participants: any[], readerParticipantId: string |
   }
   return [...out];
 }
-import { whatEachPersonSaidForTheSubject, deeplyWithoutColleaguesQuotesForTheSubject } from './colleagues-exact-words-stay-with-the-manager';
+import { whatEachPersonSaidForTheSubject, deeplyWithoutColleaguesQuotesForTheSubject, theNewHireReadsTheLeadsWords } from './colleagues-exact-words-stay-with-the-manager';
 import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
@@ -3417,7 +3417,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
       viewerParticipantId: me?.id ?? null,
       participants: ground.participants as any,
     }) || (isOrgAdmin && !evaluationWordsRunsIt && isEvaluationCheckIn((ground as any).scenario))) {
+      const unwalled = shape.whatEachPersonSaid as any[];
       shape.whatEachPersonSaid = whatEachPersonSaidForTheSubject(shape.whatEachPersonSaid as any[], { aDecisionIsBelow: !!((ground as any).resolvedAt || (ground as any).endState) }) as any;
+      /* The new hire reads the lead's own row word for word (request 124, Hafsah's answer of 3 October). Only the lead's: a colleague's stays walled. */
+      const theLead = (ground.participants as any[]).find((p) => p.partyType === 'INITIATOR');
+      if (theNewHireReadsTheLeadsWords((ground as any).scenario) && theLead && viewerIsTheSubjectOfAnEvaluationCheckIn({
+        scenario: (ground as any).scenario, isLead: isInitiator || evaluationWordsRunsIt, viewerParticipantId: me?.id ?? null, participants: ground.participants as any,
+      })) {
+        const leadLabel = labels.get(theLead.id);
+        const leadWho = (leadLabel ? nameByLabel.get(leadLabel) : undefined) ?? aColleague(theLead.id);
+        shape.whatEachPersonSaid = (shape.whatEachPersonSaid as any[]).map((row, i) => (!row.isYou && row.who === leadWho ? unwalled[i] : row)) as any;
+      }
     }
 
     /**
@@ -7267,7 +7277,9 @@ happened, and what is in the way.`;
       participants: ground.participants as any,
     }) || adminWithoutCheckInAccess) {
       const recordByParticipant = await theRecordAQuoteMayComeFromByParticipant(this.prisma as any, groundId).catch(() => new Map<string, string[]>());
-      const subjectRecord = participant?.id ? (recordByParticipant.get(participant.id) ?? []) : [];
+      /* Their own lines, and the lead's where the new hire reads the lead's own words (request 124). */
+      const theLeadsId = theNewHireReadsTheLeadsWords((ground as any).scenario) ? ((ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')?.id ?? null) : null;
+      const subjectRecord = [...(participant?.id ? (recordByParticipant.get(participant.id) ?? []) : []), ...(theLeadsId && participant?.id ? (recordByParticipant.get(theLeadsId) ?? []) : [])];
       base.sharedPicture = deeplyWithoutColleaguesQuotesForTheSubject(base.sharedPicture, subjectRecord);
       base.theOpening = deeplyWithoutColleaguesQuotesForTheSubject(base.theOpening, subjectRecord);
       base.agreements = deeplyWithoutColleaguesQuotesForTheSubject(base.agreements, subjectRecord);

@@ -60,7 +60,7 @@ import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { howACheckInIsGoing } from '../grounds/how-a-check-in-is-going';
 import { CheckInStatus, DependencyStatus, GroundMode, PartyType } from '@prisma/client';
-import { onlyWhatThisReaderMaySee, onlyHandoffsTheyAreIn, WHY_YOU_ONLY_SEE_YOURSELF } from './the-board-keeps-the-same-wall';
+import { onlyWhatThisReaderMaySee, onlyHandoffsTheyAreIn, WHY_YOU_ONLY_SEE_YOURSELF, WHY_YOU_ONLY_SEE_YOURSELF_AND_YOUR_LEAD } from './the-board-keeps-the-same-wall';
 import {
   BoardFamily,
   BoardSection,
@@ -154,7 +154,7 @@ import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
 import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, theLeadActions, theObligations, theForecast, whoWaitedOnWhom, theContradictions, theQuestionsForTheLead, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
-import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
+import { whoOwnsWhatForTheSubject, divergenceForTheSubject, theNewHireReadsTheLeadsWords } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { eachLineInTheirName, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
 import { theRecordAQuoteMayComeFromByParticipant } from '../reports/a-quote-built-at-the-read';
 import { ReportsService } from '../reports/reports.service';
@@ -599,6 +599,13 @@ export class BoardService {
       viewerParticipantId: me?.id ?? null,
       participants: ground.participants as any,
     }) || (adminHere && !runsItForAPattern(ground as any, requestingUserId) && isEvaluationCheckIn((ground as any).scenario));
+    /* The new hire on an onboarding check-in reads their lead's own words and row (request 124, Hafsah's answer of 3 October). */
+    const theNewHireReadsTheLead = theNewHireReadsTheLeadsWords((ground as any).scenario) && viewerIsTheSubjectOfAnEvaluationCheckIn({
+      scenario: (ground as any).scenario,
+      isLead: isInitiator || runsItForAPattern(ground as any, requestingUserId),
+      viewerParticipantId: me?.id ?? null,
+      participants: ground.participants as any,
+    });
     /* And the Blockers tile names only the reader's own waits wherever the header above it does (see ownWaitsOnly). */
     const ownWaitsOnly = whoMaySee.peersHidden || (isEvaluationCheckIn(ground.scenario) && !isInitiator && !runsItForAPattern(ground as any, requestingUserId));
     const theMovementsReader = { participantId: me?.id ?? null, isLead: isInitiator, colleaguesWordsWalled, ownWaitsOnly };
@@ -2305,7 +2312,7 @@ export class BoardService {
       if (out.coverage) {
         out.coverage = { ...(out.coverage as any), reads: onlyWhatThisReaderMaySee((out.coverage as any).reads, whoMaySee) ?? [] };
       }
-      out.whoOwnsWhat = onlyWhatThisReaderMaySee(out.whoOwnsWhat as any, whoMaySee);
+      out.whoOwnsWhat = onlyWhatThisReaderMaySee(out.whoOwnsWhat as any, { ...whoMaySee, alsoThe: theNewHireReadsTheLead ? theLeadsRow : null });
       /* A record whose person is walled from this reader is not served to them: only their own, the lead's, and those with nobody's name on them. */
       out.workRecords = ((out.workRecords ?? []) as any[]).map((sec) => (Array.isArray(sec.rows)
         ? (() => {
@@ -2323,7 +2330,7 @@ export class BoardService {
       if (out.checkInGrid) {
         out.checkInGrid = {
           ...(out.checkInGrid as any),
-          rows: onlyWhatThisReaderMaySee((out.checkInGrid as any).rows, whoMaySee),
+          rows: onlyWhatThisReaderMaySee((out.checkInGrid as any).rows, { ...whoMaySee, alsoThe: theNewHireReadsTheLead ? theLeadsRow : null }),
         };
       }
       /*
@@ -2336,7 +2343,9 @@ export class BoardService {
        */
       out.participants = ((out.participants ?? []) as any[]).filter((p) => p.id === me?.id || p.id === theLeadsRow);
       /* Said, rather than left as a board that has quietly lost most of itself. */
-      out.whyYouOnlySeeYourself = WHY_YOU_ONLY_SEE_YOURSELF;
+      if (!theNewHireReadsTheLead) out.whyYouOnlySeeYourself = WHY_YOU_ONLY_SEE_YOURSELF;
+      /* The new hire reads the lead's row too, so it is said only where somebody else is left out, and it says "you and your lead". */
+      else if ((ground.participants as any[]).some((p) => p.id !== me?.id && p.id !== theLeadsRow && !p.managingOnly)) out.whyYouOnlySeeYourself = WHY_YOU_ONLY_SEE_YOURSELF_AND_YOUR_LEAD;
     }
 
     /*
@@ -2639,12 +2648,17 @@ export class BoardService {
         viewerParticipantId: me?.id ?? null,
         participants: ground.participants as any,
       }) || adminWithoutCheckInAccess) {
-        if (Array.isArray(walled.whoOwnsWhat)) walled.whoOwnsWhat = whoOwnsWhatForTheSubject(walled.whoOwnsWhat, me?.id ?? null, { aDecisionIsBelow: !!((ground as any).resolvedAt || (ground as any).endState) });
+        if (Array.isArray(walled.whoOwnsWhat)) walled.whoOwnsWhat = whoOwnsWhatForTheSubject(walled.whoOwnsWhat, me?.id ?? null, { aDecisionIsBelow: !!((ground as any).resolvedAt || (ground as any).endState), theLeadsRow: theNewHireReadsTheLead ? theLeadsRow : null });
         if (Array.isArray(walled.divergence?.items)) {
           walled.divergence = {
             ...walled.divergence,
             items: divergenceForTheSubject(walled.divergence.items, [me?.id ? nameOf(me.id) : null], {
-              subjectRecord: me?.id ? ((await theRecordAQuoteMayComeFromByParticipant(this.prisma as any, groundId).catch(() => new Map<string, string[]>())).get(me.id) ?? []) : [],
+              /* The subject's own lines, and the lead's where the new hire reads the lead's own words (request 124). */
+              subjectRecord: await (async () => {
+                const byParticipant = await theRecordAQuoteMayComeFromByParticipant(this.prisma as any, groundId).catch(() => new Map<string, string[]>());
+                return [...(me?.id ? (byParticipant.get(me.id) ?? []) : []), ...(theNewHireReadsTheLead && theLeadsRow ? (byParticipant.get(theLeadsRow) ?? []) : [])];
+              })(),
+              theLeadsWordsAreReadable: theNewHireReadsTheLead,
               leadNames: [theLeadsRow ? nameOf(theLeadsRow) : null, 'Your lead', 'The lead', 'your lead', 'the lead'],
               /* "...and the decision with its reasons, are below" only where a decision has been made (request 124, part 2). */
               aDecisionIsBelow: !!((ground as any).resolvedAt || (ground as any).endState),

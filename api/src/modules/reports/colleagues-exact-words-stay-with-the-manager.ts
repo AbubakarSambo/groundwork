@@ -55,6 +55,17 @@ const THE_FACTS_ONLY = (aDecisionIsBelow = false) => `A colleague's own words ar
 /** The same, where the side that is not shown is the lead's own, who is not a colleague. */
 const THE_FACTS_ONLY_LEAD = (aDecisionIsBelow = false) => `The words your lead used are not shown to you here. ${BELOW(aDecisionIsBelow)}`;
 
+/**
+ * THE NEW HIRE READS THE LEAD'S OWN WORDS AND ROW (request 124, Hafsah's answer of 3 October, decision 88; decision 3, "Nobody is
+ * special because of their title"; decision 4, "what people say in check-ins can be shown word for word to the people in that
+ * check-in"). On an onboarding check-in that reaches a verdict (a new hire's first 90 days), the person it is about reads what
+ * their lead said and the lead's row, word for word. A colleague's words stay with the manager (decision 17), and the lead's
+ * private notes and own report stay private. Every other evaluation check-in (a plan, a promotion, a renewal) is unchanged.
+ */
+export function theNewHireReadsTheLeadsWords(scenario: string | null | undefined): boolean {
+  return scenario === 'NEW_HIRE';
+}
+
 /* A generic, plain sentence for the one case there is no way to keep the rest of a sentence
    grammatical once a colleague's quoted words come out of it. */
 const A_COLLEAGUE_PUT_IT_DIFFERENTLY = 'A colleague described this differently.';
@@ -231,11 +242,12 @@ export function whatEachPersonSaidForTheSubject<T extends { isYou: boolean; line
 export function whoOwnsWhatForTheSubject<T extends { participantId: string; items?: readonly any[] }>(
   rows: readonly T[] | null | undefined,
   subjectParticipantId: string | null,
-  more: { aDecisionIsBelow?: boolean } = {},
+  /** `theLeadsRow`: the lead's row, left as it is, where the new hire reads the lead's own words (request 124). */
+  more: { aDecisionIsBelow?: boolean; theLeadsRow?: string | null } = {},
 ): T[] {
   if (!Array.isArray(rows)) return (rows ?? []) as T[];
   return rows.map((row) => {
-    if (!row || row.participantId === subjectParticipantId || !Array.isArray(row.items)) return row;
+    if (!row || row.participantId === subjectParticipantId || (!!more.theLeadsRow && row.participantId === more.theLeadsRow) || !Array.isArray(row.items)) return row;
     return {
       ...row,
       items: row.items.map((item: any) => (item && typeof item.text === 'string' ? { ...item, text: THE_FACTS_ONLY(more.aDecisionIsBelow) } : item)),
@@ -267,7 +279,7 @@ export function divergenceForTheSubject<T extends { positions?: readonly any[]; 
    * `subjectRecord`: the subject's own lines, so a quote of theirs inside the evidence stays and a colleague's
    * comes out. `leadNames`: how the lead's own side is named here, so it is not told as "a colleague".
    */
-  more: { subjectRecord?: readonly string[]; leadNames?: readonly (string | null | undefined)[]; aDecisionIsBelow?: boolean } = {},
+  more: { subjectRecord?: readonly string[]; leadNames?: readonly (string | null | undefined)[]; theLeadsWordsAreReadable?: boolean; aDecisionIsBelow?: boolean } = {},
 ): T[] {
   if (!Array.isArray(items)) return (items ?? []) as T[];
   /* The reader's own side is always named "You" on the board, whatever their name is. */
@@ -280,6 +292,8 @@ export function divergenceForTheSubject<T extends { positions?: readonly any[]; 
   };
   const stripSide = (side: any) => {
     if (!side || typeof side !== 'object' || isTheirs(side)) return side;
+    /* The new hire reads the lead's own account word for word (request 124); a colleague's still comes out. */
+    if (more.theLeadsWordsAreReadable && lead.has(labelOf(side))) return side;
     const said = lead.has(labelOf(side)) ? THE_FACTS_ONLY_LEAD(more.aDecisionIsBelow) : THE_FACTS_ONLY(more.aDecisionIsBelow);
     const out = { ...side };
     if (typeof out.view === 'string' && out.view) out.view = said;
