@@ -32,9 +32,10 @@ describe('the Blockers tile on the board, where people see only themselves', () 
   });
 
   it('Bisi, who runs it, and Juma, an admin who only reads, read the team\'s waits', async () => {
-    /* The team's oldest wait, Ngozi's, which Bisi's header names too. */
-    expect((await blockersTile(BISI)).sub).toBe('Work is held up by a date for the credit decision.');
-    expect((await blockersTile(JUMA)).sub).toBe('Work is held up by a date for the credit decision.');
+    /* The one hard blocker, Femi's, which the tile counts. The header names Ngozi's wait, which nobody called blocking,
+       so the tile keeps its own (item 21: a count of hard blockers names a hard blocker). */
+    expect((await blockersTile(BISI)).sub).toBe('Work is held up by the bank statements.');
+    expect((await blockersTile(JUMA)).sub).toBe('Work is held up by the bank statements.');
     expect((await blockersTile(BISI)).value).toBe('1');
   });
 });
