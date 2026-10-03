@@ -201,9 +201,9 @@ describe('Grace, an admin, reads the whole picture', () => {
   it('reads where the strategy is not reaching the work, each question for the person who can answer it', async () => {
     const page = await (await theWorld()).read('grace');
     expect(page.notReaching.map((n) => [n.observation, n.question, n.forWhom])).toEqual([
-      ['Priority 3 has no owner and nothing underneath it.', 'Who owns priority 3, Build a stronger organisation?', 'For you'],
-      ['The customer portal sits under no current priority.', 'Which priority does The customer portal serve?', 'For Lina Ali, Product lead'],
-      ['Sign the Nakuru distributor is still open, and its date has passed.', 'Should Sign the Nakuru distributor get a new date, or be closed?', 'For Wairimu Kamau, Sales lead'],
+      ['Priority 3 has no owner and nothing underneath it.', 'Who owns priority 3, “Build a stronger organisation”?', 'For you'],
+      ['“The customer portal” sits under no current priority.', 'Which priority does “The customer portal” serve?', 'For Lina Ali, Product lead'],
+      ['“Sign the Nakuru distributor” is still open, and its date has passed.', 'Should “Sign the Nakuru distributor” get a new date, or be closed?', 'For Wairimu Kamau, Sales lead'],
     ]);
     /* A customer is not an aim, so it is never said to sit under no priority. */
     expect(JSON.stringify(page.notReaching)).not.toContain('Green Mart');
@@ -252,8 +252,8 @@ describe('Wairimu, a lead who runs the sales check-in, reads her share', () => {
     const page = await (await theWorld()).read('wairimu');
     expect(page.notReaching).toEqual([{
       id: 'overdue-s6',
-      observation: 'Sign the Nakuru distributor is still open, and its date has passed.',
-      question: 'Should Sign the Nakuru distributor get a new date, or be closed?',
+      observation: '“Sign the Nakuru distributor” is still open, and its date has passed.',
+      question: 'Should “Sign the Nakuru distributor” get a new date, or be closed?',
       forWhom: 'For you',
     }]);
   });

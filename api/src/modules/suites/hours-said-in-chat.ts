@@ -39,7 +39,11 @@ const AMOUNT = new RegExp(
   `\\b(?:(\\d+(?:[.,]\\d+)?)\\s*${HOURS_UNIT}(?:\\s*(?:and\\s*)?(\\d{1,2})\\s*(?:minutes?|mins?))?\\b|(half an hour)|(an hour)|(\\d{1,3})\\s*(?:minutes?|mins?)\\b)`,
   'gi',
 );
-const SAYS_HOURS = /\b(?:i|we|i've|i have)\s+(?:did|done|worked|spent|put in|logged|clocked|have done)\b|\b(?:log|record|put down|add)\s+(?:\d|half an hour|an hour)/i;
+/*
+ * How hours are said, in the ways people say them (found in the 4 October review): "I did", "I've put in",
+ * "I just worked", "Spent 2 hours on Lakeside this morning" with no "I", "Log", "Add" and "Enter".
+ */
+const SAYS_HOURS = /\b(?:i|we)(?:['’]ve|\s+have)?\s+(?:(?:just|also|then|already)\s+)?(?:did|done|worked|spent|put in|logged|clocked)\b|^\s*(?:spent|worked|did|done|logged|clocked|put in)\s+(?:\d|half an hour|an hour)|\b(?:log|record|put down|add|enter)\s+(?:\d|half an hour|an hour)/i;
 
 export function soundsLikeHours(message: string): boolean {
   const t = message ?? '';
@@ -66,7 +70,7 @@ export function hoursAsRead(hours: number): string {
 function readTheDay(t: string, today: Date): string | null | 'many' {
   const days = new Set<string>();
   const now = midnight(today);
-  if (/\btoday\b/.test(t)) days.add(iso(now));
+  if (/\btoday\b|\bthis (?:morning|afternoon|evening)\b|\bjust now\b|\bearlier\b/.test(t)) days.add(iso(now));
   if (/\byesterday\b/.test(t)) days.add(iso(new Date(now.getTime() - DAY_MS)));
   for (const m of t.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g)) days.add(`${m[1]}-${m[2]}-${m[3]}`);
   for (const m of t.matchAll(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH_RE}(?:\\s+(\\d{4}))?|\\b${MONTH_RE}\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+(\\d{4}))?`, 'g'))) {
@@ -115,7 +119,7 @@ export function readHours(message: string, clients: string[], today: Date = new 
     if (!Number.isFinite(hours) || hours < 0.25 || hours > 24) return { kind: 'ask', say: ASK_HOURS };
 
     const after = raw.slice((m.index ?? 0) + m[0].length, found[i + 1]?.index ?? raw.length);
-    const tail = /^\s*(?:on|at|for|with|in|of)\s+(?:the\s+)?(.*)$/i.exec(after);
+    const tail = /^\s*(?:on|at|for|with|in|of|to)\s+(?:the\s+)?(.*)$/i.exec(after);
     if (!tail) return { kind: 'ask', say: `Which project or client was ${hoursAsRead(hours)} on? Tell me which one and I will ask again.${listed}` };
     const wanted = tail[1].toLowerCase();
     const client = list.find((c) => wanted.startsWith(c.toLowerCase()) && !/[a-z0-9]/i.test(wanted.charAt(c.length) || ' '));

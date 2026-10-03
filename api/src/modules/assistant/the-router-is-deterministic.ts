@@ -12,6 +12,7 @@
 import { quotedThenEnding } from './a-quote-takes-no-second-mark';
 import { parseAskAPerson } from './a-line-or-a-note-typed-in-chat';
 import { SET_UP_A_SUITE_PATTERNS } from './a-suite-set-up-by-talking';
+import { WHAT_IS_DUE_PATTERNS, WHO_APPROVES_PATTERNS, WHO_IS_AWAY_PATTERNS, YOUR_REQUESTS_PATTERNS } from './your-own-requests-asked-about';
 
 /** A sentence that asks one named person something. Shares its reading with the lane that acts on it. */
 const ASKS_A_PERSON = { exec: (m: string): RegExpExecArray | null => (parseAskAPerson(m) ? (['ask'] as unknown as RegExpExecArray) : null) } as unknown as RegExp;
@@ -55,6 +56,14 @@ export type Lane =
   | 'decide_a_request'
   /** An admin setting a suite up by describing it (decision 85): asked only what is missing, said back, written on a yes. */
   | 'set_up_a_suite'
+  /** Your own leave days left, where your own requests stand, and what waits for you to approve (read, never written). */
+  | 'your_requests'
+  /** Who approves your leave, your hours or your spending, in plain words. */
+  | 'who_approves'
+  /** What is due on your commitments and to-dos. */
+  | 'what_is_due'
+  /** Who is off, from approved leave, as far as this reader may know. */
+  | 'who_is_away'
   | 'unplaced';
 
 export interface Routed {
@@ -219,6 +228,16 @@ const RULES = [
     /\bhelp\s+(?:me|us)\s+(?:to\s+)?(?:set|write|agree|work\s+out)\b.*\b(?:objectives?|okrs?|goals?|targets?)\b/i,
     /\b(?:objective|okr|goal)\s+setting\b/i,
   ]),
+  /*
+   * YOUR OWN LEAVE AND REQUESTS, WHO APPROVES, WHAT IS DUE, AND WHO IS OFF. Questions only; nothing is
+   * written. Above `what_next`, `what_should_we_talk_about` and `who_is`, because "what is waiting for me
+   * to approve" and "who is off next week" hold words those lanes read as something else (the second was
+   * answered by looking up a person called "off next week"). See your-own-requests-asked-about.ts.
+   */
+  rule('who_is_away', WHO_IS_AWAY_PATTERNS),
+  rule('who_approves', WHO_APPROVES_PATTERNS),
+  rule('your_requests', YOUR_REQUESTS_PATTERNS),
+  rule('what_is_due', WHAT_IS_DUE_PATTERNS),
   rule('what_next', [
     /*
      * "WHAT SHOULD I DO NEXT" (week 17): one thing, from the reader's own commitments, to-dos and

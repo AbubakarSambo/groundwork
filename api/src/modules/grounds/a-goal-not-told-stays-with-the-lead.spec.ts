@@ -140,8 +140,8 @@ describe('a goal the lead has not told Tobi about', () => {
       it('Baraka, a colleague, does not', async () => {
         expect(await text(read(BARAKA))).not.toMatch(/take over the scheduling/i);
       });
-      it('Otieno, an admin who only reads, does not', async () => {
-        expect(await text(read(OTIENO))).not.toMatch(/take over the scheduling/i);
+      it('Otieno, an admin of the organisation, reads it: it is hidden from Tobi and his colleagues, not from the people who run the work (decisions 5, 48, 56 and 86)', async () => {
+        expect(await text(read(OTIENO))).toMatch(/take over the scheduling/i);
       });
     });
   }

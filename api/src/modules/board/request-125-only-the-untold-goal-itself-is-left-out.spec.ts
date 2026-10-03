@@ -16,14 +16,17 @@ const SETUP: Setup = { scenario: GroundScenario.OKR_ALIGNMENT, whoSeesTargets: '
 const names = (b: any) => (b.objectives ?? []).map((o: any) => String(o.name));
 
 describe('only the goal not told is left out of the objectives, and the goal they were told stays', () => {
-  it.each([['Rukia', RUKIA], ['Juma, an admin who only reads', JUMA]] as [string, readonly [string, 'MEMBER' | 'ADMIN']][])('%s reads the told goal and not the untold one', async (_n, who) => {
+  it.each([['Rukia', RUKIA]] as [string, readonly [string, 'MEMBER' | 'ADMIN']][])('%s reads the told goal and not the untold one', async (_n, who) => {
     const b = await boardAs(SETUP, ...who);
     expect(names(b).join(' | ')).toContain('Lead the client conversations fully');
     expect(JSON.stringify(b)).not.toContain('8 renewals');
     expect(JSON.stringify(b)).not.toContain('eight renewals');
   });
 
-  it('Amina reads both', async () => {
+  it('Amina, and Juma as an admin of the organisation, read both (decisions 5 and 86)', async () => {
+    const j = await boardAs(SETUP, ...JUMA);
+    expect(names(j).join(' | ')).toContain('Lead the client conversations fully');
+    expect(names(j).join(' | ')).toContain('8 renewals');
     const b = await boardAs(SETUP, ...AMINA);
     expect(names(b).join(' | ')).toContain('Lead the client conversations fully');
     expect(names(b).join(' | ')).toContain('8 renewals');

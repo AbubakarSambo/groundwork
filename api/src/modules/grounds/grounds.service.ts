@@ -1700,7 +1700,7 @@ export class GroundsService {
      * agreements and divergences, the objectives and the participants included. Same rule as the
      * list, asked here too; and the same answer as assertMaySeeGround gives every other read.
      */
-    if (requestingUserId) await this.assertMaySeeGround(id, requestingUserId);
+    const mayRead = requestingUserId ? await this.assertMaySeeGround(id, requestingUserId) : null;
     // Primary lookup by org - works for org members and the initiator.
     const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, startedAt: true, isFinal: true, specificityLevel: true, specificityDimensions: true } as const;
 
@@ -2023,8 +2023,8 @@ export class GroundsService {
     // not the ground's owner from the people they invited.
     const hideContact = !!(ground as any).restrictExternalVisibility;
     const viewerIsInitiator = !!requestingUserId && ground.initiatorId === requestingUserId;
-    /* Whoever runs it reads a goal not told: the lead, and the admin who set it up (decisions 5 and 86; board/an-untold-goal-is-not-a-board-objective). */
-    const viewerRunsIt = theyRunThisCheckIn(requestingUserId, ground as any);
+    /* Whoever runs it or administers it reads a goal not told: the lead, the admin who set it up and every admin of the organisation (decisions 5 and 86; board/an-untold-goal-is-not-a-board-objective). */
+    const viewerRunsIt = theyRunThisCheckIn({ userId: requestingUserId, role: (mayRead as any)?.viewerRole, organizationId }, ground as any);
     /**
      * AND AN ADMIN OF THIS ORGANISATION RUNS IT TOO, WHICH THE PEER RULE DID NOT KNOW.
      *
@@ -6175,7 +6175,7 @@ export class GroundsService {
     const viewer = { ...user, department: user?.role === 'LEAD' ? await this.departmentOf(userId, ground.organizationId) : null };
     const leadDepartment = user?.role === 'LEAD' && ground.initiatorId ? await this.departmentOf(ground.initiatorId, ground.organizationId) : null;
     if (!maySee(userId, { ...viewer, userId }, { ...ground, leadDepartment })) throw new NotFoundException('Check-in not found');
-    return ground;
+    return { ...ground, viewerRole: user?.role ?? null };
   }
 
   /** A user's department is on the Person linked to them, when there is one. Null for most of a roster, and that is normal. */

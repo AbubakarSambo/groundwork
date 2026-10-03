@@ -325,7 +325,7 @@ export class TheWeeklyReportService {
 
     /* A goal the lead has not told its person about is in no number and no sentence anybody but whoever runs the check-in reads
        (decisions 48, 56 and 86). Facts are kept whole; this is what is served. */
-    const runsTheCheckIn = theyRunThisCheckIn(who.userId, ground);
+    const runsTheCheckIn = theyRunThisCheckIn({ userId: who.userId, role: who.role, organizationId: who.organizationId }, ground);
     const notTold: any[] = runsTheCheckIn ? [] : (((await ((this.prisma as any).personObjective?.findMany?.({
       where: { groundId, awareness: 'NOT_TOLD' },
       select: { id: true, participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },

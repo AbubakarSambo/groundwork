@@ -22,15 +22,51 @@ export type SpendRead =
   | { kind: 'ask'; say: string }
   | { kind: 'ok'; said: SpendSaid };
 
-const SAYS_SPEND = /\b(?:i|we|i've|i have)\s+(?:spent|paid|need to spend|want to spend|would like to spend|am going to spend|have to spend)\b|\b(?:i|we)(?:'d| would)\s+like to spend\b|\b(?:can|may|could|should)\s+(?:i|we)\s+spend\b/i;
+/*
+ * HOW A REQUEST TO SPEND IS SAID (found in the 4 October review: "Can I buy a new laptop for 95,000?" and
+ * "I need 5000 for airtime" were not read as spending). The old shapes stay: "I spent", "I want to spend",
+ * "can I spend". Added: asking to buy, get, order, pay for, book or claim something ("Could I claim 3,500
+ * for taxi fares?", "Please can I get 15,000 for the team lunch?"), saying what is wanted to buy ("I'd like
+ * to buy a projector for KES 60,000"), and "I need 5000 for airtime", where a bare number counts only when
+ * "for" or "on" follows it, so "I need 10 chairs for the office" is not money.
+ */
+const BUYING = '(?:buy|get|order|pay(?:\\s+for)?|purchase|book|claim|expense|put\\s+through)';
+const SAYS_SPEND_BEFORE = /\b(?:i|we|i've|i have)\s+(?:spent|paid|need to spend|want to spend|would like to spend|am going to spend|have to spend)\b|\b(?:i|we)(?:'d| would)\s+like to spend\b|\b(?:can|may|could|should)\s+(?:i|we)\s+spend\b/i;
+const SAYS_SPEND_ALSO = new RegExp(
+  [
+    "\\b(?:can|may|could|should|would)\\s+(?:i|we)\\s+(?:please\\s+)?spend\\b",
+    `\\b(?:can|may|could|should|would)\\s+(?:i|we)\\s+(?:please\\s+)?${BUYING}\\b`,
+    `\\b(?:i|we)(?:['’]d| would|['’]ll| will)?\\s*(?:need|want|like|would like|am going|have got|have)\\s+to\\s+${BUYING}\\b`,
+    `\\b(?:i|we)\\s+(?:bought|ordered|purchased|booked)\\b`,
+    "\\b(?:i|we)(?:['’]d| would)?\\s*(?:need|want|require)\\s+(?:(?:kes|ksh|ngn|usd|gbp|eur|zar|ugx|tzs|ghs|rwf|₦|\\$|£|€)\\.?\\s*)?\\d[\\d,.]*\\s*(?:k|m|thousand|million)?\\s+(?:for|on)\\b",
+  ].join('|'),
+  'i',
+);
 
 const CURRENCY = '(kes|ksh|ngn|usd|gbp|eur|zar|ugx|tzs|ghs|rwf|₦|\\$|£|€)';
 const MONEY = new RegExp(`(?:${CURRENCY}\\.?\\s*)?(\\d{1,3}(?:,\\d{3})+|\\d+)(\\.\\d+)?\\s*(k|m|thousand|million)?\\b(?:\\s*${CURRENCY}\\b)?`, 'gi');
 const SYMBOL: Record<string, string> = { '₦': 'NGN', $: 'USD', '£': 'GBP', '€': 'EUR', ksh: 'KES' };
 const codeOf = (c: string) => SYMBOL[c.toLowerCase()] ?? c.toUpperCase();
 
+/** An amount that is plainly money: with a currency, a k or a million, thousands grouped, or three digits or more. */
+const MONEYISH = /(?:\b(?:kes|ksh|ngn|usd|gbp|eur|zar|ugx|tzs|ghs|rwf)\b\.?\s*|[₦$£€]\s*)\d|\d\s*(?:k|m|thousand|million)\b|\d{1,3}(?:,\d{3})+|\b\d{3,}\b/i;
+
 export function soundsLikeSpending(message: string): boolean {
-  return SAYS_SPEND.test(message ?? '') && /\d/.test(message ?? '');
+  const t = message ?? '';
+  if (SAYS_SPEND_BEFORE.test(t) && /\d/.test(t)) return true;
+  return SAYS_SPEND_ALSO.test(t) && MONEYISH.test(t);
+}
+
+const startOfSpending = (t: string) => {
+  const at = [SAYS_SPEND_BEFORE.exec(t)?.index, SAYS_SPEND_ALSO.exec(t)?.index].filter((i): i is number => i != null);
+  return at.length ? Math.min(...at) : 0;
+};
+
+/** "Can I buy a new laptop for 95,000": what comes between the buying word and the amount is what it is for. */
+function whatWasBought(before: string): string {
+  const m = new RegExp(`\\b(?:${BUYING}|bought|ordered|purchased|booked)\\s+(.+)$`, 'i').exec(before);
+  if (!m) return '';
+  return m[1].replace(/\s*(?:for|at|costing|which costs|that costs|it costs|costs|worth|@|:|-|,)\s*$/i, '').replace(/\s+/g, ' ').trim().slice(0, 300);
 }
 
 /** What the money is for, in the person's own words, cut at the end of the sentence. */
@@ -42,7 +78,7 @@ function whatFor(after: string): string {
 export function readSpending(message: string, suiteCurrency: string | null): SpendRead {
   const t = (message ?? '').trim();
   if (!soundsLikeSpending(t)) return { kind: 'none' };
-  const afterVerb = t.slice((SAYS_SPEND.exec(t)?.index ?? 0));
+  const afterVerb = t.slice(startOfSpending(t));
   const found = [...afterVerb.matchAll(MONEY)].filter((m) => {
     /* A number followed by an hour or a day is not money, and a bare number inside a date is not either. */
     const rest = afterVerb.slice((m.index ?? 0) + m[0].length);
@@ -55,11 +91,18 @@ export function readSpending(message: string, suiteCurrency: string | null): Spe
     const unit = (m[4] ?? '').toLowerCase();
     return base * (unit === 'k' || unit === 'thousand' ? 1_000 : unit === 'm' || unit === 'million' ? 1_000_000 : 1);
   };
-  const amounts = [...new Set(found.map(asAmount))];
+  /*
+   * "Can we order 12 chairs for 30,000?" holds two numbers. The one that follows "for", "costing",
+   * "worth" or "at", or that carries a currency or a k, is the money; the other is a quantity.
+   */
+  const pricedBy = (m: RegExpMatchArray) => /(?:\bfor|\bat|\bcosts?|\bcosting|\bworth|@)\s*$/i.test(afterVerb.slice(0, m.index ?? 0)) || !!m[1] || !!m[5] || !!m[4];
+  const priced = found.length > 1 && !SAYS_SPEND_BEFORE.test(t) ? found.filter(pricedBy) : found;
+  const used = priced.length === 1 ? priced : found;
+  const amounts = [...new Set(used.map(asAmount))];
   if (amounts.length > 1) {
     return { kind: 'ask', say: 'I found more than one amount in that. Tell me the one amount you want to spend and what it is for, and I will ask again.' };
   }
-  const first = found[0];
+  const first = used[0];
   const amount = amounts[0];
   if (!(amount > 0) || !Number.isFinite(amount) || amount > 1e12) {
     return { kind: 'ask', say: 'I could not read how much that is. Tell me the amount as a number and what it is for, and I will ask again.' };
@@ -69,7 +112,7 @@ export function readSpending(message: string, suiteCurrency: string | null): Spe
   if (currency && suiteCurrency && currency !== suiteCurrency.toUpperCase()) {
     return { kind: 'ask', say: `Your organisation counts spending in ${suiteCurrency}, and you wrote ${currency}. Tell me the amount in ${suiteCurrency} and I will ask again.` };
   }
-  const what = whatFor(afterVerb.slice((first.index ?? 0) + first[0].length));
+  const what = whatFor(afterVerb.slice((first.index ?? 0) + first[0].length)) || whatWasBought(afterVerb.slice(0, first.index ?? 0));
   if (!what) return { kind: 'ask', say: `What is the ${money(suiteCurrency, amount)} for? Tell me in a few words and I will ask again.` };
   return { kind: 'ok', said: { amount, what, currency: currency ?? suiteCurrency } };
 }

@@ -96,6 +96,11 @@ export interface PriorityFacts {
   number: number;
   title: string;
   ownerExternalId: string | null;
+  /**
+   * Whether that owner is one of the people in the organisation. False when the organisation's own system
+   * names an owner nobody here matches; left out means known (4 October 2026 review, item C1).
+   */
+  ownerKnown?: boolean;
   /** Their date has passed and their system does not say it is done. */
   overdue: boolean;
   /** Anything hanging under it, not counting check-ins. */
@@ -125,6 +130,8 @@ export interface SubjectFact {
   type: string;
   title: string;
   ownerExternalId: string | null;
+  /** As on a priority: false when the owner named is nobody in the organisation. */
+  ownerKnown?: boolean;
   parentExternalId: string | null;
   overdue: boolean;
   /** What it measures, as the organisation's own system wrote it. Given to the model only, never served. */
@@ -232,28 +239,68 @@ export function plainReading(f: PriorityFacts, tag: string): string {
 /* (b) Where the strategy is not reaching the work, written from the structure alone            */
 /* ------------------------------------------------------------------------------------------ */
 
+/**
+ * A TITLE AS IT SITS INSIDE A SENTENCE (4 October 2026 review, item C2). The organisation's system gives
+ * titles such as ": three customers live on the API" (a leading colon) and "Ten companies lined up for the
+ * sprint — Companies attached to the September sprint" (a name and what it measures, joined by a dash).
+ * The leading marks go, only the name before the dash is kept, a very long one is cut at a word, and
+ * the result is put in quotation marks, so the sentence around it reads as a sentence and a name keeps
+ * its capitals.
+ */
+export function tidyTitle(title: string): string {
+  const t = (title ?? '').replace(/\s+/g, ' ').trim();
+  const parts = t.split(/\s+[—–]\s+|\s+-\s+/).map((x) => x.replace(/^[\s:;,.\-–—]+|[\s:;,\-–—]+$/g, '')).filter(Boolean);
+  const first = parts[0] ?? t.replace(/^[\s:;,.\-–—]+/, '');
+  if (first.length <= 90) return first;
+  const cut = first.slice(0, 90);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 40))}…`;
+}
+export const quotedTitle = (title: string): string => `“${tidyTitle(title)}”`;
+
+export type NotReachingKind = 'no-owner' | 'owner-not-known' | 'nothing-under' | 'orphan' | 'overdue';
+
+/** The sentence and the question for one row, from its kind alone, so a stored row and a new one read the same. */
+export function notReachingText(kind: NotReachingKind, f: { number?: number; title: string; nothingUnder?: boolean }): { observation: string; question: string } {
+  const name = quotedTitle(f.title);
+  const which = f.number != null ? `priority ${f.number}` : name;
+  switch (kind) {
+    case 'no-owner':
+      return {
+        observation: f.nothingUnder ? `Priority ${f.number} has no owner and nothing underneath it.` : `Priority ${f.number} has no owner.`,
+        question: `Who owns priority ${f.number}, ${name}?`,
+      };
+    case 'owner-not-known':
+      return {
+        observation: `Priority ${f.number} names an owner who is not one of the people in your organisation${f.nothingUnder ? ', and nothing is underneath it and no check-in feeds it' : ''}.`,
+        question: `Who should own priority ${f.number}, ${name}?`,
+      };
+    case 'nothing-under':
+      return { observation: `Priority ${f.number} has an owner, but nothing is underneath it and no check-in feeds it.`, question: `Which team should take on priority ${f.number}, ${name}?` };
+    case 'orphan':
+      return { observation: `${name} sits under no current priority.`, question: `Which priority does ${name} serve?` };
+    case 'overdue':
+      return { observation: `${f.number != null ? which.charAt(0).toUpperCase() + which.slice(1) : name} is still open, and its date has passed.`, question: `Should ${which} get a new date, or be closed?` };
+  }
+}
+
+const PASSED_TOO = ' Its date has passed, and it is not marked as done.';
+
 export function notReachingFrom(input: PictureInput): StoredNotReaching[] {
   const out: StoredNotReaching[] = [];
-  const at = (owner: string | null): ForWhom => (owner ? { kind: 'owner', externalId: owner } : { kind: 'leadership' });
+  const at = (owner: string | null, known?: boolean): ForWhom => (owner && known !== false ? { kind: 'owner', externalId: owner } : { kind: 'leadership' });
+  /* One row for each thing: a second finding about the same priority or aim is added to its row, never a row of its own. */
+  const rowOf = new Map<string, StoredNotReaching>();
+  const add = (subjectId: string, row: StoredNotReaching) => { out.push(row); rowOf.set(subjectId, row); };
 
   for (const p of input.priorities) {
     const nothingUnder = !p.hasChildren && p.feedingGroundIds.length === 0;
+    const f = { number: p.number, title: p.title, nothingUnder };
     if (!p.ownerExternalId) {
-      out.push({
-        id: `no-owner-${p.id}`,
-        observation: nothingUnder ? `Priority ${p.number} has no owner and nothing underneath it.` : `Priority ${p.number} has no owner.`,
-        question: `Who owns priority ${p.number}, ${p.title}?`,
-        forWhom: { kind: 'leadership' },
-        restsOn: [],
-      });
+      add(p.id, { id: `no-owner-${p.id}`, ...notReachingText('no-owner', f), forWhom: { kind: 'leadership' }, restsOn: [] });
+    } else if (p.ownerKnown === false) {
+      add(p.id, { id: `owner-not-known-${p.id}`, ...notReachingText('owner-not-known', f), forWhom: { kind: 'leadership' }, restsOn: [] });
     } else if (nothingUnder) {
-      out.push({
-        id: `nothing-under-${p.id}`,
-        observation: `Priority ${p.number} has an owner, but nothing is underneath it and no check-in feeds it.`,
-        question: `Which team should take on priority ${p.number}, ${p.title}?`,
-        forWhom: at(p.ownerExternalId),
-        restsOn: [],
-      });
+      add(p.id, { id: `nothing-under-${p.id}`, ...notReachingText('nothing-under', f), forWhom: at(p.ownerExternalId), restsOn: [] });
     }
   }
 
@@ -277,27 +324,60 @@ export function notReachingFrom(input: PictureInput): StoredNotReaching[] {
     if (s.type !== 'OBJECTIVE' && s.type !== 'PROJECT') continue;
     const root = rootOf(s);
     if (root && priorityIds.has(root.id)) continue;
-    out.push({
-      id: `orphan-${s.id}`,
-      observation: `${s.title} sits under no current priority.`,
-      question: `Which priority does ${s.title} serve?`,
-      forWhom: at(s.ownerExternalId),
-      restsOn: [],
-    });
+    add(s.id, { id: `orphan-${s.id}`, ...notReachingText('orphan', { title: s.title }), forWhom: at(s.ownerExternalId, s.ownerKnown), restsOn: [] });
   }
 
   /* Something still open whose date has passed. */
   for (const s of input.subjects) {
     if (!s.overdue || !(s.type === 'OBJECTIVE' || s.type === 'PROJECT')) continue;
-    out.push({
-      id: `overdue-${s.id}`,
-      observation: `${s.title} is still open, and its date has passed.`,
-      question: `Should ${s.title} get a new date, or be closed?`,
-      forWhom: at(s.ownerExternalId),
-      restsOn: [],
-    });
+    const already = rowOf.get(s.id);
+    if (already) { already.observation = `${already.observation}${PASSED_TOO}`; continue; }
+    const number = input.priorities.find((p) => p.id === s.id)?.number;
+    add(s.id, { id: `overdue-${s.id}`, ...notReachingText('overdue', { number, title: s.title }), forWhom: at(s.ownerExternalId, s.ownerKnown), restsOn: [] });
   }
   return out.slice(0, 12);
+}
+
+/**
+ * THE STORED ROWS, AS THEY SHOULD READ TODAY. A picture is written once, when the record changes, and
+ * opening the page never writes it again, so rows written before these rules still hold the raw titles,
+ * "has an owner" for an owner nobody here matches, and two rows for one priority. They are put right as
+ * they are served, for every reader, from the same sentences a new row is written with.
+ */
+export function theRowsAsTheyShouldRead(
+  rows: StoredNotReaching[],
+  about: (subjectId: string) => { title: string; number?: number; ownerExternalId: string | null; ownerKnown: boolean } | null,
+): StoredNotReaching[] {
+  const READ = /^(no-owner|owner-not-known|nothing-under|orphan|overdue)-(.+)$/;
+  const again = rows.map((r): StoredNotReaching => {
+    const m = READ.exec(r.id);
+    const thing = m ? about(m[2]) : null;
+    if (!m || !thing) return { ...r };
+    const kind = m[1] as NotReachingKind;
+    const nothingUnder = /nothing (?:is )?underneath it/.test(r.observation);
+    const unknownOwner = thing.number != null && !!thing.ownerExternalId && !thing.ownerKnown && (kind === 'nothing-under' || kind === 'owner-not-known');
+    const now: NotReachingKind = unknownOwner ? 'owner-not-known' : kind;
+    return {
+      ...r,
+      id: now === kind ? r.id : `${now}-${m[2]}`,
+      ...notReachingText(now, { number: thing.number, title: thing.title, nothingUnder }),
+      forWhom: now === 'owner-not-known' ? { kind: 'leadership' } : r.forWhom,
+    };
+  });
+  /* One row for each thing: an overdue row for something that already has a row is folded into it. */
+  const keeper = new Map<string, StoredNotReaching>();
+  for (const r of again) {
+    const m = READ.exec(r.id);
+    if (m && m[1] !== 'overdue' && !keeper.has(m[2])) keeper.set(m[2], r);
+  }
+  const out: StoredNotReaching[] = [];
+  for (const r of again) {
+    const m = READ.exec(r.id);
+    const into = m && m[1] === 'overdue' ? keeper.get(m[2]) : undefined;
+    if (into) { if (!into.observation.endsWith(PASSED_TOO)) into.observation = `${into.observation}${PASSED_TOO}`; continue; }
+    out.push(r);
+  }
+  return out;
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -353,7 +433,7 @@ function levelsFrom(input: PictureInput, model: TheModelsPicture | null | undefi
 
 export function theInputKey(input: PictureInput): string {
   const rows = [
-    ...input.priorities.map((p) => ['P', p.id, p.number, p.title, p.ownerExternalId ?? '', p.overdue, p.hasChildren, p.feedingGroundIds.slice().sort().join(','), p.finishedLast30, p.blocked, p.waiting, p.teams.slice().sort().join(',')].join('|')),
+    ...input.priorities.map((p) => ['P', p.id, p.number, p.title, p.ownerExternalId ?? '', p.ownerKnown === false ? 'unknown' : '', p.overdue, p.hasChildren, p.feedingGroundIds.slice().sort().join(','), p.finishedLast30, p.blocked, p.waiting, p.teams.slice().sort().join(',')].join('|')),
     ...input.handoffs.map((h) => ['H', h.id, h.groundId, h.team ?? '', h.about, h.status, h.priorityNumbers.join(','), h.waitsOnSomebody ?? ''].join('|')),
     ...input.subjects.map((s) => ['S', s.id, s.type, s.title, s.ownerExternalId ?? '', s.parentExternalId ?? '', s.overdue, s.measure ?? ''].join('|')),
     `F|${input.finishedOnPriorities}`,
@@ -509,7 +589,7 @@ function saidAndShownFrom(input: PictureInput, model: TheModelsPicture | null | 
     return {
       id: `shown-${p.id}`,
       area: `Priority ${p.number}`,
-      youSaid: p.title,
+      youSaid: tidyTitle(p.title),
       checkInsShow: given ?? plain,
       restsOn: [...new Set(input.groundsOnPriorities)].sort(),
     };

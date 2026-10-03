@@ -34,7 +34,10 @@
  * written for the organisation these are empty, and nothing is worked out on opening.
  */
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
-import { theShareFor, type StoredNotReaching, type StoredPicture } from './the-company-picture';
+import { theRowsAsTheyShouldRead, theShareFor, tidyTitle, type StoredNotReaching, type StoredPicture } from './the-company-picture';
+
+/** A title with the marks the organisation's system left at its front taken off (": three customers live on the API"). */
+const withoutLeadingMarks = (t: string) => (t ?? '').replace(/^[\s:;,.\-–—]+/, '').trim() || (t ?? '');
 
 export interface CompanyPriority {
   id: string;
@@ -228,7 +231,7 @@ export function companyPage(input: {
     const p: CompanyPriority = {
       id: s.id,
       number: i + 1,
-      title: s.title,
+      title: withoutLeadingMarks(s.title),
       owner,
       tag: s.ownerExternalId ? null : 'Nobody owns it yet',
       fedBy: nothingUnder ? 'No team feeds it' : named.length ? `Fed by ${andList([...new Set(named)])}` : null,
@@ -238,7 +241,7 @@ export function companyPage(input: {
         id: l.subjectId,
         depth: l.depth,
         level: l.kind === 'Priority' ? `Priority ${i + 1}` : l.kind,
-        title: l.title,
+        title: withoutLeadingMarks(l.title),
         changedHere: l.changedHere,
         fedBy: fedByExactly(l.subjectId),
       })),
@@ -249,6 +252,14 @@ export function companyPage(input: {
     }
     return p;
   });
+
+  /* What a stored row is about, so it is read today's way (the-company-picture.ts, theRowsAsTheyShouldRead). */
+  const aboutThing = (subjectId: string) => {
+    const s = live.find((x) => x.id === subjectId);
+    if (!s) return null;
+    const at = top.findIndex((x) => x.id === s.id);
+    return { title: s.title, number: at >= 0 ? at + 1 : undefined, ownerExternalId: s.ownerExternalId ?? null, ownerKnown: !s.ownerExternalId || input.owners.has(s.ownerExternalId) };
+  };
 
   const forWhom = (w: { kind: string; externalId?: string }): string => {
     if (w.kind !== 'owner' || !w.externalId) return 'For you';
@@ -263,7 +274,7 @@ export function companyPage(input: {
     line: countsLine(input.counts),
     priorities,
     readsTargets: input.readsEverything,
-    notReaching: (share?.notReaching ?? []).map((n) => ({ id: n.id, observation: n.observation, question: n.question, forWhom: forWhom(n.forWhom) })),
+    notReaching: theRowsAsTheyShouldRead(share?.notReaching ?? [], aboutThing).map((n) => ({ id: n.id, observation: n.observation, question: n.question, forWhom: forWhom(n.forWhom) })),
     namedByTeams: (share?.namedByTeams ?? []).map((g) => ({
       id: g.id, title: g.title, touches: g.touches,
       teams: g.teams.map((t) => ({
@@ -273,6 +284,6 @@ export function companyPage(input: {
         checkIns: (t.restsOn ?? []).map((id) => openable.get(id)).filter((x): x is GroundRow => !!x).map((x) => ({ id: x.id, name: nameOf(x) })),
       })),
     })),
-    saidAndShown: (share?.saidAndShown ?? []).map((x) => ({ id: x.id, area: x.area, youSaid: x.youSaid, checkInsShow: x.checkInsShow })),
+    saidAndShown: (share?.saidAndShown ?? []).map((x) => ({ id: x.id, area: x.area, youSaid: tidyTitle(x.youSaid), checkInsShow: x.checkInsShow })),
   };
 }

@@ -29,6 +29,7 @@ Decision 86 (3 October 2026): no privacy restriction may stay unless it comes fr
 | 21 | What each client agreed, on the time-sheets board | Leads who approve hours | Never confirmed |
 | 22 | Whose requests make up the team's waiting spending total | The person asking | Never confirmed |
 | 23 | Every performance plan, promotion, renewal and probation check-in, on the Company page | Everyone, admins included | Never put to you on its own |
+| 24 | A goal the lead has not told a person about is hidden from that person's colleagues, even where everybody sees everybody's targets | Colleagues | Claude's choice, never confirmed |
 
 Still in the code, and already reversed by decision 86 (being removed now): only the lead sees every person's target share; the forecast, headline and status words are withheld from an admin who only reads; the recognise suggestion shows the writer no number.
 

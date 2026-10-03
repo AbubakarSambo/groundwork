@@ -412,7 +412,6 @@ export class BoardService {
      */
     const isInitiator = ground.initiatorId === requestingUserId;
     const isSetupAdmin = !!ground.createdByUserId && ground.createdByUserId === requestingUserId;
-    const theyRunIt = theyRunThisCheckIn(requestingUserId, ground as any);
     const me = ground.participants.find((p) => p.userId === requestingUserId);
     /* A wait on "my direct reports" is said from this reader's side, never as the reader's own (item 18). */
     if (Array.isArray((ground as any).dependencies)) {
@@ -434,6 +433,8 @@ export class BoardService {
         select: { role: true, organizationId: true, awaitingOrgApproval: true },
       })
       : null;
+    /* Whoever runs it, set it up or administers it reads a goal not told (decisions 5 and 86); the person it is about, and a colleague, do not. */
+    const theyRunIt = theyRunThisCheckIn({ userId: requestingUserId, role: viewer?.role, organizationId: viewer?.organizationId }, ground as any);
     /* Nobody held for a seat reads the board, its report's story or its names (request 49). */
     if ((viewer as any)?.awaitingOrgApproval === true) throw new ForbiddenException(CANNOT_OPEN_THE_BOARD_YET);
     /* The board is read only, so the admin asked to approve an evaluation check-in reads it too (decision 75,
