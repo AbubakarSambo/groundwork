@@ -18,10 +18,10 @@ The engine workspace keeps this file current. The screens workspace reads it aft
 - They get the new boards, reports, Company page and suites, working on their existing data.
 
 ## Engine (the engine workspace)
-- [ ] **Run-26 fix: a record is always owned by the person who said it**, enforced in code (run-26: Musa's "I signed for the loan" became Sunday's record; implementation and shock broke the rule too). *Not done.*
-- [ ] **Run-26 fix: a participant never reads the lead's judgement** (run-26: Sunday's Blockers tile quoted Amaka's view about who should have qualified for a loan). *Not done.*
+- [x] **Run-26 fix: a record is always owned by the person who said it**, enforced in code (run-26: Musa's "I signed for the loan" became Sunday's record; implementation and shock broke the rule too). *Done* (`f59502d9`).
+- [x] **Run-26 fix: a participant never reads the lead's judgement** (run-26: Sunday's Blockers tile quoted Amaka's view about who should have qualified for a loan). *Done* (`15d0d698`).
 - [ ] **Run-26 fix: differences kept from the report's first version** when it is asked for a second time (run-26: six scenarios lost theirs). *Not done.*
-- [ ] **Run-26 fix: the loans privacy rule** (decision 75 item 14): Sunday reads only what is about him, about several people, or the shared aim. A half-finished attempt is saved as `docs/unfinished/loans-privacy-rebuild.patch`; it fails the privacy spec and is not in the code. *Not done.*
+- [x] **Run-26 fix: the loans privacy rule** (decision 75 item 14): Sunday reads only what is about him, about several people, or the shared aim. The half-finished attempt was finished and its patch removed. *Done* (`904d9544`).
 - [ ] **Request 118:** done in code (`c12aa05f` to `969cbe72`). The stored rows on the screens workspace's database need `api/journey/bring-a-check-in-up-to-date.ts`. *Engine part done; to be confirmed by the screens review.*
 - [ ] **Request 119:** the client's wording guard counts 63 lines against 60, three of them in engine files. *Not done.*
 - [x] **Request 120:** the API did not start. *Done* (`4090223b`, with a test that builds the whole app).
