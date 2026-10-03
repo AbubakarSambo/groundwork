@@ -484,13 +484,20 @@ export function atAGlanceTiles(a: {
  * Only a Blockers tile that already names something is changed: one that says nobody named anything,
  * or that counts worries, is left as it is.
  */
-export function theBlockersTileNamesThis(tiles: AGlanceRead[], blocker: string | null | undefined): AGlanceRead[] {
+/*
+ * AND A COUNT OF HARD BLOCKERS NAMES A HARD BLOCKER (item 21, the government programme board). Stephen read "Blockers 1.
+ * Work is held up by an update on a fix.": the top line's oldest wait was one nobody called blocking, while the one thing
+ * blocking was "a fix for the printer connection". Where the caller says the top line's wait is not a hard one, a tile
+ * counting hard blockers keeps its own.
+ */
+export function theBlockersTileNamesThis(tiles: AGlanceRead[], blocker: string | null | undefined, opts: { itIsHard?: boolean } = {}): AGlanceRead[] {
   const named = theFirstSentenceThatFits(blocker ?? null);
   const name = named ? named.replace(/[.?!]+$/, '') : '';
   if (!name) return tiles;
   return tiles.map((t) => {
     if (t.label !== 'Blockers') return t;
     const hard = /^(\d+)$/.exec(String(t.value));
+    if (hard && opts.itIsHard === false) return t;
     if (hard) return { ...t, sub: `${blockerAsASentence(name)}${Number(hard[1]) > 1 ? ` ${Number(hard[1]) - 1} more ${Number(hard[1]) === 2 ? 'is' : 'are'} holding work up.` : ''}` };
     if (/^\d+ waiting$/.test(String(t.value))) return { ...t, sub: `${blockerAsASentence(name)} Nothing is hard-blocked.` };
     return t;

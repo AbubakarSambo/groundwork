@@ -1792,7 +1792,13 @@ export class BoardService {
         });
       }
       /* The same first blocker as the top line, from the one place that picks it (request 88). */
-      out.quickRead = theBlockersTileNamesThis(out.quickRead as any, out.howItIsGoing?.glance?.inTheWay?.oldest ?? null);
+      {
+        /* Whether the top line's wait is a hard one, so a tile counting hard blockers never names a softer wait (item 21). */
+        const oldest = String(out.howItIsGoing?.glance?.inTheWay?.oldest ?? '').trim().toLowerCase();
+        const itsRow = oldest ? ((ground as any).dependencies ?? []).find((d: any) => d.status !== 'CLEARED' && String(d.what ?? '').trim().toLowerCase() === oldest) : null;
+        out.quickRead = theBlockersTileNamesThis(out.quickRead as any, out.howItIsGoing?.glance?.inTheWay?.oldest ?? null,
+          itsRow ? { itIsHard: itsRow.status === 'BLOCKING' } : {});
+      }
       /* And never "no disagreement" over a report that opens with one. See the-quick-read-agrees-with-the-report. */
       out.quickRead = theQuickReadAgreesWithTheReport(out.quickRead as any, ((ground as any).report?.sharedPicture as string | null) ?? null) as any;
     }
