@@ -164,6 +164,16 @@ describe('Grace, an admin, sets up the leave process by talking', () => {
     expect(r.join(' ')).not.toMatch(/Grace/);
   });
 
+  it('the question after the first approver never offers that same job as its example', async () => {
+    const o = anOrganisationToSetUp();
+    expect((await o.talk('u-grace', ['Set up our employee leave process', '21', 'The head of their team']))[2])
+      .toBe('Does anybody approve it after the head of the team, for example HR? You can say no.');
+    /* When every job the example could name already approves it, there is no example. */
+    const o2 = anOrganisationToSetUp();
+    expect((await o2.talk('u-grace', ['Set up our employee leave process', '21', 'The head of their team, or HR if there is none']))[2])
+      .toBe('Does anybody approve it after the head of the team? You can say no.');
+  });
+
   it('when the length of longer leave is said without who approves it, who is asked as a real question', async () => {
     const o = anOrganisationToSetUp();
     const r = await o.talk('u-grace', ['Set up our employee leave process', '21', 'Their manager', 'What about leave longer than 10 working days?']);

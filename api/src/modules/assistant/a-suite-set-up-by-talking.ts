@@ -522,6 +522,19 @@ function rulesThatNeedSomebody(plan: Plan): Rule[] {
 
 export interface AQuestion { key: string; ask: string }
 
+const AN_EXAMPLE: Partial<Record<Rule, string>> = { departmentHead: 'the head of the person’s team', hr: 'HR', finance: 'finance' };
+
+/**
+ * The example in "Does anybody approve it after the manager, for example finance?": the first job, in
+ * the suite's own order, that does not already approve it, so the question never offers the person who
+ * approves first. None left, no example.
+ */
+function anExampleAfter(plan: Plan, jobs: Rule[]): string {
+  const already = new Set((plan.steps ?? []).flat());
+  const job = jobs.find((r) => !already.has(r));
+  return job ? `, for example ${AN_EXAMPLE[job]}` : '';
+}
+
 /** The next thing that is missing, or null when everything is known. One at a time, in this order. */
 export function nextQuestion(plan: Plan, known: WhatIsKnown): AQuestion | null {
   if (plan.pending) return { key: 'job', ask: whichJobQuestion(plan.pending.personId, plan, known) };
@@ -531,7 +544,7 @@ export function nextQuestion(plan: Plan, known: WhatIsKnown): AQuestion | null {
     case 'leave':
       if (plan.days === undefined) return { key: 'days', ask: 'How many days of leave does each person have in a year?' };
       if (!plan.steps) return { key: 'approver', ask: plan.longer?.above ? `Who approves leave of up to ${upToWorkingDays(plan.longer.above)}?` : 'Who approves annual leave?' };
-      if (!plan.after) return { key: 'after', ask: `Does anybody approve it after ${firstSaid}, for example the head of the person’s team? You can say no.` };
+      if (!plan.after) return { key: 'after', ask: `Does anybody approve it after ${firstSaid}${anExampleAfter(plan, ['departmentHead', 'hr'])}? You can say no.` };
       if (plan.longer && !plan.longer.above) return { key: 'longerDays', ask: 'How long does leave need to be for that? For example, more than 10 working days.' };
       if (plan.longer?.above && !plan.longer.add?.length) {
         return { key: 'longerWho', ask: plan.longer.also
@@ -544,7 +557,7 @@ export function nextQuestion(plan: Plan, known: WhatIsKnown): AQuestion | null {
     case 'spend':
       if (!plan.currency) return { key: 'currency', ask: 'Which currency do people spend in?' };
       if (!plan.steps) return { key: 'approver', ask: 'Who approves a request to spend?' };
-      if (!plan.after) return { key: 'after', ask: `Does anybody approve it after ${firstSaid}, for example finance? You can say no.` };
+      if (!plan.after) return { key: 'after', ask: `Does anybody approve it after ${firstSaid}${anExampleAfter(plan, ['finance', 'departmentHead'])}? You can say no.` };
       if (plan.limit === undefined) return { key: 'limit', ask: plan.steps.length > 1 ? 'Up to what amount does a request go this way? Above that amount, somebody else approves it.' : `What is the most ${firstSaid} may approve on ${agree(firstSaid, 'your', 'their')} own?` };
       if (!plan.stepsAbove) return { key: 'above', ask: `Who approves anything above ${money(plan.currency, plan.limit)}?` };
       if (plan.escalateAfter === undefined) return { key: 'escalate', ask: `What happens if ${firstSaid} ${agree(firstSaid, "don't", "doesn't")} respond within two working days?` };
@@ -552,7 +565,7 @@ export function nextQuestion(plan: Plan, known: WhatIsKnown): AQuestion | null {
     case 'time':
       if (!plan.clients?.length) return { key: 'clients', ask: 'Which clients or projects do people give their hours for? Write one on each line, or put commas between them.' };
       if (!plan.steps) return { key: 'approver', ask: 'Who approves each week’s hours?' };
-      if (!plan.after) return { key: 'after', ask: `Does anybody approve the hours after ${firstSaid}, for example finance? You can say no.` };
+      if (!plan.after) return { key: 'after', ask: `Does anybody approve the hours after ${firstSaid}${anExampleAfter(plan, ['finance', 'departmentHead'])}? You can say no.` };
       if (plan.hoursAWeek === undefined) return { key: 'hoursAWeek', ask: 'How many hours a week does each person need to give? You can say none.' };
       if (plan.cutOff === undefined) return { key: 'cutOff', ask: 'When are the hours due each week? For example, Friday at 17:00. You can say there is no cut-off.' };
       if (plan.escalateAfter === undefined) return { key: 'escalate', ask: `What happens if ${firstSaid} ${agree(firstSaid, "don't", "doesn't")} respond within two working days?` };

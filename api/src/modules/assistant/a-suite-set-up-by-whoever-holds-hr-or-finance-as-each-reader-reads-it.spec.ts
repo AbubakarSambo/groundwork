@@ -73,7 +73,8 @@ describe('Miriam, who looks after HR, sets up the leave process', () => {
     const r = await o.talk('u-miriam', ['Set up our employee leave process', '21', 'Kamau']);
     expect(r[2]).toBe('I set who approves by their job, not by name, so it keeps working when people change jobs. Kamau holds no job in Groundwork yet, and only an admin can say who holds each job. Who should approve it instead? For example, “the person’s manager”, “the head of their team”, “HR”, “finance” or “an admin”.');
     /* Naming a person who holds a job works by that job. */
-    expect(await o.says('u-miriam', 'Fatuma')).toBe('Does anybody approve it after the head of the team, for example the head of the person’s team? You can say no.');
+    /* The example is never the job that already approves it first. */
+    expect(await o.says('u-miriam', 'Fatuma')).toBe('Does anybody approve it after the head of the team, for example HR? You can say no.');
   });
 
   it('sets up performance reviews too', async () => {

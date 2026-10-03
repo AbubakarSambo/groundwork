@@ -54,6 +54,12 @@ describe('Grace, an admin, sets up time sheets by talking', () => {
     ]);
   });
 
+  it('the question after the first approver never offers that same job as its example', async () => {
+    const o = anOrganisationToSetUp();
+    expect((await o.talk('u-grace', ['Set up timesheets', 'Atlas', 'Finance']))[2])
+      .toBe('Does anybody approve the hours after finance, for example the head of the person’s team? You can say no.');
+  });
+
   it('a no before the yes changes nothing', async () => {
     const o = anOrganisationToSetUp();
     await o.talk('u-grace', GRACES_ANSWERS);

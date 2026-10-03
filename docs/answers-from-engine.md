@@ -3443,3 +3443,13 @@ Tests: `api/src/modules/suites/the-leave-rules-history-names-hr-as-each-reader-r
 - **The questions:** "Does anybody approve it after you, ...?", "What happens if you don't respond within two working days?", "What is the most you may approve on your own?", and, naming yourself with no job or several: "Which job do you do here? For example, do you head a team, hold a team’s budget, look after HR, look after finance, or are you the chief executive?" and "You look after HR and head Sales. Which of these are you approving it as? ..."
 
 Tests: the four set-up-by-talking specs in `api/src/modules/assistant/` now pin the "you" text, because the text they pinned named the reader to herself (Grace in the leave and spending specs, Miriam in the HR-or-finance spec). New tests read the same set-up as two people: Grace and Omar for spending, Miriam and Grace for leave, and Grace naming herself as the approver.
+
+## The question after the first approver no longer offers the same job (3 October)
+
+**In Ask Groundwork, setting up a suite by talking asked "Does anybody approve it after the head of the team, for example the head of the person’s team?" when the head of the team already approved first. The example is now the first job, in the suite's own order, that does not already approve it; when none is left, there is no example. No field changed; only the text of the question** (this commit).
+
+- **Leave** (head of the team, then HR): after the manager, "Does anybody approve it after the manager, for example the head of the person’s team? You can say no." (as before); after the head of the team, "Does anybody approve it after the head of the team, for example HR? You can say no."; when the head of the team and HR both already approve it, "Does anybody approve it after the head of the team? You can say no."
+- **Spending** (finance, then the head of the team): after the manager, "... for example finance?" (as before); after finance, "Does anybody approve it after finance, for example the head of the person’s team? You can say no."
+- **Time sheets** (the same order): after finance, "Does anybody approve the hours after finance, for example the head of the person’s team? You can say no."
+
+Tests: one new test in each of the leave, spending and time-sheets set-up specs. One existing test changed, in the HR-or-finance set-up spec, because it pinned the odd question itself ("after the head of the team, for example the head of the person’s team").
