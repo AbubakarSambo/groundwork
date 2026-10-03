@@ -14,6 +14,8 @@ export interface Need {
   action: { label: string; to: string }
   groundId: string
   organizationId: string
+  /** True for an item the board of that check-in already lists itself (request 122). The board leaves it out of its own "needs you" rows. */
+  onTheBoardToo?: true
 }
 
 export interface ComingUp {

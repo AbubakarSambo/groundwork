@@ -835,7 +835,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
   /* What needs the lead here: Today's items for this check-in. See where it is drawn. */
   const { data: today } = useQuery({ queryKey: ['today'], queryFn: todayApi.get, staleTime: 30_000, enabled: viewerRunsThisCheckIn, retry: false })
-  const needsHere = (today?.needs ?? []).filter((n: Need) => n.groundId === id)
+  const needsHere = (today?.needs ?? []).filter((n: Need) => n.groundId === id && !n.onTheBoardToo)
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['board', id, variant],
