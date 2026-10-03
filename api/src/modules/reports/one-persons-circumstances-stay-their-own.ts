@@ -334,7 +334,7 @@ export function theShareOfThePictureKept(before: any, after: any): { kept: numbe
   return { kept: count(after, false), of: count(before, false) };
 }
 
-function aboutOneOfThem(sentence: string, others: TheOthers, namesOnly = false): boolean {
+export function aboutOneOfThem(sentence: string, others: TheOthers, namesOnly = false): boolean {
   if (!namesOnly && THE_READERS_OWN.test(sentence)) return false;
   if (!namesOnly && ONE_COLLEAGUE.test(sentence)) return true;
   if (!namesOnly && ONE_OF_THEM_UNNAMED.test(sentence)) return true;
@@ -404,4 +404,27 @@ export function onlyCountsAndPatternsAboutTheOthers<T>(served: T, others: TheOth
   };
   /* And then the shared picture and its lists keep only what the reader may know of the others (run-26, below). */
   return onlyWhatTheReaderMayKnowOfTheOthers(walk(served), others);
+}
+
+/**
+ * THE LEAD'S OWN LINE ON A RECORD ROW, FOR A PARTICIPANT WHERE PEOPLE DO NOT SEE EACH OTHER (run-26 review). Every record
+ * is owned by the person who said it, so a line by Amaka about Yakubu's tricycle was owned by Amaka, kept for every
+ * borrower as hers, and served word for word. It goes through the same wall as the shared picture: a sentence about one
+ * other person is dropped; counts, shared aims and what the lead says of her own work stay. A line the lead says in her
+ * own voice ("I want twelve shops signed by June.") stays unless it is a doubt about, or a view of, the people in it.
+ * Returns what may be read, which is empty when none of it may; the caller then leaves the row out.
+ */
+export function theLeadsLineAsAParticipantMayRead(text: string, others: TheOthers & { lead: string[] }): { kept: string; whole: boolean } {
+  const k: TheKinds = { others, lead: others.lead, ownVoice: false };
+  const out: string[] = [];
+  for (const sentence of sentencesKeepingSpace(text)) {
+    if (!sentence.trim()) { out.push(sentence); continue; }
+    if (aboutOneOfThem(sentence, others)) continue;
+    const s = sentence.trim();
+    const inHerOwnVoice = THE_READER_IN_THEIR_OWN_VOICE.test(s) && !THE_LEADS_DOUBT_OR_VIEW.test(s);
+    if (whatItIsAbout(sentence, k) !== null || inHerOwnVoice) out.push(sentence);
+  }
+  const kept = out.join('').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  const norm = (x: string) => x.replace(/\s+/g, ' ').trim();
+  return { kept, whole: norm(kept) === norm(text) };
 }

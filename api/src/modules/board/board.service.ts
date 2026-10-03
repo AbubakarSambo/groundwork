@@ -130,7 +130,7 @@ import { theFirstNameFrom, theShortNameOf } from '../reports/a-title-is-not-a-fi
 import { aWaitInTheirOwnWords } from './a-holder-in-their-own-words';
 import { yourOwnRowsSayYou } from './your-own-read-says-you';
 import { theRoomAsThisReaderReadsIt } from './the-room-as-each-reader-reads-it';
-import { askTheReportsDoor } from '../reports/one-persons-circumstances-stay-their-own';
+import { askTheReportsDoor, theLeadsNamesOf, theLeadsLineAsAParticipantMayRead, aboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
 import { theRoomWithoutOneOfTheOthers } from './the-room-without-one-of-the-others';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
@@ -2269,6 +2269,24 @@ export class BoardService {
       if (out.coverage) out.coverage = { ...(out.coverage as any), reads: onlyMine((out.coverage as any).reads) };
     }
     if (whoMaySee.peersHidden) {
+      /*
+       * THE LEAD'S OWN ROWS, FOR A PARTICIPANT WHERE PEOPLE DO NOT SEE EACH OTHER (run-26 review). A record is owned by whoever
+       * said it, so the lead's line about one borrower's tricycle was the lead's row, kept for every borrower and served
+       * word for word. It goes through the same wall as the shared picture: a sentence about one other person is dropped, and a
+       * row left with nothing to say is left out. The lead and an admin never reach this block.
+       */
+      const leadsNames = theLeadsNamesOf(ground.participants as any[], ground.initiatorId);
+      const theOthersTheReaderMayNotName = {
+        names: (ground.participants as any[]).filter((p) => p.id !== me?.id && p.id !== theLeadsRow)
+          .flatMap((p) => [[p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim() || null, (p.user?.firstName ?? '').trim().length > 2 ? p.user.firstName.trim() : null].filter(Boolean) as string[]),
+        lead: leadsNames,
+      };
+      const theLeadsRowAsAParticipantMayRead = (r: any) => {
+        if (aboutOneOfThem(String(r.name ?? ''), theOthersTheReaderMayNotName, true)) return null;
+        if (typeof r.said !== 'string' || !r.said.trim()) return r;
+        const { kept } = theLeadsLineAsAParticipantMayRead(r.said, theOthersTheReaderMayNotName);
+        return kept ? { ...r, said: kept } : null;
+      };
       out.contribution = onlyWhatThisReaderMaySee(out.contribution as any, whoMaySee);
       /*
        * COVERAGE IS NOT A LIST. It is `{ scope, reads }`, and handing the whole object to a filter
@@ -2283,7 +2301,10 @@ export class BoardService {
       /* A record whose person is walled from this reader is not served to them: only their own, the lead's, and those with nobody's name on them. */
       out.workRecords = ((out.workRecords ?? []) as any[]).map((sec) => (Array.isArray(sec.rows)
         ? (() => {
-          const rows = sec.rows.filter((r: any) => !r.ownerParticipantId || r.ownerParticipantId === me?.id || r.ownerParticipantId === theLeadsRow);
+          const rows = sec.rows
+            .filter((r: any) => !r.ownerParticipantId || r.ownerParticipantId === me?.id || r.ownerParticipantId === theLeadsRow)
+            .map((r: any) => (!isEvaluationCheckIn(ground.scenario) && r.ownerParticipantId && r.ownerParticipantId === theLeadsRow && r.ownerParticipantId !== me?.id ? theLeadsRowAsAParticipantMayRead(r) : r))
+            .filter((r: any) => !!r);
           return { ...sec, rows, state: rows.length ? 'filled' : 'none-yet' };
         })()
         : sec));
