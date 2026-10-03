@@ -2721,11 +2721,43 @@ model PerformanceReview {
   decisionReasons        String?   @map("decision_reasons") @db.Text
   decidedById            String?   @map("decided_by_id")
   decidedAt              DateTime? @map("decided_at")
+  /// THE RECORD, INTERPRETED (decision 85, item 4; build step 12). What Groundwork understands from the
+  /// record about the person's work in the review's period: the check-ins they took part in, the goals
+  /// and work-plan items they own, what they committed to and how each was settled, and what they said
+  /// was holding them up. Written once, from rows and without a model, when the review starts, so it
+  /// reads the same whenever it is opened. Stored as facts with ids, never as sentences with names:
+  /// each reader is served the sentences in their own words (suites/the-record-read-for-a-review.ts),
+  /// and only the lines from check-ins they are in. Never hours, never leave.
+  recordRead             Json?     @map("record_read")
+  /// The first day of the period the record was read for. The last day is `startedAt`.
+  recordFrom             DateTime? @map("record_from")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  corrections  PerformanceReviewCorrection[]
 
   @@index([organizationId, personExternalId])
   @@map("performance_reviews")
+}
+
+/// THE PERSON'S CORRECTION OF ONE LINE OF THEIR REVIEW (build step 12). The person marks a line of
+/// "the record, interpreted" as wrong and says what is true. It is kept beside the line and never
+/// changes the line or the record it came from. A second correction of the same line is a new row, so
+/// nothing the person said is lost; the latest is the one served. Who reads it is decided in
+/// suites/the-reviews.service.ts: the person, and whoever may read that line.
+model PerformanceReviewCorrection {
+  id         String   @id @default(uuid())
+  reviewId   String   @map("review_id")
+  /// The line's key in `PerformanceReview.recordRead`.
+  lineKey    String   @map("line_key") @db.VarChar(120)
+  /// What the person says is true, in their own words.
+  whatIsTrue String   @map("what_is_true") @db.Text
+  byUserId   String   @map("by_user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  review PerformanceReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId, lineKey, createdAt])
+  @@map("performance_review_corrections")
 }
 
 /// HOURS SPENT ON ONE CLIENT OR PROJECT ON ONE DAY (E3, the time sheets suite, U.17). FOR BILLING

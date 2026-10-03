@@ -164,6 +164,8 @@ describe('one review, as each reader reads it', () => {
         { says: 'Kept 41 of 44 things she said she would do.', mark: 'proven' },
         { says: 'Says supermarkets take longer than butcheries. Nothing proves this yet.', mark: 'said' },
       ],
+      /* A review started before the record was read for it (build step 12) has none, and says so by null. */
+      record: null,
       theirView: 'I want to lead the supermarket accounts, but I need faster stock.',
       decision: { says: 'Aisha leads the supermarket accounts from April.', reasons: 'She closed 9 sales, all paid, and helped two others.' },
     });

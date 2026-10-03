@@ -22,7 +22,9 @@ import type { PrismaService } from '../prisma/prisma.service';
 export type SuiteOfARecord = 'leave' | 'spend' | 'time' | 'reviews';
 export type WhatHappened = 'asked' | 'told' | 'approved' | 'declined' | 'escalated' | 'started' | 'decided' | 'questioned' | 'answered'
   /* Finance's part of a request to spend (build step 10). */
-  | 'verified' | 'coded' | 'evidence' | 'exported' | 'paid';
+  | 'verified' | 'coded' | 'evidence' | 'exported' | 'paid'
+  /* The person marked a line of their review as wrong and said what is true (build step 12). */
+  | 'corrected';
 
 export interface ARecord {
   organizationId: string;
@@ -146,6 +148,9 @@ export function theRecordInWords(records: ARecord[], names: Map<string, string>,
       }
       case 'decided':
         out.push(`${capital(by)} decided the review on ${on}.`);
+        break;
+      case 'corrected':
+        out.push(`${capital(by)} marked a line of the review as wrong, and said what is true, on ${on}.`);
         break;
     }
   }

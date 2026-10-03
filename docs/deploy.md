@@ -130,6 +130,7 @@ Every migration, in order, in one sentence each:
 | 78 | `20261003210000_a_question_about_spending_and_a_reason_for_a_decline` | Decision 85, build step 9. Adds an empty column `decline_reason` on requests to spend, for the reason given with a decline, told to the person. A question about a request to spend goes in the existing `suite_questions` table. | Untouched |
 | 79 | `20261003220000_finance_checks_codes_and_pays_a_request_to_spend` | Decision 85, build step 10. Adds six empty columns to requests to spend for finance's part after the last approval: who checked it and when, the budget line it is paid from, the receipt or quote finance has had (only that; no file), the day it was paid and who marked it. Who did each step is also kept in the existing `suite_events`. | Untouched |
 | 80 | `20261003230000_time_sheet_rules_billable_entries` | Decision 85, build step 11. Adds one empty column `billable` to hours (`time_entries`): billable or not, only when the person said so of that entry. Empty means it follows the time sheet rules for its client or project, and with no rules every hour is billable. The rules themselves are kept in the existing `organization_suites` table (a `timeRules` row), so they need no table. | Untouched |
+| 81 | `20261004000000_a_review_reads_the_record_and_the_person_corrects_it` | Decision 85, build step 12. Adds two empty columns to `performance_reviews`: what Groundwork understands from the record for the review's period (`record_read`, facts with ids, written once when a review starts) and the first day of that period (`record_from`); and a new, empty table `performance_review_corrections`, each line the person marks as wrong with what they say is true, kept beside the line. Reviews already started keep no record and read as before. | Untouched |
 
 The prices and limits migration 71 writes, all editable afterwards at Admin, System, Pricing (`PATCH /admin/pricing/:plan` with `whatsappAddOnCents` and `whatsappMonthlyLimit`):
 
@@ -148,7 +149,7 @@ Things worth knowing about how they run:
 - Columns added with a fixed default (`false`, an empty list) do not rewrite the table on Postgres 11 or later, so none of these should lock a table for long.
 - The new unique indexes on existing tables (`organizations.join_domain`, `organizations.invite_link_code`) are on new columns that start empty, so they cannot fail on existing data.
 - Two pairs of migrations share a timestamp (`20260927180000_*` and `20260927190000_*`). Prisma runs them in full name order, which is the order above.
-- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261003230000_time_sheet_rules_billable_entries`.
+- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261004000000_a_review_reads_the_record_and_the_person_corrects_it`.
 
 ## 3. Settings and environment variables
 

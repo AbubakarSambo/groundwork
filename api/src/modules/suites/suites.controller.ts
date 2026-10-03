@@ -302,6 +302,12 @@ export class SuitesController {
     return this.reviews.writeView({ userId: user.id, organizationId: user.organizationId }, id, dto.text);
   }
 
+  @Post('reviews/:id/lines/:key/correction')
+  @ApiOperation({ summary: 'The person marks one line of their review as wrong and says what is true. It is kept beside the line, and the record is not changed.' })
+  correctAReviewLine(@Param('id') id: string, @Param('key') key: string, @CurrentUser() user: CurrentUserData, @Body() dto: WordsDto) {
+    return this.reviews.correct({ userId: user.id, organizationId: user.organizationId }, id, key, dto.text);
+  }
+
   @Post('reviews/:id/decision')
   @ApiOperation({ summary: 'The writer decides, with reasons, and the person reads both' })
   decideReview(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: ReviewDecisionDto) {
