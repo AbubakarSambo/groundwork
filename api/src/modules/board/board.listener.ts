@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent } from '../../common/events';
-import { oneOfTheKinds, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, type AnOfferedRecord } from './the-kind-of-work';
+import { oneOfTheKinds, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, theSameName, type AnOfferedRecord } from './the-kind-of-work';
 import { withAClaim } from './a-claim-on-a-record-is-checked-first';
 import {
   WHAT_THE_RECORD_SAYS_PROMPT,
@@ -73,7 +73,8 @@ export class BoardListener {
       if (!kept.length) return;
       const already = await (this.prisma as any).workItem.findMany({ where: { groundId: e.groundId }, select: { id: true, kind: true, name: true, fields: true, ownerParticipantId: true } });
       for (const r of kept) {
-        const same = (already as any[]).find((a) => a.kind === r.kind && a.name.trim().toLowerCase() === r.name.trim().toLowerCase());
+        /* "a four-hour acknowledgement" and "the four-hour acknowledgement" are one record (item 21). */
+        const same = (already as any[]).find((a) => a.kind === r.kind && theSameName(a.name) === theSameName(r.name));
         if (same) {
           await (this.prisma as any).workItem.update({
             where: { id: same.id },

@@ -221,7 +221,13 @@ export function theRecordSections(kind: KindOfWork | null, leadsStages: unknown,
   }
   return RECORDS_FOR_EACH_KIND[kind].map((s) => {
     if (!s.itemKinds.length) return { section: s.section, holds: s.holds, state: 'not-known' as const, why: s.whyNotKnown ?? FROM_ANOTHER_SYSTEM };
-    const mine = rows.filter((r) => s.itemKinds.includes(r.kind) && aNameThatNamesSomething((r as any).name));
+    const seenNames = new Set<string>();
+    const mine = rows.filter((r) => s.itemKinds.includes(r.kind) && aNameThatNamesSomething((r as any).name)).filter((r) => {
+      const key = `${r.kind}|${theSameName((r as any).name)}`;
+      if (seenNames.has(key)) return false;
+      seenNames.add(key);
+      return true;
+    });
     const stages = stagesFor(s, leadsStages);
     return {
       section: s.section,
@@ -333,6 +339,13 @@ const squash = (s: string) => s.toLowerCase().replace(/[‘’“”'"]/g, '').r
  * kept when a check-in is read, and not served from rows already stored.
  */
 const ONLY_POINTS_ELSEWHERE = /^(?:it|its|this|that|these|those|them|they|he|she|him|her|one|ones|something|everything|anything|the same|(?:this|that|these|those|which|what)(?:\s+[\p{Ll}-]+){1,2}|(?:\d+|some|all|most|many|few|each|one|two|three|four|five|six|seven|eight|nine|ten)\s+of\s+(?:those|these|them|it|that))$/u;
+/*
+ * ONE THING UNDER TWO ARTICLES IS ONE RECORD (item 21, the law firm matter). Adaeze's deadlines held "a four-hour
+ * acknowledgement" and "the four-hour acknowledgement" as two rows. A name is compared without a leading "a", "an" or
+ * "the", and without its case.
+ */
+export const theSameName = (name: string | null | undefined): string => squash(String(name ?? '').replace(/^\s*(?:a|an|the)\s+/i, ''));
+
 export function aNameThatNamesSomething(name: string | null | undefined): boolean {
   const n = (name ?? '').trim().replace(/[.,;:!?]+$/, '');
   /* "something I don't have" (the loans board): a name with "I" in it, or that starts with "something", names nothing. */
