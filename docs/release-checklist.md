@@ -63,5 +63,5 @@ The engine workspace keeps this file current. The screens workspace reads it aft
 ## Waiting on Hafsah (does not block the items above unless marked)
 - The "picture" count in "proof asked for".
 - The yes or no list in `docs/privacy-restrictions-for-hafsah.md`.
-- The four suites files the one-rule test flags.
+- ~~The four suites files the one-rule test flags.~~ Answered (decision 89): excused.
 - **Pushing:** the commit of Hafsah's guard version 2 (`e4a51793`) was refused at push time by Claude Code's own permission check, as a change to its own settings. Every later push carries that commit, so nothing has been pushed since. Hafsah can push it herself (`git push mine wip/plain-reports`), or allow it.

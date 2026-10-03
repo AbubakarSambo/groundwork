@@ -97,6 +97,12 @@ describe('every surface that hands out whose number it is', () => {
     /* Week 12b (d45afaca): the shape of one target in a week, and the sentence for it. It is handed only
        the rows the-weekly-report.service.ts has already passed through targetsFor for this reader. */
     'modules/reports/the-weekly-report.ts': 'the shape and sentence of a target in a week; its service asks targetsFor before handing rows in',
+    /* Hafsah, 4 October (decision 89): the four suites files are excused. None shows anybody a number
+       they could not already read. */
+    'modules/suites/__fixtures__/aisha-review.ts': 'test rows a review spec hands in, like the other fixtures here',
+    'modules/suites/a-week-drafted-from-the-record.ts': "reads only the person's own work records to draft their own week; never a target",
+    'modules/suites/what-they-own-while-away.ts': "reads only a target's name and due date, never its number, for a reader who may read that board",
+    'modules/suites/the-record-read-for-a-review.ts': "the person's own goals, served only to them and whoever runs that check-in, no wider than targetsFor",
     /* Request 70: the forecast reads the owner only to leave out a target that is one person's. It is handed
        `out.objectives` after the board has asked targetsFor, so it only ever sees what this reader may read. */
     'modules/board/the-switchboards-own-sections.ts': 'the forecast reads the owner only to leave one person\'s number out; it is handed rows the board passed through targetsFor',
