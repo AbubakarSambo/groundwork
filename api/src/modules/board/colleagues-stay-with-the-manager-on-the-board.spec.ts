@@ -55,7 +55,8 @@ describe('the board calls the one helper, for the one reader, right where it ret
   });
 
   it('redacts whoOwnsWhat items, keyed to the subject\'s own participant id', () => {
-    expect(board).toMatch(/whoOwnsWhatForTheSubject\(walled\.whoOwnsWhat,\s*me\?\.id \?\? null\)/);
+    /* CHANGED 3 October (requests 124): the call also says whether a decision is below and, for the new hire, whose row is the lead's. */
+    expect(board).toMatch(/whoOwnsWhatForTheSubject\(walled\.whoOwnsWhat,\s*me\?\.id \?\? null,\s*\{/);
   });
 
   it('is applied to `walled` after the private-file and hidden-target passes, so it cannot be bypassed by either', () => {

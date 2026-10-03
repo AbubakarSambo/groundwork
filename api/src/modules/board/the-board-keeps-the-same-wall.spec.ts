@@ -111,14 +111,15 @@ describe('the board applies it, and says so', () => {
    */
   it('walls every section that names a person', () => {
     for (const section of ['contribution', 'whoOwnsWhat', 'managerAlignment', 'patterns']) {
-      const walled = new RegExp(`out\\.${section} = onlyWhatThisReaderMaySee\\(out\\.${section} as any, whoMaySee\\)`).test(SRC);
+      /* CHANGED 3 October (request 124): who owns what also keeps the lead's row, for the new hire only (`alsoThe`). Still walled by the same call. */
+      const walled = new RegExp(`out\\.${section} = onlyWhatThisReaderMaySee\\(out\\.${section} as any, (?:whoMaySee|\\{ \\.\\.\\.whoMaySee, alsoThe: [^}]*\\})\\)`).test(SRC);
       expect({ section, walled }).toEqual({ section, walled: true });
     }
     /* Coverage is `{ scope, reads }`, not a list, so the wall goes round its reads (27 September 2026:
        walling the object itself threw, and a participant got an error instead of a board). */
     expect(SRC).toMatch(/reads: onlyWhatThisReaderMaySee\(\(out\.coverage as any\)\.reads, whoMaySee\)/);
     expect(SRC).toMatch(/out\.dependencies = onlyHandoffsTheyAreIn/);
-    expect(SRC).toMatch(/rows: onlyWhatThisReaderMaySee\(\(out\.checkInGrid as any\)\.rows, whoMaySee\)/);
+    expect(SRC).toMatch(/rows: onlyWhatThisReaderMaySee\(\(out\.checkInGrid as any\)\.rows, (?:whoMaySee|\{ \.\.\.whoMaySee, alsoThe: [^}]*\})\)/);
   });
 
   /** The aggregate is the point of a board and stays: it names nobody. */
