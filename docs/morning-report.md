@@ -210,7 +210,19 @@ Run-25 was stopped: decision 86's reversals change what the engine writes, so it
 - Should finance be able to export the billing file, or only admins?
 - A lead in a team that keeps time sheets also gets "You still need…" about their own hours on Today. Wanted?
 
-Now running: run-25 on `a7e0f76f`, and reviews as the record interpreted, with the person correcting it, plus a separate briefing for the manager (decision 85, steps 12 and 13). Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
+**Run-25 (on `a7e0f76f`, all 24 scenarios): worse than the baseline on one number.** "Proof asked for" is 33 against the baseline's 42 (run-24 was already 37). The drop is spread across scenarios (cofounder 3 to 0, sales 5 to 3, loans 4 to 2, while seniorhire rose 1 to 5), and the conversation prompt did not change, so it looks like the model varying. It is still below the line, and under the rules that makes it wrong until it is back. Patterns 90 against 100 sits exactly on the line. Everything else is at or above the baseline: zero wording problems of every kind, jargon in reports 60 against 511, commitments recorded 61 against 33. "Waiting on themselves" appears nowhere.
+
+**A privacy fault, against decision 75 item 14:** in loans, where borrowers do not see each other, Sunday's report now says "One participant's tricycle was stolen in the fourth month", and his board lists other borrowers' businesses with their figures. With two tricycles among eight borrowers, these point at people. Sunday's quick read also gives Musa's wait as if it were his. **Being fixed now**, with other faults the reading found:
+- "Work is held up by a colleague's documents" (the customers' documents);
+- "on, the-ground", 31 times;
+- Femi named on his own board where "you" belongs;
+- empty aim rows;
+- Kwame's own "I'm aiming" glued into a sentence about him;
+- a name said twice in a sentence (406, up from 362).
+
+Not checked by the run: the admin's view, because the run keeps only the lead's and one participant's.
+
+Now running: the run-25 faults, and reviews as the record interpreted, with a briefing for the manager. "Proof asked for" is next: if it does not come back, it goes to Hafsah. Earlier: approvals, email matching, Ask Groundwork without app-kept check-ins, and the lead's daily summary (items 3, 8, 9 and 11). The settings guide (`docs/whatsapp-settings.md`) is now linked from `docs/whatsapp-end-to-end.md`.
 
 ## 2 OCTOBER: HAFSAH'S ANSWERS ON THE 49 ITEMS (decision 75), AND THE GUARD PROPOSAL
 
