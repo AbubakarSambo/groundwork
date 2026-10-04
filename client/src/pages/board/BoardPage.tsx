@@ -1650,6 +1650,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* Re-review, 30 September: "0 of 4" read as a bare fragment - what the number counts, from the
      matching objective's own name (e.g. "shops in Westlands"), so it reads as a sentence. */
   const targetNameByParticipant = new Map((b.objectives ?? []).filter((o) => o.ownerParticipantId).map((o) => [o.ownerParticipantId as string, o.name]))
+  /**
+   * ANCHOR PIECE 31, THE "ACTIVE" LINE (section 26; plan section 5 row 12; docs/answers-from-engine
+   * .md, "Request 147", `TheActiveLine`). Drawn in "The team today", for the lead alone, exactly as
+   * the engine sends `line` - never rebuilt from the counts on this side. Nothing when the board
+   * does not serve it (today: always, since it is shape only and not served yet).
+   */
+  const activeLineForTheLead = viewerRunsThisCheckIn ? (b as any).activeLine?.line as string | undefined : undefined
   const eachPersonRows = (b.eachPerson ?? []).map((r) => ({
     ...r,
     keepsComingUp: keepsComingUpByParticipant.get(r.participantId) ?? patternHeadingByParticipant.get(r.participantId) ?? null,
@@ -2767,6 +2774,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               The rows are still ordered by what needs the lead first, not listed by name - that
               ordering is unchanged, only the heading now reads as the prototype's screen does.
             */}
+            {activeLineForTheLead && <Note>{activeLineForTheLead}</Note>}
             <WhereEachPersonIs rows={eachPersonRows} squaresFor={squaresFor} />
           </Section>
         )}
@@ -2950,6 +2958,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 note="Each person’s line, their last 10 check-ins, and what keeps coming up."
                 foot="These are about the work."
               >
+                {activeLineForTheLead && <Note>{activeLineForTheLead}</Note>}
                 <WhereEachPersonIs rows={eachPersonRows} squaresFor={squaresFor} />
               </Section>
             )}

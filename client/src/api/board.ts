@@ -429,6 +429,15 @@ export type BoardPresent = {
    */
   anchorScenarioOn?: boolean
   /**
+   * ANCHOR PIECE 30/31, THE "ACTIVE" LINE (section 26; docs/answers-from-engine.md, "Request 147",
+   * `TheActiveLine`). Groundwork manages engagement itself, and the lead sees a status line of its
+   * own words, for example "18/20 active · Groundwork has nudged the remaining 2." Shape only, not
+   * served yet - absent on a board that does not send it, and the line below draws nothing then.
+   * `line` is Hafsah's own wording and is drawn exactly as sent, never rebuilt from `active`/`total`/
+   * `nudged` on this side.
+   */
+  activeLine?: { active: number; total: number; nudged: number; line: string }
+  /**
    * THE RECORDS THE KIND OF WORK KEEPS: deals and their stages, releases, tickets, a matter's
    * deadlines and parties, and so on - one section per name in the switchboard (`section`, e.g.
    * "Deal grid"). Each section says what it holds, in plain words, and whether it is filled, has
