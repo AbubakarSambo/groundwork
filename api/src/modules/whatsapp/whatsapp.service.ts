@@ -34,7 +34,7 @@ import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
 import { aLocalForm, callingCodeOf, formsOfTheSameNumber, tidyANumber } from './a-number-whatsapp-can-reach';
 import { theCountryCodeOf, tidyANumberFor } from './the-organisations-country';
 import { WhichNumber, inboundKeysFrom, whichNumberOf } from './one-number-per-conversation';
-import { ATemplate, insideTheServiceWindow, isBusinessInitiated, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW } from './a-message-outside-the-window';
+import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THIS_RELEASE, NOT_TURNED_ON_QUIETLY, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW } from './a-message-outside-the-window';
 
 /**
  * Single Groundwork-owned WhatsApp Business number, shared across every org -
@@ -496,6 +496,16 @@ export class WhatsAppService {
    */
   private async mayInitiate(organizationId: string | null, to: string, context: SendContext, via: WhichNumber): Promise<{ free: true } | { free: false; template: ATemplate | null; because: string; quiet?: boolean }> {
     if (!isBusinessInitiated(context.kind)) return { free: true };
+    /*
+     * NOTHING NEW GOES TO AN ORGANISATION THAT NEVER TURNED WHATSAPP ON (decisions 78 and 88). The
+     * morning sweeps ask this before they read a row; the opening notice, the approvals, the questions
+     * and the reviews did not, and while the paid-add-on switch is off the add-on gate lets everything
+     * go. So it is asked here, once, for every message Groundwork starts except the report, which went
+     * before. An organisation that already had a number of its own connected keeps what it had.
+     */
+    if (organizationId && !WENT_BEFORE_THIS_RELEASE.has(context.kind as string) && !(await this.hasTurnedItOn(organizationId))) {
+      return { free: false, template: null, because: NOT_TURNED_ON_QUIETLY, quiet: true };
+    }
     const person = await this.prisma.person
       .findFirst({
         where: { phone: { in: formsOfTheSameNumber(to) }, ...(organizationId ? { organizationId } : {}) },
@@ -519,6 +529,15 @@ export class WhatsAppService {
     const lastWrote = ownNumber?.enabled ? onThisNumber : (onThisNumber ?? person?.whatsappLastInboundAt);
     if (insideTheServiceWindow(lastWrote)) return { free: true };
     return { free: false, template: templateFor(context.kind, await this.approvedFor(organizationId)), because: OUTSIDE_THE_WINDOW };
+  }
+
+  /** Whether the organisation turned WhatsApp on (the add-on), or already had a number of its own. True when that cannot be read. */
+  private async hasTurnedItOn(organizationId: string): Promise<boolean> {
+    const org = await (this.prisma as any).organization?.findUnique?.({ where: { id: organizationId }, select: { whatsappAddOnOn: true } })?.catch?.(() => null);
+    if (!org) return true;
+    if (org.whatsappAddOnOn) return true;
+    const own = await this.prisma.whatsAppConnection?.findUnique?.({ where: { organizationId }, select: { enabled: true } })?.catch?.(() => null);
+    return !!own?.enabled;
   }
 
   /**
