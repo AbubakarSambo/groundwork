@@ -449,10 +449,10 @@ export default function App() {
               */}
             <Route path="/start" element={<MayOpenCheckIns><EntryChatPage /></MayOpenCheckIns>} />
             {/*
-              The anchor scenario's own front door (plan piece 2, docs/anchor-scenario-plan.md
+              The anchor scenario's own front door (plan pieces 1 and 2, docs/anchor-scenario-plan.md
               section 5, address suggested in section 1). Open to a stranger, like /start: the page
-              itself redirects to /start unless the engine's anchor switch is on, which it has no
-              way to read for a stranger yet (request 144) - so this always redirects today.
+              itself redirects to /start unless the engine's public switch, `GET /entry/anchor-
+              available`, says the anchor scenario is on (request 144 (1)).
             */}
             <Route path="/start/team" element={<AnchorLandingPage />} />
             <Route path="/invite" element={<InvitePage />} />

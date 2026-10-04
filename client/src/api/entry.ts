@@ -279,6 +279,39 @@ export const entryApi = {
     apiClient.patch<{ ok: true }>('/entry/draft', { draftToken, payload }).then(r => r.data),
 }
 
+/**
+ * THE ANCHOR SCENARIO'S FRONT DOOR CALLS (plan pieces 1 and 2; docs/answers-from-engine.md,
+ * "Request 144 (1)" and "Request 144 (2) and (3)"). Both are open to a visitor who is not signed in.
+ */
+export const entryAnchorApi = {
+  /**
+   * `GET /entry/anchor-available`: the one public signal of whether `release.anchorScenario` is on.
+   * Answers only `{ available }`, cached by the server for 30 seconds. This is the call the landing
+   * page asks before it decides whether to show itself at all, replacing the old stub that could
+   * only ever answer false (`anchor-scenario-is-on.ts`).
+   */
+  available: (): Promise<{ available: boolean }> =>
+    apiClient.get('/entry/anchor-available').then(r => r.data),
+
+  /**
+   * `GET /entry/anchor-start?source=<mark>`: called once on arrival at `/start/team`. With the
+   * switch on it answers the situation key (`HELP_TEAM_UNDERSTAND`), a label for the ground, and the
+   * source mark read back exactly as sent (or `null`). With the switch off it answers 404 - the
+   * caller is expected to show the engine's own sentence rather than invent one.
+   */
+  start: (source?: string | null): Promise<{
+    available: true
+    scenario: 'HELP_TEAM_UNDERSTAND'
+    startedFrom: 'anchor'
+    groundLabel: string
+    source: string | null
+  }> =>
+    apiClient.get('/entry/anchor-start', {
+      params: source ? { source } : undefined,
+      skipNotFoundToast: true,
+    } as any).then(r => r.data),
+}
+
 // ── Join API (QR / broadcast link) ───────────────────────────────────────────
 
 /**
