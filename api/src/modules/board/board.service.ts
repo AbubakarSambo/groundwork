@@ -1097,6 +1097,12 @@ export class BoardService {
       });
       const startOf = new Map<string, number>();
       for (const s of firstSnapshots) if (!startOf.has(s.objectiveId)) startOf.set(s.objectiveId, s.count);
+      /* THE FIRST COUNT IS NOT A RISE (request 130 a). A number counted once, on top of a starting 0 nobody counted, was
+         read "81 now, up from 0" and "up 81 this session". With one snapshot at 0 and a count above it, there is no
+         "before": prevCount is null, the change is 0, and the journey has no start. */
+      const snapshotsOf = new Map<string, number>();
+      for (const s of firstSnapshots) snapshotsOf.set(s.objectiveId, (snapshotsOf.get(s.objectiveId) ?? 0) + 1);
+      const theFirstCount = (o: { id: string; count: number }) => startOf.get(o.id) === 0 && o.count > 0 && (snapshotsOf.get(o.id) ?? 0) <= 1;
 
       /*
        * AND WHAT THE LEAD SAYS IS NOT SETTLED ABOUT THIS NUMBER, next to the number.
@@ -1152,7 +1158,7 @@ export class BoardService {
       out.objectives = (mayReadUntold as typeof ground.objectives).map((o) => ({
         /* The lead's own direction where they set one (decision 69); otherwise the words of the name, as before. */
         journey: theJourneySoFar({
-          start: startOf.get(o.id) ?? null, now: o.count, target: o.target, name: o.name, direction: asADirection((o as any).direction),
+          start: theFirstCount(o) ? null : (startOf.get(o.id) ?? null), now: o.count, target: o.target, name: o.name, direction: asADirection((o as any).direction),
           /* A date to meet says its day, and whether it has passed, on the board's own clock (decision 75, item 17). */
           dueDay: theDayItIsDue((o as any).dueOn, now), isPast: aDeadlineHasPassed((o as any).dueOn, now),
         }),
@@ -1171,7 +1177,7 @@ export class BoardService {
         directionQuestion: isInitiator && asADirection((o as any).direction) == null ? theQuestionAboutWhichWay(o.target) : null,
         /** The lead's own sentence about what is unsettled here, where there is one. Never a block. */
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledLines),
-        id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
+        id: o.id, name: o.name, count: o.count, prevCount: theFirstCount(o) ? null : o.prevCount, target: o.target,
         /* What the target assumes (U.7), to whoever may read the target, and to nobody else. */
         assumes: Array.isArray((o as any).assumes) ? ((o as any).assumes as string[]).filter((a) => typeof a === 'string' && a.trim()) : [],
         /* Where nothing is written down, said plainly rather than left empty (request 115 c). Nothing is made up. */
@@ -1188,7 +1194,7 @@ export class BoardService {
          */
         ownerParticipantId: o.ownerParticipantId ?? null,
         owner: o.ownerParticipantId ? nameOf(o.ownerParticipantId) : null,
-        delta: o.count - o.prevCount,
+        delta: theFirstCount(o) ? 0 : o.count - o.prevCount,
         isNew: o.addedAtSession != null && o.addedAtSession >= maxSession,
         // Only present when the record disagrees with the lead's number. Never
         // applied automatically - it is a prompt, not a correction.
