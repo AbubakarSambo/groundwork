@@ -156,6 +156,7 @@ import {
   HeadlineSection, WhereThisIsHeadingSection, standsTone, ByAreaSection, ReportedAgainstCriteriaSection,
   WhatEachLevelUnderstoodSection, WhatTheVisitLogShowsSection, TheCountiesSection,
   WhereTheCohortStandsSection, SupportGivenSection,
+  WhereTheMatterStandsSection, WhatYouNeedToDecideSection, WhatChangedThisWeekSection,
 } from './TheSwitchboardsSections'
 
 /**
@@ -1290,6 +1291,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      * leaves the records table itself open, in the prototype's own place for it.
      */
     'asset loans': { openIssuesInFold: true, teamInFoldRecordsOpen: true },
+    /*
+     * THE LAW FIRM MATTER BOARD'S OWN SHAPE (matter.txt). "Open issues" folds, the same as every
+     * other kind-of-work table above; `teamAndRecordsInFold` folds the records table, "The team
+     * today", "Who checked in", "Over time" and "Reports" into the end fold too, the same as a
+     * government programme board - which also puts patterns and coaching in their protected place
+     * just before "Where this is heading" (`foldTeam`, below) for free, with no change needed here.
+     */
+    'a law firm matter': { openIssuesInFold: true, teamAndRecordsInFold: true },
   }
   const layoutFor = (k: string | null) => (k ? kindLayout[k] : undefined)
   const themesAndAreaAfterTheTeam = Boolean(layoutFor(kindOfWorkKey)?.themesAndAreaAfterTheTeam)
@@ -1596,8 +1605,25 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * counties, while every other kind still gets it in its usual spot near the top of the board -
    * see where each is called, below.
    */
+  /*
+   * THE LAW FIRM MATTER BOARD, FIX 3: "NO DECISION TWICE." matter.txt's own "What you need to
+   * decide" already reads a `decisions` row word for word (e.g. "Amani Wekesa is waiting for the
+   * tax view, and nobody has been named to provide it.") - for this kind only, that same question
+   * is kept out of "What needs you in this check-in" too, the same way a decision already read as
+   * a lead action is kept out (`decisionDuplicatesALeadAction`, above). Matched on the decision's
+   * own `question`, the one field both sections carry unchanged from the engine.
+   */
+  const matterDecisionQuestionsAlreadyShown = kindOfWorkKey === 'a law firm matter'
+    ? new Set(((b as any).whatYouNeedToDecide?.items ?? []).map((item: { question: string }) => item.question))
+    : null
+  const decisionsForWhatNeedsYou = shown.decisions
+    ? b.decisions!.filter((d) =>
+        !decisionDuplicatesALeadAction(d, b.leadActions, b.dependencies, myName)
+        && !matterDecisionQuestionsAlreadyShown?.has(d.question),
+      )
+    : []
   const whatNeedsYouSection = () => {
-    if (!(viewerRunsThisCheckIn && (needsHere.length > 0 || (shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan, true)) || shown.decisions))) return null
+    if (!(viewerRunsThisCheckIn && (needsHere.length > 0 || (shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan, true)) || decisionsForWhatNeedsYou.length > 0))) return null
     return (
       <Section heading="What needs you in this check-in">
         <EdgeList label="What needs you in this check-in">
@@ -1632,9 +1658,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             ITEM 8: SKIP A DECISION THAT IS THE SAME BLOCKER AS A LEAD ACTION ABOVE. See
             `decisionDuplicatesALeadAction`.
           */}
-          {shown.decisions && b.decisions!
-            .filter((d) => !decisionDuplicatesALeadAction(d, b.leadActions, b.dependencies, myName))
-            .map((d, i) => (
+          {decisionsForWhatNeedsYou.map((d, i) => (
             <EdgeRow
               key={`decision-${i}`}
               kind="decide"
@@ -2211,6 +2235,31 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
+          THE LAW FIRM MATTER BOARD'S OWN THREE SECTIONS, STRAIGHT AFTER THE GLANCE, IN MATTER.TXT'S
+          OWN ORDER - "Where the matter stands", "What you need to decide", then "What changed this
+          week, and what it changed". Only for this kind, and only when the engine actually sends
+          each one - every other kind of work is sent none of these three fields at all, so this
+          draws nothing for them.
+        */}
+        {kindOfWorkKey === 'a law firm matter' && (
+          <>
+            <WhereTheMatterStandsSection data={(b as any).whereTheMatterStands} />
+            <WhatYouNeedToDecideSection data={(b as any).whatYouNeedToDecide} />
+            <WhatChangedThisWeekSection data={(b as any).whatChangedThisWeek} />
+          </>
+        )}
+
+        {/*
+          THE LAW FIRM MATTER BOARD, FIX 3: "WHAT NEEDS YOU IN THIS CHECK-IN" IS NOT ONE OF
+          MATTER.TXT'S OWN SECTIONS, SO IT DRAWS AFTER THEM, NOT IN ITS USUAL PLACE NEAR THE TOP OF
+          THE BOARD. The usual call, further down, is skipped for this kind (see where it is
+          called, below) - this is the only place it draws for a law firm matter, and only when it
+          still has something to say once the decision matter.txt already read above is kept out
+          (`decisionsForWhatNeedsYou`).
+        */}
+        {kindOfWorkKey === 'a law firm matter' && whatNeedsYouSection()}
+
+        {/*
           REQUEST 132: "WHERE IT STANDS", OUT OF THE FOLD, STRAIGHT AFTER THE AIM (gov.txt). Every
           other kind of work still reads `howItIsGoing.latestSummary` as plain text, folded below
           with "Everything else from this check-in" (see where that block draws, further down) -
@@ -2362,8 +2411,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           REQUEST 132: NOT HERE FOR A GOVERNMENT PROGRAMME BOARD. gov.txt's own place for this
           section is right after the counties, where `whatNeedsYouSection()` is already called -
           see above, by the aim and "Where it stands".
+
+          THE LAW FIRM MATTER BOARD, FIX 3: NOT HERE EITHER. matter.txt has no "What needs you"
+          section near the top - it is drawn after this kind's own three sections instead (see
+          above, straight after "What changed this week").
         */}
-        {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && whatNeedsYouSection()}
+        {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && whatNeedsYouSection()}
 
         {/*
           REQUEST 133: AN ASSET LOANS COHORT'S OWN "WHERE THE COHORT STANDS" (loans.txt), RIGHT
