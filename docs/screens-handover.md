@@ -4,6 +4,18 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## Next (5 October, Hafsah)
+
+- **Confirmed by Hafsah:**
+  - the operations heading, "Every incident, and what shows it";
+  - the government board's question block, as gov.txt shows it;
+  - patterns and coaching open on every board;
+  - MarketView Q4 waiting for a real test check-in, which the engine workspace will make.
+- **The one-off style clean-up waits until after release.** No new one-off classes, as before.
+- **Now:** check every board on a phone-width screen (375), as the lead and as a participant, like a real user. Fix anything broken, cramped or cut off. Then match MarketView Q4 once the engine's test check-in arrives.
+- **Merge the engine's work regularly.** The full API test suite runs on the engine workspace's computer, not here.
+- The untracked `scratchpad/` folder inside the project is deleted.
+
 ## Founder's own check-in board: done (4 October)
 
 "Founder’s own check-in, test" (3ca11603, one person), in founder.txt's order, after one review and its fixes (ee40c790..c2dd2f31), checked live (scratchpad `pictures/founder-A/`). A one-person check-in now says "you", not "the team", and no longer asks the founder to add somebody. The engine's part is request 136. The wording guard fails again on an engine file (request 137).
