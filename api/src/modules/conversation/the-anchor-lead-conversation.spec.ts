@@ -8,6 +8,7 @@ import {
   ANCHOR_LEAD_PROMPT,
   ANCHOR_LEAD_PROMPT_KEY,
   THE_ECONOMIC_ENGINE_GUIDANCE,
+  CHALLENGING_THE_LEAD_GUIDANCE,
 } from './the-anchor-lead-conversation';
 
 /**
@@ -68,6 +69,41 @@ describe('anchor piece 5: how this organisation keeps going is found out by aski
   it('is seeded under its own key, so a stored version can replace the file', () => {
     expect(ANCHOR_LEAD_PROMPT_KEY.startsWith('scenario.')).toBe(false);
     expect(SEED_PROMPTS.find((s) => s.key === ANCHOR_LEAD_PROMPT_KEY)?.content).toBe(ANCHOR_LEAD_PROMPT);
+  });
+});
+
+describe('anchor piece 6: the lead is challenged kindly, once, and the gaps are said plainly', () => {
+  it('with the switch on, the anchor conversation carries the six questions in the scenario\'s words', async () => {
+    const { service, seen } = world(true);
+    await service.chat(said, ANCHOR_ENTRY_SCENARIO);
+    for (const q of [
+      'Have you actually told them this?',
+      'How much context do they have?',
+      'Would somebody know this was expected from their current role?',
+      'Do they understand why this matters now?',
+      'Could someone do their formal job extremely well and still fail the expectation you\'re describing?',
+      'Are you asking them to take ownership while retaining all the decision-making yourself?',
+    ]) expect(seen[0]).toContain(q);
+  });
+
+  it('gives the scenario\'s own sentence about missing context', () => {
+    expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain("Part of what you're describing may not be an ownership problem. Your team may not have enough context to make the decisions you're hoping they'll make.");
+  });
+
+  it('asks once, kindly, after the lead has been heard, and only where it fits', () => {
+    expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('Do it once.');
+    expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('Never in the first turns.');
+    expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('with no blame and no verdict');
+    expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('If nothing the lead has said gives you a reason, do not challenge at all.');
+  });
+
+  it('says plainly when it lacks context, and does not fill the gap', () => {
+    expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('I don\'t know enough about that yet to say, and I would rather ask than guess.');
+    expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('Do not fill a gap with something that sounds likely.');
+  });
+
+  it('is part of the stored prompt too', () => {
+    expect(SEED_PROMPTS.find((s) => s.key === ANCHOR_LEAD_PROMPT_KEY)?.content).toContain(CHALLENGING_THE_LEAD_GUIDANCE);
   });
 });
 
