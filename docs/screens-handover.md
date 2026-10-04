@@ -4,6 +4,32 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## Phone-width check: done (5 October)
+
+Every board was checked at 375 as the lead and as a participant, like a real user. Ten faults were fixed (68858359..96e444f1) and checked live:
+- "Ask" opens the chat page on a phone, keeping the typed question.
+- The check-in switcher stays on screen.
+- Headings in the fold have their gap.
+- Text boxes are 16px, so iPhone does not zoom.
+- No card sticks out past its section.
+- The deal grid's groups have their inset.
+- No empty box under a role.
+- "Groundwork does not know what kind of work…" is said once.
+- Every control has a 40px tap area.
+- No duplicate React keys.
+
+The client's mirror of the engine's ending labels is in step (78e3e1dc). The wording guard fails again on engine lines (request 141).
+
+**Next: the anchor scenario** (Hafsah, 5 October). Merge `mine/wip/plain-reports` to get `docs/anchor-scenario.md` and `docs/anchor-scenario-plan.md`. Build the screens the engine assigns to the screens workspace, almost word for word in its text and in the prototype's design:
+- the front door;
+- the lead's board;
+- adding up to 20 people;
+- the invitation page;
+- the lead's board during the month;
+- the end-of-month page.
+
+Keep it behind its switch. The plan was not yet on the engine's branch at 0b62fb38.
+
 ## Next (5 October, Hafsah)
 
 - **Confirmed by Hafsah:**
