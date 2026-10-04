@@ -303,6 +303,9 @@ export function whoThisNameIs(name: string, people: SomebodyOnTheCheckIn[]): Som
        "Amani" and the check-in said she was not on it. Two people sharing a first name still match neither. */
     (p.nameGiven ?? '').toLowerCase().trim().split(/\s+/)[0],
     (p.email ?? '').split('@')[0].toLowerCase().replace(/[._]/g, ' '),
+    /* And the first name in the address, for somebody invited by address alone ("amani.wekesa@..." is "Amani"). Found in the browser
+       journeys: the lead's plan said "Amani" and the check-in said she was not on it. Two people with one first name still match neither. */
+    ((p.email ?? '').split('@')[0].toLowerCase().split(/[._]+/).length >= 2 ? (p.email ?? '').split('@')[0].toLowerCase().split(/[._]+/)[0] : ''),
     (p.roleAsDescribed ?? '').toLowerCase().trim(),
   ].filter(Boolean);
   const hits = people.filter((p) => ways(p).includes(n));

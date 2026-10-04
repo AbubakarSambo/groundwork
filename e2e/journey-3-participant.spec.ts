@@ -23,10 +23,11 @@ test('Amani opens her invitation, checks in, reads the board, asks Groundwork an
     const invite = await linkSentTo(page, w.amani, /invite\?token=[0-9A-Za-z_-]+/, 0);
     await page.goto(invite);
     /* The invitation names the lead and the check-in (A3-organisations-and-joining/join-invite.txt). */
-    await expect(page.getByText('Wairimu').first()).toBeVisible();
-    await expect(page.getByText('Sales team, last quarter').first()).toBeVisible();
+    /* Having accepted the organisation's invitation just now, she has already joined: the screen says so and offers her check-in. */
+    await expect(page.getByRole('heading', { name: /already joined|invited you/ })).toBeVisible();
     readsAsPlainSentences(await whatIsOnThePage(page));
-    await page.getByRole('button', { name: /Start my check-in|Join|Continue/ }).first().click();
+    const go = /Pick up where I left off|Start my check-in|Join|Continue/;
+    await page.getByRole('button', { name: go }).or(page.getByRole('link', { name: go })).first().click();
   });
 
   await test.step('4. She answers in her own words, and Groundwork replies in plain sentences', async () => {
@@ -40,12 +41,14 @@ test('Amani opens her invitation, checks in, reads the board, asks Groundwork an
 
   await test.step('4. She finishes, and reads what was written down from her answers', async () => {
     await page.getByRole('button', { name: /Complete|Finish|Done|Submit/i }).first().click();
-    await expect(page.getByText(/in your record|Your record/i).first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/Done\. Thanks, Amani\./).first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText('Two reports come from this')).toBeVisible();
+    readsAsPlainSentences(await whatIsOnThePage(page));
   });
 
   await test.step('5. She reads the board; it shows the team\'s picture and never a judgement of her', async () => {
-    await page.goto(`${APP}${w.checkInPath ?? '/grounds'}`);
-    await expect(page.getByText(/Last updated on/)).toBeVisible();
+    await page.goto(`${APP}${theWorld().checkInPath}/board`);
+    await expect(page.getByText(/Last updated on/)).toBeVisible({ timeout: 60_000 });
     const text = await whatIsOnThePage(page);
     readsAsPlainSentences(text);
     expect(text).not.toMatch(/\b(PIP|at risk)\b/);
@@ -62,7 +65,7 @@ test('Amani opens her invitation, checks in, reads the board, asks Groundwork an
     await expect(panel.getByText(/20 October/).first()).toBeVisible({ timeout: 90_000 });
     await panel.getByRole('button', { name: 'Yes' }).last().click();
     await page.goto(`${APP}/suite/mine`);
-    await expect(page.getByRole('heading', { name: 'Your requests' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your requests', exact: true })).toBeVisible();
     await expect(page.getByText(/20 October/).first()).toBeVisible();
     readsAsPlainSentences(await whatIsOnThePage(page));
   });

@@ -11,6 +11,8 @@ jest.mock('../suites/who-approves', () => ({
 }));
 
 interface Opts {
+  /** The approved leave of the reader's teammates, dates only, or null where the reader has no team (decision 93, row 25). */
+  teammates?: { name: string; startsOn: string; endsOn: string }[] | null;
   role?: 'MEMBER' | 'LEAD' | 'ADMIN' | 'GUEST';
   leaveOff?: boolean;
   spendOff?: boolean;
@@ -35,6 +37,11 @@ function svc(o: Opts = {}) {
       if (o.leaveOff) off();
       if (role === 'GUEST') throw new ForbiddenException('Only people in this organisation can ask for leave here.');
       return { perYear: o.perYear === undefined ? 20 : o.perYear, daysLeft: o.daysLeft === undefined ? 17 : o.daysLeft, kinds: o.kinds ?? [], requests: o.leaveRequests ?? [] };
+    }),
+    teammatesOff: jest.fn(async () => {
+      if (o.leaveOff) off();
+      if (role === 'GUEST') return null;
+      return o.teammates ?? null;
     }),
     board: jest.fn(async () => {
       if (o.leaveOff) off();
@@ -183,14 +190,37 @@ describe('the questions that used to get "I cannot answer that one yet", as each
     expect((await said(svc({ role: 'LEAD', ...WORLD, off: [] }), 'Who is off next week?')).text).toBe('Nobody in your team is off next week, as far as approved leave goes.');
   });
 
-  it('who is off next week tells a member, and a guest, only their own leave (decision 75, item 28)', async () => {
+  /* Changed by decision 93, row 25. The member half pinned "only their own leave"; a member with no team still reads that, a guest always does. */
+  it('who is off next week tells a guest, and a member with no team, only their own leave (decision 75, item 28)', async () => {
     const mine = { leaveRequests: [{ id: 'l3', startsOn: '2026-10-08', endsOn: '2026-10-09', days: 2, status: 'approved', where: 'x' }] };
     expect((await said(svc({ role: 'MEMBER', ...WORLD, ...mine }), 'Who is off next week?')).text).toBe(`One person is off next week, from approved leave.\nYou are off from Thursday 8 October to Friday 9 October.\n${NOBODY_ELSE}`);
     for (const role of ['MEMBER', 'GUEST'] as const) {
-      const out = await said(svc({ role, ...WORLD }), 'Who is off next week?');
+      const out = await said(svc({ role, ...WORLD, teammates: role === 'GUEST' ? [{ name: 'Baraka', startsOn: '2026-10-08', endsOn: '2026-10-09' }] : null }), 'Who is off next week?');
       expect(out.text).toBe(`You are not on approved leave next week. ${NOBODY_ELSE}`);
       expect(out.text).not.toMatch(/Baraka|Far Away/);
     }
+  });
+
+  it('who is off next week tells a member who in their team is off, by first name and dates only (decision 93, row 25)', async () => {
+    const teammates = [
+      { name: 'Baraka', startsOn: '2026-10-08', endsOn: '2026-10-09' },
+      { name: 'Wairimu', startsOn: '2026-10-12', endsOn: '2026-10-12' },
+      { name: 'Far Away', startsOn: '2026-11-08', endsOn: '2026-11-09' },
+    ];
+    const out = await said(svc({ role: 'MEMBER', ...WORLD, teammates }), 'Who is off next week?');
+    expect(out).toEqual({
+      lane: 'who_is_away',
+      text: 'One person is off next week, from approved leave.\nBaraka is off from Thursday 8 October to Friday 9 October.',
+    });
+    const both = await said(svc({ role: 'MEMBER', ...WORLD, teammates, leaveRequests: [{ id: 'l3', startsOn: '2026-10-08', endsOn: '2026-10-09', days: 2, status: 'approved', where: 'x' }] }), 'Who is off in the next two weeks?');
+    expect(both.text).toBe([
+      '3 people are off in the next two weeks, from approved leave.',
+      'You are off from Thursday 8 October to Friday 9 October.',
+      'Baraka is off from Thursday 8 October to Friday 9 October.',
+      'Wairimu is off on Monday 12 October.',
+    ].join('\n'));
+    expect(both.text).not.toMatch(/Far Away|admin or a lead/);
+    expect((await said(svc({ role: 'MEMBER', ...WORLD, teammates: [] }), 'Who is off next week?')).text).toBe('Nobody in your team is off next week, as far as approved leave goes.');
   });
 
   it('is private to the reader: the question and the answer are not written anywhere but the reader’s own history', async () => {

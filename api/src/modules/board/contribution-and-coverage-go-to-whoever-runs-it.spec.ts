@@ -139,10 +139,22 @@ describe.each([[true, 'people see each other'], [false, 'people see only themsel
     expect(JSON.stringify([b.contribution, b.coverage])).not.toContain('Miriam');
   });
 
-  it('an admin who only reads gets nothing, because they have no row', async () => {
+  /* Changed by decision 93, row 8. This pinned "an admin who only reads gets nothing, because they have no row", the restriction Hafsah removed. */
+  it('an admin who only reads reads every row, as the lead does, and still no rating of anyone\'s answers', async () => {
     const b = await read('u-grace', 'ADMIN');
-    expect(b.contribution ?? []).toEqual([]);
-    expect(b.coverage?.reads ?? []).toEqual([]);
-    expect(JSON.stringify(b)).not.toMatch(/Nothing checkable/);
+    const lead = await read('u-wairimu');
+    expect(names(b.contribution)).toEqual(names(lead.contribution));
+    expect(names(b.contribution)).toEqual(expect.arrayContaining(['p-miriam', 'p-aisha']));
+    expect(names(b.coverage?.reads)).toEqual(names(lead.coverage?.reads));
+    expect(JSON.stringify([b.contribution, b.coverage])).not.toMatch(/"rating"|"confidence"|"score"/);
   });
 });
+
+/* Decision 93, row 8 reaches an admin only where the admin may read the check-in at all (decision 5). */
+describe('contribution and coverage on a performance plan, for an admin who was not given access to it', () => {
+  it('Grace, an admin with no access to a plan, is not let in, so reads none of it', async () => {
+    const plan = { ...GROUND, scenario: GroundScenario.PIP, peersVisibleToEachOther: true, peopleWorkTogether: true };
+    await expect(boardFor('u-grace', 'ADMIN', {}, plan).board).rejects.toThrow(/not a participant/i);
+  });
+});
+

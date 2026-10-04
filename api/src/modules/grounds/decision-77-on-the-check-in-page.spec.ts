@@ -74,19 +74,21 @@ describe('decision 77 on the check-in page: who is waiting to be let in, per rea
     expect((await pageFor('userJuma', { role: 'ADMIN' })).waitingToBeLetIn).toBe('Faraji Odhiambo is waiting to be let in.');
   });
 
-  it('Amani, who checks in, reads nothing about it, whether people see each other or only themselves', async () => {
+  /* Changed by decision 93, row 4. This pinned "Amani, who checks in, reads nothing about it", the restriction Hafsah removed. */
+  it('Amani, who checks in, reads that Faraji is waiting where people are named to each other, and only a count where they are not', async () => {
     const seen = await pageFor('userAmani');
-    expect(seen.waitingToBeLetIn).toBeNull();
-    expect(JSON.stringify(seen)).not.toContain('let in');
+    expect(seen.waitingToBeLetIn).toBe('Faraji Odhiambo is waiting to be let in.');
     const hidden = await pageFor('userAmani', { peers: false });
-    expect(hidden.waitingToBeLetIn).toBeNull();
+    expect(hidden.waitingToBeLetIn).toBe('1 person is waiting to be let in.');
     expect(JSON.stringify(hidden)).not.toContain('Faraji');
   });
 
   it('declined by an admin: Rukia and Juma read "Faraji Odhiambo was not let in.", Amani reads nothing about it', async () => {
     expect((await pageFor('userRukia', { declined: true })).waitingToBeLetIn).toBe('Faraji Odhiambo was not let in.');
     expect((await pageFor('userJuma', { role: 'ADMIN', declined: true })).waitingToBeLetIn).toBe('Faraji Odhiambo was not let in.');
-    expect((await pageFor('userAmani', { declined: true })).waitingToBeLetIn).toBeNull();
+    const amani = await pageFor('userAmani', { declined: true });
+    expect(amani.waitingToBeLetIn).toBeNull();
+    expect(JSON.stringify(amani)).not.toContain('not let in');
   });
 
   it('each row says whether that person is let in yet', async () => {

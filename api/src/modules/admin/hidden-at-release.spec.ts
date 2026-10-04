@@ -2,13 +2,26 @@ import { GroundsService } from '../grounds/grounds.service';
 import { AssistantService } from '../assistant/assistant.service';
 import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
 import { SCENARIO_FAMILY, BoardFamily } from '../board/board-families';
-import { KINDS_OFFERED_AT_RELEASE, theBoardKindsOffered, aKindMayBeGiven, contextIsInAskGroundwork, theNewBillingPartsAreShown } from './what-is-hidden-at-release';
+import { KINDS_OFFERED_AT_RELEASE, theBoardKindsOffered, aKindMayBeGiven, contextIsInAskGroundwork, theNewBillingPartsAreShown, theAnchorScenarioIsOn } from './what-is-hidden-at-release';
 
 /**
  * WHAT THE RELEASE HIDES (decisions 78, 88 and 90): a hidden thing is not offered to anything NEW,
  * and a check-in or an organisation that already has it, or already uses the old way, is unchanged.
  */
 const settings = (rows: Record<string, unknown>) => ({ platformSetting: { findUnique: jest.fn(async ({ where }: any) => (where.key in rows ? { value: rows[where.key] } : null)) } });
+
+describe('the anchor scenario switch (piece 0 of docs/anchor-scenario-plan.md)', () => {
+  it('is off with no row, and off for any row that is not exactly on', async () => {
+    expect(await theAnchorScenarioIsOn(settings({}))).toBe(false);
+    for (const bad of ['yes', 1, { on: 'true' }, { on: false }, null, {}]) {
+      expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': bad }))).toBe(false);
+    }
+    expect(await theAnchorScenarioIsOn({ platformSetting: { findUnique: async () => { throw new Error('down'); } } })).toBe(false);
+  });
+  it('is on only when the row says so', async () => {
+    expect(await theAnchorScenarioIsOn(settings({ 'release.anchorScenario': { on: true } }))).toBe(true);
+  });
+});
 
 describe('the three settings, with no row at all', () => {
   it('offer sales and engineering of the eleven kinds, and keep the context and billing parts off', async () => {
@@ -39,6 +52,7 @@ function grounds(ground: Record<string, any>, answer: any) {
     ...settings({}),
     ground: {
       findUnique: jest.fn(async () => ground),
+      updateMany: jest.fn(async (a: any) => { const by = ground.kindOfWorkSetBy ?? null; if (by !== null && by !== 'read') return { count: 0 }; updates.push(a.data); Object.assign(ground, a.data); return { count: 1 }; }),
       update: jest.fn(async (a: any) => { updates.push(a.data); Object.assign(ground, a.data); return { id: 'g1', ...ground }; }),
     },
     user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },

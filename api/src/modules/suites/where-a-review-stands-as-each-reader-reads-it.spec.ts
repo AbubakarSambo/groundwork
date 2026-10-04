@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ReviewsService, REVIEW_REFUSED } from './the-reviews.service';
+import { afterTheKindOfCheckInIsDecided } from './where-a-review-stands';
 
 /**
  * WHERE EACH REVIEW STANDS, AS EACH READER READS IT (item 16; docs/prototype/screens/E-suites/suite-reviews.txt).
@@ -88,11 +89,24 @@ describe('where each review stands', () => {
     ]);
   });
 
-  it('Grace, an admin who is not in Kwame’s check-in, is not told its name', async () => {
+  /* Changed by decision 93, row 20. This pinned "After a check-in about Kwame is decided.", the wording Hafsah replaced with the prototype's, said with the name and no he or she. */
+  it('Grace, an admin who is not in Kwame’s check-in, is not told its title, and reads the kind of check-in in its own words', async () => {
     const { svc, as } = setup();
     const b = await svc.board(as('u-grace'), TODAY);
-    expect(rows(b)[2]).toEqual(['Kwame Boateng', 'not-yet', 'After a check-in about Kwame is decided.', false]);
+    expect(rows(b)[2]).toEqual(['Kwame Boateng', 'not-yet', 'After Kwame’s 90 days are decided.', false]);
     expect(JSON.stringify(b)).not.toMatch(/first 90 days/);
+    expect(JSON.stringify(b)).not.toMatch(/\b(his|her|he|she)\b/i);
+  });
+
+  it('says every kind of check-in in its own words, with the name and never a he or a she', () => {
+    expect(['NEW_HIRE', 'PIP', 'CONTRACT_RENEWAL', 'RECOGNITION', 'SOMETHING_ELSE', null].map((k) => afterTheKindOfCheckInIsDecided(k, 'Kwame'))).toEqual([
+      'After Kwame’s 90 days are decided.',
+      'After Kwame’s performance plan is decided.',
+      'After Kwame’s contract renewal is decided.',
+      'After the recognition round for Kwame is decided.',
+      'After the check-in about Kwame is decided.',
+      'After the check-in about Kwame is decided.',
+    ]);
   });
 
   it('Kwame’s review cannot be started while his first 90 days are open, and can once they are decided', async () => {

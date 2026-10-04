@@ -94,6 +94,8 @@ function boardFor(requestingUserId: string, viewerRole = 'MEMBER', opts: { mayWo
       findUnique: jest.fn(async () => ({ role: viewerRole, organizationId: 'org-1' })),
       findMany: jest.fn(async () => [{ id: 'u-juma', firstName: 'Juma', lastName: 'Mwangi' }]),
     }),
+    /* Everyone here is a member of the organisation, so nobody reads as a guest from outside (decision 93, row 4). */
+    organizationMembership: model('organizationMembership', { findUnique: jest.fn(async () => ({ role: viewerRole === 'ADMIN' ? 'ADMIN' : 'MEMBER' })) }),
     membershipRequest: model('membershipRequest', {
       findMany: jest.fn(async () => [{ userId: 'u-faraji', status: 'DECLINED', decidedByUserId: 'u-juma', decidedAt: new Date('2026-09-29T10:00:00Z') }]),
     }),
@@ -186,17 +188,25 @@ describe('decision 77 on the board: Faraji is not counted, and is said apart', (
     },
   );
 
-  it('still waiting, Miriam reads nothing about it, whether people see each other or only themselves', async () => {
+  /* Changed by decision 93, row 4. This pinned "Miriam reads nothing about it", the restriction Hafsah removed. */
+  it('still waiting, Miriam reads that Faraji is waiting where people see each other, and a count where they see only themselves', async () => {
     const seen = boardFor('u-miriam', 'MEMBER', {}, withFaraji);
     pending(seen);
-    const s = await seen.board;
-    expect(s.waitingToBeLetIn ?? null).toBeNull();
-    expect(JSON.stringify(s)).not.toContain('let in');
+    expect((await seen.board).waitingToBeLetIn).toBe('Faraji Odhiambo is waiting to be let in.');
     const hidden = boardFor('u-miriam', 'MEMBER', {}, { ...withFaraji, peersVisibleToEachOther: false, peopleWorkTogether: false });
     pending(hidden);
     const b = await hidden.board;
-    expect(b.waitingToBeLetIn ?? null).toBeNull();
+    expect(b.waitingToBeLetIn).toBe('1 person is waiting to be let in.');
     expect(JSON.stringify(b)).not.toContain('Faraji');
+  });
+
+  it('a guest from another organisation, still waiting, reads nothing about who is let in', async () => {
+    const guest = boardFor('u-miriam', 'MEMBER', {}, withFaraji);
+    pending(guest);
+    guest.prisma.organizationMembership = { findUnique: jest.fn(async () => ({ role: 'GUEST' })) };
+    const b = await guest.board;
+    expect(b.waitingToBeLetIn ?? null).toBeNull();
+    expect(JSON.stringify(b)).not.toContain('let in');
   });
 
   it('declined by an admin, the lead and the admins read "Faraji Odhiambo was not let in." and Miriam reads nothing about him', async () => {

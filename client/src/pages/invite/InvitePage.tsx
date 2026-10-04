@@ -286,7 +286,7 @@ export function InvitePage() {
         />
         <Stack gap={10}>
           <Button size="big" wide disabled={accept.isPending} onClick={() => accept.mutate()}>
-            <span role="status">{accept.isPending ? 'One moment…' : 'Pick up where I left off'}</span>
+            {accept.isPending ? 'One moment…' : 'Pick up where I left off'}
           </Button>
           {/* Sign in instead: the secondary weight, because two identical primaries around an "or" is no choice. */}
           <Button kind="secondary" size="big" wide onClick={() => navigate('/auth')}>Sign in to continue</Button>
@@ -393,7 +393,7 @@ export function InvitePage() {
                   <p className="gwui-field-help">Your name is optional. If you add it, the others will see it on the shared report.</p>
                   <div className="gwui-form-actions">
                     <Button type="submit" size="big" wide disabled={accept.isPending} >
-                      <span role="status">{accept.isPending ? 'Setting up your session…' : 'Answer today’s check-in now'}</span>
+                      {accept.isPending ? 'Setting up your session…' : 'Answer today’s check-in now'}
                     </Button>
                   </div>
                 </form>

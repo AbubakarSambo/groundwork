@@ -148,6 +148,14 @@ export function serviceFor(kind: 'sales' | 'review' = 'sales') {
         return w.ground.participants.map((p: any) => ({ ...p, checkIns: w.checkIns.filter((c) => c.participantId === p.id && (n === undefined || c.sessionNumber === n)) }));
       },
     },
+    /* Each person is a member of the organisation with the role they have above, so a guest can be told from a member (decision 93, row 4). */
+    organizationMembership: {
+      ...none,
+      findUnique: async ({ where }: any) => {
+        const u = users[where?.userId_organizationId?.userId];
+        return u && where.userId_organizationId.organizationId === u.organizationId ? { role: u.role } : null;
+      },
+    },
     user: {
       ...none,
       findUnique: async ({ where }: any) => users[where.id] ?? null,

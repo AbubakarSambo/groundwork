@@ -87,7 +87,7 @@ export async function theSameThingFromTheRows(prisma: any, r: TheRowsItReads): P
  * Names as the board gives them to the lead: the whole name, with who they answered for where the
  * check-in asks for it, or "A colleague". Never an email address.
  */
-export async function theSameThingForTheLead(prisma: any, groundId: string, leadUserId: string): Promise<ToLookAt[]> {
+export async function theSameThingForTheLead(prisma: any, groundId: string, leadUserId: string, opts: { adminReadsIt?: boolean } = {}): Promise<ToLookAt[]> {
   const ground = await prisma.ground?.findUnique?.({
     where: { id: groundId },
     select: {
@@ -102,7 +102,7 @@ export async function theSameThingForTheLead(prisma: any, groundId: string, lead
       dependencies: { orderBy: { createdAt: 'asc' } },
     },
   })?.catch?.(() => null);
-  if (!ground || ground.initiatorId !== leadUserId) return [];
+  if (!ground || (ground.initiatorId !== leadUserId && !opts.adminReadsIt)) return [];
   const participants = (ground.participants ?? []) as any[];
   const checkIns = ((await prisma.checkIn?.findMany?.({
     where: { groundId },

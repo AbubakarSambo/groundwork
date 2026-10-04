@@ -241,7 +241,7 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   },
   {
     key: 'who_is_away',
-    does: 'Who is off in a week or a day, from approved leave, as far as the reader may know: everyone for an admin, the lead\u2019s own team for a lead, and only your own leave for anybody else',
+    does: 'Who is off in a week or a day, from approved leave, as far as the reader may know: everyone for an admin, the lead\u2019s own team for a lead, your own team for a member (dates only), and only your own leave for a guest',
     writes: 'nothing',
     ordered: 'Above who_is, because "who is off next week" begins with "who is" and was answered by looking up a person called "off next week".',
     owns: ['who is off next week?', 'who is away this week', 'who is on leave tomorrow', 'is anyone off today'],

@@ -8,7 +8,7 @@ import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-la
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { whoIsInTheRound } from './how-many-have-answered';
 import { whoIsNotLetInYet, theWaitingToBeLetInLine } from '../grounds/who-an-admin-did-not-let-in';
-import { whoOnACheckInIsAway } from '../suites/who-is-away';
+import { isFromOutside, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { AsyncLocalStorage } from 'async_hooks';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
@@ -3521,14 +3521,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * person who checks in, whether or not people see each other: whether somebody has been let in is
      * the organisation's business.
      */
+    /* A person who checks in reads it too (decision 93, row 4): that somebody is waiting, by name only where this report names people, never a decline, never as a guest. */
+    const aParticipantReadsIt = !viewerIsLead && !!me && !(await isFromOutside(this.prisma, requestingUserId, (ground as any).organizationId));
     const waitingToBeLetIn = theWaitingToBeLetInLine(
       [...(await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId)).entries()]
-        .filter(([id]) => !answeredIds.has(id))
+        .filter(([id]) => !answeredIds.has(id) && id !== me?.id)
         .map(([id, d]) => {
           const label = labels.get(id);
           return { name: (label ? nameByLabel.get(label) : undefined) ?? null, declined: d.declined };
         })
-        .filter(() => viewerIsLead),
+        .filter((w) => viewerIsLead || (aParticipantReadsIt && !w.declined)),
     );
 
     /*
@@ -5871,20 +5873,21 @@ happened, and what is in the way.`;
    *   yours       the reader's own coaching note, for anyone who takes part (the lead included), about
    *               themselves only, exactly as the report serves it.
    *   eachPerson  what to ask each person, for whoever runs the check-in (the lead, or the admin who set
-   *               it up) and nobody else; an admin who only reads gets none. This is what the report gives
+   *               it up) and for an admin with access to it (decision 93, row 9), and nobody else. This is what the report gives
    *               the lead in place of other people's notes, which the report never serves to anybody but
    *               the person.
    *
    * Null when there is nothing to serve, so the board draws nothing rather than an empty block.
    */
-  async coachingForTheBoard(groundId: string, requestingUserId: string): Promise<{ yours: any; eachPerson: any } | null> {
+  async coachingForTheBoard(groundId: string, requestingUserId: string, opts: { adminReadsIt?: boolean } = {}): Promise<{ yours: any; eachPerson: any } | null> {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { participants: { include: { user: { select: { firstName: true, lastName: true, email: true } } } }, report: true },
     });
     if (!ground) return null;
     const participant = (ground.participants as any[]).find((p) => p.userId === requestingUserId) ?? null;
-    const runsIt = runsItForAPattern(ground as any, requestingUserId);
+    /* Whoever runs it, and an admin with access to it (decision 93, row 9); the caller says whether the admin has access. */
+    const runsIt = runsItForAPattern(ground as any, requestingUserId) || !!opts.adminReadsIt;
     if (!participant && !runsIt) return null;
 
     const labels = labelsForParties(ground.participants as any);
@@ -6677,7 +6680,7 @@ happened, and what is in the way.`;
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     await this.refuseSomeoneNotYetLetIn(requestingUserId);
     const served = await this.getAsBuilt(groundId, requestingUserId, requestingUserOrgId);
-    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, await this.withBeingWritten(groundId, requestingUserId, await this.withWhatTodayReads(groundId, requestingUserId, requestingUserOrgId, await this.withWhatHasStayedTheSame(groundId, requestingUserId, served))));
+    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, await this.withBeingWritten(groundId, requestingUserId, await this.withWhatTodayReads(groundId, requestingUserId, requestingUserOrgId, await this.withWhatHasStayedTheSame(groundId, requestingUserId, served, requestingUserOrgId))));
   }
 
   /**
@@ -6732,13 +6735,20 @@ happened, and what is in the way.`;
    * WHAT HAS STAYED THE SAME FOR THREE CHECK-INS, ON THE LATEST REPORT AS THE LEAD READS IT (week
    * 12, screens request 3c). The board's `toLookAt`, the same sentences from the same read, built
    * from the stored rows at the read: no model is asked and nothing is written. Only the person
-   * who runs the check-in: it is one person's work across their check-ins, so a colleague never
-   * reads it, and neither does an admin who only reads. `theSameThingForTheLead` checks that
+   * who runs the check-in, and an admin with access to it (decision 93, row 9): it is one person's work across
+   * their check-ins, so a colleague never reads it. `theSameThingForTheLead` checks that
    * itself, so a caller cannot hand it to anybody else by mistake.
    */
-  private async withWhatHasStayedTheSame<T>(groundId: string, requestingUserId: string, served: T): Promise<T> {
+  private async withWhatHasStayedTheSame<T>(groundId: string, requestingUserId: string, served: T, requestingUserOrgId?: string): Promise<T> {
     if (!served || typeof served !== 'object') return served;
-    const toLookAt = await theSameThingForTheLead(this.prisma as any, groundId, requestingUserId).catch(() => []);
+    /* An admin with access to the check-in reads it too (decision 93, row 9); a colleague never does. */
+    const groundForAccess = requestingUserOrgId
+      ? await (this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, status: true, approvedById: true, participants: { select: { userId: true } } } as any }) as Promise<any>).catch(() => null)
+      : null;
+    const adminReadsIt = !!groundForAccess && groundForAccess.initiatorId !== requestingUserId
+      && !((groundForAccess.participants ?? []) as any[]).some((p) => p.userId === requestingUserId)
+      && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, groundForAccess, groundId).catch(() => false));
+    const toLookAt = await theSameThingForTheLead(this.prisma as any, groundId, requestingUserId, { adminReadsIt }).catch(() => []);
     if (!toLookAt.length) return served;
     const quotable = await theRecordAQuoteMayComeFrom(this.prisma as any, groundId);
     return { ...(served as any), toLookAt: this.quotesAsTheRecordHasThem(toLookAt, groundId, 'what has stayed the same', quotable) };

@@ -33,7 +33,8 @@ const DONE = /\b(done|complete|completed|closed|achieved|met|delivered|cancelled
  * picture would be built from (`theInputKey`); the same record again means no second model call and
  * no new row. Opening the company page never comes here: CompanyService only reads the stored row.
  *
- * Check-ins on a performance plan, a promotion or a renewal are left out of everything it reads.
+ * Check-ins on a performance plan, a promotion, a renewal or a probation are left out of everything it reads, except for one
+ * extra plain reading per priority they feed, which only a reader who may open them is given (decision 93, row 23).
  * The row it writes holds no name, and the version of the instructions that wrote it.
  */
 @Injectable()
@@ -124,9 +125,10 @@ export class CompanyPictureService {
     const since = now.getTime() - 30 * DAY;
     const finished = (g: any) => (g.checkIns ?? []).filter((c: any) => c.status === 'COMPLETED' && !c.isSetup && c.completedAt && new Date(c.completedAt).getTime() >= since).length;
 
-    const priorities: PriorityFacts[] = top.map((s, i) => {
+    /* The priority facts from a list of check-ins: the picture's own (no evaluation check-in), and the extended read below. */
+    const factsOf = (checkIns: any[]): PriorityFacts[] => top.map((s, i) => {
       const branch = under(s.externalId);
-      const feeding = gs.filter((g) => g.subjectExternalId && branch.has(g.subjectExternalId));
+      const feeding = checkIns.filter((g) => g.subjectExternalId && branch.has(g.subjectExternalId));
       const open = feeding.flatMap((g) => g.dependencies);
       return {
         id: s.id, number: i + 1, title: s.title, ownerExternalId: s.ownerExternalId ?? null, ownerKnown: ownerIsKnown(s.ownerExternalId),
@@ -139,6 +141,27 @@ export class CompanyPictureService {
         teams: [...new Set(feeding.map((g) => g.team).filter(Boolean))].sort() as string[],
       };
     });
+    const priorities: PriorityFacts[] = factsOf(gs);
+
+    /*
+     * THE SAME PRIORITIES WITH THE PERFORMANCE PLANS, PROMOTIONS, RENEWALS AND PROBATIONS COUNTED IN (decision 93, row 23). They
+     * are still left out of the picture everybody reads. Only for a priority one of them feeds, an extra plain reading is kept,
+     * written from the counts alone and resting on those check-ins too, so it reaches only a reader who may open every one of
+     * them: an admin given access to that check-in. Everybody else is given the reading they were given before.
+     */
+    const evaluationGrounds: any[] = await this.prisma.ground.findMany({
+      where: { organizationId, scenario: { in: EVALUATION_SCENARIOS } },
+      select: {
+        id: true, initiatorId: true, subjectExternalId: true,
+        checkIns: { select: { status: true, completedAt: true, isSetup: true } },
+        dependencies: { where: { status: { in: ['WAITING', 'BLOCKING'] }, clearedAt: null }, select: { id: true, what: true, status: true, onParticipantId: true, onLabel: true, waitingOnGroundId: true } },
+      },
+    }).catch(() => []);
+    const evaluationOnly = ((evaluationGrounds ?? []) as any[]).filter((g) => !gs.some((x) => x.id === g.id));
+    const withEvaluation: PriorityFacts[] = evaluationOnly.some((g: any) => g.subjectExternalId)
+      ? factsOf([...gs, ...evaluationOnly.map((g) => ({ ...g, team: teamOfUser.get(g.initiatorId) ?? null }))])
+        .filter((ext, i) => ext.feedingGroundIds.length !== priorities[i].feedingGroundIds.length)
+      : [];
 
     const numbersOf = (groundId: string) => priorities.filter((p) => p.feedingGroundIds.includes(groundId)).map((p) => p.number);
     const handoffs: HandoffFact[] = gs.flatMap((g) => g.dependencies.map((d: any) => ({
@@ -165,6 +188,7 @@ export class CompanyPictureService {
 
     return {
       priorities, handoffs, subjects,
+      ...(withEvaluation.length ? { withEvaluation } : {}),
       finishedOnPriorities: onPriorities.reduce((n, g) => n + finished(g), 0),
       groundsOnPriorities: onPriorities.map((g) => g.id),
       names: [...names],

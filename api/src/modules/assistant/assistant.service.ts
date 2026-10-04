@@ -527,9 +527,9 @@ export class AssistantService {
       case 'questions_for_people':
         return this.questionsForPeopleByChat(organizationId, who, userId ?? null, groundId, message);
       case 'where_am_i_needed':
-        return this.compose(await this.whereAmINeeded(organizationId, who));
+        return this.compose(await this.whereAmINeeded(organizationId, who, userId ?? null));
       case 'what_is_stuck':
-        return this.compose(await this.whatIsStuck(organizationId, who, message));
+        return this.compose(await this.whatIsStuck(organizationId, who, message, userId ?? null));
       case 'how_is_the_team':
         return this.howIsTheTeam(organizationId, who, userId ?? null);
       case 'how_am_i_doing':
@@ -545,7 +545,7 @@ export class AssistantService {
       case 'who_is_away':
         return this.whoIsAway(organizationId, userId ?? null, routed.subject ?? message);
       case 'what_next':
-        return this.whatNext(organizationId, who);
+        return this.whatNext(organizationId, who, userId ?? null);
       case 'what_did_they_say':
         return this.whatTheySaid(organizationId, userId ?? null, routed.subject, message);
       case 'what_did_i_say':
@@ -746,7 +746,7 @@ export class AssistantService {
    * the opposite of what most of this list is: the largest bucket is usually the company owing
    * somebody something.
    */
-  private async whereAmINeeded(organizationId: string, who: string | null): Promise<Reply> {
+  private async whereAmINeeded(organizationId: string, who: string | null, userId: string | null = null): Promise<Reply> {
     const person = who
       ? await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { email: true } })
       : null;
@@ -755,7 +755,8 @@ export class AssistantService {
       return rules('where_am_i_needed', text('I cannot match you to a check-in, so I cannot tell you where you are needed.'));
     }
 
-    const week = await this.board.whoNeedsYouThisWeek(organizationId, key, await this.theBoardLeavesOut(organizationId));
+    const readerIsAdmin = !!userId && await this.isAnAdminHere(organizationId, userId);
+    const week = await this.board.whoNeedsYouThisWeek(organizationId, key, { ...(await this.theBoardLeavesOut(organizationId)), readerIsAdmin });
     if (!week.buckets.length) return rules('where_am_i_needed', text(NOTHING_FLAGGED));
 
     /*
@@ -775,7 +776,8 @@ export class AssistantService {
     return this.withItsSource(rules('where_am_i_needed', text(parts.join('\n\n'))), WHAT_NEEDS_YOU_SOURCE);
   }
 
-  private async whatIsStuck(organizationId: string, who: string | null, question = ''): Promise<Reply> {
+  private async whatIsStuck(organizationId: string, who: string | null, question = '', userId: string | null = null): Promise<Reply> {
+    const readerIsAdmin = !!userId && await this.isAnAdminHere(organizationId, userId);
     const { waiting, waitedOn } = await this.board.waitingAcrossTheOrg(organizationId, undefined, await this.theBoardLeavesOut(organizationId));
 
     const person = who
@@ -827,7 +829,7 @@ export class AssistantService {
     const since = (w: (typeof waiting)[number]) => (w.createdAt ? ` since ${theDayItBegan(w.createdAt as any, clock)}` : '');
     const where = (w: (typeof waiting)[number]) => (w.groundLabel?.trim() ? `, in the check-in ${w.groundLabel.trim()}` : '');
     const onYou = (w: (typeof waiting)[number]) => {
-      const named = thePersonWaitingAsTheyRead(w, key);
+      const named = thePersonWaitingAsTheyRead(w, key, { readerIsAdmin });
       const who = atTheStartOfASentence(named);
       /* "Somebody in Sales team, Q3" already says where; it is not said twice. */
       const inIt = named === somebodyIn(w.groundLabel) ? '' : where(w);
@@ -1025,7 +1027,7 @@ export class AssistantService {
    * ONE THING FIRST, AND WHY (week 17). Read as the person asking and nobody else: their own
    * commitments and to-dos, and what is waiting on them. See what-to-do-next.ts.
    */
-  private async whatNext(organizationId: string, who: string | null): Promise<Reply> {
+  private async whatNext(organizationId: string, who: string | null, userId: string | null = null): Promise<Reply> {
     if (!who) return rules('what_next', text('I cannot see you in your organisation records, so I have nothing to put first.'));
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { email: true } });
     const [commitments, toDos] = await Promise.all([
@@ -1033,7 +1035,8 @@ export class AssistantService {
       this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
     ]);
     const key = person?.email?.toLowerCase() ?? null;
-    const week = key ? await this.board.whoNeedsYouThisWeek(organizationId, key, await this.theBoardLeavesOut(organizationId)) : { buckets: [] as any[] };
+    const readerIsAdmin = !!userId && await this.isAnAdminHere(organizationId, userId);
+    const week = key ? await this.board.whoNeedsYouThisWeek(organizationId, key, { ...(await this.theBoardLeavesOut(organizationId)), readerIsAdmin }) : { buckets: [] as any[] };
     const waitingOnYou = (week.buckets as any[]).filter((b) => b.kind === 'WAITING_ON_YOU').flatMap((b) => b.needs as any[]);
     const reply = theOneToDoFirst({ commitments: commitments as any, toDos: toDos as any, waitingOnYou, now: new Date() });
     return this.compose(reply, whatMustSurviveIn(reply));
@@ -3673,8 +3676,8 @@ export class AssistantService {
 
   /**
    * WHO IS OFF, from approved leave, as far as this reader may know. An admin reads everyone's, a lead
-   * their own team's (both exactly as the leave board serves them), and anybody else, a guest included,
-   * only their own: the board refuses them the rest, and a guest is never told a colleague's leave
+   * their own team's (both exactly as the leave board serves them), a member their own and their teammates'
+   * (decision 93, row 25), and a guest only their own: a guest is never told a colleague's leave
    * (decision 75, item 28). Dates only, never a reason or a kind of leave.
    */
   private async whoIsAway(organizationId: string, userId: string | null, subject: string): Promise<Reply> {
@@ -3693,6 +3696,15 @@ export class AssistantService {
     }
     const mine = await this.leave.mine(reader).catch(() => null);
     const rows: AwayRow[] = (mine?.requests ?? []).filter((r) => r.status === 'approved' && overlaps(r)).map((r) => ({ name: 'You', startsOn: r.startsOn, endsOn: r.endsOn }));
+    /*
+     * A MEMBER ALSO READS THEIR TEAMMATES' APPROVED LEAVE, dates only (decision 93, row 25). The reader's team is the staff
+     * directory's department; where they have none, or they are a guest, the answer is what it was: their own leave only.
+     */
+    const team = m?.role === 'MEMBER' ? await Promise.resolve().then(() => this.leave!.teammatesOff(reader)).catch(() => null) : null;
+    if (team) {
+      const theirs: AwayRow[] = team.filter(overlaps);
+      return rules(lane, text(whoIsAwaySaid([...rows, ...theirs].sort((a, b) => a.startsOn.localeCompare(b.startsOn)), window, 'your team')));
+    }
     return rules(lane, text(whoIsAwaySaid(rows, window, 'you')));
   }
 

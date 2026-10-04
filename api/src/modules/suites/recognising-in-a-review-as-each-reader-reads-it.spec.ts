@@ -15,10 +15,12 @@ import { PROPOSED_RECOGNISE_SETTING, RECOGNISE_SETTING_KEY, readRecogniseSetting
  */
 
 const ORG = 'org-baridi';
-const roles: Record<string, string> = { 'u-grace': 'ADMIN', 'u-wairimu': 'LEAD', 'u-aisha': 'MEMBER' };
+const roles: Record<string, string> = { 'u-grace': 'ADMIN', 'u-wairimu': 'LEAD', 'u-aisha': 'MEMBER', 'u-leila': 'LEAD', 'u-omar': 'LEAD', 'u-guest': 'GUEST' };
 const directory = [
   { externalId: 'p-grace', linkedUserId: 'u-grace', displayName: 'Grace Achieng', givenName: 'Grace', familyName: 'Achieng', department: 'Finance', managerExternalId: null, active: true },
   { externalId: 'p-wairimu', linkedUserId: 'u-wairimu', displayName: 'Wairimu Kamau', givenName: 'Wairimu', familyName: 'Kamau', department: 'Sales', managerExternalId: null, active: true },
+  { externalId: 'p-leila', linkedUserId: 'u-leila', displayName: 'Leila Hassan', givenName: 'Leila', familyName: 'Hassan', department: 'Sales', managerExternalId: null, active: true },
+  { externalId: 'p-omar', linkedUserId: 'u-omar', displayName: 'Omar Ali', givenName: 'Omar', familyName: 'Ali', department: 'Operations', managerExternalId: null, active: true },
   { externalId: 'p-aisha', linkedUserId: 'u-aisha', displayName: 'Aisha Otieno', givenName: 'Aisha', familyName: 'Otieno', department: 'Sales', managerExternalId: 'p-wairimu', active: true },
 ];
 const STARTED = new Date('2026-10-01T09:00:00Z');
@@ -112,11 +114,42 @@ describe('with the setting on', () => {
     expect((await svc.one(as('u-wairimu'), 'r-aisha') as any).recognise).toMatchObject({ headline: 'Groundwork suggests recognising Aisha’s work' });
   });
 
-  it('Grace, an admin who does not write it, reads nothing of it', async () => {
+  /* Changed by decision 93, row 16. These two pinned "reads nothing of it" for an admin and for a lead who does not write the review, the restriction Hafsah removed. */
+  const SAME_COUNT = 'Aisha kept nine of the ten commitments made in Wairimu’s check-ins with them in the four weeks before this review started. When at least nine in ten are kept, Groundwork suggests recognising the work.';
+
+  it('Grace, an admin who does not write it, reads the suggestion and the count, with Wairimu named as the one who decides', async () => {
     const { svc, as } = setup({ setting: ON, theirView: 'I want to lead the supermarket accounts.' });
     const r: any = await svc.one(as('u-grace'), 'r-aisha');
     expect(r.reader).toBe('admin');
-    expect(r.recognise).toBeNull();
+    expect(r.recognise).toEqual({
+      headline: 'Groundwork suggests recognising Aisha’s work',
+      why: SAME_COUNT,
+      whatWouldChangeIt: 'If Aisha keeps fewer than nine in ten of them from now on.',
+      yourDecision: 'This is only a suggestion. Wairimu decides, and Aisha sees the reasons.',
+    });
+  });
+
+  it('Leila, a lead of the same team who does not write it, reads the same', async () => {
+    const { svc, as } = setup({ setting: ON, theirView: 'I want to lead the supermarket accounts.' });
+    const r: any = await svc.one(as('u-leila'), 'r-aisha');
+    expect(r.reader).toBe('lead');
+    expect(r.recognise.why).toBe(SAME_COUNT);
+    expect(r.recognise.yourDecision).toBe('This is only a suggestion. Wairimu decides, and Aisha sees the reasons.');
+  });
+
+  it('they read it only on the same timing and setting as Wairimu: not before Aisha has had her turn, and not while it is off', async () => {
+    const early = setup({ setting: ON });
+    expect((await early.svc.one(early.as('u-grace'), 'r-aisha') as any).recognise).toBeNull();
+    expect((await early.svc.one(early.as('u-leila'), 'r-aisha') as any).recognise).toBeNull();
+    const off = setup({ theirView: 'I want to lead the supermarket accounts.' });
+    expect((await off.svc.one(off.as('u-grace'), 'r-aisha') as any).recognise).toBeNull();
+    expect((await off.svc.one(off.as('u-leila'), 'r-aisha') as any).recognise).toBeNull();
+  });
+
+  it('a lead of another team and a guest cannot open the review at all, so read nothing of it', async () => {
+    const { svc, as } = setup({ setting: ON, theirView: 'I want to lead the supermarket accounts.' });
+    await expect(svc.one(as('u-omar'), 'r-aisha')).rejects.toThrow();
+    await expect(svc.one(as('u-guest'), 'r-aisha')).rejects.toThrow();
   });
 
   it('below the line, nobody reads it: eight in ten kept is not enough', async () => {
@@ -137,3 +170,27 @@ describe('with the setting on', () => {
     }
   });
 });
+
+describe('decision 93, row 17: the suggestion about the person, on the review', () => {
+  const SUGGESTION = { headline: 'Groundwork suggests extra support for Aisha Otieno' };
+  function withSuggestions() {
+    const { svc, as } = setup({});
+    const asked: string[] = [];
+    (svc as any).suggestions = { latestForTheLeadAbout: jest.fn(async (_p: string, reader: { userId: string }) => { asked.push(reader.userId); return reader.userId === 'u-leila' ? null : SUGGESTION; }) };
+    return { svc, as, asked };
+  }
+
+  it('Wairimu, who writes it, and Grace, an admin, are asked for it; Leila, a lead who does not write it, is not', async () => {
+    const { svc, as, asked } = withSuggestions();
+    expect(((await svc.one(as('u-wairimu'), 'r-aisha')) as any).suggestion).toEqual(SUGGESTION);
+    expect(((await svc.one(as('u-grace'), 'r-aisha')) as any).suggestion).toEqual(SUGGESTION);
+    expect(((await svc.one(as('u-leila'), 'r-aisha')) as any).suggestion).toBeNull();
+    expect(asked).toEqual(['u-wairimu', 'u-grace']);
+  });
+
+  it('Aisha is not served it', async () => {
+    const { svc, as } = withSuggestions();
+    expect(await svc.one(as('u-aisha'), 'r-aisha')).not.toHaveProperty('suggestion');
+  });
+});
+

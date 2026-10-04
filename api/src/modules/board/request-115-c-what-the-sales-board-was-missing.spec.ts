@@ -105,7 +105,15 @@ describe('request 115 (c): help nobody mentioned', () => {
     expect(JSON.stringify(b.helpNobodyMentioned)).not.toMatch(/Ngozi|Femi|forms|statements/);
   });
 
-  it.each([['Juma, an admin who only reads', JUMA], ['Femi', FEMI], ['Ngozi', NGOZI]])('%s is not sent it', async (_who, reader) => {
+  it('Juma, an admin who only reads, is sent what Bisi is sent (decision 93, row 10: this pinned that he was not)', async () => {
+    const b = await boardAs(WITH_AN_AIM, ...(JUMA as readonly [string, string]));
+    expect(b.helpNobodyMentioned).toEqual({
+      lines: ['2 colleagues said Kwame Mensah helped them. Kwame Mensah did not mention it in their own check-ins.'],
+      why: YOU_SEE_THE_HELP,
+    });
+  });
+
+  it.each([['Femi', FEMI], ['Ngozi', NGOZI]])('%s is not sent it', async (_who, reader) => {
     expect((await boardAs(WITH_AN_AIM, ...(reader as readonly [string, string]))).helpNobodyMentioned).toBeUndefined();
   });
 

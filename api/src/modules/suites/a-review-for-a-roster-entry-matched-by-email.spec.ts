@@ -100,13 +100,20 @@ describe('Aisha, on the roster but never linked, finds her own review by her ema
     }]);
   });
 
-  it('she opens it as the person it is about, adds her view, and never reads Wairimu’s words', async () => {
+  /* Changed by decision 93, row 15. This pinned "and never reads Wairimu’s words", the restriction Hafsah removed. */
+  it('she opens it as the person it is about, adds her view, and reads Wairimu’s words beside it', async () => {
     const { svc, as } = aBaridi();
     await svc.start(as('u-wairimu'), 'd-aisha');
     const read: any = await svc.writeView(as('u-aisha'), 'r-aisha', 'I want to lead the supermarket accounts.');
     expect(read.reader).toBe('person');
     expect(read.theirView).toBe('I want to lead the supermarket accounts.');
-    expect(JSON.stringify(read)).not.toMatch(/strongest closer|managersWords/);
+    expect(read.managersWords).toBe('Aisha is our strongest closer with butcheries.');
+    expect(read.managersWordsHeading).toBe('What Wairimu writes');
+    expect(read.whereYouDiffer).toEqual({
+      says: 'Wairimu and you have each written your own view of your work. Here they are side by side, so you can see where they differ before you meet.',
+      managersWords: 'Aisha is our strongest closer with butcheries.',
+      yourView: 'I want to lead the supermarket accounts.',
+    });
     expect((await svc.mine(as('u-aisha')))[0].says).toBe('Wairimu has started your review, and your own view is in it. You can read it and change your view before you meet.');
   });
 

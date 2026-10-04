@@ -114,12 +114,13 @@ const readers = {
 };
 type Who = keyof typeof readers;
 
-async function theWorld() {
+async function theWorld(opts: { extraGrounds?: any[]; adminMayOpen?: string[] } = {}) {
+  const allGrounds: any[] = [...grounds, ...(opts.extraGrounds ?? [])];
   const stored: { row: any } = { row: null };
   const prisma: any = {
     organization: { findUnique: jest.fn(async () => ({ name: 'Baridi Appliances' })) },
     subject: table(subjects),
-    ground: table(grounds),
+    ground: table(allGrounds),
     organizationMembership: table(memberships),
     person: table(persons),
     groundParticipant: { findMany: jest.fn(async () => []) },
@@ -137,8 +138,11 @@ async function theWorld() {
   await builder.rebuild(ORG);
 
   /* The list of check-ins, as the one rule gives it: an admin every one, everybody else those they run or are in. */
+  /* An admin is given every check-in but the evaluation ones, unless they were given access to those (decision 5). */
   const list = jest.fn(async (_org: string, userId: string, _email: string, role: string) =>
-    role === 'ADMIN' ? grounds : grounds.filter((g) => g.initiatorId === userId || g.participants.some((p) => p.userId === userId)));
+    role === 'ADMIN'
+      ? allGrounds.filter((g) => !['PIP', 'RECOGNITION', 'CONTRACT_RENEWAL', 'NEW_HIRE'].includes(g.scenario) || (opts.adminMayOpen ?? []).includes(g.id))
+      : allGrounds.filter((g) => g.initiatorId === userId || g.participants.some((p: any) => p.userId === userId)));
   const page = new CompanyService(prisma, { list } as any);
   const read = (who: Who) => page.forReader({ ...readers[who], organizationId: ORG });
   return { read, stored, model, prisma };
@@ -312,3 +316,62 @@ describe('what nobody is ever served', () => {
     }
   });
 });
+
+/**
+ * DECISION 93, ROW 23 (5 October 2026): A PERFORMANCE PLAN ON THE COMPANY PAGE. "Tobi, the next six weeks" is a performance plan Wairimu
+ * runs, and it feeds priority 1, Grow revenue. The picture everybody reads leaves it out, as before. Beside it, one more plain reading
+ * of the priority counts it in, and it rests on the plan too, so it reaches only a reader who may open the plan: an admin who was given
+ * access to it, and Wairimu, who runs it. Grace, an admin with no access to it, and Otieno and Miriam, read what they read before.
+ */
+const PIP = {
+  id: 'g-pip', label: 'Tobi, the next six weeks', organizationId: ORG, initiatorId: 'u-wairimu', subjectExternalId: 'obj-revenue', scenario: 'PIP',
+  participants: [{ userId: 'u-wairimu' }, { userId: 'u-tobi' }],
+  checkIns: [done(1), done(3), done(4)],
+  dependencies: [{ id: 'h9', what: 'the handover notes for the Gigiri account', status: 'BLOCKING', onParticipantId: null, onLabel: null, waitingOnGroundId: null }],
+};
+const BEFORE = '1 check-in feeds this priority, and 2 were finished in the last 30 days. 1 handoff is waiting on other work.';
+
+describe('decision 93, row 23: a performance plan on the company page', () => {
+  it('Grace, an admin given access to the plan, reads a reading of priority 1 that counts it in', async () => {
+    const page = await (await theWorld({ extraGrounds: [PIP], adminMayOpen: ['g-pip'] })).read('grace');
+    expect(page.priorities[0].reading).toEqual({
+      tag: 'At risk',
+      says: '2 check-ins feed this priority, and 5 were finished in the last 30 days. 1 handoff is stopping work on it.',
+    });
+    /* Its name is read where she may open it, as it was before. */
+    expect(page.priorities[0].fedBy).toBe('Fed by Sales team, Q3 and Tobi, the next six weeks');
+  });
+
+  it('Wairimu, who runs the plan, reads the same', async () => {
+    const page = await (await theWorld({ extraGrounds: [PIP], adminMayOpen: ['g-pip'] })).read('wairimu');
+    expect(page.priorities[0].reading?.says).toBe('2 check-ins feed this priority, and 5 were finished in the last 30 days. 1 handoff is stopping work on it.');
+  });
+
+  it('Grace, an admin with no access to the plan, reads what she read before, and no word of the plan', async () => {
+    const page = await (await theWorld({ extraGrounds: [PIP], adminMayOpen: [] })).read('grace');
+    expect(page.priorities[0].reading).toEqual({ tag: 'Moving, but not enough of it', says: BEFORE });
+    expect(JSON.stringify(page)).not.toMatch(/Tobi|six weeks|handover notes|Gigiri/);
+  });
+
+  it('Otieno reads what he read before, and Miriam none of the picture', async () => {
+    const world = await theWorld({ extraGrounds: [PIP], adminMayOpen: ['g-pip'] });
+    expect(JSON.stringify(await world.read('otieno'))).not.toMatch(/Tobi|six weeks|handover notes|Gigiri|5 were finished/);
+    const miriam = await world.read('miriam');
+    expect(miriam.priorities[0].reading).toBeNull();
+    expect(JSON.stringify(miriam)).not.toMatch(/Tobi|six weeks|handover notes|Gigiri/);
+  });
+
+  it('stores no name and no word from the plan, and asks the model nothing it did not ask before', async () => {
+    const world = await theWorld({ extraGrounds: [PIP], adminMayOpen: ['g-pip'] });
+    const stored = JSON.stringify(world.stored.row).toLowerCase();
+    expect(stored).not.toMatch(/tobi|handover|gigiri/);
+    expect(world.model.extract).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(world.model.extract.mock.calls[0][1])).not.toMatch(/handover|Gigiri|g-pip|check-in 4/);
+  });
+
+  it('with no plan feeding a priority, the picture is exactly the one it was', async () => {
+    const without = (await theWorld()).stored.row;
+    expect(without.readings).toHaveLength(3);
+  });
+});
+

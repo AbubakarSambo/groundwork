@@ -38,7 +38,7 @@ import { withoutWhatTheLeadHasNotToldThemAbout, theWordsOfWhatTheLeadHasNotToldT
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-served';
-import { theBoardKindsOffered } from '../admin/what-is-hidden-at-release';
+import { theBoardKindsOffered, theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { oneOfTheKinds, plainFields, theSameName, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
 
 /** What the lead sends to add or change a record of the kind of work. */
@@ -157,7 +157,7 @@ import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-spli
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
-import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { isEvaluationCheckIn, theSubjectOfAnEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
 import { whatWasAgreedAtTheStart, theGoalsSetForAnyone } from './what-was-agreed-at-the-start';
 import { changeSinceTheLastCheckIn } from './change-since-the-last-check-in';
@@ -773,6 +773,8 @@ export class BoardService {
       kindOfWork: oneOfTheKinds((ground as any).kindOfWork),
       /* The kinds a NEW check-in may be given at release. A check-in that holds another keeps it above. */
       kindsOffered: await theBoardKindsOffered(this.prisma),
+      /* Whether a new anchor check-in can be started (release.anchorScenario). Off at release. Nothing on the board changes with it yet. */
+      anchorScenarioOn: await theAnchorScenarioIsOn(this.prisma),
       /**
        * HOW IT IS GOING, AT THE TOP, WHICH IS WHY SOMEBODY OPENED THIS.
        *
@@ -947,13 +949,18 @@ export class BoardService {
        * Odhiambo is waiting to be let in."), or as a count where no name is known. Never a person who checks
        * in, whether or not people see each other: whether somebody has been let in is the organisation's business.
        */
-      waitingToBeLetIn: theWaitingToBeLetInLine(
-        [...(await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId)).entries()]
-          .filter(([pid]) => !checkIns.some((c) => c.participantId === pid && c.sessionNumber === openRound && (c.status === CheckInStatus.COMPLETED || c.status === CheckInStatus.DECLINED)))
-          .map(([pid, d]) => ({ pid, name: hiddenFromThisReader(pid) ? null : nameOf(pid), declined: d.declined }))
-          .filter(() => isInitiator || isSetupAdmin || adminHere)
-          .map(({ name, declined }) => ({ name, declined })),
-      ),
+      waitingToBeLetIn: await (async () => {
+        const runsIt = isInitiator || isSetupAdmin || adminHere;
+        /* A person who checks in reads that somebody is waiting (decision 93, row 4), never a decline, and never as a guest. */
+        const aParticipantReadsIt = !runsIt && !!me && !(await isFromOutside(this.prisma, requestingUserId, ground.organizationId));
+        return theWaitingToBeLetInLine(
+          [...(await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId)).entries()]
+            .filter(([pid]) => !checkIns.some((c) => c.participantId === pid && c.sessionNumber === openRound && (c.status === CheckInStatus.COMPLETED || c.status === CheckInStatus.DECLINED)))
+            .map(([pid, d]) => ({ pid, name: hiddenFromThisReader(pid) ? null : nameOf(pid), declined: d.declined }))
+            .filter(({ pid, declined }) => runsIt || (aParticipantReadsIt && !declined && pid !== me?.id))
+            .map(({ name, declined }) => ({ name, declined })),
+        );
+      })(),
       /* WHO IS AWAY AND NOT WAITED ON THIS ROUND (week 23). Dates only. The lead reads it for each person;
          a colleague only for a person the board already names to them; a person reads their own. */
       whoIsAway: theAwayLinesFor(
@@ -1617,9 +1624,9 @@ export class BoardService {
      * THE SAME THING, STILL OPEN, FOR THREE CHECK-INS (week 12, screens requests 3c and 11): the
      * prototype's "Samuel has chased the same 5 leads for 3 check-ins", from the record's own counts
      * and never from a rating. To the lead only: it is one person's work across their check-ins, so
-     * no colleague reads it, and neither does an admin who only reads. See the-same-thing-for-three-check-ins.
+     * no colleague reads it. An admin with access to the check-in reads it too (decision 93, row 9). See the-same-thing-for-three-check-ins.
      */
-    if (isInitiator) {
+    if (isInitiator || adminHere) {
       out.toLookAt = await this.whatHasStayedTheSameFor(groundId, ground as any, checkIns as any[], rawDependencies, me?.id ?? null, nameOf, aColleague);
     }
 
@@ -1896,10 +1903,10 @@ export class BoardService {
       }
       /*
        * HELP NOBODY MENTIONED (request 115 c): a colleague named somebody as the reason something moved,
-       * and that person's own lines say nothing about it. Whoever runs the check-in only; who said it is
-       * never served. See help-nobody-mentioned.
+       * and that person's own lines say nothing about it. Whoever runs the check-in, and an admin with access to it
+       * (decision 93, row 10); who said it is never served. See help-nobody-mentioned.
        */
-      if (runsItForAPattern(ground as any, requestingUserId)) {
+      if (runsItForAPattern(ground as any, requestingUserId) || adminHere) {
         const help = helpNobodyMentioned(
           (readInput as any).mentions ?? [],
           ((readInput as any).entries ?? []).map((e: any) => ({ participantId: e.participantId, text: cleanText(e.text ?? '') })),
@@ -2034,9 +2041,9 @@ export class BoardService {
     }
 
     /* The coaching, from the report's own builders and under its privacy (request 79 b): your own note, and
-       for whoever runs the check-in, what to ask each person. Nothing for an admin who only reads. */
+       for whoever runs the check-in and an admin with access to it, what to ask each person (decision 93, row 9). */
     {
-      const coaching = await Promise.resolve().then(() => this.reports.coachingForTheBoard(groundId, requestingUserId)).catch(() => null);
+      const coaching = await Promise.resolve().then(() => this.reports.coachingForTheBoard(groundId, requestingUserId, { adminReadsIt: adminHere })).catch(() => null);
       if (coaching) (out as any).coaching = coaching;
     }
 
@@ -2124,9 +2131,9 @@ export class BoardService {
      * running"). Here that is the same sentence as `toLookAt`, from the same read of the record, so
      * the two can never disagree. The line is the one the lead's row already says; where something
      * keeps coming up it no longer ends "nothing here needs you", because something does. Lead only,
-     * like `toLookAt`: a colleague and an admin who only reads get no field.
+     * like `toLookAt`: a colleague gets no field, and an admin with access reads it (decision 93, row 9).
      */
-    if (isInitiator && Array.isArray(out.eachPerson)) {
+    if ((isInitiator || adminHere) && Array.isArray(out.eachPerson)) {
       const firstFor = new Map<string, any>();
       for (const t of (out.toLookAt as any[] | undefined) ?? []) if (!firstFor.has(t.participantId)) firstFor.set(t.participantId, t);
       /*
@@ -2144,7 +2151,8 @@ export class BoardService {
         const k = firstFor.get(row.participantId);
         const said = String(row.says ?? '');
         const line = k ? said.replace(/, and nothing here needs you this week\.$/, '.') : said;
-        const points = untoldByParticipant.get(row.participantId);
+        /* The conversation point is the lead's own (decision 56, item 3): an admin who reads the line reads no point beside it. */
+        const points = isInitiator ? untoldByParticipant.get(row.participantId) : undefined;
         return { participantId: row.participantId, who: row.who, line, ...(k ? { keepsComingUp: k.says } : {}), ...(points?.length ? { conversationPoints: points } : {}) };
       });
     }
@@ -2335,14 +2343,16 @@ export class BoardService {
      * rather than by whoever wrote it remembering.
      */
     /*
-     * CONTRIBUTION AND COVERAGE ARE READ IN FULL ONLY BY WHOEVER RUNS THE CHECK-IN (screens request
-     * 88, decision 58). Everybody else, a participant or an admin who only reads, gets only their own
-     * row, and nothing when they have none, whether or not people see each other on this check-in.
+     * CONTRIBUTION AND COVERAGE ARE READ IN FULL BY WHOEVER RUNS THE CHECK-IN AND BY AN ADMIN WITH ACCESS TO IT
+     * (screens request 88, decision 58; the admin was added by decision 93, row 8, Hafsah's answer of 5 October).
+     * A participant gets only their own row, and nothing when they have none, whether or not people see each
+     * other on this check-in. An admin of the organisation reads them on every check-in but a performance
+     * plan, promotion, renewal or probation they were not given access to (`adminHere` already says so).
      * Decision 5 lets an admin read the board; decision 58 narrowed a pattern to the lead and the admin
      * who set the check-in up, and these two sections name and describe each person the same way.
      * (Narrowed the same way pending Hafsah's confirmation.)
      */
-    if (!runsItForAPattern(ground as any, requestingUserId)) {
+    if (!runsItForAPattern(ground as any, requestingUserId) && !adminHere) {
       const onlyMine = (rows: any) => (Array.isArray(rows) ? rows.filter((r: any) => !!r.participantId && r.participantId === (me?.id ?? null)) : []);
       if (out.contribution) out.contribution = onlyMine(out.contribution);
       if (out.coverage) out.coverage = { ...(out.coverage as any), reads: onlyMine((out.coverage as any).reads) };
@@ -2625,12 +2635,12 @@ export class BoardService {
         if (headline) out.headline = headline;
       }
       /*
-       * WHERE THIS IS HEADING (request 108 d). Only to whoever runs the check-in (the lead and the admin who set it
-       * up), never on an evaluation check-in, where the suggestion and the decision already have their own way
+       * WHERE THIS IS HEADING (request 108 d). To whoever runs the check-in (the lead and the admin who set it
+       * up) and, since decision 93 (row 14), to any admin of the organisation, never on an evaluation check-in, where the suggestion and the decision already have their own way
        * (decision 6). Built from what this reader is already served and the endings the check-in's own way of
        * recording a decision offers. See where-this-is-heading.
        */
-      if (!evaluation && runsIt) {
+      if (!evaluation && (runsIt || adminHere)) {
         const leadRow = (ground.participants as any[]).find((p) => p.id === theLeadsRow);
         const leadName = [leadRow?.user?.firstName, leadRow?.user?.lastName].filter(Boolean).join(' ').trim() || (leadRow?.nameGiven ?? '').trim() || null;
         out.whereThisIsHeading = whereThisIsHeading({
@@ -3840,7 +3850,7 @@ export class BoardService {
    *
    * The shaping - four buckets, no score, what it refuses to mean - is in who-needs-you-this-week.ts.
    */
-  async whoNeedsYouThisWeek(organizationId: string, managerKey: string, opts: { leaveOut?: ReadonlySet<string> } = {}) {
+  async whoNeedsYouThisWeek(organizationId: string, managerKey: string, opts: { leaveOut?: ReadonlySet<string>; readerIsAdmin?: boolean } = {}) {
     const key = managerKey.toLowerCase();
     const now = new Date();
     const { waiting } = await this.waitingAcrossTheOrg(organizationId, now, opts);
@@ -3855,7 +3865,7 @@ export class BoardService {
 
     for (const w of waiting as any[]) {
       /* By name where this reader may read it, else "somebody in <the check-in>". Never an address. */
-      const who = thePersonWaitingAsTheyRead(w, key);
+      const who = thePersonWaitingAsTheyRead(w, key, { readerIsAdmin: opts.readerIsAdmin });
       const day = theDay(w.createdAt);
       /*
        * THE MANAGER'S OWN QUEUE FIRST. A manager reading a list of people who need attention while
@@ -3881,19 +3891,27 @@ export class BoardService {
        * Groundwork raising it, never as the person having raised it. The person raised it only where they
        * said so themselves (`triedSaid`, read by `itWasTakenFurther`, the one reader of those words).
        *
-       * WHO READS IT. Only whoever runs the check-in it was said in: that is who can clear it, or tell them
-       * it is not being cleared. A colleague, the person a performance plan is about, and an admin who does
-       * not run that check-in are told nothing of it, not even "somebody", because what is waited for is
-       * that check-in's own content. And nobody is told about their own wait as somebody needing them.
+       * WHO READS IT. Everybody who asks, since 5 October (decision 93, row 2). It was only whoever runs the
+       * check-in it was said in; Hafsah removed that, so a colleague, an admin and the person a performance
+       * plan is about read it too. The name of the person waiting is still said only as that reader may read
+       * it (`thePersonWaitingAsTheyRead`), and nobody is told about their own wait as somebody needing them.
        */
       if (w.fromPersonKey === key) continue;
+      /*
+       * A PERFORMANCE PLAN, PROMOTION, RENEWAL OR PROBATION IS NOT LISTED TO SOMEBODY NOT IN IT. Row 23 is kept
+       * (the Company page lists none of them), and listing its label and its waits here would say what it
+       * refuses to say there. The person it is about reads their own queue above, never this group.
+       */
       const theReader = ((w.naming?.participants ?? []) as any[]).find((p) => p.key === key);
-      if (!theReader?.runsIt) continue;
+      if (isEvaluationCheckIn(w.naming?.scenario)
+        && (!theReader || theSubjectOfAnEvaluationCheckIn((w.naming?.participants ?? []) as any) === theReader.id)) continue;
       const theySaidSo = itWasTakenFurther({ triedSaid: w.triedSaid ?? null });
       const groundworkRaisedIt = !!w.escalatedAt;
       if (!theySaidSo && !groundworkRaisedIt) continue;
       const Who = atTheStartOfASentence(who);
-      const on = (w.onName ?? '').trim() || (w.onLabel ?? '').trim() || null;
+      /* Who it waits on is named only where the person waiting is, so a reader outside the check-in learns neither. */
+      const nameIsSaid = who !== somebodyIn(w.groundLabel);
+      const on = (nameIsSaid ? (w.onName ?? '').trim() : '') || (w.onLabel ?? '').trim() || null;
       const since = day ? ` since ${day}` : '';
       const where = who === somebodyIn(w.groundLabel) || !w.groundLabel?.trim() ? '' : `, in the check-in ${w.groundLabel.trim()}`;
       const waited = w.status === DependencyStatus.BLOCKING
@@ -3912,6 +3930,7 @@ export class BoardService {
         waitingDays: w.waitingDays,
         sinceSays: day ? `since ${day}` : null,
         sentence: `${waited} ${raised}`,
+        youRunIt: !!theReader?.runsIt,
       });
     }
 

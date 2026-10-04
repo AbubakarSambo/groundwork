@@ -398,6 +398,11 @@ export function alignmentRead(report: { agreements?: unknown; divergences?: unkn
   return { agreed, open };
 }
 
+/** The reading may only replace its own earlier answer or an empty one; anything else was chosen by a person or a script. */
+function theReadingMustLeaveIt(setBy: string | null | undefined): boolean {
+  return !!setBy && setBy !== 'read';
+}
+
 @Injectable()
 export class GroundsService {
   private readonly logger = new Logger(GroundsService.name);
@@ -1554,6 +1559,9 @@ export class GroundsService {
         const peersVisibleEffective = peersAreNamedOn(rest as any, theReaderBySignIn(rest as any, userId));
         const hidePeers = !peersVisibleEffective && !runsIt;
         const isMe = (p: any) => !!userId && p.userId === userId;
+        const myRowHere = ((allParticipants ?? []) as any[]).find(isMe);
+        /* A guest from another organisation is not told who is waiting to be let in at someone else's company. */
+        const readerIsOutsideTheOrg = g.organizationId !== organizationId;
         const participants = ((allParticipants ?? []) as any[])
           .filter((p) => !hidePeers || isMe(p))
           .map((p) => ({
@@ -1617,8 +1625,8 @@ export class GroundsService {
                 const p = ((allParticipants ?? []) as any[]).find((x) => x.id === pid);
                 return { p, declined: d.declined, name: [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim() || null };
               })
-              .filter((w) => !!w.p && !w.p.managingOnly && runsIt)
-              .map(({ name, declined }) => ({ name, declined })),
+              .filter((w) => !!w.p && !w.p.managingOnly && (runsIt || (!w.declined && !!myRowHere && w.p.id !== myRowHere.id && !readerIsOutsideTheOrg)))
+              .map(({ name, declined }) => ({ name: runsIt || peersVisibleEffective ? name : null, declined })),
           ),
           /* Through the report's own door, for every reader, so no label is ever served (U.5 re-review). */
           ...(() => {
@@ -2731,15 +2739,25 @@ export class GroundsService {
        * known. Never to a person who checks in, whether or not people see each other: whether somebody has
        * been let in is the organisation's business.
        */
-      waitingToBeLetIn: theWaitingToBeLetInLine(
-        ((ground.participants ?? []) as any[])
-          .filter((p) => !p.managingOnly && isNotLetInYet(p))
-          .map((p) => ({
-            name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() || null,
-            declined: !!(p.userId && notLetInByUser.has(p.userId)),
-          }))
-          .filter(() => canReadWhoDecided),
-      ),
+      waitingToBeLetIn: await (async () => {
+        /*
+         * A PERSON WHO CHECKS IN READS IT TOO (decision 93, row 4), that somebody is waiting to be let in: by
+         * name where people are named to each other, else as a count. Never that somebody was declined, never
+         * who decided, and never to a guest from another organisation.
+         */
+        const aParticipantReadsIt = !canReadWhoDecided && !!requestingParticipant && !(await isFromOutside(this.prisma, requestingUserId, ground.organizationId));
+        return theWaitingToBeLetInLine(
+          ((ground.participants ?? []) as any[])
+            .filter((p) => !p.managingOnly && isNotLetInYet(p) && p.id !== requestingParticipant?.id)
+            .map((p) => ({
+              name: canReadWhoDecided || peersVisible
+                ? ([p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() || null)
+                : null,
+              declined: !!(p.userId && notLetInByUser.has(p.userId)),
+            }))
+            .filter((w) => canReadWhoDecided || (aParticipantReadsIt && !w.declined)),
+        );
+      })(),
       /* The lead and the organisation's admins read the brief they wrote. A participant reads the
          situation and nothing that tells the product how to interview them. See
          what-a-participant-is-told-about-this. Goals are on the payload already, under objectives. */
@@ -5152,7 +5170,7 @@ export class GroundsService {
         where: { id: groundId },
         select: { label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true },
       });
-      if (!g || g.kindOfWorkSetBy === 'lead') return;
+      if (!g || theReadingMustLeaveIt(g.kindOfWorkSetBy)) return;
       /* A check-in that already has a kind keeps it, offered or not (docs/deploy.md, "Hidden at release"). */
       const hasOne = oneOfTheKinds(g.kindOfWork);
       const words = theSetupWords(g);
@@ -5166,8 +5184,11 @@ export class GroundsService {
       /* A kind not offered at release is never given to a check-in by the read; one it already holds stays. */
       const kind = read && (await aKindMayBeGiven(this.prisma, read, hasOne)) ? read : null;
       if (read && !kind && hasOne) return;
-      await this.prisma.ground.update({
-        where: { id: groundId },
+      /* The model call above can take seconds, and the lead (or a script) may choose a kind meanwhile.
+         So the write itself says "only if nobody else has chosen", in one statement, never a check
+         made before the call. A choice made in the meantime is left exactly as it is. */
+      await this.prisma.ground.updateMany({
+        where: { id: groundId, OR: [{ kindOfWorkSetBy: null }, { kindOfWorkSetBy: 'read' }] },
         data: { kindOfWork: kind, kindOfWorkSetBy: kind ? 'read' : null },
       });
     } catch (err: any) {

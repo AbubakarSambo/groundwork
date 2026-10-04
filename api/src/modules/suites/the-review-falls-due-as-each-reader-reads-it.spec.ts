@@ -226,7 +226,9 @@ describe('What Groundwork noticed, written from the record when Wairimu says yes
     expect(r.noticed).toHaveLength(2);
     expect(JSON.stringify(r)).not.toContain('private');
     expect(r).not.toHaveProperty('suggestion');
-    expect(r).not.toHaveProperty('managersWords');
+    /* Decision 93, row 15: the person reads what the writer has written once it is written; nothing is written here yet. */
+    expect(r.managersWords).toBeNull();
+    expect(r.whereYouDiffer).toBeNull();
   });
 
   /* Changed with decision 75, item 25: Kwame's first 90 days is an evaluation check-in now, like the plan, so

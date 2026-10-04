@@ -129,10 +129,12 @@ describe('the same thing for three check-ins, as each reader reads the board', (
     expect(JSON.stringify(b)).not.toMatch(/same promise|same thing in the way/);
   });
 
-  it('an admin who only reads reads none of it', async () => {
+  /* Changed by decision 93, row 9. This pinned "an admin who only reads reads none of it", the restriction Hafsah removed. */
+  it('an admin who only reads reads the same sentences the lead does', async () => {
     const b = await boardFor('u-grace', 'ADMIN').board;
-    expect(b.toLookAt).toBeUndefined();
-    expect(JSON.stringify(b)).not.toMatch(/same promise|same thing in the way/);
+    const lead = await boardFor('u-wairimu').board;
+    expect(b.toLookAt.length).toBeGreaterThan(0);
+    expect(b.toLookAt).toEqual(lead.toLookAt);
   });
 });
 
@@ -226,10 +228,12 @@ describe('the same thing for three check-ins, as each reader reads the latest re
     expect(JSON.stringify(r)).not.toMatch(/same promise|same thing in the way/);
   });
 
-  it('an admin who only reads reads none of it', async () => {
+  /* Changed by decision 93, row 9. This pinned "an admin who only reads reads none of it", the restriction Hafsah removed. */
+  it('an admin who only reads reads the same sentences the lead does', async () => {
     const r = await reportFor('u-grace', 'ADMIN').report;
-    expect(r).not.toHaveProperty('toLookAt');
-    expect(JSON.stringify(r)).not.toMatch(/same promise|same thing in the way/);
+    const lead = await reportFor('u-wairimu').report;
+    expect(r.toLookAt.length).toBeGreaterThan(0);
+    expect(r.toLookAt).toEqual(lead.toLookAt);
   });
 });
 
@@ -252,12 +256,21 @@ describe('what keeps coming up, under each person on the lead’s board', () => 
     expect(b.eachPersonToday.map((r: any) => r.participantId)).toEqual(b.eachPerson.map((r: any) => r.participantId));
   });
 
-  it('a participant and an admin who only reads get no field', async () => {
-    for (const [who, role] of [['u-samuel', 'MEMBER'], ['u-grace', 'ADMIN']] as const) {
-      const b = await boardFor(who, role).board;
-      expect(b).not.toHaveProperty('eachPersonToday');
-      expect(JSON.stringify(b)).not.toMatch(/same promise|same thing in the way/);
-    }
+  it('a participant gets no field', async () => {
+    const b = await boardFor('u-samuel', 'MEMBER').board;
+    expect(b).not.toHaveProperty('eachPersonToday');
+    expect(JSON.stringify(b)).not.toMatch(/same promise|same thing in the way/);
+  });
+
+  /* Changed by decision 93, row 9. This pinned "a participant and an admin who only reads get no field". */
+  it('an admin who only reads reads the same lines under each person as the lead, with no conversation point', async () => {
+    const b = await boardFor('u-grace', 'ADMIN').board;
+    const lead = await boardFor('u-wairimu').board;
+    const noPoints = (rows: any[]) => rows.map(({ conversationPoints: _c, ...r }) => r);
+    expect(noPoints(b.eachPersonToday)).toEqual(noPoints(lead.eachPersonToday));
+    expect(b.eachPersonToday.find((r: any) => r.participantId === 'p-samuel').keepsComingUp)
+      .toBe('Samuel Kariuki has had the same thing in the way for 3 check-ins.');
+    expect(JSON.stringify(b.eachPersonToday)).not.toContain('conversationPoints');
   });
 });
 

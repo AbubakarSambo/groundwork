@@ -1,5 +1,6 @@
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { displayName } from '../reports/party-labels';
+import { isEvaluationCheckIn, theSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 
 /**
  * THE PERSON WAITING, SAID BY NAME, NEVER BY THEIR EMAIL ADDRESS (3 October 2026).
@@ -14,6 +15,9 @@ import { displayName } from '../reports/party-labels';
  * it who is waiting, and otherwise only where the check-in names its people to each other
  * (`peersAreNamedOn`, which also keeps decision 17 for the person reviewed). Everybody else, and anybody
  * with no name at all, reads "somebody in <the check-in>". The address is never said.
+ *
+ * AN ADMIN OF THE ORGANISATION READS THE NAME TOO, in a check-in they are not in and where the people are not
+ * named to each other (decision 93, row 1). Participants keep "somebody" where the lead set it so.
  */
 
 /** What a wait carries about who is waiting, read once with the wait, before any reader is known. */
@@ -55,13 +59,22 @@ export function somebodyIn(groundLabel: string | null | undefined): string {
  * Who is waiting, as this reader may read it. `readerKey` is the reader's address, the key the waits are
  * matched by. Lower case where the words are mid-sentence ("somebody in ..."); see `atTheStartOfASentence`.
  */
-export function thePersonWaitingAsTheyRead(w: Partial<WhoIsWaiting> & { groundLabel?: string }, readerKey: string | null | undefined): string {
+export function thePersonWaitingAsTheyRead(
+  w: Partial<WhoIsWaiting> & { groundLabel?: string },
+  readerKey: string | null | undefined,
+  /** An admin of the organisation reads the name wherever the wait was said (decision 93, row 1). */
+  opts: { readerIsAdmin?: boolean } = {},
+): string {
   const none = somebodyIn(w.groundLabel);
   const name = (w.fromName ?? '').trim();
   if (!name || /@/.test(name)) return none;
   const key = (readerKey ?? '').toLowerCase();
   const people = w.naming?.participants ?? [];
   const reader = key ? people.find((p) => p.key === key) : undefined;
+  /* An admin who is the person a review is about is still never told a colleague's name there (decision 17). */
+  const theyAreWhoItIsAbout = !!reader && isEvaluationCheckIn(w.naming?.scenario)
+    && theSubjectOfAnEvaluationCheckIn(people as any) === reader.id;
+  if (opts.readerIsAdmin && !theyAreWhoItIsAbout) return name;
   /* Somebody in no part of that check-in reads nobody's name from it. */
   if (!reader) return none;
   if (reader.runsIt || w.fromRunsIt) return name;

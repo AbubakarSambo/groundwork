@@ -174,3 +174,17 @@ describe('the numbers waiting for a name to arrive', () => {
     expect(CONVO).toContain('const nowMatched = await this.whatTheNewPeopleClaim(');
   });
 });
+
+describe('a first name finds somebody invited by address alone (found in the browser journeys)', () => {
+  const { whoThisNameIs } = require('./what-a-document-holds');
+  const invited = (email: string, id = email) => ({ id, email, nameGiven: null, user: null, roleAsDescribed: null, managingOnly: false } as any);
+  it('"Amani" is Amani Wekesa when her address is amani.wekesa@..., and only one Amani is on the check-in', () => {
+    const people = [invited('amani.wekesa@kito.test'), invited('baraka.mutua@kito.test')];
+    expect(whoThisNameIs('Amani', people)?.email).toBe('amani.wekesa@kito.test');
+    expect(whoThisNameIs('Baraka', people)?.email).toBe('baraka.mutua@kito.test');
+  });
+  it('two people sharing a first name match neither', () => {
+    const two = [invited('amani.wekesa@kito.test'), invited('amani.bello@kito.test')];
+    expect(whoThisNameIs('Amani', two)).toBeNull();
+  });
+});

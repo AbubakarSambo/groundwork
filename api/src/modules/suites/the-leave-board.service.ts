@@ -311,6 +311,33 @@ export class LeaveBoardService {
     };
   }
 
+  /**
+   * THE DAYS TEAMMATES ARE OFF, FOR ASK GROUNDWORK'S "WHO IS OFF" (decision 93, row 25). A member reads the approved leave of
+   * the people in their own team, which is the staff directory's department (a blank department is nobody's team), by first name
+   * and dates only: never the kind of leave and never a reason, and never leave still waiting or declined. A guest, and anybody
+   * outside the organisation, read nothing of it. The leave board itself is not changed by this; it still refuses a member.
+   * Returns null where the reader has no team to read from, so the caller says what it said before.
+   */
+  async teammatesOff(reader: Reader): Promise<{ name: string; startsOn: Day; endsOn: Day }[] | null> {
+    await this.suiteAnswers(reader.organizationId);
+    const role = await this.roleOf(reader);
+    if (!role || role === 'GUEST') return null;
+    const me = await theirRosterEntry(this.prisma, reader.organizationId, reader.userId, { externalId: true, department: true });
+    const mine = (me?.department as string | null | undefined)?.trim();
+    if (!mine) return null;
+    const rows = (await this.prisma.leaveRequest.findMany({
+      where: { organizationId: reader.organizationId, status: { in: ['approved'] } },
+      orderBy: { startsOn: 'asc' },
+    })) as Row[];
+    const others = rows.filter((r) => r.userId !== reader.userId);
+    const people = await this.directory(reader.organizationId, others);
+    const names = await this.names(others);
+    return others
+      .filter((r) => people.get(r.userId)?.department?.trim() === mine)
+      .map((r) => ({ name: names.get(r.userId)?.first ?? '', startsOn: dayOf(r.startsOn), endsOn: dayOf(r.endsOn) }))
+      .filter((r) => r.name);
+  }
+
   /** Each person's own requests and days left. Nobody else's. */
   async mine(reader: Reader, today = new Date()): Promise<MyLeave> {
     const answers = await this.suiteAnswers(reader.organizationId);
