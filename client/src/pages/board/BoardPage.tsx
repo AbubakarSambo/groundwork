@@ -1,4 +1,4 @@
-import { hasEnded, howItEnded } from '@/lib/a-ground-that-has-ended'
+import { hasEnded, howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { useState, type ReactNode } from 'react'
 import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
@@ -137,7 +137,7 @@ export function decisionDuplicatesALeadAction(
 import { WhereEachPersonIs } from '@/components/gw/where-each-person-is'
 import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-across-people'
 import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
-import { whenTheBoardLastChanged } from './when-the-board-last-changed'
+import { whenTheBoardLastChanged, whenItRanOutOfTime } from './when-the-board-last-changed'
 import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
@@ -157,6 +157,7 @@ import {
   WhatEachLevelUnderstoodSection, WhatTheVisitLogShowsSection, TheCountiesSection,
   WhereTheCohortStandsSection, SupportGivenSection,
   WhereTheMatterStandsSection, WhatYouNeedToDecideSection, WhatChangedThisWeekSection,
+  ByWhoTheyAreSection, WhereTheyDisagreeSection,
 } from './TheSwitchboardsSections'
 
 /**
@@ -1299,6 +1300,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      * just before "Where this is heading" (`foldTeam`, below) for free, with no change needed here.
      */
     'a law firm matter': { openIssuesInFold: true, teamAndRecordsInFold: true },
+    /*
+     * THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN SHAPE (mvnext.txt). "Open issues" folds, the same as
+     * every other kind-of-work table above. `teamAndRecordsInFold` would also fold the records
+     * table - the one workRecords section this kind sends ("Themes") standing in for mvnext.txt's
+     * own "Where next, ranked", which the engine does not build (see docs/answers-from-engine.md) -
+     * and mvnext.txt keeps that table open, in its own place among this kind's own four sections
+     * (see where `kindOfWorkKey === 'MarketView where next'` draws them, below), so this uses
+     * `teamInFoldRecordsOpen` instead, the same as an asset loans cohort.
+     */
+    'MarketView where next': { openIssuesInFold: true, teamInFoldRecordsOpen: true },
   }
   const layoutFor = (k: string | null) => (k ? kindLayout[k] : undefined)
   const themesAndAreaAfterTheTeam = Boolean(layoutFor(kindOfWorkKey)?.themesAndAreaAfterTheTeam)
@@ -1622,6 +1633,23 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         && !matterDecisionQuestionsAlreadyShown?.has(d.question),
       )
     : []
+  /**
+   * "EVERY SESSION", THE ONE LINK, DRAWN FROM ONE PLACE.
+   *
+   * Every kind of work draws the exact same link; only where it sits on the page differs (right
+   * after "Your share" for every kind but one, at the very end of the board for the "MarketView,
+   * where next" board's own participant - see the two call sites, below). Kept as one function
+   * rather than two copies of the same markup, so the shared part's own classes are never written
+   * out twice in this file.
+   */
+  const everySessionLink = () => (
+    <Link
+      to={`/grounds/${id}?tab=record`}
+      className="gwui-wide-outline-btn gwui-mt-20 gwui-pt-11 gwui-pr-16 gwui-pb-11 gwui-pl-16 gwui-fs-16"
+    >
+      {EVERY_SESSION.heading}
+    </Link>
+  )
   const whatNeedsYouSection = () => {
     if (!(viewerRunsThisCheckIn && (needsHere.length > 0 || (shown.leadActions && !sameAsTheWorkPlan(b.leadActions, b.workPlan, true)) || decisionsForWhatNeedsYou.length > 0))) return null
     return (
@@ -2123,6 +2151,21 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         <p className="gwui-fs-15 gwui-ink-sub gwui-mt-14" style={{lineHeight: 1.55}}>
           {whenTheBoardLastChanged(b.lastChangedAt)}
         </p>
+        {/*
+          OUT OF TIME, RIGHT UNDER "LAST UPDATED" (join-outoftime.txt). This is where a reader looks
+          to find out why nothing on the board is moving, so this is where the reason sits - in the
+          prototype's own words, with the real end date and the lead's own name where the record
+          holds them.
+        */}
+        {hasStalled((b as any)?.groundStatus) && (
+          <Note tone="muted">
+            {whenItRanOutOfTime({
+              endsAt: (groundForSignals as any)?.endsAt ?? (b as any)?.phaseSpine?.endsAt ?? null,
+              leadFirstName: (groundForSignals as any)?.leadFirstName ?? null,
+              isLeadViewer: viewerRunsThisCheckIn,
+            })}
+          </Note>
+        )}
         {b.readOnlyNote && (
           <p role="note" className="gwui-fs-15 gwui-ink-text gwui-mt-8" style={{lineHeight: 1.55}}>{b.readOnlyNote}</p>
         )}
@@ -2153,15 +2196,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           `TheParticipantsOwnView` draws, with the same gate as before (`!shown.checkInGrid`, the
           server's own signal that this reader may not see everyone's session state, so this is
           never drawn for a lead, who has the Reports table itself instead).
+
+          NOT HERE FOR THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN PARTICIPANT - board-as-participant.txt
+          puts "Every session" at the very end of her board, after "Ask", not straight after her own
+          share; see where it draws instead, at the end of this page, for this kind alone. Every
+          other kind of work keeps it exactly where the sales board review already placed it.
         */}
-        {!shown.checkInGrid && b.myParticipantId && (
-          <Link
-            to={`/grounds/${id}?tab=record`}
-            className="gwui-wide-outline-btn gwui-mt-20 gwui-pt-11 gwui-pr-16 gwui-pb-11 gwui-pl-16 gwui-fs-16"
-          >
-            {EVERY_SESSION.heading}
-          </Link>
-        )}
+        {!shown.checkInGrid && b.myParticipantId && kindOfWorkKey !== 'MarketView where next' && everySessionLink()}
 
         <MaybeFolded fold={participantFoldsWhole}>
 
@@ -2246,6 +2287,65 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <WhereTheMatterStandsSection data={(b as any).whereTheMatterStands} />
             <WhatYouNeedToDecideSection data={(b as any).whatYouNeedToDecide} />
             <WhatChangedThisWeekSection data={(b as any).whatChangedThisWeek} />
+          </>
+        )}
+
+        {/*
+          THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN FOUR SECTIONS, STRAIGHT AFTER THE GLANCE, IN
+          MVNEXT.TXT'S OWN ORDER: "In short" (the latest summary, then how many answered), "By who
+          they are", the records table in "Where next, ranked"'s own place - the one workRecords
+          section this kind sends ("Themes"), standing in for the ranking the engine does not build
+          (docs/answers-from-engine.md: "Where next, ranked" would need a count of who named each
+          priority, which the records do not keep) - then "Where they disagree", then "What this
+          can't tell you" straight from `theJudgement`, out of the fold, because mvnext.txt itself
+          gives it this place. Only for this kind, and only when the engine sends each field.
+
+          THE RECORDS TABLE DRAWS HERE, NOT IN ITS USUAL SPOT: the usual call, further down, is
+          skipped for this kind (`kindOfWorkKey !== 'MarketView where next'` there), the same way
+          the law firm matter board skips "What needs you" in its usual place above.
+
+          "WHAT THIS CAN'T TELL YOU" DRAWS HERE, NOT INSIDE THE FOLDED "WHAT THE ANSWERS SAY" -
+          `TheJudgement`, further down, is told to leave its own copy out for this kind
+          (`hideWhatThisCannotTellYou`), so the same list is never read twice on the one page.
+        */}
+        {kindOfWorkKey === 'MarketView where next' && (
+          <>
+            {(b as any).howItIsGoing?.latestSummary && (
+              <Section heading="In short">
+                <Stack gap={8}>
+                  <p className="gwui-panel-text">{(b as any).howItIsGoing.latestSummary}</p>
+                  {(b as any).byWhoTheyAre?.says && <p className="gwui-panel-text">{(b as any).byWhoTheyAre.says}</p>}
+                </Stack>
+              </Section>
+            )}
+            <ByWhoTheyAreSection data={(b as any).byWhoTheyAre} />
+            {(!isParticipantView || !isSalesOrg) && (
+              <WorkRecordsSections
+                groundId={id!}
+                kindOfWork={(b as any).kindOfWork ?? null}
+                sections={dealGridSections}
+                participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
+                leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+                readerIsLead={viewerRunsThisCheckIn}
+                canEdit={b.canEditFrame}
+              />
+            )}
+            <WhereTheyDisagreeSection data={(b as any).whereTheyDisagree} />
+            {!!(b as any).theJudgement?.whatThisCannotTellYou?.length && (
+              <Section heading="What this can’t tell you">
+                <Panel pad={false}>
+                  {(b as any).theJudgement.whatThisCannotTellYou.map((w: { about: string; why?: string; toKnow?: string }, i: number) => (
+                    <div key={i} className="gwui-panel-row">
+                      <Stack gap={4}>
+                        <p className="gwui-panel-text" style={{ fontWeight: 600 }}>{w.about}</p>
+                        {w.why && <Note tone="muted">{w.why}</Note>}
+                        {w.toKnow && <Note tone="muted">{w.toKnow}</Note>}
+                      </Stack>
+                    </div>
+                  ))}
+                </Panel>
+              </Section>
+            )}
           </>
         )}
 
@@ -2498,8 +2598,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           REQUEST 132: NOT HERE FOR A GOVERNMENT PROGRAMME BOARD (`teamAndRecordsInFold`) - the
           records table moves into the end fold instead; see `foldTeamAndRecords`, inside
           `FoldEverythingElseUnless`, below.
+
+          NOT HERE FOR THE "MARKETVIEW, WHERE NEXT" BOARD EITHER - mvnext.txt's own place for this
+          table is right after "By who they are", among this kind's own four sections, where it is
+          already drawn above; drawing it again here would be the same table twice on one page.
         */}
-        {!foldTeamAndRecords && (!isParticipantView || !isSalesOrg) && (
+        {!foldTeamAndRecords && kindOfWorkKey !== 'MarketView where next' && (!isParticipantView || !isSalesOrg) && (
           <WorkRecordsSections
             groundId={id!}
             kindOfWork={(b as any).kindOfWork ?? null}
@@ -2790,8 +2894,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
           REQUEST 132: NOT HERE FOR A GOVERNMENT PROGRAMME BOARD - it already has its own headed
           "Where it stands" section, out of the fold, straight after the aim (see above).
+
+          NOT HERE FOR THE "MARKETVIEW, WHERE NEXT" BOARD EITHER - its own "In short", out of the
+          fold, straight after the glance, already carries this same sentence (see above).
         */}
-        {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && (b as any).howItIsGoing?.latestSummary && (
+        {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'MarketView where next' && (b as any).howItIsGoing?.latestSummary && (
           <p className="gwui-panel-text gwui-mt-10">{(b as any).howItIsGoing.latestSummary}</p>
         )}
 
@@ -3433,7 +3540,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               U.10 (c1): the heading above is the shared Section's; TheJudgement and WhatTheNetworkSaid
               are the engine's own synthesis components and are left exactly as they render today.
             */}
-            <TheJudgement it={(b as any).theJudgement} />
+            <TheJudgement it={(b as any).theJudgement} hideWhatThisCannotTellYou={kindOfWorkKey === 'MarketView where next'} />
             {(b as any).whatTheAnswersSay && <WhatTheNetworkSaid picture={(b as any).whatTheAnswersSay} />}
           </Section>
         )}
@@ -4270,6 +4377,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
 
         </MaybeFolded>
+
+        {/*
+          THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN PARTICIPANT: "EVERY SESSION" AT THE VERY END OF
+          HER BOARD, AFTER EVERYTHING ELSE AND RIGHT BEFORE "ASK" (board-as-participant.txt: "Your
+          share", then "Every session", then "Ask"). Every other kind of work keeps this link where
+          the sales board review placed it, right after her own share - see above, where it is left
+          out for this kind alone.
+        */}
+        {kindOfWorkKey === 'MarketView where next' && !shown.checkInGrid && b.myParticipantId && everySessionLink()}
 
         {/*
           U.10 ITEM 8: THE ASK BAR AT THE FOOT (board-as-lead.txt: "Ask about this board, for

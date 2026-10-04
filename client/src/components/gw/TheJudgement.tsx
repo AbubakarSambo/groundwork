@@ -53,7 +53,14 @@ export function startWith(who: string): string {
   return `Start with ${w}${/[.!?]$/.test(w) ? '' : '.'}`
 }
 
-export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }) {
+export function TheJudgement({ it, hideWhatThisCannotTellYou }: {
+  it: TheJudgementRead | null | undefined
+  /** THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN PLACE FOR THIS LIST IS ELSEWHERE ON THE PAGE, OUT OF
+      THE FOLD (mvnext.txt) - true for that kind alone, so its own copy, further up the board, is
+      never read twice here inside the folded "What the answers say". Every other kind draws it
+      here exactly as before. */
+  hideWhatThisCannotTellYou?: boolean
+}) {
   if (!it?.theGap && !it?.whatToDo?.length) return null
   return (
     // U.10: full width, like the rest of the prototype's board - not capped at 760px.
@@ -114,7 +121,7 @@ export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }
       )}
 
       {/* The edge of the data, named. Without it a reader has no way to tell where to stop trusting. */}
-      {!!it.whatThisCannotTellYou?.length && (
+      {!hideWhatThisCannotTellYou && !!it.whatThisCannotTellYou?.length && (
         <>
           <SubHeading tone="kicker">What this cannot tell you</SubHeading>
           <Panel pad={false}>
