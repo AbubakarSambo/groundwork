@@ -339,7 +339,7 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     neutralProbes: [
       'What did you do this period that only you could have done?',
       'Did they author that, or did you hand it to them?',
-      'That call has been open a while - what is the decision, and when?',
+      'That call has been open a while. What is the decision, and when?',
       'Whose was that miss?',
     ],
     protectAgainst:
@@ -378,7 +378,7 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     onTrackMeans: 'Activity tied to a named outcome, channel bets made and learned from, dead channels killed.',
     goingWrongLooksLike: 'Reach and impressions reported with no revenue line; busy producing with no owned number.',
     neutralProbes: [
-      'What did that turn into - pipeline, conversion, sign-ups?',
+      'What did that turn into? Was it pipeline, conversion or sign-ups?',
       'Which number do you own here?',
       'Which channel is not working, and what happens to it?',
       'Who is the audience that actually buys, and are you reaching them?',
@@ -464,7 +464,7 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     neutralProbes: [
       'Which of these should someone else own, and what would it take to hand it over?',
       'Did they author that, or did you hand it to them?',
-      'Last period they committed to something - did that happen?',
+      'Last period they committed to something. Did that happen?',
       'Which conversation have you been putting off?',
     ],
     protectAgainst:

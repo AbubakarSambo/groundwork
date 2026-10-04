@@ -1351,7 +1351,10 @@ export class BoardService {
           stillToAnswer: Math.max(0, (out.howItIsGoing?.glance?.progress?.ofPeople ?? 0) - (out.howItIsGoing?.glance?.progress?.answeredThisRound ?? 0)),
           peopleExpected: out.howItIsGoing?.glance?.progress?.ofPeople ?? (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
         }),
-        centralQuestion: sessionShape?.theConversationWorthHaving ?? reportSafe.centralQuestion ?? null,
+        /* The report's own central question comes first, so the board and the report ask the same one (run-29, loans: the board asked
+           "That call has been open a while", a role-map probe, while the report asked about the first repayment). The drafted
+           question is only for a report that has none yet. */
+        centralQuestion: (typeof reportSafe.centralQuestion === 'string' && reportSafe.centralQuestion.trim() ? reportSafe.centralQuestion : null) ?? sessionShape?.theConversationWorthHaving ?? null,
         settled: sessionShape?.whereThingsStand?.settled ?? [],
         stillOpen: sessionShape?.whereThingsStand?.open ?? [],
         ...(sessionShape?.whereThingsStand?.settledMarks ? { settledMarks: sessionShape.whereThingsStand.settledMarks } : {}),
