@@ -24,7 +24,7 @@ const COLLEAGUE = { id: 'p2', groundId: 'g1', partyType: PartyType.PARTICIPANT, 
 const THEIR_WORDS = 'I sent the district data to the programme office on Tuesday.';
 const THEIR_PROMISE = 'I will ask Ngozi for the Kano attendance sheets';
 
-type World = { startedFrom?: string | null; switchOn?: boolean; sessionNumber?: number; asTheLead?: boolean; scenario?: GroundScenario; stored?: { id: string; content: string } | null };
+type World = { turns?: { role: string; content: string }[]; answer?: string; startedFrom?: string | null; switchOn?: boolean; sessionNumber?: number; asTheLead?: boolean; scenario?: GroundScenario; stored?: { id: string; content: string } | null };
 
 function aWorld(w: World = {}) {
   const sessionNumber = w.sessionNumber ?? 2;
@@ -57,7 +57,7 @@ function aWorld(w: World = {}) {
     recordEntry: { findMany: jest.fn(async () => [{ text: THEIR_WORDS }]), count: jest.fn(async () => 0) },
     groundCommitment: { findMany: jest.fn(async () => [{ text: THEIR_PROMISE, whenSaid: 'this week' }]) },
     groundParticipant: { count: jest.fn(async () => 3), findUnique: jest.fn(async () => ({ specificityHistory: [] })), findFirst: jest.fn(async () => me), findMany: jest.fn(async () => [LEAD, PERSON, COLLEAGUE].map((p) => ({ ...p, checkIns: [] }))) },
-    conversationTurn: { count: jest.fn(async () => 1), findMany: jest.fn(async () => []), create: jest.fn(async (a: any) => ({ id: 't1', content: a.data.content })) },
+    conversationTurn: { count: jest.fn(async () => 1), findMany: jest.fn(async (a: any) => { const t = (w.turns ?? []).map((x, n) => ({ id: `t${n}`, createdAt: new Date(2026, 9, 1, 9, n), ...x })); return a?.orderBy?.createdAt === 'desc' ? [...t].reverse().slice(0, a.take ?? 99) : t; }), create: jest.fn(async (a: any) => ({ id: 't1', content: a.data.content })) },
   };
   const prisma: any = new Proxy(seed, {
     get: (target: any, model: string) => new Proxy(target[model] ?? {}, {
@@ -71,8 +71,8 @@ function aWorld(w: World = {}) {
   const respond = jest.fn(async (system: string) => { seen.push(system); return 'Thank you. What is taking most of your attention now?'; });
   const service = new ConversationService(prisma, promptStore, { respond } as any, new ConversationContextService(prisma), nothing, nothing, nothing, nothing, nothing, nothing);
   /* A real turn of the person's check-in, through sendMessage; what is read is the prompt the model was handed. */
-  const compose = async () => { await service.sendMessage('ci2', 'user-1', 'It is moving slowly.'); return seen[0] ?? ''; };
-  return { service, checkIn, compose, seen, version: () => (service as any).anchorVersionForThisTurn.get('ci2') };
+  const compose = async () => { await service.sendMessage('ci2', 'user-1', w.answer ?? 'It is moving slowly.'); return seen[0] ?? ''; };
+  return { service, checkIn, compose, seen, seed, version: () => (service as any).anchorVersionForThisTurn.get('ci2') };
 }
 
 describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
@@ -162,7 +162,7 @@ describe('anchor piece 15: who it is for, and who it is not for', () => {
 
   it('the gate is one function: the answer is the same without the service', async () => {
     const on = async () => true;
-    expect(await theAnchorParticipantGuidance(on, undefined, { ground: { startedFrom: 'anchor' }, isTheLead: false, sessionNumber: 2 })).toMatchObject({ text: THE_WEEKLY_CHECK_IN_GUIDANCE, promptVersionId: null });
+    expect(await theAnchorParticipantGuidance(on, undefined, { ground: { startedFrom: 'anchor' }, isTheLead: false, sessionNumber: 2 })).toMatchObject({ text: expect.stringContaining(THE_WEEKLY_CHECK_IN_GUIDANCE), promptVersionId: null });
     expect(await theAnchorParticipantGuidance(async () => false, undefined, { ground: { startedFrom: 'anchor' }, isTheLead: false, sessionNumber: 2 })).toBeNull();
   });
 });

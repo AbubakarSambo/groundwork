@@ -21,6 +21,7 @@
 import type { PromptsService } from '../prompts';
 import { howLongAgo } from '../assistant/what-you-told-me-before';
 import { READ_THIS_LAST, splitWhatIsReadLast } from './the-anchor-lead-conversation';
+import { THE_AGENCY_GUIDANCE } from './giving-the-person-agency';
 
 export const ANCHOR_PARTICIPANT_PROMPT_KEY = 'anchor_participant_conversation';
 
@@ -52,7 +53,7 @@ export const THE_WEEKLY_REMINDER = `# For this person, these come first
 
 Ask exactly one question in this turn. Say back only what they told you, in their own words. Do not link their work to the wider aim unless it is listed under what the group is trying to change.`;
 
-export const ANCHOR_PARTICIPANT_PROMPT = [THE_WEEKLY_CHECK_IN_GUIDANCE, READ_THIS_LAST, THE_WEEKLY_REMINDER].join('\n\n');
+export const ANCHOR_PARTICIPANT_PROMPT = [THE_WEEKLY_CHECK_IN_GUIDANCE, THE_AGENCY_GUIDANCE, READ_THIS_LAST, THE_WEEKLY_REMINDER].join('\n\n');
 
 export type TheAnchorParticipantGuidance = { text: string; last: string; promptVersionId: string | null };
 

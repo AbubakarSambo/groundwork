@@ -75,6 +75,7 @@ export { CLOSED_BY_THE_CLOCK };
 export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
 import { theAnchorParticipantGuidance, whatTheyToldYouBefore } from './the-anchor-weekly-check-in';
+import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
@@ -1744,7 +1745,8 @@ export class ConversationService {
 
     const composedBefore = await this.composeSystemPrompt(checkIn, message);
     const anchored = this.theAnchorWeekWords(checkIn.id);
-    const composed = [composedBefore, ...anchored.before].filter(Boolean).join('\n\n');
+    const whatTheyAgreedTo = await this.theirYesBecomesACommitment(checkIn);
+    const composed = [composedBefore, ...anchored.before, whatTheyAgreedTo].filter(Boolean).join('\n\n');
     /*
      * AND WHAT TO DO ABOUT THE DEADLINE THEY JUST GAVE, WHICH NOTHING WAS DOING.
      *
@@ -5301,7 +5303,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * Kept beside the prompt, not in it: the caller puts these words after everything else, so they are read last. Otherwise nothing
      * is kept, and the prompt is byte for byte what it was.
      */
-    const anchorWeek = await this.theAnchorWeek(checkIn, ground, untoldHere).catch((err: any) => {
+    const anchorWeek = await this.theAnchorWeek(checkIn, ground, untoldHere, latestMessage ?? '').catch((err: any) => {
       this.logger.warn(`The anchor's weekly guidance for ${checkIn.id} could not be read: ${err?.message}`);
       return null;
     });
@@ -5319,9 +5321,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return this._anchorVersionForThisTurn;
   }
   /* The anchor's weekly words for this turn, written by composeSystemPrompt and read by the reply path that puts them after the rest. */
-  private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null } | null>;
+  private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo> } | null>;
   private get anchorWeekForThisTurn() {
-    if (!this._anchorWeekForThisTurn) this._anchorWeekForThisTurn = new Map<string, { text: string; block: string; last: string; promptVersionId: string | null } | null>();
+    if (!this._anchorWeekForThisTurn) this._anchorWeekForThisTurn = new Map<string, { text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo> } | null>();
     return this._anchorWeekForThisTurn;
   }
   /** The anchor's weekly words that go before the turn's own additions, and the ones that go after everything. Both empty unless the anchor is in play. */
@@ -5339,7 +5341,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     checkIn: { id: string; groundId: string; participantId: string; sessionNumber: number; participant: { partyType: any } },
     ground: any,
     untoldHere: AnUntoldGoalRow[],
-  ): Promise<{ text: string; block: string; last: string; promptVersionId: string | null } | null> {
+    latestMessage: string,
+  ): Promise<{ text: string; block: string; last: string; promptVersionId: string | null; agreed: ReturnType<typeof whatTheAnswerAgreedTo> } | null> {
     const guidance = await theAnchorParticipantGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, {
       ground,
       isTheLead: checkIn.participant.partyType === PartyType.INITIATOR,
@@ -5374,7 +5377,58 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       theySaidTheyWould: promises as { text: string; whenSaid: string | null }[],
       whatTheGroupIsTryingToChange: aims,
     }, new Date());
-    return { text: guidance.text, block, last: guidance.last, promptVersionId: guidance.promptVersionId };
+    /* WHAT THEY JUST SAID YES OR NO TO, read from the record of this conversation and not from anything the model says it did. */
+    const sofar = await (this.prisma.conversationTurn?.findMany?.({
+      where: { checkInId: checkIn.id },
+      orderBy: { createdAt: 'desc' },
+      take: 40,
+      select: { role: true, content: true },
+    }) ?? Promise.resolve([])).catch(() => [] as { role: string; content: string | null }[]);
+    const agreed = whatTheAnswerAgreedTo(sofar as any[], latestMessage);
+    const offered = hasAlreadyOffered(sofar as any[]);
+    return { text: guidance.text, block: [block, offered ? YOU_HAVE_ALREADY_OFFERED : ''].filter(Boolean).join('\n\n'), last: guidance.last, promptVersionId: guidance.promptVersionId, agreed };
+  }
+
+  /**
+   * THEIR YES BECOMES A COMMITMENT, AND ONLY THEIR YES (anchor piece 17). Read from the anchor's weekly words for this turn: when the
+   * last thing Groundwork said was an offer to write something down and the person has just said a plain yes, their own words are
+   * written down the way every other thing a person says they will do is written, and the model is told what happened. Nothing is
+   * written for a no, for anything else, or when the anchor is not in play.
+   */
+  private async theirYesBecomesACommitment(checkIn: { id: string; groundId: string; participantId: string; sessionNumber: number }): Promise<string> {
+    const agreed = this.anchorWeekForThisTurn.get(checkIn.id)?.agreed ?? null;
+    if (!agreed) return '';
+    if (agreed.kind === 'no') return whatHappenedToTheOffer(agreed, false);
+    let written: boolean | 'already' = false;
+    try {
+      const theirs = await this.prisma.groundCommitment.findMany({
+        where: { groundId: checkIn.groundId, participantId: checkIn.participantId },
+        select: { text: true },
+      });
+      if ((theirs as any[]).some((h) => theSameMeasure(h.text ?? '', agreed.text))) {
+        written = 'already';
+      } else {
+        await this.prisma.groundCommitment.create({
+          data: {
+            groundId: checkIn.groundId,
+            participantId: checkIn.participantId,
+            text: agreed.text,
+            explicit: true,
+            status: 'UNKNOWN',
+            source: 'CHECK_IN',
+            statedInSession: checkIn.sessionNumber,
+            /* Their own words, from what they typed, and never reworded. */
+            saidWordForWord: true,
+            whenSaidWordForWord: false,
+          },
+        });
+        written = true;
+        this.logger.log(`Check-in ${checkIn.id} session ${checkIn.sessionNumber}: wrote one commitment they said yes to.`);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Could not write the commitment they said yes to on ${checkIn.id}: ${err?.message}`);
+    }
+    return whatHappenedToTheOffer(agreed, written);
   }
 
   /**
