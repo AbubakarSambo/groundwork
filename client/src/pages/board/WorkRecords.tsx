@@ -110,7 +110,10 @@ const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
      trader, and what shows it" - not "Every trader group", which named the record's own item
      kind (`group`) rather than what the prototype actually says a lead reads here. */
   'trader training programme': 'Every trader, and what shows it',
-  'asset loans': 'Every loan, and what shows it',
+  /* Request 133: loans.txt's own heading for this table is "Every trader, and what shows it" -
+     named after who the cohort is (traders), the same words the trader training programme uses,
+     not the record's own item kind (`loan`). The "Loan" column itself is untouched. */
+  'asset loans': 'Every trader, and what shows it',
   'MarketView Q4': 'Every subscription, and what shows it',
   'a government programme': 'Every county, and what shows it',
 }
@@ -892,7 +895,7 @@ function ThemesList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
  * nothing has come up, "not-known" says this is not something Groundwork knows, in the server's own
  * words, quieter.
  */
-function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, leadFirstName, readerIsLead, canEdit }: {
+function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, leadFirstName, readerIsLead, canEdit, hideStageTrack }: {
   groundId: string
   kindOfWork: KindOfWork | null
   section: AServedWorkSection
@@ -900,6 +903,9 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   leadFirstName: string | null
   readerIsLead: boolean
   canEdit: boolean
+  /** Request 133: an asset loans cohort's own "The shape of the work" strip moves into the end
+      fold instead of drawing here - see the comment above where it would otherwise draw. */
+  hideStageTrack?: boolean
 }) {
   const qc = useQueryClient()
   const invalidate = () => qc.invalidateQueries({ queryKey: ['board', groundId] })
@@ -1130,12 +1136,15 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
         readings of the same shape, under two different headings. Every other kind of work has no
         such section anywhere else on the board, so it keeps "The shape of the work" here, the
         only place it is told at all.
+
+        REQUEST 133: NOT HERE FOR AN ASSET LOANS COHORT EITHER. loans.txt does not show this strip
+        under its own table - the records table stays open for this kind
+        (`kindLayout['asset loans'].teamInFoldRecordsOpen`) while this strip alone moves into the
+        end fold; see `hideStageTrack`, passed in from BoardPage.tsx, and
+        `TheShapeOfTheWorkStrip`, exported below for the fold to draw it there instead.
       */}
-      {!!section.stages?.length && !isSalesDealGrid && (
-        <div className="gwui-mt-14">
-          <p className="gwui-mb-8 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
-          <StageTrack stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
-        </div>
+      {!!section.stages?.length && !isSalesDealGrid && !hideStageTrack && (
+        <TheShapeOfTheWork stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
       )}
 
       {isEngineeringDealGrid && (
@@ -1256,7 +1265,7 @@ export function YourOwnRecordsSections({ groundId, kindOfWork, sections, myParti
  * rebuilt pages already use - `Section` itself carries no spacing of its own, so without this a
  * button at the foot of one section sits flush against the next section's heading.
  */
-export function WorkRecordsSections({ groundId, kindOfWork, sections, participants, leadFirstName, readerIsLead, canEdit, collapseWhenAllNotKnown }: {
+export function WorkRecordsSections({ groundId, kindOfWork, sections, participants, leadFirstName, readerIsLead, canEdit, collapseWhenAllNotKnown, hideStageTrack }: {
   groundId: string
   kindOfWork?: KindOfWork | null
   sections?: AServedWorkSection[]
@@ -1264,6 +1273,9 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
   leadFirstName: string | null
   readerIsLead: boolean
   canEdit: boolean
+  /** Request 133: passed through to each section so an asset loans cohort's own "The shape of the
+      work" strip can move into the end fold instead - see `WorkRecordSectionBlock`. */
+  hideStageTrack?: boolean
   /**
    * PROJECT BOARD REVIEW 1, FIX 3: NO KIND OF WORK, ONE SENTENCE, NOT SIX HEADED SECTIONS. A
    * check-in with no kind of work chosen at all (the DRIFT fixture, "The partnerships work has
@@ -1300,8 +1312,38 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
           leadFirstName={leadFirstName}
           readerIsLead={readerIsLead}
           canEdit={canEdit}
+          hideStageTrack={hideStageTrack}
         />
       ))}
     </div>
   )
+}
+
+/**
+ * THE ACTUAL STRIP, FACTORED OUT SO ITS MARKUP - AND THE ONE-OFF CLASSES IT CARRIES - EXISTS ONCE
+ * IN THIS FILE, NOT ONCE INLINE AND ONCE AGAIN FOR THE FOLD (one-off-uses-only-go-down.spec.ts:
+ * counts rise when the same classes are typed out twice).
+ */
+function TheShapeOfTheWork({ stages, counts, itemNoun }: { stages: string[]; counts: Record<string, number>; itemNoun: string }) {
+  return (
+    <div className="gwui-mt-14">
+      <p className="gwui-mb-8 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
+      <StageTrack stages={stages} counts={counts} itemNoun={itemNoun} />
+    </div>
+  )
+}
+
+/**
+ * REQUEST 133: "THE SHAPE OF THE WORK", DRAWN ALONE, FOR THE END FOLD (loans.txt does not show
+ * this strip under its own table - see `hideStageTrack`, above). Reads the same Deal grid section
+ * `WorkRecordSectionBlock` would have drawn it from, so the fold shows the same stage counts, only
+ * moved.
+ */
+export function TheShapeOfTheWorkStrip({ kindOfWork, sections }: { kindOfWork?: KindOfWork | null; sections?: AServedWorkSection[] }) {
+  const section = (sections ?? []).find((s) => s.section === 'Deal grid')
+  if (!section || section.state === 'not-known' || !section.stages?.length) return null
+  const stageCounts: Record<string, number> = {}
+  for (const row of section.rows) if (row.stage) stageCounts[row.stage] = (stageCounts[row.stage] ?? 0) + 1
+  const itemNoun = kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item'
+  return <TheShapeOfTheWork stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
 }
