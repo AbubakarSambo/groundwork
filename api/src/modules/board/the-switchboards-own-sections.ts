@@ -142,6 +142,19 @@ const theirSentencesQuoted = (them: string[]): string => {
  * found in what they typed in that check-in, otherwise the sentences of theirs it was drawn from. Where
  * no sentence of theirs is its source, only that they have said it. Never their words without marks.
  */
+/**
+ * THE TALLY AS A SENTENCE, NO ZERO COUNTED (request 131 item 4). "0 are done, 0 are not done or dropped, and 1 is still open."
+ * counted what is not there. Only what there is gets a number, and none done is said as none done yet.
+ */
+export function theTallySaid(done: number, notDone: number, open: number): string {
+  const parts: string[] = [];
+  parts.push(done > 0 ? `${done} ${done === 1 ? 'is' : 'are'} done` : 'None is done yet');
+  if (notDone > 0) parts.push(`${notDone} ${notDone === 1 ? 'is' : 'are'} not done or dropped`);
+  if (open > 0) parts.push(`${open} ${open === 1 ? 'is' : 'are'} still open`);
+  if (parts.length === 1) return `${parts[0]}.`;
+  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}.`;
+}
+
 export function whatWasTriedSaid(d: AHandoff, who: string): string | null {
   if (!d.triedSaid?.trim()) return null;
   const them = d.triedSaidTheirWords;
@@ -452,7 +465,7 @@ export function thePersonHistory(
     /* How many were kept is the person's own (decision 24): only they are told the tally, never whoever runs the check-in. */
     const theirOwn = !!r.meId && p.id === r.meId;
     const summary = total
-      ? `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')} and made ${plural(total, 'commitment', 'commitments')}.${theirOwn ? ` ${doneCount} ${doneCount === 1 ? 'is' : 'are'} done, ${notDone} ${notDone === 1 ? 'is' : 'are'} not done or dropped, and ${open} ${open === 1 ? 'is' : 'are'} still open.` : ''}`
+      ? `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')} and made ${plural(total, 'commitment', 'commitments')}.${theirOwn ? ` ${theTallySaid(doneCount, notDone, open)}` : ''}`
       /* The name once (run-25): "Kwame Mensah has answered 1 session, and the record holds no commitment from Kwame Mensah yet." */
       : `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')}, and ${who === 'You' ? 'have' : 'has'} made no commitment on record yet.`;
     out.push({ participantId: p.id, who, says: summary, sessions: perSession });

@@ -3952,3 +3952,7 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### A colon in the note on an updated round (131 item 3)
 
 **What changed (served, `amendedNote` on the report, every reader).** "Updated after somebody added to or corrected their own check-in. What changed: the shared picture, what was agreed and the question it left open." now reads: Updated after somebody added to or corrected their own check-in. The parts that changed were the shared picture, what was agreed and the question it left open. With one part: The part that changed was the shared picture. Notes already stored are put right as they are served.
+
+### Counts as words in "What you have done" (131 item 4)
+
+**What changed (served, `personHistory[].says`, the person's own row only; the lead never reads the tally).** Only what there is gets a number. "You have answered 2 sessions and made 1 commitment. 0 are done, 0 are not done or dropped, and 1 is still open." reads "...made 1 commitment. None is done yet, and 1 is still open." Other examples: "1 is done." and "2 are done, and 1 is not done or dropped."
