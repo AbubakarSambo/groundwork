@@ -4,6 +4,7 @@ import type { PrismaService } from '../prisma/prisma.service';
 import type { WhatsAppService } from './whatsapp.service';
 import { TEMPLATES, fill } from './a-message-outside-the-window';
 import { keptOffThePhone } from './a-check-in-kept-off-the-phone';
+import { everyRowAPageAtATime } from './every-row-a-page-at-a-time';
 import { isNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { organisationsThatTurnedWhatsAppOn } from './only-where-whatsapp-is-turned-on';
 import { A_GROUND_THE_JOBS_LEAVE_ALONE, A_GROUND_IS_HELD } from '../grounds/a-ground-that-has-ended';
@@ -94,11 +95,11 @@ export async function sendTheLeadsDailySummaries(
   now: Date = new Date(),
 ): Promise<{ tried: number }> {
   const { prisma } = deps;
-  const grounds: any[] = await prisma.ground.findMany({
+  const grounds: any[] = await everyRowAPageAtATime((page) => prisma.ground.findMany({
     where: { status: { notIn: TERMINAL } },
     select: { id: true, label: true, organizationId: true, overWhatsApp: true, initiatorId: true },
-    take: 2000,
-  });
+    ...page,
+  }), 1000);
 
   /* Each lead's open check-ins that may go to a phone, per organisation. */
   const turnedOn = await organisationsThatTurnedWhatsAppOn(prisma, deps.whatsapp, grounds.map((g) => g.organizationId));
