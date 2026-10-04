@@ -85,8 +85,9 @@ export class ReportsController {
     return this.reports.generateForAdmin(groundId, organizationId, userId);
   }
 
+  /* No role gate here. The person who runs a check-in may be a member with "Can open check-ins", and the
+     service already refuses everybody but the lead (and an admin where the lead has left): decision 76. */
   @Post('release')
-  @Roles(Role.ADMIN)
   @ApiOperation({ summary: "Release the team's picture of the current session to everyone in the check-in" })
   async release(
     @Param('groundId') groundId: string,
