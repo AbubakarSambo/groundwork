@@ -77,10 +77,21 @@ export function oldWordingPutPlain(text: string): string {
   return aSentenceAboutTheReaderSaysYou(out);
 }
 
+/**
+ * A WAIT WITH ITS HOLDER AND ITS THING AS ONE (requests 127 and 134). "waiting on the tax view for "the tax view"" and
+ * "waiting on the pipeline for a fix for the pipeline" say one thing twice. The holder is dropped: "waiting for the tax
+ * view", "waiting for a fix for the pipeline". Done before the quotation marks are set aside, because the thing is quoted.
+ */
+const A_HOLDER_THAT_IS_THE_THING = /\bwaiting on ((?:the|a|an) [^.,;"\u201c\u201d]{2,60}?) for (?:"|\u201c)?(\1)(?:"|\u201d)?(?=[\s.,;]|$)/gi;
+const A_HOLDER_INSIDE_THE_THING = /\bwaiting on (the [a-z][a-z-]*(?: [a-z][a-z-]*)?) for ((?:a|an|the) [^.,;"\u201c\u201d]*?\b\1\b[^.,;"\u201c\u201d]*?)(?=[.,;]| since\b|$)/gi;
+export function aWaitSaidOnce(text: string): string {
+  return text.replace(A_HOLDER_THAT_IS_THE_THING, 'waiting for $1').replace(A_HOLDER_INSIDE_THE_THING, 'waiting for $2');
+}
+
 /** Both repairs, on everything outside the quotation marks. */
 export function aStoredSentenceReadsRight(text: string): string {
   if (!text || typeof text !== 'string') return text;
-  return theQuotesKept(text, (outside) => aLabelEndsWithoutAFullStop(oldWordingPutPlain(outside)));
+  return theQuotesKept(aWaitSaidOnce(text), (outside) => aLabelEndsWithoutAFullStop(oldWordingPutPlain(outside)));
 }
 
 /* Fields that carry a person's own words, which no repair touches. */

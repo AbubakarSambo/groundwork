@@ -1,3 +1,4 @@
+import { theWaitSaid, aHolderThatIsOnlyTheThing } from './a-wait-said-in-full';
 import { howManyGoalsAreNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { holdsItSaid, theReaderSaidAsYou, aThingWithoutItsHolder } from './a-holder-in-their-own-words';
 import { aCommitmentSaid, looksLikeATimeOrADate, inOurVoice } from '../reports/what-the-record-shows-over-time';
@@ -301,7 +302,7 @@ export function theRisks(
     const blocking = String(d.status).toUpperCase() === 'BLOCKING';
     const says = blocking
       ? (on ? `${who} cannot move on ${what} until it comes from ${on}.` : `${who} cannot move on ${what}, and nobody has been named to provide it.`)
-      : (on ? `${who} ${isAre(who)} waiting on ${on} for ${what}.` : `${who} ${isAre(who)} waiting for ${what}, and nobody has been named to provide it.`);
+      : (on ? theWaitSaid(who, isAre(who), on, what) : `${who} ${isAre(who)} waiting for ${what}, and nobody has been named to provide it.`);
     out.push({ id: `handoff-${d.id}`, says: `${says}${thatWaitsOn(d)}`, because: theFactsOfAWait(d, who) });
   }
 
@@ -492,7 +493,7 @@ export function theBlockerCheck(handoffs: AHandoff[], r: WhoIsReading): ABlocker
     out.push({
       id: d.id,
       who,
-      says: `${on ? `${who} ${isAre(who)} waiting on ${on} for ${what}.` : `${who} ${isAre(who)} waiting for ${what}.`}${thatWaitsOn(d)}`,
+      says: `${theWaitSaid(who, isAre(who), on, what)}${thatWaitsOn(d)}`,
       namesWhoHoldsIt: named,
       saidWhatWasTried: wentBack,
       timeGiven,
@@ -706,7 +707,7 @@ export function theObligations(
   const waitSaid = (d: AHandoff) => {
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
-    return `${on ? `${who} ${isAre(who)} waiting on ${on} for ${inASentence(aThingWithoutItsHolder(d.what, d.onLabel))}.` : `${who} ${isAre(who)} waiting for ${inASentence(d.what)}.`}${thatWaitsOn(d)}`;
+    return `${on ? theWaitSaid(who, isAre(who), on, inASentence(aThingWithoutItsHolder(d.what, d.onLabel))) : `${who} ${isAre(who)} waiting for ${inASentence(d.what)}.`}${thatWaitsOn(d)}`;
   };
   const out: AnObligationSide[] = [];
   for (const p of people) {
@@ -983,11 +984,14 @@ export function theQuestionsForTheLead(
     const who = whoIs(r, d.fromParticipantId);
     /* Omar read "What has been tried to get the full, detailed breakdowns ... from Marketing and Product Development, which
        you are waiting for?" with "only you can find out what was done": his own wait, asked as if somebody else's (item 21). */
+    /* A holder that is only the thing waited for is not asked about twice: "What has been tried to get "the tax view" from the tax view". */
+    const theThing = inASentence(String(d.what ?? '').trim().replace(/^["\u201c](.*)["\u201d]$/, '$1'));
+    const fromWhom = aHolderThatIsOnlyTheThing(d.onLabel, d.what) ? '' : ` from ${(d.onLabel ?? '').trim()}`;
     out.push(who === 'You'
-      ? { id: `chased-${d.id}`, question: `What have you tried to get ${inASentence(d.what)} from ${(d.onLabel ?? '').trim()}?`, because: 'Nothing on record says you have chased it. If you did, outside the check-in, say so in your check-in.' }
+      ? { id: `chased-${d.id}`, question: `What have you tried to get ${theThing}${fromWhom}?`, because: 'Nothing on record says you have chased it. If you did, outside the check-in, say so in your check-in.' }
       : {
         id: `chased-${d.id}`,
-        question: `What has been tried to get ${inASentence(d.what)} from ${(d.onLabel ?? '').trim()}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
+        question: `What has been tried to get ${theThing}${fromWhom}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
         because: `Nothing on record says anybody has chased it, so ${onlyTheLead} what was done outside the check-in.`,
       });
   }

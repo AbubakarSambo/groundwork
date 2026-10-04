@@ -84,6 +84,15 @@ const theSameWait = (a: Set<string>, b: Set<string>): boolean => {
 export function oneWaitSaidOnce<T extends { id?: string; what?: string | null; status?: any; fromParticipantId?: string | null; onParticipantId?: string | null; onLabel?: string | null; createdAt?: Date | string | null }>(rows: readonly T[]): T[] {
   const open = (d: T) => String(d.status ?? '').toUpperCase() !== 'CLEARED';
   const key = (d: T) => `${d.fromParticipantId ?? ''}::${d.onParticipantId ?? (d.onLabel ?? '').trim().toLowerCase()}`;
+  /*
+   * A HOLDER THAT IS ONLY THE THING (requests 127 and 134). "Aisha Wanjiku is waiting on the pipeline for a fix for the pipeline"
+   * and "... for the pipeline fix" were two waits because one had the pipeline as its holder and the other had none. A
+   * holder that is not a person and whose words are all in what is waited for is the thing, not who holds it, so two waits
+   * that differ only in that are the same wait.
+   */
+  const labelOf = (d: T) => (d.onParticipantId ? '' : (d.onLabel ?? '').trim());
+  const justTheThing = (d: T) => { const l = labelOf(d); if (!l) return false; const lw = wordsOfAWait(l); const ww = wordsOfAWait(String(d.what ?? '')); return lw.size > 0 && [...lw].every((w) => ww.has(w)); };
+  const holdersAgree = (a: T, b: T) => key(a) === key(b) || justTheThing(a) || justTheThing(b) || (!a.onParticipantId && !labelOf(a)) || (!b.onParticipantId && !labelOf(b));
   /* A wait that matches two groups joins them: the third phrasing is what shows the first and the second are one. */
   type Cluster = { at: number; key: string; rows: T[]; words: Set<string>[] };
   const clusters: Cluster[] = [];
@@ -91,7 +100,7 @@ export function oneWaitSaidOnce<T extends { id?: string; what?: string | null; s
   rows.forEach((d, at) => {
     if (!open(d) || !(d.what ?? '').trim()) { loose.push({ at, row: d }); return; }
     const w = wordsOfAWait(String(d.what));
-    const hits = clusters.filter((c) => c.key === key(d) && c.words.some((x) => theSameWait(x, w)));
+    const hits = clusters.filter((c) => c.rows.some((x, i) => x.fromParticipantId === d.fromParticipantId && holdersAgree(x, d) && theSameWait(c.words[i], w)));
     if (!hits.length) { clusters.push({ at, key: key(d), rows: [d], words: [w] }); return; }
     const [first, ...rest] = hits;
     first.rows.push(d); first.words.push(w);
