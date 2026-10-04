@@ -42,11 +42,12 @@ test('Grace signs up, invites her people, switches on leave and spending, and op
     await list.fill(`Wairimu Njoroge, ${w.wairimu}`);
     await page.getByRole('combobox', { name: 'Role' }).selectOption({ label: 'Can open check-ins' });
     await page.getByRole('button', { name: 'Send their invitations' }).click();
-    await expect(page.getByText(/invited|sent/i).first()).toBeVisible();
+    /* Wait for the screen's own sentence before typing the next list: the send reads the box when the check ends, so typing sooner changes who is invited. */
+    await expect(page.getByText(/1 person was invited\./).first()).toBeVisible();
     await list.fill(`Amani Wekesa, ${w.amani}\nBaraka Mutua, ${w.baraka}`);
     await page.getByRole('combobox', { name: 'Role' }).selectOption({ label: 'Takes part' });
     await page.getByRole('button', { name: 'Send their invitations' }).click();
-    await expect(page.getByText(/invited|sent/i).first()).toBeVisible();
+    await expect(page.getByText(/2 people were invited\./).first()).toBeVisible();
     readsAsPlainSentences(await whatIsOnThePage(page));
   });
 
@@ -58,7 +59,7 @@ test('Grace signs up, invites her people, switches on leave and spending, and op
       await panel.getByRole('switch', { name: suite }).or(panel.getByRole('checkbox', { name: suite })).first().click();
       /* Some suites ask a question or two first: "Answer these first, and it switches on." */
       if (await panel.getByText('Answer these first, and it switches on.').isVisible().catch(() => false)) {
-        for (const box of await panel.getByRole('textbox').all()) await box.fill(suite === 'Leave requests' ? '21' : '20000');
+        for (const box of [...await panel.getByRole('textbox').all(), ...await panel.getByRole('spinbutton').all()]) await box.fill(suite === 'Leave requests' ? '21' : '20000');
         for (const pick of await panel.getByRole('combobox').all()) await pick.selectOption({ index: 1 });
         await panel.getByRole('button', { name: 'Switch it on' }).click();
       }
