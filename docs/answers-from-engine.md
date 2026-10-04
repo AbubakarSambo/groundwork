@@ -3960,3 +3960,7 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### The header says who waits (134 item 6)
 
 **New field (served, `howItIsGoing.glance.inTheWay.says`, every reader of a board).** One finished sentence for the header, from the Blockers list that reader is served. The person waiting reads: One thing is in the way. You have been waiting for the tax view since 29 September. The lead reads: One thing is in the way. Amani Wekesa has been waiting for the tax view since 29 September. With several: 2 things are in the way. The one waiting longest is the tax view, since 29 September. With none: Nothing is in the way. Screens: draw `says` in place of "N things are in the way, the oldest being ...", which said "the oldest" of one thing; `count`, `oldest` and `sinceSays` are unchanged.
+
+### "Your own account" for somebody else's (133 item 2)
+
+**What changed (served, `theJudgement.whatThisCannotTellYou[].toKnow`, lead only).** Under "Who the other trader with the broken freezer is." the line reads "That trader's own account is not in this check-in." and not "Your own account of this is not in this check-in." Under a thing that is the lead's own to say, it is unchanged. Only the one stock sentence is changed, and only where the unknown is who somebody else is.
