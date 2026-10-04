@@ -56,7 +56,8 @@ export function FromAPlan({ groundId }: { groundId: string }) {
         />
         <Button kind="secondary" disabled={busy} onClick={() => file.current?.click()}>{readFile.isPending ? 'Reading…' : 'Upload a plan'}</Button>
         {' '}
-        <Button kind="quiet" disabled={busy} onClick={() => setPasting((p) => !p)}>Paste a plan instead</Button>
+        {/* A quiet text link, not a second boxed button: the prototype's "From a plan" has the one button, "Upload a plan". */}
+        <button type="button" className="gwui-plain-link" disabled={busy} onClick={() => setPasting((p) => !p)}>Paste a plan instead</button>
         {pasting && (
           <div>
             <TextArea
