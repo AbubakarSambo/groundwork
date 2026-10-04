@@ -4498,6 +4498,14 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
       ? `Why am I still waiting on ${firstBlocker.what}?`
       : `Why is ${firstBlocker.from} still waiting on ${firstBlocker.what}?`)
     : 'Who is waiting on whom?'
+  /*
+   * PHONE CHECK, ITEM 4: THE PLACEHOLDER READ CUT OFF MID-EXAMPLE ("Ask about this board, for
+   * example "Why") at 375px. An `<input>`'s placeholder never wraps, however the box itself does,
+   * so the fix is a shorter line at phone width - the plain question itself, not the longer
+   * "for example" framing, which is exactly what the full example still offers above 640px.
+   */
+  const isAPhone = useIsAPhone()
+  const placeholder = isAPhone ? 'Ask about this board' : `Ask about this board, for example “${example}”`
   return (
     <form
       onSubmit={(e) => {
@@ -4513,7 +4521,7 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
         type="text"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        placeholder={`Ask about this board, for example “${example}”`}
+        placeholder={placeholder}
         aria-label="Ask about this board"
         className="gwui-pt-11 gwui-pr-14 gwui-pb-11 gwui-pl-14 gwui-rule gwui-fs-13-5 gwui-ink-text" style={{flex: 1, borderRadius: 8, background: 'white', fontFamily: 'inherit'}}
       />

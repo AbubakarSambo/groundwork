@@ -497,6 +497,23 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 }
 textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-input:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+/*
+ * PHONE CHECK, ITEM 4: ANY TEXT BOX UNDER 16px MAKES iOS SAFARI ZOOM IN ON TAP. The board's own
+ * smaller boxes (the Ask bar, "Add a target", "how many", the availability poll question, and
+ * other fields built the same way across the product) size themselves with the `.gwui-fs-13` /
+ * `.gwui-fs-13-5` utility classes rather than a type-size meant for a field, so the fix is scoped to
+ * `<input>` and `<textarea>` at phone width, not a blanket change to those utilities' many other,
+ * non-field uses (notes, captions, pills). `:not([type=checkbox]):not([type=radio])` keeps a radio
+ * row's own size alone - those are not text boxes a tap can zoom in on.
+ */
+@media (max-width: 640px) {
+  input.gwui-fs-13:not([type='checkbox']):not([type='radio']),
+  input.gwui-fs-13-5:not([type='checkbox']):not([type='radio']),
+  textarea.gwui-fs-13,
+  textarea.gwui-fs-13-5,
+  .gwui-ci-sheet-textarea,
+  .gwui-ci-assessment-textarea { font-size: 16px; }
+}
 
 /* ── BUTTON (prototype: .btn, plus a `danger` kind) ───────────────────────── */
 .gwui-btn {
