@@ -7059,7 +7059,12 @@ happened, and what is in the way.`;
     const engagement = ground.report.engagement && typeof ground.report.engagement === 'object'
       ? (ground.report.engagement as Record<string, any>)
       : {};
-    const postReportGuide = participant ? (engagement.postReportGuides?.[participant.id] ?? null) : null;
+    const guideAsStored = participant ? (engagement.postReportGuides?.[participant.id] ?? null) : null;
+    /* The guide goes through the same door as the shared picture, so a sentence in it about what happened to the other people
+       is left out of it too (decision 75, item 14; run-29, loans: "for others, the problem is that they do not have the asset"). */
+    const postReportGuide = guideAsStored
+      ? ((this.asItWasShared({ ...(ground as any), report: { postReportGuide: guideAsStored } }, participant?.id ?? null, isInitiator || isOrgAdmin) as any).postReportGuide ?? null)
+      : guideAsStored;
 
     /**
      * AND THE COACHING NOTE, WHICH IS THE ONE PART OF THIS THAT SPEAKS TO THE READER.
@@ -7172,12 +7177,7 @@ happened, and what is in the way.`;
           .catch(() => 0),
         (ground.report as any)?.builtFromAnswers ?? null,
       ),
-      /* The guide goes through the same door as the shared picture, so a sentence in it about what happened to the other people
-         is left out of it too (decision 75, item 14; run-29, loans: "for others, the problem is that they do not have the asset"). */
-      postReportGuide: quotesChecked(
-        postReportGuide ? ((this.asItWasShared({ ...(ground as any), report: { postReportGuide } }, participant?.id ?? null, isInitiator || isOrgAdmin) as any).postReportGuide ?? null) : postReportGuide,
-        'the guide to the next conversation',
-      ),
+      postReportGuide: quotesChecked(postReportGuide, 'the guide to the next conversation'),
       coaching: this.readAsItWillBeRead(coaching, groundId, 'the coaching note', quotable),
       /* Only a discovery session has one; everything else gets null and renders nothing. */
       theDirection: await this.theDirectionFrom(
