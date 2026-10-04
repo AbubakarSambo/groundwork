@@ -4,6 +4,25 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## The anchor scenario (5 October, in progress)
+
+- **Hafsah answered Needs Hafsah 1, 3, 4, 8 and 14 as the plan recommends** (request 143):
+  - "one to one", never "privately";
+  - 20 includes the lead;
+  - "for a month" may show;
+  - the end of month gets four continue options in Stripe test mode;
+  - the lead's "carrying" and "seeing" stay hers;
+  - patterns keep the three-period rule.
+- **Built, behind the switch:**
+  - piece 2, the front door, at `/start/team` (AnchorLandingPage.tsx, with the words in the-anchor-hook.ts; 181b637c);
+  - piece 3, "Fills in as you talk" with the seven items (a60c58e7).
+  Both draw nothing until the engine sends their signals; today `/start/team` redirects to `/start`.
+- **Waiting on the engine:**
+  - request 144: a public read of the switch, the anchor entry route, how an anchor draft is marked, and the seven field names;
+  - the served data for pieces 9 (the reveal page), 11 (people and invitation), 20 (the month board), 31 (the "active" line) and 33 (the end of month), from engine pieces 8, 10, 12 and 13, 30 and 32.
+  Build each as soon as its data is served. Pieces 18, 21, 23, 25 and 27 also wait on Hafsah (Needs Hafsah 9, 10 and 11).
+- **MarketView Q4** waits on request 142 (a test check-in on this database).
+
 ## Phone-width check: done (5 October)
 
 Every board was checked at 375 as the lead and as a participant, like a real user. Ten faults were fixed (68858359..96e444f1) and checked live:
