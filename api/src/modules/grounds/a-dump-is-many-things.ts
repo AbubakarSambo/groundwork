@@ -74,11 +74,11 @@ export const A_DUMP_PROMPT = `Somebody running a team check-in has pasted everyt
 
 WHAT DOING WELL LOOKS LIKE. Their own sentence about what would make this period a good one. Take the sentence that says what they want out of it, in their words, not a summary of the whole paste. A rule, an instruction or a slogan off a list is not it: "celebrate revenue not meetings" and "no proposal before qualification" are ways of working, not a picture of a good quarter. Nor is a remark about check-ins, accountability or this product itself - a paste often contains notes addressed to whoever set the check-in up, and none of those say what the work should look like. If no sentence in the paste says what a good period looks like, leave this out.
 
-NUMBERS THE WHOLE TEAM IS HELD TO. A total to reach, a ceiling not to pass. "N180m for Q4" is a target of 180000000. "Credit under 35%" is 35, not to exceed. Take the number they have settled on, not one they are arguing with: "the board wants 200 but I have agreed 180" is 180.
+NUMBERS THE WHOLE TEAM IS HELD TO. A total to reach, a ceiling not to pass. "N180m for Q4" is a target of 180000000. "Credit under 35%" is 35, not to exceed. Take the number they have settled on, not one they are arguing with: "the board wants 200 but I have agreed 180" is 180. A figure the paste says is not approved, not agreed, only a request, a maybe or a guess ("budget N1.2m, not approved yet", "maybe N20m, not sure") is not a number for anybody: leave it out of the numbers and put it under what is not settled. Last quarter's figure, a current figure, an amount somebody owes and a reserve, allowance or contingency in a budget are never targets.
 
 NAME EVERY MEASURE IN WORDS, as a person would read it on a board: "Q4 sales", "credit as a share of sales", "arrears", "new dealers signed". Never put the figure, a currency symbol or a currency letter in the name - "N for Q4" and "N180m" are not names of anything. The number goes in the number field and nowhere else.
 
-WHAT THEY EXPECT OF EACH NAMED PERSON. One entry per person, in the lead's own words, with EVERY number they gave for that person. "I want Dayo at N45m with credit under 35% of his own book" is Dayo, that sentence, and two numbers: Q4 sales 45000000, and credit as a share of his sales 35. "N35m and at least 4 new dealers signed" is two numbers, not one. Their last quarter's figure is not a target: it is what happened.
+WHAT THEY EXPECT OF EACH NAMED PERSON. One entry per person, in the lead's own words, with EVERY number they gave for that person. A plan that gives each priority or workstream an owner ("Priority 2. Keep customers. Owner: Tobi Lawal. Complaints under 3 per 100 orders.") gives the numbers in it to that owner: put them on that person, and never also in the numbers for the whole team. The expectation is what the priority is ("Keep customers"), never the label that names the owner ("Owner: Tobi Lawal"). If the owner is somebody the paste does not otherwise describe, still give their name and numbers exactly as written, so they can be told apart from the team's. "I want Dayo at N45m with credit under 35% of his own book" is Dayo, that sentence, and two numbers: Q4 sales 45000000, and credit as a share of his sales 35. "N35m and at least 4 new dealers signed" is two numbers, not one. Their last quarter's figure is not a target: it is what happened. A number inside the description of a job ("tell the top 30 customers", "count 4,200 items", "book two trucks") belongs to that job and is not a number the person is to reach, so do not give it as one.
 
 DATES. What is due and when, in the paste's own words: "quarter ends 31 December", "board meeting 15 January".
 
@@ -94,15 +94,15 @@ WHAT IS STILL TO DECIDE. Anything the paste says needs deciding and has not been
 
 WHAT IS NOT SETTLED. Anything the paste contradicts itself about, is unsure of, or says explicitly not to treat as fact or as a target: two numbers for the same thing, a figure somebody mentioned but nobody approved, a task nobody knows is finished. Say the competing versions where the paste gives both.
 
-WHAT IS TO BE DONE. Every action the paste names: a proposal to send, a call somebody has to make, a list to clean, a thing to finish. One entry each, in the paste's words. Give the person ONLY where the paste says whose it is - most of a list of outstanding things has no owner, and leaving the owner out is the correct answer, never the nearest name. Give the timing only where the paste gives one, in its own words ("this week", "friday", "before Thursday"). Say whether the person said it themselves ("she said she would do it this week") or the lead is the one saying it needs doing.
+WHAT IS TO BE DONE. Every action the paste names: a proposal to send, a call somebody has to make, a list to clean, a thing to finish. One entry each, in the paste's words. A task listed under a person's name or under a workstream that person owns ("Ibrahim: racking installed by 24 October, power backup tested by 31 October") is one entry for each task, with that person as the owner and its own date. An action for somebody who is clearly not part of this team, such as a customer paying a bill or a supplier delivering, is not an action for this team: leave it out of this list and put it under notes. Give the person ONLY where the paste says whose it is - most of a list of outstanding things has no owner, and leaving the owner out is the correct answer, never the nearest name. Give the timing only where the paste gives one, in its own words ("this week", "friday", "before Thursday"). Say whether the person said it themselves ("she said she would do it this week") or the lead is the one saying it needs doing.
 
-QUESTIONS THE LEAD WANTS ASKED. Where the paste writes a question for a named person - "Amina - which accounts actually have a buying process?" - take the person and the question as written.
+QUESTIONS THE LEAD WANTS ASKED. Where the paste writes a question for a named person - "Amina - which accounts actually have a buying process?" - take the person and the question as written. A sentence that ends in a question mark and is addressed to a named person, even when the same person is also talked about earlier in the paste, is such a question.
 
 WHAT IS BETWEEN TWO PEOPLE. Where the paste describes something that involves two named people and belongs to neither alone - one promised what the other cannot build, one commits dates the other has to keep - name both people and say the thing in the paste's words.
 
 WHAT THEY SAY ABOUT EACH PERSON THAT IS NOT A NUMBER OR A JOB. The lead's read of somebody: how they work, what they are good at, what they keep doing. One entry per person, their words. This is an observation, never a fact about the person, and it is kept where only the lead can read it.
 
-Give names and wording exactly as the paste writes them. Do not correct them, expand them, or match them to anybody. Leave out anything that is an opinion about a person rather than a number or a job for them - that belongs somewhere else and not here. An empty field is a correct answer.`;
+Never write "I", "me" or "my" in a line you write: the team reads these lines, so say the person's name, or "the lead" where the paste does not give it. Give names and wording exactly as the paste writes them. Do not correct them, expand them, or match them to anybody. Leave out anything that is an opinion about a person rather than a number or a job for them - that belongs somewhere else and not here. An empty field is a correct answer.`;
 
 export const A_DUMP_SCHEMA = {
   name: 'emit_what_the_paste_holds',
@@ -196,6 +196,8 @@ export interface WhatAPasteGives {
   forPeople: { who: string; participantId: string; expectation: string; targets: { name: string; number: number }[] }[];
   dates: { what: string; when: string }[];
   unmatched: string[];
+  /** What the paste said for each name that is not on this check-in, keyed by that name. Said, never kept. */
+  unmatchedParts?: Record<string, string[]>;
   /** The lists that are words rather than numbers, each one a bucket on the Context page. */
   waysOfWorking: string[];
   strategy: string[];
@@ -255,6 +257,37 @@ export function theTellingInTheList(history: { role: 'user' | 'assistant'; conte
   return told || null;
 }
 
+/**
+ * A DATE THE PASTE NAMED, AS ONE PLAIN SENTENCE, FOR THE RECORD.
+ *
+ * Dates used to be said back and then dropped ("they stay in this conversation and are not put on the
+ * record"), so a quarter's end, a board meeting or a start date was lost the moment the lead said yes.
+ * They are kept as notes the whole check-in can read. The date is written exactly as the paste wrote
+ * it, never turned into another form.
+ *
+ * A date that only repeats the timing of a job somebody is down as doing is not kept twice: the job
+ * already carries it.
+ */
+const A_DAY = /^(?:\d|mon|tue|wed|thu|fri|sat|sun|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|the \d)/i;
+const A_WORD_FOR_WHEN = /^(?:by|on|before|until|till|from|at|in|after|during|every|within|for|since|between|this|next|end|start|mid|early|late)\b/i;
+export function aDateSaid(what: string, when: string): string {
+  const w = what.trim().replace(/[.:;,\s]+$/, '');
+  const t = when.trim().replace(/[.:;,\s]+$/, '');
+  if (!w) return `${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
+  const joined = A_WORD_FOR_WHEN.test(t) ? `${w} ${t}` : A_DAY.test(t) ? `${w} on ${t}` : `${w}, ${t}`;
+  return `${joined.charAt(0).toUpperCase()}${joined.slice(1)}.`;
+}
+export function theDatesToKeep(got: Pick<WhatAPasteGives, 'dates' | 'commitments'>): string[] {
+  const out: string[] = [];
+  for (const d of got.dates ?? []) {
+    const covered = (got.commitments ?? []).some((c) => c.when && theSameMeasure(c.when, d.when) && (theSameMeasure(c.action, d.what) || wordsOf(d.what).some((w) => wordsOf(c.action).includes(w) && w.length > 4)));
+    if (covered) continue;
+    const line = aDateSaid(d.what, d.when);
+    if (!out.some((o) => theSameMeasure(o, line))) out.push(line);
+  }
+  return out;
+}
+
 export function whatWeTookFromThat(
   got: WhatAPasteGives,
   opts: { asking?: boolean; told?: string | null; /** Who is reading it: a line about them says "you". */ reader?: { participantId?: string | null } | null } = {},
@@ -288,9 +321,10 @@ export function whatWeTookFromThat(
       lines.push(`- ${called(p.who, p.participantId)}: "${p.expectation}"${numbers.length ? ` (${numbers.join('; ')})` : ''}`);
     }
   }
-  if (got.dates.length) {
-    lines.push('', 'These are the dates you named. They stay in this conversation and are not put on the record.');
-    for (const d of got.dates) lines.push(`- ${d.what}: ${d.when}`);
+  const dates = theDatesToKeep(got);
+  if (dates.length) {
+    lines.push('', `These are the dates you named. ${whoWillReadThese(ContextItemKind.NOTE)}`);
+    for (const d of dates) lines.push(`- ${d}`);
   }
   if (got.strategy?.length) {
     lines.push('', `The strategy, as I read it. ${whoWillReadThese(ContextItemKind.STRATEGY)}`);
@@ -345,8 +379,12 @@ export function whatWeTookFromThat(
   }
   if (got.unmatched.length) {
     lines.push('', got.unmatched.length === 1
-      ? `One name is not on this check-in. It is ${got.unmatched[0]}. Add them and I will put their part on too.`
-      : `${got.unmatched.length} names are not on this check-in. They are ${got.unmatched.join(', ')}. Add them and I will put their part on too.`);
+      ? 'One name is not on this check-in, so nothing is saved for them yet. If you add them and send this again, I will put their part on too.'
+      : `${got.unmatched.length} names are not on this check-in, so nothing is saved for them yet. If you add them and send this again, I will put their part on too.`);
+    for (const name of got.unmatched) {
+      const parts = got.unmatchedParts?.[name] ?? [];
+      lines.push(parts.length ? `- ${name} (${parts.join('; ')})` : `- ${name}`);
+    }
   }
   /*
    * AND WHAT THE PASTE DID NOT SETTLE, SAID OUT LOUD.
@@ -633,6 +671,30 @@ const stem = (w: string): string =>
    demos supported" were written as two of David's measures by one paste read twice. */
 const wordsOf = (name: string): string[] =>
   (name ?? '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2).map(stem);
+
+/**
+ * A NUMBER THE MODEL GAVE, AS THE PASTE WROTE IT.
+ *
+ * Found on the quarterly plan (4 October 2026): "late deliveries under 5%" came back as 0.05, was
+ * rounded to a whole number, and was stored as a limit of 0. A fraction under one is a percentage the
+ * model wrote as a fraction only where the paste really says that percentage ("5%"); otherwise it
+ * cannot be known what was meant, and no number is kept (the line is then tracked rather than counted,
+ * as it says). Whole numbers are rounded as they always were.
+ */
+export function theNumberAsWritten(n: number | null | undefined, pasted: string): number | null {
+  if (n == null || !Number.isFinite(n) || n <= 0) return null;
+  if (n >= 1) return Math.round(n);
+  const pct = Math.round(n * 100);
+  if (pct < 1) return null;
+  return new RegExp(`(?:^|[^\\d.])${pct}(?:\\.0+)?\\s?(?:%|percent|per cent)`, 'i').test(pasted ?? '') ? pct : null;
+}
+
+/** Whether these two names are made of the same words, whatever the order. Stricter than theSameMeasure, which lets one name sit inside another. */
+export function theSameWords(a: string, b: string): boolean {
+  const x = [...new Set(wordsOf(a))].sort();
+  const y = [...new Set(wordsOf(b))].sort();
+  return x.length > 0 && x.length === y.length && x.every((w, i) => w === y[i]);
+}
 
 /** Whether these two names are the same thing said at different lengths. */
 export function theSameMeasure(a: string, b: string): boolean {

@@ -54,8 +54,11 @@ describe('a dump is many things at once', () => {
     /* Her line once, not once per number. */
     expect(said.match(/Chika Nwosu/g)).toHaveLength(1);
     expect(said).toContain('It is marked as yours, and they have not seen it yet.');
-    expect(said).toContain('- quarter ends: 31 December');
-    expect(said).toContain('One name is not on this check-in. It is Bola Yusuf.');
+    /* Changed 4 October 2026: dates are kept as notes everyone can read, one plain sentence each, not dropped. */
+    expect(said).toContain('These are the dates you named. Everyone on this check-in will see these.\n- Quarter ends on 31 December.');
+    /* Changed 4 October 2026: the old sentence promised "add them and I will put their part on too" and the
+       paste was refused as already taken when sent again. It now says nothing is saved for them yet. */
+    expect(said).toContain('One name is not on this check-in, so nothing is saved for them yet. If you add them and send this again, I will put their part on too.\n- Bola Yusuf');
   });
 
   it('asks for a yes in the chat and states the receipt afterwards', () => {
@@ -97,8 +100,10 @@ describe('a dump is many things at once', () => {
     /* Nothing already on the record is doubled by a paste restated later. */
     /* Held by owner and by measure, and the measure comparison moved to theSameMeasure on
        22 September 2026 - exact names let one paste read twice write two rows for one number. */
-    expect(w).toContain("alreadyHeld(p.participantId, t.name)");
-    expect(w).toContain("alreadyHeld('team', t.name)");
+    /* Changed 4 October 2026: the same measure now also needs the same number, so that "Q4 sales" does not
+       swallow "credit as a share of sales". The behaviour is in a-number-given-to-a-person-is-theirs.spec.ts. */
+    expect(w).toContain("alreadyHeld(p.participantId, t.name, t.number)");
+    expect(w).toContain("alreadyHeld('team', t.name, t.target)");
     /* CHANGED 30 September 2026 (request 92, point 3): the team's About box used to be rewritten
        silently on every yes. It is now written only with the sentence the list showed before the yes
        (got.toldToParticipants); this test pinned the silent rewrite. */
@@ -358,7 +363,9 @@ describe('a paste is taken once', () => {
   const apply = src.slice(src.indexOf('async applyContextProposal('), src.indexOf('private async whatAPasteGives(') > 0 ? undefined : undefined);
 
   it('is matched by hash, not by how the model read it', () => {
-    expect(src).toContain("createHash('sha256').update(thePaste.trim()).digest('hex')");
+    /* Changed 4 October 2026: the hash is of the words and of who is on the check-in, so that adding
+       a person the paste named and sending it again is not refused as "already on the record". */
+    expect(src).toContain("createHash('sha256').update(`${thePaste.trim()}\\n${(ground.participants as any[]).map((p) => p.id).sort().join(',')}`).digest('hex')");
     expect(src).toContain('this.prisma.groundPaste?.findFirst?.({ where: { groundId, hash }');
   });
 

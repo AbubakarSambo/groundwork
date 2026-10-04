@@ -119,6 +119,7 @@ import {
 } from './a-suggestion-you-can-answer';
 import { Prisma } from '@prisma/client';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
+import { looksLikeADump } from '../grounds/a-dump-is-many-things';
 import { isAGuestsKey } from './a-guests-questions-are-kept-apart';
 import { withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { theWordsOfWhatTheLeadHasNotToldThemAbout, theyRunThisCheckIn } from '../board/an-untold-goal-is-not-a-board-objective';
@@ -314,10 +315,24 @@ export class AssistantService {
     forceAddContext = false,
   ): Promise<Reply> {
     if (who && !afterDrop) {
-      const parked = await this.prisma.assistantProposal.findFirst({
+      let parked = await this.prisma.assistantProposal.findFirst({
         where: { organizationId, personExternalId: who, state: 'PARKED' },
         orderBy: { createdAt: 'desc' },
       });
+      /*
+       * A SETUP CONVERSATION LEFT OPEN ON ONE CHECK-IN DOES NOT TAKE WHAT IS SAID ON ANOTHER (4 October 2026).
+       * Found running the dumps: a lead left the setup chat open on one check-in, then pasted a whole
+       * update from another check-in's page, and the paste was read as the answer to the first one and
+       * written there. When the screen names a check-in and the waiting setup turn is about a
+       * different one, the waiting turn is let go, and what was said is answered for the check-in named.
+       * A long paste is never a yes, so a waiting yes on a different check-in is let go for one as well.
+       */
+      const pg = (parked?.payload as any)?.groundId as string | undefined;
+      if (parked && groundId && pg && pg !== groundId
+        && (parked.kind === 'context_turn' || (parked.kind === 'context' && looksLikeADump(message)))) {
+        await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } }).catch(() => undefined);
+        parked = null;
+      }
       if (parked) return this.resolveParked(organizationId, personId, who, parked, message);
     }
 
@@ -417,6 +432,16 @@ export class AssistantService {
      * to add one on a check-in where an earlier upload is still waiting on a yes.
      */
     if (who && (routed.lane === 'add_a_document' || JUST_ADDED_A_DOCUMENT.test(message))) {
+      /*
+       * A DOCUMENT THE LEAD ADDED TO A CHECK-IN THEY RUN IS READ THE WAY A PASTE IS (4 October 2026).
+       * The numbers in it were said back, and nothing else in it was: not its dates, decisions,
+       * rules, questions for people or what it expects of each person. Same reading, same say-back,
+       * same yes as a paste, and the yes is the lead's. Anybody else's own document keeps its numbers.
+       */
+      if (userId && contextIsHere) {
+        const whole = await this.aDocumentToReadWhole(organizationId, personId, userId, groundId);
+        if (whole) return this.runContextChat(organizationId, who, userId, whole.groundId, whole.text, undefined, whole.documentId);
+      }
       const waiting = await this.waitingDocumentFor(organizationId, personId, groundId);
       if (waiting) return this.proposeDocumentNumbers(organizationId, who, waiting);
     }
@@ -1225,6 +1250,48 @@ export class AssistantService {
       return { documentId: d.id, groundId: d.groundId, fileName: d.fileName, holds, visibility: (d as any).visibility ?? null, participantId: (d as any).participantId ?? null };
     }
     return null;
+  }
+
+  /**
+   * THE LEAD'S LATEST DOCUMENT ON A CHECK-IN THEY RUN, NOT YET TAKEN, WITH ENOUGH IN IT TO BE A DUMP.
+   * Only a document the lead put there themselves, and only on a check-in they may set up
+   * (`mayOpenSetupChatFor`, the same rule as the setup conversation). The words are cleaned of bank
+   * details before anything reads them, as a paste is.
+   */
+  private async aDocumentToReadWhole(
+    organizationId: string,
+    personId: string,
+    userId: string,
+    groundId?: string,
+  ): Promise<{ documentId: string; groundId: string; text: string } | null> {
+    const mine = await this.prisma.groundParticipant.findMany({
+      where: { userId, ...(groundId ? { groundId } : {}) },
+      select: { id: true, groundId: true },
+    });
+    if (!mine.length) return null;
+    const docs = await this.prisma.groundDocument.findMany({
+      where: { participantId: { in: mine.map((m) => m.id) } },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+      select: { id: true, groundId: true, content: true, holds: true },
+    });
+    for (const d of docs) {
+      const holds = (d.holds ?? {}) as any;
+      if (holds.takenAt || holds.wholeAt) continue;
+      const text = (withoutBankDetails(d.content ?? '') as string).trim();
+      if (!looksLikeADump(text) || text.length > 40_000) continue;
+      if (!(await this.grounds.mayOpenSetupChatFor(d.groundId, userId, organizationId).catch(() => false))) continue;
+      return { documentId: d.id, groundId: d.groundId, text };
+    }
+    return null;
+  }
+
+  /** The numbers on a document were taken as part of a whole read, so they are not offered again. */
+  private async markADocumentTaken(documentId: string): Promise<void> {
+    const doc = await this.prisma.groundDocument.findUnique({ where: { id: documentId }, select: { holds: true } }).catch(() => null);
+    if (!doc) return;
+    const stamp = new Date().toISOString();
+    await this.prisma.groundDocument.update({ where: { id: documentId }, data: { holds: { ...((doc.holds ?? {}) as any), takenAt: stamp, wholeAt: stamp } as any } }).catch(() => undefined);
   }
 
   /**
@@ -2809,6 +2876,8 @@ export class AssistantService {
     groundId: string,
     said: string,
     priorHistory?: { role: 'user' | 'assistant'; content: string }[],
+    /** The document these words are, when a document is being read as a paste. A yes marks it taken. */
+    documentId?: string,
   ): Promise<Reply> {
     /*
      * AN EMPTY OPENER IS AN EMPTY HISTORY, NOT AN EMPTY TURN.
@@ -2841,6 +2910,7 @@ export class AssistantService {
            */
           payload: {
             groundId, said, history: [...history, { role: 'assistant' as const, content: result.proposal.say }], openQuestion: (result as any).openQuestion ?? null,
+            ...(documentId ? { documentId } : {}),
             /* What the yes is for when it is not a change to this check-in: a sentence to keep for the organisation, or leave (week 20). */
             ...((result.proposal as any).offerId ? { offerId: (result.proposal as any).offerId } : {}),
             /* A company rule said while a setup question was waiting: offered straight after this yes or no (decision 75, item 29). */
@@ -2975,6 +3045,7 @@ export class AssistantService {
       leave?: boolean;
       thenOffer?: { say: string; offerId: string };
       openQuestion?: string | null;
+      documentId?: string;
     };
 
     /* RE-VERIFY at execution, same as every other write here: still linked to a user at all. */
@@ -2992,6 +3063,8 @@ export class AssistantService {
         ...(payload.leave ? { leave: true } : {}),
       });
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+      /* A document read as a paste is taken: its numbers are not offered a second time. */
+      if (payload.documentId) await this.markADocumentTaken(payload.documentId);
       /* The company rule said with the answer is offered now, once (decision 75, item 29). */
       if (payload.thenOffer?.offerId) {
         return this.offerTheRuleNext(organizationId, who, payload.groundId, applied.say, payload.thenOffer, [...payload.history, { role: 'assistant' as const, content: applied.say }], null);

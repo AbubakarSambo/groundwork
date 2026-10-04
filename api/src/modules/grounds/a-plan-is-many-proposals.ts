@@ -192,7 +192,7 @@ export function proposalsFromAPlan(
   const out: PlanProposal[] = [];
   const seen = new Set<string>();
   for (const r of read ?? []) {
-    const kind = String(r?.kind ?? '').toLowerCase() as PlanProposalKind;
+    let kind = String(r?.kind ?? '').toLowerCase() as PlanProposalKind;
     if (!KINDS.includes(kind)) continue;
     const quote = (r?.fromThePlan ?? '').trim().replace(/^["'“‘]+|["'”’]+$/g, '').trim();
     /* 1. The words must really be in the plan. */
@@ -203,8 +203,15 @@ export function proposalsFromAPlan(
     /* 2. A number only where the quote holds it. A number the quote does not hold drops the whole proposal. */
     if (r?.number !== null && r?.number !== undefined) {
       const n = Number(r.number);
+      /* The number is read from the quote WITHOUT its date: "racking installed by 24 October" holds the
+         day 24 and no number to reach. Found on a project plan (4 October 2026), where the day of the
+         month was kept as a target of 24 on the person who owns the racking. */
+      const withoutTheDate = (r?.date ?? '').trim() ? flatten(quote).split(flatten(r.date as string)).join(' ') : quote;
       if (!Number.isFinite(n) || !numbersIn(quote).has(n)) continue;
-      fields.number = n;
+      if (numbersIn(withoutTheDate).has(n)) fields.number = n;
+      /* Only the day of the date: a job to be done by that date, so a commitment, with no number. */
+      else if (kind === 'goal' && (r?.date ?? '').trim()) kind = 'commitment';
+      else continue;
     }
     /* 3. A date only exactly as the quote wrote it. */
     const date = (r?.date ?? '').trim();
@@ -254,7 +261,7 @@ export function proposalsFromAPlan(
 
 export const A_PLAN_PROMPT = `Somebody who runs a team check-in has given you their plan. Take out each separate thing in it that is one of these four kinds, and nothing else.
 
-GOAL. A result the team or one person is to reach, with its number and date if the plan gives them. "25 freezer sales this quarter" is a goal: what is "freezer sales", number 25, date "this quarter".
+GOAL. A result the team or one person is to reach, with its number and date if the plan gives them. "25 freezer sales this quarter" is a goal: what is "freezer sales", number 25, date "this quarter". A number the whole team is held to ("N180m for the quarter", "credit under 35%", "arrears under 8%") is a goal with no personName; take the number the plan has settled on, never one it is arguing with. A job that is to be done by a date, with no number to reach ("racking installed by 24 October", "go live on 15 November"), is a commitment and not a goal. The day of a date is never the number.
 ROLE. Who owns or is responsible for what. "Aisha looks after the Lagos supermarkets" is a role: personName Aisha, what "the Lagos supermarkets".
 COMMITMENT. Something one person will do, by a date if one is given. "Dayo will send the price list to Client B by 3 October" is a commitment: personName Dayo, what "send the price list to Client B", date "3 October".
 RULE. How the team works. "If they haven't replied after three calls, drop it" is a rule: what "drop a lead after three calls with no reply".
@@ -265,6 +272,10 @@ For each one:
 - number: only a number written in fromThePlan. Never work one out.
 - date: only a date or period written in fromThePlan, copied exactly as written ("31 December", "end of Q4", "Friday"). Never turn it into another form.
 - personName: the person's name exactly as the plan writes it, if it is about one person.
+
+A plan often names the owner of a priority, a workstream or a task on its own line ("Owner: Amina Yusuf", "Ibrahim Danjuma:", "owner of the move: Tolu"). That person is the personName of every goal and commitment in that priority, workstream or task, even when the line the goal is written on does not repeat the name. Leave personName empty only when the plan gives the item no owner anywhere ("Someone has to own this").
+
+Anything the plan itself says is not agreed, not decided, not sure or not a target ("nothing agreed yet", "maybe N20m, not sure") is not an item. Never write "I", "me" or "my" in says: use the person's name, or "the lead" where the plan does not give it.
 
 Each goal, role, commitment and rule is its own item: a line with two people's numbers is two goals. Leave out background, history, opinions about people and anything you are not sure is one of the four.`;
 

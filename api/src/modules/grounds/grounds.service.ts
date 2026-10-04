@@ -95,7 +95,7 @@ import { EVALUATION_SCENARIOS, isEvaluationCheckIn } from '../reports/is-this-an
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, briefChangedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
-import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
+import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, theDatesToKeep, theSameWords, theNumberAsWritten, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExactQuestion, theLeadsOwnQuestionIfAddressedToThem, THE_EXACT_QUESTION_PROMPT, THE_EXACT_QUESTION_TOOL, whatGroundworkWillAsk, type AQuestionForAPerson } from './a-question-asked-word-for-word';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
@@ -3124,6 +3124,8 @@ export class GroundsService {
         })
       : null;
     if (fromAPaste) {
+      /* The read the lead is about to be shown is kept, so a yes writes this and not a second reading. */
+      this.rememberThePasteWeSaidBack(groundId, lastFromLead!, fromAPaste);
       /* What participants would be told, worked out now so it can be said back before the yes. */
       const told = await this.theTellingAPasteWouldWrite(groundId, fromAPaste).catch(() => null);
       const say = whatWeTookFromThat(fromAPaste, { asking: true, told, reader });
@@ -3697,6 +3699,33 @@ export class GroundsService {
    * The last few drafts, so the list the lead is shown and the line that is written from their yes a
    * minute later carry the same sentence where the paste read gave the same question twice.
    */
+  /**
+   * THE READ OF A PASTE THE LEAD WAS SHOWN, KEPT FOR THEIR YES.
+   *
+   * Found on realistic dumps (4 October 2026): the yes read the paste again, and the model's second
+   * reading of the same words is a different list. The lead said yes to one set of commitments and
+   * numbers and a different set was written. Keyed by the check-in and the exact words, held for six
+   * hours, and handed out as a copy so a "yes, but not that one" cannot change what is held. When it
+   * has gone (a restart), the yes reads the paste again, as it always did.
+   */
+  private readonly pastesWeSaidBack = new Map<string, { at: number; got: WhatAPasteGives }>();
+  private thePasteKey(groundId: string, pasted: string) {
+    return `${groundId}:${createHash('sha256').update(pasted.trim()).digest('hex')}`;
+  }
+  private rememberThePasteWeSaidBack(groundId: string, pasted: string, got: WhatAPasteGives) {
+    const now = Date.now();
+    if (this.pastesWeSaidBack.size > 200) {
+      for (const [k, v] of this.pastesWeSaidBack) if (now - v.at > 6 * 3_600_000) this.pastesWeSaidBack.delete(k);
+      if (this.pastesWeSaidBack.size > 200) this.pastesWeSaidBack.clear();
+    }
+    this.pastesWeSaidBack.set(this.thePasteKey(groundId, pasted), { at: now, got: structuredClone(got) });
+  }
+  private thePasteWeSaidBack(groundId: string, pasted: string): WhatAPasteGives | null {
+    const held = this.pastesWeSaidBack.get(this.thePasteKey(groundId, pasted));
+    if (!held || Date.now() - held.at > 6 * 3_600_000) return null;
+    return structuredClone(held.got);
+  }
+
   private _draftedQuestions?: Map<string, string>;
   private get draftedQuestions(): Map<string, string> {
     if (!this._draftedQuestions) this._draftedQuestions = new Map();
@@ -3814,16 +3843,31 @@ export class GroundsService {
     const people = (ground?.participants ?? []).filter((p) => !p.managingOnly);
     const forPeople: WhatAPasteGives['forPeople'] = [];
     const unmatched: string[] = [];
+    /* What the paste said for each name that is not on this check-in, so it can be said, and so a
+       number meant for them is never read as the whole team's. */
+    const unmatchedParts: Record<string, string[]> = {};
+    const unmatchedNumbers: { name: string; number: number }[] = [];
     for (const r of (read.forPeople ?? []).filter((r) => r?.personName?.trim() && r?.expectation?.trim())) {
       const who = whoThisNameIs(r.personName, people as any);
-      if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }
+      if (!who) {
+        if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim());
+        /* What it was for them is kept to be SAID, and their numbers to keep them off the team's list. */
+        for (const t of (r.targets ?? []).filter((t) => t?.name?.trim())) {
+          const n = theNumberAsWritten(t.number, pasted);
+          if (n == null) continue;
+          unmatchedNumbers.push({ name: t.name.trim().slice(0, 120), number: n });
+          (unmatchedParts[r.personName.trim()] ??= []).push(`${t.name.trim().slice(0, 120)}: ${n.toLocaleString('en-GB')}`);
+        }
+        continue;
+      }
       forPeople.push({
         who: theNameWeUseFor(who as any),
         participantId: who.id,
         expectation: r.expectation.trim().slice(0, 600),
         targets: (r.targets ?? [])
-          .filter((t) => t?.name?.trim() && Number.isFinite(t.number) && t.number > 0)
-          .map((t) => ({ name: t.name.trim().slice(0, 120), number: Math.round(t.number) })),
+          .filter((t) => t?.name?.trim())
+          .map((t) => ({ name: t.name.trim().slice(0, 120), number: theNumberAsWritten(t.number, pasted) }))
+          .filter((t): t is { name: string; number: number } => t.number != null),
       });
     }
     /* One line each, trimmed, in the paste's order, and nothing empty. */
@@ -3841,11 +3885,17 @@ export class GroundsService {
     for (const r of (read.commitments ?? []).filter((r) => r?.action?.trim())) {
       const named = (r.personName ?? '').trim();
       const who = named ? whoThisNameIs(named, people as any) : null;
-      if (named && !who && !unmatched.includes(named)) unmatched.push(named);
+      if (named && !who) {
+        /* Somebody's job who is not on this check-in is not nobody's job: it is said, under their name, and not kept as an unowned item. */
+        if (!unmatched.includes(named)) unmatched.push(named);
+        (unmatchedParts[named] ??= []).push(`${r.action.trim().slice(0, 300)}${(r.when ?? '').trim() ? ` (${(r.when ?? '').trim().slice(0, 120)})` : ''}`);
+        continue;
+      }
       commitments.push({
         who: who ? theNameWeUseFor(who as any) : null,
         participantId: who?.id ?? null,
-        action: r.action.trim().slice(0, 400),
+        /* The action is a phrase that a "(by Friday)" follows, so it carries no full stop of its own. */
+        action: r.action.trim().replace(/[.!\s]+$/, '').slice(0, 400),
         outcome: (r.outcome ?? '').trim().slice(0, 400) || null,
         when: (r.when ?? '').trim().slice(0, 120) || null,
         theySaidIt: r.theySaidIt !== false,
@@ -3854,7 +3904,11 @@ export class GroundsService {
     const questionsForPeople: WhatAPasteGives['questionsForPeople'] = [];
     for (const r of (read.questionsForPeople ?? []).filter((r) => r?.personName?.trim() && r?.question?.trim())) {
       const who = whoThisNameIs(r.personName, people as any);
-      if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }
+      if (!who) {
+        if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim());
+        (unmatchedParts[r.personName.trim()] ??= []).push(`a question, ${r.question.trim().slice(0, 300)}`);
+        continue;
+      }
       questionsForPeople.push({ who: theNameWeUseFor(who as any), participantId: who.id, question: r.question.trim().slice(0, 400) });
     }
     /*
@@ -3889,10 +3943,16 @@ export class GroundsService {
         .filter((t) => t?.name?.trim())
         .map((t) => ({
           name: t.name.trim().slice(0, 120),
-          target: Number.isFinite(t.target as number) && (t.target as number) > 0 ? Math.round(t.target as number) : null,
+          target: theNumberAsWritten(t.target as number, pasted),
           notToExceed: !!t.notToExceed,
-        })),
+        }))
+        /* A number the paste gave to a person, on this check-in or not, is that person's and not also
+           the team's. Found on a quarterly plan (4 October 2026): each priority's number was kept for
+           the whole team as well as for its owner, and the numbers of an owner who is not on the
+           check-in were kept for the whole team and nobody else. */
+        .filter((t) => t.target == null || ![...forPeople.flatMap((p) => p.targets), ...unmatchedNumbers].some((n) => n.number === t.target && theSameWords(n.name, t.name))),
       forPeople,
+      unmatchedParts,
       dates: (read.dates ?? []).filter((d) => d?.what?.trim() && d?.when?.trim()).map((d) => ({ what: d.what.trim(), when: d.when.trim() })),
       unmatched,
       /* The three lists that are words rather than numbers, kept as the lead's own note. */
@@ -4140,12 +4200,17 @@ export class GroundsService {
        * as "create a list of the top 10 questions" - so word-matching could not see they were the
        * same thing. The text can be matched exactly even when its reading cannot. See GroundPaste.
        */
-      const hash = createHash('sha256').update(thePaste.trim()).digest('hex');
+      /* The words AND who is on the check-in, so adding somebody the paste named and sending it again is a new paste:
+         "add them and I will put their part on" was refused as "already on the record". Everything already
+         held is skipped by the writers, so only their part is new. */
+      const hash = createHash('sha256').update(`${thePaste.trim()}\n${(ground.participants as any[]).map((p) => p.id).sort().join(',')}`).digest('hex');
       const takenBefore = await (this.prisma.groundPaste?.findFirst?.({ where: { groundId, hash }, select: { id: true } }) ?? Promise.resolve(null)).catch(() => null);
       if (takenBefore && !exception) {
         return { changed: 'nothing new', say: 'That is already on the record, exactly as you sent it. Nothing was written twice.' };
       }
-      const read = await this.whatAPasteGives(groundId, thePaste).catch(() => null);
+      /* WHAT WAS SAID BACK IS WHAT IS WRITTEN. A second reading of the same words by the model is
+         never the same list, so the yes uses the reading the lead was shown when it is still held. */
+      const read = this.thePasteWeSaidBack(groundId, thePaste) ?? await this.whatAPasteGives(groundId, thePaste).catch(() => null);
       /* What participants are told is written only if the list the lead is answering said it. */
       if (read) read.toldToParticipants = theTellingInTheList(dto.history as any);
       /* And each number's direction only as that list said it (decision 69); a number it did not show stays not set. */
@@ -4403,23 +4468,26 @@ export class GroundsService {
       }
     }
 
-    const existing = await this.prisma.groundObjective.findMany({ where: { groundId }, select: { name: true, ownerParticipantId: true } });
+    const existing = await this.prisma.groundObjective.findMany({ where: { groundId }, select: { name: true, ownerParticipantId: true, target: true } });
     /* One name inside another is the same measure, because a second read of one paste renames things
        - "signed" and "signed sales" - and two names for one number is two answers. See theSameMeasure. */
-    const held: { owner: string; name: string }[] = existing.map((o) => ({ owner: o.ownerParticipantId ?? 'team', name: (o.name ?? '').trim() }));
-    const alreadyHeld = (owner: string, name: string) => held.some((h) => h.owner === owner && theSameMeasure(h.name, name));
+    const held: { owner: string; name: string; target: number | null }[] = existing.map((o) => ({ owner: o.ownerParticipantId ?? 'team', name: (o.name ?? '').trim(), target: o.target ?? null }));
+    /* Two names that end alike are one measure only when the numbers agree: "Q4 sales" at 180m and "credit
+       as a share of sales" at 35 are two measures, and the second was silently never written. */
+    const alreadyHeld = (owner: string, name: string, target: number | null) =>
+      held.some((h) => h.owner === owner && theSameMeasure(h.name, name) && (h.target == null || target == null || h.target === target));
     const rows: { groundId: string; name: string; target: number | null; ownerParticipantId: string | null; sortOrder: number; direction?: string | null }[] = [];
     let sortOrder = existing.length;
     for (const t of got.teamTargets) {
-      if (alreadyHeld('team', t.name)) continue;
-      held.push({ owner: 'team', name: t.name });
+      if (alreadyHeld('team', t.name, t.target)) continue;
+      held.push({ owner: 'team', name: t.name, target: t.target });
       /* Decision 69: only a direction the lead said yes to on the list; otherwise not set. */
       rows.push({ groundId, name: t.name, target: t.target, ownerParticipantId: null, sortOrder: sortOrder++, direction: t.direction ?? null });
     }
     for (const p of got.forPeople) {
       for (const t of p.targets) {
-        if (alreadyHeld(p.participantId, t.name)) continue;
-        held.push({ owner: p.participantId, name: t.name });
+        if (alreadyHeld(p.participantId, t.name, t.number)) continue;
+        held.push({ owner: p.participantId, name: t.name, target: t.number });
         rows.push({ groundId, name: t.name, target: t.number, ownerParticipantId: p.participantId, sortOrder: sortOrder++, direction: null });
       }
     }
@@ -4539,6 +4607,8 @@ export class GroundsService {
       for (const t of got.openDecisions) await line(ContextItemKind.DECISION, t);
       for (const t of got.notSettled) await line(ContextItemKind.UNSETTLED, t);
       for (const t of got.notes) await line(ContextItemKind.NOTE, t);
+      /* The dates it named, as notes everyone can read. They used to be said back and then dropped. */
+      for (const t of theDatesToKeep(got)) await line(ContextItemKind.NOTE, t);
       for (const a of got.aboutPeople) await line(ContextItemKind.ABOUT_A_PERSON, a.observation, { about: a.participantId });
       /*
        * A QUESTION IS KEPT WITH ITS EXACT SENTENCE, AND NOT CONFIRMED. The yes to the paste keeps it;

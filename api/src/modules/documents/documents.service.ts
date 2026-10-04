@@ -1,3 +1,4 @@
+import { theNumberAsWritten, theSameWords } from '../grounds/a-dump-is-many-things';
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Buffer }) => { getText: () => Promise<{ text: string }>; destroy: () => Promise<void> } };
@@ -574,7 +575,11 @@ export class DocumentsService {
     const resolve = (name: string) => whoThisNameIs(name, mayHoldANumber as any);
     const nameOf = theNameWeUseFor as (p: any) => string;
 
-    const rows = (read.forOnePerson ?? []).filter((r) => r?.personName?.trim() && r?.what?.trim() && Number.isFinite(r.target) && r.target > 0);
+    /* A fraction the model wrote for a percentage is kept only where the document says that percentage; see theNumberAsWritten. */
+    const rows = (read.forOnePerson ?? [])
+      .filter((r) => r?.personName?.trim() && r?.what?.trim())
+      .map((r) => ({ ...r, target: theNumberAsWritten(r.target, content) as number }))
+      .filter((r) => r.target != null);
     const held = new Set((ground.objectives ?? []).map((o) => `${o.ownerParticipantId ?? 'team'}::${(o.name ?? '').trim().toLowerCase()}`));
     const forOnePerson: WhatLanded['forOnePerson'] = [];
     const unmatched: string[] = [];
@@ -587,8 +592,11 @@ export class DocumentsService {
      */
     const onTheCheckIn = ground.participants.filter((p) => !p.managingOnly);
     const notTheirsToSet: string[] = [];
+    /* A number the document gives to a person is theirs and not also the group's (checked below). */
+    const givenToSomebody: { what: string; target: number }[] = [];
     for (const r of rows) {
       const who = resolve(r.personName);
+      givenToSomebody.push({ what: r.what, target: r.target });
       if (!who) {
         const name = r.personName.trim();
         if (!isLead && whoThisNameIs(name, onTheCheckIn as any)) { if (!notTheirsToSet.includes(name)) notTheirsToSet.push(name); continue; }
@@ -604,8 +612,10 @@ export class DocumentsService {
 
     /* The group's own numbers. A participant may add one: a total in a plan is not a claim about anybody. */
     const forEverybody: WhatLanded['forEverybody'] = [];
-    for (const t of (read.forEverybody ?? []).filter((t) => t?.what?.trim() && Number.isFinite(t.target) && t.target > 0)) {
+    for (const t of (read.forEverybody ?? []).filter((t) => t?.what?.trim()).map((t) => ({ ...t, target: theNumberAsWritten(t.target, content) as number })).filter((t) => t.target != null)) {
       const name = t.what.trim().slice(0, 120);
+      /* Found on a quarterly plan (4 October 2026): each priority's number was waiting for its owner AND for everyone. */
+      if (givenToSomebody.some((g) => g.target === t.target && theSameWords(g.what, t.what))) continue;
       if (held.has(`team::${name.toLowerCase()}`)) continue;
       held.add(`team::${name.toLowerCase()}`);
       toWrite.push({ groundId, name, target: Math.round(t.target), ownerParticipantId: null, setByParticipantId: participantId, sortOrder: sortOrder++ });
