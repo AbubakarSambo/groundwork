@@ -70,6 +70,7 @@ import { theAnchorGuidance, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-an
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { TheAnchorDoor } from './the-anchor-door';
+import { draftFromASetUp, type ASetUpToStartFrom } from './a-set-up-can-start-from-a-recommendation';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
@@ -625,6 +626,11 @@ export class EntryService {
   private anchorDoor?: TheAnchorDoor;
   private get theAnchorDoor(): TheAnchorDoor {
     return (this.anchorDoor ??= new TheAnchorDoor(this.prisma));
+  }
+
+  /** Request 148 (1): the draft a new check-in starts from, out of a recommendation the lead said yes to. Writes nothing. */
+  draftFromSetUp(organizationId: string, leadUserId: string, setUp: ASetUpToStartFrom) {
+    return draftFromASetUp(this.prisma, organizationId, leadUserId, setUp);
   }
 
   /** Request 144 (1): is the anchor's front door open. */

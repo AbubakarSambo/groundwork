@@ -4287,3 +4287,25 @@ Fields: `title` ("Help my team understand"), `subtitle` ("One-month Groundwork")
 
 **Piece 32, the end-of-month read (`TheEndOfMonthRead`). Shape only.**
 `yourOwnWords` (the lead's own words, quoted, under "You wanted your team to understand..."), then the eight parts as lists of sentences: `whatWeFound`, `whatTheyNowUnderstandDifferently`, `whatTheyAreDoingDifferently`, `whatYourTeamContributed`, `peopleWhoHelpedMoveTheThinking` (each `{ name, sentence }`), `whatYouChangedAsALead`, `whatIsStillStuck`, `whatShouldHappenNext`. Then `reveal` with six counts and `continueOptions` with four items `{ key, label }`. The counts are `projectsThatCouldHaveTheirOwnGround`, `sharedObjectivesWorthTracking`, `workingRelationshipsNeedingAlignment`, `activeCommitments`, `teamGeneratedIdeas`, `suitesRelevantToWorkAlreadyBeingDone`. Example: `{ projectsThatCouldHaveTheirOwnGround: 3, sharedObjectivesWorthTracking: 2, workingRelationshipsNeedingAlignment: 4, activeCommitments: 17, teamGeneratedIdeas: 7, suitesRelevantToWorkAlreadyBeingDone: 3 }`, which the screen sets under "This started as one Ground." and closes with "Your team has already started building its Groundwork." The four options are `keepThisGroundRunning` ("Keep this Ground running"), `startRecommendedGrounds` ("Start recommended Grounds"), `turnOnRelevantSuites` ("Turn on relevant suites") and `continueGroundworkForTheTeam` ("Continue Groundwork for the team"); decision 96, item 4: they lead to the existing plan choice, Stripe in test mode only. It is built once from the record and never rebuilt on opening.
+
+## Request 148 (1): a new check-in can start from a recommendation
+
+**Done.** `POST /entry/draft-from-set-up`, for the signed-in lead (20 a minute). The screen sends back exactly the `setUp` that "Yes, set it up" gave it:
+
+```
+{ "setUp": { "kind": "anchor_project_check_in",
+             "about": "The Nairobi project keeps moving between four people.",
+             "aim": "The Nairobi launch",
+             "people": [ { "name": "Omar", "email": "omar@acme.org" } ] } }
+```
+
+It answers the draft the set-up screen opens with, and creates nothing and invites nobody:
+
+```
+{ "initial": "The Nairobi project keeps moving between four people.",
+  "aim": "The Nairobi launch",
+  "contributors": [ { "email": "omar@acme.org", "displayName": "Omar" } ],
+  "leftOut": [ { "email": "zed@elsewhere.com", "why": "Groundwork has no record of Zed in your organisation, so Zed is not added. You can add them yourself on the next step." } ] }
+```
+
+**How the screen passes it.** Open the set-up screen with `initial` as the first thing said, keep `aim` as the aim, and put `contributors` in the people step exactly as `commit` takes them (`{ email }`, with `displayName` only for showing the name). Show each `leftOut.why` to the lead as it is. The lead herself is never in `contributors`, and the same address is never listed twice. People are checked against the lead's own organisation (a person with an account in it, or already a guest on one of its check-ins), so the route cannot be used to put a stranger's address into a draft. Anything that is not one of the three recommended kinds is refused with 400. Code: `entry/a-set-up-can-start-from-a-recommendation.ts`.

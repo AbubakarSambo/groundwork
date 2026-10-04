@@ -639,6 +639,20 @@ class OpenFinishDto {
   @IsOptional() @IsString() @MaxLength(160) organisation?: string;
 }
 
+class ASetUpPersonDto {
+  @IsOptional() @IsString() @MaxLength(120) name?: string | null;
+  @IsEmail() @MaxLength(254) email: string;
+}
+class ASetUpDto {
+  @IsString() @MaxLength(60) kind: string;
+  @IsString() @IsNotEmpty() @MaxLength(2000) about: string;
+  @IsOptional() @IsString() @MaxLength(500) aim?: string | null;
+  @IsArray() @ArrayMaxSize(19) @ValidateNested({ each: true }) @Type(() => ASetUpPersonDto) people: ASetUpPersonDto[];
+}
+class EntryDraftFromSetUpDto {
+  @ValidateNested() @Type(() => ASetUpDto) setUp: ASetUpDto;
+}
+
 @Controller('entry')
 export class EntryCommitController {
   constructor(
@@ -650,6 +664,18 @@ export class EntryCommitController {
   async commit(@CurrentUser() user: CurrentUserData, @Body() dto: EntryCommitDto) {
     if (!user?.organizationId) throw new UnauthorizedException('Account not linked to an organisation');
     return this.service.commit(user.organizationId, user.id, dto);
+  }
+
+  /**
+   * A NEW CHECK-IN STARTED FROM A RECOMMENDATION (request 148). The lead said yes to "Groundwork
+   * recommends" and the screen hands back the `setUp` it was given. Answers the draft the set-up screen
+   * opens with, its people checked against the lead's own organisation. Creates nothing, invites nobody.
+   */
+  @Post('draft-from-set-up')
+  @Throttle({ global: { limit: 20, ttl: 60_000 } })
+  async draftFromSetUp(@CurrentUser() user: CurrentUserData, @Body() dto: EntryDraftFromSetUpDto) {
+    if (!user?.organizationId) throw new UnauthorizedException('Account not linked to an organisation');
+    return this.service.draftFromSetUp(user.organizationId, user.id, dto.setUp as any);
   }
 
   @Public()
