@@ -524,6 +524,89 @@ export function TheCountiesSection({ data }: { data: BoardPresent['theCounties']
 }
 
 /**
+ * THE LAW FIRM MATTER BOARD'S OWN "WHERE THE MATTER STANDS" (matter.txt). Drawn straight after the
+ * glance in BoardPage.tsx, only for this kind, only when the engine sends it - a short list of
+ * plain sentences, each drawn exactly as sent.
+ */
+export function WhereTheMatterStandsSection({ data }: { data: BoardPresent['whereTheMatterStands'] }) {
+  if (!data) return null
+  return (
+    <Section heading={data.heading}>
+      <Stack gap={6}>
+        {data.says.map((line, i) => (
+          <p key={i} className="gwui-panel-text">{line}</p>
+        ))}
+      </Stack>
+    </Section>
+  )
+}
+
+/**
+ * THE LAW FIRM MATTER BOARD'S OWN "WHAT YOU NEED TO DECIDE" (matter.txt). Each item is a question
+ * still open, with why it matters and who owns settling it - drawn here as its own section, in
+ * matter.txt's own place, rather than folded into "What needs you in this check-in" below. See
+ * BoardPage.tsx, where a decision already read here is kept out of "What needs you" for this kind,
+ * so nobody reads the same question twice.
+ */
+export function WhatYouNeedToDecideSection({ data }: { data: BoardPresent['whatYouNeedToDecide'] }) {
+  if (!data) return null
+  if (data.state === 'none-yet') {
+    return (
+      <Section heading={data.heading}>
+        <Note tone="muted">{data.says}</Note>
+      </Section>
+    )
+  }
+  return (
+    <Section heading={data.heading}>
+      <Panel pad={false}>
+        {(data.items ?? []).map((item, i) => (
+          <div key={i} className="gwui-panel-row">
+            <Stack gap={4}>
+              <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{item.question}</p>
+              <Note tone="muted">{item.why}</Note>
+              <Note tone="muted">{item.owner}</Note>
+            </Stack>
+          </div>
+        ))}
+      </Panel>
+    </Section>
+  )
+}
+
+/**
+ * THE LAW FIRM MATTER BOARD'S OWN "WHAT CHANGED THIS WEEK, AND WHAT IT CHANGED" (matter.txt). Each
+ * line is one thing said in the newest session, with `markSays` saying how it is known ("Only
+ * someone's word", "From memory only", ...), then `cannotTell` - when sent - says plainly that
+ * nothing here links a change to what it changed.
+ */
+export function WhatChangedThisWeekSection({ data }: { data: BoardPresent['whatChangedThisWeek'] }) {
+  if (!data) return null
+  if (data.state === 'none-yet') {
+    return (
+      <Section heading={data.heading}>
+        <Note tone="muted">{data.says}</Note>
+      </Section>
+    )
+  }
+  return (
+    <Section heading={data.heading} note={data.says}>
+      <Panel pad={false}>
+        {(data.lines ?? []).map((line) => (
+          <div key={line.id} className="gwui-panel-row">
+            <Stack gap={4}>
+              <p className="gwui-panel-text">{line.text}</p>
+              <Note tone="muted">{line.markSays}</Note>
+            </Stack>
+          </div>
+        ))}
+      </Panel>
+      {data.cannotTell && <Note tone="muted">{data.cannotTell}</Note>}
+    </Section>
+  )
+}
+
+/**
  * REQUEST 133: AN ASSET LOANS COHORT'S OWN "WHERE THE COHORT STANDS" (loans.txt: "40 traders",
  * then one tile per group - "Repaying and trading", "Behind, but trading", "Genuinely blocked",
  * "Not heard from" - each with a count, a sentence, and, for whoever runs the check-in, who is in

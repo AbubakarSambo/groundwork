@@ -564,6 +564,47 @@ export type BoardPresent = {
   }
 
   /**
+   * THE LAW FIRM MATTER BOARD'S OWN "WHERE THE MATTER STANDS" (matter.txt). Drawn straight after
+   * the glance, only for this kind, only when the engine sends it. `says` is one plain sentence
+   * per line, drawn exactly as sent - never built up here from other fields.
+   */
+  whereTheMatterStands?: {
+    heading: string
+    says: string[]
+  }
+
+  /**
+   * THE LAW FIRM MATTER BOARD'S OWN "WHAT YOU NEED TO DECIDE" (matter.txt). Each item is a question
+   * still open, why it matters, and who owns settling it - the same shape as a `decisions` row, but
+   * kept as its own section, in matter.txt's own place, rather than folded into "What needs you in
+   * this check-in" (see `decisionDuplicatesALeadAction`-style de-duplication in BoardPage.tsx, which
+   * keeps this kind's own "What needs you" from repeating a question already read here).
+   */
+  whatYouNeedToDecide?: {
+    heading: string
+    state: 'filled' | 'none-yet'
+    items?: { question: string; why: string; owner: string }[]
+    /** Only on `'none-yet'`: "Nothing is waiting on a decision right now." */
+    says?: string
+  }
+
+  /**
+   * THE LAW FIRM MATTER BOARD'S OWN "WHAT CHANGED THIS WEEK, AND WHAT IT CHANGED" (matter.txt).
+   * Each line is one thing said in the newest session, with `markSays` saying how it is known
+   * ("Only someone's word", "From memory only", ...) - the same marks `whoOwnsWhat` already carries
+   * for this kind - then `cannotTell` says plainly that nothing here links a change to what it
+   * changed.
+   */
+  whatChangedThisWeek?: {
+    heading: string
+    state: 'filled' | 'none-yet'
+    sessionNumber?: number
+    says?: string
+    lines?: { id: string; participantId: string | null; text: string; mark: string; markSays: string }[]
+    cannotTell?: string
+  }
+
+  /**
    * REQUEST 108 (a): THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (board-as-lead.txt: "Will
    * we reach 25 sales by 30 September?"). Built only from the check-in's own team aims. Absent
    * where nothing qualifies - nothing is made up. Draw `question` above everything else, `answer`
