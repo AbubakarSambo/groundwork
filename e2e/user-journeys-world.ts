@@ -26,10 +26,10 @@ export function newWorld(): World {
   const w: World = {
     stamp,
     organisation: `Kito Foods ${stamp}`,
-    grace: `grace.achieng.${stamp}@kito.test`,
-    wairimu: `wairimu.njoroge.${stamp}@kito.test`,
-    amani: `amani.wekesa.${stamp}@kito.test`,
-    baraka: `baraka.mutua.${stamp}@kito.test`,
+    grace: `grace.achieng@${stamp}.kito.test`,
+    wairimu: `wairimu.njoroge@${stamp}.kito.test`,
+    amani: `amani.wekesa@${stamp}.kito.test`,
+    baraka: `baraka.mutua@${stamp}.kito.test`,
     checkIn: 'Sales team, last quarter',
   };
   fs.writeFileSync(FILE, JSON.stringify(w));
