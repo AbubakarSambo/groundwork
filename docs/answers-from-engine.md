@@ -4452,3 +4452,19 @@ Everyone who has been let in is unchanged.
 **What changed for a reader.** The wall that keeps one person's circumstances from another already held on the latest report. On earlier sessions' reports and on the rounds it found a person only by name, so a cohort colleague still read other people's circumstances written by role ("Outbound Hire: 'I made forty calls this week and got four conversations.'", "One hire (inbound) is closing deals, has proactively shared a demo script...") or as a borrower's own words with no name on them ("I took a loan for battery cages to raise layers in Kaduna..."). A participant there now keeps a sentence only if it is about them, is plainly about several people ("Most people want a later due date.", "3 of 3 people have given an account."), or is the lead's aim or the shared purpose. A sentence about one hire by role, a quote with a role in front of it, and a first-person quote that is not theirs are left out. The session report's written picture, what each settled line and each open question rests on, and the settled list now go through the same wall, on every session and on the rounds. The lead and an admin who runs the check-in read everything whole. Where people can see each other nothing changes.
 
 **Tests.** `a-colleague-by-role-is-still-a-colleague.spec.ts`, which reads session 1's report and the rounds through the real service as Kwame, and the same report as the lead.
+
+## Request 149 (1 of 6): the lead's reveal is served on `/entry/report`
+
+**Done.** `EntryReport.leadsReveal`, only when the situation is `HELP_TEAM_UNDERSTAND` and `release.anchorScenario` is on. With the switch off, or for any other situation, the key is not there at all. Built with no model call, from the lead's own turns and the people she named (`entry/the-anchor-reveal.ts`).
+
+**What the lead reads now.**
+- Title "Help my team understand", subtitle "One-month Groundwork", and the eight fixed "How I'll work with your team" lines, as in section 12.
+- Who you're trying to move: "You are trying to move Amani Wekesa and Juma Otieno with you." (more than six: the first six and "2 other people"). With nobody named: "Groundwork has not yet heard who you are trying to move with you."
+- What meaningful change would look like: her own answer to the hope question, cut into the separate things she said, each as she wrote it. With no answer yet: "Groundwork has not yet heard what you would notice people doing without you having to ask."
+- What Groundwork will explore: "Groundwork will start by learning how each person currently sees their work and the wider outcome, and then set what they say beside what you have said."
+
+**What stays empty, and what will fill it.** "What you're carrying", "What you need the team to understand" and "What you're seeing today" read "Groundwork has not yet written down what you are carrying." (and the same for the other two). They need the seven things pulled out of the lead's words, which is a model step (answer 2 below), not built. `sharedWithTheTeam` is always false because nothing records that she has shared anything yet. For any reader who is not the lead, `carrying` and `seeingToday` are `null`, and `whatTheTeamNeedsToUnderstand` is `null` until shared (decision 96, item 8).
+
+**One fix beside it.** `EntryReportSummaryDto` did not declare `leadsReveal`, so saving the report the lead read would have been refused as an unknown field. It is declared now. This also fixes `the-report-you-read-is-kept.spec.ts`, which was already failing because the client's `EntryReport` had the key.
+
+**Tests.** `entry/the-anchor-reveal.spec.ts`: the served text through the real `EntryService.report` for the lead with the switch on and off and for another situation, and the builder as the lead and as the team (a participant or an admin).

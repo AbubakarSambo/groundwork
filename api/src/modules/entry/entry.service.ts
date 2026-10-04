@@ -70,6 +70,8 @@ import { theAnchorGuidance, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-an
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { TheAnchorDoor } from './the-anchor-door';
+import { theLeadsReveal } from './the-anchor-reveal';
+import type { TheLeadsReveal } from './the-anchor-served-shapes';
 import { draftFromASetUp, type ASetUpToStartFrom } from './a-set-up-can-start-from-a-recommendation';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
@@ -433,6 +435,8 @@ export interface EntryReport {
   /** W3. Named and shown, deliberately without a button. See splitMentions. */
   alsoCameUp?: { name: string; context: string }[];
   alsoCameUpNote?: string | null;
+  /** The anchor scenario's reveal, "Help my team understand". Present only for the anchor conversation with the switch on. See the-anchor-reveal. */
+  leadsReveal?: TheLeadsReveal | null;
 }
 
 const SCENARIO_OPENERS: Record<string, string> = {
@@ -1763,11 +1767,20 @@ from finishing at all.`;
       alsoCameUp: split.alsoCameUp,
       alsoCameUpNote: split.note,
     });
-    return {
+    const served = {
       ...restored,
       mentionedPeople: namesWithoutPossessives(restored.mentionedPeople ?? []),
       alsoCameUp: namesWithoutPossessives(restored.alsoCameUp ?? []),
     };
+    /*
+     * THE LEAD'S REVEAL, for the anchor conversation only and only while the switch is on (request 149).
+     * Built from her own turns and the people she named, with no model call; with the switch off, or for
+     * any other situation, the report is exactly what it was, with no such key at all.
+     */
+    if (scenario === ANCHOR_ENTRY_SCENARIO && (await theAnchorScenarioIsOn(this.prisma))) {
+      return { ...served, leadsReveal: theLeadsReveal({ messages: messages as any, peopleNamed: [...alreadyNamed, ...served.mentionedPeople.map((m: any) => m.name)], reader: 'lead' }) } as EntryReport;
+    }
+    return served;
   }
 
   /**
