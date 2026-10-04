@@ -249,7 +249,15 @@ const dueSentence = (due: string | null) => (due ? `Due on ${whenItWas(due, 'day
 const NONE_YET_HOLDS_SAYS: Record<string, string> = {
   'releases and tasks': 'releases or tasks',
 }
-const noneYetHoldsSentence = (holds: string) => NONE_YET_HOLDS_SAYS[holds] ?? holds
+/*
+ * LAW FIRM MATTER BOARD, FIX 4: "NONE OF THE THE PARTIES SO FAR IS YOURS." The engine's own
+ * `holds` for the parties section is sent as "the parties" (api/src/modules/board/
+ * the-kind-of-work.ts), which reads right as a heading ("The parties") but doubles the article
+ * once it sits inside "None of the {holds} so far is yours." or "No {holds} have come up yet." A
+ * leading "the " is stripped here, at render time, rather than in the engine's own field - no
+ * other kind's `holds` starts with "the ", so every other sentence is unchanged.
+ */
+const noneYetHoldsSentence = (holds: string) => (NONE_YET_HOLDS_SAYS[holds] ?? holds).replace(/^the\s+/i, '')
 
 /**
  * THE KIND OF WORK, NEAR THE TOP OF THE BOARD (item 4). One plain sentence, said once. The lead, or
