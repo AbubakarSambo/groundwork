@@ -1,6 +1,6 @@
 import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
-import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
+import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation, theCheckInsHeldForASeat } from '../participants/held-for-a-seat';
 import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theRoomForThisReader } from '../board/the-room-for-this-reader';
 import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
@@ -1424,7 +1424,10 @@ export class GroundsService {
       if (!(g.participants ?? []).some(isNotLetInYet)) continue;
       notLetInOnTheList.set(g.id, await whoIsNotLetInYet(this.prisma, g.participants ?? [], g.organizationId).catch(() => new Map()));
     }
+    /* NOBODY HELD FOR A SEAT READS ANYTHING OF THE CHECK-IN, AND THIS LIST FEEDS TODAY AND YOU (second review, new leak A; row 5). */
+    const heldForASeat = await theCheckInsHeldForASeat(this.prisma as any, [...orgGrounds, ...participantGrounds].map((g: any) => g.id), userId);
     return [...orgGrounds, ...participantGrounds]
+      .filter((g: any) => !heldForASeat.has(g.id))
       .map(g => {
         // Only set when the ground belongs to a different organisation than the one
         // the caller is currently in - the card uses its presence as the signal.

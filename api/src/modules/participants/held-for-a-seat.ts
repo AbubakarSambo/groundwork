@@ -43,3 +43,24 @@ export async function refuseSomeoneAwaitingTheOrganisation(
     .catch(() => ({ awaitingOrgApproval: true }));
   if (me?.awaitingOrgApproval === true) throw new ForbiddenException(sentence);
 }
+
+/**
+ * WHICH OF THESE CHECK-INS THE READER IS HELD FOR A SEAT ON (privacy row 5, kept by decision 93; second review, new leak A).
+ *
+ * The lists that read many check-ins at once (the check-in list, Today and You) cannot refuse one by one, so they ask this once and
+ * leave those check-ins out whole: nothing of them, no goal, no report sentence, no card. The same fact as `refuseSomeoneHeldForASeat`
+ * reads, from the same row. A reader with no user id, or no way to look it up, holds nothing back (as above); a lookup that fails
+ * holds every one of them back, the more private answer.
+ */
+export async function theCheckInsHeldForASeat(
+  prisma: { groundParticipant?: { findMany?: (args: any) => unknown } } | null | undefined,
+  groundIds: string[],
+  userId: string | null | undefined,
+): Promise<Set<string>> {
+  const find = prisma?.groundParticipant?.findMany;
+  if (!find || !userId || !groundIds.length) return new Set();
+  const rows: any[] = await Promise.resolve(find.call(prisma!.groundParticipant, { where: { userId, awaitingSeat: true, groundId: { in: groundIds } }, select: { groundId: true, awaitingSeat: true } }))
+    .then((r) => (Array.isArray(r) ? r : []))
+    .catch(() => groundIds.map((groundId) => ({ groundId, awaitingSeat: true })));
+  return new Set(rows.filter((r) => r?.awaitingSeat !== false && groundIds.includes(r?.groundId)).map((r) => r.groundId));
+}

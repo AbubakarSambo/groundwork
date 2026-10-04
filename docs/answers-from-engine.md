@@ -4483,3 +4483,28 @@ Everyone who has been let in is unchanged.
 **Not done, said plainly.** The server still holds 200 people per check-in (`how-many-people-one-check-in-holds.ts`). The 19-person limit for an anchor check-in is not enforced on commit yet; the screen enforces it. I did not change the commit in this step.
 
 **Test changed.** `the-anchor-door.spec.ts` compared the whole start answer with `toEqual`; it now includes `thePeopleStep`, because the answer has one more key. Tests: `entry/the-anchor-people-step.spec.ts`.
+
+## Request 149 (3 of 6): the anchor's invitation is served on the invitation preview
+
+**Done.** `InvitePreview.anchorInvitation`, on `GET /participants/preview`, only for a check-in with `started_from` "anchor" and only while `release.anchorScenario` is on. Otherwise the key is not there and the answer is exactly what it was. Code: `participants/participants.service.ts` (one block), words in `entry/the-anchor-people-step.ts`. The invitation email's own wording is not changed by this step.
+
+**What the invited person reads now** (for a lead called Hafsah; the first name is the lead's, never a title):
+- Heading: "Hafsah is trying a different way to help the team get on the same page."
+- "For the next month, Groundwork will check in with each person one to one about the work you’re doing, what you’re seeing, what’s getting in the way and how it connects to the bigger picture."
+- Fourth sentence, one of two. Today it is always: "Hafsah wants to hear your side." Once something records that the lead has shared what she is trying to get across, it is: "Hafsah has shared what they are trying to get across. Groundwork now wants to understand your side too." (`leadHasSharedWhatTheyAreSeeing` is false until then.)
+- "There aren’t right answers. The point is to help the team understand one another better and make the work move."
+- Button: "Start your first check-in"
+
+**What it never holds.** Nothing from the lead's private description of the person (`roleAsDescribed`, `remitAsGiven`), and never the word "privately" (decision 96, item 1). The page keeps the prototype's sentence about who can see what.
+
+**Tests.** `participants/the-anchor-invitation.spec.ts`: the text for an invited person and for an admin invited as a participant, the shared and not shared sentences, and the switch off and not-an-anchor cases. The whole participants folder passes.
+
+### 12. Someone held for a seat reads nothing of the check-in on Today, on You or on the list (privacy row 5, kept by decision 93; second review, new leak A)
+
+**What changed for a reader.** Today checked only whether a person was waiting for the organisation's approval, so a person held for a seat on "Sahar handing finance to Amina" still read the card "The report for Sahar handing finance to Amina is ready", the sentence "All three people agree that the finance role is being handed over from Sahar Bello to you, who is new to the work." and a "Read it" link that the report then refused. You listed the same check-in with its goals. The check-in list, Today and You now leave out, whole, every check-in the reader is held for a seat on. They read no card, no report sentence and no goal from it. They read the one sentence the invitation page gives, if they open the link:
+
+> This check-in cannot start for you yet, because there is no seat for you on the plan. You will get your invitation as soon as there is one.
+
+A person who has a seat reads Today and You as before.
+
+**Tests.** `nobody-held-for-a-seat-reads-the-check-in-on-today-or-you.spec.ts`, which reads the list, Today and You through the real services, as the person held and as a person with a seat.
