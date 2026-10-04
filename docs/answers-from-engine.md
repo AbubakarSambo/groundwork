@@ -4142,3 +4142,7 @@ Missing, and why:
 - **"Updated this morning"** is not sent as a field.
 
 For a participant (Otieno), none of `whatTheSystemsShow`, `whereWhatWasSaidAndTheSystemsDiffer` or `whereThisIsHeading` is sent. The engine sends the numbers only to whoever runs the check-in, as the prototype's example is the lead's. His board holds his own deal grid ("Only yours.") and the shared parts.
+
+## 4 October: the reading of the kind of work can no longer undo a lead's choice
+
+Nothing new is served and no field changed. A fault found while making the MarketView Q4 test check-in: the reading of the kind of work at setup checks, before it asks the model, that the lead has not chosen a kind, and then writes its answer after the model replies. If the lead (or a script) chose a kind in those few seconds, the reading wrote over it and cleared or replaced it. The write now says in one statement "only if nobody else has chosen" (`kindOfWorkSetBy` empty or `read`), and the reading leaves alone any kind marked by anyone other than itself. Files: `api/src/modules/grounds/grounds.service.ts` (`readTheKindOfWork`). Test: `the-kind-of-work-is-read-at-setup.spec.ts`. The mocks in that spec, `request-106-the-kind-of-work-can-be-cleared.spec.ts` and `hidden-at-release.spec.ts` gained an `updateMany`, because the write is now one conditional statement.

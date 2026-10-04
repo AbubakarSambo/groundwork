@@ -39,6 +39,7 @@ function grounds(ground: Record<string, any>, answer: any) {
     ...settings({}),
     ground: {
       findUnique: jest.fn(async () => ground),
+      updateMany: jest.fn(async (a: any) => { const by = ground.kindOfWorkSetBy ?? null; if (by !== null && by !== 'read') return { count: 0 }; updates.push(a.data); Object.assign(ground, a.data); return { count: 1 }; }),
       update: jest.fn(async (a: any) => { updates.push(a.data); Object.assign(ground, a.data); return { id: 'g1', ...ground }; }),
     },
     user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },

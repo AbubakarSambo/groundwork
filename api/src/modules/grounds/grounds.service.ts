@@ -398,6 +398,11 @@ export function alignmentRead(report: { agreements?: unknown; divergences?: unkn
   return { agreed, open };
 }
 
+/** The reading may only replace its own earlier answer or an empty one; anything else was chosen by a person or a script. */
+function theReadingMustLeaveIt(setBy: string | null | undefined): boolean {
+  return !!setBy && setBy !== 'read';
+}
+
 @Injectable()
 export class GroundsService {
   private readonly logger = new Logger(GroundsService.name);
@@ -5165,7 +5170,7 @@ export class GroundsService {
         where: { id: groundId },
         select: { label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true, kindOfWork: true },
       });
-      if (!g || g.kindOfWorkSetBy === 'lead') return;
+      if (!g || theReadingMustLeaveIt(g.kindOfWorkSetBy)) return;
       /* A check-in that already has a kind keeps it, offered or not (docs/deploy.md, "Hidden at release"). */
       const hasOne = oneOfTheKinds(g.kindOfWork);
       const words = theSetupWords(g);
@@ -5179,8 +5184,11 @@ export class GroundsService {
       /* A kind not offered at release is never given to a check-in by the read; one it already holds stays. */
       const kind = read && (await aKindMayBeGiven(this.prisma, read, hasOne)) ? read : null;
       if (read && !kind && hasOne) return;
-      await this.prisma.ground.update({
-        where: { id: groundId },
+      /* The model call above can take seconds, and the lead (or a script) may choose a kind meanwhile.
+         So the write itself says "only if nobody else has chosen", in one statement, never a check
+         made before the call. A choice made in the meantime is left exactly as it is. */
+      await this.prisma.ground.updateMany({
+        where: { id: groundId, OR: [{ kindOfWorkSetBy: null }, { kindOfWorkSetBy: 'read' }] },
         data: { kindOfWork: kind, kindOfWorkSetBy: kind ? 'read' : null },
       });
     } catch (err: any) {

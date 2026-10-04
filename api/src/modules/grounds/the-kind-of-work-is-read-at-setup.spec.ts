@@ -13,6 +13,7 @@ function build(ground: Record<string, any>, answer: any) {
   const prisma: any = {
     ground: {
       findUnique: jest.fn(async () => ground),
+      updateMany: jest.fn(async (a: any) => { const by = ground.kindOfWorkSetBy ?? null; if (by !== null && by !== 'read') return { count: 0 }; updates.push(a.data); Object.assign(ground, a.data); return { count: 1 }; }),
       update: jest.fn(async (a: any) => { updates.push(a.data); Object.assign(ground, a.data); return { id: 'g1', ...ground }; }),
     },
     user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
@@ -50,6 +51,25 @@ describe('the kind of work, read at setup (request 76)', () => {
 
   it('never reads over a kind the lead chose', async () => {
     const g: any = { label: 'Kasarani Foods v Pwani Mills', brief: 'A supply contract case.', kindOfWork: 'a law firm matter', kindOfWorkSetBy: 'lead' };
+    const { svc, updates, anthropic } = build(g, { kind: 'sales org' });
+    await svc.readTheKindOfWork('g1');
+    expect(anthropic.extract).not.toHaveBeenCalled();
+    expect(updates).toEqual([]);
+  });
+
+  it('never overwrites a kind the lead chose while the reading was still being worked out', async () => {
+    const g: any = { label: 'Freezer sales, Q3', brief: 'Our reps sell freezers.', kindOfWork: null, kindOfWorkSetBy: null };
+    const { svc, updates, anthropic } = build(g, { kind: 'sales org' });
+    /* The lead (or a script) chooses a kind after the reading began and before it finished. */
+    anthropic.extract.mockImplementation(async () => { g.kindOfWork = 'a law firm matter'; g.kindOfWorkSetBy = 'lead'; return { kind: 'sales org' }; });
+    await svc.readTheKindOfWork('g1');
+    expect(g.kindOfWork).toBe('a law firm matter');
+    expect(g.kindOfWorkSetBy).toBe('lead');
+    expect(updates).toEqual([]);
+  });
+
+  it('leaves a kind a script chose, whatever mark it left', async () => {
+    const g: any = { label: 'Q4 launch', brief: 'Launching in Q4.', kindOfWork: 'engineering release', kindOfWorkSetBy: 'script' };
     const { svc, updates, anthropic } = build(g, { kind: 'sales org' });
     await svc.readTheKindOfWork('g1');
     expect(anthropic.extract).not.toHaveBeenCalled();
