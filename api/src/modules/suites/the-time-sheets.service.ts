@@ -92,9 +92,10 @@ type Entry = { userId: string; client: string; onDay: Date; minutes: number };
  * WHO READS WHAT, decided here and never on the screen:
  *   - nobody, while the suite is off;
  *   - an admin reads everybody's hours, week by week, and the hours against what each client agreed;
- *   - a lead reads only their own team's hours (a-leads-team.ts), which is what they need to approve;
+ *   - a lead reads only their own team's hours (a-leads-team.ts), which is what they need to approve, and,
+ *     since decision 93 (row 21), the hours against what each client agreed, which are the company's, not a person's;
  *   - whoever the rules name to approve somebody's hours (who-may-decide.ts) also reads that person's
- *     hours: a lead from another team, or a member, who opens the board as an "approver" and reads
+ *     hours: a member who opens the board as an "approver" and reads
  *     nobody else's hours and no client's agreement;
  *   - each person reads only their own hours (`mine`);
  *   - a colleague and a guest are refused the board.
@@ -194,7 +195,7 @@ export class TimeSheetsService {
 
     return {
       reader: role === 'ADMIN' ? 'admin' : role === 'LEAD' ? 'lead' : 'approver',
-      thisWeek: dayOf(thisWeek), weeks, agreements: role === 'ADMIN' ? await this.agreements(reader.organizationId, today) : null,
+      thisWeek: dayOf(thisWeek), weeks, agreements: role === 'ADMIN' || role === 'LEAD' ? await this.agreements(reader.organizationId, today) : null,
     };
   }
 

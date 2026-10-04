@@ -14,7 +14,7 @@ import { TimeSheetsService, TIME_REFUSED, mondayOf } from './the-time-sheets.ser
  * The rules under test, each read from what the server actually hands each reader:
  *   - nobody reads anything while the suite is off;
  *   - an admin reads everybody's hours, and the hours against what each client agreed;
- *   - a lead reads only their own team's hours, and never the agreements;
+ *   - a lead reads only their own team's hours, and (decision 93, row 21) what each client agreed;
  *   - the approver approves a week, with the total they saw; hours added later make it wait again;
  *   - each person reads only their own hours; a colleague and a guest are refused the board;
  *   - hours never reach a check-in, its record or its report, and nothing rates how much anyone works.
@@ -140,12 +140,20 @@ describe('Grace, an admin', () => {
 });
 
 describe('Wairimu, the Sales lead', () => {
-  it('reads only her team’s hours, and not what the clients agreed', async () => {
+  /* Changed by decision 93, row 21. This pinned "and not what the clients agreed", the restriction Hafsah removed. Her team's hours only is kept. */
+  it('reads only her team’s hours, and what each client agreed', async () => {
     const { svc, as } = setup();
     const b = await svc.board(as('u-wairimu'), TODAY);
     expect(thisWeek(b).people.map((p: any) => p.name)).toEqual(['Aisha Otieno', 'Brian Mwangi']);
-    expect(b.agreements).toBeNull();
-    expect(JSON.stringify(b)).not.toMatch(/Otieno Ouma|installing/);
+    expect(b.agreements).toEqual([
+      { client: 'Naivas', work: 'installing 12 freezers', hours: 40, span: 'whole', usedMinutes: (8 + 6 + 9 + 4 + 30) * 60 },
+    ]);
+    expect(JSON.stringify(b)).not.toMatch(/Otieno Ouma/);
+  });
+
+  it('cannot say what a client agreed: only an admin does', async () => {
+    const { svc, as } = setup();
+    await expect(svc.setAgreements(as('u-wairimu'), [{ client: 'Naivas', work: 'x', hours: 5, span: 'whole' }], TODAY)).rejects.toThrow(ForbiddenException);
   });
 
   it('approves the weeks of the people she manages, with the total she saw; new hours make it wait again', async () => {
