@@ -84,6 +84,18 @@ export function saidWithoutTheirWords(who: string, type?: string | null): string
   }
 }
 
+/**
+ * A LINE IS AN INTENTION ONLY IF IT SAYS SOMETHING IS INTENDED (requests 127 item 4 and 129 item 5). "I close refunds when I send the
+ * instruction", "Zainab Suleiman, partnerships." and "I believed Zainab was driving this forward." were typed INTENT, so the screen
+ * said "This is something Aisha Wanjiku intends to do." of what she does now, of a name and of what she once believed. A line typed
+ * INTENT that holds no word of intending is sent with no type, and the screen says nothing about its kind. The words are not changed.
+ */
+const SAYS_SOMETHING_IS_INTENDED = /\b(?:will|won['\u2019]t|going to|plan(?:s|ning|ned)?(?: to)?|want(?:s|ed)? to|aim(?:s|ing)?(?: to| for)?|hope(?:s|d)? to|intend(?:s|ed)?|would like|would|need(?:s)? to|should|shall|trying to|looking to|expect(?:s)? to|next|by (?:friday|monday|tuesday|wednesday|thursday|saturday|sunday|tomorrow|the end))\b|['\u2019]ll\b/i;
+export function theKindThatFits(text: string | null | undefined, type: string | null | undefined): string | null | undefined {
+  if (type !== 'INTENT') return type;
+  return SAYS_SOMETHING_IS_INTENDED.test(String(text ?? '')) ? type : null;
+}
+
 export function eachLineInTheirName<T extends AWhoOwnsWhatRow>(
   rows: readonly T[] | null | undefined,
   readerParticipantId: string | null,
@@ -99,7 +111,8 @@ export function eachLineInTheirName<T extends AWhoOwnsWhatRow>(
     return {
       ...row,
       items: row.items.map((item: any) => {
-        const { saidAs, ...rest } = item ?? {};
+        const { saidAs, ...fromItem } = item ?? {};
+        const rest = item && 'type' in fromItem ? { ...fromItem, type: theKindThatFits(fromItem.text, fromItem.type) } : fromItem;
         const text = typeof rest?.text === 'string' ? rest.text.trim() : '';
         /* Already said as theirs (this ran once before on it): left as it is. */
         const alreadyTheirs = saidAs === undefined && (text.startsWith(`${who} said`) || text.startsWith(`${who} has `) || text.startsWith(`${who} have `));
