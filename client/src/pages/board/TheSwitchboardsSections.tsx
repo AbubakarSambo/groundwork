@@ -513,6 +513,86 @@ export function WhatTheVisitLogShowsSection({ data }: { data: BoardPresent['what
   )
 }
 
+/**
+ * THE MARKETVIEW Q4 BOARD'S OWN "WHAT THE SYSTEMS SHOW" (mvq4.txt), right after "What needs you",
+ * before patterns. One row a number, drawn exactly as the engine's own sentence, never read apart
+ * for a target or a goal of its own - the engine does not send those as separate fields (see
+ * docs/answers-from-engine.md, "A MarketView Q4 test check-in"). Where a key repeats (weekly
+ * active users is sent twice, a week apart), only the latest figure's sentence is a full row; the
+ * earlier figure for the same key is shown as "Up from <earlier value>." underneath it, built only
+ * from the two numbers' own values - nothing parsed out of either sentence.
+ */
+export function WhatTheSystemsShowSection({ data }: { data: BoardPresent['whatTheSystemsShow'] }) {
+  if (!data) return null
+  if (data.state === 'not-known') {
+    return (
+      <Section heading={data.heading}>
+        <Note tone="muted">{data.why}</Note>
+      </Section>
+    )
+  }
+  const all = data.numbers ?? []
+  const latestByKey = new Map<string, (typeof all)[number]>()
+  for (const n of all) {
+    const current = latestByKey.get(n.key)
+    if (!current || n.measuredAt > current.measuredAt) latestByKey.set(n.key, n)
+  }
+  const rows = Array.from(latestByKey.values())
+  return (
+    <Section heading={data.heading}>
+      <Panel pad={false}>
+        {rows.map((n) => {
+          const earlier = all.find((o) => o.key === n.key && o.measuredAt < n.measuredAt)
+          return (
+            <div key={n.key} className="gwui-panel-row">
+              <Stack gap={2}>
+                <p className="gwui-panel-text">{n.says}</p>
+                {earlier && <Note tone="muted">{`Up from ${earlier.value.toLocaleString('en-GB')}.`}</Note>}
+              </Stack>
+            </div>
+          )
+        })}
+      </Panel>
+      {(data.whatANumberIsNot ?? []).map((line, i) => (
+        <Note key={i} tone="muted">{line}</Note>
+      ))}
+    </Section>
+  )
+}
+
+/**
+ * THE MARKETVIEW Q4 BOARD'S OWN "WHERE WHAT PEOPLE SAID AND THE SYSTEMS DIFFER" (mvq4.txt), drawn
+ * straight after "What the systems show". `'none-yet'` reads as the engine's own plain sentence;
+ * `'filled'` reads each row's two sentences, one under the other, exactly as sent.
+ */
+export function WhereWhatWasSaidAndTheSystemsDifferSection({ data }: { data: BoardPresent['whereWhatWasSaidAndTheSystemsDiffer'] }) {
+  if (!data) return null
+  if (data.state === 'none-yet') {
+    return (
+      <Section heading={data.heading}>
+        <Note tone="muted">{data.says}</Note>
+      </Section>
+    )
+  }
+  return (
+    <Section heading={data.heading}>
+      <Panel pad={false}>
+        {(data.rows ?? []).map((r) => (
+          <div key={r.id} className="gwui-panel-row">
+            <Stack gap={4}>
+              <p className="gwui-panel-text">{r.said}</p>
+              <Note tone="muted">{r.documentSays}</Note>
+            </Stack>
+          </div>
+        ))}
+      </Panel>
+      {(data.whatANumberIsNot ?? []).map((line, i) => (
+        <Note key={i} tone="muted">{line}</Note>
+      ))}
+    </Section>
+  )
+}
+
 export function TheCountiesSection({ data }: { data: BoardPresent['theCounties'] }) {
   if (!data) return null
   if (data.state === 'none-yet') {

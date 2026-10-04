@@ -694,6 +694,41 @@ export type BoardPresent = {
     decided: string | null
   } | null
 
+  /**
+   * THE MARKETVIEW Q4 BOARD'S OWN "WHAT THE SYSTEMS SHOW" (mvq4.txt). Numbers brought in from
+   * another system (Paystack, MarketView) for what this check-in is about. `numbers[].says` is
+   * the whole sentence for one number, drawn exactly as sent - never read apart for its own
+   * target or goal, which the engine does not send as separate fields (see
+   * docs/answers-from-engine.md, "A MarketView Q4 test check-in", "Missing, and why"). Sent only
+   * to whoever runs the check-in, the admin who set it up, or an admin of the organisation.
+   */
+  whatTheSystemsShow?: {
+    heading: string
+    state: 'filled' | 'not-known'
+    numbers?: { key: string; source: string; value: number; unit: string | null; measuredAt: string; says: string }[]
+    whatANumberIsNot?: string[]
+    /** Only on `'not-known'`: why nothing can be said yet. */
+    why?: string
+  }
+
+  /**
+   * THE MARKETVIEW Q4 BOARD'S OWN "WHERE WHAT PEOPLE SAID AND THE SYSTEMS DIFFER" (mvq4.txt).
+   * Each row pairs one thing somebody said with a document on this check-in that says it
+   * differently - the engine does not yet compare what people said with a number from another
+   * system, only with a document (see docs/answers-from-engine.md). `'none-yet'` when nothing on
+   * record differs. Sent only to whoever runs the check-in, the admin who set it up, or an admin
+   * of the organisation.
+   */
+  whereWhatWasSaidAndTheSystemsDiffer?: {
+    heading: string
+    state: 'filled' | 'none-yet'
+    rows?: { id: string; participantId: string | null; said: string; documentSays: string }[]
+    /** Only on `'filled'`: the three standing sentences that say what a number is not. */
+    whatANumberIsNot?: string[]
+    /** Only on `'none-yet'`: "Nothing anybody said differs from a document or a number on record yet." */
+    says?: string
+  }
+
   /** REQUEST 107 (c), part 3: grouped by site, county, team or queue, where a line names one. */
   byArea?:
     | { state: 'filled'; heading: string; areas: { area: string; records: number; says: string }[] }
