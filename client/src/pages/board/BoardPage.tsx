@@ -3927,11 +3927,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <div className="gwui-fs-15 gwui-ink-muted gwui-mt-8" style={{lineHeight: 1.45, fontStyle: 'italic'}}>
                       Not enough on record yet to say anything about this person's contribution. {c.basis}
                     </div>
-                  ) : !c.remitDefined ? (
+                  ) : !c.remitDefined && c.note ? (
+                    /*
+                      PHONE CHECK, ITEM 7: AN EMPTY BLUE BOX. "Nobody has said what X's role covers
+                      yet." already says the one true thing when there is no remit - this box is
+                      only for a note that goes further than that sentence. `!c.remitDefined` alone
+                      drew it even when `c.note` was empty, so a reader saw a blank navy-on-blue
+                      panel under the sentence that already told them there was nothing to show.
+                    */
                     <div className="gwui-fs-15 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: 1.45}}>
                       {c.note}
                     </div>
-                  ) : (
+                  ) : !c.remitDefined ? null : (
                     <>
                       {/*
                         HAFSAH'S DECISION, 2 OCTOBER: THE CHECKABILITY RATING STAYS. It rates the
