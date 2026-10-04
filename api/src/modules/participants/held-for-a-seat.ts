@@ -64,3 +64,11 @@ export async function theCheckInsHeldForASeat(
     .catch(() => groundIds.map((groundId) => ({ groundId, awaitingSeat: true })));
   return new Set(rows.filter((r) => r?.awaitingSeat !== false && groundIds.includes(r?.groundId)).map((r) => r.groundId));
 }
+
+/**
+ * THE SAME FACT, AS A FILTER, FOR EVERY SWEEP THAT WRITES TO PEOPLE (second review, new leak C; privacy row 5, kept by decision 93).
+ *
+ * Nobody held for a seat is sent a reminder, a nudge, a summary or an announcement about the check-in: it has not started for them,
+ * and what it says ("is overdue") is not true of somebody who has not been invited. Spread into the `participant` filter of a sweep.
+ */
+export const NOT_HELD_FOR_A_SEAT = { awaitingSeat: false } as const;

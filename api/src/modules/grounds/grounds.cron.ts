@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
+import { NOT_HELD_FOR_A_SEAT } from '../participants/held-for-a-seat';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
@@ -659,7 +660,7 @@ export class GroundsCron implements OnApplicationBootstrap {
         status: CheckInStatus.NOT_STARTED,
         sessionReadyNotifiedAt: null,
         availableFrom: { lte: now },
-        participant: { userId: { not: null }, ground: { status: { notIn: TERMINAL } } },
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: TERMINAL } } },
       },
       select: {
         id: true,
@@ -728,7 +729,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       where: {
         status: CheckInStatus.NOT_STARTED,
         OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
-        participant: { userId: { not: null }, ground: { status: { notIn: [...TERMINAL, ...HELD] } } },
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: [...TERMINAL, ...HELD] } } },
       },
       select: {
         id: true, groundId: true, sessionNumber: true, createdAt: true, availableFrom: true, participantId: true,
@@ -870,7 +871,7 @@ export class GroundsCron implements OnApplicationBootstrap {
       where: {
         status: CheckInStatus.NOT_STARTED,
         availableFrom: { gt: new Date(now.getTime() + 45 * 60_000), lte: new Date(now.getTime() + 60 * 60_000) },
-        participant: { userId: { not: null }, ground: { status: { notIn: [...TERMINAL, ...HELD] } } },
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: [...TERMINAL, ...HELD] } } },
       },
       select: {
         id: true, groundId: true, availableFrom: true, participantId: true,
@@ -921,7 +922,7 @@ export class GroundsCron implements OnApplicationBootstrap {
         status: CheckInStatus.NOT_STARTED,
         openedAnnouncedAt: null,
         OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
-        participant: { userId: { not: null }, ground: { status: { notIn: TERMINAL } } },
+        participant: { userId: { not: null }, ...NOT_HELD_FOR_A_SEAT, ground: { status: { notIn: TERMINAL } } },
       },
       select: {
         id: true,
@@ -1011,6 +1012,7 @@ export class GroundsCron implements OnApplicationBootstrap {
     const pendingReveal = await this.prisma.groundParticipant.findMany({
       where: {
         userId: { not: null },
+        ...NOT_HELD_FOR_A_SEAT,
         partyType: PartyType.PARTICIPANT,
         ground: { status: { notIn: TERMINAL }, report: { releasedAt: { not: null } } },
         OR: [{ lastNudgedAt: null }, { lastNudgedAt: { lt: throttleBefore } }],

@@ -4528,3 +4528,13 @@ A person in the check-in, its lead, and an admin who may read it read what they 
 **Where the numbers come from.** Active is the people who have answered the round that is open, counted exactly as "N of M have answered" counts them (nobody an admin has not let in, nobody away). Total is those same people, the lead included, never more than 20. Nudged is, of those who have not answered, the people whose last nudge (`last_nudged_at`) is since the round opened. It reads the record and writes nothing.
 
 **Tests.** `board/the-anchor-active-line.spec.ts`, through the real `BoardService.get`: the line as the lead and as an admin, no key for a participant, the partial and none cases, and switch off and not-an-anchor. I added two optional fields to the board test harness (`prismaExtras` and `groundRow`) so a spec can give the board a ground started from the anchor; no existing spec uses them.
+
+### 14. Nobody held for a seat is sent a reminder, a session-open message or a nudge (privacy row 5, kept by decision 93; second review, new leak C)
+
+**What changed for a reader.** The morning WhatsApp reminder, the "opens soon" message, the "your session is open" mail and message, the announcement that a round has opened and the reminder that a report is ready to open were sent to people who had not been given a seat yet, and their check-in then refused them. They are now left out of all five. Somebody held for a seat no longer reads, for example:
+
+> Hi there, your check-in for What are your three priorities this is overdue. It's still open, so you can answer here now.
+
+They are sent their invitation as soon as there is a seat for them, as before. People who have a seat read the same messages as before.
+
+**Tests.** `nobody-held-for-a-seat-is-reminded-on-whatsapp.spec.ts`, which runs the morning reminder over four people waiting, two of them held for a seat.
