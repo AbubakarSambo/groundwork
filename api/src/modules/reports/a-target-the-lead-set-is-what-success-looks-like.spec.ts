@@ -14,7 +14,9 @@ describe('the section "What everybody said good looks like", as the lead reads i
     expect(said).not.toMatch(/No standard is set|have not said what success looks like/);
   });
   it('the report reads the lead\'s team target as the standard, for the lead only', () => {
-    const src = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8');
+    const src = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/^\s*\/\/.*$/gm, ' ');
     expect(src).toMatch(/theTargetTheLeadSet = !\(baseline\?\.successLooksLike \?\? ''\)\.trim\(\) && isInitiator/);
     expect(src).toMatch(/stated: baseline\?\.successLooksLike \?\? theTargetTheLeadSet \?\? null/);
   });
