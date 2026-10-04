@@ -4436,3 +4436,13 @@ On the weekly report they read:
 Everyone who has been let in is unchanged.
 
 **Tests.** `nobody-waiting-for-the-organisation-reads-the-check-in.spec.ts`, which reads the board, the check-in page, the report and the weekly report through the real services as a person waiting and as a person let in.
+
+### 10. An admin who only reads sees the figures on the check-in page, as on the board (decision 86 item 3, decision 93)
+
+**Decided for Hafsah to confirm.** Hafsah was asked on 3 October whether admins, the chief executive included, see the figures on the check-in page as well as on the board and the weekly report, and had not answered. I followed decision 86 item 3 and the admin rows of decision 93, so tell me if you want the narrower reading back.
+
+**What changed for a reader.** On the check-in page (`GET /grounds/:id`) and on the list of check-ins, an admin with access to the check-in now reads the targets table, with every person's share, and the report sentences that carry a colleague's target number, for example "Kwame is aiming for seventeen approved facilities." Before, only the lead and the admin who set the check-in up read them, and an admin who only reads had those sentences taken out.
+
+**What did not change.** A colleague and the person themselves read only what they read before. An admin without access to a review, a first 90 days, a renewal or a promotion is still told "Check-in not found". A decision the lead has to make about a person (Aisha's confirmation, for example) stays the lead's alone, on the page as on the board. The session report is unchanged.
+
+**Tests.** Five existing test files pinned the narrower reading and now pin this one, because the reading was a choice, not one of Hafsah's decisions: `an-admin-who-runs-a-check-in-reads-its-goals-on-the-page`, `a-hidden-target-cannot-slip-through`, `a-target-in-the-leads-words-stays-hidden`, `one-rule-for-whose-share-is-shown`, `a-number-with-a-name-on-it-goes-through-one-rule`.

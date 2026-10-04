@@ -530,11 +530,13 @@ export class GroundsService {
     ground: { initiatorId?: string | null; whoSeesTargets?: string | null; participants?: any[]; objectives?: { ownerParticipantId: string | null; target: number | null }[] },
     requestingUserId: string | null | undefined,
     served: T,
+    /* An admin with access to the check-in reads the figures too (decisions 86 item 3 and 93). */
+    readsAsAnAdmin = false,
   ): T {
     const me = (ground.participants ?? []).find((p: any) => !!requestingUserId && p.userId === requestingUserId);
     /* Whoever set the targets reads everything: the lead, and the admin who set the check-in up for them (decisions 5 and 56; privacy sweep finding 4). */
     const hidden = targetsHiddenFrom(
-      { participantId: me?.id ?? null, isTheLead: !!requestingUserId && (ground.initiatorId === requestingUserId || (ground as any).createdByUserId === requestingUserId) },
+      { participantId: me?.id ?? null, isTheLead: readsAsAnAdmin || (!!requestingUserId && (ground.initiatorId === requestingUserId || (ground as any).createdByUserId === requestingUserId)) },
       ground.whoSeesTargets,
       ground.objectives ?? [],
       namesOnTheRoster(ground.participants ?? []),
@@ -1700,7 +1702,7 @@ export class GroundsService {
             const named = [lead.user?.firstName, lead.user?.lastName].filter(Boolean).join(' ').trim() || (lead.nameGiven ?? '').trim();
             return named || null;
           })(),
-        });
+        }, runsIt);
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }
@@ -2641,7 +2643,7 @@ export class GroundsService {
         ((ground as any).objectives ?? []) as any[],
         (ground.participants ?? []).find((p: any) => !!requestingUserId && p.userId === requestingUserId)?.id ?? null,
         ((ground as any).whoSeesTargets ?? 'THEIR_OWN') === 'EVERYBODY' ? 'everybody' : 'their own',
-        { isLead: viewerIsInitiator },
+        { isLead: viewerIsInitiator, seesEveryShare: viewerRunsThisGround },
       /* And none that is a goal the lead has not told its person about (decisions 48 and 56): the board already left it out, and this page said it in full. */
       ).shown.filter((o: any) => !objectivesNotToldHere.has(o.id)).map((o: any) => ({
         ...o,
@@ -2885,7 +2887,7 @@ export class GroundsService {
       guestIn: ground.organizationId !== organizationId
         ? ((ground as any).organization?.name ?? 'another organisation')
         : null,
-    }), [
+    }, viewerRunsThisGround), [
       ...goalsNotToldHere,
       /* And the objectives the engine wrote from them, in its own words (decisions 48 and 56). A goal past its week is said as the area sentence, so its stored words are not kept out again. */
       ...theWordsOfWhatTheLeadHasNotToldThemAbout(((ground as any).objectives ?? []) as any[], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], viewerRunsIt)

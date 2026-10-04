@@ -76,13 +76,14 @@ describe('the check-in page, where each person reads only their own numbers', ()
     expect((objective.all ?? []).find((o: any) => o.text === UNTOLD)?.notToldYet).toBe(true);
   });
 
-  it('the admin who set it up reads a goal that carries Tobi\'s number; an admin who only reads does not', async () => {
-    const setter = await pageFor(THE_ADMIN, 'ADMIN');
-    expect((tobisRow(setter).objective.all ?? []).map((o: any) => o.text)).toContain(TOLD_WITH_A_NUMBER);
-    const reader = await pageFor('u-admin-who-only-reads', 'ADMIN');
-    expect(JSON.stringify(reader)).not.toContain(TOLD_WITH_A_NUMBER);
-    /* and is not left a goal with no words in it */
-    expect((tobisRow(reader).objective.all ?? []).every((o: any) => (o.text ?? '').trim().length > 0)).toBe(true);
+  it('every admin with access reads a goal that carries Tobi\'s number, and the target table (decision 86 item 3, 93)', async () => {
+    for (const [who, label] of [[THE_ADMIN, 'the admin who set it up'], ['u-admin-who-only-reads', 'an admin who only reads']] as const) {
+      const page = await pageFor(who, 'ADMIN');
+      expect((tobisRow(page).objective.all ?? []).map((o: any) => o.text)).toContain(TOLD_WITH_A_NUMBER);
+      expect({ label, table: (page.objectives ?? []).map((o: any) => `${o.name} ${o.target}`) }).toEqual({ label, table: ['Eight proposals out 8'] });
+      /* and no goal is left with no words in it */
+      expect((tobisRow(page).objective.all ?? []).every((o: any) => (o.text ?? '').trim().length > 0)).toBe(true);
+    }
   });
 
   it('the lead reads the same', async () => {
@@ -95,6 +96,7 @@ describe('the check-in page, where each person reads only their own numbers', ()
     expect(JSON.stringify(colleague)).not.toContain(UNTOLD);
     expect(JSON.stringify(colleague)).not.toContain(TOLD);
     expect((colleague.objectives ?? []).map((o: any) => o.name)).not.toContain('Eight proposals out');
+    expect(JSON.stringify(colleague)).not.toContain(TOLD_WITH_A_NUMBER);
     const tobi = await pageFor(TOBI, 'MEMBER');
     expect(JSON.stringify(tobi)).not.toContain(UNTOLD);
   });

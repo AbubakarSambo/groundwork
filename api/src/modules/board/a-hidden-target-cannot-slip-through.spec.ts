@@ -245,8 +245,8 @@ for (const [target, inWords, leak] of [
 
       it('the board as served', async () => {
         const text = JSON.stringify(await boardAs(userId, role));
-        /* Decision 86: on the board, an admin sees the figures, Kwame's included. The report and the
-           check-in's own page are not changed by it (a question for Hafsah). A colleague still never does. */
+        /* Decision 86: on the board, an admin sees the figures, Kwame's included. The check-in's own page
+           follows it too (below). A colleague still never does. */
         if (mayRead || role === 'ADMIN') expect(text).toMatch(leak); else expect(text).not.toMatch(leak);
         expect(text).toMatch(/He is behind|Kwame Mensah met four customers/);
       });
@@ -254,14 +254,15 @@ for (const [target, inWords, leak] of [
       it('the check-in\'s own page', async () => {
         const text = JSON.stringify(await groundsFor(role).get('g-sales', 'org-1', userId));
         const words = text.replace(/"objectives":\[[^\]]*\]/g, '');
-        if (mayRead) expect(words).toMatch(leak); else expect(words).not.toMatch(leak);
+        /* Decision 86 item 3, and 93: an admin with access reads the figures here too, as on the board. A colleague still never does. */
+        if (mayRead || role === 'ADMIN') expect(words).toMatch(leak); else expect(words).not.toMatch(leak);
         expect(text).toMatch(/Kwame Mensah met four customers/);
       });
 
       it('the list of check-ins', async () => {
         const rows = (await groundsFor(role).list('org-1', userId, `${userId}@baridi.test`, role)) as any[];
         const text = JSON.stringify(rows);
-        if (!mayRead) expect(text).not.toMatch(leak);
+        if (!mayRead && role !== 'ADMIN') expect(text).not.toMatch(leak);
         if (userId === 'u-wairimu') expect(text).toMatch(leak);
       });
     });
