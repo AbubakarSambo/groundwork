@@ -331,6 +331,14 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-folded-note { font-size: 14.5px; color: var(--gw-sub); }
 .gwui-folded[open] .gwui-folded-summary { border-bottom: 1px solid var(--gw-border); }
 .gwui-folded-body { padding: 16px 22px 20px; }
+/*
+ * PHONE CHECK, ITEM 3: sections inside the fold ("Everything else from this check-in") sat flush
+ * against the card above - the page's own sections get 30px between them
+ * (`.gwui-page-wrap > * + *`, above), but a fold's body is a plain div with no such rule, so its
+ * own sections' headings touched the panel edge the fold itself draws above them. Same gap, every
+ * board, whichever sections a given check-in's fold happens to hold.
+ */
+.gwui-folded-body > * + * { margin-top: 30px; }
 
 /* ── SWITCH ROW (a heading and its sentence, sized so the heading reads bigger; a Toggle
    on the right - "Anyone with an @domain email", "Baridi's invite link", "Check-ins wait for an
