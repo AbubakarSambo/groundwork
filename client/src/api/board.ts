@@ -423,6 +423,12 @@ export type BoardPresent = {
    */
   kindsOffered?: KindOfWork[]
   /**
+   * ANCHOR PIECE 24/25: whether a new anchor check-in can be started (`release.anchorScenario`).
+   * Off at release, so nothing drawn from it shows. Serves no other change to this board's own
+   * sections - only "Groundwork recommends" (BoardPage.tsx) reads it, and only for the lead.
+   */
+  anchorScenarioOn?: boolean
+  /**
    * THE RECORDS THE KIND OF WORK KEEPS: deals and their stages, releases, tickets, a matter's
    * deadlines and parties, and so on - one section per name in the switchboard (`section`, e.g.
    * "Deal grid"). Each section says what it holds, in plain words, and whether it is filled, has

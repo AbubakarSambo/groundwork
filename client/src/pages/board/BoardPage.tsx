@@ -38,6 +38,7 @@ import { PatternPanel } from '@/components/gw/ui'
 import type { ServedPattern } from '@/api/patterns'
 import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
 import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
+import { recommendedCheckInsApi, type AnOfferTheLeadReads } from '@/api/recommendedCheckIns'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -979,6 +980,54 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     retry: false,
   })
 
+  /**
+   * "GROUNDWORK RECOMMENDS" (anchor piece 25; docs/anchor-scenario-plan.md section 5, row 9;
+   * docs/answers-from-engine.md, "5 October: anchor piece 24, recommended check-ins").
+   *
+   * Groundwork looks at this one check-in's own record and, where the work itself shows it, offers
+   * the lead one more check-in - never a label on a person, only what the record shows and a
+   * question. Drawn only for whoever runs this check-in, only while the anchor switch is on
+   * (`anchorScenarioOn`, read off the raw board answer rather than `b` - these hooks have to sit
+   * above every early return below, the same as `today`'s own query, or the number of hooks this
+   * component runs would differ between the loading render and the loaded one). The route itself
+   * answers an empty list with the switch off or for a check-in not started from the anchor, so
+   * there is nothing to gate here beyond that - `recommendedCheckInsApi.list` is itself refused for
+   * anybody who is not the lead.
+   */
+  const anchorRecommendationsOn = viewerRunsThisCheckIn && !!(data as any)?.anchorScenarioOn
+  const { data: recommended } = useQuery({
+    queryKey: ['recommended-check-ins', id],
+    queryFn: () => recommendedCheckInsApi.list(id!),
+    enabled: !!id && anchorRecommendationsOn,
+    retry: false,
+  })
+  const recommendedOffers: AnOfferTheLeadReads[] = anchorRecommendationsOn ? (recommended?.offers ?? []) : []
+
+  const answerRecommendation = useMutation({
+    mutationFn: (vars: { offerId: string; yes: boolean }): Promise<{ state: 'ACCEPTED' | 'DECLINED'; setUp?: unknown }> =>
+      vars.yes ? recommendedCheckInsApi.yes(id!, vars.offerId) : recommendedCheckInsApi.notNow(id!, vars.offerId),
+    onSuccess: (res, vars) => {
+      qc.invalidateQueries({ queryKey: ['recommended-check-ins', id] })
+      if (vars.yes && res.state === 'ACCEPTED' && (res as any).setUp) {
+        /*
+         * THE SET-UP SCREEN'S OWN STARTING POINT. `/start` already takes a free-text `initial`
+         * that seeds its first message (EntryChatPage.tsx's `urlInitial`) - the only starting
+         * point it accepts today, so this opens it with that. `setUp.about` is the engine's own
+         * sentence for what the new check-in is about.
+         *
+         * STILL MISSING FROM THE ENGINE SIDE OF THIS SCREEN: a way to open `/start` already
+         * knowing WHO to invite. `setUp.people` (their names and emails, read back from this
+         * check-in's own record) has nowhere to land yet - the entry conversation has no route-
+         * state or query param for a person's name and email, only for free text and a scenario
+         * key - so the lead still adds each person herself in the conversation that follows, the
+         * same as starting fresh. Nothing here invents a parameter that screen does not read.
+         */
+        navigate(`/start?initial=${encodeURIComponent((res as any).setUp.about)}`)
+      }
+    },
+    onError: () => toast.error('That did not save. Try again.'),
+  })
+
   /*
    * THE FULL ROSTER, for a restricted `ground.participants` (see `fullParticipants` on
    * `buildSessionRows`). `GET /grounds/:id` sends a participant only their own row; the board's own
@@ -1748,6 +1797,44 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     )
   }
 
+  const groundworkRecommendsSection = () => {
+    if (!recommendedOffers.length) return null
+    return (
+      <Section heading="Groundwork recommends">
+        <EdgeList label="Groundwork recommends">
+          {recommendedOffers.map((o) => (
+            <EdgeRow
+              key={o.id}
+              kind="decide"
+              title={o.says}
+              detail={o.question}
+              actions={(
+                <>
+                  <UIButton
+                    kind="secondary"
+                    size="small"
+                    disabled={answerRecommendation.isPending}
+                    onClick={() => answerRecommendation.mutate({ offerId: o.id, yes: true })}
+                  >
+                    {o.yes}
+                  </UIButton>
+                  <UIButton
+                    kind="quiet"
+                    size="small"
+                    disabled={answerRecommendation.isPending}
+                    onClick={() => answerRecommendation.mutate({ offerId: o.id, yes: false })}
+                  >
+                    {o.no}
+                  </UIButton>
+                </>
+              )}
+            />
+          ))}
+        </EdgeList>
+      </Section>
+    )
+  }
+
   /*
    * "WHAT KEEPS COMING UP" AND COACHING, TOGETHER (board-as-lead.txt; modules.md: "One thing to
    * do better, for each person"). Factored into a function, the same pattern as `whoCheckedIn`
@@ -2396,6 +2483,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           (`decisionsForWhatNeedsYou`).
         */}
         {kindOfWorkKey === 'a law firm matter' && whatNeedsYouSection()}
+        {kindOfWorkKey === 'a law firm matter' && groundworkRecommendsSection()}
 
         {/*
           REQUEST 132: "WHERE IT STANDS", OUT OF THE FOLD, STRAIGHT AFTER THE AIM (gov.txt). Every
@@ -2437,6 +2525,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {layoutFor(kindOfWorkKey)?.whereItStandsAtTop && (
           <>
             {whatNeedsYouSection()}
+            {groundworkRecommendsSection()}
             {viewerRunsThisCheckIn && (b as any).questionsForTheLead?.length > 0 && (
               <QuestionsForTheLeadSection rows={(b as any).questionsForTheLead} />
             )}
@@ -2559,6 +2648,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           above, straight after "What changed this week").
         */}
         {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && whatNeedsYouSection()}
+        {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && groundworkRecommendsSection()}
 
         {/*
           REQUEST 133: AN ASSET LOANS COHORT'S OWN "WHERE THE COHORT STANDS" (loans.txt), RIGHT
