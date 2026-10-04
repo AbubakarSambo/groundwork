@@ -96,8 +96,11 @@ export const END_STATES: Record<GroundScenario, { value: string; label: string; 
     { value: 'NOT_YET', label: 'It is not settled yet, and it will be looked at again when more is known.' },
   ],
   OKR_ALIGNMENT: [
-    { value: 'ALIGNED', label: 'The team\'s goals match where the company is going.' },
-    { value: 'GAPS_IDENTIFIED', label: 'Gaps were found, and the goals need to be changed.' },
+    /* The prototype's three outcomes for this kind of check-in are "On course", "Reach it with a change" and "Change the target"
+       (request 130 f, G1-example-check-ins/ops.txt). Said as full sentences, as decision 75 item 48 asks. */
+    { value: 'ALIGNED', label: 'The team is on course.' },
+    { value: 'REACH_WITH_A_CHANGE', label: 'The team can reach it, with a change in how the work is done.' },
+    { value: 'GAPS_IDENTIFIED', label: 'The target needs to change.' },
     { value: 'NOT_YET', label: 'It is not settled yet, and more sessions are needed.' },
   ],
   WORKPLAN_BUDGET: [

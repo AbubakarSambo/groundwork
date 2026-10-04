@@ -32,8 +32,9 @@ describe('request 108 (d): where this is heading, as Bisi, who runs it, reads it
       heading: 'Where this is heading',
       about: 'Set goals and keep the team on track',
       outcomes: [
-        { value: 'ALIGNED', says: 'The team\'s goals match where the company is going.', more: null },
-        { value: 'GAPS_IDENTIFIED', says: 'Gaps were found, and the goals need to be changed.', more: null },
+        { value: 'ALIGNED', says: 'The team is on course.', more: null },
+        { value: 'REACH_WITH_A_CHANGE', says: 'The team can reach it, with a change in how the work is done.', more: null },
+        { value: 'GAPS_IDENTIFIED', says: 'The target needs to change.', more: null },
         { value: 'NOT_YET', says: 'It is not settled yet, and more sessions are needed.', more: null },
       ],
       outcomesSays: null,

@@ -3980,3 +3980,9 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 **What changed (served, every name on the board and in reports).** A last name that is only a role or placeholder word (Lead, Leader, Participant, Member, Admin, Administrator, User, Manager, Owner, Test, Tester, Demo, Staff, Team) is left off, so "Wanjiru Lead has not said it" reads "Wanjiru has not said it". Decided for Hafsah to confirm: this list is a guess at placeholder words; the fix for the account itself is to give Wanjiru her real surname.
 
 **Decided for Hafsah to confirm:** the list of placeholder surnames above.
+
+### The outcomes on a team-goals check-in (130 f)
+
+**What changed (served, `whereThisIsHeading.outcomes` on the board, and `options` on the resolution panel, for check-ins that are about setting goals and keeping the team on track).** The three outcomes follow the prototype's "On course", "Reach it with a change" and "Change the target", said as full sentences: The team is on course. The team can reach it, with a change in how the work is done. The target needs to change. The values are `ALIGNED`, `REACH_WITH_A_CHANGE` (new) and `GAPS_IDENTIFIED`; "It is not settled yet, and more sessions are needed." (`NOT_YET`) stays. Screens: `client/src/lib/end-states.ts` holds its own copy of this list for the resolution panel; update it to match. The prototype's other boards show other outcome names (for example "Start as planned", "Look closer at named areas", "Support named traders"); those belong to other kinds of check-in and are not changed here.
+
+**Decided for Hafsah to confirm:** sentences instead of the prototype's short labels (decision 75, item 48), and a new ending `REACH_WITH_A_CHANGE`. Already-recorded endings keep their value; only the words changed.
