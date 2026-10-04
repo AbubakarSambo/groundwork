@@ -164,7 +164,7 @@ describe.each(SCENARIOS)('%s after the admin accepted it', (_l, scenario) => {
 
   it('an admin who only reads is refused the page, the board and the outcome; the admin who accepted it is served them', async () => {
     await expect(groundsService(scenario, st).get('g1', 'org1', OTHER_ADMIN)).rejects.toThrow('Check-in not found');
-    await expect(boardService(scenario, st).get('g1', OTHER_ADMIN)).rejects.toThrow('You are not a participant in this check-in');
+    await expect(boardService(scenario, st).get('g1', OTHER_ADMIN)).rejects.toThrow('Check-in not found');
     await expect(resolutionService(scenario, st).get('g1', OTHER_ADMIN)).rejects.toThrow('You are not part of this check-in.');
     await expect(groundsService(scenario, st).get('g1', 'org1', APPROVER)).resolves.toMatchObject({ id: 'g1' });
     await expect(boardService(scenario, st).get('g1', APPROVER)).resolves.toBeTruthy();

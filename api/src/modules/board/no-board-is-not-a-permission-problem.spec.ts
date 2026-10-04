@@ -33,12 +33,12 @@ describe('the board answers "is there one" before "who are you"', () => {
      * gates is what this file is for and that is unchanged.
      */
     expect(get).toMatch(/if \(!boardRendersFor\(ground\.scenario\)\)/);
-    expect(get).toMatch(/throw new ForbiddenException\('You are not a participant in this check-in'\)/);
+    expect(get).toMatch(/throw new NotFoundException\('Check-in not found'\)/);
   });
 
   it('and the mode gate comes FIRST', () => {
     const mode = get.indexOf('if (!boardRendersFor(');
-    const authz = get.indexOf("throw new ForbiddenException('You are not a participant in this check-in')");
+    const authz = get.indexOf('if (!me && !isInitiator && !isSetupAdmin && !adminHere)');
     expect(mode).toBeGreaterThan(-1);
     expect(authz).toBeGreaterThan(-1);
     /**
@@ -58,7 +58,7 @@ describe('the board answers "is there one" before "who are you"', () => {
      * Asserted as "the accounts are read after the throw", not just "a throw exists" - moving the
      * gate down is only safe while nothing between the two gates touches a participant's words.
      */
-    const authz = get.indexOf("throw new ForbiddenException('You are not a participant in this check-in')");
+    const authz = get.indexOf('if (!me && !isInitiator && !isSetupAdmin && !adminHere)');
     const sections = get.indexOf('const sections = sectionsForARunOf(');
     expect(sections).toBeGreaterThan(-1);
     expect(authz).toBeLessThan(sections);

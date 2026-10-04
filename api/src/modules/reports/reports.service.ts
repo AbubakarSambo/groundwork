@@ -6942,7 +6942,8 @@ happened, and what is in the way.`;
     const participant = ground.participants.find((p) => p.userId === requestingUserId);
     // Org admins can read reports for grounds in their own org (read-only, same view as initiator).
     const isOrgAdmin = !isInitiator && !participant && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId));
-    if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a participant in this check-in');
+    /* NotFound, not Forbidden: a 403 tells a stranger, or an admin without access to a review, that the check-in is real (GW-PRI-04). */
+    if (!participant && !isInitiator && !isOrgAdmin) throw new NotFoundException('Check-in not found');
     /* Decision 58: narrower than isInitiator || isOrgAdmin - a pattern (the lead's probe list
        included) goes only to the lead or the admin who set this check-in up for them, never to
        every admin of the organisation. See patterns/who-reads-a-pattern, runsItForAPattern. */

@@ -4386,3 +4386,9 @@ Everyone else reads exactly what they read before, and a person who is not held 
 **How.** `refuseSomeoneHeldForASeat` (`participants/held-for-a-seat.ts`), asked first by each read, before anything about the check-in is looked up. A lookup that fails refuses, the more private answer. The sentence moved to that file; `participants.service.ts` still exports it.
 
 **Tests.** `nobody-held-for-a-seat-reads-the-check-in.spec.ts`. One existing test, `no-board-is-not-a-permission-problem.spec.ts`, looks at the first 4,000 characters of the board's `get`; the new check made that read longer, so its window is 4,400. What it checks is unchanged.
+
+### 7. An admin without access to a review is told "Check-in not found"
+
+**What changed for a reader.** An admin who was not given access to a performance plan or a first-90-days check-in, and a person who has no part in a check-in at all, read "You are not a participant in this check-in" on its board and report, which told them the check-in exists. They now read "Check-in not found" on both, as on every other route. An admin who was given access, and everyone who takes part, read what they read before.
+
+**Tests.** `an-admin-without-access-is-told-the-check-in-is-not-found.spec.ts`. Four existing tests pinned the old sentence for the board (`an-admin-does-not-read-an-evaluation-check-in-in-grounds-or-on-the-board.spec.ts`, `the-admin-asked-to-approve-reads-what-they-approve.spec.ts`, and two checks in `no-board-is-not-a-permission-problem.spec.ts`, which now find the gate by its condition); they now expect the new sentence. The other routes that still say "You are not a participant in this check-in" (for example the person's own report and rating) are about the person's own record and were not part of this finding.

@@ -446,7 +446,8 @@ export class BoardService {
        item 2). Patterns and colleagues' exact words still go only to whoever runs it or set it up. */
     const adminHere = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any) || askedToApproveIt({ ...viewer, userId: requestingUserId }, ground as any);
     if (!me && !isInitiator && !isSetupAdmin && !adminHere) {
-      throw new ForbiddenException('You are not a participant in this check-in');
+      /* NotFound, not Forbidden: a 403 tells a stranger, or an admin without access to a review, that the check-in is real (GW-PRI-04). */
+      throw new NotFoundException('Check-in not found');
     }
 
     /*
