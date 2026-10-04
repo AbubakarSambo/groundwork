@@ -524,6 +524,70 @@ export function TheCountiesSection({ data }: { data: BoardPresent['theCounties']
 }
 
 /**
+ * REQUEST 133: AN ASSET LOANS COHORT'S OWN "WHERE THE COHORT STANDS" (loans.txt: "40 traders",
+ * then one tile per group - "Repaying and trading", "Behind, but trading", "Genuinely blocked",
+ * "Not heard from" - each with a count, a sentence, and, for whoever runs the check-in, who is in
+ * it). Drawn straight after "What needs you" (BoardPage.tsx), before the records table. A group
+ * can also come back `not-known` (no loan record at all yet), which reads as one plain sentence
+ * instead of a tile.
+ */
+export function WhereTheCohortStandsSection({ data }: { data: BoardPresent['whereTheCohortStands'] }) {
+  if (!data) return null
+  return (
+    <Section heading={data.heading} note={data.says}>
+      <Panel pad={false}>
+        {data.groups.map((g) => (
+          <div key={g.group} className="gwui-panel-row">
+            {'state' in g && g.state === 'not-known' ? (
+              <Note tone="muted">{g.why}</Note>
+            ) : (
+              <Stack gap={4}>
+                <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{(g as { count: number }).count}</p>
+                <p className="gwui-panel-text">{(g as { says: string }).says}</p>
+                {(g as { who: string[] | null }).who && (g as { who: string[] | null }).who!.length > 0 && (
+                  <Note tone="muted">{(g as { who: string[] }).who.join(', ')}</Note>
+                )}
+              </Stack>
+            )}
+          </div>
+        ))}
+      </Panel>
+      {data.whyNoNames && <Note tone="muted">{data.whyNoNames}</Note>}
+    </Section>
+  )
+}
+
+/**
+ * REQUEST 133: "SUPPORT GIVEN, AND WHETHER IT HELPED" (loans.txt). Drawn for an asset loans cohort
+ * after "What keeps coming up" and before coaching and "Where this is heading". Today the record
+ * never says what support was given, so this always reads as the one `not-known` sentence; a later
+ * engine that does keep it can send `says` and/or `rows`, drawn exactly as sent.
+ */
+export function SupportGivenSection({ data }: { data: BoardPresent['supportGiven'] }) {
+  if (!data) return null
+  if (data.state === 'not-known') {
+    return (
+      <Section heading={data.heading}>
+        <Note tone="muted">{data.why}</Note>
+      </Section>
+    )
+  }
+  return (
+    <Section heading={data.heading} note={data.says}>
+      {!!data.rows?.length && (
+        <Panel pad={false}>
+          {data.rows.map((r) => (
+            <div key={r.id} className="gwui-panel-row">
+              <p className="gwui-panel-text">{r.says}</p>
+            </div>
+          ))}
+        </Panel>
+      )}
+    </Section>
+  )
+}
+
+/**
  * REQUEST 107 (c), PART 4: REPORTED AGAINST CRITERIA, STAGE BY STAGE (board-as-lead.txt: "Reported
  * vs criteria met, stage by stage"). The record holds no criteria, so this is always `not-known` -
  * it counts what people reported and how much has a document behind it, never "criteria met".
