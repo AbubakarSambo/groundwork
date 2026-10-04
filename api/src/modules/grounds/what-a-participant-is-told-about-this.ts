@@ -274,6 +274,14 @@ const theWordsThatNameSomething = (text: string): Set<string> => {
 const A_PROMISE_OF_MORE =
   /\b(regular|regularly|each week|each month|weekly|monthly|fortnightly|ongoing|over time|every week|every month|future sessions?|next session|from time to time|as the weeks)\b/i;
 
+/**
+ * A REPORT THE TELLING PROMISES. Found on the quarterly plan (4 October 2026): "You will be asked for
+ * your answers every week, and you will receive a consolidated report each time." Nobody set that
+ * up, and what each person is sent is not the brief's to promise. A sentence that says a combined
+ * report goes to everyone is left out of what people are told.
+ */
+const A_PROMISE_OF_A_REPORT = /\b(?:consolidated|combined)\s+report\b|\beveryone\b[^.]*\b(?:will\s+)?(?:receive|get)\b[^.]*\breport\b/i;
+
 /** Whether the rewrite says anything the lead's own words say. True when there is nothing to check against. */
 /**
  * ONE WORD IS ENOUGH FOR A SHORT BRIEF AND NOWHERE NEAR ENOUGH FOR A LONG ONE.
@@ -321,7 +329,8 @@ export function theTellingHolds(rewrite: string | null | undefined, opts?: { oth
     /* Numbers are shown separately, as the goals; a figure in the telling is a claim nobody checked. */
     .filter((t) => !/\d/.test(t))
     /* One round is one conversation, and the telling does not promise a second - see A_PROMISE_OF_MORE. */
-    .filter((t) => !(opts?.rounds != null && opts.rounds <= 1 && A_PROMISE_OF_MORE.test(t)));
+    .filter((t) => !(opts?.rounds != null && opts.rounds <= 1 && A_PROMISE_OF_MORE.test(t)))
+    .filter((t) => !A_PROMISE_OF_A_REPORT.test(t));
   if (!kept.length) return null;
   const told = kept.slice(0, opts?.max ?? 3).join(' ');
   /* Checked against the subject as a whole, not sentence by sentence: only one sentence has to name it. */
