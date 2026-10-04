@@ -53,8 +53,9 @@ export function aCheckInInASentence(c: ACheckInToday): string | null {
   const missing = c.ofHowMany - c.answered;
   const named = c.notYet.slice(0, c.notYet.length > 3 ? 2 : 3);
   const others = missing - named.length;
+  /* "you" is the reader herself, so the verb is "have" whenever she is one of those named. */
   const waitingOn = named.length
-    ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${others} others`] : named)} ${missing === 1 ? 'has' : 'have'} not yet`
+    ? `, and ${listed(others > 0 ? [...named, others === 1 ? 'one other person' : `${others} others`] : named)} ${missing === 1 && !named.includes('you') ? 'has' : 'have'} not yet`
     : '';
   return `${where}, ${c.answered} of ${c.ofHowMany} people have checked in${waitingOn}.`;
 }
@@ -107,7 +108,7 @@ export async function sendTheLeadsDailySummaries(
   for (const g of grounds) {
     if (keptOffThePhone(g)) continue;
     if (!turnedOn.has(g.organizationId)) continue;
-    const today = await theOpenSession(prisma, g.id, now);
+    const today = await theOpenSession(prisma, g.id, now, g.initiatorId);
     if (!today) continue;
     /* Every check-in has a lead: `Ground.initiatorId` is required, so there is no lead-less one to skip. */
     const key = `${g.organizationId}|${g.initiatorId}`;
@@ -144,12 +145,12 @@ export async function sendTheLeadsDailySummaries(
  * The session open now on a check-in, counted the way every count is (decision 77): only the people
  * who can answer, never anybody only managing or not yet let in. Null when no session is open.
  */
-async function theOpenSession(prisma: PrismaService, groundId: string, now: Date): Promise<Omit<ACheckInToday, 'label'> | null> {
+async function theOpenSession(prisma: PrismaService, groundId: string, now: Date, leadUserId: string): Promise<Omit<ACheckInToday, 'label'> | null> {
   const rows: any[] = await prisma.checkIn.findMany({
     where: { groundId, OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
     select: {
       status: true, sessionNumber: true,
-      participant: { select: { managingOnly: true, nameGiven: true, user: { select: { firstName: true, awaitingOrgApproval: true } } } },
+      participant: { select: { userId: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, awaitingOrgApproval: true } } } },
     },
   });
   if (!rows.length) return null;
@@ -160,7 +161,9 @@ async function theOpenSession(prisma: PrismaService, groundId: string, now: Date
   const done = counted.filter((r) => r.status === CheckInStatus.COMPLETED);
   const notYet = counted
     .filter((r) => r.status !== CheckInStatus.COMPLETED)
-    .map((r) => theFirstNameOfAParticipant(r.participant as any) ?? '')
-    .filter((n: string) => !!n);
+    /* The lead is one of the people who can answer, and she is "you" to herself, never her own name in the third person. */
+    .map((r) => (r.participant?.userId && r.participant.userId === leadUserId ? 'you' : theFirstNameOfAParticipant(r.participant as any) ?? ''))
+    .filter((n: string) => !!n)
+    .sort((a: string, b: string) => (a === 'you' ? -1 : b === 'you' ? 1 : 0));
   return { ofHowMany: counted.length, answered: done.length, notYet };
 }
