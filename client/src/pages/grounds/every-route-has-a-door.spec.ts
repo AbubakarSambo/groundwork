@@ -125,6 +125,14 @@ const REACHED_FROM_OUTSIDE = [
    * `/signout` entry above had been resting on precisely that kind of claim.
    */
   '/talk-to-us',
+  /**
+   * THE ANCHOR SCENARIO'S OWN FRONT DOOR (plan piece 2, docs/anchor-scenario-plan.md section 5).
+   * Reached the same way as "/answer": a link shared on WhatsApp, LinkedIn or email, not a link
+   * from inside this app. The app does not navigate to it on purpose - a signed-in person already
+   * has /start - and the page itself redirects there whenever the engine's switch is not on, which
+   * is its only state today (request 144, docs/requests-to-engine.md).
+   */
+  '/start/team',
 ]
 
 /**
