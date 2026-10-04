@@ -53,12 +53,18 @@ export async function refuseSomeoneAwaitingTheOrganisation(
  * holds every one of them back, the more private answer.
  */
 export async function theCheckInsHeldForASeat(
-  prisma: { groundParticipant?: { findMany?: (args: any) => unknown } } | null | undefined,
+  prisma: { groundParticipant?: { findMany?: (args: any) => unknown }; user?: { findUnique?: (args: any) => unknown } } | null | undefined,
   groundIds: string[],
   userId: string | null | undefined,
 ): Promise<Set<string>> {
   const find = prisma?.groundParticipant?.findMany;
   if (!find || !userId || !groundIds.length) return new Set();
+  /* SOMEONE WAITING FOR THE ORGANISATION'S APPROVAL IS HELD ON EVERY ONE OF THEM (row 5, kept by decision 93): the same hold, from the person's own row. */
+  const findUser = prisma?.user?.findUnique;
+  if (findUser) {
+    const me: any = await Promise.resolve(findUser.call(prisma!.user, { where: { id: userId }, select: { awaitingOrgApproval: true } })).catch(() => ({ awaitingOrgApproval: true }));
+    if (me?.awaitingOrgApproval === true) return new Set(groundIds);
+  }
   const rows: any[] = await Promise.resolve(find.call(prisma!.groundParticipant, { where: { userId, awaitingSeat: true, groundId: { in: groundIds } }, select: { groundId: true, awaitingSeat: true } }))
     .then((r) => (Array.isArray(r) ? r : []))
     .catch(() => groundIds.map((groundId) => ({ groundId, awaitingSeat: true })));

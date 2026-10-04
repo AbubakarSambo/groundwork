@@ -98,3 +98,38 @@ describe('a person held for a seat, on the list, on Today and on You', () => {
     expect(inIt).toContain('Sahar handing finance to Amina');
   });
 });
+
+/**
+ * AND SOMEBODY WAITING FOR THE ORGANISATION'S APPROVAL IS HELD THE SAME WAY (privacy row 5, kept by decision 93).
+ * Tobi has a seat on the check-in, but an admin has not let him into the organisation yet. Read through the real services.
+ */
+describe('a person waiting for the organisation to let them in, on the list and on You', () => {
+  const waitingPrisma = () => {
+    const prisma = prismaFor([{ ...ground(), participants: ground().participants.map((x: any) => ({ ...x, awaitingSeat: false })) }]);
+    prisma.user.findUnique = jest.fn(async ({ where }: any) => ({ awaitingOrgApproval: where.id === HELD }));
+    prisma.groundParticipant.findMany = jest.fn(async () => []);
+    return prisma;
+  };
+
+  it('the check-in list holds back every check-in, whole', async () => {
+    const waiting: any[] = await realList(waitingPrisma()).list(ORG, HELD, 'tobi@x.test', 'MEMBER');
+    expect(waiting).toEqual([]);
+    const inIt: any[] = await realList(waitingPrisma()).list(ORG, IN, 'chidi@x.test', 'MEMBER');
+    expect(inIt.map((g) => g.id)).toContain('g1');
+  });
+
+  it('You shows no title, goal or name, only that they are waiting to be let in', async () => {
+    const prisma: any = waitingPrisma();
+    const grounds: any = { list: jest.fn(async () => [listRow(ground())]) };
+    const board: any = await new YourBoardService(prisma, grounds).forReader({ userId: HELD, email: 'tobi@x.test', organizationId: ORG, role: 'MEMBER' }, null);
+    const said = JSON.stringify(board);
+    expect(said).not.toContain('Sahar');
+    expect(said).not.toContain('Chidi');
+    expect(said).not.toContain(SUMMARY);
+    expect(said).not.toContain('You have not finished a check-in yet.');
+    expect(board.waitingToBeLetIn).toBe('Your sign-in is ready, and one thing has to happen before you can start: an admin at the organisation that invited you has to approve you joining it. They have been asked. Nothing you do here is lost in the meantime, and you will be able to check in as soon as they answer.');
+    const inIt: any = await new YourBoardService(prisma, grounds).forReader({ userId: IN, email: 'chidi@x.test', organizationId: ORG, role: 'MEMBER' }, null);
+    expect(inIt.waitingToBeLetIn).toBeUndefined();
+    expect(JSON.stringify(inIt)).toContain('Sahar handing finance to Amina');
+  });
+});
