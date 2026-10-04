@@ -454,7 +454,14 @@ function GroundStatusBadge({ status }: { status: string }) {
   /** Amber for "somebody has to act before this can move", plain for a finished record. */
   const isWaiting = status === 'AWAITING_APPROVAL' || status === 'PAUSED'
   const tone = isReady ? 'proven' : isWaiting ? 'attention' : 'plain'
-  const label = isReady ? 'Report ready' : status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
+  /*
+   * "STALLED" READ AS THE DATABASE'S WORD FOR IT, NOT THE PROTOTYPE'S (join-outoftime.txt: "Out of
+   * time"). It is what happens when a check-in's time runs out, not a judgement on the people in
+   * it, and the raw enum, titlecased, said neither - `a-ground-that-has-ended.ts`'s own `howItEnded`
+   * already gives this badge's words everywhere else a check-in says how it ended; this is the one
+   * place that still built its own label from the enum instead of asking it.
+   */
+  const label = isReady ? 'Report ready' : status === 'STALLED' ? 'Out of time' : status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, ' ')
   return <span className={`gw-rail-bdg gw-rail-bdg-${tone}`}>{label}</span>
 }
 
