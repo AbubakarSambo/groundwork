@@ -4107,3 +4107,38 @@ Ready to copy into `docs/answers-from-engine.md`. These are the screens that are
 | 13 | The end-of-month page and the four continue options | `B6/ending-and-probation-review`, `B6/day-30-and-60`, `F2/upgrade` | eight parts, the reveal counts, four buttons | 33 |
 
 Three notes for them. Everything on the page is served by the engine: no screen computes a lens, a count or a recommendation. Everything is hidden when `anchorScenarioOn` is not served as true, so a screen draws nothing for it unless told. No label, score or ranking is ever drawn beside a person, and every sentence is copied from Hafsah's `docs/anchor-scenario.md` or from the prototype's `.txt` files, never from the prototype's code.
+
+## A MarketView Q4 test check-in
+
+Made on 4 October with the engine's scripts, on the local test database `gw_pw9_1786222102` only, so the board can be matched against `docs/prototype/screens/G1-example-check-ins/mvq4.txt`.
+
+**Its id:** `6e84ca43-31d4-4e33-bf38-91defee0543a`. **Its title:** "MarketView, Q4". Its kind of work is MarketView Q4, its situation is "Set goals and keep the team on track", and it runs daily on weekdays.
+
+**Who leads and who takes part.** All three finished their first check-in, with real conversations through the streamed route, and the report was released.
+
+| Role | Name | Sign-in email |
+| --- | --- | --- |
+| Leads (head of sales) | Wairimu Kamau | `wairimu.mvq4@example.test` |
+| Takes part (sales) | Otieno Mwangi | `otieno.mvq4@example.test` |
+| Takes part (product) | Naliaka Wekesa | `naliaka.mvq4@example.test` |
+
+**How to sign in as them.** The handover's way: only by emailed link, caught on 127.0.0.1:1025, one catcher at a time, at most 5 sign-in links a minute. There is no password to give out.
+
+**How the system figures got in.** Through the road a connected system uses, never written into a table. The organisation asked for access and it was approved. A credential was issued, a token was taken from `/api/org/v1/oauth/token`, the objective was pushed with `POST /subjects`, the check-in was linked to it with `POST /checkins`, and the figures were sent with `PUT /metrics`. Paystack sent 31 paid subscriptions and 7 renewals paid. MarketView sent weekly users of 148 a week ago and 162 now, and 418 reports downloaded.
+
+**How to make it again on that database.** The API must be running on port 3009 with the same `DATABASE_URL`, `EMAIL_SENDS_FOR_REAL=false` and `GEMINI_LOCATION=global`. Then, from `api/`: `DATABASE_URL=postgresql://<you>@localhost:5432/gw_pw9_1786222102 EMAIL_SENDS_FOR_REAL=false GEMINI_LOCATION=global npx ts-node -T journey/make-a-marketview-q4-check-in.ts`. It takes about ten minutes, refuses any other database, makes a new organisation each time, and prints the new id and emails. Where the emails above exist, the new people get a number added to theirs. Boards are kept in `api/journey/out/mvq4/` (not committed).
+
+**Why the kind needs a step.** MarketView Q4 is hidden at release, so the lead's own control refuses it on this database ("Choose one of these: sales org, engineering release."). The script gives the kind the way `give-each-check-in-its-kind-of-work.ts` does, after the setup reading has finished, because that background reading can finish late and clear the kind. That clearing is a fault in the engine: a slow reading can overwrite a kind the lead has just chosen. I have not fixed it here.
+
+**What the board sends, against mvq4.txt.**
+
+For the lead, `whatTheSystemsShow` is filled with five numbers, each with its source, value, unit, date and a sentence, for example "Paystack shows 31 subscriptions for paid subscriptions this quarter, against a goal of 40, as of 4 October." It also sends the three sentences that say what a number is not. `whereThisIsHeading` is sent with the four outcomes and signals. The ground's goal and the unpaid invoice Sahel Agro (waiting on payment) come through the objective and the signals.
+
+Missing, and why:
+- **The table's columns "Target", "Now" and "Against goal"** are not sent as separate fields. The goal ("40", "200") is only inside each number's sentence, because a figure carries no target of its own. The screen would have to read the sentence, which it must not. A target on each figure needs the engine.
+- **"Up 12%" and "up from 148 to 162".** The two weekly-user figures are both sent, a week apart, so the change can be shown. The 12 percent is only in the sentence for reports downloaded.
+- **"Where what people said and the systems differ"** is sent as "none-yet". The engine only compares what people said with documents on the check-in, never with the figures, so "Paystack shows: two paid, one invoice open" cannot appear. A document on the check-in saying so would fill it. This check-in has none.
+- **"What needs you"** is empty (`toLookAt` is `[]`). "One sale named but not paid", "9 subscriptions to go" and "2 renewals not paid" are not built, because the board's deal grid has no subscription rows (no "Said" and "Paid" rows were taken from the conversations) and the forecast says "Groundwork does not keep this yet."
+- **"Updated this morning"** is not sent as a field.
+
+For a participant (Otieno), none of `whatTheSystemsShow`, `whereWhatWasSaidAndTheSystemsDiffer` or `whereThisIsHeading` is sent. The engine sends the numbers only to whoever runs the check-in, as the prototype's example is the lead's. His board holds his own deal grid ("Only yours.") and the shared parts.
