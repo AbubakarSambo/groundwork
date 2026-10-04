@@ -76,5 +76,8 @@ export async function theCheckInsHeldForASeat(
  *
  * Nobody held for a seat is sent a reminder, a nudge, a summary or an announcement about the check-in: it has not started for them,
  * and what it says ("is overdue") is not true of somebody who has not been invited. Spread into the `participant` filter of a sweep.
+ *
+ * Somebody waiting for the organisation to let them in (row 5) is left out the same way: they cannot open or answer the check-in yet.
+ * Every sweep already asks for `userId: { not: null }`, so the sign-in is there to ask about.
  */
-export const NOT_HELD_FOR_A_SEAT = { awaitingSeat: false } as const;
+export const NOT_HELD_FOR_A_SEAT = { awaitingSeat: false, user: { awaitingOrgApproval: false } } as const;
