@@ -112,7 +112,9 @@ describe('and it reaches the board', () => {
   it('and renders above what people said, not instead of it', () => {
     /* No table prop since the screens workspace dropped it (requests-to-engine.md, request 10): the
        judgement is shown without the table it was built from. */
-    expect(PAGE).toMatch(/<TheJudgement it=\{\(b as any\)\.theJudgement\} \/>/);
+    /* The screen may pass the judgement more props (the where-next board hides one of its parts), so this
+       checks that the judgement is what is drawn, not the exact line. */
+    expect(PAGE).toMatch(/<TheJudgement it=\{\(b as any\)\.theJudgement\}/);
     expect(PAGE.indexOf('<WhatTheNetworkSaid')).toBeGreaterThan(-1);
     expect(PAGE.indexOf('<TheJudgement')).toBeLessThan(PAGE.indexOf('<WhatTheNetworkSaid'));
   });
