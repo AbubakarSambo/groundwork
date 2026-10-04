@@ -1,5 +1,11 @@
 # Morning report
 
+## Morning, 5 October 2026
+
+**Not yet release-ready.** The safety check refused my full end-of-night entry, because its text named the pre-release environment where the two existing-client checks must run. As the rules say, it was not reworded; the full entry is in the chat for Hafsah. In short: every test passes (16,013 in the API, 4,044 in the client); the release checklist is done apart from the items only Hafsah can do; and those, with every question, are listed at the top of `docs/release-checklist.md` under "Waiting on Hafsah" and in the chat.
+
+---
+
 **Where it stands, 4 October 2026 (end of the session):**
 1. **Done:** WhatsApp for the first client; the four suites built to decision 85 (steps, escalation, record, leave, spending and finance, time sheets, reviews, setup by talking); decision 86's reversals; request 118; every board kind's engine faults (item 21); run-26 is level with or better than the baseline on everything except "proof asked for" (the "picture" count, with Hafsah).
 2. **In progress, not committed as code:** the loans privacy rebuild (decision 75 item 14) stopped half-way when the weekly allowance ran out; it fails the privacy spec, so it is saved as `docs/unfinished/loans-privacy-rebuild.patch` and the code is as it was.
