@@ -39,7 +39,7 @@ describe('a board never serves an empty line', () => {
   });
 
   it('the board is served through it, for every reader', () => {
-    const src = readFileSync(join(__dirname, 'board.service.ts'), 'utf8');
+    const src = readFileSync(join(__dirname, 'board.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toContain('return aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(');
   });
 });
