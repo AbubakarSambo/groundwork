@@ -187,9 +187,9 @@ export async function journeys(ctx: any) {
     log(`  ${who.first} says they are finished. Groundwork: ${String(done?.reply ?? said(done)).slice(0, 400)}`);
     let comp = await api(`/check-ins/${ci.id}/complete`, { token: who.token, body: {} });
     log(`  ${who.first} completes: ${said(comp).slice(0, 400)}`);
-    /* A person told "a few more exchanges are needed" does what it says: answers one or two more questions, then finishes. */
+    /* A person told "I need a little more from you before this check-in can close" does what it says: answers one or two more questions, then finishes. */
     const more = ['I think the warehouse planning is what I would change first. If sales shared promised dates in advance I could plan around them.', 'That is all I have for now, thank you.'];
-    for (let k = 0; comp?.refused && /few more exchanges/.test(String(comp.message)) && k < 2; k++) {
+    for (let k = 0; comp?.refused && /few more exchanges|need a little more from you/.test(String(comp.message)) && k < 2; k++) {
       check(`${who.first} is told in a plain sentence what to do when the check-in is not ready to close`, /^[A-Z].*[.]$/.test(String(comp.message)), String(comp.message));
       log(`  ${who.first} is refused: "${comp.message}" and answers once more.`);
       const extra = await api(`/check-ins/${ci.id}/messages`, { token: who.token, body: { message: more[k] } });
@@ -225,7 +225,7 @@ export async function journeys(ctx: any) {
     }
     await api(`/check-ins/${wCi.id}/messages`, { token: wairimu.token, body: { message: 'That is everything from me, thank you.' } });
     let wc = await api(`/check-ins/${wCi.id}/complete`, { token: wairimu.token, body: {} });
-    for (let k = 0; wc?.refused && /few more exchanges/.test(String(wc.message)) && k < 2; k++) {
+    for (let k = 0; wc?.refused && /few more exchanges|need a little more from you/.test(String(wc.message)) && k < 2; k++) {
       log(`  Wairimu is refused: "${wc.message}" and answers once more.`);
       await api(`/check-ins/${wCi.id}/messages`, { token: wairimu.token, body: { message: ['The one thing I would change is to agree the credit rule with finance this week rather than at the end of the month.', 'That is all from me.'][k] } });
       wc = await api(`/check-ins/${wCi.id}/complete`, { token: wairimu.token, body: {} });
