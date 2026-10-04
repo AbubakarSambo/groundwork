@@ -30,12 +30,12 @@ const ORG = 'org-baridi';
 const TODAY = new Date('2026-09-28T09:00:00Z');
 const roles: Record<string, string> = {
   'u-grace': 'ADMIN', 'u-omar': 'ADMIN', 'u-wairimu': 'LEAD', 'u-kamau': 'LEAD',
-  'u-aisha': 'MEMBER', 'u-samuel': 'MEMBER', 'u-brian': 'MEMBER', 'u-miriam': 'MEMBER', 'u-otieno': 'MEMBER', 'u-tomas': 'GUEST',
+  'u-aisha': 'MEMBER', 'u-samuel': 'MEMBER', 'u-brian': 'MEMBER', 'u-miriam': 'MEMBER', 'u-otieno': 'MEMBER', 'u-tomas': 'GUEST', 'u-lone': 'MEMBER',
 };
 const first: Record<string, [string, string]> = {
   'u-grace': ['Grace', 'Achieng'], 'u-omar': ['Omar', 'Hassan'], 'u-wairimu': ['Wairimu', 'Kamau'], 'u-kamau': ['Kamau', 'Njenga'],
   'u-aisha': ['Aisha', 'Otieno'], 'u-samuel': ['Samuel', 'Njoroge'], 'u-brian': ['Brian', 'Mwangi'], 'u-miriam': ['Miriam', 'Wanjiku'],
-  'u-otieno': ['Otieno', 'Ouma'], 'u-tomas': ['Tomas', 'Guest'],
+  'u-otieno': ['Otieno', 'Ouma'], 'u-tomas': ['Tomas', 'Guest'], 'u-lone': ['Lola', 'Nyambura'],
 };
 const person = (u: string, department: string | null, manager: string | null) =>
   ({ linkedUserId: u, externalId: `p-${u.slice(2)}`, department, managerExternalId: manager, active: true });
@@ -48,6 +48,8 @@ const directory = [
   person('u-brian', 'Sales', 'p-wairimu'),
   person('u-miriam', 'Sales', 'p-wairimu'),
   person('u-otieno', 'Operations', null),
+  /* In the directory with no department: nobody's teammate. */
+  person('u-lone', null, null),
 ];
 const d = (s: string) => new Date(`${s}T00:00:00.000Z`);
 const request = (id: string, userId: string, from: string, to: string, status: string, standInUserId: string | null = null) =>
@@ -268,3 +270,44 @@ describe('leave never reaches a check-in or its report', () => {
     expect(served).not.toMatch(/reason|sick|PIP|at[- ]risk|score|@/i);
   });
 });
+
+/**
+ * DECISION 93, ROW 25 (5 October 2026): "WHO IS OFF", FOR A MEMBER. Ask Groundwork tells a member who in their own team is off, from
+ * approved leave. Miriam is in Sales with Aisha, Samuel and Brian; Brian is off on Monday 5 October (approved), Aisha's March leave
+ * is approved, Samuel's request waits, and Miriam's old one was declined. Kamau and Otieno are in Operations; Kamau is off on 8 and
+ * 9 October. Dates only, by first name: never the kind of leave, and never anything that waits or was declined.
+ */
+describe('decision 93, row 25: the days teammates are off', () => {
+  it('Miriam reads Brian and Aisha, her teammates in Sales, by first name and dates, and nobody in Operations', async () => {
+    const { svc, as } = setup();
+    expect(await svc.teammatesOff(as('u-miriam'))).toEqual([
+      { name: 'Aisha', startsOn: '2026-03-02', endsOn: '2026-03-06' },
+      { name: 'Brian', startsOn: '2026-10-05', endsOn: '2026-10-05' },
+    ]);
+  });
+
+  it('Otieno, in Operations, reads Kamau and nobody in Sales', async () => {
+    const { svc, as } = setup();
+    expect(await svc.teammatesOff(as('u-otieno'))).toEqual([{ name: 'Kamau', startsOn: '2026-10-08', endsOn: '2026-10-09' }]);
+  });
+
+  it('is dates and a first name only: no kind of leave, no reason, no request that waits or was declined, no stand-in', async () => {
+    const { svc, as } = setup();
+    const said = JSON.stringify(await svc.teammatesOff(as('u-miriam')));
+    expect(said).not.toMatch(/annual|kind|reason|waiting|declined|standIn|Miriam|Samuel|Njoroge|Mwangi|Otieno Ouma/);
+  });
+
+  it('a guest, and a member with no department in the directory, are given nothing to say', async () => {
+    const { svc, as } = setup();
+    expect(await svc.teammatesOff(as('u-tomas'))).toBeNull();
+    expect(await svc.teammatesOff(as('u-lone'))).toBeNull();
+    /* Nor does anybody from another organisation find a suite switched on here. */
+    await expect(svc.teammatesOff({ userId: 'u-miriam', organizationId: 'org-other' })).rejects.toThrow(NotFoundException);
+  });
+
+  it('while the suite is off, nobody reads anything', async () => {
+    const { svc, as } = setup({ on: false });
+    await expect(svc.teammatesOff(as('u-miriam'))).rejects.toThrow(NotFoundException);
+  });
+});
+

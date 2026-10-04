@@ -3676,8 +3676,8 @@ export class AssistantService {
 
   /**
    * WHO IS OFF, from approved leave, as far as this reader may know. An admin reads everyone's, a lead
-   * their own team's (both exactly as the leave board serves them), and anybody else, a guest included,
-   * only their own: the board refuses them the rest, and a guest is never told a colleague's leave
+   * their own team's (both exactly as the leave board serves them), a member their own and their teammates'
+   * (decision 93, row 25), and a guest only their own: a guest is never told a colleague's leave
    * (decision 75, item 28). Dates only, never a reason or a kind of leave.
    */
   private async whoIsAway(organizationId: string, userId: string | null, subject: string): Promise<Reply> {
@@ -3696,6 +3696,15 @@ export class AssistantService {
     }
     const mine = await this.leave.mine(reader).catch(() => null);
     const rows: AwayRow[] = (mine?.requests ?? []).filter((r) => r.status === 'approved' && overlaps(r)).map((r) => ({ name: 'You', startsOn: r.startsOn, endsOn: r.endsOn }));
+    /*
+     * A MEMBER ALSO READS THEIR TEAMMATES' APPROVED LEAVE, dates only (decision 93, row 25). The reader's team is the staff
+     * directory's department; where they have none, or they are a guest, the answer is what it was: their own leave only.
+     */
+    const team = m?.role === 'MEMBER' ? await Promise.resolve().then(() => this.leave!.teammatesOff(reader)).catch(() => null) : null;
+    if (team) {
+      const theirs: AwayRow[] = team.filter(overlaps);
+      return rules(lane, text(whoIsAwaySaid([...rows, ...theirs].sort((a, b) => a.startsOn.localeCompare(b.startsOn)), window, 'your team')));
+    }
     return rules(lane, text(whoIsAwaySaid(rows, window, 'you')));
   }
 
