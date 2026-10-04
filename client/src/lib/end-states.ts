@@ -37,7 +37,7 @@ export const END_STATES: Record<string, EndStateOption[]> = {
     { value: 'KEEP', label: 'The new person stays in the role.' },
     { value: 'RESTRUCTURE', label: 'The role is set up differently.' },
     { value: 'EXIT', label: 'The new person leaves the role.' },
-    { value: 'EXTEND', label: 'The time to decide is made longer.', description: 'Both parties agree the evaluation period should continue with a defined extension timeline.' },
+    { value: 'EXTEND', label: 'The time to decide is made longer.', description: 'Both agree the evaluation period should continue, with a defined extension timeline.' },
     { value: 'NOT_YET', label: 'It is not decided yet, and what is missing is named so it can be looked at again.' },
   ],
   NEW_COFOUNDER: [
@@ -91,8 +91,9 @@ export const END_STATES: Record<string, EndStateOption[]> = {
     { value: 'NOT_YET', label: 'It is not settled yet, and it will be looked at again when more is known.' },
   ],
   OKR_ALIGNMENT: [
-    { value: 'ALIGNED', label: 'The team\'s goals match where the company is going.' },
-    { value: 'GAPS_IDENTIFIED', label: 'Gaps were found, and the goals need to be changed.' },
+    { value: 'ALIGNED', label: 'The team is on course.' },
+    { value: 'REACH_WITH_A_CHANGE', label: 'The team can reach it, with a change in how the work is done.' },
+    { value: 'GAPS_IDENTIFIED', label: 'The target needs to change.' },
     { value: 'NOT_YET', label: 'It is not settled yet, and more sessions are needed.' },
   ],
   WORKPLAN_BUDGET: [
@@ -108,7 +109,7 @@ export const END_STATES: Record<string, EndStateOption[]> = {
   /** Mirror of the server's OPEN_READ set. Plainest in the product, because the shape was unknown. */
   OPEN_READ: [
     { value: 'shared_picture', label: 'Everyone now shares the same picture.', description: 'Everyone has given their account and the differences are named.' },
-    { value: 'needs_specific_ground', label: 'It is now clear what this is, and it needs its own check-in.', description: 'The accounts show what this actually is, and it deserves its own check-in.' },
+    { value: 'needs_specific_ground', label: 'It is now clear what this is, and it needs its own check-in.', description: 'The accounts show what this actually is, and it needs its own check-in.' },
     { value: 'not_yet', label: 'It is not settled yet, and more people need to answer.', description: 'Too few people have checked in to read anything from it.' },
   ],
   REALIGN_TEAM: [
@@ -145,11 +146,11 @@ export const END_STATES: Record<string, EndStateOption[]> = {
    */
   ACUTE_SHOCK: [
     { value: 'OBJECTIVE_MET', label: 'What we set out to do is done.', description: 'The objective set after the first session was achieved, and the record shows what moved and who moved it.' },
-    { value: 'PARTLY_RECOVERED', label: 'Part of what was lost has been won back.', description: 'Some of the objective was achieved and some was not. The record shows which parts, and what was still stuck at the end.' },
+    { value: 'PARTLY_RECOVERED', label: 'Part of what was lost has been won back.', description: 'Some of the objective was achieved and some was not. The record shows which parts, and what was still stuck when the fortnight ended.' },
     { value: 'NOT_RECOVERED', label: 'What was lost has not been won back.', description: 'The objective was not met. The record shows what was tried and where it stalled. That is what the next decision should rest on.' },
     { value: 'OBJECTIVE_OVERTAKEN', label: 'Events changed what we were aiming for.', description: 'What we were aiming at stopped being the right aim partway through. The record shows when that became clear, and why.' },
-    { value: 'PICTURE_SHARED', label: 'Everyone shares the same picture, and there was nothing to win back.', description: "Everyone's accounts are on record and agreed, and there was nothing to win back. No objective was set, deliberately." },
-    { value: 'READS_DIVERGE', label: 'The accounts differ, and the differences are named.', description: 'The accounts never reconciled, so no shared objective could honestly be set. The points of divergence are named so the conversation starts there.' },
+    { value: 'PICTURE_SHARED', label: 'Everyone shares the same picture, and there was nothing to win back.', description: 'The accounts are on record and agreed, and there was nothing to win back, because the event was what it was. No objective was set, deliberately.' },
+    { value: 'READS_DIVERGE', label: 'The accounts differ, and the differences are named.', description: 'The accounts never reconciled, so no shared objective could honestly be set. The specific points of divergence are named so the conversation starts there.' },
     { value: 'UNKNOWNS_REMAIN', label: 'Some important facts are still not known.', description: 'The picture cannot be settled yet because named facts are still missing. Revisit when they land.' },
     { value: 'NOT_YET', label: 'It is not settled yet, and more people need to answer.' },
   ],
@@ -169,7 +170,7 @@ export const END_STATES: Record<string, EndStateOption[]> = {
     { value: 'NO_CLEAR_DIRECTION', label: 'No clear direction came out of it.', description: 'The accounts point in different directions and nothing is shared enough to prioritise. That is a finding, and it is recorded as one.' },
   ],
   SNAPSHOT: [
-    { value: 'READ_TAKEN', label: 'Everyone answered, and nothing needs to be opened.', description: 'Everyone answered and nothing needs watching over time. The record stands as a snapshot of this week.' },
+    { value: 'READ_TAKEN', label: 'Everyone answered, and nothing needs to be opened.', description: 'Everyone answered and nothing in the accounts needs watching over time. The record stands as a snapshot of this week.' },
     { value: 'NEEDS_A_RUN', label: 'Something here needs watching.', description: 'The accounts point at something that will not settle on its own. Open the situation that fits it, so there is an objective and a run of check-ins against it.' },
     { value: 'THIN_RESPONSE', label: 'Too few people answered to read anything from it.', description: 'Not enough people answered for the spread to mean anything. Nothing is concluded from what did come in.' },
   ],
