@@ -60,8 +60,11 @@ describe('a number nobody has defined', () => {
     renderBoard()
     expect(await screen.findByText('definition not settled')).toBeTruthy()
     expect(screen.getByText(/may be signed or recognised revenue/)).toBeTruthy()
-    /* The number is still there: this says something about it, it does not hide it. */
-    expect(screen.getByText(/of 12000000|12000000/)).toBeTruthy()
+    /* The number is still there: this says something about it, it does not hide it.
+       REQUEST 132: thousands separators (toLocaleString('en-GB')), so a large count reads as a
+       number, not a string of digits - "12,000,000", not "12000000". Updated for that reason,
+       not to paper over a defect: the number is still shown in full, just punctuated. */
+    expect(screen.getByText(/of 12,000,000|12,000,000/)).toBeTruthy()
   })
 
   it('and says nothing on a target nobody disputes', async () => {

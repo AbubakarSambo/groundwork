@@ -2963,12 +2963,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                               moved from where it started; unmoved reads the same plain "X of Y."
                               the line below already uses when there is no start to compare against.
                             */}
+                            {/* REQUEST 132: THOUSANDS SEPARATORS, SO A LARGE COUNT READS AS A
+                                NUMBER, NOT A STRING OF DIGITS ("4,100 now, up from 0. The aim is
+                                6,000.", not "4100 now, up from 0. The aim is 6000."). */}
                             {o.journey?.start != null && o.journey.start !== o.count
-                              ? (<><b className="gwui-ink-dark">{o.count}</b>{` now, ${o.count > o.journey.start ? 'up' : 'down'} from ${o.journey.start}. The aim is ${o.target}.`}</>)
-                              : (<><b className="gwui-ink-dark">{o.count}</b>{` of ${o.target}.`}</>)}
+                              ? (<><b className="gwui-ink-dark">{o.count.toLocaleString('en-GB')}</b>{` now, ${o.count > o.journey.start ? 'up' : 'down'} from ${o.journey.start.toLocaleString('en-GB')}. The aim is ${o.target.toLocaleString('en-GB')}.`}</>)
+                              : (<><b className="gwui-ink-dark">{o.count.toLocaleString('en-GB')}</b>{` of ${o.target.toLocaleString('en-GB')}.`}</>)}
                           </div>
                           <div className={`gwui-fs-13 ${o.delta > 0 ? 'gwui-ink-green' : 'gwui-ink-muted'}`} style={{fontWeight: 700, minWidth: 92, textAlign: 'right'}}>
-                            {o.delta > 0 ? `Up ${o.delta} this session.` : 'No change.'}
+                            {o.delta > 0 ? `Up ${o.delta.toLocaleString('en-GB')} this session.` : 'No change.'}
                           </div>
                         </>
                       ) : (
