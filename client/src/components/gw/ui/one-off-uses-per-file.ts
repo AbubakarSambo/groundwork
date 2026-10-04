@@ -9,7 +9,7 @@ export const ONE_OFF_USES_PER_FILE: Record<string, number> = {
   'components/gw/ContextPage.tsx': 34,
   'components/gw/HowThisHasMoved.tsx': 20,
   'components/gw/OutcomeFeedback.tsx': 29,
-  'components/gw/ResolutionPanel.tsx': 72,
+  'components/gw/ResolutionPanel.tsx': 64,
   'components/gw/Suggestions.tsx': 50,
   'components/gw/TargetsBand.tsx': 56,
   'components/gw/TheJudgement.tsx': 32,
