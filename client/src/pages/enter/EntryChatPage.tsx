@@ -10,7 +10,7 @@ import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENC
  * tidier home and is a separate change - doing it here would bury the fix in a file move.
  */
 import { groupOfCard } from '@/pages/grounds/CreateGroundPage'
-import { useSearchParams, useNavigate, Link } from 'react-router-dom'
+import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
 import { billingApi } from '@/api/billing'
@@ -24,7 +24,8 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { TheDoor } from './TheDoor'
-import { TheSetup, theDay } from './TheSetup'
+import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES } from './TheSetup'
+import { TheLeadsReveal } from '@/components/gw/TheLeadsReveal'
 import { FillsInAsYouTalk } from './FillsInAsYouTalk'
 import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
 import { EverySituation } from './EverySituation'
@@ -1176,9 +1177,21 @@ export function fallbackGroundName(situation?: string, where?: string): string {
 export function EntryChatPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const scenario = params.get('scenario') ?? ''
   const urlMode = params.get('mode') ?? ''
-  const urlInitial = params.get('initial') ?? ''
+  /**
+   * PIECE 25, "YES, SET IT UP" OPENS HERE PREFILLED (plan piece 25, docs/anchor-scenario-plan.md
+   * section 5 row 9; docs/answers-from-engine.md, "Request 148 (1)"). BoardPage.tsx's "Groundwork
+   * recommends" calls `POST /entry/draft-from-set-up` and navigates here with the answer as router
+   * state - never a query param, since `people` carries real addresses (never put personal data in
+   * a URL). `anchorSetUp.initial` joins the ordinary `?initial=` below, so everything that already
+   * seeds the first message from a URL (the restore branch, the auto-send effect) works for this
+   * path too without being duplicated. `aim` and `people` are seeded separately, just below,
+   * because nothing else carries those today.
+   */
+  const anchorSetUp = (location.state as { anchorSetUp?: { initial?: string; aim?: string | null; people?: { email: string; displayName?: string }[] } } | null)?.anchorSetUp
+  const urlInitial = params.get('initial') ?? anchorSetUp?.initial ?? ''
   /* The rail's Start a check-in. A saved setup used to swallow it: the page restored the old one and
      the picker never showed, "unless I click go backwards". Now it asks. */
   const wantsANewOne = params.get('new') === '1'
@@ -1347,7 +1360,42 @@ export function EntryChatPage() {
     })
     return hits.length === 1 ? hits[0] : null
   }
+  /**
+   * WHETHER THIS DRAFT IS AN ANCHOR ONE (plan piece 11, the people step; docs/anchor-scenario-plan
+   * .md section 5 row 4). `HELP_TEAM_UNDERSTAND` (the anchor scenario's own situation key, request
+   * 144 (2) and (3)) can only ever arrive as `onboardingSelections.classifiedScenario`, the URL's
+   * own `?scenario=` (the anchor landing page's button, item 2), or `pickedSituation` - never as
+   * `onboardingSelections.mode`, which is always a mode key ('new', 'look_back', ...) and never a
+   * situation. So, unlike the invite block's own `s` just below (which falls back through mode
+   * first, for its existing sensitive-situation check), this checks each place on its own rather
+   * than taking the first truthy one in a chain - `mode` is always set to something once onboarding
+   * starts, and would otherwise mask a real `?scenario=HELP_TEAM_UNDERSTAND` before it was ever
+   * classified. Every other situation's people step keeps its ordinary wording and has no limit of
+   * its own.
+   */
+  function isAnchorDraft(): boolean {
+    return onboardingSelections.classifiedScenario === 'HELP_TEAM_UNDERSTAND'
+      || scenario === 'HELP_TEAM_UNDERSTAND'
+      || pickedSituation === 'HELP_TEAM_UNDERSTAND'
+  }
+
+  /**
+   * THE 19-PERSON LIMIT (the lead plus 19 is 20, decision 96 item 3; `ANCHOR_PEOPLE_STEP_RULES
+   * .mayAdd`), for an anchor draft only. `true` means the add actually happened; every place that
+   * adds a contributor checks this first and shows the engine's own limit sentence instead when it
+   * does not.
+   */
+  function mayAddOneMorePerson(): boolean {
+    if (!isAnchorDraft()) return true
+    if (inviteAdded.length >= ANCHOR_PEOPLE_STEP_RULES.mayAdd) {
+      toast.error(ANCHOR_PEOPLE_STEP_RULES.limitSentence)
+      return false
+    }
+    return true
+  }
+
   function queueColleague(c: { id: string; name: string }, note?: string, key?: string) {
+    if (!mayAddOneMorePerson()) return
     const head = `${A_COLLEAGUE}${c.id}`
     const entry = note ? `${head} - ${note}` : head
     setInviteAdded(prev => (prev.some(e => e === head || e.startsWith(`${head} - `)) ? prev : [...prev, entry]))
@@ -2111,6 +2159,25 @@ export function EntryChatPage() {
    * is already there. The early return above is kept as a cheap first check, but it
    * is no longer what makes this safe.
    */
+  /**
+   * THE REST OF "YES, SET IT UP": `aim` AND `people`. `aim` is the engine's own sentence for what
+   * the new check-in is working towards, kept as this draft's name - the same field the admin
+   * section lets the lead rename. `people` are taken in exactly as commit takes them elsewhere on
+   * this page (a plain email, the same shape typing one by hand produces), each shown as
+   * `leftOut[].why` already told the lead on the board, not repeated here. Seeded once, the same
+   * guard as the initial message just below, so a restored session is never overwritten.
+   */
+  useEffect(() => {
+    if (phase !== 'onboarding' || !anchorSetUp) return
+    /* `groundName` defaults to 'Entry session' (the store's own default, never a name anybody
+       chose), so the check is against that default rather than emptiness. */
+    if (anchorSetUp.aim && (!groundName || groundName === 'Entry session')) setGroundName(anchorSetUp.aim)
+    if (anchorSetUp.people?.length) {
+      setInviteAdded(prev => (prev.length ? prev : anchorSetUp.people!.map(c => c.email)))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
+
   useEffect(() => {
     if (phase !== 'onboarding') return
     const INTRO = THE_OPENING_QUESTION
@@ -2584,6 +2651,7 @@ export function EntryChatPage() {
 
   function submitInviteContext() {
     if (!inviteContextFor) return
+    if (!inviteAdded.includes(inviteContextFor) && !mayAddOneMorePerson()) return
     const entry = inviteContextFor + (inviteContext.trim() ? ` - ${inviteContext.trim()}` : '')
     const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, entry]
     setInviteAdded(newAdded)
@@ -3749,6 +3817,16 @@ export function EntryChatPage() {
                 It always did set a date; the label just never said so. It says so now, and the date
                 field it opens is the answer to the question the button asks.
               */}
+              {/*
+                PIECE 9: THE LEAD'S REVEAL, "Help my team understand" (plan section 5, row 3).
+                Drawn only for an anchor draft, and only once the engine has actually sent one -
+                `sessionReport?.leadsReveal` is not served yet, so this draws nothing today, the
+                same as before this existed. Placed as the set-up screen's own last step, right
+                before the schedule and the people step, following the plan's "if unclear, show it
+                on the set-up screen's last step for an anchor draft".
+              */}
+              {isAnchorDraft() && <TheLeadsReveal reveal={sessionReport?.leadsReveal} />}
+
               {/* U.6: the prototype's setup (setup.txt). The start date is still what the invitations wait for. */}
               <TheSetup
                 cadence={cadence}
@@ -3849,7 +3927,9 @@ export function EntryChatPage() {
                 />
                 {emailError && <div className="gwui-ec-savecard-error">{emailError}</div>}
                 <Button kind="primary" wide type="submit" disabled={saving || (generatingReport && !sessionReport)}>
-                  {saving ? 'Saving…' : 'Save my check-in'}
+                  {/* The anchor label replaces the ordinary one; "Saving…" is shared either way. */}
+                  {isAnchorDraft() ? <>{saving ? 'Saving…' : ANCHOR_PEOPLE_STEP_RULES.button}</> : null}
+                  {!isAnchorDraft() && <>{saving ? 'Saving…' : 'Save my check-in'}</>}
                 </Button>
                 </form>
                 <div className="gwui-ec-savecard-helper">
@@ -3982,8 +4062,18 @@ export function EntryChatPage() {
                 "Someone's work is off track", 'Running a performance improvement plan', 'Co-founder or partner disagreement', 'A project is off track', 'You and a team member see it differently',
                 'Running a PIP', 'Team member not delivering', 'Cofounder or partner dispute',
               ].some(k => s.includes(k))
-              const inviteHeading = isSensitive ? 'Let them share their side' : 'Invite people'
-              const inviteSubtext = isSensitive
+              /*
+               * THE PEOPLE STEP, FOR AN ANCHOR DRAFT (plan piece 11; `HELP_TEAM_UNDERSTAND`, request
+               * 144 (2) and (3)): the engine's own heading and intro (`ANCHOR_PEOPLE_STEP_RULES`,
+               * `./TheSetup.tsx`) replace the ordinary ones, with the 19-person limit enforced
+               * wherever a contributor is actually added (`mayAddOneMorePerson`). Every other
+               * situation's wording here is unchanged.
+               */
+              const isAnchor = isAnchorDraft()
+              const inviteHeading = isAnchor ? ANCHOR_PEOPLE_STEP_RULES.heading : isSensitive ? 'Let them share their side' : 'Invite people'
+              const inviteSubtext = isAnchor
+                ? ANCHOR_PEOPLE_STEP_RULES.intro
+                : isSensitive
                 ? 'Send them a link so they can give their own version of the same work. When both sides are in, the report shows where you agree and where the conversation still needs to happen. It does not score anyone.'
                 : 'Each person gives their own version of the shared work, including their own part in it. When everyone has answered, the report shows where people agree, where they differ, and what the gap means for the work.'
               return (
@@ -4048,8 +4138,15 @@ export function EntryChatPage() {
                   people={colleagues.filter((c) => c.id !== user?.id)}
                   alreadyIn={inviteAdded.map((e) => e.split(' - ')[0]).filter((h) => h.startsWith(A_COLLEAGUE)).map((h) => h.slice(A_COLLEAGUE.length))}
                   onAdd={(picked) => {
-                    for (const c of picked) queueColleague(c)
-                    toast.success(picked.length === 1 ? `${picked[0].name} is on the list.` : `${picked.length} people are on the list. Invites go out when you save.`)
+                    /* A multi-select can ask for several at once, so the limit is checked against
+                       how many are really left, not once per item against a count that has not
+                       yet updated (queueColleague's own check is still right for every other
+                       path, which adds one at a time). */
+                    const room = isAnchorDraft() ? Math.max(0, ANCHOR_PEOPLE_STEP_RULES.mayAdd - inviteAdded.length) : picked.length
+                    const fit = picked.slice(0, room)
+                    for (const c of fit) queueColleague(c)
+                    if (fit.length < picked.length) toast.error(ANCHOR_PEOPLE_STEP_RULES.limitSentence)
+                    if (fit.length) toast.success(fit.length === 1 ? `${fit[0].name} is on the list.` : `${fit.length} people are on the list. Invites go out when you save.`)
                   }}
                 />
               )}
@@ -4062,7 +4159,7 @@ export function EntryChatPage() {
                       <div className="gwui-ec-savecard-invite-context-more">{bulkQueue.length} more after this</div>
                     )}
                   </div>
-                  <div className="gwui-ec-savecard-invite-context-ask">What do you want them to focus on or cover?</div>
+                  <div className="gwui-ec-savecard-invite-context-ask">{isAnchorDraft() ? ANCHOR_PEOPLE_STEP_RULES.contextLabel : 'What do you want them to focus on or cover?'}</div>
                   <TextArea autoFocus placeholder="e.g. They are the other side of this. They own the delivery timeline."
                     value={inviteContext} onChange={e => setInviteContext(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitInviteContext() } }}
@@ -4071,8 +4168,10 @@ export function EntryChatPage() {
                   <div className="gwui-ec-savecard-row-gap8 gwui-ec-savecard-row-gap8-grow-last">
                     <Button kind="secondary" size="small" onClick={() => {
                       // Add without context, then advance queue
-                      const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, inviteContextFor]
-                      setInviteAdded(newAdded)
+                      if (inviteAdded.includes(inviteContextFor) || mayAddOneMorePerson()) {
+                        const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, inviteContextFor]
+                        setInviteAdded(newAdded)
+                      }
                       setInviteContext('')
                       const [next, ...rest] = bulkQueue
                       if (next) { setBulkQueue(rest); setInviteContextFor(next) } else { setInviteContextFor(null) }
@@ -4094,11 +4193,14 @@ export function EntryChatPage() {
                     <Button
                       kind="secondary" size="small"
                       onClick={() => {
-                        const emails = bulkInviteText
+                        const allEmails = bulkInviteText
                           .split(/[\n,]+/)
                           .map(e => e.trim().toLowerCase())
                           /* Not validation: this filters model-extracted mentions down to the ones that are addresses at all. Kept as is. */
                           .filter(e => e.includes('@') && !inviteAdded.some(a => a.startsWith(e)))
+                        const room = isAnchorDraft() ? Math.max(0, ANCHOR_PEOPLE_STEP_RULES.mayAdd - inviteAdded.length) : allEmails.length
+                        const emails = allEmails.slice(0, room)
+                        if (allEmails.length > emails.length) toast.error(ANCHOR_PEOPLE_STEP_RULES.limitSentence)
                         if (emails.length === 0) return
                         setBulkInviteText('')
                         setBulkInviteMode(false)

@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type { ServedPattern } from './patterns'
+import type { TheMonthBoard, TheEndOfMonthRead } from './anchorShapes'
 
 export type BoardSection =
   | 'phaseSpine' | 'quickRead' | 'objectives' | 'startingState' | 'divergence'
@@ -428,6 +429,29 @@ export type BoardPresent = {
    * sections - only "Groundwork recommends" (BoardPage.tsx) reads it, and only for the lead.
    */
   anchorScenarioOn?: boolean
+  /**
+   * ANCHOR PIECE 30/31, THE "ACTIVE" LINE (section 26; docs/answers-from-engine.md, "Request 147",
+   * `TheActiveLine`). Groundwork manages engagement itself, and the lead sees a status line of its
+   * own words, for example "18/20 active · Groundwork has nudged the remaining 2." Shape only, not
+   * served yet - absent on a board that does not send it, and the line below draws nothing then.
+   * `line` is Hafsah's own wording and is drawn exactly as sent, never rebuilt from `active`/`total`/
+   * `nudged` on this side.
+   */
+  activeLine?: { active: number; total: number; nudged: number; line: string }
+  /**
+   * ANCHOR PIECES 12/13/20, THE MONTH BOARD, "Are we moving together?" (section 24;
+   * docs/answers-from-engine.md, "Request 147", `TheMonthBoard`). Shape only, not served yet -
+   * absent on a board that does not send it, and the section draws nothing then. Lead only: this
+   * is the lead's own board, drawn only for whoever runs this check-in, only while
+   * `anchorScenarioOn` is served true (see BoardPage.tsx, `theMonthBoardForTheLead`).
+   */
+  theMonthBoard?: TheMonthBoard
+  /**
+   * ANCHOR PIECE 32/33, THE END-OF-MONTH READ (sections 28 and 29; docs/answers-from-engine.md,
+   * "Request 147", `TheEndOfMonthRead`). Shape only, not served yet. Built once from the record;
+   * opening the page never rebuilds it. Lead only, drawn on EndingPage.tsx.
+   */
+  theEndOfMonthRead?: TheEndOfMonthRead
   /**
    * THE RECORDS THE KIND OF WORK KEEPS: deals and their stages, releases, tickets, a matter's
    * deadlines and parties, and so on - one section per name in the switchboard (`section`, e.g.

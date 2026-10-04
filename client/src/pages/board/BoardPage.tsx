@@ -39,6 +39,7 @@ import type { ServedPattern } from '@/api/patterns'
 import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
 import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
 import { recommendedCheckInsApi, type AnOfferTheLeadReads } from '@/api/recommendedCheckIns'
+import { TheMonthBoard } from '@/components/gw/TheMonthBoard'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -995,6 +996,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * anybody who is not the lead.
    */
   const anchorRecommendationsOn = viewerRunsThisCheckIn && !!(data as any)?.anchorScenarioOn
+
+  /**
+   * PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?" (section 24;
+   * docs/answers-from-engine.md, "Request 147", `TheMonthBoard`). Lead only, and only while the
+   * anchor switch is on - the same two gates `anchorRecommendationsOn` already uses, read off the
+   * raw board answer rather than `b` for the same reason (these hooks must sit above every early
+   * return below). Shape only on the engine side today, so `theMonthBoardForTheLead` is undefined
+   * on every board until it is served, and the component below draws nothing then.
+   */
+  const theMonthBoardForTheLead = viewerRunsThisCheckIn && !!(data as any)?.anchorScenarioOn
+    ? (data as any)?.theMonthBoard
+    : undefined
   const { data: recommended } = useQuery({
     queryKey: ['recommended-check-ins', id],
     queryFn: () => recommendedCheckInsApi.list(id!),
@@ -1006,23 +1019,26 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const answerRecommendation = useMutation({
     mutationFn: (vars: { offerId: string; yes: boolean }): Promise<{ state: 'ACCEPTED' | 'DECLINED'; setUp?: unknown }> =>
       vars.yes ? recommendedCheckInsApi.yes(id!, vars.offerId) : recommendedCheckInsApi.notNow(id!, vars.offerId),
-    onSuccess: (res, vars) => {
+    onSuccess: async (res, vars) => {
       qc.invalidateQueries({ queryKey: ['recommended-check-ins', id] })
       if (vars.yes && res.state === 'ACCEPTED' && (res as any).setUp) {
         /*
-         * THE SET-UP SCREEN'S OWN STARTING POINT. `/start` already takes a free-text `initial`
-         * that seeds its first message (EntryChatPage.tsx's `urlInitial`) - the only starting
-         * point it accepts today, so this opens it with that. `setUp.about` is the engine's own
-         * sentence for what the new check-in is about.
-         *
-         * STILL MISSING FROM THE ENGINE SIDE OF THIS SCREEN: a way to open `/start` already
-         * knowing WHO to invite. `setUp.people` (their names and emails, read back from this
-         * check-in's own record) has nowhere to land yet - the entry conversation has no route-
-         * state or query param for a person's name and email, only for free text and a scenario
-         * key - so the lead still adds each person herself in the conversation that follows, the
-         * same as starting fresh. Nothing here invents a parameter that screen does not read.
+         * PIECE 25: "YES, SET IT UP" OPENS A PREFILLED DRAFT (docs/answers-from-engine.md,
+         * "Request 148 (1)"), replacing the `/start?initial=...` stop-gap this used to be. The
+         * engine's answer carries exactly what the set-up screen needs: `initial` (the first
+         * thing said), `aim` (kept as the draft's name) and `people` (taken in exactly as commit
+         * takes them). It creates nothing and invites nobody - the lead still finishes on
+         * the set-up screen. None of this is personal data for a URL, so it travels as router
+         * state, which EntryChatPage.tsx reads once on arrival (`anchorSetUp`).
          */
-        navigate(`/start?initial=${encodeURIComponent((res as any).setUp.about)}`)
+        try {
+          const opened = await recommendedCheckInsApi.draftFromSetUp((res as any).setUp)
+          /* Shown to the lead as it is - never invented or summarised here. */
+          for (const left of opened.leftOut) toast.info(left.why)
+          navigate('/start', { state: { anchorSetUp: opened } })
+        } catch {
+          toast.error('That did not save. Try again.')
+        }
       }
     },
     onError: () => toast.error('That did not save. Try again.'),
@@ -1650,6 +1666,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* Re-review, 30 September: "0 of 4" read as a bare fragment - what the number counts, from the
      matching objective's own name (e.g. "shops in Westlands"), so it reads as a sentence. */
   const targetNameByParticipant = new Map((b.objectives ?? []).filter((o) => o.ownerParticipantId).map((o) => [o.ownerParticipantId as string, o.name]))
+  /**
+   * ANCHOR PIECE 31, THE "ACTIVE" LINE (section 26; plan section 5 row 12; docs/answers-from-engine
+   * .md, "Request 147", `TheActiveLine`). Drawn in "The team today", for the lead alone, exactly as
+   * the engine sends `line` - never rebuilt from the counts on this side. Nothing when the board
+   * does not serve it (today: always, since it is shape only and not served yet).
+   */
+  const activeLineForTheLead = viewerRunsThisCheckIn ? (b as any).activeLine?.line as string | undefined : undefined
   const eachPersonRows = (b.eachPerson ?? []).map((r) => ({
     ...r,
     keepsComingUp: keepsComingUpByParticipant.get(r.participantId) ?? patternHeadingByParticipant.get(r.participantId) ?? null,
@@ -2332,6 +2355,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         <MaybeFolded fold={participantFoldsWhole}>
 
         {/*
+          PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?", AT THE TOP (plan
+          section 5, row 6). Lead only; draws nothing while `theMonthBoardForTheLead` is undefined.
+        */}
+        {theMonthBoardForTheLead && <TheMonthBoard monthBoard={theMonthBoardForTheLead} />}
+
+        {/*
           THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (request 108 a; board-as-lead.txt:
           "Will we reach 25 sales by 30 September?"). Above everything else, as the engine's own
           answer asks.
@@ -2767,6 +2796,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               The rows are still ordered by what needs the lead first, not listed by name - that
               ordering is unchanged, only the heading now reads as the prototype's screen does.
             */}
+            {activeLineForTheLead && <Note>{activeLineForTheLead}</Note>}
             <WhereEachPersonIs rows={eachPersonRows} squaresFor={squaresFor} />
           </Section>
         )}
@@ -2950,6 +2980,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 note="Each person’s line, their last 10 check-ins, and what keeps coming up."
                 foot="These are about the work."
               >
+                {activeLineForTheLead && <Note>{activeLineForTheLead}</Note>}
                 <WhereEachPersonIs rows={eachPersonRows} squaresFor={squaresFor} />
               </Section>
             )}

@@ -322,10 +322,24 @@ export function InvitePage() {
         own gap, and nothing here sets an inline margin, padding or gap again.
       */}
       <Stack gap={0}>
-        <PageTitle title={theInvitation(preview)} subtitle={(preview.organisationName || preview.endsAt) ? whereAndUntil(preview) : undefined} />
+        <PageTitle title={preview.anchorInvitation?.heading ?? theInvitation(preview)} subtitle={(preview.organisationName || preview.endsAt) ? whereAndUntil(preview) : undefined} />
 
         <Stack gap={19}>
           <Callout>{whoCanReadThis(preview.scenario)}</Callout>
+
+          {/*
+            ANCHOR PIECE 11, THE INVITATION (docs/anchor-scenario-plan.md section 5 row 5). Drawn
+            only when the engine serves `anchorInvitation` (shape only, not served yet) - every
+            other invitation is exactly as it reads today. The callout above (what the prototype
+            always says about who can read this) is kept, unchanged, ahead of these lines.
+          */}
+          {preview.anchorInvitation && (
+            <Stack gap={10}>
+              {preview.anchorInvitation.lines.map((line, i) => (
+                <p key={i} className="gwui-panel-text">{line}</p>
+              ))}
+            </Stack>
+          )}
 
           {/* U.6 review: no "Your part in this". The server no longer sends it, because what it held
               was the lead's sentence about this person. See the-leads-words-about-someone.ts. */}
@@ -393,7 +407,7 @@ export function InvitePage() {
                   <p className="gwui-field-help">Your name is optional. If you add it, the others will see it on the shared report.</p>
                   <div className="gwui-form-actions">
                     <Button type="submit" size="big" wide disabled={accept.isPending} >
-                      {accept.isPending ? 'Setting up your session…' : 'Answer today’s check-in now'}
+                      {accept.isPending ? 'Setting up your session…' : preview.anchorInvitation?.button ?? 'Answer today’s check-in now'}
                     </Button>
                   </div>
                 </form>

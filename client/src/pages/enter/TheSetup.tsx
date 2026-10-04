@@ -13,6 +13,42 @@ import { cadenceLabel } from '@/lib/cadence'
  * already asked in the conversation. See item 17 of docs/morning-report-ui.md.
  */
 
+/**
+ * THE PEOPLE STEP'S OWN RULES, FOR AN ANCHOR DRAFT ONLY (plan piece 11; docs/anchor-scenario-plan.md
+ * section 5 row 4; docs/answers-from-engine.md, "Request 147", `ThePeopleStepRules`).
+ *
+ * Shape only - not served yet ("Shape only, ThePeopleStepRules"). These are the exact values the
+ * engine's own answer gives, copied verbatim, used until the engine actually serves this shape on
+ * the draft or the board. THE ONLY CHANGE NEEDED ONCE IT DOES: read a `ThePeopleStepRules` from
+ * there instead of this constant - `EntryChatPage.tsx`'s invite block already takes the shape, not
+ * this specific object.
+ *
+ * `mayAdd` is 19, not 20: the limit is 20 people including the lead (decision 96, item 3), so the
+ * lead can add 19 others.
+ */
+export type ThePeopleStepRules = {
+  limit: 20
+  theLeadCounts: true
+  mayAdd: 19
+  heading: string
+  intro: string
+  contextLabel: string
+  button: string
+  /** Said when the lead tries to add a twentieth other person. */
+  limitSentence: string
+}
+
+export const ANCHOR_PEOPLE_STEP_RULES: ThePeopleStepRules = {
+  limit: 20,
+  theLeadCounts: true,
+  mayAdd: 19,
+  heading: 'Who needs to be part of this?',
+  intro: 'Add up to 20 people. They don’t need to report directly to you—they simply need to be part of the work you’re trying to move.',
+  contextLabel: 'What do they do / why are they part of this?',
+  button: 'Start my Groundwork.',
+  limitSentence: 'This one-month Groundwork holds 20 people, and you are one of them, so you can add 19 more.',
+}
+
 export const THE_SETUP = {
   whenItStarts: 'When it starts',
   opensAtTheStart: 'The first check-in opens at the start time.',
