@@ -1,5 +1,22 @@
 # Morning report
 
+## The release, 5 October 2026 (written as it goes)
+
+**Release-ready: not yet decided.** The final round is running on `wip/release` (pushed to your copy only).
+
+- **The branch.** `wip/release` is `wip/plain-reports` joined with `wip/prototype-ui` and `wip/live-base`. Both joins had nothing new to bring in, so there were no conflicts. Your write-up for the pull request is `docs/pull-request.md`.
+- **Does it merge cleanly into the live line:** yes. `wip/live-base` (`5197f22d`) is already inside it. Details in `docs/staging-compatibility.md`.
+- **Done so far:** clean install and build of the API and the client pass; both typechecks pass; client tests 4,138 of 4,138 pass (one test followed the leak B sentence, "Check-in not found").
+- **Running:** the full 24-scenario run (run-32, on its own), and the API tests.
+- **Still to run:** the adversarial set, the browser journeys, the WhatsApp journeys, the privacy sweep.
+- **Fixed tonight before the round:** reminder sweeps now leave out somebody waiting for the organisation to let them in (row 5); one source check now ignores comments, as the guard test asks.
+
+**Needs Hafsah (the release):**
+1. Our migrations were never run on a copy of the live data. The safety check refused the command. Run it once on a copy, after the backup.
+2. Nothing was built on Node 20, which the hosting uses. Only Node 26 is on this computer.
+3. The two existing-client checks (`docs/existing-users.md`) need a copy of the live data from you.
+4. The pattern name "Does the coordinating other people skipped" reads as a broken sentence when it is put in a line. You approved it (decision 52), so I left it. A suggestion: "Picks up the coordinating that others left undone."
+
 ## Morning, 5 October 2026
 
 **Not yet release-ready.** The safety check refused my full end-of-night entry, because its text named the pre-release environment where the two existing-client checks must run. As the rules say, it was not reworded; the full entry is in the chat for Hafsah. In short: every test passes (16,013 in the API, 4,044 in the client); the release checklist is done apart from the items only Hafsah can do; and those, with every question, are listed at the top of `docs/release-checklist.md` under "Waiting on Hafsah" and in the chat.
