@@ -839,6 +839,15 @@ export class AuthService {
   ): Promise<{ message: string }> {
     const lower = inviteeEmail.toLowerCase();
     const role = how.role ?? 'MEMBER';
+    /*
+     * THE ORGANISATION'S OWN NAME, FROM THE RECORD. The caller passed `user.organizationName`, which the signed-in
+     * user object does not carry, so every invitation said "You've been added to Groundwork on Groundwork" and told
+     * the invited person nothing about who had asked them. The inviting organisation is known here; read its name.
+     */
+    if (inviterOrganizationId) {
+      const inviting = await this.prisma.organization.findUnique({ where: { id: inviterOrganizationId }, select: { name: true } });
+      if (inviting?.name) inviterOrgName = inviting.name;
+    }
 
     let user = await this.prisma.user.findUnique({ where: { email: lower } });
 
