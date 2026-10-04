@@ -130,3 +130,16 @@ describe('a percentage the model wrote as a fraction is not rounded to nothing',
     expect(got.forPeople[0].targets).toEqual([{ name: 'Late deliveries', number: 5 }]);
   });
 });
+
+describe('an action read from a paste carries no full stop of its own', () => {
+  it('so the line reads "Call every butchery in Ikeja (by Friday 10 October)" and not with a dot before the bracket', async () => {
+    const { service } = aSetupConversation({
+      ground: { participants: PEOPLE },
+      seed: { ground: { findUnique: async () => ({ id: 'g1', participants: PEOPLE }) } },
+      extract: () => ({ commitments: [{ personName: 'Amina Yusuf', action: 'Call every butchery in Ikeja.', when: 'by Friday 10 October', theySaidIt: true }] }),
+    });
+    const got: any = await (service as any).whatAPasteGives('g1', PLAN);
+    expect(got.commitments[0].action).toBe('Call every butchery in Ikeja');
+    expect(whatWeTookFromThat(got, { asking: true })).toContain('- Amina Yusuf: Call every butchery in Ikeja (by Friday 10 October)');
+  });
+});

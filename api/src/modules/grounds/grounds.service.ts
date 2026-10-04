@@ -3894,7 +3894,8 @@ export class GroundsService {
       commitments.push({
         who: who ? theNameWeUseFor(who as any) : null,
         participantId: who?.id ?? null,
-        action: r.action.trim().slice(0, 400),
+        /* The action is a phrase that a "(by Friday)" follows, so it carries no full stop of its own. */
+        action: r.action.trim().replace(/[.!\s]+$/, '').slice(0, 400),
         outcome: (r.outcome ?? '').trim().slice(0, 400) || null,
         when: (r.when ?? '').trim().slice(0, 120) || null,
         theySaidIt: r.theySaidIt !== false,

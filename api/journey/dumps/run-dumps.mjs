@@ -138,6 +138,20 @@ if (via === 'doc') {
   log.chatAfterUpload = chat.data?.reply ?? chat.data?.proposal?.say;
 }
 
+if (via === 'askdoc') {
+  const form = new FormData();
+  form.append('file', new Blob([text], { type: 'text/plain' }), `${dump}.txt`);
+  form.append('consentConfirmed', 'true');
+  const up = await fetch(`${API}/grounds/${gid}/documents`, { method: 'POST', headers: { authorization: `Bearer ${L}` }, body: form });
+  log.uploadStatus = up.status;
+  await new Promise((r) => setTimeout(r, 30000));
+  const r = await call(L, 'POST', '/ask', { message: 'I have just added the document.', groundId: gid });
+  log.askStatus = r.status; log.lane = r.data?.lane; log.sayBack = JSON.stringify(r.data).slice(0, 8000);
+  const mid = await snapshot(); log.writtenBeforeYes = count(mid) - count(before);
+  const pid = r.data?.blocks?.find?.((b) => b.proposalId)?.proposalId; log.proposalId = pid;
+  if (pid) { const y = await call(L, 'POST', '/ask/answer', { proposalId: pid, answer: 'yes' }); log.yesStatus = y.status; log.yesSay = y.data?.blocks?.[0]?.body ?? y.data; }
+}
+
 if (via === 'checkin') {
   const mine = await p.checkIn.findMany({ where: { groundId: gid } , select: { id: true, participantId: true, sessionNumber: true } });
   const leadPart = await p.groundParticipant.findFirst({ where: { groundId: gid, userId: lead.id }, select: { id: true } });

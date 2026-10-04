@@ -22,6 +22,10 @@ describe('the reading prompts tell the model whose a number is', () => {
   it('the dump reader does not take a figure the paste says is not approved as anybody\'s number', () => {
     expect(A_DUMP_PROMPT).toContain('not approved, not agreed, only a request, a maybe or a guess');
   });
+  it('the dump reader does not make a count inside a job into a target, and finds a question put to a named person', () => {
+    expect(A_DUMP_PROMPT).toContain('belongs to that job and is not a number the person is to reach');
+    expect(A_DUMP_PROMPT).toContain('addressed to a named person');
+  });
   it('the plan reader links a named owner to every goal under it, and skips what the plan says is not agreed', () => {
     expect(A_PLAN_PROMPT).toContain('is the personName of every goal and commitment in that priority');
     expect(A_PLAN_PROMPT).toContain('is not an item');
