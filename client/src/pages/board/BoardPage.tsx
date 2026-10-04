@@ -2920,7 +2920,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 const been = s.state === 'done' || (s.state === 'current' && !groundEnded)
                 const face = sessionPillSentence(s, groundEnded)
                 const skinClass = `gwui-fs-13 gwui-rule gwui-pt-4 gwui-pr-10 gwui-pb-4 gwui-pl-10 ${s.state === 'current' ? 'gwui-ink-green' : 'gwui-ink-sub'}`
-                const skinStyle = { borderRadius: 20, background: s.state === 'current' ? 'var(--gw-green-bg)' : 'white', fontWeight: s.state === 'current' ? 700 : 500 } as const
+                /*
+                  PHONE CHECK, ITEM 9: THE SESSION PILLS WERE ONLY 30px TALL (8px of padding
+                  around one line of 13px text) - under the 40px a finger needs, on the button
+                  variant (a finished session, which opens its report). `inline-flex` plus
+                  `minHeight` grows the tap area without widening the pill's own left/right
+                  padding or changing its rounded shape, border or background.
+                */
+                const skinStyle = { borderRadius: 20, background: s.state === 'current' ? 'var(--gw-green-bg)' : 'white', fontWeight: s.state === 'current' ? 700 : 500, display: 'inline-flex', alignItems: 'center', minHeight: 40, boxSizing: 'border-box' } as const
                 if (!been) return <div key={s.n} className={skinClass} style={skinStyle}>{face}</div>
                 return (
                   <button
@@ -3314,7 +3321,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         <button
                           onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.suggestedCount! })}
                           disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
-                          className="gwui-fs-13 gwui-pt-2 gwui-pr-9 gwui-pb-2 gwui-pl-9 gwui-rule-blue gwui-ink-blue" style={{fontWeight: 700, borderRadius: 11, background: 'var(--gw-blue-bg)', cursor: 'pointer', fontFamily: 'inherit'}}
+                          /*
+                            PHONE CHECK, ITEM 9: "USE N" WAS 55 BY 25 - under the 40px tap area a
+                            finger needs. `inline-flex`/`minHeight` grows the hit area; the pill's
+                            own padding, border, colour and corner radius are unchanged.
+                          */
+                          className="gwui-fs-13 gwui-pt-2 gwui-pr-9 gwui-pb-2 gwui-pl-9 gwui-rule-blue gwui-ink-blue" style={{fontWeight: 700, borderRadius: 11, background: 'var(--gw-blue-bg)', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', minHeight: 40, boxSizing: 'border-box'}}
                         >
                           Use {o.suggestedCount}
                         </button>

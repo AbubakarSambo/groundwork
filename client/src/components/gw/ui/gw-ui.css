@@ -84,7 +84,13 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 /* ── PAGE TITLE (prototype: .t-title, .crumb, .t-small, .av at 56px) ────── */
 .gwui-pt-eyebrow { font-size: 14.5px; color: var(--gw-sub); margin: 0 0 6px; }
 .gwui-pt-crumb { font-size: 14px; color: var(--gw-sub); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0 0 6px; }
-.gwui-pt-crumb a { color: var(--gw-navy); text-decoration: underline; }
+/*
+ * PHONE CHECK, ITEM 9: THE "CHECK-INS" CRUMB WAS A LINE OF TEXT, NO TALLER THAN ITS OWN TYPE. Padding
+ * plus an equal negative margin grows the tap area to 40px without moving the crumb row itself or
+ * widening the gap to "/" and the title beside it - the same technique used for a plain text link
+ * that must not shift the layout around it.
+ */
+.gwui-pt-crumb a { color: var(--gw-navy); text-decoration: underline; display: inline-block; padding: 9px 0; margin: -9px 0; }
 .gwui-pt-crumb .gwui-pt-sep { margin: 0 6px; }
 .gwui-pt-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
 .gwui-pt-head { display: flex; align-items: center; gap: 16px; min-width: 0; }
@@ -382,9 +388,19 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 /* A plain text link that still does something (not a navigation), for a control that must not
    compete with the page's one real primary button (Hafsah, 30 September, item 2). Same look as
    .gwui-open-link, under its own name for anywhere that isn't a list row. */
+/*
+ * PHONE CHECK, ITEM 9: A TAP TARGET UNDER 40px. This quiet-text-link class draws the header's
+ * "Ask", "Hide"/"Show" (over time), "How to read this board", "Split one total across people",
+ * "Add a record" and "Set up an availability poll" - each one line of text with no padding, so the
+ * box a finger actually has to hit was only as tall as the text itself (22px or so). `min-height`
+ * plus `inline-flex`/`align-items: center` grows the hit area to 40px without changing the text's
+ * own size, weight or colour - the link reads exactly as it did, just with more room around it to
+ * tap.
+ */
 .gwui-plain-link {
   font-size: 14.5px; font-weight: 700; color: var(--gw-navy); background: none; border: 0;
   padding: 0; cursor: pointer; font-family: inherit; text-decoration: underline;
+  min-height: 40px; display: inline-flex; align-items: center;
 }
 .gwui-invite-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
 /* A FIELD BESIDE ITS BUTTON, EVEN ON A PHONE (group 1 review, "Add it, switched off"): `.gwui-input`
