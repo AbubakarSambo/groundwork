@@ -74,6 +74,8 @@ export { CLOSED_BY_THE_CLOCK };
 /** `CheckIn.closedReason` when the person declined to take part. */
 export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
+import { theAnchorParticipantGuidance, whatTheyToldYouBefore } from './the-anchor-weekly-check-in';
+import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
 import { EmailService } from '../email/email.service';
@@ -1200,7 +1202,11 @@ export class ConversationService {
      */
     const openerSystem = alreadyWritten
       ? ''
-      : `${await this.composeSystemPrompt(checkIn, undefined, { forTheOpener: true })}\n\n${THE_OPENER_IS_ONE_MESSAGE}`;
+      : await (async () => {
+        const composedOpener = await this.composeSystemPrompt(checkIn, undefined, { forTheOpener: true });
+        const anchored = this.theAnchorWeekWords(checkIn.id);
+        return `${[composedOpener, ...anchored.before].filter(Boolean).join('\n\n')}\n\n${THE_OPENER_IS_ONE_MESSAGE}${anchored.last ? `\n\n${anchored.last}` : ''}`;
+      })();
     if (!alreadyWritten) this.logger.log(`Check-in ${checkIn.id}: opener prompt ${openerSystem.length} chars.`);
     /* The opener is saved through the same step as every turn, so it is read against its own prompt. */
     if (openerSystem) this.setThePromptForThisTurn(checkIn.id, openerSystem);
@@ -1293,7 +1299,7 @@ export class ConversationService {
     const contextAtTheTop = await this.theContextNotYetSaid(checkIn as any);
     /* Suggested answers under the opening question too. */
     const suggestedAnswers = await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', null);
-    return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null), ...(suggestedAnswers.length ? { suggestedAnswers } : {}) };
+    return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null), ...(suggestedAnswers.length ? { suggestedAnswers } : {}), ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}) };
   }
 
 
@@ -1736,7 +1742,9 @@ export class ConversationService {
       throw new BadRequestException({ message: theCeilingIsReached(), canFinish: true });
     }
 
-    const composed = await this.composeSystemPrompt(checkIn, message);
+    const composedBefore = await this.composeSystemPrompt(checkIn, message);
+    const anchored = this.theAnchorWeekWords(checkIn.id);
+    const composed = [composedBefore, ...anchored.before].filter(Boolean).join('\n\n');
     /*
      * AND WHAT TO DO ABOUT THE DEADLINE THEY JUST GAVE, WHICH NOTHING WAS DOING.
      *
@@ -1789,7 +1797,9 @@ export class ConversationService {
 
     const fullSystem = [composed, aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null]
       .filter(Boolean)
-      .join('\n\n');
+      .join('\n\n')
+      /* The anchor's short reminder, when it is in play, is read after everything else. */
+      + (anchored.last ? `\n\n${anchored.last}` : '');
     this.setThePromptForThisTurn(checkIn.id, fullSystem);
 
     // Persist the person's turn.
@@ -2886,6 +2896,7 @@ export class ConversationService {
       reply: [contextNotSaid, tookTheNumbers, whereToTakeIt, withRoomLeft].filter(Boolean).join('\n\n'),
       sessionComplete,
       ...(suggestedAnswers.length ? { suggestedAnswers } : {}),
+      ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}),
     };
   }
 
@@ -5285,7 +5296,85 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
+    /*
+     * THE ANCHOR'S WEEKLY CHECK-IN, ONLY WHEN THE SWITCH IS ON AND THIS CHECK-IN WAS STARTED FROM THE ANCHOR LINK (anchor piece 15).
+     * Kept beside the prompt, not in it: the caller puts these words after everything else, so they are read last. Otherwise nothing
+     * is kept, and the prompt is byte for byte what it was.
+     */
+    const anchorWeek = await this.theAnchorWeek(checkIn, ground, untoldHere).catch((err: any) => {
+      this.logger.warn(`The anchor's weekly guidance for ${checkIn.id} could not be read: ${err?.message}`);
+      return null;
+    });
+    if (anchorWeek) this.logger.log(`anchor-weekly check-in=${checkIn.id} prompt-version=${anchorWeek.promptVersionId ?? 'the file'}`);
+    this.anchorVersionForThisTurn.set(checkIn.id, anchorWeek?.promptVersionId ?? null);
+    this.anchorWeekForThisTurn.set(checkIn.id, anchorWeek);
+
     return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+  }
+
+  /* Which stored version of the anchor's weekly words this turn ran, per check-in. Same shape and lifetime as the other per-turn maps. */
+  private _anchorVersionForThisTurn?: Map<string, string | null>;
+  private get anchorVersionForThisTurn(): Map<string, string | null> {
+    if (!this._anchorVersionForThisTurn) this._anchorVersionForThisTurn = new Map();
+    return this._anchorVersionForThisTurn;
+  }
+  /* The anchor's weekly words for this turn, written by composeSystemPrompt and read by the reply path that puts them after the rest. */
+  private _anchorWeekForThisTurn?: Map<string, { text: string; block: string; last: string; promptVersionId: string | null } | null>;
+  private get anchorWeekForThisTurn() {
+    if (!this._anchorWeekForThisTurn) this._anchorWeekForThisTurn = new Map<string, { text: string; block: string; last: string; promptVersionId: string | null } | null>();
+    return this._anchorWeekForThisTurn;
+  }
+  /** The anchor's weekly words that go before the turn's own additions, and the ones that go after everything. Both empty unless the anchor is in play. */
+  private theAnchorWeekWords(checkInId: string): { before: string[]; last: string } {
+    const w = this.anchorWeekForThisTurn.get(checkInId);
+    return w ? { before: [w.text, w.block], last: w.last } : { before: [], last: '' };
+  }
+
+  /**
+   * THE ANCHOR'S WEEKLY CHECK-IN FOR SOMEBODY ON THE LEAD'S TEAM (anchor piece 15): the scenario's words, and what this person has
+   * told us before, in their own words. Null unless the switch is on, the check-in began at the anchor link, this is not the lead and
+   * not the first session. Only this person's own earlier words and commitments are read, and only the aims they have been told.
+   */
+  private async theAnchorWeek(
+    checkIn: { id: string; groundId: string; participantId: string; sessionNumber: number; participant: { partyType: any } },
+    ground: any,
+    untoldHere: AnUntoldGoalRow[],
+  ): Promise<{ text: string; block: string; last: string; promptVersionId: string | null } | null> {
+    const guidance = await theAnchorParticipantGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, {
+      ground,
+      isTheLead: checkIn.participant.partyType === PartyType.INITIATOR,
+      sessionNumber: checkIn.sessionNumber,
+    });
+    if (!guidance) return null;
+    const lastCheckIn = await this.prisma.checkIn.findFirst({
+      where: { participantId: checkIn.participantId, sessionNumber: { lt: checkIn.sessionNumber }, status: CheckInStatus.COMPLETED },
+      orderBy: { sessionNumber: 'desc' },
+      select: { id: true, completedAt: true },
+    }).catch(() => null);
+    const entries = lastCheckIn
+      ? await this.prisma.recordEntry.findMany({
+        where: { checkInId: lastCheckIn.id, participantId: checkIn.participantId },
+        orderBy: { createdAt: 'asc' },
+        select: { text: true },
+        take: 5,
+      }).catch(() => [] as { text: string }[])
+      : [];
+    const promises = await (this.prisma.groundCommitment?.findMany?.({
+      where: { groundId: checkIn.groundId, participantId: checkIn.participantId, status: 'UNKNOWN' },
+      select: { text: true, whenSaid: true },
+      orderBy: { createdAt: 'asc' },
+      take: 5,
+    }) ?? Promise.resolve([])).catch(() => [] as { text: string; whenSaid: string | null }[]);
+    const aims = this.theTargetsThisPersonMaySee(ground, { participantId: checkIn.participantId, participant: checkIn.participant }, untoldHere)
+      .map((o: any) => String(o.name ?? '').trim())
+      .filter(Boolean)
+      .slice(0, 6);
+    const block = whatTheyToldYouBefore({
+      lastSession: lastCheckIn?.completedAt ? { finishedAt: lastCheckIn.completedAt, said: entries.map((e) => e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')) } : null,
+      theySaidTheyWould: promises as { text: string; whenSaid: string | null }[],
+      whatTheGroupIsTryingToChange: aims,
+    }, new Date());
+    return { text: guidance.text, block, last: guidance.last, promptVersionId: guidance.promptVersionId };
   }
 
   /**

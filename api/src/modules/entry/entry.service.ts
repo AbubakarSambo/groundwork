@@ -66,7 +66,8 @@ import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
 import { PromptsService } from '../prompts';
-import { theAnchorGuidance } from '../conversation/the-anchor-lead-conversation';
+import { theAnchorGuidance, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
+import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
@@ -2247,6 +2248,11 @@ from finishing at all.`;
        */
       ...(dto.managingOnly === true ? { managingOnly: true } : {}),
     }, role);
+
+    /* A check-in saved from the anchor conversation remembers it, once, so the weeks that follow read as the anchor's weeks. Only with the switch on. */
+    if (dto.scenario === ANCHOR_ENTRY_SCENARIO && (await theAnchorScenarioIsOn(this.prisma))) {
+      await this.prisma.ground.update({ where: { id: ground.id }, data: { startedFrom: STARTED_FROM_THE_ANCHOR } });
+    }
 
     // Find the session 1 check-in and the initiator participant just created.
     const participant = await this.prisma.groundParticipant.findFirst({

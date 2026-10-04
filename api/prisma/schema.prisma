@@ -1049,6 +1049,10 @@ model Ground {
   /// Who set it: "read" when Groundwork read it from setup, "lead" when the lead chose it. A lead's
   /// choice is never overwritten by a later read.
   kindOfWorkSetBy   String?   @map("kind_of_work_set_by")
+  /// WHERE THIS CHECK-IN WAS STARTED FROM, when it was started from the anchor link (docs/anchor-scenario-plan.md, piece 15). "anchor" or
+  /// null. Written once, when the lead saves what they said in the anchor conversation and the anchor switch is on. A check-in that holds it
+  /// keeps behaving as an anchor check-in even if the switch is later turned off. Null on every check-in that exists.
+  startedFrom       String?   @map("started_from")
   /// The organisation's own stage names for this kind of work, in order, when the lead has given
   /// them. Null means the kind's defaults, which are the prototype's (for sales: Contacted, Need
   /// established, Pitched, Qualified, Quoted, Won).
