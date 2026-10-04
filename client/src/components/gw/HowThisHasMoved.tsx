@@ -39,7 +39,7 @@ export function HowThisHasMoved({ groundId, viewerRunsThisCheckIn }: { groundId:
       </div>
 
       <div className="gwui-gap-8" style={{ display: 'flex', flexDirection: 'column' }}>
-        {moved.map(m => {
+        {moved.map((m, i) => {
           /*
            * U.9 RE-REVIEW: THE FIELD THE SERVER ACTUALLY SENDS IS `sessionNumber`, NOT `round`.
            * "At the end of session undefined, on 27 September, and one read differed." was wrong
@@ -60,9 +60,20 @@ export function HowThisHasMoved({ groundId, viewerRunsThisCheckIn }: { groundId:
           const sawDifferently = m.differences > 0
             ? `${opening}, people saw ${m.differences === 1 ? 'one thing' : `${m.differences} things`} differently.`
             : `${opening}, everybody saw it the same way.`
+          /*
+           * PHONE CHECK, ITEM 10: THREE "ENCOUNTERED TWO CHILDREN WITH THE SAME KEY" WARNINGS, on
+           * the onboarding board (ceo). `m.sessionNumber ?? m.takenAt` only tells two rows apart
+           * when they open on different dates or carry a session number - but several of this
+           * check-in's `moved` rows send `sessionNumber: null` with the same `takenAt` date
+           * ("2026-09-26"), so three rows collapsed onto the same key. The row's own position is
+           * stable (the server returns them in order and nothing here reorders them), so it is
+           * joined on wherever `sessionNumber` is missing, keeping a real `sessionNumber` as the
+           * key on its own when there is one.
+           */
+          const rowKey = m.sessionNumber != null ? m.sessionNumber : `${m.takenAt}-${i}`
           return (
           <div
-            key={m.sessionNumber ?? m.takenAt}
+            key={rowKey}
             className="gwui-rule gwui-pt-11 gwui-pr-14 gwui-pb-11 gwui-pl-14"
             style={{ borderRadius: 10, background: 'white' }}
           >
