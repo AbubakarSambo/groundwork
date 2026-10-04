@@ -24,7 +24,7 @@ describe('only the person who added a document can share what is in it', () => {
   it('somebody else\'s yes writes nothing, leaves the document waiting, and says why', async () => {
     const { prisma, created } = aPrisma('p-amina');
     const said = await writeADocumentsNumbers(prisma, input('p-wairimu'));
-    expect(said).toBe('Only the person who added this document can share what is in it, so nothing was shared.');
+    expect(said).toBe('Nothing was shared, because only the person who added this document can share what is in it.');
     expect(said).toBe(ONLY_WHO_ADDED_IT_CAN_SHARE_IT);
     expect(created).toEqual([]);
     expect(prisma.groundDocument.update).not.toHaveBeenCalled();

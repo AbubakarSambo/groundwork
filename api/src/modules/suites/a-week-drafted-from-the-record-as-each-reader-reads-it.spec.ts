@@ -117,7 +117,7 @@ describe('when there is not enough to draft the hours, nothing is parked and the
       'On Monday 5 October, the record shows your check-in "Naivas Ngong Road install" and the commitment you kept, "Send Lakeside the service report".',
       'On Tuesday 6 October, the record shows your check-in "Sales team" and the work you own, "Naivas freezer 3 wiring".',
       'On Wednesday 7 October, the record shows "Lakeside maintenance plan", which you own.',
-      'The record does not say how long anything took, and your organisation has not set the hours asked a week, so I cannot draft the hours.',
+      'I cannot draft the hours. The record does not say how long anything took, and your organisation has not set the hours asked a week.',
       'Tell me the hours instead, for example "I spent 3 hours on a client on Monday", and I will say them back before anything is sent.',
     ].join('\n'));
     expect(o.proposals).toEqual([]);

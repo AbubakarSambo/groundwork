@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import {
   SWITCHBOARD_GROUPS, SWITCHBOARD_SITUATIONS, EXAMPLE_SWITCHBOARD_ROW,
@@ -14,12 +14,12 @@ import {
  * track" legend (Switched on / Optional / Off by design) appear in it verbatim, so this checks the
  * transcription line by line rather than trusting it by eye.
  */
-const SWITCHBOARD_TXT = readFileSync(
-  join(__dirname, '../../../../docs/prototype/screens/B1-starting-a-check-in/switchboard.txt'),
-  'utf8',
-)
+const SWITCHBOARD_FILE = join(__dirname, '../../../../docs/prototype/screens/B1-starting-a-check-in/switchboard.txt')
+/* docs/prototype/ is not tracked by git, so this runs only where the prototype's text exists. */
+const THE_PROTOTYPE_IS_HERE = existsSync(SWITCHBOARD_FILE)
+const SWITCHBOARD_TXT = THE_PROTOTYPE_IS_HERE ? readFileSync(SWITCHBOARD_FILE, 'utf8') : ''
 
-describe('the switchboard’s 24 situations, against the prototype’s own text', () => {
+describe.skipIf(!THE_PROTOTYPE_IS_HERE)('the switchboard’s 24 situations, against the prototype’s own text', () => {
   it('has exactly the prototype’s 24 situations', () => {
     expect(SWITCHBOARD_SITUATIONS.length).toBe(24)
   })

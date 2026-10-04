@@ -359,7 +359,7 @@ describe('a private document is turned into shared notes only by the person who 
   it('the plan page refuses a lead-only document that somebody else added, and says why', async () => {
     const { svc, prisma, writes } = aService();
     prisma.groundDocument.findFirst = jest.fn(async () => ({ content: PLAN, fileName: 'Q4 plan.pdf', participantId: 'p-aisha', visibility: 'CLOSED' }));
-    await expect(svc.read('g1', 'u-lead', { documentId: 'd1' })).rejects.toThrow('Only the person who added this document can share what is in it, so nothing was shared.');
+    await expect(svc.read('g1', 'u-lead', { documentId: 'd1' })).rejects.toThrow('Nothing was shared, because only the person who added this document can share what is in it.');
     expect(writes).toEqual([]);
   });
   it('and reads one the lead added, and one that is open to everyone', async () => {

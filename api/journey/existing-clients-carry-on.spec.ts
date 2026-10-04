@@ -312,7 +312,8 @@ const needsTheDatabase = (fn: (o: Outcome) => void) => () => {
 describe('release night, for a check-in that already exists', () => {
   it('runs every migration since the live main line, and the data changes are the ones in docs/deploy.md', needsTheDatabase((o) => {
     const names = theNewMigrations();
-    expect(names).toHaveLength(81);
+    /* 82 since 4 October: the anchor scenario's empty started_from column (docs/deploy.md row 82). */
+    expect(names).toHaveLength(82);
     // The six statements deploy.md lists, plus the WhatsApp prices (five updates and one insert).
     expect(o.dataChangesRun).toBeGreaterThanOrEqual(8);
   }));

@@ -9,6 +9,7 @@ import {
   THE_WEEKLY_REMINDER,
   theAnchorParticipantGuidance,
   whatTheyToldYouBefore,
+  withoutAnAnnouncedAngle,
 } from './the-anchor-weekly-check-in';
 import { READ_THIS_LAST } from './the-anchor-lead-conversation';
 
@@ -31,7 +32,7 @@ function aWorld(w: World = {}) {
   const me = w.asTheLead ? LEAD : PERSON;
   const ground = {
     id: 'g1', organizationId: 'org1', scenario: w.scenario ?? GroundScenario.NEW_PROJECT, moment: null, label: 'The literacy programme',
-    mode: 'SHARED', timelineDays: 30, brief: null, startsAt: null, endsAt: null, status: 'ACTIVE', leadRemit: null, cadence: null, resolutionState: null,
+    mode: 'SHARED', timelineDays: 30, brief: 'The lead private line: Amina will review everyone in March', toldToParticipants: 'This check-in is about why the quarterly donor reports matter for the programme team.', startsAt: null, endsAt: null, status: 'ACTIVE', leadRemit: null, cadence: null, resolutionState: null,
     initiatorId: 'p0', peersVisibleToEachOther: null, expectThemToUnblock: true, startedFrom: w.startedFrom ?? null,
     objectives: [
       { name: 'District reports reach the donor on time', target: null, ownerParticipantId: null, isADecisionAboutAPerson: false, setByParticipantId: 'p0', direction: null },
@@ -82,7 +83,8 @@ describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
       expect(prompt).toContain(said);
     }
     expect(prompt).toContain('This person was invited by their lead');
-    expect(prompt).toContain('Never say what their work was good, great, smart or useful');
+    expect(prompt).toContain('Never say that what they did or what happened was good, great, smart, useful, practical, progress or a good sign');
+    expect(prompt).toContain('Never say what their lead wants, fears, thinks or is trying to avoid');
   });
 
   it('brings back what they said last time and what they said they would do, in their own words, and how long ago', async () => {
@@ -97,6 +99,13 @@ describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
     const prompt = await aWorld({ startedFrom: 'anchor', switchOn: true }).compose();
     expect(prompt).toContain('- District reports reach the donor on time');
     expect(prompt).not.toContain('Ngozi owns the Kano target');
+  });
+
+  it('names the wider aim as this person has been told it, and never the lead\'s own brief', async () => {
+    const prompt = await aWorld({ startedFrom: 'anchor', switchOn: true }).compose();
+    expect(prompt).toContain('- This check-in is about why the quarterly donor reports matter for the programme team.');
+    const block = prompt.slice(prompt.indexOf('# What this person has told you before'));
+    expect(block.slice(0, block.indexOf('\n\n#', 10) > 0 ? block.indexOf('\n\n#', 10) : undefined)).not.toContain('Amina will review everyone in March');
   });
 
   it('ends on the short reminder, read last', async () => {
@@ -124,6 +133,20 @@ describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
     expect(block).toContain('do not connect their work to a wider aim');
   });
 
+  it('comes before the returning-user note that asks for a new angle each week, in the guidance and in the words read last', () => {
+    expect(THE_WEEKLY_CHECK_IN_GUIDANCE).toContain('comes before any note above about opening from a different angle, such as asking what almost went wrong');
+    expect(THE_WEEKLY_REMINDER).toContain('Do not open with another angle, and do not say "Today we are going to"');
+    /* And it carries the order of the two steps that follow, so the engine's own questions about what they will do do not come first. */
+    expect(THE_WEEKLY_REMINDER).toContain('your question this turn is the offer: Would you like me to write down "their exact words" as something you will do?');
+    expect(THE_WEEKLY_REMINDER).toContain('ask what they think could happen next. Do this before you ask what they will do, by when, or what happens if it goes wrong.');
+  });
+
+  it('takes an announced new angle out of the opening and keeps the question', () => {
+    expect(withoutAnAnnouncedAngle('Last time you said Ngozi depends on you. Today we are going to talk about those sheets. What moved since we last spoke?')).toBe('Last time you said Ngozi depends on you. What moved since we last spoke?');
+    expect(withoutAnAnnouncedAngle('What moved since we last spoke?')).toBe('What moved since we last spoke?');
+    expect(withoutAnAnnouncedAngle('Today we are going to talk about the sheets.')).toBe('Today we are going to talk about the sheets.');
+  });
+
   it('is guidance and not a script', () => {
     expect(THE_WEEKLY_CHECK_IN_GUIDANCE).toContain('These are examples of what you might ask, not a list to work through');
     expect(THE_WEEKLY_CHECK_IN_GUIDANCE).toContain('one question at a time');
@@ -143,6 +166,19 @@ describe('anchor piece 15: the opening of the weekly check-in', () => {
     expect(opener).toContain(`- ${THEIR_WORDS}`);
     expect(opener.endsWith(THE_WEEKLY_REMINDER)).toBe(true);
     expect(opener.indexOf('<<')).toBe(-1);
+  });
+});
+
+describe('anchor piece 15: the opening does not announce another angle', () => {
+  it('drops "Today we are going to" from the opening it writes', async () => {
+    const w = aWorld({ startedFrom: 'anchor', switchOn: true });
+    (w.service as any).prisma.conversationTurn.findFirst = jest.fn(async () => null);
+    (w.service as any).prisma.checkIn.findUnique = jest.fn(async () => ({ ...w.checkIn, status: CheckInStatus.NOT_STARTED }));
+    (w.service as any).billing = { canStartSession: jest.fn(async () => ({ allowed: true, sessionsBalance: 5 })) };
+    (w.service as any).anthropic.respond = jest.fn(async () => 'Today we are going to talk about the sheets. What moved since we last spoke?');
+    const out = await w.service.open('ci2', 'user-1').catch(() => ({ reply: '' } as any));
+    expect(out.reply).toContain('What moved since we last spoke?');
+    expect(out.reply).not.toContain('Today we are going to');
   });
 });
 
