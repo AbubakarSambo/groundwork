@@ -3427,7 +3427,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               <Panel><div className="gwui-fs-15 gwui-ink-sub">{b.whatTheRoomIsAboutNote}</div></Panel>
             )}
             {b.whatTheRoomIsAbout && (
-              <div className={`gwui-gap-14 ${b.whatTheRoomIsAboutNote ? 'gwui-mt-14' : 'gwui-mt-0'}`} style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))'}}>
+              <div className={`gwui-gap-14 ${b.whatTheRoomIsAboutNote ? 'gwui-mt-14' : 'gwui-mt-0'}`} style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(300px,100%),1fr))'}}>
                 {/*
                   THE AIMS COME FIRST AND TAKE THE WIDTH THEY NEED. On a board where nobody set a
                   target, what each person is trying to do is the only thing there is to align on,
@@ -3694,7 +3694,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             heading={b.family === 'UPDATE' ? 'What each person said' : 'Who owns what'}
             note={b.family === 'UPDATE' ? 'Their own answers to the question, in their words.' : 'Read from what people said in their check-ins.'}
           >
-            <div className="gwui-gap-14" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))'}}>
+            <div className="gwui-gap-14" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(320px,100%),1fr))'}}>
               {b.whoOwnsWhat.map((p) => (
                 <Panel key={p.participantId} pad={false}>
                   <div className="gwui-pt-13 gwui-pr-15 gwui-pb-10 gwui-pl-15 gwui-rule-bottom">
