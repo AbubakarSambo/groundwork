@@ -91,8 +91,9 @@ export const END_STATES: Record<string, EndStateOption[]> = {
     { value: 'NOT_YET', label: 'It is not settled yet, and it will be looked at again when more is known.' },
   ],
   OKR_ALIGNMENT: [
-    { value: 'ALIGNED', label: 'The team\'s goals match where the company is going.' },
-    { value: 'GAPS_IDENTIFIED', label: 'Gaps were found, and the goals need to be changed.' },
+    { value: 'ALIGNED', label: 'The team is on course.' },
+    { value: 'REACH_WITH_A_CHANGE', label: 'The team can reach it, with a change in how the work is done.' },
+    { value: 'GAPS_IDENTIFIED', label: 'The target needs to change.' },
     { value: 'NOT_YET', label: 'It is not settled yet, and more sessions are needed.' },
   ],
   WORKPLAN_BUDGET: [
