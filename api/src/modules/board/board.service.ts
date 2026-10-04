@@ -1901,10 +1901,10 @@ export class BoardService {
       }
       /*
        * HELP NOBODY MENTIONED (request 115 c): a colleague named somebody as the reason something moved,
-       * and that person's own lines say nothing about it. Whoever runs the check-in only; who said it is
-       * never served. See help-nobody-mentioned.
+       * and that person's own lines say nothing about it. Whoever runs the check-in, and an admin with access to it
+       * (decision 93, row 10); who said it is never served. See help-nobody-mentioned.
        */
-      if (runsItForAPattern(ground as any, requestingUserId)) {
+      if (runsItForAPattern(ground as any, requestingUserId) || adminHere) {
         const help = helpNobodyMentioned(
           (readInput as any).mentions ?? [],
           ((readInput as any).entries ?? []).map((e: any) => ({ participantId: e.participantId, text: cleanText(e.text ?? '') })),

@@ -24,9 +24,15 @@ describe('help nobody mentioned, about the person reading it', () => {
       'A colleague said Kwame Mensah helped them. Kwame Mensah did not mention it in their own check-ins.',
     ]);
   });
-  it('Kwame and an admin who only reads are not sent it', async () => {
-    for (const reader of [KWAME, JUMA] as (readonly [string, string])[]) {
-      expect((await boardAs(RUN, ...reader)).helpNobodyMentioned).toBeUndefined();
-    }
+  it('Kwame is not sent it', async () => {
+    expect((await boardAs(RUN, ...KWAME)).helpNobodyMentioned).toBeUndefined();
+  });
+  /* Changed by decision 93, row 10. This pinned "Kwame and an admin who only reads are not sent it"; Hafsah removed the admin half. */
+  it('Juma, an admin who only reads, is sent it, with every name and no "you"', async () => {
+    const lines = (await boardAs(RUN, ...JUMA)).helpNobodyMentioned.lines;
+    expect(lines).toEqual([
+      'A colleague said Bisi Adeyemi helped them. Bisi Adeyemi did not mention it in their own check-ins.',
+      'A colleague said Kwame Mensah helped them. Kwame Mensah did not mention it in their own check-ins.',
+    ]);
   });
 });
