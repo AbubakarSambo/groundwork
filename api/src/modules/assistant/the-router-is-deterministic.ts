@@ -28,6 +28,8 @@ export type Lane =
   | 'what_did_they_say'
   | 'what_next'
   | 'how_am_i_doing'
+  /** A lead asking how their team is doing: the board and the latest report of the check-ins they run, read to them alone. */
+  | 'how_is_the_team'
   | 'where_am_i_needed'
   | 'what_is_stuck'
   | 'where_am_i_up_to'
@@ -282,6 +284,18 @@ const RULES = [
     /\bour\s+last\s+check-?in\b/i,
     /\bwhat\s+did\s+(?:the\s+)?last\s+(?:check-?in|round|report)\b/i,
     /\bwhat\s+(?:has|have)\s+(?:we|the\s+team)\s+(?:agreed|decided)\b/i,
+  ]),
+  rule('how_is_the_team', [
+    /*
+     * "HOW IS THE TEAM DOING" (4 October 2026, the user journeys). A lead who asked it was given the fallback with
+     * options. The words are narrow on purpose: the team, my team, everyone or the quarter, with "how" in front, so
+     * "how am I doing" stays with the coaching lane. Above `what_should_we_talk_about`, whose "how am I doing" is the
+     * first person.
+     */
+    /\bhow(?:'s|\s+is|\s+are)\s+(?:the|my|our)\s+team(?:\s+(?:doing|going|getting\s+on|looking))?\b/i,
+    /\bhow(?:'s|\s+is|\s+are)\s+(?:everyone|everybody)\s+(?:doing|going|getting\s+on)\b/i,
+    /\bhow\s+are\s+(?:the\s+|my\s+|our\s+)?people\s+(?:doing|going)\b/i,
+    /\bwhere\s+(?:are|do)\s+we\s+(?:stand\s+)?on\s+the\s+quarter\b/i,
   ]),
   rule('what_should_we_talk_about', [
     /*

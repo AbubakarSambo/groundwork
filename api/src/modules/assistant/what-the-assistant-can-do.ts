@@ -224,6 +224,14 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     refuses: ['where am I needed'],
   },
   {
+    key: 'how_is_the_team',
+    does: 'How the team is doing, for a lead: what the board and the latest report of each check-in they run say, read to them alone',
+    writes: 'nothing',
+    ordered: 'Above how_am_i_doing and what_should_we_talk_about, because "how is the team doing" is about the people, not the asker.',
+    owns: ['how is the team doing?', 'how is my team getting on', 'how is everyone doing'],
+    refuses: ['how am I doing', 'what should we talk about'],
+  },
+  {
     key: 'how_am_i_doing',
     does: 'The coaching step waiting for somebody, if there is one',
     writes: 'nothing',

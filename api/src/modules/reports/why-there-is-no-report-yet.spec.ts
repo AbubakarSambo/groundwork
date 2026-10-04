@@ -16,8 +16,17 @@ describe('why there is no report yet', () => {
   });
 
   it('names how many people are outstanding', () => {
-    expect(whyThereIsNoReportYet({ parties: [done, midway, untouched] })).toContain('2 people have not finished');
-    expect(whyThereIsNoReportYet({ parties: [done, midway] })).toContain('one person has not finished');
+    /* Wording changed on 4 October 2026: whole sentences, a capital letter after each full stop, no dash, the count in words. */
+    expect(whyThereIsNoReportYet({ parties: [done, midway, untouched] })).toBe('The report is written once everybody has answered. Two people have not finished yet. You will be emailed when it is ready.');
+    expect(whyThereIsNoReportYet({ parties: [done, midway] })).toBe('The report is written once everybody has answered. One person has not finished yet. You will be emailed when it is ready.');
+  });
+
+  it('is plain full sentences in every case: each begins with a capital letter, none is joined with a dash or a colon', () => {
+    for (const parties of [[untouched, untouched], [done, midway], [done, midway, untouched], [done, done]]) {
+      const said = whyThereIsNoReportYet({ parties });
+      expect(said).toMatch(/^[A-Z][^.]*\.( [A-Z][^.]*\.)*$/);
+      expect(said).not.toMatch(/ - |:/);
+    }
   });
 
   it('says it is being written when everybody is done — the case people actually met', () => {

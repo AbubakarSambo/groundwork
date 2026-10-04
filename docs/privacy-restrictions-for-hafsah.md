@@ -1,5 +1,7 @@
 # Privacy restrictions that came from Claude, for Hafsah's yes or no
 
+**Answered by Hafsah on 5 October: decision 93 in `docs/decisions-merged.md`.** Removed: 2, 4, 8, 9, 10, 15, 16, 20, 21, 25. Removed for admins only: 1, 14, 17. Kept: 3, 5, 6, 7, 11, 12, 13, 18, 19, 22, 24. 23 kept, except for admins with access to that check-in.
+
 Decision 86 (3 October 2026): no privacy restriction may stay unless it comes from Hafsah's own words or the prototype. These are the restrictions the product applies today that came from a choice by Claude. **Nothing here has been changed.** Answer yes (keep) or no (remove) to each.
 
 "Confirmed in bulk" means it was one of the items in a list Hafsah said yes to as a whole (decision 53's 29 items, or decision 75's 49 items). "Never confirmed" means she was never asked.

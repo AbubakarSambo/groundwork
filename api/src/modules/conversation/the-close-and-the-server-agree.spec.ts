@@ -52,3 +52,13 @@ describe('the engine\'s close and the server\'s completion, on the same record',
     expect(server).toBe('written');
   });
 });
+
+describe('the sentence the server refuses a finish with, when there is too little yet', () => {
+  it('is the plain sentence the app and WhatsApp say, and the person can answer it', async () => {
+    const s = aService(['Things are going fine, thanks.']);
+    const refusal = await s.complete('c1', 'u1').then(() => null, (e: any) => e);
+    expect(refusal?.response?.message).toBe('I need a little more from you before this check-in can close. Please answer one or two more questions, then finish again.');
+    expect(refusal?.response?.canContinue).toBe(true);
+    expect(refusal?.response?.message).not.toMatch(/ - |exchanges|record is still thin/);
+  });
+});

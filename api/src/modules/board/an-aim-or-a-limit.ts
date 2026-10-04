@@ -70,8 +70,9 @@ export function whatTheWordsSuggest(name: string | null | undefined, target?: nu
   /* A number of nought, or words that say nothing at all is allowed with no other number, is a count to keep at zero. */
   if (target === 0 || (target == null && SAYS_ZERO.test(n))) return 'ZERO';
   if (SAYS_A_DATE.test(n)) return 'DEADLINE';
-  if (SAYS_A_SHARE.test(n)) return 'RATE';
-  return theWordsSayItIsALimit(n) ? 'LIMIT' : 'AIM';
+  /* A limit is read before a share: "stay under 35% of sales" is a limit on a share, not a share to keep at 35% or more. */
+  if (theWordsSayItIsALimit(n)) return 'LIMIT';
+  return SAYS_A_SHARE.test(n) ? 'RATE' : 'AIM';
 }
 
 /** The name as it is quoted inside a sentence: no full stop of its own, straight quotes. */
@@ -98,7 +99,7 @@ export function theDayItIsDue(dueOn: Date | string | null | undefined, now: Date
  */
 export function whichWayItIsSaid(name: string, target: number, direction: TargetDirection, dueOn?: Date | string | null, now: Date = new Date()): string {
   switch (direction) {
-    case 'LIMIT': return `${quoted(name)} is a limit of ${aNumberPeopleCanRead(target)} not to go over.`;
+    case 'LIMIT': return `${quoted(name)} is a limit of ${/%|per ?cent/i.test(name) ? aShare(target) : aNumberPeopleCanRead(target)} not to go over.`;
     case 'RATE': return `${quoted(name)} is a share to keep at ${aShare(target)} or more.`;
     case 'DEADLINE': {
       const day = theDayItIsDue(dueOn, now);

@@ -181,6 +181,7 @@ import { notTheWordParty } from './not-the-word-party';
 import { whatYourOwnRecordSays } from './what-your-own-record-says';
 import { whatChangedSinceLastTime } from './what-changed-since-last-time';
 import { whyThereIsNoReportYet } from './why-there-is-no-report-yet';
+import { aReportWithNoEmptyLine } from './a-report-has-no-empty-line';
 import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-record-rests-on';
 import { documentsSection } from './a-document-in-the-corpus';
 import { everybodySaidLittle } from './a-record-can-be-thin-for-everybody';
@@ -986,7 +987,7 @@ export class ReportsService {
     const after = this.synthesisQueue.get(groundId) ?? Promise.resolve();
     const mine = after.then(() => {
       this.synthesisWaiting.delete(groundId);
-      return this.synthesizeNow(groundId);
+      return this.synthesizeUntilItHoldsEveryoneWhoFinished(groundId);
     });
     if (this.synthesisQueue.has(groundId)) this.synthesisWaiting.set(groundId, mine);
     const tail = mine.catch(() => undefined);
@@ -996,6 +997,27 @@ export class ReportsService {
     } finally {
       if (this.synthesisQueue.get(groundId) === tail) this.synthesisQueue.delete(groundId);
     }
+  }
+
+  /**
+   * A REPORT TAKES MINUTES TO WRITE, AND SOMEBODY CAN FINISH WHILE IT IS BEING WRITTEN. What it counts
+   * and who it says has contributed is read from the record as it stood when the run began, so the last
+   * person to finish could be left out of the report that was stored after they finished. If the number
+   * of people who have finished is different when the run ends from when it began, it is written again,
+   * from the record as it stands, up to three times.
+   */
+  private async synthesizeUntilItHoldsEveryoneWhoFinished(groundId: string) {
+    const howManyFinished = async () => {
+      const rows = await ((this.prisma as any)?.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED, isSetup: false }, select: { participantId: true, sessionNumber: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+      return new Set((rows as any[]).map((r) => `${r.participantId}:${r.sessionNumber}`)).size;
+    };
+    let written: any;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const before = await howManyFinished();
+      written = await this.synthesizeNow(groundId);
+      if ((await howManyFinished()) === before) break;
+    }
+    return written;
   }
 
   private async synthesizeNow(groundId: string) {
@@ -1189,7 +1211,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
        is the safe default - it says "nothing earlier to compare against", which is true of any
        round the product cannot place. */
     const roundNow = await (this.prisma.checkIn?.aggregate?.({
-      where: { participant: { groundId }, isSetup: false },
+      /* The round is the highest session somebody has FINISHED. A next session that is waiting, not started,
+         is not a round anybody has answered (the journeys: all three finished and the count read "two of three"). */
+      where: { participant: { groundId }, isSetup: false, status: CheckInStatus.COMPLETED },
       _max: { sessionNumber: true },
     }) ?? Promise.resolve(null))
       .then((r: any) => r?._max?.sessionNumber ?? 1)
@@ -5497,14 +5521,15 @@ happened, and what is in the way.`;
      * colleague. Not on an evaluation check-in, where what the person reviewed and a colleague read has its own
      * rule (decision 17). Whoever runs it, and an admin, read it whole. See one-persons-circumstances-stay-their-own.
      */
-    const withNames = !viewerIsLead && !this.peersAreNamed(ground as any, viewerParticipantId) && !isEvaluationCheckIn((ground as any).scenario)
+    /* And nobody is served a line with no words in it, whatever the wall took out of it (a-report-has-no-empty-line). */
+    const withNames = aReportWithNoEmptyLine(!viewerIsLead && !this.peersAreNamed(ground as any, viewerParticipantId) && !isEvaluationCheckIn((ground as any).scenario)
       ? onlyCountsAndPatternsAboutTheOthers(withNamesPutIn, { names: theOtherPeoplesNames(ground.participants ?? [], viewerParticipantId, (ground as any).initiatorId ?? null), lead: theLeadsNamesOf(ground.participants, (ground as any).initiatorId) })
-      : withNamesPutIn;
+      : withNamesPutIn);
     if (viewerIsLead || sharedAs !== 'ANONYMOUS') return withNames;
-    return nothingIdentifyingIn(withNames, (ground.participants ?? []).map((p: any) => ({
+    return aReportWithNoEmptyLine(nothingIdentifyingIn(withNames, (ground.participants ?? []).map((p: any) => ({
       name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || null,
       organisation: p.organisationGiven ?? null,
-    })));
+    }))));
   }
 
   private peersAreNamed(
