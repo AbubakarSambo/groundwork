@@ -4,6 +4,10 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## Trader training programme board: done (4 October)
+
+"Trader training programme, test" (46cfcb15), lead and participant, matched to programme.txt after one review and its fixes (7c3bbba7), checked live (scratchpad `pictures/programme-A/`). The engine's part is request 131.
+
 ## Distribution operations board: done (4 October)
 
 "Distribution operations, test" (f76b7a18), lead and participant, matched to ops.txt after one review and its six screen fixes, checked live (scratchpad `pictures/ops-A/`). The engine's part is request 130. Note: an earlier builder saved captures into an untracked `scratchpad/` folder inside the project. It is not committed, and can be deleted.
