@@ -481,6 +481,50 @@ export type BoardPresent = {
   questionsForTheLead?: { id: string; question: string; because: string }[]
 
   /**
+   * REQUEST 105, PART 1 (a), AND REQUEST 132: A GOVERNMENT PROGRAMME'S OWN THREE SECTIONS
+   * (gov.txt: "What each level understood", "What the visit log shows", "The counties"). Built
+   * only from the record this reader is already served - nothing made up - and sent only to
+   * whoever runs the check-in, the admin who set it up, or an admin of the organisation (the same
+   * readers as every other kind-of-work section in this file). See docs/answers-from-engine.md,
+   * "Request 105, part 1: five kinds of work get their own board shape".
+   */
+  /**
+   * The aim that was set, then each person's own words for what it means, in the order they
+   * joined. `who` is "You" for the reader themselves. `note` is always sent and explains why the
+   * order is by join date and not by level - Groundwork does not keep which level each person
+   * works at (api/src/modules/board/each-kind-gets-its-own-board.ts, `NO_LEVEL_ON_RECORD`).
+   */
+  whatEachLevelUnderstood?: {
+    heading: string
+    state: 'filled' | 'none-yet'
+    levels?: { participantId: string | null; who: string; said: string[] }[]
+    note: string
+    /** Only on `'none-yet'`: "Nobody has said yet what the aim means to them." */
+    says?: string
+  }
+  /**
+   * The numbers brought in from another system for what this check-in is about (`ProductMetric`
+   * rows). `numbers[].says` is the sentence for one number; `whatANumberIsNot` is the three
+   * standing sentences that come with them, as on the report - drawn exactly as sent, in order.
+   */
+  whatTheVisitLogShows?: {
+    heading: string
+    state: 'filled' | 'not-known'
+    numbers?: { key: string; source: string; value: number; unit: string | null; measuredAt: string; says: string }[]
+    whatANumberIsNot?: string[]
+    /** Only on `'not-known'`: why nothing can be said yet. */
+    why?: string
+  }
+  /** Each county on record, with the project names that name it, or why there is nothing yet. */
+  theCounties?: {
+    heading: string
+    state: 'filled' | 'none-yet'
+    counties?: { id: string; name: string; said: string | null; saidBy: string | null; projects: string[]; says: string }[]
+    /** Only on `'none-yet'`: "No county is on record yet." */
+    says?: string
+  }
+
+  /**
    * REQUEST 108 (a): THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (board-as-lead.txt: "Will
    * we reach 25 sales by 30 September?"). Built only from the check-in's own team aims. Absent
    * where nothing qualifies - nothing is made up. Draw `question` above everything else, `answer`

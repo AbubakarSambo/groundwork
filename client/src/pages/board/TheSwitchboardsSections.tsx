@@ -406,6 +406,8 @@ const BY_AREA_HEADING: Partial<Record<string, string>> = {
   /* Programme board review 1, item 2: programme.txt's own heading for this section is "By
      county" - the trader groups are organised by county, not a generic "By area". */
   'trader training programme': 'By county',
+  /* Request 132: gov.txt groups the records by county too, for the same reason. */
+  'a government programme': 'By county',
 }
 
 /**
@@ -432,6 +434,87 @@ export function ByAreaSection({ data, kindOfWork }: { data: BoardPresent['byArea
             <Stack gap={2}>
               <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{a.area}</p>
               <Note tone="muted">{a.says}</Note>
+            </Stack>
+          </div>
+        ))}
+      </Panel>
+    </Section>
+  )
+}
+
+/**
+ * REQUEST 105, PART 1 (a), AND REQUEST 132: A GOVERNMENT PROGRAMME'S OWN THREE SECTIONS
+ * (gov.txt: "What each level understood", "What the visit log shows", "The counties"), drawn
+ * straight after "Where it stands" in BoardPage.tsx. Each sentence is drawn exactly as sent -
+ * nothing here is built up or reworded.
+ */
+export function WhatEachLevelUnderstoodSection({ data }: { data: BoardPresent['whatEachLevelUnderstood'] }) {
+  if (!data) return null
+  return (
+    <Section heading={data.heading}>
+      {data.state === 'none-yet' ? (
+        <Note tone="muted">{data.says}</Note>
+      ) : (
+        <Panel pad={false}>
+          {(data.levels ?? []).map((level) => (
+            <div key={level.participantId ?? level.who} className="gwui-panel-row">
+              <Stack gap={4}>
+                <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{level.who}</p>
+                {level.said.map((line, i) => (
+                  <p key={i} className="gwui-panel-text">{line}</p>
+                ))}
+              </Stack>
+            </div>
+          ))}
+        </Panel>
+      )}
+      <Note tone="muted">{data.note}</Note>
+    </Section>
+  )
+}
+
+export function WhatTheVisitLogShowsSection({ data }: { data: BoardPresent['whatTheVisitLogShows'] }) {
+  if (!data) return null
+  if (data.state === 'not-known') {
+    return (
+      <Section heading={data.heading}>
+        <Note tone="muted">{data.why}</Note>
+      </Section>
+    )
+  }
+  return (
+    <Section heading={data.heading}>
+      <Panel pad={false}>
+        {(data.numbers ?? []).map((n) => (
+          <div key={n.key} className="gwui-panel-row">
+            <p className="gwui-panel-text">{n.says}</p>
+          </div>
+        ))}
+      </Panel>
+      {(data.whatANumberIsNot ?? []).map((line, i) => (
+        <Note key={i} tone="muted">{line}</Note>
+      ))}
+    </Section>
+  )
+}
+
+export function TheCountiesSection({ data }: { data: BoardPresent['theCounties'] }) {
+  if (!data) return null
+  if (data.state === 'none-yet') {
+    return (
+      <Section heading={data.heading}>
+        <Note tone="muted">{data.says}</Note>
+      </Section>
+    )
+  }
+  return (
+    <Section heading={data.heading}>
+      <Panel pad={false}>
+        {(data.counties ?? []).map((c) => (
+          <div key={c.id} className="gwui-panel-row">
+            <Stack gap={2}>
+              <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{c.name}</p>
+              <Note tone="muted">{c.says}</Note>
             </Stack>
           </div>
         ))}
