@@ -121,9 +121,11 @@ describe("the sender's rules hold for the summary", () => {
   }
   const m = theLeadsDailySummary('Wairimu', 'In "Sales team, Q3", all 6 people have checked in.', 'https://myground.work/grounds');
 
-  it('it is her one message of the day', async () => {
-    const wa = aSender({ whatsappStoppedAt: null, whatsappLastInboundAt: new Date() }, [{ kind: 'request-waiting' }]);
-    expect(await wa.sendFor('org-1', '+254711000111', m.text, { kind: m.kind, params: m.params })).toEqual({ sent: false, error: NOT_TODAY });
+  it('it is her one message of the day, and an approval told straight away does not use it up', async () => {
+    const used = aSender({ whatsappStoppedAt: null, whatsappLastInboundAt: new Date() }, [{ kind: 'checkin-open' }]);
+    expect(await used.sendFor('org-1', '+254711000111', m.text, { kind: m.kind, params: m.params })).toEqual({ sent: false, error: NOT_TODAY });
+    const after = aSender({ whatsappStoppedAt: null, whatsappLastInboundAt: new Date() }, [{ kind: 'request-waiting' }]);
+    expect((await after.sendFor('org-1', '+254711000111', m.text, { kind: m.kind, params: m.params })).sent).toBe(true);
   });
   it('outside the 24 hours, while lead_daily_summary is not approved, it is recorded as not sent', async () => {
     const wa = aSender({ whatsappStoppedAt: null, whatsappLastInboundAt: new Date(Date.now() - 3 * 86_400_000) });

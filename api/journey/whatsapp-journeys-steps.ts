@@ -162,9 +162,9 @@ export async function journeys(c: any): Promise<void> {
   const l1 = (await leaveRows())[0];
   check('Leave 1 is saved, waiting, for the right days', !!l1 && l1.status === 'waiting' && l1.startsOn.toISOString().slice(0, 10) === '2026-10-20' && l1.endsOn.toISOString().slice(0, 10) === '2026-10-22', JSON.stringify(l1));
   const toWairimuToday = since(L1.from - 1).filter((s: any) => s.to === wairimu.phone);
-  /* Wairimu leads a check-in that opened today and was told so: she has had her one message. The rule (decision 83) holds the approval for the morning summary. */
+  /* Wairimu leads a check-in that opened today and was told so: she has had her one message. Decision 92: the approval is told straight away all the same. */
   const wairimuHad = await prisma.whatsAppSend.count({ where: { phone: wairimu.phone, kind: { startsWith: 'checkin-open' }, sentAt: { not: null } } });
-  check('Wairimu was told today that her own check-in opened, so the approval waits for her morning summary instead of a second message the same day', wairimuHad === 1 && toWairimuToday.length === 0, `opening notices to Wairimu ${wairimuHad}; messages to her since: ${JSON.stringify(toWairimuToday.map(bodyOf))}`);
+  check('Wairimu was told today that her own check-in opened, and is still told straight away that Amani\'s leave waits for her', wairimuHad === 1 && toWairimuToday.length === 1 && /Amani has asked for leave from Tuesday 20 October to Thursday 22 October, and it is waiting for you\./.test(toWairimuToday[0].text), `opening notices to Wairimu ${wairimuHad}; messages to her since: ${JSON.stringify(toWairimuToday.map(bodyOf))}`);
   check('None of the request went into Amani\'s check-in as an answer', (await prisma.conversationTurn.count({ where: { checkInId: amaniCheckIn.id, role: 'PERSON' } })) === amaniBeforeRequest);
   const back1 = await says(amani, 'back');
   check('"back" returns Amani to her check-in', /^You are back in your check-in\. Sales team, Q4, session 1\. Carry on where you left off\.$/.test(back1.text), back1.text);
@@ -204,7 +204,7 @@ export async function journeys(c: any): Promise<void> {
   check('Wairimu gets exactly one message, the summary, as the lead_daily_summary template (she has not written in 24 hours)', toLead.length === 1 && toLead[0].template === 'lead_daily_summary', JSON.stringify(toLead.map(bodyOf)));
   const summary = toLead[0]?.text ?? '';
   check('It opens with her name and says how many have checked in, and who has not, in a full sentence', /^Good morning Wairimu\. Here's today's summary of your check-ins: /.test(summary) && /In "Sales team, Q4", 1 of 4 people have checked in, and you, Amani and Baraka have not yet\./.test(summary), summary);
-  check('It carries the leave that is waiting for her, which she was not told about yesterday', /Amani's leave from Tuesday 20 October to Thursday 22 October is waiting for you to approve or decline\./.test(summary), summary);
+  check('It carries the leave that is waiting for her, which she was also told about straight away', /Amani's leave from Tuesday 20 October to Thursday 22 October is waiting for you to approve or decline\./.test(summary), summary);
   check('It carries a link to the board', summary.includes(`${base}/grounds/${salesId}/board`), summary);
   check('Nothing anybody said is in it', !/Harbor|Green Mart|Fresh Basket|4\.2|1\.8|discount|referral|meetings/i.test(summary), summary);
   check('It is one paragraph with no line break', !/\n/.test(summary));
@@ -307,7 +307,7 @@ export async function journeys(c: any): Promise<void> {
   await cron.sendWhatsAppRemindersInner(new Date());
   await waitQuiet(600);
   check('Run again the same morning, nobody is written to twice (one message on a day nothing opens)', since(mornSecond).length === 0, JSON.stringify(since(mornSecond).map(bodyOf)));
-  const perDay = await prisma.$queryRawUnsafe(`SELECT phone, count(*)::int n FROM whatsapp_sends WHERE sent_at IS NOT NULL AND created_at >= date_trunc('day', now() at time zone 'UTC') AND kind IN ('checkin-open','due-tomorrow','opens-soon','closes-soon','overdue','team-almost-in','your-view-matters','lead-summary','request-waiting') GROUP BY phone HAVING count(*) > 1`);
+  const perDay = await prisma.$queryRawUnsafe(`SELECT phone, count(*)::int n FROM whatsapp_sends WHERE sent_at IS NOT NULL AND created_at >= date_trunc('day', now() at time zone 'UTC') AND kind IN ('checkin-open','due-tomorrow','opens-soon','closes-soon','overdue','team-almost-in','your-view-matters','lead-summary') GROUP BY phone HAVING count(*) > 1`);
   check('Nobody has had more than one first message today', perDay.length === 0, JSON.stringify(perDay));
 
   /* A session that opens at a set time: a quarter-hour job, an hour before. */

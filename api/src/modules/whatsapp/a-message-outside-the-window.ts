@@ -33,16 +33,14 @@ export const BUSINESS_INITIATED: ReadonlySet<string> = new Set([
  * Groundwork starts on its own; each person gets at most one a day, or two on a day one of their
  * check-ins opens or closes. A report is not one of them: it follows the person finishing.
  *
- * APPROVALS (decision 82, item 1). Telling an approver that a request waits for them IS one of them:
- * the approver did nothing to start it, so it counts towards their one message of the day, and when
- * it is held back here the lead's morning summary carries it instead. Telling a person what was
+ * APPROVALS (decision 82, item 1, changed by decision 92). Telling an approver that a request waits for
+ * them is NOT one of them any more: it goes straight away (see APPROVALS below). Telling a person what was
  * decided about their own request is NOT one of them, for the same reason as the report: it answers
  * something they did (they asked). It still never goes after STOP, and outside the 24 hours it goes
  * only as its approved template.
  */
 export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
   'checkin-open', 'due-tomorrow', 'opens-soon', 'closes-soon', 'overdue', 'team-almost-in', 'your-view-matters', 'lead-summary',
-  'request-waiting',
   /*
    * A REVIEW (item 16). The person did nothing to start their review or to have it decided, so both
    * count towards their one message of the day. Held back, the review still waits for them in the app
@@ -50,6 +48,13 @@ export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
    */
   'review-started', 'review-decided',
 ]);
+/**
+ * APPROVALS GO STRAIGHT AWAY (decision 92, item 3). Telling an approver that a request waits for them
+ * (and telling them a question was answered, or that a step was passed on to them) is never held for
+ * the morning summary, whatever else the person has had today, and it does not use up the one message
+ * of the day either. Only "Not now" and "stop" still hold it: those are the person's own word.
+ */
+export const APPROVALS: ReadonlySet<string> = new Set(['request-waiting']);
 /** The messages that mark a day a check-in opens or closes, when two may go. */
 export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon']);
 /**

@@ -34,7 +34,7 @@ import { WhatsAppAddOnService } from '../billing/whatsapp-add-on.service';
 import { aLocalForm, callingCodeOf, formsOfTheSameNumber, tidyANumber } from './a-number-whatsapp-can-reach';
 import { theCountryCodeOf, tidyANumberFor } from './the-organisations-country';
 import { WhichNumber, inboundKeysFrom, whichNumberOf } from './one-number-per-conversation';
-import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THIS_RELEASE, NOT_TURNED_ON_QUIETLY, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW } from './a-message-outside-the-window';
+import { ATemplate, insideTheServiceWindow, isBusinessInitiated, WENT_BEFORE_THIS_RELEASE, NOT_TURNED_ON_QUIETLY, templateFor, OUTSIDE_THE_WINDOW, THEY_SAID_STOP, FIRST_MESSAGES, APPROVALS, OPENING_OR_CLOSING, NOT_TODAY, THEY_SAID_NOT_NOW } from './a-message-outside-the-window';
 
 /**
  * Single Groundwork-owned WhatsApp Business number, shared across every org -
@@ -549,7 +549,7 @@ export class WhatsAppService {
    * wanted it tries again another day.
    */
   private async howOftenToday(to: string, kind: string | undefined): Promise<string | null> {
-    if (!kind || !FIRST_MESSAGES.has(kind)) return null;
+    if (!kind || !(FIRST_MESSAGES.has(kind) || APPROVALS.has(kind))) return null;
     const now = new Date();
     const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const rows: { kind: string | null }[] = await (this.prisma.whatsAppSend as any)
@@ -559,6 +559,8 @@ export class WhatsAppService {
       })
       ?.catch?.(() => []) ?? [];
     if ((rows ?? []).some((r) => r.kind === 'not-now')) return THEY_SAID_NOT_NOW;
+    /* Approvals go straight away (decision 92): only the person's own "Not now" holds them, never how many they have had. */
+    if (APPROVALS.has(kind)) return null;
     const went = (rows ?? []).filter((r) => r.kind && FIRST_MESSAGES.has(r.kind.split(':')[0])).length;
     return went >= (OPENING_OR_CLOSING.has(kind) ? 2 : 1) ? NOT_TODAY : null;
   }
