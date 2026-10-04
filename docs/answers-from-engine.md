@@ -4166,3 +4166,9 @@ One turn from each, as the lead read it:
 What is not good enough yet, honestly: the model sometimes asks the hope question again after the lead has already answered it, and the general closing question from the engine's base rules ("what will you do about this, and by when?") still slipped in once in an earlier run; the short reminder read last now says not to, and it has not come back in the last run. The three transcripts are in the session's scratchpad (`anchor-transcript-sales.txt`, `anchor-transcript-ngo.txt`, `anchor-transcript-gov.txt`).
 
 No scenario in `api/journey/all-24` uses the entry conversation (all 24 run signed-in check-ins), so the 24-scenario run and the scorer were not repeated: nothing they read changed.
+
+## 5 October: a person invited by address is named on the board (browser journeys, item 2)
+
+**What was wrong.** The Context tab named two people invited by address "Amani Wekesa" and "Baraka Mutua", and the board called the same two "One colleague" and "Another colleague".
+
+**What changed (served, the board and every report name).** A person with no sign-in name and no name given when invited is now named by the first and last name in their address, the same read the Context tab makes: "amani.wekesa@kito.test" is Amani Wekesa. The order is the person's own name, then the name given when they were invited, then the name in the address. A handle with one word ("sam@"), a desk ("accounts@"), an address with digits ("zawadi.u8@") or a placeholder address still gives "a colleague", "one colleague", "another colleague", because no name is made up. Where the lead set people not to be named to each other, a participant still reads "a colleague" for everybody but themselves and the lead. Code: `reports/the-name-in-an-address.ts`, used by `displayName` in `reports/party-labels.ts` and by `nameOf` in `board/board.service.ts`.
