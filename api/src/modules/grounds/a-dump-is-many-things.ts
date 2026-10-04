@@ -70,6 +70,10 @@ export interface ADumpRead {
 export const A_PASTE_IS_THIS_LONG = 400;
 export const looksLikeADump = (text: string): boolean => (text ?? '').trim().length >= A_PASTE_IS_THIS_LONG;
 
+/** What the lead reads for a question they wrote to themselves. */
+export const A_QUESTION_YOU_PUT_TO_YOURSELF = (question: string): string =>
+  `You put this question to yourself, so it stays open for you and nobody else is asked it: "${question}"`;
+
 export const A_DUMP_PROMPT = `Somebody running a team check-in has pasted everything they have about it. Read it once and take out only what a check-in keeps.
 
 WHAT DOING WELL LOOKS LIKE. Their own sentence about what would make this period a good one. Take the sentence that says what they want out of it, in their words, not a summary of the whole paste. A rule, an instruction or a slogan off a list is not it: "celebrate revenue not meetings" and "no proposal before qualification" are ways of working, not a picture of a good quarter. Nor is a remark about check-ins, accountability or this product itself - a paste often contains notes addressed to whoever set the check-in up, and none of those say what the work should look like. If no sentence in the paste says what a good period looks like, leave this out.
@@ -96,7 +100,7 @@ WHAT IS NOT SETTLED. Anything the paste contradicts itself about, is unsure of, 
 
 WHAT IS TO BE DONE. Every action the paste names: a proposal to send, a call somebody has to make, a list to clean, a thing to finish. One entry each, in the paste's words. A task listed under a person's name or under a workstream that person owns ("Ibrahim: racking installed by 24 October, power backup tested by 31 October") is one entry for each task, with that person as the owner and its own date. An action for somebody who is clearly not part of this team, such as a customer paying a bill or a supplier delivering, is not an action for this team: leave it out of this list and put it under notes. Give the person ONLY where the paste says whose it is - most of a list of outstanding things has no owner, and leaving the owner out is the correct answer, never the nearest name. Give the timing only where the paste gives one, in its own words ("this week", "friday", "before Thursday"). Say whether the person said it themselves ("she said she would do it this week") or the lead is the one saying it needs doing.
 
-QUESTIONS THE LEAD WANTS ASKED. Where the paste writes a question for a named person - "Amina - which accounts actually have a buying process?" - take the person and the question as written. A sentence that ends in a question mark and is addressed to a named person, even when the same person is also talked about earlier in the paste, is such a question.
+QUESTIONS THE LEAD WANTS ASKED. Where the paste writes a question for a named person - "Amina - which accounts actually have a buying process?" - take the person and the question as written. A sentence that ends in a question mark and is addressed to a named person, even when the same person is also talked about earlier in the paste, is such a question. A question the person running the check-in puts to themselves ("I need to decide whether the Kisumu contract is worth keeping", "Do I move Brian onto retail?") is also taken, with personName "the lead", in the writer's own words as a question; it is theirs to think about and nobody else is asked.
 
 WHAT IS BETWEEN TWO PEOPLE. Where the paste describes something that involves two named people and belongs to neither alone - one promised what the other cannot build, one commits dates the other has to keep - name both people and say the thing in the paste's words.
 
@@ -170,7 +174,7 @@ export const A_DUMP_SCHEMA = {
       },
       questionsForPeople: {
         type: 'array',
-        description: 'A question the paste writes for one named person.',
+        description: 'A question the paste writes for one named person, or one the writer puts to themselves (personName "the lead").',
         items: { type: 'object', properties: { personName: { type: 'string' }, question: { type: 'string' } }, required: ['personName', 'question'] },
       },
       betweenPeople: {
@@ -270,11 +274,31 @@ export function theTellingInTheList(history: { role: 'user' | 'assistant'; conte
  */
 const A_DAY = /^(?:\d|mon|tue|wed|thu|fri|sat|sun|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|the \d)/i;
 const A_WORD_FOR_WHEN = /^(?:by|on|before|until|till|from|at|in|after|during|every|within|for|since|between|this|next|end|start|mid|early|late)\b/i;
+/*
+ * A MONTH, A QUARTER AND A VAGUE TIME ARE NOT A DAY. "Tunde Afolabi is joining on November." read as if
+ * November were a day. A day (a date, a weekday) takes "on"; a month, a year or a quarter takes "in"
+ * ("in November", "in Q4"); "mid-November" and "early November" take "in"; "the end of the month" takes
+ * "at". "Next week", "tomorrow" and "this Friday" stand on their own. Nothing is rewritten: the words
+ * the plan used are the words that stay.
+ */
+const A_MONTH = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+const JUST_A_MONTH = new RegExp(`^(?:(?:early|mid|late|the (?:start|middle|end) of)[\\s-]+)?${A_MONTH}(?:\\s+\\d{4})?$`, 'i');
+const A_QUARTER = /^(?:q[1-4]|(?:the )?(?:first|second|third|fourth|last) quarter)(?:\s+(?:of\s+)?\d{4})?$/i;
+const A_YEAR = /^\d{4}$/;
+const STANDS_ALONE = /^(?:tomorrow|today|tonight|yesterday|next|this)\b/i;
+function joinedToWhat(w: string, t: string): string {
+  if (STANDS_ALONE.test(t)) return `${w} ${t}`;
+  if (/^(?:the )?end of\b/i.test(t) || /^end of\b/i.test(t)) return `${w} at ${/^the /i.test(t) ? '' : 'the '}${t}`;
+  if (JUST_A_MONTH.test(t) || A_QUARTER.test(t) || A_YEAR.test(t)) return `${w} in ${t}`;
+  if (/^(?:early|mid|late)[\s-]/i.test(t)) return `${w} in ${t}`;
+  if (A_WORD_FOR_WHEN.test(t)) return `${w} ${t}`;
+  return A_DAY.test(t) ? `${w} on ${t}` : `${w}, ${t}`;
+}
 export function aDateSaid(what: string, when: string): string {
   const w = what.trim().replace(/[.:;,\s]+$/, '');
   const t = when.trim().replace(/[.:;,\s]+$/, '');
   if (!w) return `${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
-  const joined = A_WORD_FOR_WHEN.test(t) ? `${w} ${t}` : A_DAY.test(t) ? `${w} on ${t}` : `${w}, ${t}`;
+  const joined = joinedToWhat(w, t);
   return `${joined.charAt(0).toUpperCase()}${joined.slice(1)}.`;
 }
 export function theDatesToKeep(got: Pick<WhatAPasteGives, 'dates' | 'commitments'>): string[] {
@@ -370,7 +394,13 @@ export function whatWeTookFromThat(
   if (got.questionsForPeople?.length) {
     const one = got.questionsForPeople.length === 1;
     lines.push('', one ? 'A question you want asked, exactly as Groundwork will ask it.' : 'Questions you want asked, each one exactly as Groundwork will ask it.');
-    for (const q of got.questionsForPeople) lines.push(`- ${whatGroundworkWillAsk(q.who, q.exactQuestion?.trim() || plainQuestionFrom(q.question, q.who))}`);
+    for (const q of got.questionsForPeople) {
+      const thatQuestion = q.exactQuestion?.trim() || plainQuestionFrom(q.question, q.who);
+      /* A question the lead put to themselves is said as theirs, and nobody else is asked it. */
+      lines.push(opts.reader?.participantId && q.participantId === opts.reader.participantId
+        ? `- ${A_QUESTION_YOU_PUT_TO_YOURSELF(thatQuestion)}`
+        : `- ${whatGroundworkWillAsk(q.who, thatQuestion)}`);
+    }
     lines.push(one ? THIS_ONE_IS_NOT_ASKED_UNTIL_YOU_CONFIRM_IT : NONE_IS_ASKED_UNTIL_YOU_CONFIRM_IT);
   }
   if (got.betweenPeople?.length) {

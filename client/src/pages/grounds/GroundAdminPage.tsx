@@ -2505,6 +2505,7 @@ export function GroundAdminPage() {
             settingsChangeCount={settingsChangeCount}
             startsAtDraft={startsAtDraft} setStartsAtDraft={setStartsAtDraft}
             startsAtOnRecord={startsAtOnRecord}
+            createdAtOnRecord={(ground as any)?.createdAt ?? null}
             canOfferStartDate={isInitiator && mySessionsDone === 0 && sessionRows.length === 0}
             timelineDaysDraft={timelineDaysDraft} setTimelineDaysDraft={setTimelineDaysDraft}
             cadenceDraft={cadenceDraft} setCadenceDraft={setCadenceDraft}

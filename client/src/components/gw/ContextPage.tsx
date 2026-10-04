@@ -10,6 +10,7 @@ import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import { EachPerson } from '@/components/gw/EachPerson'
 import { LEAD_HOLDS_MORE } from '@/components/gw/the-lead-holds-more'
 import { ContextChat } from '@/components/gw/ContextChat'
+import { FromAPlan, WaitingForYouToConfirm } from '@/components/gw/ThePlanPage'
 import { TargetsBand } from '@/components/gw/TargetsBand'
 import { AddADocument } from '@/components/gw/AddADocument'
 import { SharedNote } from '@/components/gw/SharedNote'
@@ -417,6 +418,8 @@ export function ContextPage({
               "nothing yet" is a fact about this check-in and a blank space is not.
             */}
 
+            {/* The prototype's order: "From a plan", the conversation, then "Waiting for you to confirm". The lead's only. */}
+            {isTheLead && <FromAPlan groundId={id!} />}
             <div id="gw-context-chat">
               {/* The lead's own conversation about their own check-in. An admin reads the page. */}
               {contextEnabled && isTheLead && <ContextChat groundId={id!} />}
@@ -431,6 +434,8 @@ export function ContextPage({
                 </Note>
               )}
             </div>
+
+            {isTheLead && <WaitingForYouToConfirm groundId={id!} />}
 
             {/* 1 - WHAT THIS CHECK-IN IS FOR */}
             {/*

@@ -4150,3 +4150,35 @@ Nothing new is served and no field changed. A fault found while making the Marke
 ## 4 October: the anchor scenario's switch (piece 0)
 
 The board now carries `anchorScenarioOn`, a true or false, sent only to whoever runs the check-in (the lead and an admin who set it up), like `kindsOffered`. It is false unless the setting `release.anchorScenario` says `{"on": true}`, and a person in the check-in is not sent it. Nothing else on any board changes with it on or off; a test compares every reader's board both ways. Please read it from the board; the landing and the anchor sections can hide on it. Files: `api/src/modules/admin/what-is-hidden-at-release.ts` (`theAnchorScenarioIsOn`), `api/src/modules/board/board.service.ts`, `docs/deploy.md`.
+
+## 4 October: the anchor lead's conversation (pieces 5, 6 and 7)
+
+Nothing new is served to a screen and no field changed. With the setting `release.anchorScenario` on and the entry conversation started with the situation `HELP_TEAM_UNDERSTAND`, the lead's chat now follows the anchor scenario's words: it finds out by asking how the organisation keeps going (never assuming revenue means sales), challenges the lead once and kindly, and asks the hope question. The chat answer also carries `promptVersionId`, the stored version of those words that ran, for the anchor conversation only. With the setting off, or for any other situation, the prompt is exactly what it was (a test checks every situation).
+
+The words are the stored prompt `anchor_lead_conversation`. Three real conversations were run on a copy of the local database, with the setting on, on port 3010. The leads ran a sales team, a literacy programme funded by grants, and a ministry's programme office. In all three Groundwork asked how the money comes in before saying anything that depended on it, asked one question a turn, and challenged the lead once.
+
+One turn from each, as the lead read it:
+
+- A sales team, after the lead said it was a monthly fee for companies won. "Customers pay a monthly subscription once won. And your team does the prospecting, calls, and demos. What does your group do that keeps that monthly subscription money coming in?"
+- An NGO funded by grants, after the lead said the donors read the test scores. "They think it's paperwork, but it's the donors who read those scores and decide on renewal from them. Have you actually told them this?"
+- A government programme, after the lead said the sections would arrive in the right shape. "Sections arriving in the right shape and someone flagging problems proactively are what you would notice. Imagine a month from now and this is meaningfully better. What would you notice people doing without you having to ask?"
+
+What is not good enough yet, honestly: the model sometimes asks the hope question again after the lead has already answered it, and the general closing question from the engine's base rules ("what will you do about this, and by when?") still slipped in once in an earlier run; the short reminder read last now says not to, and it has not come back in the last run. The three transcripts are in the session's scratchpad (`anchor-transcript-sales.txt`, `anchor-transcript-ngo.txt`, `anchor-transcript-gov.txt`).
+
+No scenario in `api/journey/all-24` uses the entry conversation (all 24 run signed-in check-ins), so the 24-scenario run and the scorer were not repeated: nothing they read changed.
+
+## 5 October: a person invited by address is named on the board (browser journeys, item 2)
+
+**What was wrong.** The Context tab named two people invited by address "Amani Wekesa" and "Baraka Mutua", and the board called the same two "One colleague" and "Another colleague".
+
+**What changed (served, the board and every report name).** A person with no sign-in name and no name given when invited is now named by the first and last name in their address, the same read the Context tab makes: "amani.wekesa@kito.test" is Amani Wekesa. The order is the person's own name, then the name given when they were invited, then the name in the address. A handle with one word ("sam@"), a desk ("accounts@"), an address with digits ("zawadi.u8@") or a placeholder address still gives "a colleague", "one colleague", "another colleague", because no name is made up. Where the lead set people not to be named to each other, a participant still reads "a colleague" for everybody but themselves and the lead. Code: `reports/the-name-in-an-address.ts`, used by `displayName` in `reports/party-labels.ts` and by `nameOf` in `board/board.service.ts`.
+
+## 5 October: a month, a quarter or a vague time is not a day (browser journeys, item 4)
+
+**What was wrong.** "Tunde Afolabi is joining on November." A month with no day was joined with "on", as if it were a day.
+
+**What changed (served, the dates kept as notes, in the paste reader and on the plan page).** The date is still kept in the words the plan used; only the small word before it is chosen better. A day takes "on": "Tunde Afolabi is joining on 5 November." A month, a year or a quarter takes "in": "Tunde Afolabi is joining in November.", "in November 2026", "in Q4", "in the fourth quarter", "in mid-November", "in early November". The end of a period takes "at the end of": "Tunde Afolabi is joining at the end of the month." Words that already lead stay as they are: "by Friday 16 October", "next week", "this Friday", "in November". "Tomorrow" and "today" stand on their own. A timing with no pattern here (for example "soon") is still joined with a comma, as before. One earlier test read "Hires end of November."; it now reads "Hires at the end of November." Code: `aDateSaid` in `grounds/a-dump-is-many-things.ts`.
+
+## 5 October: a question the lead writes to themselves (browser journeys, item 5)
+
+**What changed (served, the paste reader's say-back and the lead's questions list).** A question the lead puts to themselves in a paste, for example "I need to decide whether we keep the Kisumu contract past March", used to be dropped, because only a question written for a named person was taken. It is now kept on the lead's own row, as a question only the lead sees, and the lead reads in the say-back: You put this question to yourself, so it stays open for you and nobody else is asked it: "I need to decide whether we keep the Kisumu contract past March?" It is the lead's own words, with a capital letter and a question mark added, and no model rewrites it into a question for somebody else. A question for a named person is said as before: Groundwork will ask Amani Wekesa: "Which accounts actually have a buying process?" The instruction to the reader is in the paste prompt `A_DUMP_PROMPT` (in the file; it is not stored as a prompt version). Code: `whatAPasteGives` in `grounds/grounds.service.ts` and `whatWeTookFromThat`.

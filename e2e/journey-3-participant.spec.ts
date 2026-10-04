@@ -35,12 +35,13 @@ test('Amani opens her invitation, checks in, reads the board, asks Groundwork an
     await say(page, 'Green Mart keeps changing who signs it off. I will send it by Friday now that I have the new name.');
     await say(page, 'What worries me most is credit. Two of my dealers are paying at 45 days.');
     await say(page, 'That is everything from me, thank you.');
-    await expect(page.getByText(/Is anything wrong\?|That.s all for today/i).first()).toBeVisible({ timeout: 120_000 });
+    /* How many questions it asks changes from run to run; what matters is that she can finish. */
+    await expect(page.getByRole('button', { name: /That.s right, finish/ }).first()).toBeVisible({ timeout: 180_000 });
     readsAsPlainSentences(await whatIsOnThePage(page));
   });
 
   await test.step('4. She finishes, and reads what was written down from her answers', async () => {
-    await page.getByRole('button', { name: /Complete|Finish|Done|Submit/i }).first().click();
+    await page.getByRole('button', { name: /That.s right, finish/ }).first().click();
     await expect(page.getByText(/Done\. Thanks, Amani\./).first()).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText('Two reports come from this')).toBeVisible();
     readsAsPlainSentences(await whatIsOnThePage(page));

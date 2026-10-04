@@ -54,12 +54,12 @@ test('Grace signs up, invites her people, switches on leave and spending, and op
   await test.step('7. She switches on leave and spending on the Suites page', async () => {
     await page.goto(`${APP}/settings/suites`);
     await expect(page.getByText('Only admins see this page.')).toBeVisible();
-    for (const suite of ['Leave requests', 'Spending and budgets']) {
+    for (const suite of ['Leave requests', 'Spending and budgets', 'Performance reviews']) {
       const panel = page.getByRole('region', { name: suite });
       await panel.getByRole('switch', { name: suite }).or(panel.getByRole('checkbox', { name: suite })).first().click();
       /* Some suites ask a question or two first: "Answer these first, and it switches on." */
       if (await panel.getByText('Answer these first, and it switches on.').isVisible().catch(() => false)) {
-        for (const box of [...await panel.getByRole('textbox').all(), ...await panel.getByRole('spinbutton').all()]) await box.fill(suite === 'Leave requests' ? '21' : '20000');
+        for (const box of [...await panel.getByRole('textbox').all(), ...await panel.getByRole('spinbutton').all()]) await box.fill(suite === 'Leave requests' ? '21' : suite === 'Spending and budgets' ? '20000' : '6');
         for (const pick of await panel.getByRole('combobox').all()) await pick.selectOption({ index: 1 });
         await panel.getByRole('button', { name: 'Switch it on' }).click();
       }

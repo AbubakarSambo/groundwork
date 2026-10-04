@@ -9,7 +9,7 @@ import {
   whatToSayAfterAsking,
   whyThisDidNotWork,
 } from './a-join-link-is-not-a-password';
-import { Injectable, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import { Injectable, Optional, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType } from '@prisma/client';
 import { namesWithoutPossessives } from './a-name-is-not-a-possessive';
@@ -65,6 +65,10 @@ import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
+import { PromptsService } from '../prompts';
+import { theAnchorGuidance, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
+import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
+import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
@@ -475,6 +479,13 @@ export function buildEntrySystemPrompt(
    * knew the situation and the label. So the names travel now.
    */
   peopleNamed?: string[],
+  /**
+   * THE ANCHOR CONVERSATION'S OWN WORDS, in place of the situation's pack. The pack of the situation
+   * it would otherwise fall back to asks for a project's roster and a definition of success, and read
+   * in the same prompt it pulled the anchor lead back into those questions. Left out, nothing
+   * changes, and the prompt is byte for byte what it was.
+   */
+  anchorPack?: string,
 ): string {
   // partyType drives the opener + framing. INITIATOR (default) is the person
   // opening the ground ("what are you starting"); PARTICIPANT is an invitee
@@ -486,7 +497,7 @@ export function buildEntrySystemPrompt(
    * own first check-in, before a ground exists. So the table's "first" cell is the right one and
    * there is nothing to work out. See the-scenario-table.ts.
    */
-  const scenarioPack = buildScenarioPackForParty(scenario, partyType, moment, 'first');
+  const scenarioPack = anchorPack ?? buildScenarioPackForParty(scenario, partyType, moment, 'first');
   const runtimeCtx = buildRuntimeContext({
     scenario,
     partyType,
@@ -507,7 +518,8 @@ export function buildEntrySystemPrompt(
   });
   /* ONE SCRIPT. Where the situation says how to open, the base prompt's own interview is not sent
      alongside it. Nothing is deleted; see one-script-per-conversation.ts. */
-  return [oneScriptOnly(ENGINE_RULES, scenarioPack), scenarioPack, runtimeCtx, ...(settled ? [settled] : []), ENTRY_SESSION_ADDENDUM].join('\n\n---\n\n');
+  /* The anchor conversation leaves out the situation's intake as well: it carries the same project questions as the pack it replaces. */
+  return [oneScriptOnly(ENGINE_RULES, scenarioPack), scenarioPack, ...(anchorPack === undefined ? [runtimeCtx] : []), ...(settled ? [settled] : []), ENTRY_SESSION_ADDENDUM].join('\n\n---\n\n');
 }
 
 /** Merge the server-side EntryDraft (base) with whatever the browser sent
@@ -605,6 +617,8 @@ export class EntryService {
     private email: EmailService,
     private conversation: ConversationService,
     private events: EventEmitter2,
+    /* The stored version of the anchor conversation's words (anchor piece 5 to 7). Optional so that every other way of building this service is unchanged. */
+    @Optional() private prompts?: PromptsService,
   ) {}
 
   opener(scenario?: string): string {
@@ -1333,7 +1347,7 @@ from finishing at all.`;
    * this singleton and read by the controller after an await, so two visitors finishing in the same
    * tick could decide each other's close. It travels with the reply now.
    */
-  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void, peopleNamed?: string[], alreadySaid?: string[]): Promise<{ reply: string; closed: boolean }> {
+  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void, peopleNamed?: string[], alreadySaid?: string[]): Promise<{ reply: string; closed: boolean; promptVersionId?: string | null }> {
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
     messages = withoutBankDetailsAnywhere(messages);
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
@@ -1360,14 +1374,20 @@ from finishing at all.`;
      */
     const mapped = resolveScenario(scenario);
     const theirLast = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
-    const entrySystem = `${buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed)}\n\n---\n\n${theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast))}`;
-    return this.guardedReplyWithClose(
+    /*
+     * THE ANCHOR LEAD'S GUIDANCE, ONLY WHEN THE SWITCH IS ON AND THIS IS THE ANCHOR CONVERSATION.
+     * Otherwise it is null and the text below is exactly what it always was.
+     */
+    const anchor = await theAnchorGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, scenario, messages);
+    const entrySystem = `${buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed, anchor?.text)}\n\n---\n\n${theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast))}${anchor ? `\n\n---\n\n${anchor.last}` : ''}`;
+    const out = await this.guardedReplyWithClose(
       entrySystem,
       messages,
       onDelta,
       /* Theirs: the people they named, what they called it, and everything they typed in setup. */
       [...(peopleNamed ?? []), groundLabel ?? '', ...(alreadySaid ?? [])],
     );
+    return anchor ? { ...out, promptVersionId: anchor.promptVersionId } : out;
   }
 
 
@@ -2228,6 +2248,11 @@ from finishing at all.`;
        */
       ...(dto.managingOnly === true ? { managingOnly: true } : {}),
     }, role);
+
+    /* A check-in saved from the anchor conversation remembers it, once, so the weeks that follow read as the anchor's weeks. Only with the switch on. */
+    if (dto.scenario === ANCHOR_ENTRY_SCENARIO && (await theAnchorScenarioIsOn(this.prisma))) {
+      await this.prisma.ground.update({ where: { id: ground.id }, data: { startedFrom: STARTED_FROM_THE_ANCHOR } });
+    }
 
     // Find the session 1 check-in and the initiator participant just created.
     const participant = await this.prisma.groundParticipant.findFirst({

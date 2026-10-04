@@ -791,7 +791,8 @@ export function ChatPage() {
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
-    if (!f || !groundId) return
+    if (!f) return
+    if (!groundId) { toast.error('Context missing. Please open this session from your check-in page.'); e.currentTarget.value = ''; return }
     setPendingDoc(f)
     setDocContext('')
     setDocContextMode(true)

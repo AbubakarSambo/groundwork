@@ -501,8 +501,9 @@ export class EntryController {
     this.openStream(res);
     const write = (data: unknown) => res.write(`data: ${JSON.stringify(data)}\n\n`);
     try {
-      const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, (text) => write({ type: 'delta', text }), dto.peopleNamed, dto.alreadySaid);
-      write({ type: 'done', reply, sessionComplete: this.sessionCompleteFrom(reply, closed) });
+      const { reply, closed, promptVersionId } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, (text) => write({ type: 'delta', text }), dto.peopleNamed, dto.alreadySaid);
+      /* promptVersionId is there only for the anchor conversation: which stored version of its words ran. */
+      write({ type: 'done', reply, sessionComplete: this.sessionCompleteFrom(reply, closed), ...(promptVersionId !== undefined ? { promptVersionId } : {}) });
     } catch (err: any) {
       this.logger.warn(`Entry stream failed: ${err?.message}`);
       write({ type: 'error', code: 'stream_failed', message: A_STREAM_FAILED });
@@ -552,7 +553,7 @@ export class EntryController {
   @Post('chat')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   async chat(@Body() dto: EntryChatDto) {
-    const { reply, closed } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, undefined, dto.peopleNamed, dto.alreadySaid);
+    const { reply, closed, promptVersionId } = await this.service.chat(dto.messages, dto.scenario, dto.groundLabel, undefined, dto.peopleNamed, dto.alreadySaid);
     /**
      * THE MARKER FIRST, THE PHRASES ONLY AS A BACKSTOP.
      *
@@ -561,7 +562,7 @@ export class EntryController {
      * signal was never consulted, and whether a session closed depended on the assistant happening
      * to use one of six wordings.
      */
-    return this.chatResponse(reply, closed);
+    return { ...this.chatResponse(reply, closed), ...(promptVersionId !== undefined ? { promptVersionId } : {}) };
   }
 
   @Public()

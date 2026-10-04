@@ -23,13 +23,13 @@ describe('a date is written as one plain sentence, as the paste wrote it', () =>
     expect(aDateSaid('Quarter ends', '31 December')).toBe('Quarter ends on 31 December.');
     expect(aDateSaid('Kemi starts', 'the 13th')).toBe('Kemi starts on the 13th.');
     expect(aDateSaid('Price letter to customers', 'by 10 November')).toBe('Price letter to customers by 10 November.');
-    expect(aDateSaid('Hires', 'end of November')).toBe('Hires end of November.');
+    expect(aDateSaid('Hires', 'end of November')).toBe('Hires at the end of November.');
     expect(aDateSaid('Insurance quote', 'soon')).toBe('Insurance quote, soon.');
   });
 
   it('does not keep a date a job already carries', () => {
     expect(theDatesToKeep({ dates: DATES, commitments: COMMITMENTS })).toEqual([
-      'Quarter ends on 31 December.', 'Board meeting on 15 January.', 'Kemi starts on the 13th.', 'Hires end of November.',
+      'Quarter ends on 31 December.', 'Board meeting on 15 January.', 'Kemi starts on the 13th.', 'Hires at the end of November.',
     ]);
   });
 });
@@ -53,7 +53,7 @@ describe('the dates are said back as what will be kept, and kept', () => {
     });
     await (service as any).writeWhatThePasteGave('g1', aPaste({ dates: DATES, commitments: COMMITMENTS }));
     expect(lines.filter((l) => l.kind === 'NOTE').map((l) => `${l.audience} ${l.text}`)).toEqual([
-      'EVERYONE Quarter ends on 31 December.', 'EVERYONE Board meeting on 15 January.', 'EVERYONE Kemi starts on the 13th.', 'EVERYONE Hires end of November.',
+      'EVERYONE Quarter ends on 31 December.', 'EVERYONE Board meeting on 15 January.', 'EVERYONE Kemi starts on the 13th.', 'EVERYONE Hires at the end of November.',
     ]);
   });
 });

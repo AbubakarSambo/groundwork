@@ -1,4 +1,5 @@
 import { PartyType } from '@prisma/client';
+import { theNameInAnAddress } from './the-name-in-an-address';
 import { fromTheReadersSide, noInstructionToAskYourself, theirOwnIsTheReaders } from './a-sentence-from-the-readers-side';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { theShortNameOf } from './a-title-is-not-a-first-name';
@@ -263,7 +264,9 @@ export function displayName(p: LabelParty, theEmailIsFair = false): string | nul
    * `theEmailIsFair` is kept so callers need not change; it no longer turns an address into a name.
    */
   void theEmailIsFair;
-  return null;
+  /* The name the address holds ("amani.wekesa@" is Amani Wekesa), the same read the Context tab makes. Not the address itself. */
+  const inTheAddress = theNameInAnAddress(p.email ?? p.user?.email);
+  return inTheAddress ? withOrg(inTheAddress) : null;
 }
 
 /**

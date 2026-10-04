@@ -28,7 +28,7 @@ This is the one list to follow. Each step that needs whoever runs the release to
 3. **Join this branch with the live main line** on a new branch, and run every test and one full scenario run on the joined code (section 1). Needs Hafsah.
 4. **Take the database backup** and write down the time. Run `SELECT count(*) FROM check_ins WHERE next_commitment IS NOT NULL;` on each database. It must say 0.
 5. **Set the hosted settings** the API needs (section 3, and for WhatsApp `docs/whatsapp-settings.md`). Leave the free trial off, leave `whatsapp_enabled` off, and leave all the hidden-at-release switches at their defaults.
-6. **Release the API.** On its start it runs `prisma migrate deploy`, which applies all 81 new migrations (section 2), and then it adds the prompts (section 6). If a migration fails, the API does not start. Rollback is the rule at the top of this document.
+6. **Release the API.** On its start it runs `prisma migrate deploy`, which applies all 82 new migrations (section 2), and then it adds the prompts (section 6). If a migration fails, the API does not start. Rollback is the rule at the top of this document.
 7. **Check the start** (section 7, "Before any person reads anything"): the migrations finished, `/health` answers, the active prompts match.
 8. **Run the word-for-word script**, `stamp-said-word-for-word.ts`: dry run first, then with `--hosted-database --write` (section 5). Needs the explicit confirmation of whoever runs the release, by typing the database's host name.
 9. **Run the checkability script**, `bring-the-checkability-read-up-to-date.ts`, the same way (section 5). Needs explicit confirmation.
@@ -51,7 +51,7 @@ The local `main` on this computer is old (11 August, pull request 130), so compa
 
 ## 2. The database migrations, in the order they run
 
-There are **81 new migrations** since the remote `main` (67 in the first table below, and fourteen added from 2 to 4 October, in the second). Every migration folder in `api/prisma/migrations` after `20260923140000_what_we_have_so_far` is listed once, and none is missing. They run in name order. The last one the remote `main` has is `20260923140000_what_we_have_so_far`; these come after it.
+There are **82 new migrations** since the remote `main` (67 in the first table below, and fifteen added from 2 to 4 October, in the second). Every migration folder in `api/prisma/migrations` after `20260923140000_what_we_have_so_far` is listed once, and none is missing. They run in name order. The last one the remote `main` has is `20260923140000_what_we_have_so_far`; these come after it.
 
 **Read this first: six of the 67 in the first table do something to existing rows, and three of the fourteen added later do too (numbers 70, 71 and 73). The rest only add new tables, new empty columns, new types or new indexes.**
 
@@ -139,7 +139,7 @@ Every migration, in order, in one sentence each:
 | 66 | `20261001190000_organisation_memory` | New table for what the organisation keeps as memory. | New table |
 | 67 | `20261001200000_a_target_is_an_aim_or_a_limit` | Adds whether a target is an aim or a limit, with a new type. | Untouched |
 
-**Added from 2 to 4 October, after the table above was written (14 migrations, numbers 68 to 81):**
+**Added from 2 to 4 October, after the table above was written (15 migrations, numbers 68 to 82):**
 
 | # | Migration | What it does | Existing rows |
 | --- | --- | --- | --- |
@@ -157,6 +157,7 @@ Every migration, in order, in one sentence each:
 | 79 | `20261003220000_finance_checks_codes_and_pays_a_request_to_spend` | Decision 85, build step 10. Adds six empty columns to requests to spend for finance's part after the last approval: who checked it and when, the budget line it is paid from, the receipt or quote finance has had (only that; no file), the day it was paid and who marked it. Who did each step is also kept in the existing `suite_events`. | Untouched |
 | 80 | `20261003230000_time_sheet_rules_billable_entries` | Decision 85, build step 11. Adds one empty column `billable` to hours (`time_entries`): billable or not, only when the person said so of that entry. Empty means it follows the time sheet rules for its client or project, and with no rules every hour is billable. The rules themselves are kept in the existing `organization_suites` table (a `timeRules` row), so they need no table. | Untouched |
 | 81 | `20261004000000_a_review_reads_the_record_and_the_person_corrects_it` | Decision 85, build step 12. Adds two empty columns to `performance_reviews`: what Groundwork understands from the record for the review's period (`record_read`, facts with ids, written once when a review starts) and the first day of that period (`record_from`); and a new, empty table `performance_review_corrections`, each line the person marks as wrong with what they say is true, kept beside the line. Reviews already started keep no record and read as before. | Untouched |
+| 82 | `20261004100000_a_check_in_remembers_it_began_at_the_anchor_link` | Anchor scenario, piece 15. Adds one empty column `started_from` to `grounds`. It is written (with the word "anchor") only when a lead saves a check-in from the anchor conversation while `release.anchorScenario` is on, which is off. Every check-in that exists keeps it empty, and nothing reads it with the switch off. | Untouched |
 
 The prices and limits migration 71 writes, all editable afterwards at Admin, System, Pricing (`PATCH /admin/pricing/:plan` with `whatsappAddOnCents` and `whatsappMonthlyLimit`):
 
@@ -175,7 +176,7 @@ Things worth knowing about how they run:
 - Columns added with a fixed default (`false`, an empty list) do not rewrite the table on Postgres 11 or later, so none of these should lock a table for long.
 - The new unique indexes on existing tables (`organizations.join_domain`, `organizations.invite_link_code`) are on new columns that start empty, so they cannot fail on existing data.
 - Two pairs of migrations share a timestamp (`20260927180000_*` and `20260927190000_*`). Prisma runs them in full name order, which is the order above.
-- The local test database (`gw_pw9_1786222102`) has every one of them applied (checked on 4 October: all 81), up to `20261004000000_a_review_reads_the_record_and_the_person_corrects_it`.
+- The local test database (`gw_pw9_1786222102`) has every one of them applied (checked on 4 October: all 81, and the 82nd, `20261004100000_a_check_in_remembers_it_began_at_the_anchor_link`, was added after that check), up to `20261004100000_a_check_in_remembers_it_began_at_the_anchor_link`.
 
 ## 3. Settings and environment variables
 
@@ -330,7 +331,7 @@ Every report updated after the release should name the newest `report_synthesis`
 ## 7. The checks to run after deploy
 
 **Before any person reads anything:**
-1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 90;` shows all 81 new migrations finished, and none failed.
+1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 90;` shows all 82 new migrations finished, and none failed.
 2. The API answers `/health`.
 3. The active prompt versions match section 6.
 4. The scripts in section 5 have run, and a report built after them shows quotation marks around people's words again, and an existing check-in has its kind of work.

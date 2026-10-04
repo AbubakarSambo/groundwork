@@ -1,4 +1,6 @@
 import { BLOCKER_TRACE_PROMPT, BLOCKER_TRACE_PROMPT_KEY } from './where-the-blocker-started';
+import { ANCHOR_LEAD_PROMPT, ANCHOR_LEAD_PROMPT_KEY } from './the-anchor-lead-conversation';
+import { ANCHOR_PARTICIPANT_PROMPT, ANCHOR_PARTICIPANT_PROMPT_KEY } from './the-anchor-weekly-check-in';
 import { THE_BRIEF_IS_CONTEXT_ONLY } from './the-leads-brief-is-never-quoted-to-them';
 import { COMPANY_PICTURE_PROMPT, COMPANY_PICTURE_PROMPT_KEY } from '../grounds/the-company-picture';
 import { CUSTOMER_STANDING_PROMPT, CUSTOMER_STANDING_PROMPT_KEY } from '../suites/the-customer-standing';
@@ -5099,6 +5101,10 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: CUSTOMER_STANDING_PROMPT_KEY, content: CUSTOMER_STANDING_PROMPT },
   /* Think it through, in Ask Groundwork (week 19): the version stored here is the one that runs. */
   { key: THINK_IT_THROUGH_PROMPT_KEY, content: THINK_IT_THROUGH_PROMPT },
+  /* The lead who arrives from the anchor link (anchor pieces 5 to 7): the version stored here is the one that runs. */
+  { key: ANCHOR_LEAD_PROMPT_KEY, content: ANCHOR_LEAD_PROMPT },
+  /* The weekly check-in of somebody on the anchor lead's team (anchor piece 15): the version stored here is the one that runs. */
+  { key: ANCHOR_PARTICIPANT_PROMPT_KEY, content: ANCHOR_PARTICIPANT_PROMPT },
   ...buildPartySeeds(),
 ];
 
