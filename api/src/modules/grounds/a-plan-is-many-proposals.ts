@@ -192,7 +192,7 @@ export function proposalsFromAPlan(
   const out: PlanProposal[] = [];
   const seen = new Set<string>();
   for (const r of read ?? []) {
-    const kind = String(r?.kind ?? '').toLowerCase() as PlanProposalKind;
+    let kind = String(r?.kind ?? '').toLowerCase() as PlanProposalKind;
     if (!KINDS.includes(kind)) continue;
     const quote = (r?.fromThePlan ?? '').trim().replace(/^["'“‘]+|["'”’]+$/g, '').trim();
     /* 1. The words must really be in the plan. */
@@ -203,8 +203,15 @@ export function proposalsFromAPlan(
     /* 2. A number only where the quote holds it. A number the quote does not hold drops the whole proposal. */
     if (r?.number !== null && r?.number !== undefined) {
       const n = Number(r.number);
+      /* The number is read from the quote WITHOUT its date: "racking installed by 24 October" holds the
+         day 24 and no number to reach. Found on a project plan (4 October 2026), where the day of the
+         month was kept as a target of 24 on the person who owns the racking. */
+      const withoutTheDate = (r?.date ?? '').trim() ? flatten(quote).split(flatten(r.date as string)).join(' ') : quote;
       if (!Number.isFinite(n) || !numbersIn(quote).has(n)) continue;
-      fields.number = n;
+      if (numbersIn(withoutTheDate).has(n)) fields.number = n;
+      /* Only the day of the date: a job to be done by that date, so a commitment, with no number. */
+      else if (kind === 'goal' && (r?.date ?? '').trim()) kind = 'commitment';
+      else continue;
     }
     /* 3. A date only exactly as the quote wrote it. */
     const date = (r?.date ?? '').trim();
@@ -254,7 +261,7 @@ export function proposalsFromAPlan(
 
 export const A_PLAN_PROMPT = `Somebody who runs a team check-in has given you their plan. Take out each separate thing in it that is one of these four kinds, and nothing else.
 
-GOAL. A result the team or one person is to reach, with its number and date if the plan gives them. "25 freezer sales this quarter" is a goal: what is "freezer sales", number 25, date "this quarter".
+GOAL. A result the team or one person is to reach, with its number and date if the plan gives them. "25 freezer sales this quarter" is a goal: what is "freezer sales", number 25, date "this quarter". A number the whole team is held to ("N180m for the quarter", "credit under 35%", "arrears under 8%") is a goal with no personName; take the number the plan has settled on, never one it is arguing with. A job that is to be done by a date, with no number to reach ("racking installed by 24 October", "go live on 15 November"), is a commitment and not a goal. The day of a date is never the number.
 ROLE. Who owns or is responsible for what. "Aisha looks after the Lagos supermarkets" is a role: personName Aisha, what "the Lagos supermarkets".
 COMMITMENT. Something one person will do, by a date if one is given. "Dayo will send the price list to Client B by 3 October" is a commitment: personName Dayo, what "send the price list to Client B", date "3 October".
 RULE. How the team works. "If they haven't replied after three calls, drop it" is a rule: what "drop a lead after three calls with no reply".

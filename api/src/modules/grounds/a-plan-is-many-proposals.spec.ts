@@ -254,3 +254,25 @@ describe('the sentences the code writes when the model\'s cannot be trusted', ()
     expect(nobodys.says).toBe('Somebody will call every butchery in Ikeja.');
   });
 });
+
+
+/*
+ * DUMPS AND DOCUMENTS (4 October 2026): the day of a date was kept as a target. "Racking installed by
+ * 24 October" came back from the model as a goal with the number 24, and 24 is in the quote, so the
+ * check let it through and the board showed a target of 24 on the person who owns the racking.
+ */
+describe('the day of a date is not a number to reach', () => {
+  const PROJECT = 'Ibrahim Danjuma: racking installed by 24 October, power backup tested by 31 October. Zainab Musa counts 4,200 SKUs by 20 October.';
+  const people = [{ id: 'pI', name: 'Ibrahim Danjuma' }, { id: 'pZ', name: 'Zainab Musa' }];
+  it('reads a goal whose number is only the day of the date as a commitment with no number, and keeps a number that is in the quote beside it', () => {
+    const out = proposalsFromAPlan(PROJECT, [
+      { kind: 'goal', says: 'Ibrahim Danjuma is to have the racking installed by 24 October.', fromThePlan: 'racking installed by 24 October', personName: 'Ibrahim Danjuma', what: 'racking installed', number: 24, date: '24 October' },
+      { kind: 'goal', says: 'Zainab Musa is to count 4,200 SKUs by 20 October.', fromThePlan: 'Zainab Musa counts 4,200 SKUs by 20 October', personName: 'Zainab Musa', what: 'SKUs counted', number: 4200, date: '20 October' },
+    ], people);
+    expect(out).toHaveLength(2);
+    expect(out[0]).toMatchObject({ kind: 'commitment', landsIn: 'Commitments', fields: { personName: 'Ibrahim Danjuma', date: '24 October' } });
+    expect(out[0].fields.number).toBeUndefined();
+    expect(out[0].whichWay).toBeUndefined();
+    expect(out[1]).toMatchObject({ kind: 'goal', fields: { personName: 'Zainab Musa', number: 4200, date: '20 October' } });
+  });
+});
