@@ -4555,3 +4555,30 @@ They are sent their invitation as soon as there is a seat for them, as before. P
 **What stays empty, and which piece fills it.** `peopleHelpingThingsMove` is `[]` until hidden contributors are built (piece 22). "What the team is contributing" says no idea has been captured until ideas are built (piece 19); the shape for them is pinned below. The four lenses are counts said as sentences, never a score; understanding is only "heard from N of M" because nothing yet records whether a person connected their work to the bigger picture (that needs the weekly check-in's own reading).
 
 **Tests.** `board/the-anchor-month-board.spec.ts`, through the real `BoardService.get`: the whole served text as the lead, nothing for a participant or an admin, the same bytes on two reads, week three at sixteen days, and switch off and not-an-anchor; plus the weeks, the patterns rule and the difference sentence on the builder.
+
+## Request 149 (6 of 6): the end of the month is served on the board; the four continue options
+
+**Done.** `BoardPresent.theEndOfMonthRead`, only for a check-in with `started_from` "anchor", only while `release.anchorScenario` is on, to the lead alone, and only once the month has run: twenty-eight days of the record's own clock, or the check-in has ended. Before that, the key is not there. It also needs the lead's own first words to begin with; with none, it is not served. Built from the record with no model call and read at the record's own clock, so opening it never rebuilds it and two reads of the same record are the same bytes (`board/the-anchor-end-of-month.ts`).
+
+**What the lead reads now**, for five people where three answered:
+- `yourOwnWords`: her first words to Groundwork, exactly as she wrote them (cut at a sentence end past 400 characters). These are her words alone, with no quotation marks and no lead-in: the screen already sets "You wanted your team to understand..." above them and quotes them, so the pinned comment on `yourOwnWords` in the shapes file, which says the lead-in is part of the field, is not what the screen reads. I followed the screen.
+- What we found: "Groundwork heard from three of five people over the month." (and, where there are some, "Two things are seen differently by different people.")
+- What they now understand differently: "Groundwork does not yet keep how each person saw things at the start, so it cannot say what changed in what they understand."
+- What they're doing differently: "Two people said what they would do themselves." "One of the things people said they would do was done." "One handoff that was waiting on someone was cleared." With nothing: "Nothing has been recorded yet that people are doing differently."
+- What your team contributed: "No idea from your team has been captured yet."
+- People who helped move the thinking: empty.
+- What you changed as a lead: "Groundwork does not yet keep what changed in how you lead, so it has nothing to say here."
+- What's still stuck: open handoffs and what keeps coming up, as in the month board. With none: "Nobody has said that anything is still in their way."
+- What should happen next: "Groundwork found one piece of work that could have a check-in of its own." and "One of the things people said they would do is still open." With neither: "Keep checking in each week, so the record carries on from here."
+- This started as one Ground: the counts come from the record. Projects, shared objectives and working relationships are the check-in offers Groundwork made (piece 24: a piece of work four people are tangled in, an aim nobody owns, two people who keep waiting on each other), the active commitments are the things people said they would do that are still open. Ideas and suites are 0 for now.
+- The four options, as written: "Keep this Ground running", "Start recommended Grounds", "Turn on relevant suites", "Continue Groundwork for the team".
+
+**What stays empty, and which piece fills it.** Ideas (piece 19) fill the idea count and "What your team contributed". Hidden contributors (piece 22) fill "People who helped move the thinking". A stored "before" at the start of the month (piece 25) fills "What they now understand differently", and the setup reading at the end (decision 64) fills "What you changed as a lead". The suites count waits for pieces 26 and 27.
+
+**Answer (3): where the four continue options should open, using routes that exist.**
+- "Keep this Ground running" opens the plan choice, `/settings/billing` (`BillingPage`, with `/billing/checkout` after it; Stripe in test mode only, decision 96 item 4).
+- "Continue Groundwork for the team" opens the same plan choice, `/settings/billing`. The two options are the same page today; that is honest until Hafsah says what "keep this Ground running" should do differently.
+- "Start recommended Grounds" opens the board `/grounds/:id/board`, where "Groundwork recommends" lists the offers (`GET /grounds/:id/recommended-check-ins`), and the lead's yes there goes to `/new/setup` through `POST /entry/draft-from-set-up`.
+- "Turn on relevant suites" opens the Suites page, `/settings/suites`.
+
+**Tests.** `board/the-anchor-end-of-month.spec.ts`, through the real `BoardService.get`: the whole served text as the lead, none for a participant or an admin, not served before the month has run, served early when the check-in has ended, and switch off, not-an-anchor and no words of hers.

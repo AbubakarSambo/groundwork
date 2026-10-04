@@ -3,7 +3,9 @@ import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check
 import { theActiveLineFor } from './the-anchor-active-line';
 import { readTheMonthRecord } from './the-anchor-month-record';
 import { theMonthBoard, aDifferenceInAWords } from './the-anchor-month-board';
-import type { TheActiveLine, TheMonthBoard } from '../entry/the-anchor-served-shapes';
+import { theEndOfMonthRead, theMonthIsOver, herOwnWords } from './the-anchor-end-of-month';
+import { hasEnded } from '../grounds/a-ground-that-has-ended';
+import type { TheActiveLine, TheMonthBoard, TheEndOfMonthRead } from '../entry/the-anchor-served-shapes';
 
 /**
  * THE ANCHOR SCENARIO'S PARTS OF THE BOARD (request 149). One door, so `board.service.ts` carries a single call.
@@ -13,11 +15,11 @@ import type { TheActiveLine, TheMonthBoard } from '../entry/the-anchor-served-sh
  * end-of-month read are the lead's own, as the screens' contract says ("Lead only"), so they go to the lead alone.
  * For anybody else, and for every other check-in, this returns nothing, so the board is exactly what it was.
  */
-export type TheAnchorParts = { activeLine?: TheActiveLine; theMonthBoard?: TheMonthBoard };
+export type TheAnchorParts = { activeLine?: TheActiveLine; theMonthBoard?: TheMonthBoard; theEndOfMonthRead?: TheEndOfMonthRead };
 
 export async function theAnchorBoardParts(args: {
   prisma: any;
-  ground: { id: string; startedFrom?: string | null };
+  ground: { id: string; startedFrom?: string | null; initiatorId?: string | null; status?: string | null };
   readerRunsIt: boolean;
   openRound: number;
   roundOpenedAt: Date | null;
@@ -37,6 +39,11 @@ export async function theAnchorBoardParts(args: {
     const record = await readTheMonthRecord(prisma, ground.id, args.openRound);
     const differences = (args.served.divergence?.items ?? []).map(aDifferenceInAWords).filter((x): x is string => !!x);
     parts.theMonthBoard = theMonthBoard({ record, clock: args.clock, differences, patterns: args.patterns });
+    /* The month's end: twenty-eight days of the record's own clock, or the check-in has ended. Needs her own first words to begin with. */
+    if (theMonthIsOver(record.startedOn, args.clock, hasEnded(ground.status ?? null))) {
+      const herWords = await herOwnWords(prisma, ground.id, ground.initiatorId ?? null);
+      if (herWords) parts.theEndOfMonthRead = theEndOfMonthRead({ herWords, record, differences, patterns: args.patterns });
+    }
   }
   return parts;
 }
