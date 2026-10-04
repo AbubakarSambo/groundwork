@@ -1,5 +1,6 @@
 import { anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
-import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
+import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
+import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { whoIsNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
@@ -277,6 +278,8 @@ export class TheWeeklyReportService {
     if (week != null && !/^\d{4}-\d{2}-\d{2}$/.test(week)) throw new BadRequestException('Pick a week by the date of its Monday, for example 2026-09-21.');
     /* Nobody held for a seat reads the weekly report either (privacy sweep finding 3). */
     await refuseSomeoneHeldForASeat(this.prisma as any, groundId, who.userId);
+    /* Nor anyone waiting for the organisation's approval (row 5). */
+    await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, who.userId, CANNOT_READ_THE_REPORT_YET);
     const ground: any = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {

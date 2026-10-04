@@ -4422,3 +4422,17 @@ The lead, an admin who reads the check-in, a reader who may read the colleagues'
 **Storage, and a decision I did not change.** I did not change what is stored. The stored quote keeps the name on purpose (`a-quote-is-what-they-said.ts`: every quote is the person's original words, taken from the record, and the first attempt to rewrite names inside quotes at the read was rejected). Taking names out of quotes at storage would put labels inside what people said, which that ruling forbids, and every read would have to put them back. Because the swap is done on every read of every stored row, no rewrite of stored rows is needed, and `api/journey/bring-a-check-in-up-to-date.ts` is not changed. If you want names taken out of quotes when the report is stored, that reverses the 27 September ruling, so it is your call.
 
 **Tests.** `a-name-inside-a-quote-is-a-name-for-a-reader-who-may-not-read-it.spec.ts`. Also `privacy-isolation.spec.ts` (GW-PRI-01) now expects "Check-in not found" instead of a 403, for finding 7.
+
+### 9. Someone waiting for the organisation's approval reads neither the check-in page nor the weekly report (row 5, kept by decision 93)
+
+**What changed for a reader.** The board and the reports already turned away a person waiting for an admin to let them into the organisation. The check-in page (`GET /grounds/:id`) and the weekly report did not, so that person still read them. They are now refused first, before anything about the check-in is looked up, the same way a person held for a seat is. On the check-in page they read:
+
+> This check-in cannot start until an admin at the organisation that invited you approves you joining it.
+
+On the weekly report they read:
+
+> You can read this check-in's report once an admin at the organisation that invited you approves you joining it.
+
+Everyone who has been let in is unchanged.
+
+**Tests.** `nobody-waiting-for-the-organisation-reads-the-check-in.spec.ts`, which reads the board, the check-in page, the report and the weekly report through the real services as a person waiting and as a person let in.

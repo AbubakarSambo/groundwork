@@ -1,6 +1,7 @@
 import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
-import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
+import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
+import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theRoomForThisReader } from '../board/the-room-for-this-reader';
 import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
@@ -1714,6 +1715,8 @@ export class GroundsService {
      */
     /* Nobody held for a seat reads the check-in page: the invitation page's own refusal, asked first (privacy sweep finding 3). */
     await refuseSomeoneHeldForASeat(this.prisma as any, id, requestingUserId);
+    /* Nor anyone waiting for the organisation's approval (row 5). */
+    await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, requestingUserId, CANNOT_CHECK_IN_YET);
     const mayRead = requestingUserId ? await this.assertMaySeeGround(id, requestingUserId) : null;
     // Primary lookup by org - works for org members and the initiator.
     const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, startedAt: true, isFinal: true, specificityLevel: true, specificityDimensions: true } as const;

@@ -24,3 +24,22 @@ export async function refuseSomeoneHeldForASeat(
     .catch(() => ({ awaitingSeat: true }));
   if (row?.awaitingSeat === true) throw new ForbiddenException(HELD_FOR_A_SEAT);
 }
+
+/**
+ * NOBODY WAITING FOR THE ORGANISATION'S APPROVAL READS THE CHECK-IN PAGE OR THE WEEKLY REPORT (privacy row 5, kept by decision 93).
+ *
+ * Someone not yet let into the organisation is held like someone held for a seat. The board and the reports already turned them away;
+ * the check-in page and the weekly report did not. Asked first, with the sentence the same person is given elsewhere. A lookup that
+ * fails refuses too.
+ */
+export async function refuseSomeoneAwaitingTheOrganisation(
+  prisma: { user?: { findUnique?: (args: any) => unknown } } | null | undefined,
+  userId: string | null | undefined,
+  sentence: string,
+): Promise<void> {
+  const find = prisma?.user?.findUnique;
+  if (!find || !userId) return;
+  const me: any = await Promise.resolve(find.call(prisma!.user, { where: { id: userId }, select: { awaitingOrgApproval: true } }))
+    .catch(() => ({ awaitingOrgApproval: true }));
+  if (me?.awaitingOrgApproval === true) throw new ForbiddenException(sentence);
+}
