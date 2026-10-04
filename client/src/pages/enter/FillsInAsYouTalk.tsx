@@ -15,6 +15,20 @@ import { Panel, SubHeading, Tag, Note, RowList, Row, Stack } from '@/components/
  * save card) and "Add their emails in the chat" (people's addresses are added on the save card, not
  * in the chat). See item 17 of docs/morning-report-ui.md.
  *
+ * FOR AN ANCHOR DRAFT ONLY, THIS PANEL DRAWS SEVEN ITEMS INSTEAD (plan piece 3,
+ * docs/anchor-scenario-plan.md section 5 row 2; docs/anchor-scenario.md section 7, "Understand the
+ * lead's world"). The seven headings there, in Hafsah's own words and order, are what Groundwork is
+ * finding out from the lead before anything else: what they're responsible for, who they're trying
+ * to move, how that group contributes to the economic engine, what they're seeing today, why that
+ * bothers them, what they think the team doesn't understand, and what the team would do differently
+ * if it did. Every other situation's panel - the four rows above - is unchanged.
+ *
+ * The engine does not yet mark a draft as an anchor one, or send these seven fields (piece 4 is
+ * blocked on Needs Hafsah 12; see docs/requests-to-engine.md, request 144, which also asks how an
+ * anchor draft will be told apart). Until then, `anchorItems` is simply never passed, so this panel
+ * draws nothing for it and no existing page changes. Once the engine sends it, only the caller needs
+ * to start passing `anchorItems` - this component already knows what to do with it.
+ *
  * GROUP 3 DRIFT LIST, PIECE 1 (Hafsah, 1 October 2026): the page-only gwui-fit-* classes (4D-4's own
  * sheet, copying new.jpg's pixel values under a page name) are gone. The box is now the shared
  * `Panel`; the name and its "N of 4 set" tag sit in a `gwui-sentence-row` (the same row other pages
@@ -34,6 +48,33 @@ export const FILLS_IN = {
   whoIsIn: 'Who’s in it',
 } as const
 
+/**
+ * THE SEVEN ITEMS, ANCHOR DRAFT ONLY. One label per heading in docs/anchor-scenario.md section 7,
+ * in its order, as a plain sentence. The key is what the engine will send the matching answer under
+ * (request 144 asks the engine to confirm or correct these names).
+ */
+export const ANCHOR_ITEM_LABELS = {
+  responsibleFor: 'What you’re responsible for',
+  tryingToMove: 'Who you’re trying to move',
+  howItContributes: 'How this group contributes to the economic engine',
+  seeingToday: 'What you’re seeing today',
+  whyItBothersYou: 'Why that bothers you',
+  whatTheyDontUnderstand: 'What you think they don’t understand',
+  whatTheydDoDifferently: 'What they’d do differently if they understood',
+} as const
+
+export type AnchorItemKey = keyof typeof ANCHOR_ITEM_LABELS
+
+/** What the setup conversation has heard for each of the seven items so far, once known. */
+export type WhatTheAnchorConversationKnows = Partial<Record<AnchorItemKey, string>>
+
+export function theAnchorRows(k: WhatTheAnchorConversationKnows): { label: string; set: boolean; value: string | null }[] {
+  return (Object.keys(ANCHOR_ITEM_LABELS) as AnchorItemKey[]).map((key) => {
+    const value = k[key]?.trim() || null
+    return { label: ANCHOR_ITEM_LABELS[key], set: !!value, value }
+  })
+}
+
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const WEEKDAYS = [1, 2, 3, 4, 5]
 const theDate = (s: string) => { const d = new Date(`${s}T00:00:00`); return `${d.getDate()} ${MONTHS[d.getMonth()]}` }
@@ -52,6 +93,11 @@ export type WhatSetupKnows = {
   mentioned: string[]
   /** Everyone actually added, as they are shown. */
   added: string[]
+  /**
+   * Given only for an anchor draft (request 144 asks the engine how one is marked). When given,
+   * the panel draws the seven items of anchor-scenario.md section 7 instead of the four rows below.
+   */
+  anchorItems?: WhatTheAnchorConversationKnows
 }
 
 /** People mentioned in the conversation who are not on the list yet. */
@@ -82,9 +128,11 @@ export function theRows(k: WhatSetupKnows): { label: string; set: boolean; value
 }
 
 export function FillsInAsYouTalk(k: WhatSetupKnows) {
-  const rows = theRows(k)
-  const addedNotYet = k.added.length ? notYetAdded(k) : []
-  const howMuch = <Tag>{FILLS_IN.howMuch(rows.filter((r) => r.set).length)}</Tag>
+  const isAnchor = !!k.anchorItems
+  const rows = isAnchor ? theAnchorRows(k.anchorItems!) : theRows(k)
+  const totalRows = isAnchor ? Object.keys(ANCHOR_ITEM_LABELS).length : 4
+  const addedNotYet = !isAnchor && k.added.length ? notYetAdded(k) : []
+  const howMuch = <Tag>{isAnchor ? `${rows.filter((r) => r.set).length} of ${totalRows} set` : FILLS_IN.howMuch(rows.filter((r) => r.set).length)}</Tag>
   return (
     <aside aria-label={FILLS_IN.help}>
       <Panel>
@@ -104,7 +152,7 @@ export function FillsInAsYouTalk(k: WhatSetupKnows) {
                 <span>
                   <span className="gwui-setrow-label">{r.label}</span>
                   {r.value && <span className="gwui-setrow-value">{r.value}</span>}
-                  {r.label === FILLS_IN.whoIsIn && k.added.length > 0 && (
+                  {!isAnchor && r.label === FILLS_IN.whoIsIn && k.added.length > 0 && (
                     <>
                       {k.added.map((a) => <span key={a} className="gwui-setrow-value gwui-setrow-value-name">{a}</span>)}
                       {addedNotYet.length > 0 && (
