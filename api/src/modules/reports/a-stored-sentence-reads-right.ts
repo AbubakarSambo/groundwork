@@ -16,6 +16,7 @@
  * Words inside quotation marks are a person's own and are never touched (see a-quote-is-what-they-said).
  */
 import { theQuotesKept } from './a-quote-is-what-they-said';
+import { aNameSaidAgainInOneSentence } from './a-name-said-twice-in-a-row';
 
 /* A word that, after a full stop, means the full stop was a label's and not a sentence's. */
 const CONTINUES = 'is|are|was|were|be|been|has|have|had|will|would|can|could|should|may|might|must|does|did|owes|owe|believes|committed|said|says|wants|needs|works|waits|for|on|to|about|from|with|in|at|by|of|and|or|but|because|which|that';
@@ -89,9 +90,13 @@ export function aWaitSaidOnce(text: string): string {
 }
 
 /** Both repairs, on everything outside the quotation marks. */
-export function aStoredSentenceReadsRight(text: string): string {
+export function aStoredSentenceReadsRight(text: string, names?: readonly string[]): string {
   if (!text || typeof text !== 'string') return text;
-  return theQuotesKept(aWaitSaidOnce(text), (outside) => aLabelEndsWithoutAFullStop(oldWordingPutPlain(outside)));
+  return theQuotesKept(aWaitSaidOnce(text), (outside) => {
+    const plain = aLabelEndsWithoutAFullStop(oldWordingPutPlain(outside));
+    /* A name is not said again in the sentence about that person (requests 129, 133, 135): "Amani Wekesa says Amani paid ...". */
+    return names?.length ? aNameSaidAgainInOneSentence(plain, names) : plain;
+  });
 }
 
 /* Fields that carry a person's own words, which no repair touches. */
@@ -101,9 +106,9 @@ const THEIR_OWN_WORDS = new Set(['theirWords', 'said', 'quote', 'quotes', 'theyS
  * The same repair over a whole served payload (the board's), for the sentences the board composes after the
  * names are put in. Plain objects and lists are walked; dates and other instances are sent as they are.
  */
-export function everyStoredSentenceReadsRight<T>(payload: T): T {
+export function everyStoredSentenceReadsRight<T>(payload: T, names?: readonly string[]): T {
   const walk = (v: any): any => {
-    if (typeof v === 'string') return aStoredSentenceReadsRight(v);
+    if (typeof v === 'string') return aStoredSentenceReadsRight(v, names);
     if (Array.isArray(v)) return v.map(walk);
     if (!v || typeof v !== 'object') return v;
     const proto = Object.getPrototypeOf(v);

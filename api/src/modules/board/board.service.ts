@@ -2835,7 +2835,7 @@ export class BoardService {
       /* And what is left on the reader's own rows is said to them, as "you" (item 18). After the said-once pass, which
          already says "you" for the reader where a sentence is true of several people (request 118, part 2). */
       /* And a sentence stored before the wording rules reads right as it is served (decision 91). */
-      return aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null))));
+      return aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null)), (ground.participants ?? []).map((p: any) => nameOf(p.id)).filter((n: any): n is string => typeof n === 'string' && n.length > 1)));
     }
   }
 
