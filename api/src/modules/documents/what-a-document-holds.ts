@@ -69,6 +69,9 @@ NUMBERS FOR ONE PERSON. A row counts when three things are there: a person's nam
 - Take every column that is a number that person is working to. Leave the columns that are the same for everybody to the group list below.
 - A row whose name cell says TOTAL, SUM, TEAM or ALL is not a person. Leave it out.
 - A column of progress so far, a percentage complete, or last year's actual is not a target. Leave it out.
+- Where a plan gives each priority or workstream an owner, the numbers in it are that owner's: give them under that person, and never also as a number for everyone.
+- A number inside the description of a job ("tell the top 30 customers", "count 4,200 items") belongs to that job and is not a target. A reserve, allowance or contingency is not a target either.
+- A figure the document says is not agreed, not decided or only a choice between two numbers is not a target. Leave it out.
 - A month or a quarter column is not a target of its own: where a row is split across months and also has a total, take the total only. Where it has no total, add nothing up - take nothing.
 
 NUMBERS FOR EVERYBODY. A total for the group, or a limit every person carries.

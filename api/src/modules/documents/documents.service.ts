@@ -1,4 +1,4 @@
-import { theNumberAsWritten } from '../grounds/a-dump-is-many-things';
+import { theNumberAsWritten, theSameWords } from '../grounds/a-dump-is-many-things';
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Buffer }) => { getText: () => Promise<{ text: string }>; destroy: () => Promise<void> } };
@@ -592,8 +592,11 @@ export class DocumentsService {
      */
     const onTheCheckIn = ground.participants.filter((p) => !p.managingOnly);
     const notTheirsToSet: string[] = [];
+    /* A number the document gives to a person is theirs and not also the group's (checked below). */
+    const givenToSomebody: { what: string; target: number }[] = [];
     for (const r of rows) {
       const who = resolve(r.personName);
+      givenToSomebody.push({ what: r.what, target: r.target });
       if (!who) {
         const name = r.personName.trim();
         if (!isLead && whoThisNameIs(name, onTheCheckIn as any)) { if (!notTheirsToSet.includes(name)) notTheirsToSet.push(name); continue; }
@@ -611,6 +614,8 @@ export class DocumentsService {
     const forEverybody: WhatLanded['forEverybody'] = [];
     for (const t of (read.forEverybody ?? []).filter((t) => t?.what?.trim()).map((t) => ({ ...t, target: theNumberAsWritten(t.target, content) as number })).filter((t) => t.target != null)) {
       const name = t.what.trim().slice(0, 120);
+      /* Found on a quarterly plan (4 October 2026): each priority's number was waiting for its owner AND for everyone. */
+      if (givenToSomebody.some((g) => g.target === t.target && theSameWords(g.what, t.what))) continue;
       if (held.has(`team::${name.toLowerCase()}`)) continue;
       held.add(`team::${name.toLowerCase()}`);
       toWrite.push({ groundId, name, target: Math.round(t.target), ownerParticipantId: null, setByParticipantId: participantId, sortOrder: sortOrder++ });

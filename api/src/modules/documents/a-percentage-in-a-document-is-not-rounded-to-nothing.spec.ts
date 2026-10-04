@@ -34,3 +34,33 @@ describe('a document\'s percentage', () => {
     expect(held.waiting.map((w: any) => w.target)).toEqual([20, 18_000_000, 10]);
   });
 });
+
+describe('a number the document gives to a person is theirs and not also everyone\'s', () => {
+  it('keeps the owner\'s number and drops the same measure at the same figure from the group\'s, and keeps a different one', async () => {
+    const s = Object.create(DocumentsService.prototype) as any;
+    s.prisma = {
+      ground: { findUnique: async () => ({ initiatorId: 'u-lead', participants: Object.values(people), objectives: [] }) },
+      groundDocument: { update: async ({ data }: any) => data },
+    };
+    s.anthropic = { extract: async () => ({
+      whatItIs: 'It is a plan.',
+      forOnePerson: [
+        { personName: 'Chidera Nwosu', what: 'Pipeline created', target: 18_000_000 },
+        { personName: 'Hannah Cole', what: 'Hires', target: 6 },
+        { personName: 'Gbenga Salami', what: 'Turnover', target: 4 },
+      ],
+      forEverybody: [
+        { what: 'pipeline created', target: 18_000_000 },
+        { what: 'Turnover', target: 4, kind: 'not to exceed' },
+        { what: 'Total budget', target: 15_000_000, kind: 'not to exceed' },
+      ],
+      dates: [],
+    }) };
+    s.config = { get: () => true };
+    s.logger = { log: jest.fn(), warn: jest.fn() };
+    const held = await s.whatItHolds('d1', 'g1', 'p-l', PLAN, 'plan.txt');
+    expect(held.forEverybody.map((r: any) => r.what)).toEqual(['Total budget']);
+    expect(held.forOnePerson.map((r: any) => r.who)).toEqual(['Chidera Nwosu', 'Hannah Cole']);
+    expect(held.unmatched).toEqual(['Gbenga Salami']);
+  });
+});
