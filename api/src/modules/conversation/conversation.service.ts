@@ -242,6 +242,8 @@ import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { writeADocumentsNumbers } from '../documents/write-a-documents-numbers';
+import { contextIsInAskGroundwork } from '../admin/what-is-hidden-at-release';
+import { whereToTakeALongPaste } from './a-long-paste-from-the-lead-has-a-better-door';
 import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { wordTheAreaOfAGoal, areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 import { saysWhatAnUntoldGoalWithholds, IT_NAMED_THE_UNTOLD_NUMBER, type AnUntoldGoal } from './an-untold-goals-number-is-not-said';
@@ -2845,12 +2847,18 @@ export class ConversationService {
      * was asked. See whatTheDocumentWaitsFor.
      */
     const tookTheNumbers = await this.whatTheDocumentWaitsFor(checkIn as any, message);
+    /* A long paste from the lead is kept as their words, and they are told where it can be put on the check-in. */
+    const whereToTakeIt = whereToTakeALongPaste({
+      isTheLead: checkIn.participant?.partyType === PartyType.INITIATOR,
+      message,
+      askGroundworkTakesContext: await contextIsInAskGroundwork(this.prisma).catch(() => false),
+    });
     /*
      * AND WHAT WE SAID BEFORE THE MODEL SPOKE IS KEPT IN THE TURN, so the transcript holds it too. The
      * streamed route always did this ("nine targets were written and the screen said only 'Right.
      * The Q4 targets are clear.'"); since both routes are one, this is where it happens for both.
      */
-    const ourOwnWords = [contextNotSaid, tookTheNumbers].filter(Boolean).join('\n\n');
+    const ourOwnWords = [contextNotSaid, tookTheNumbers, whereToTakeIt].filter(Boolean).join('\n\n');
     if (ourOwnWords) {
       aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: `${ourOwnWords}\n\n${aiTurn.content}` } });
     }
@@ -2875,7 +2883,7 @@ export class ConversationService {
      */
     if (sessionComplete) this.startTheEndCard(checkIn as any, aiTurn.id);
     return {
-      reply: [contextNotSaid, tookTheNumbers, withRoomLeft].filter(Boolean).join('\n\n'),
+      reply: [contextNotSaid, tookTheNumbers, whereToTakeIt, withRoomLeft].filter(Boolean).join('\n\n'),
       sessionComplete,
       ...(suggestedAnswers.length ? { suggestedAnswers } : {}),
     };
