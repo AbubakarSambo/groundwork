@@ -53,10 +53,28 @@ const OLD_WORDING: Array<[RegExp, string | ((...m: string[]) => string)]> = [
   [/Escalated it\./g, 'It was taken above the person it was with.'],
 ];
 
+/**
+ * A SENTENCE THAT IS ABOUT THE READER SAYS "YOU" THROUGHOUT (requests 129 item 3, 131 item 1, 132 e). The writer began
+ * "Your goal is not being met, and their own open task is part of the problem." and "You have not yet made the visit
+ * to Kisumu they said they would." A sentence that begins with "You" or "Your" is about the reader, so the "their own"
+ * and "they said they would" inside it are the reader's too. Only those two phrasings are changed, and only in a
+ * sentence that names nobody else before them.
+ */
+function aSentenceAboutTheReaderSaysYou(text: string): string {
+  return text.split(/(?<=[.!?])\s+/).map((sentence) => {
+    if (!/^You\b/.test(sentence) && !/^Your\b/.test(sentence)) return sentence;
+    const beforeThem = sentence.split(/\bthey\b|\btheir\b/i)[0];
+    if (/\b[A-Z][a-z]+ [A-Z][a-z]+\b/.test(beforeThem.replace(/^You(?:r)?\s/, ''))) return sentence;
+    return sentence
+      .replace(/\bthey said they would\b/g, 'you said you would')
+      .replace(/\band their own\b/g, 'and your own');
+  }).join(' ');
+}
+
 export function oldWordingPutPlain(text: string): string {
   let out = text;
   for (const [pattern, to] of OLD_WORDING) out = out.replace(pattern, to as any);
-  return out;
+  return aSentenceAboutTheReaderSaysYou(out);
 }
 
 /** Both repairs, on everything outside the quotation marks. */
