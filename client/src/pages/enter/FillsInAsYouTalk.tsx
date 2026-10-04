@@ -56,11 +56,11 @@ export const FILLS_IN = {
 export const ANCHOR_ITEM_LABELS = {
   responsibleFor: 'What you’re responsible for',
   tryingToMove: 'Who you’re trying to move',
-  howItContributes: 'How this group contributes to the economic engine',
+  howItContributes: 'How this group helps the organisation keep going',
   seeingToday: 'What you’re seeing today',
   whyItBothersYou: 'Why that bothers you',
   whatTheyDontUnderstand: 'What you think they don’t understand',
-  whatTheydDoDifferently: 'What they’d do differently if they understood',
+  whatTheyWouldDoDifferently: 'What they’d do differently if they understood',
 } as const
 
 export type AnchorItemKey = keyof typeof ANCHOR_ITEM_LABELS
