@@ -3843,9 +3843,21 @@ export class GroundsService {
     const people = (ground?.participants ?? []).filter((p) => !p.managingOnly);
     const forPeople: WhatAPasteGives['forPeople'] = [];
     const unmatched: string[] = [];
+    /* What the paste said for each name that is not on this check-in, so it can be said, and so a
+       number meant for them is never read as the whole team's. */
+    const unmatchedParts: Record<string, string[]> = {};
+    const unmatchedNumbers: { name: string; number: number }[] = [];
     for (const r of (read.forPeople ?? []).filter((r) => r?.personName?.trim() && r?.expectation?.trim())) {
       const who = whoThisNameIs(r.personName, people as any);
-      if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }
+      if (!who) {
+        if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim());
+        /* What it was for them is kept to be SAID, and their numbers to keep them off the team's list. */
+        for (const t of (r.targets ?? []).filter((t) => t?.name?.trim() && Number.isFinite(t.number) && t.number > 0)) {
+          unmatchedNumbers.push({ name: t.name.trim().slice(0, 120), number: Math.round(t.number) });
+          (unmatchedParts[r.personName.trim()] ??= []).push(`${t.name.trim().slice(0, 120)}: ${Math.round(t.number).toLocaleString('en-GB')}`);
+        }
+        continue;
+      }
       forPeople.push({
         who: theNameWeUseFor(who as any),
         participantId: who.id,
@@ -3870,7 +3882,12 @@ export class GroundsService {
     for (const r of (read.commitments ?? []).filter((r) => r?.action?.trim())) {
       const named = (r.personName ?? '').trim();
       const who = named ? whoThisNameIs(named, people as any) : null;
-      if (named && !who && !unmatched.includes(named)) unmatched.push(named);
+      if (named && !who) {
+        /* Somebody's job who is not on this check-in is not nobody's job: it is said, under their name, and not kept as an unowned item. */
+        if (!unmatched.includes(named)) unmatched.push(named);
+        (unmatchedParts[named] ??= []).push(`${r.action.trim().slice(0, 300)}${(r.when ?? '').trim() ? ` (${(r.when ?? '').trim().slice(0, 120)})` : ''}`);
+        continue;
+      }
       commitments.push({
         who: who ? theNameWeUseFor(who as any) : null,
         participantId: who?.id ?? null,
@@ -3883,7 +3900,11 @@ export class GroundsService {
     const questionsForPeople: WhatAPasteGives['questionsForPeople'] = [];
     for (const r of (read.questionsForPeople ?? []).filter((r) => r?.personName?.trim() && r?.question?.trim())) {
       const who = whoThisNameIs(r.personName, people as any);
-      if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }
+      if (!who) {
+        if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim());
+        (unmatchedParts[r.personName.trim()] ??= []).push(`a question, ${r.question.trim().slice(0, 300)}`);
+        continue;
+      }
       questionsForPeople.push({ who: theNameWeUseFor(who as any), participantId: who.id, question: r.question.trim().slice(0, 400) });
     }
     /*
@@ -3920,8 +3941,14 @@ export class GroundsService {
           name: t.name.trim().slice(0, 120),
           target: Number.isFinite(t.target as number) && (t.target as number) > 0 ? Math.round(t.target as number) : null,
           notToExceed: !!t.notToExceed,
-        })),
+        }))
+        /* A number the paste gave to a person, on this check-in or not, is that person's and not also
+           the team's. Found on a quarterly plan (4 October 2026): each priority's number was kept for
+           the whole team as well as for its owner, and the numbers of an owner who is not on the
+           check-in were kept for the whole team and nobody else. */
+        .filter((t) => t.target == null || ![...forPeople.flatMap((p) => p.targets), ...unmatchedNumbers].some((n) => n.number === t.target && theSameMeasure(n.name, t.name))),
       forPeople,
+      unmatchedParts,
       dates: (read.dates ?? []).filter((d) => d?.what?.trim() && d?.when?.trim()).map((d) => ({ what: d.what.trim(), when: d.when.trim() })),
       unmatched,
       /* The three lists that are words rather than numbers, kept as the lead's own note. */
@@ -4169,7 +4196,10 @@ export class GroundsService {
        * as "create a list of the top 10 questions" - so word-matching could not see they were the
        * same thing. The text can be matched exactly even when its reading cannot. See GroundPaste.
        */
-      const hash = createHash('sha256').update(thePaste.trim()).digest('hex');
+      /* The words AND who is on the check-in, so adding somebody the paste named and sending it again is a new paste:
+         "add them and I will put their part on" was refused as "already on the record". Everything already
+         held is skipped by the writers, so only their part is new. */
+      const hash = createHash('sha256').update(`${thePaste.trim()}\n${(ground.participants as any[]).map((p) => p.id).sort().join(',')}`).digest('hex');
       const takenBefore = await (this.prisma.groundPaste?.findFirst?.({ where: { groundId, hash }, select: { id: true } }) ?? Promise.resolve(null)).catch(() => null);
       if (takenBefore && !exception) {
         return { changed: 'nothing new', say: 'That is already on the record, exactly as you sent it. Nothing was written twice.' };
@@ -4434,23 +4464,26 @@ export class GroundsService {
       }
     }
 
-    const existing = await this.prisma.groundObjective.findMany({ where: { groundId }, select: { name: true, ownerParticipantId: true } });
+    const existing = await this.prisma.groundObjective.findMany({ where: { groundId }, select: { name: true, ownerParticipantId: true, target: true } });
     /* One name inside another is the same measure, because a second read of one paste renames things
        - "signed" and "signed sales" - and two names for one number is two answers. See theSameMeasure. */
-    const held: { owner: string; name: string }[] = existing.map((o) => ({ owner: o.ownerParticipantId ?? 'team', name: (o.name ?? '').trim() }));
-    const alreadyHeld = (owner: string, name: string) => held.some((h) => h.owner === owner && theSameMeasure(h.name, name));
+    const held: { owner: string; name: string; target: number | null }[] = existing.map((o) => ({ owner: o.ownerParticipantId ?? 'team', name: (o.name ?? '').trim(), target: o.target ?? null }));
+    /* Two names that end alike are one measure only when the numbers agree: "Q4 sales" at 180m and "credit
+       as a share of sales" at 35 are two measures, and the second was silently never written. */
+    const alreadyHeld = (owner: string, name: string, target: number | null) =>
+      held.some((h) => h.owner === owner && theSameMeasure(h.name, name) && (h.target == null || target == null || h.target === target));
     const rows: { groundId: string; name: string; target: number | null; ownerParticipantId: string | null; sortOrder: number; direction?: string | null }[] = [];
     let sortOrder = existing.length;
     for (const t of got.teamTargets) {
-      if (alreadyHeld('team', t.name)) continue;
-      held.push({ owner: 'team', name: t.name });
+      if (alreadyHeld('team', t.name, t.target)) continue;
+      held.push({ owner: 'team', name: t.name, target: t.target });
       /* Decision 69: only a direction the lead said yes to on the list; otherwise not set. */
       rows.push({ groundId, name: t.name, target: t.target, ownerParticipantId: null, sortOrder: sortOrder++, direction: t.direction ?? null });
     }
     for (const p of got.forPeople) {
       for (const t of p.targets) {
-        if (alreadyHeld(p.participantId, t.name)) continue;
-        held.push({ owner: p.participantId, name: t.name });
+        if (alreadyHeld(p.participantId, t.name, t.number)) continue;
+        held.push({ owner: p.participantId, name: t.name, target: t.number });
         rows.push({ groundId, name: t.name, target: t.number, ownerParticipantId: p.participantId, sortOrder: sortOrder++, direction: null });
       }
     }

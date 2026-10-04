@@ -196,6 +196,8 @@ export interface WhatAPasteGives {
   forPeople: { who: string; participantId: string; expectation: string; targets: { name: string; number: number }[] }[];
   dates: { what: string; when: string }[];
   unmatched: string[];
+  /** What the paste said for each name that is not on this check-in, keyed by that name. Said, never kept. */
+  unmatchedParts?: Record<string, string[]>;
   /** The lists that are words rather than numbers, each one a bucket on the Context page. */
   waysOfWorking: string[];
   strategy: string[];
@@ -345,8 +347,12 @@ export function whatWeTookFromThat(
   }
   if (got.unmatched.length) {
     lines.push('', got.unmatched.length === 1
-      ? `One name is not on this check-in. It is ${got.unmatched[0]}. Add them and I will put their part on too.`
-      : `${got.unmatched.length} names are not on this check-in. They are ${got.unmatched.join(', ')}. Add them and I will put their part on too.`);
+      ? 'One name is not on this check-in, so nothing is saved for them yet. If you add them and send this again, I will put their part on too.'
+      : `${got.unmatched.length} names are not on this check-in, so nothing is saved for them yet. If you add them and send this again, I will put their part on too.`);
+    for (const name of got.unmatched) {
+      const parts = got.unmatchedParts?.[name] ?? [];
+      lines.push(parts.length ? `- ${name} (${parts.join('; ')})` : `- ${name}`);
+    }
   }
   /*
    * AND WHAT THE PASTE DID NOT SETTLE, SAID OUT LOUD.
