@@ -2340,14 +2340,16 @@ export class BoardService {
      * rather than by whoever wrote it remembering.
      */
     /*
-     * CONTRIBUTION AND COVERAGE ARE READ IN FULL ONLY BY WHOEVER RUNS THE CHECK-IN (screens request
-     * 88, decision 58). Everybody else, a participant or an admin who only reads, gets only their own
-     * row, and nothing when they have none, whether or not people see each other on this check-in.
+     * CONTRIBUTION AND COVERAGE ARE READ IN FULL BY WHOEVER RUNS THE CHECK-IN AND BY AN ADMIN WITH ACCESS TO IT
+     * (screens request 88, decision 58; the admin was added by decision 93, row 8, Hafsah's answer of 5 October).
+     * A participant gets only their own row, and nothing when they have none, whether or not people see each
+     * other on this check-in. An admin of the organisation reads them on every check-in but a performance
+     * plan, promotion, renewal or probation they were not given access to (`adminHere` already says so).
      * Decision 5 lets an admin read the board; decision 58 narrowed a pattern to the lead and the admin
      * who set the check-in up, and these two sections name and describe each person the same way.
      * (Narrowed the same way pending Hafsah's confirmation.)
      */
-    if (!runsItForAPattern(ground as any, requestingUserId)) {
+    if (!runsItForAPattern(ground as any, requestingUserId) && !adminHere) {
       const onlyMine = (rows: any) => (Array.isArray(rows) ? rows.filter((r: any) => !!r.participantId && r.participantId === (me?.id ?? null)) : []);
       if (out.contribution) out.contribution = onlyMine(out.contribution);
       if (out.coverage) out.coverage = { ...(out.coverage as any), reads: onlyMine((out.coverage as any).reads) };

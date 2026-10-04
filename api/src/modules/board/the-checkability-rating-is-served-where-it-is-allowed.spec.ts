@@ -107,8 +107,8 @@ describe.each([
   it('Juma, an admin who only reads, reads "Nothing checkable" beside Baraka\'s name with what to ask next, and no number', async () => {
     const board = await boardAs(setup, ...JUMA);
     expectNothingCheckableBeside(board, 'p-baraka', 'Baraka Otieno');
-    /* Not "contribution against role", which only the lead and the admin who set it up read (request 88). */
-    expect(board.contribution ?? []).toEqual([]);
+    /* "Contribution against role" is read in full by an admin with access too (decision 93, row 8; this pinned that it was empty). */
+    expect(board.contribution.map((r: any) => r.participantId)).toEqual(expect.arrayContaining(['p-rukia', 'p-baraka']));
     expect(anyRatingIn(board)).toEqual([]);
     expect(everyString(board).filter((s) => /checkable things? named|lines? taken from what|\bof 5\b/.test(s))).toEqual([]);
   });
