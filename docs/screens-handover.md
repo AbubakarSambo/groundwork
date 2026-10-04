@@ -4,6 +4,19 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## MarketView Q4 board: done (5 October)
+
+The seeded "MarketView, Q4" (6e84ca43; lead wairimu.mvq4@example.test, participants otieno and naliaka). It follows mvq4.txt's order after one review and its fixes (ee59b0cc, 77476134), checked live (scratchpad `pictures/mvq4-A/`):
+- "What the systems show" and "Where what people said and the systems differ" are drawn;
+- the extras are folded;
+- the participant sees "Your share".
+
+mvq4.txt's table columns (Target, Goal, Now, Against goal) need fields the engine does not send yet (request 150). Until then each figure is drawn as its sentence.
+
+## The release build (5 October)
+
+The client now builds from a clean, client-only install with staging's own `npm run build`. A test file imported from api/, which broke that build; it was fixed in ca0139dc. Staging is fully included: the engine checked all 20 of staging's commits, including Abubakar's three client fixes, in docs/staging-compatibility.md. I confirmed his last fixes are still in the screens.
+
 ## The anchor scenario (5 October, in progress)
 
 - **Hafsah answered Needs Hafsah 1, 3, 4, 8 and 14 as the plan recommends** (request 143):
