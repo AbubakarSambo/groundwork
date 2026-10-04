@@ -14,6 +14,8 @@ import {
   BEHAVIOURS_THAT_WOULD_SHOW_IT_WAS_BETTER,
   whatTheConversationHasAlreadyUsed,
   THE_ANCHOR_REMINDER,
+  READ_THIS_LAST,
+  splitWhatIsReadLast,
 } from './the-anchor-lead-conversation';
 
 /**
@@ -178,6 +180,49 @@ describe('the conversation is told what it has already used, read from its own e
     const fresh = world(true);
     await fresh.service.chat(said, ANCHOR_ENTRY_SCENARIO);
     expect(fresh.seen[0]).not.toContain('You have already used your one challenge');
+  });
+});
+
+describe('the short reminder read last is in the stored prompt, not only in the code', () => {
+  it('is part of the seeded prompt, after the line that marks what is read last', () => {
+    const seeded = SEED_PROMPTS.find((s) => s.key === ANCHOR_LEAD_PROMPT_KEY)!.content;
+    expect(seeded).toContain(`${READ_THIS_LAST}\n\n${THE_ANCHOR_REMINDER}`);
+    expect(splitWhatIsReadLast(seeded).last).toBe(THE_ANCHOR_REMINDER);
+    expect(splitWhatIsReadLast(seeded).main).not.toContain('For this lead, these come first');
+  });
+
+  it('is read last from the stored version, so a stored version without it has none', async () => {
+    const withIt = world(true, { id: 'pv-8', content: `STORED MAIN\n\n${READ_THIS_LAST}\n\nSTORED REMINDER` });
+    const out = await withIt.service.chat(said, ANCHOR_ENTRY_SCENARIO);
+    expect(withIt.seen[0].endsWith('STORED REMINDER')).toBe(true);
+    expect(withIt.seen[0]).not.toContain(READ_THIS_LAST);
+    expect(withIt.seen[0]).not.toContain(THE_ANCHOR_REMINDER);
+    expect(out.promptVersionId).toBe('pv-8');
+    const without = world(true, { id: 'pv-9', content: 'STORED MAIN ONLY' });
+    await without.service.chat(said, ANCHOR_ENTRY_SCENARIO);
+    expect(without.seen[0]).toContain('STORED MAIN ONLY');
+    expect(without.seen[0]).not.toContain(THE_ANCHOR_REMINDER);
+  });
+
+  it('falls back to the reminder in the code only when nothing is stored', async () => {
+    const none = world(true);
+    await none.service.chat(said, ANCHOR_ENTRY_SCENARIO);
+    expect(none.seen[0].endsWith(THE_ANCHOR_REMINDER)).toBe(true);
+  });
+});
+
+describe('the hope question is counted as asked however the model puts it', () => {
+  const ask = (t: string) => [{ role: 'assistant', content: 'What is happening?' }, { role: 'user', content: 'x' }, { role: 'assistant', content: t }, { role: 'user', content: 'y' }];
+  it.each([
+    'In a month, if this were meaningfully better, what would you see them doing?',
+    'Picture a month from now with this going well. What would you notice your team doing?',
+    'If this were better in a month, what would you notice people doing without you having to ask?',
+    'What would you want to see them doing without you pushing?',
+  ])('%s', (t) => {
+    expect(whatTheConversationHasAlreadyUsed(ask(t))).toContain('You have already asked the hope question');
+  });
+  it('does not count the ordinary opening questions', () => {
+    expect(whatTheConversationHasAlreadyUsed(ask('What are you finding yourself constantly pushing?'))).toBe('');
   });
 });
 

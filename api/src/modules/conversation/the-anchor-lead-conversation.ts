@@ -132,7 +132,29 @@ This is guidance, not a script. Ask one sharp question at a time, in one sentenc
 
 Over the conversation you will come to understand what the lead is responsible for, who they are trying to move, how that group helps the organisation keep going, what they are seeing today, why it bothers them, what they think the group does not understand, and what the group would do differently if they understood. Learn each from what the lead says, and ask only about what is still missing. Before you ask about what better would look like, make sure you know what the lead is seeing, why it bothers them, and what they think the group does not understand, because a question about the future lands badly on someone who has not yet been heard about the present.`;
 
-export const ANCHOR_LEAD_PROMPT = [ANCHOR_LEAD_PREAMBLE, THE_ECONOMIC_ENGINE_GUIDANCE, CHALLENGING_THE_LEAD_GUIDANCE, THE_HOPE_GUIDANCE].join('\n\n');
+/**
+ * WHERE THE WORDS READ LAST BEGIN. The reminder that goes at the very end of the prompt lives in the stored prompt, after this line, so that
+ * a stored version is the whole of what runs: replace the stored words and the reminder is replaced with them. A stored version without
+ * this line has no reminder, which is what its author wrote.
+ */
+export const READ_THIS_LAST = '=== READ THIS LAST ===';
+
+/** Splits a stored prompt into the words read where they sit and the words read last. */
+export function splitWhatIsReadLast(content: string): { main: string; last: string } {
+  const at = content.indexOf(READ_THIS_LAST);
+  if (at < 0) return { main: content, last: '' };
+  return { main: content.slice(0, at).trim(), last: content.slice(at + READ_THIS_LAST.length).trim() };
+}
+
+/**
+ * THE SHORT REMINDER THAT GOES LAST. The general rules above it end a check-in by asking what the person will do about it and by when, and
+ * ask a second question from the challenge list; read in the same prompt they won over words placed earlier. These few lines are read last.
+ */
+export const THE_ANCHOR_REMINDER = `# For this lead, these come first
+
+Do not ask what the lead will do about this, or by when. Ask exactly one question in this turn.`;
+
+export const ANCHOR_LEAD_PROMPT = [ANCHOR_LEAD_PREAMBLE, THE_ECONOMIC_ENGINE_GUIDANCE, CHALLENGING_THE_LEAD_GUIDANCE, THE_HOPE_GUIDANCE, READ_THIS_LAST, THE_ANCHOR_REMINDER].join('\n\n');
 
 /**
  * WHAT THE CONVERSATION HAS ALREADY USED, READ FROM THE RECORD.
@@ -152,32 +174,36 @@ const THE_CHALLENGE_WORDS = [
   /ownership while retaining/i,
   /may not be an ownership problem/i,
 ];
-const THE_HOPE_WORDS = /imagine a month from now/i;
+/*
+ * THE HOPE QUESTION, IN ANY OF THE WAYS THE MODEL ASKS IT. The scenario's words are "Imagine a month from now and this is meaningfully
+ * better. What would you notice people doing without you having to ask?", and the model sometimes puts it its own way ("In a month, if this
+ * were better, what would you see them doing?"). Reading only the exact opening let the same question be asked again after it was answered.
+ */
+const THE_HOPE_WORDS = [
+  /imagine a month from now/i,
+  /a month from now/i,
+  /in a month(?:'s time)?\b[^.?!]{0,80}\b(?:better|different|working)/i,
+  /meaningfully better/i,
+  /what would you (?:notice|see|expect to see|want to see) (?:people|them|your team|the team|everyone|anyone)[^.?!]{0,30}\bdoing/i,
+  /without you (?:having to ask|asking|pushing|having to push)/i,
+];
 
 export function whatTheConversationHasAlreadyUsed(messages: { role: string; content: string }[]): string {
   const ours = messages.filter((m) => m.role === 'assistant').map((m) => m.content);
   const challenged = ours.some((t) => THE_CHALLENGE_WORDS.some((w) => w.test(t)));
-  const hoped = ours.some((t) => THE_HOPE_WORDS.test(t));
+  const hoped = ours.some((t) => THE_HOPE_WORDS.some((w) => w.test(t)));
   const lines: string[] = [];
   if (challenged) {
     lines.push('You have already used your one challenge in this conversation. Do not ask any of the six questions again, in these words or any other, and do not say that part of this may not be an ownership problem.');
   }
   if (hoped) {
-    lines.push('You have already asked the hope question in this conversation. Do not ask it again. Follow up on what the lead answered, in one question, and only if something they said needs it.');
+    lines.push('You have already asked the hope question in this conversation, and the lead has replied to it. Do not ask it again, in these words or any other, and do not ask what the lead would notice a month from now in any new way. Follow up on what the lead answered, in one question, and only if something they said needs it.');
   }
   return lines.length ? `# What you have already used in this conversation\n\n${lines.join('\n\n')}` : '';
 }
 
 /** What the model reads, from the version stored if there is one. */
 export type TheAnchorGuidance = { text: string; last: string; promptVersionId: string | null };
-
-/**
- * THE SHORT REMINDER THAT GOES LAST. The general rules above it end a check-in by asking what the person will do about it and by when, and
- * ask a second question from the challenge list; read in the same prompt they won over words placed earlier. These few lines are read last.
- */
-export const THE_ANCHOR_REMINDER = `# For this lead, these come first
-
-Do not ask what the lead will do about this, or by when. Ask exactly one question in this turn.`;
 
 /**
  * The guidance for the anchor conversation, or nothing. Nothing unless the switch is on AND this
@@ -194,5 +220,7 @@ export async function theAnchorGuidance(
   if (!(await switchIsOn())) return null;
   const stored = await prompts?.getActive(ANCHOR_LEAD_PROMPT_KEY).catch(() => null);
   const used = whatTheConversationHasAlreadyUsed(soFar);
-  return { text: stored?.content ?? ANCHOR_LEAD_PROMPT, last: [THE_ANCHOR_REMINDER, used].filter(Boolean).join('\n\n'), promptVersionId: stored?.id ?? null };
+  /* The version that runs is the whole of what runs: its words, and the reminder it carries, if it carries one. */
+  const { main, last } = splitWhatIsReadLast(stored?.content ?? ANCHOR_LEAD_PROMPT);
+  return { text: main, last: [last, used].filter(Boolean).join('\n\n'), promptVersionId: stored?.id ?? null };
 }
