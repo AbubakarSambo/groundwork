@@ -3936,3 +3936,7 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### Two readings of one fact (132 c)
 
 **What changed (served, `quickRead[]` "Differences" tile, both readers).** The tile already took a difference from the report's opening when the opening said people "disagree" or "differ". It now also takes one said as "They give different numbers for the total plan" (also "different figures", "dates", "amounts", "answers", "views", "costs", "estimates"). The tile then reads "1", with "People said different things about the total plan." instead of "Nobody sees anything differently. The written report finds no disagreement." Where the opening names no difference, the tile is as before.
+
+### The county is not counted as work in itself (132 d)
+
+**What changed (served, `byArea.areas[].says`, lead).** A county's own row is no longer counted as work in the county. "Kiambu County has 1 county on record." reads "Kiambu County is on record, and no piece of work in it is on record yet." Where there are projects, they are counted in their own word: "Kiambu County has 1 project on record." `records` is the count of work in the area, and is 0 for the first sentence.

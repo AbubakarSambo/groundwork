@@ -56,9 +56,12 @@ export function theWorkByArea(sections: AServedSection[] | null | undefined): Th
     state: 'filled',
     heading,
     areas: [...areas.entries()].map(([area, rs]) => {
-      const kinds = [...new Set(rs.map((r) => r.kind))];
-      const counted = kinds.length === 1 ? plural(rs.length, kinds[0]) : plural(rs.length, 'record');
-      return { area, records: rs.length, says: `${area} has ${counted} on record.` };
+      /* The area's own row is not work in it: "Kiambu County has 1 county on record" (request 132 d). */
+      const inIt = rs.filter((r) => !(r.kind === 'county' && r.name.trim() === area));
+      if (!inIt.length) return { area, records: 0, says: `${area} is on record, and no piece of work in it is on record yet.` };
+      const kinds = [...new Set(inIt.map((r) => r.kind))];
+      const counted = kinds.length === 1 ? plural(inIt.length, kinds[0]) : plural(inIt.length, 'record');
+      return { area, records: inIt.length, says: `${area} has ${counted} on record.` };
     }),
   };
 }
