@@ -2908,7 +2908,7 @@ export class BoardService {
       const asServed = aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null)), (ground.participants ?? []).map((p: any) => nameOf(p.id)).filter((n: any): n is string => typeof n === 'string' && n.length > 1)));
       /* The anchor scenario's own parts (request 149), added after every wall above: only whoever runs an anchor check-in, only with the switch on. */
       const roundOpensAt = (checkIns as any[]).filter((c) => c.sessionNumber === openRound).map((c) => c.availableFrom ?? c.startedAt).filter(Boolean).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0] ?? null;
-      return { ...asServed, ...(await theAnchorBoardParts({ prisma: this.prisma, ground: ground as any, readerRunsIt: runsThisGround, openRound, roundOpenedAt: roundOpensAt })) };
+      return { ...asServed, ...(await theAnchorBoardParts({ prisma: this.prisma, ground: ground as any, readerRunsIt: runsThisGround, openRound, roundOpenedAt: roundOpensAt, readerIsTheLead: isInitiator, clock: recordsClock, served: asServed as any, patterns: patternQuestions })) };
     }
   }
 

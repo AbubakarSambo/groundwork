@@ -4538,3 +4538,20 @@ A person in the check-in, its lead, and an admin who may read it read what they 
 They are sent their invitation as soon as there is a seat for them, as before. People who have a seat read the same messages as before.
 
 **Tests.** `nobody-held-for-a-seat-is-reminded-on-whatsapp.spec.ts`, which runs the morning reminder over four people waiting, two of them held for a seat.
+
+## Request 149 (5 of 6): the month board is served on the board
+
+**Done.** `BoardPresent.theMonthBoard`, only for a check-in with `started_from` "anchor", only while `release.anchorScenario` is on, and **to the lead alone**, as the screens' contract says ("Lead only"). An admin who runs the check-in is served the active line but not this; a participant is served neither. If Hafsah wants an admin with access to read the month board too, it is one word in `board/the-anchor-board-parts.ts` (`readerIsTheLead`). Built from the record, no model call (`board/the-anchor-month-record.ts`, `board/the-anchor-month-board.ts`). The week of the month is read from the record's own clock (when the board last changed), never from the moment it is opened, so two reads of the same record are the same bytes.
+
+**What the lead reads now**, for five people where three have answered:
+- Week 1 of the month. "Are we moving together?"
+- Understanding: "Groundwork has heard from three of five people." Ownership: "Two of five people have said what they will do themselves." Contribution: "No idea from your team has been captured yet." Action: "One of the things people said they would do is done and one is still open. One handoff is still waiting on someone."
+- What's moving: "One of the things people said they would do is done." "One handoff that was waiting on someone has been cleared." "Two people have said what they will do themselves." With nothing: "Nothing has moved yet that the record can show."
+- What the team is contributing: "No idea from your team has been captured yet."
+- Where perspectives differ: each difference the board already holds, said as `You and Rukia Mwangi see "The renewals target" differently.` With none: "No two people have described the same thing differently so far." With fewer than two accounts: "Groundwork needs at least two accounts before it can show where they differ."
+- What's still getting in the way: "Baraka is waiting on Rukia for the sales deck." With none: "Nobody has said that anything is in their way." From week three it also holds what keeps coming up, in the words the board already serves the lead. In weeks one and two it never does (decision 96, item 14).
+- What Groundwork is working on next: "Groundwork is checking in with the two people who have not yet answered this round." "Groundwork will ask about the one thing people said they would do that is still open." "Groundwork will ask about the one handoff still waiting on someone." With nothing: "Groundwork is waiting for the first check-ins to come in."
+
+**What stays empty, and which piece fills it.** `peopleHelpingThingsMove` is `[]` until hidden contributors are built (piece 22). "What the team is contributing" says no idea has been captured until ideas are built (piece 19); the shape for them is pinned below. The four lenses are counts said as sentences, never a score; understanding is only "heard from N of M" because nothing yet records whether a person connected their work to the bigger picture (that needs the weekly check-in's own reading).
+
+**Tests.** `board/the-anchor-month-board.spec.ts`, through the real `BoardService.get`: the whole served text as the lead, nothing for a participant or an admin, the same bytes on two reads, week three at sixteen days, and switch off and not-an-anchor; plus the weeks, the patterns rule and the difference sentence on the builder.
