@@ -66,7 +66,7 @@ export interface TheDuties {
 }
 
 export const DUTIES_USED_FOR =
-  'Spending over the most a manager may approve on their own goes first to whoever holds that team’s budget, then to whoever looks after finance, and only then to the person named on the spending suite.';
+  'Spending over what a manager may approve alone goes to three people in order. It goes first to whoever holds that team’s budget, then to whoever looks after finance, and last to the person named on the spending suite.';
 
 /** The approval steps of leave, time sheets and spending (the-approval-steps.ts), as the admin who sets them reads them. */
 export interface TheWorkflows {

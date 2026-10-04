@@ -187,7 +187,7 @@ export function theDraftSaidBack(d: AWeekDrafted, approverFirstName: string | nu
     const why = d.alreadyGiven.length && d.alreadyGiven.length === new Set(d.found.map((f) => f.day)).size
       ? 'You have already given hours for each of those days, so there is nothing more to draft.'
       : !d.hoursADay
-        ? 'The record does not say how long anything took, and your organisation has not set the hours asked a week, so I cannot draft the hours.'
+        ? 'I cannot draft the hours. The record does not say how long anything took, and your organisation has not set the hours asked a week.'
         : 'I could not tell which client or project any of it was for, so I cannot draft the hours.';
     return { say: [`I found this on your record for this week, but not enough to draft your hours.`, ...found, why, askInstead].join('\n'), canSend: false };
   }

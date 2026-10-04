@@ -56,7 +56,7 @@ export interface WriteADocumentsNumbersInput {
  * DEDUPED AGAINST THE RECORD, NOT AGAINST ITSELF, and read fresh here rather than trusted from the
  * caller: two people confirming the same document a moment apart must not both write it.
  */
-export const ONLY_WHO_ADDED_IT_CAN_SHARE_IT = 'Only the person who added this document can share what is in it, so nothing was shared.';
+export const ONLY_WHO_ADDED_IT_CAN_SHARE_IT = 'Nothing was shared, because only the person who added this document can share what is in it.';
 
 export async function writeADocumentsNumbers(prisma: PrismaService, input: WriteADocumentsNumbersInput): Promise<string> {
   /*
