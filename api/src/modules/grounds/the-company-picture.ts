@@ -26,7 +26,8 @@ import { createHash } from 'crypto';
  * WHO READS WHAT (decision 3). Every item keeps `restsOn`, the check-ins it was built from.
  * `theShareFor` gives a reader an item only when they may open every one of them, decided by the
  * rule in who-may-read-this-check-in.ts, which the list of check-ins already applies. Check-ins on
- * a performance plan, a promotion or a renewal are never read into the picture at all.
+ * a performance plan, a promotion, a renewal or a probation are never read into the picture everybody reads. For a priority one
+ * of them feeds, one more plain reading rests on them too, so only a reader who may open them is given it (decision 93, row 23).
  */
 
 export const COMPANY_PICTURE_PROMPT_KEY = 'company_picture';
@@ -140,6 +141,12 @@ export interface SubjectFact {
 
 export interface PictureInput {
   priorities: PriorityFacts[];
+  /**
+   * The facts of the priorities that a performance plan, promotion, renewal or probation feeds, counting those check-ins in
+   * (decision 93, row 23). Used only for one extra plain reading each, resting on those check-ins, so that it reaches only a
+   * reader who may open them. Left out where none feeds a priority.
+   */
+  withEvaluation?: PriorityFacts[];
   handoffs: HandoffFact[];
   /** Every live subject in the organisation, so an orphan can be found. */
   subjects: SubjectFact[];
@@ -436,6 +443,7 @@ export function theInputKey(input: PictureInput): string {
     ...input.priorities.map((p) => ['P', p.id, p.number, p.title, p.ownerExternalId ?? '', p.ownerKnown === false ? 'unknown' : '', p.overdue, p.hasChildren, p.feedingGroundIds.slice().sort().join(','), p.finishedLast30, p.blocked, p.waiting, p.teams.slice().sort().join(',')].join('|')),
     ...input.handoffs.map((h) => ['H', h.id, h.groundId, h.team ?? '', h.about, h.status, h.priorityNumbers.join(','), h.waitsOnSomebody ?? ''].join('|')),
     ...input.subjects.map((s) => ['S', s.id, s.type, s.title, s.ownerExternalId ?? '', s.parentExternalId ?? '', s.overdue, s.measure ?? ''].join('|')),
+    ...(input.withEvaluation ?? []).map((p) => ['E', p.id, p.feedingGroundIds.slice().sort().join(','), p.finishedLast30, p.blocked, p.waiting, p.teams.slice().sort().join(',')].join('|')),
     `F|${input.finishedOnPriorities}`,
   ].sort();
   return createHash('sha256').update(rows.join('\n')).digest('hex');
@@ -529,13 +537,24 @@ export function aSentenceTheRecordSupports(
 function readingsFrom(input: PictureInput, model: TheModelsPicture | null | undefined): StoredReading[] {
   const sources = input.handoffs.map((h) => h.about);
   const levels = levelsFrom(input, model);
-  return input.priorities.map((p) => {
+  const base = input.priorities.map((p) => {
     const tag = tagFor(p);
     const given = model?.readings?.find((r) => r?.priorityId === p.id)?.says;
     const allowed = [p.number, p.feedingGroundIds.length, p.finishedLast30, p.blocked, p.waiting, p.teams.length, 30, 1, 2, 3];
     const says = aSentenceTheRecordSupports(given, { allowedNumbers: allowed, names: input.names, sources, max: 300 }) ?? plainReading(p, tag);
     return { priorityId: p.id, number: p.number, tag, says, restsOn: [...p.feedingGroundIds].sort(), levels: levels.get(p.id) ?? [] };
   });
+  /*
+   * AFTER THE ONES EVERYBODY READS, for each priority a performance plan, promotion, renewal or probation feeds, one more reading
+   * written from the counts alone (no model sentence ever reads those check-ins) and resting on them too. `theShareFor` keeps the
+   * last reading a reader may open for each priority, so an admin with access to them is given this one, and anybody else the one
+   * above (decision 93, row 23).
+   */
+  const extra = (input.withEvaluation ?? []).map((p) => {
+    const tag = tagFor(p);
+    return { priorityId: p.id, number: p.number, tag, says: plainReading(p, tag), restsOn: [...p.feedingGroundIds].sort(), levels: levels.get(p.id) ?? [] };
+  });
+  return [...base, ...extra];
 }
 
 function namedByTeamsFrom(input: PictureInput, model: TheModelsPicture | null | undefined): StoredNamedByTeams[] {
