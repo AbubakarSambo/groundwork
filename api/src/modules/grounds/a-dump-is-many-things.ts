@@ -672,6 +672,23 @@ const stem = (w: string): string =>
 const wordsOf = (name: string): string[] =>
   (name ?? '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2).map(stem);
 
+/**
+ * A NUMBER THE MODEL GAVE, AS THE PASTE WROTE IT.
+ *
+ * Found on the quarterly plan (4 October 2026): "late deliveries under 5%" came back as 0.05, was
+ * rounded to a whole number, and was stored as a limit of 0. A fraction under one is a percentage the
+ * model wrote as a fraction only where the paste really says that percentage ("5%"); otherwise it
+ * cannot be known what was meant, and no number is kept (the line is then tracked rather than counted,
+ * as it says). Whole numbers are rounded as they always were.
+ */
+export function theNumberAsWritten(n: number | null | undefined, pasted: string): number | null {
+  if (n == null || !Number.isFinite(n) || n <= 0) return null;
+  if (n >= 1) return Math.round(n);
+  const pct = Math.round(n * 100);
+  if (pct < 1) return null;
+  return new RegExp(`(?:^|[^\\d.])${pct}(?:\\.0+)?\\s?(?:%|percent|per cent)`, 'i').test(pasted ?? '') ? pct : null;
+}
+
 /** Whether these two names are made of the same words, whatever the order. Stricter than theSameMeasure, which lets one name sit inside another. */
 export function theSameWords(a: string, b: string): boolean {
   const x = [...new Set(wordsOf(a))].sort();

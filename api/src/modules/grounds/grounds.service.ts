@@ -95,7 +95,7 @@ import { EVALUATION_SCENARIOS, isEvaluationCheckIn } from '../reports/is-this-an
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, briefChangedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
-import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, theDatesToKeep, theSameWords, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
+import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, theDatesToKeep, theSameWords, theNumberAsWritten, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExactQuestion, theLeadsOwnQuestionIfAddressedToThem, THE_EXACT_QUESTION_PROMPT, THE_EXACT_QUESTION_TOOL, whatGroundworkWillAsk, type AQuestionForAPerson } from './a-question-asked-word-for-word';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
@@ -3852,9 +3852,11 @@ export class GroundsService {
       if (!who) {
         if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim());
         /* What it was for them is kept to be SAID, and their numbers to keep them off the team's list. */
-        for (const t of (r.targets ?? []).filter((t) => t?.name?.trim() && Number.isFinite(t.number) && t.number > 0)) {
-          unmatchedNumbers.push({ name: t.name.trim().slice(0, 120), number: Math.round(t.number) });
-          (unmatchedParts[r.personName.trim()] ??= []).push(`${t.name.trim().slice(0, 120)}: ${Math.round(t.number).toLocaleString('en-GB')}`);
+        for (const t of (r.targets ?? []).filter((t) => t?.name?.trim())) {
+          const n = theNumberAsWritten(t.number, pasted);
+          if (n == null) continue;
+          unmatchedNumbers.push({ name: t.name.trim().slice(0, 120), number: n });
+          (unmatchedParts[r.personName.trim()] ??= []).push(`${t.name.trim().slice(0, 120)}: ${n.toLocaleString('en-GB')}`);
         }
         continue;
       }
@@ -3863,8 +3865,9 @@ export class GroundsService {
         participantId: who.id,
         expectation: r.expectation.trim().slice(0, 600),
         targets: (r.targets ?? [])
-          .filter((t) => t?.name?.trim() && Number.isFinite(t.number) && t.number > 0)
-          .map((t) => ({ name: t.name.trim().slice(0, 120), number: Math.round(t.number) })),
+          .filter((t) => t?.name?.trim())
+          .map((t) => ({ name: t.name.trim().slice(0, 120), number: theNumberAsWritten(t.number, pasted) }))
+          .filter((t): t is { name: string; number: number } => t.number != null),
       });
     }
     /* One line each, trimmed, in the paste's order, and nothing empty. */
@@ -3939,7 +3942,7 @@ export class GroundsService {
         .filter((t) => t?.name?.trim())
         .map((t) => ({
           name: t.name.trim().slice(0, 120),
-          target: Number.isFinite(t.target as number) && (t.target as number) > 0 ? Math.round(t.target as number) : null,
+          target: theNumberAsWritten(t.target as number, pasted),
           notToExceed: !!t.notToExceed,
         }))
         /* A number the paste gave to a person, on this check-in or not, is that person's and not also

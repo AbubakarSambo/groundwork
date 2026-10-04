@@ -104,3 +104,29 @@ describe('the writer keeps a measure that only shares a word with one already he
     expect(created.map((c) => `${c.name} ${c.target}`)).toEqual(['Credit as a share of sales 35']);
   });
 });
+
+describe('a percentage the model wrote as a fraction is not rounded to nothing', () => {
+  const { theNumberAsWritten } = require('./a-dump-is-many-things');
+  it('reads 0.05 as 5 only where the paste says 5%, and keeps no number where it cannot tell', () => {
+    expect(theNumberAsWritten(0.05, 'Late deliveries under 5% (now 12%).')).toBe(5);
+    expect(theNumberAsWritten(0.09, 'delivery cost from 11% to under 9%')).toBe(9);
+    expect(theNumberAsWritten(0.05, 'late deliveries under five')).toBeNull();
+    expect(theNumberAsWritten(0.004, 'a very small share')).toBeNull();
+  });
+  it('leaves whole numbers as they were, and drops zero and nonsense', () => {
+    expect(theNumberAsWritten(520_000_000.4, 'x')).toBe(520_000_000);
+    expect(theNumberAsWritten(1, 'x')).toBe(1);
+    expect(theNumberAsWritten(0, 'x')).toBeNull();
+    expect(theNumberAsWritten(null, 'x')).toBeNull();
+    expect(theNumberAsWritten(NaN, 'x')).toBeNull();
+  });
+  it('a plan whose owner has 0.09 for delivery cost keeps 9, on the owner', async () => {
+    const { service } = aSetupConversation({
+      ground: { participants: PEOPLE },
+      seed: { ground: { findUnique: async () => ({ id: 'g1', participants: PEOPLE }) } },
+      extract: () => ({ forPeople: [{ personName: 'Funmi Ojo', expectation: 'Cut waste.', targets: [{ name: 'Late deliveries', number: 0.05 }] }] }),
+    });
+    const got: any = await (service as any).whatAPasteGives('g1', 'Funmi Ojo must keep late deliveries under 5% (now 12%). '.repeat(8));
+    expect(got.forPeople[0].targets).toEqual([{ name: 'Late deliveries', number: 5 }]);
+  });
+});
