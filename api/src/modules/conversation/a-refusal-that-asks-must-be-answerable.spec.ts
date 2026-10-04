@@ -46,7 +46,7 @@ describe('a refusal that asks must be answerable', () => {
   });
 
   it('the thin-turn refusal is one of them', () => {
-    const i = COMPLETE.indexOf('the record is still thin');
+    const i = COMPLETE.indexOf('I need a little more from you before this check-in can close');
     expect(i).toBeGreaterThan(-1);
     expect(COMPLETE.slice(i, i + 400)).toContain('canContinue: true');
   });

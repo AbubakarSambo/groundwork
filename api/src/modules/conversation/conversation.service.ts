@@ -6096,7 +6096,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (personTurnRows.length < minTurns && !how.theyAskedToFinish && !askedToFinish(personTurnRows.map((t) => t.content ?? ''))) {
       throw new BadRequestException({
         message:
-          'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
+          /* The same sentence the app and WhatsApp say (4 October 2026), in whole sentences, with no dash. */
+          'I need a little more from you before this check-in can close. Please answer one or two more questions, then finish again.',
         /** See ANSWERABLE below: this refusal asks for something, so it must be possible to give it. */
         canContinue: true,
       });
