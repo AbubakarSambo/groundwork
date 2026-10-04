@@ -626,6 +626,13 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
 
+**5 October: the anchor scenario, Needs Hafsah 9, 10 and 11.**
+- **9:** a person sees the same recognition sentence the lead sees about their contribution ("Show that I matter").
+- **10:** a captured idea is seen by everyone in that Ground, with "Raised by <name>", only after the person says yes to capturing it for the team.
+- **11:** the Performance suite is offered only to the lead, in the spec's words from section 22, never to a team member about a colleague, and without naming the person to anyone else.
+
+Sent to the engine as request 145.
+
 **5 October: the anchor scenario, Needs Hafsah 1, 3, 4, 8 and 14, all as the plan recommends.**
 - **1:** "one to one", not "privately".
 - **3:** 20 includes the lead, and the landing page may say "for a month", with the anchor trial behind its own setting, off.

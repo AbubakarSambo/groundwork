@@ -20,7 +20,7 @@ The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`
 - **Waiting on the engine:**
   - request 144: a public read of the switch, the anchor entry route, how an anchor draft is marked, and the seven field names;
   - the served data for pieces 9 (the reveal page), 11 (people and invitation), 20 (the month board), 31 (the "active" line) and 33 (the end of month), from engine pieces 8, 10, 12 and 13, 30 and 32.
-  Build each as soon as its data is served. Pieces 18, 21, 23, 25 and 27 also wait on Hafsah (Needs Hafsah 9, 10 and 11).
+  Build each as soon as its data is served. Hafsah answered Needs Hafsah 9, 10 and 11 (request 145), so pieces 18, 21, 23, 25 and 27 wait only on the engine now.
 - **MarketView Q4** waits on request 142 (a test check-in on this database).
 
 ## Phone-width check: done (5 October)
