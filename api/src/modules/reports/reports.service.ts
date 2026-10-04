@@ -181,6 +181,7 @@ import { notTheWordParty } from './not-the-word-party';
 import { whatYourOwnRecordSays } from './what-your-own-record-says';
 import { whatChangedSinceLastTime } from './what-changed-since-last-time';
 import { whyThereIsNoReportYet } from './why-there-is-no-report-yet';
+import { aReportWithNoEmptyLine } from './a-report-has-no-empty-line';
 import { whatThisRecordRestsOn, nothingRestsOnADocument } from './what-this-record-rests-on';
 import { documentsSection } from './a-document-in-the-corpus';
 import { everybodySaidLittle } from './a-record-can-be-thin-for-everybody';
@@ -1007,7 +1008,7 @@ export class ReportsService {
    */
   private async synthesizeUntilItHoldsEveryoneWhoFinished(groundId: string) {
     const howManyFinished = async () => {
-      const rows = await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED, isSetup: false }, select: { participantId: true, sessionNumber: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+      const rows = await ((this.prisma as any)?.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED, isSetup: false }, select: { participantId: true, sessionNumber: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
       return new Set((rows as any[]).map((r) => `${r.participantId}:${r.sessionNumber}`)).size;
     };
     let written: any;
@@ -5520,14 +5521,15 @@ happened, and what is in the way.`;
      * colleague. Not on an evaluation check-in, where what the person reviewed and a colleague read has its own
      * rule (decision 17). Whoever runs it, and an admin, read it whole. See one-persons-circumstances-stay-their-own.
      */
-    const withNames = !viewerIsLead && !this.peersAreNamed(ground as any, viewerParticipantId) && !isEvaluationCheckIn((ground as any).scenario)
+    /* And nobody is served a line with no words in it, whatever the wall took out of it (a-report-has-no-empty-line). */
+    const withNames = aReportWithNoEmptyLine(!viewerIsLead && !this.peersAreNamed(ground as any, viewerParticipantId) && !isEvaluationCheckIn((ground as any).scenario)
       ? onlyCountsAndPatternsAboutTheOthers(withNamesPutIn, { names: theOtherPeoplesNames(ground.participants ?? [], viewerParticipantId, (ground as any).initiatorId ?? null), lead: theLeadsNamesOf(ground.participants, (ground as any).initiatorId) })
-      : withNamesPutIn;
+      : withNamesPutIn);
     if (viewerIsLead || sharedAs !== 'ANONYMOUS') return withNames;
-    return nothingIdentifyingIn(withNames, (ground.participants ?? []).map((p: any) => ({
+    return aReportWithNoEmptyLine(nothingIdentifyingIn(withNames, (ground.participants ?? []).map((p: any) => ({
       name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || null,
       organisation: p.organisationGiven ?? null,
-    })));
+    }))));
   }
 
   private peersAreNamed(
