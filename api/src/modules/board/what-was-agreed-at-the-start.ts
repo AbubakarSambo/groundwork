@@ -100,6 +100,14 @@ function wasAgreed(g: AnAgreedGoal): boolean {
   return true;
 }
 
+/**
+ * A PROMISE IS NOT A GOAL (request 128 item 2). "If the information is incomplete, I will follow up with her for the missing
+ * details." was stored as a goal and read "A goal was agreed for Tobi Adewale." A first-person promise is what the person
+ * committed to, and is said as that.
+ */
+export const aPromiseNotAGoal = (text: string | null | undefined): boolean =>
+  /^(?:(?:if|when|once|after)\b[^,]{0,80},\s*)?(?:i|we)(?:['\u2019]ll|\s+will|\s+shall|\s+am going to|['\u2019]m going to|\s+promise to)\b/i.test(String(text ?? '').trim());
+
 const clean = (s: string) => s.trim().replace(/\s+/g, ' ');
 
 export function whatWasAgreedAtTheStart(a: {
@@ -125,6 +133,10 @@ export function whatWasAgreedAtTheStart(a: {
     const whose = whoIs(r, g.participantId);
     const due = theDayNumber(g.dueDate);
     const when = due !== null && dayOne !== null ? stepOfDay(due - dayOne + 1) : stepSaid(g.dueSaid) ?? 'Day 1';
+    if (aPromiseNotAGoal(what)) {
+      rows.push({ when, whose, says: `${whose === 'You' ? 'You' : whose} said, "${what.replace(/[.!?]+$/, '')}."`, what: null, kind: 'commitment' });
+      continue;
+    }
     const time = when === 'Day 1'
       ? (g.dueSaid?.trim() ? `, and the time given for it was "${g.dueSaid.trim().replace(/[.!?]+$/, '')}"` : '')
       : `, to be met ${when.charAt(0).toLowerCase()}${when.slice(1)}`;

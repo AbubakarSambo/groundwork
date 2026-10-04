@@ -3964,3 +3964,9 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### "Your own account" for somebody else's (133 item 2)
 
 **What changed (served, `theJudgement.whatThisCannotTellYou[].toKnow`, lead only).** Under "Who the other trader with the broken freezer is." the line reads "That trader's own account is not in this check-in." and not "Your own account of this is not in this check-in." Under a thing that is the lead's own to say, it is unchanged. Only the one stock sentence is changed, and only where the unknown is who somebody else is.
+
+### Request 128: answered
+
+**1. The 90 days are about the new person, not about the lead (served, `ninetyDays`, both readers).** When whoever runs the check-in also takes part, her own goals are no longer counted. Amina reads "Is Tobi Adewale settled in?", "Is Tobi Adewale doing the job?" and "1 goal was agreed for Tobi Adewale to be met by day 30. It is still open." Tobi reads "Are you settled in?" and "1 goal was agreed for you to be met by day 30. It is still open." Nothing reads "you and Tobi Adewale".
+
+**2. A promise stored as a goal is a commitment (served, `startingState.rows[]`).** "If the information is incomplete, I will follow up with her for the missing details." no longer reads "A goal was agreed for Tobi Adewale." The row has `kind: "commitment"`, `what: null`, and `says` reads (to Amina) Tobi Adewale said, "If the information is incomplete, I will follow up with her for the missing details." and (to Tobi) You said, "If the information is incomplete, I will follow up with her for the missing details." Such a promise is also not counted among the goals in `ninetyDays`. A first-person promise means a sentence that begins with I will, I'll, we will, I am going to, or one of those after "if ...,".
