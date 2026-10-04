@@ -11,7 +11,7 @@ export const ONE_OFF_USES_PER_FILE: Record<string, number> = {
   'components/gw/OutcomeFeedback.tsx': 29,
   'components/gw/ResolutionPanel.tsx': 64,
   'components/gw/Suggestions.tsx': 50,
-  'components/gw/TargetsBand.tsx': 56,
+  'components/gw/TargetsBand.tsx': 52,
   'components/gw/TheJudgement.tsx': 32,
   'components/gw/TheSessionsReport.tsx': 6,
   'components/gw/UpdatesToTheRecord.tsx': 19,
