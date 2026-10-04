@@ -5,7 +5,7 @@ import { ReportsService } from '../reports/reports.service';
  * DECISION 77 ON THE CHECK-INS LIST (2 October 2026). Wairimu runs "Sales team, Q3"; Miriam and Omar
  * check in and have answered session 1; an admin has not let Faraji Odhiambo in. The row's count leaves
  * him out for every reader, and only whoever runs it, the admin who set it up and an admin read
- * `waitingToBeLetIn`. A person who checks in never does, whether or not people see each other.
+ * `waitingToBeLetIn`. Since decision 93 (row 4) a person who checks in reads that he is waiting too, by name where people see each other and as a count where they do not, but never that he was declined.
  */
 const LEAD = 'user-lead';
 const MIRIAM = 'user-miriam';
@@ -65,19 +65,23 @@ describe('decision 77 on the check-ins list', () => {
     expect((await rowAs(ADMIN, 'ADMIN', { declined: true })).waitingToBeLetIn).toBe('Faraji Odhiambo was not let in.');
   });
 
+  /* Changed by decision 93, row 4. This pinned "Miriam, who checks in, reads nothing about it", the restriction Hafsah removed for the waiting line. A decline is still not told to her. */
   it.each([
-    ['people see each other, still waiting', { peers: true }],
-    ['people see each other, after a decline', { peers: true, declined: true }],
-    ['people see only themselves, still waiting', { peers: false }],
-    ['people see only themselves, after a decline', { peers: false, declined: true }],
-  ] as const)('Miriam, who checks in, reads nothing about it (%s), and no count of hers includes him', async (_case, over) => {
+    ['people see each other', { peers: true }, 'Faraji Odhiambo is waiting to be let in.'],
+    ['people see only themselves', { peers: false }, '1 person is waiting to be let in.'],
+  ] as const)('Miriam, who checks in, reads that he is waiting (%s), and no count of hers includes him', async (_case, over, says) => {
     const row = await rowAs(MIRIAM, 'MEMBER', over);
-    expect(row.waitingToBeLetIn).toBeNull();
-    expect(JSON.stringify(row)).not.toMatch(/let in/);
+    expect(row.waitingToBeLetIn).toBe(says);
     /* Where people see each other her count is the team's, without him. Where they see only themselves the
        list counts her own rows only, as before. */
     if (over.peers) expect(row.glance.progress.ofPeople).toBe(3);
     expect(row.glance.progress.waitingOn).not.toContain('p-faraji');
+  });
+
+  it.each([{ peers: true, declined: true }, { peers: false, declined: true }])('Miriam is not told that an admin declined him (%j)', async (over) => {
+    const row = await rowAs(MIRIAM, 'MEMBER', over);
+    expect(row.waitingToBeLetIn).toBeNull();
+    expect(JSON.stringify(row)).not.toMatch(/let in/);
   });
 
   it('once he is let in, he is counted again (3 of 4) and nobody is told he is waiting', async () => {

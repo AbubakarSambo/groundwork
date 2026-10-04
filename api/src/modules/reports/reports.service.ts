@@ -8,7 +8,7 @@ import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-la
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { whoIsInTheRound } from './how-many-have-answered';
 import { whoIsNotLetInYet, theWaitingToBeLetInLine } from '../grounds/who-an-admin-did-not-let-in';
-import { whoOnACheckInIsAway } from '../suites/who-is-away';
+import { isFromOutside, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { AsyncLocalStorage } from 'async_hooks';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
@@ -3521,14 +3521,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * person who checks in, whether or not people see each other: whether somebody has been let in is
      * the organisation's business.
      */
+    /* A person who checks in reads it too (decision 93, row 4): that somebody is waiting, by name only where this report names people, never a decline, never as a guest. */
+    const aParticipantReadsIt = !viewerIsLead && !!me && !(await isFromOutside(this.prisma, requestingUserId, (ground as any).organizationId));
     const waitingToBeLetIn = theWaitingToBeLetInLine(
       [...(await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId)).entries()]
-        .filter(([id]) => !answeredIds.has(id))
+        .filter(([id]) => !answeredIds.has(id) && id !== me?.id)
         .map(([id, d]) => {
           const label = labels.get(id);
           return { name: (label ? nameByLabel.get(label) : undefined) ?? null, declined: d.declined };
         })
-        .filter(() => viewerIsLead),
+        .filter((w) => viewerIsLead || (aParticipantReadsIt && !w.declined)),
     );
 
     /*

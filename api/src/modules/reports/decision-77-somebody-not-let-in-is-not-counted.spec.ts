@@ -60,13 +60,13 @@ describe('decision 77: who is waiting to be let in is said apart from the count,
     },
   );
 
+  /* Changed by decision 93, row 4. This pinned "reads nothing about who is waiting to be let in", the restriction Hafsah removed. A decline is still not told to a participant. */
   it.each([['Amani, a participant', 'u-amani'], ['Baraka, a participant', 'u-baraka']])(
-    '%s reads nothing about who is waiting to be let in, though people see each other here',
+    '%s reads "Faraji Odhiambo is waiting to be let in." too, since people see each other here',
     async (_who, userId) => {
       const { svc } = serviceFor('sales');
       const r = await theSessionReportAs(svc, userId, 1);
-      expect(r.waitingToBeLetIn).toBeNull();
-      expect(everyString(r).filter((s) => /let in/.test(s))).toEqual([]);
+      expect(r.waitingToBeLetIn).toBe('Faraji Odhiambo is waiting to be let in.');
     },
   );
 

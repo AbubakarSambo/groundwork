@@ -947,13 +947,18 @@ export class BoardService {
        * Odhiambo is waiting to be let in."), or as a count where no name is known. Never a person who checks
        * in, whether or not people see each other: whether somebody has been let in is the organisation's business.
        */
-      waitingToBeLetIn: theWaitingToBeLetInLine(
-        [...(await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId)).entries()]
-          .filter(([pid]) => !checkIns.some((c) => c.participantId === pid && c.sessionNumber === openRound && (c.status === CheckInStatus.COMPLETED || c.status === CheckInStatus.DECLINED)))
-          .map(([pid, d]) => ({ pid, name: hiddenFromThisReader(pid) ? null : nameOf(pid), declined: d.declined }))
-          .filter(() => isInitiator || isSetupAdmin || adminHere)
-          .map(({ name, declined }) => ({ name, declined })),
-      ),
+      waitingToBeLetIn: await (async () => {
+        const runsIt = isInitiator || isSetupAdmin || adminHere;
+        /* A person who checks in reads that somebody is waiting (decision 93, row 4), never a decline, and never as a guest. */
+        const aParticipantReadsIt = !runsIt && !!me && !(await isFromOutside(this.prisma, requestingUserId, ground.organizationId));
+        return theWaitingToBeLetInLine(
+          [...(await whoIsNotLetInYet(this.prisma, ground.participants as any[], (ground as any).organizationId)).entries()]
+            .filter(([pid]) => !checkIns.some((c) => c.participantId === pid && c.sessionNumber === openRound && (c.status === CheckInStatus.COMPLETED || c.status === CheckInStatus.DECLINED)))
+            .map(([pid, d]) => ({ pid, name: hiddenFromThisReader(pid) ? null : nameOf(pid), declined: d.declined }))
+            .filter(({ pid, declined }) => runsIt || (aParticipantReadsIt && !declined && pid !== me?.id))
+            .map(({ name, declined }) => ({ name, declined })),
+        );
+      })(),
       /* WHO IS AWAY AND NOT WAITED ON THIS ROUND (week 23). Dates only. The lead reads it for each person;
          a colleague only for a person the board already names to them; a person reads their own. */
       whoIsAway: theAwayLinesFor(
