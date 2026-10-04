@@ -196,6 +196,7 @@ import { whatThisSessionHolds } from './what-this-session-holds';
 import { adminsThisOrg, adminsTheOrg, readsAsAnAdmin, runsOrSetItUp } from '../grounds/who-may-read-this-check-in';
 import { ONLY_THE_LEAD_RELEASES } from './only-the-lead-releases';
 import { whoSharedItBecauseTheLeadLeft, fullNameOf, sharedByAnAdminFrom, type SharedBecauseLeadLeft } from './who-shared-it-because-the-lead-left';
+import { theReaderIsYouOnTheirOwnLines } from './the-reader-is-you-on-their-own-lines';
 import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { documentBackedShare } from './backed-by-a-document';
@@ -6829,7 +6830,7 @@ happened, and what is in the way.`;
     /* WHERE PEOPLE DO NOT SEE EACH OTHER, ONE PERSON'S CIRCUMSTANCES NEVER REACH ANOTHER (decision 75, item 14). The
        session report, the rounds and the against-success read are served through here as well as the report, so the
        same wall, through the same door, stands on every one of them. See wherePeopleDoNotSeeEachOther. */
-    return this.wherePeopleDoNotSeeEachOther(ground, me, isInitiator || isOrgAdmin, walled);
+    return this.wherePeopleDoNotSeeEachOther(ground, me, isInitiator || isOrgAdmin, theReaderIsYouOnTheirOwnLines(walled));
   }
 
   /**

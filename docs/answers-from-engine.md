@@ -4392,3 +4392,9 @@ Everyone else reads exactly what they read before, and a person who is not held 
 **What changed for a reader.** An admin who was not given access to a performance plan or a first-90-days check-in, and a person who has no part in a check-in at all, read "You are not a participant in this check-in" on its board and report, which told them the check-in exists. They now read "Check-in not found" on both, as on every other route. An admin who was given access, and everyone who takes part, read what they read before.
 
 **Tests.** `an-admin-without-access-is-told-the-check-in-is-not-found.spec.ts`. Four existing tests pinned the old sentence for the board (`an-admin-does-not-read-an-evaluation-check-in-in-grounds-or-on-the-board.spec.ts`, `the-admin-asked-to-approve-reads-what-they-approve.spec.ts`, and two checks in `no-board-is-not-a-permission-problem.spec.ts`, which now find the gate by its condition); they now expect the new sentence. The other routes that still say "You are not a participant in this check-in" (for example the person's own report and rating) are about the person's own record and were not part of this finding.
+
+### 8. The reader is "You" under their own lines in their session report
+
+**What changed for a reader.** In a person's own session report, the lines under "Progress and priorities", "Commitments", "Risks and concerns", "Asks" and "What success looks like" carried their own name as the one who said them (for Yusuf, `"who": "Yusuf Garba"` beside "Sometimes the roads are bad. And the weather."). They now carry `"You"`, so the line under the quote reads "You said this." Other people's lines are unchanged, and the lead reads a participant's lines under the participant's name, as before.
+
+**Tests.** `the-reader-is-you-on-their-own-lines.spec.ts`. The cohort fixture used by the first fix's tests moved to `reports/__fixtures__/a-cohort-for-the-session-report.ts` so the two specs share it.
