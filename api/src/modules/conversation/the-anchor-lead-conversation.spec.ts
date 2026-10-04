@@ -9,6 +9,9 @@ import {
   ANCHOR_LEAD_PROMPT_KEY,
   THE_ECONOMIC_ENGINE_GUIDANCE,
   CHALLENGING_THE_LEAD_GUIDANCE,
+  THE_HOPE_GUIDANCE,
+  THE_HOPE_QUESTION,
+  BEHAVIOURS_THAT_WOULD_SHOW_IT_WAS_BETTER,
 } from './the-anchor-lead-conversation';
 
 /**
@@ -104,6 +107,36 @@ describe('anchor piece 6: the lead is challenged kindly, once, and the gaps are 
 
   it('is part of the stored prompt too', () => {
     expect(SEED_PROMPTS.find((s) => s.key === ANCHOR_LEAD_PROMPT_KEY)?.content).toContain(CHALLENGING_THE_LEAD_GUIDANCE);
+  });
+});
+
+describe('anchor piece 7: the hope question, and the behaviours to watch for', () => {
+  it('with the switch on, the anchor conversation is told to ask the scenario\'s hope question', async () => {
+    const { service, seen } = world(true);
+    await service.chat(said, ANCHOR_ENTRY_SCENARIO);
+    expect(seen[0]).toContain('Imagine a month from now and this is meaningfully better. What would you notice people doing without you having to ask?');
+  });
+
+  it('asks it once, alone in its turn, after the lead has been heard', () => {
+    expect(THE_HOPE_GUIDANCE).toContain('Ask it once, and as the only question in that turn.');
+    expect(THE_HOPE_GUIDANCE).toContain('Do not ask it before the lead has been heard');
+  });
+
+  it('carries the scenario\'s behaviours as examples to offer when the lead is stuck, never as a list to read out', () => {
+    expect(BEHAVIOURS_THAT_WOULD_SHOW_IT_WAS_BETTER).toHaveLength(11);
+    for (const b of ['bringing ideas', 'raising problems earlier', 'carrying things without escalation']) expect(THE_HOPE_GUIDANCE).toContain(b);
+    expect(THE_HOPE_GUIDANCE).toContain('never more than three');
+    expect(THE_HOPE_GUIDANCE).toContain('Never read the list out');
+  });
+
+  it('keeps what the lead would notice in their own words and puts no label on anybody', () => {
+    expect(THE_HOPE_GUIDANCE).toContain('Keep the lead\'s own words');
+    expect(THE_HOPE_GUIDANCE).toContain('Do not turn them into a score or a label about anybody.');
+    expect(THE_HOPE_QUESTION.endsWith('?')).toBe(true);
+  });
+
+  it('is part of the stored prompt too', () => {
+    expect(SEED_PROMPTS.find((s) => s.key === ANCHOR_LEAD_PROMPT_KEY)?.content).toContain(THE_HOPE_GUIDANCE);
   });
 });
 
