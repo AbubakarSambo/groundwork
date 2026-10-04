@@ -315,10 +315,24 @@ export class AssistantService {
     forceAddContext = false,
   ): Promise<Reply> {
     if (who && !afterDrop) {
-      const parked = await this.prisma.assistantProposal.findFirst({
+      let parked = await this.prisma.assistantProposal.findFirst({
         where: { organizationId, personExternalId: who, state: 'PARKED' },
         orderBy: { createdAt: 'desc' },
       });
+      /*
+       * A SETUP CONVERSATION LEFT OPEN ON ONE CHECK-IN DOES NOT TAKE WHAT IS SAID ON ANOTHER (4 October 2026).
+       * Found running the dumps: a lead left the setup chat open on one check-in, then pasted a whole
+       * update from another check-in's page, and the paste was read as the answer to the first one and
+       * written there. When the screen names a check-in and the waiting setup turn is about a
+       * different one, the waiting turn is let go, and what was said is answered for the check-in named.
+       * A long paste is never a yes, so a waiting yes on a different check-in is let go for one as well.
+       */
+      const pg = (parked?.payload as any)?.groundId as string | undefined;
+      if (parked && groundId && pg && pg !== groundId
+        && (parked.kind === 'context_turn' || (parked.kind === 'context' && looksLikeADump(message)))) {
+        await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } }).catch(() => undefined);
+        parked = null;
+      }
       if (parked) return this.resolveParked(organizationId, personId, who, parked, message);
     }
 
