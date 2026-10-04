@@ -2958,7 +2958,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         <div className="gwui-mt-12">
           <p className="gwui-fs-15 gwui-ink-sub gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: 1.55}}>
-            Built from what each person shared in their private check-in. Use it to see what&rsquo;s going on and guide the conversation. It&rsquo;s not a verdict.
+            {/*
+              THE FOUNDER'S OWN CHECK-IN BOARD, AND ANY OTHER ONE-PERSON CHECK-IN: "each person
+              shared in their private check-in" talks about a team that does not exist here - there
+              is one person, and the reader is them. "Built from what you shared in your private
+              check-in." says the same true thing about this board instead.
+            */}
+            {onlyOnePersonHere
+              ? 'Built from what you shared in your private check-in. Use it to see what’s going on and guide the conversation. It’s not a verdict.'
+              : 'Built from what each person shared in their private check-in. Use it to see what’s going on and guide the conversation. It’s not a verdict.'}
           </p>
           {howToRead && (
             <>
@@ -3135,8 +3143,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             {/* The privacy setting is on and some numbers still have nobody's name on them, so
                 everybody can read those. Said to the only person who can fix it. */}
             {/* One total, ten people, from the export they already have. Above the form, because
-                somebody with a team and a committed number reaches for this before typing. */}
-            {b.canEditFrame && <SplitOneTotalAcrossPeople groundId={id!} />}
+                somebody with a team and a committed number reaches for this before typing.
+                NOT ON A ONE-PERSON CHECK-IN (the founder's own check-in board among them) - there
+                is nobody to split a total across. */}
+            {b.canEditFrame && !onlyOnePersonHere && <SplitOneTotalAcrossPeople groundId={id!} />}
             <Stack gap={8}>
             {b.targetsNobodyOwns && (
               <Callout tone="warning">{b.targetsNobodyOwns}</Callout>
@@ -3468,7 +3478,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {shown.quickRead && b.quickRead && (
-          <Section heading="The quick read" note="How much the team agrees, and how much the report can rely on.">
+          <Section
+            heading="The quick read"
+            /*
+              ONE-PERSON CHECK-INS (THE FOUNDER'S OWN CHECK-IN BOARD AMONG THEM): "How much the
+              team agrees" asks a question that needs more than one person to answer - there is
+              nobody to agree or disagree with here. founder.txt does not give this note its own
+              wording, so this falls back to "How far the record bears this out." instead, which
+              is still true of one person's own report.
+            */
+            note={onlyOnePersonHere ? 'How far the record bears this out.' : 'How much the team agrees, and how much the report can rely on.'}
+          >
             {/*
               FOUR TILES BECOME FOUR SCREENS-FULL WHEN THE GRID COLLAPSES TO ONE COLUMN.
 
