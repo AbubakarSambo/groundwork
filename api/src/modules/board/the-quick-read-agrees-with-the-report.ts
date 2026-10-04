@@ -20,13 +20,15 @@ const COUNT: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five:
 
 /* "They disagree on X." "Femi and you differ about X." Not "nobody disagrees", not "do not disagree". */
 const A_DISAGREEMENT = /(?:^|[.!?]\s+)([^.!?]*?)\b(?:disagree|differ)s?\s+(?:on|about|over)\s+([^.!?]+)[.!?]/i;
+/* "They give different numbers for the total plan." (request 132 c): a difference said without the word differ. */
+const A_DIFFERENT_NUMBER = /(?:^|[.!?]\s+)([^.!?]*?)\b(?:give|gave|put|say|said|report|reported|have|had|offer|offered)\s+(?:different|differing|conflicting)\s+(?:numbers|figures|totals|dates|amounts|answers|views|costs|estimates)\s+(?:for|on|about|of)\s+([^.!?]+)[.!?]/i;
 const NOT_A_DISAGREEMENT = /\b(?:not|never|no one|nobody|nothing|neither|don't|doesn't|do not|does not)\b/i;
 
 /** The topic in the opening, and how many things it says, or null where it names none. */
 export function theDisagreementTheReportOpensWith(sharedPicture: string | null | undefined): { topic: string; count: number } | null {
   const text = String(sharedPicture ?? '').replace(/\s+/g, ' ').trim();
   if (!text) return null;
-  const m = text.match(A_DISAGREEMENT);
+  const m = text.match(A_DISAGREEMENT) ?? text.match(A_DIFFERENT_NUMBER);
   if (!m || NOT_A_DISAGREEMENT.test(m[1] ?? '')) return null;
   let what = m[2].trim();
   let count = 1;
