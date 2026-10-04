@@ -309,6 +309,10 @@ export function aCommitmentSaid(
 
   /* What they said they would do, said about them ("ask Amina to provide them with ...") where it is not in their own marks. */
   const clause = inOurVoice(c.what, who === 'You' ? 'you' : 'them');
+  const whenAlreadySaidIn = (when: string, what: string) => { const f = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim(); return !!f(when) && ` ${f(what)} `.includes(` ${f(when)} `); };
+  /* A piece that is not a sentence: it has no stop, starts in lower case and holds no "I" or "my". */
+  const aFragmentOfTheirs = c.theySaidIt && quoteWhat && !!clause && !/[.!?]["\u201d]?\s*$/.test(String(c.what ?? '').trim()) && /^[a-z]/.test(String(c.what ?? '').trim()) && !FIRST_PERSON_WORD.test(String(c.what ?? ''));
+  let whenIsInTheSentence = false;
 
   if (!c.theySaidIt) {
     if (quoteWhat) {
@@ -325,6 +329,14 @@ export function aCommitmentSaid(
         : `${leadFirst} committed ${mid} to something, which is in the record.`);
     }
     out.push(`${who} did not say it.`);
+  } else if (aFragmentOfTheirs) {
+    /* "In session 1, you said, "send the data room". The time you gave for it was "on Wednesday"." is two clipped quotes. A piece of
+       theirs that is not a sentence is said as what they said they would do, with the time inside it (request 136 item 3). */
+    const theTime = c.when && (quoteWhen || looksLikeATimeOrADate(c.when)) && !whenAlreadySaidIn(c.when, c.what) ? ` ${c.when.trim().replace(/[.!?]+$/, '')}` : '';
+    whenIsInTheSentence = true;
+    out.push(stated !== null
+      ? `In session ${stated}, ${mid} said ${who === 'You' ? 'you' : 'they'} would ${clause}${theTime}.`
+      : c.fromAPaste ? `In what ${leadMid} pasted in, ${mid} ${isWord} down to ${clause}${theTime}.` : `${who} said ${who === 'You' ? 'you' : 'they'} would ${clause}${theTime}.`);
   } else if (quoteWhat) {
     if (stated !== null) out.push(`In session ${stated}, ${mid} said, "${c.what}"`);
     else if (c.fromAPaste) out.push(`In what ${leadMid} pasted in, ${mid} ${isWord} down to do this, "${c.what}"`);
@@ -339,7 +351,7 @@ export function aCommitmentSaid(
      for it was "on 9 October"." said it twice (request 111 e). Where the words already say it, it is not repeated. */
   const flat = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
   const whenAlreadySaid = !!c.when && !!flat(c.when) && ` ${flat(c.what ?? '')} `.includes(` ${flat(c.when)} `) && (quoteWhat || !!clause);
-  if (whenAlreadySaid) { /* said in the words above */ }
+  if (whenAlreadySaid || whenIsInTheSentence) { /* said in the words above */ }
   else if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was "${c.when}".`);
   else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was ${c.when}.`);
   if (c.restatedIn.length) {

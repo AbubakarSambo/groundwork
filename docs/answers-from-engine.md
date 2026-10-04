@@ -3990,3 +3990,7 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### Coaching under "Worth asking" no longer says not to ask (130 e, 134 item 3)
 
 **What changed (served, the coaching probes in a person's report and on the lead's board).** "This early, that is worth showing Amani Wekesa rather than asking about." reads: It is early, so ask Amani Wekesa what is being held up and whether help raising it would be useful. To the person themself: It is early. What is being held up, and would help raising it be useful? The finding that triggers it (a wait with nothing on record about raising it) is not changed. Stored sentences are put right as they are served.
+
+### Clipped quotes in a commitment (136 item 3)
+
+**What changed (served, `workPlan[].says`, `obligations`, `timeline` and wherever a commitment is said; lead and the person).** Where what a person said is only a piece of a sentence, with no full stop, in lower case and with no "I", it is no longer put in quotation marks beside a second quoted time. `In session 1, you said, "send the data room". The time you gave for it was "on Wednesday".` reads: In session 1, you said you would send the data room on Wednesday. Nobody has said yet whether it happened. The lead reads: In session 1, Wanjiru Kamau said they would send the data room on Wednesday. When a whole sentence of theirs is held ("I will send the data room."), it is quoted as before.
