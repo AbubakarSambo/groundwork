@@ -388,50 +388,54 @@ function HiddenContributorRow({ groundId, label, evidence, isInitiator }: {
 
   return (
     <div className="gwui-panel-row">
-      <div className="gwui-fs-16 gwui-ink-text gwui-mb-4" style={{ fontWeight: 600 }}>{label}</div>
-      <div className="gwui-fs-15 gwui-ink-sub gwui-mb-6" style={{ lineHeight: 1.55 }}>{evidence}</div>
-      {done ? (
-        <div className="gwui-fs-13 gwui-ink-green" style={{ fontWeight: 600 }}>{isInitiator ? 'Invited.' : 'Request sent.'}</div>
-      ) : open ? (
-        <div className="gwui-gap-6" style={{ display: 'flex', flexDirection: 'column' }}>
-          <input
-            type="email" autoFocus placeholder="their@email.com"
-            value={email} onChange={e => setEmail(e.target.value)}
-            className="gwui-rule gwui-fs-13 gwui-pt-7 gwui-pb-7 gwui-pl-10 gwui-pr-10"
-            style={{ borderRadius: 6, fontFamily: 'inherit', outline: 'none' }}
-          />
-          {!isInitiator && (
+      <Stack gap={6}>
+        <Stack gap={4}>
+          <div className="gwui-fs-16 gwui-ink-text" style={{ fontWeight: 600 }}>{label}</div>
+          <div className="gwui-fs-15 gwui-ink-sub" style={{ lineHeight: 1.55 }}>{evidence}</div>
+        </Stack>
+        {done ? (
+          <div className="gwui-fs-13 gwui-ink-green" style={{ fontWeight: 600 }}>{isInitiator ? 'Invited.' : 'Request sent.'}</div>
+        ) : open ? (
+          <Stack gap={6}>
             <input
-              type="text" placeholder="Their name (optional)"
-              value={name} onChange={e => setName(e.target.value)}
+              type="email" autoFocus placeholder="their@email.com"
+              value={email} onChange={e => setEmail(e.target.value)}
               className="gwui-rule gwui-fs-13 gwui-pt-7 gwui-pb-7 gwui-pl-10 gwui-pr-10"
               style={{ borderRadius: 6, fontFamily: 'inherit', outline: 'none' }}
             />
-          )}
-          {emailError && <div className="gwui-fs-13 gwui-ink-red">{emailError}</div>}
-          <div className="gwui-gap-6" style={{ display: 'flex' }}>
-            <UIButton
-              kind="secondary"
-              onClick={() => {
-                if (!looksLikeAnAddress(email)) { setEmailError(NOT_AN_ADDRESS); return }
-                setEmailError('')
-                if (isInitiator) addParticipant.mutate({ email: email.trim(), note: evidence })
-                else requestAddition.mutate({ requestedEmail: email.trim(), requestedName: name.trim() || undefined, reason: reason.trim() || evidence })
-              }}
-              disabled={addParticipant.isPending || requestAddition.isPending}
-            >
-              {isInitiator ? 'Add them' : 'Send request'}
-            </UIButton>
-            <UIButton kind="secondary" onClick={() => { setOpen(false); setEmail(''); setName(''); setReason('') }}>
-              Cancel
-            </UIButton>
-          </div>
-        </div>
-      ) : (
-        <button onClick={() => { setOpen(true); setEmail(''); setName(''); setReason(evidence) }} className="gwui-plain-link gwui-fs-13">
-          {isInitiator ? 'Add them' : 'Request they be added'}
-        </button>
-      )}
+            {!isInitiator && (
+              <input
+                type="text" placeholder="Their name (optional)"
+                value={name} onChange={e => setName(e.target.value)}
+                className="gwui-rule gwui-fs-13 gwui-pt-7 gwui-pb-7 gwui-pl-10 gwui-pr-10"
+                style={{ borderRadius: 6, fontFamily: 'inherit', outline: 'none' }}
+              />
+            )}
+            {emailError && <div className="gwui-fs-13 gwui-ink-red">{emailError}</div>}
+            <div className="gwui-gap-6" style={{ display: 'flex' }}>
+              <UIButton
+                kind="secondary"
+                onClick={() => {
+                  if (!looksLikeAnAddress(email)) { setEmailError(NOT_AN_ADDRESS); return }
+                  setEmailError('')
+                  if (isInitiator) addParticipant.mutate({ email: email.trim(), note: evidence })
+                  else requestAddition.mutate({ requestedEmail: email.trim(), requestedName: name.trim() || undefined, reason: reason.trim() || evidence })
+                }}
+                disabled={addParticipant.isPending || requestAddition.isPending}
+              >
+                {isInitiator ? 'Add them' : 'Send request'}
+              </UIButton>
+              <UIButton kind="secondary" onClick={() => { setOpen(false); setEmail(''); setName(''); setReason('') }}>
+                Cancel
+              </UIButton>
+            </div>
+          </Stack>
+        ) : (
+          <button onClick={() => { setOpen(true); setEmail(''); setName(''); setReason(evidence) }} className="gwui-plain-link gwui-fs-13">
+            {isInitiator ? 'Add them' : 'Request they be added'}
+          </button>
+        )}
+      </Stack>
     </div>
   )
 }
@@ -885,13 +889,15 @@ function DivergenceSectionBody({ heading, divergence, whyNothingYet, onlyOnePers
                 <div className="gwui-fs-15 gwui-ink-amber gwui-mt-2">{whoSeesThisDifferently(d.positions, myName)}</div>
                 {d.text && <div className="gwui-fs-15 gwui-ink-sub gwui-mt-3">{d.text}</div>}
                 {Array.isArray(d.positions) && d.positions.some((pos: any) => pos.view) && (
-                  <div className="gwui-gap-4 gwui-mt-6" style={{display: 'grid'}}>
-                    {d.positions.filter((pos: any) => pos.view).map((pos: any, j: number) => (
-                      <div key={j} className="gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>
-                        <div style={{fontWeight: 700}}>{pos.who ?? 'A colleague'}</div>
-                        <div className="gwui-ink-sub">{pos.view}</div>
-                      </div>
-                    ))}
+                  <div className="gwui-mt-6">
+                    <Stack gap={4}>
+                      {d.positions.filter((pos: any) => pos.view).map((pos: any, j: number) => (
+                        <div key={j} className="gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>
+                          <div style={{fontWeight: 700}}>{pos.who ?? 'A colleague'}</div>
+                          <div className="gwui-ink-sub">{pos.view}</div>
+                        </div>
+                      ))}
+                    </Stack>
                   </div>
                 )}
                 {d.atStake && (
@@ -3665,7 +3671,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         and overflowed the phone-width board by this sentence's own width (a real
                         375px board measured 395px wide because of it) - this box must wrap like
                         any other sentence, not stay on one line. */}
-                    <span className="gwui-fs-13-5 gwui-ink-sub">{myName && d.owner === myName ? 'You' : d.owner}</span>
+                    <Note>{myName && d.owner === myName ? 'You' : d.owner}</Note>
                   </div>
                 </div>
               ))}
@@ -4205,7 +4211,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       {b.poll ? 'Change the times' : 'Set up an availability poll'}
                     </button>
                   ) : (
-                    <form noValidate onSubmit={(e) => { e.preventDefault(); if (pollQ.trim() && pollOpts.trim() && !savePoll.isPending) savePoll.mutate() }} className="gwui-gap-8" style={{display: 'flex', flexDirection: 'column'}}>
+                    <form noValidate onSubmit={(e) => { e.preventDefault(); if (pollQ.trim() && pollOpts.trim() && !savePoll.isPending) savePoll.mutate() }}>
+                      <Stack gap={8}>
                       <input value={pollQ} onChange={(e) => setPollQ(e.target.value)} placeholder="What are you finding a time for?"
                         className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-13-5 gwui-rule" style={{borderRadius: 7, fontFamily: 'inherit', outline: 'none'}} />
                       <textarea value={pollOpts} onChange={(e) => setPollOpts(e.target.value)} placeholder={'One time per line\nTue 16:00\nWed 09:00'}
@@ -4226,6 +4233,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         <Confirm saying="Discard the question and times you typed?" confirmLabel="Discard" keepLabel="Keep typing"
                           onConfirm={() => { setPollCancelArmed(false); setShowPollForm(false) }} onKeep={() => setPollCancelArmed(false)} />
                       )}
+                      </Stack>
                     </form>
                   )}
                 </div>
@@ -4413,17 +4421,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         <details className="gw-legend gwui-mt-28">
           <summary className="gwui-fs-13-5 gwui-ink-sub" style={{cursor: 'pointer'}}>How this board is put together</summary>
-          <div className="gwui-gap-12 gwui-mt-10" style={{display: 'grid'}}>
-            {[
-              { h: 'What is open, first', p: 'It leads with what is still unresolved and what everyone already agrees on. The read across everything people said follows it.' },
-              { h: 'Each gap names both sides', p: "Every disagreement carries each person's position in their own words, and what is at stake if it holds. The most significant comes first." },
-              { h: 'Honest closes', p: 'Decisions rarely finish clean, so it names what is aligned, what is open, and the question the whole thing turns on. It never gives a verdict on a person.' },
-            ].map((cell, i) => (
-              <div key={i}>
-                <div className="gwui-fs-13-5 gwui-ink-muted gwui-mb-4" style={{letterSpacing: '.1px', fontWeight: 700}}>{cell.h}</div>
-                <div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.55}}>{cell.p}</div>
-              </div>
-            ))}
+          <div className="gwui-mt-10">
+            <Stack gap={12}>
+              {[
+                { h: 'What is open, first', p: 'It leads with what is still unresolved and what everyone already agrees on. The read across everything people said follows it.' },
+                { h: 'Each gap names both sides', p: "Every disagreement carries each person's position in their own words, and what is at stake if it holds. The most significant comes first." },
+                { h: 'Honest closes', p: 'Decisions rarely finish clean, so it names what is aligned, what is open, and the question the whole thing turns on. It never gives a verdict on a person.' },
+              ].map((cell, i) => (
+                <Stack key={i} gap={4}>
+                  <div className="gwui-fs-13-5 gwui-ink-muted" style={{letterSpacing: '.1px', fontWeight: 700}}>{cell.h}</div>
+                  <div className="gwui-fs-15 gwui-ink-sub" style={{lineHeight: 1.55}}>{cell.p}</div>
+                </Stack>
+              ))}
+            </Stack>
           </div>
         </details>
         </FoldEverythingElseUnless>
