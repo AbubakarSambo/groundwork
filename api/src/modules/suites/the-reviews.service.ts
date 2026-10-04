@@ -154,9 +154,27 @@ export interface ForThePerson {
   /** What Groundwork understands from the record about their work, every line, to correct. Null for a review started before it existed. */
   record: TheRecordServed | null;
   theirView: string | null;
+  /**
+   * What the person who writes the review has written, word for word, once they have written it (decision 93, row 15;
+   * the prototype's "What Wairimu writes"). Null until then. The heading beside it is `managersWordsHeading`.
+   */
+  managersWords: string | null;
+  managersWordsHeading: string | null;
+  /**
+   * WHERE THE TWO VIEWS DIFFER (decision 93, row 15; the prototype's "where she and Wairimu see things differently").
+   * Both views, side by side, once the writer and the person have each written theirs. Groundwork does not say
+   * which of them is right, and works out no difference of its own. Null until both exist.
+   */
+  whereYouDiffer: { says: string; managersWords: string; yourView: string } | null;
   decision: { says: string; reasons: string } | null;
   /** Their own count, the line, and who decides, when Groundwork suggests recognising their work. Absent otherwise. */
   recognise?: RecogniseForThePerson;
+}
+
+/** The sentence over the two views side by side, said to the person the review is about. */
+export function whereYouDifferSaid(writerFirstName: string | null): string {
+  const writer = writerFirstName?.trim() || 'The person who writes your review';
+  return `${writer} and you have each written your own view of your work. Here they are side by side, so you can see where they differ before you meet.`;
 }
 
 const dayOf = (d: Date): Day => d.toISOString().slice(0, 10);
@@ -191,8 +209,9 @@ type Person = { externalId: string; userId: string | null; linkedUserId: string 
  *     they write;
  *   - the person who writes it with them (the organisation's answer: "Their manager" or "An admin",
  *     through who-may-decide.ts) starts it, writes their own words, and decides with reasons;
- *   - the person it is about reads the facts, their own view, and the decision with its reasons,
- *     and writes their own view; never a verdict, a label, or how their answers were rated;
+ *   - the person it is about reads the facts, their own view, the writer's words once written (since
+ *     decision 93, row 15) with both views side by side, and the decision with its reasons, and writes
+ *     their own view; never a verdict, a label, or how their answers were rated;
  *   - a colleague and a guest are refused;
  *   - the record, interpreted (build step 12, the-record-read-for-a-review.ts): the person reads every
  *     line and corrects it; anybody else reads only the lines from check-ins they are in (decision 4);
@@ -359,7 +378,13 @@ export class ReviewsService {
         reader: 'person', id: row.id, firstName: this.firstOf(person), writtenWithFirstName: writerFirst,
         dueOn, noticed: this.noticedOf(row.noticed, true),
         record: await this.theRecordServed(row, person, reader.userId, writerId, writerFirst),
-        theirView: row.theirView ?? null, decision,
+        theirView: row.theirView ?? null,
+        managersWords: row.managersWords?.trim() ? row.managersWords : null,
+        managersWordsHeading: row.managersWords?.trim() ? `What ${writerFirst ?? 'the person who writes your review'} writes` : null,
+        whereYouDiffer: row.managersWords?.trim() && row.theirView?.trim()
+          ? { says: whereYouDifferSaid(writerFirst), managersWords: row.managersWords, yourView: row.theirView }
+          : null,
+        decision,
         /* The count is of check-ins with whoever started the review (theRecordForRecognising), so that person is named. */
         ...(recognising ? { recognise: recogniseForThePerson(recognising, startedByFirst) } : {}),
       };

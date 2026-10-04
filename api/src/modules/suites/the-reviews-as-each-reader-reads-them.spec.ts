@@ -152,7 +152,8 @@ describe('one review, as each reader reads it', () => {
     await expect(svc.writeWords(as('u-grace'), 'r-aisha', 'x')).rejects.toThrow(ForbiddenException);
   });
 
-  it('Aisha reads the facts, her own view and the decision with its reasons, and not Wairimu’s words', async () => {
+  /* Changed by decision 93, row 15. This pinned "and not Wairimu’s words", the restriction Hafsah removed: she now reads them, and both views side by side. */
+  it('Aisha reads the facts, her own view, Wairimu’s words beside it, and the decision with its reasons', async () => {
     const { svc, as } = setup();
     await svc.writeView(as('u-aisha'), 'r-aisha', ' I want to lead the supermarket accounts, but I need faster stock. ');
     await svc.decide(as('u-wairimu'), 'r-aisha', { decision: 'Aisha leads the supermarket accounts from April.', reasons: 'She closed 9 sales, all paid, and helped two others.' });
@@ -167,9 +168,28 @@ describe('one review, as each reader reads it', () => {
       /* A review started before the record was read for it (build step 12) has none, and says so by null. */
       record: null,
       theirView: 'I want to lead the supermarket accounts, but I need faster stock.',
+      managersWords: 'Aisha is our strongest closer with butcheries. I want her to lead supermarkets next.',
+      managersWordsHeading: 'What Wairimu writes',
+      whereYouDiffer: {
+        says: 'Wairimu and you have each written your own view of your work. Here they are side by side, so you can see where they differ before you meet.',
+        managersWords: 'Aisha is our strongest closer with butcheries. I want her to lead supermarkets next.',
+        yourView: 'I want to lead the supermarket accounts, but I need faster stock.',
+      },
       decision: { says: 'Aisha leads the supermarket accounts from April.', reasons: 'She closed 9 sales, all paid, and helped two others.' },
     });
-    expect(JSON.stringify(r)).not.toMatch(/strongest closer|pv-1|promptVersion/);
+    expect(JSON.stringify(r)).not.toMatch(/pv-1|promptVersion/);
+  });
+
+  it('before Aisha has written her view, she reads Wairimu’s words under their heading, and no side-by-side', async () => {
+    const { svc, as } = setup();
+    const r: any = await svc.one(as('u-aisha'), 'r-aisha');
+    expect(r.managersWordsHeading).toBe('What Wairimu writes');
+    expect(r.managersWords).toBe('Aisha is our strongest closer with butcheries. I want her to lead supermarkets next.');
+    expect(r.theirView).toBeNull();
+    expect(r.whereYouDiffer).toBeNull();
+    /* The writer's other readers are served what they were: nothing here changes for Wairimu or Grace. */
+    expect(((await svc.one(as('u-wairimu'), 'r-aisha')) as any).managersWords).toBe(r.managersWords);
+    expect(((await svc.one(as('u-grace'), 'r-aisha')) as any)).not.toHaveProperty('whereYouDiffer');
   });
 
   it('only the writer writes their words and decides, and a decision needs its reasons', async () => {
