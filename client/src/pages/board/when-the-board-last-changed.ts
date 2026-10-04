@@ -32,16 +32,16 @@ export function whenTheBoardLastChanged(at: string | null | undefined): string {
  * "gives" to agree with it. Everybody else reads her first name, or the generic "the person running
  * this check-in" where the board does not have it.
  *
- * `endsAt` IS SOMETIMES NOT ON RECORD (an open-ended cadence that was stopped by hand rather than
+ * `endsOn` IS SOMETIMES NOT ON RECORD (an open-ended cadence that was stopped by hand rather than
  * run past a date it was given). Nothing is made up to fill that gap: the sentence just leaves the
  * middle clause out rather than naming a date the record does not hold.
  */
-export function whenItRanOutOfTime({ endsAt, leadFirstName, isLeadViewer }: {
-  endsAt?: string | null
+export function whenItRanOutOfTime({ endsOn, leadFirstName, isLeadViewer }: {
+  endsOn?: string | null
   leadFirstName?: string | null
   isLeadViewer: boolean
 }): string {
-  const ranUntil = endsAt ? ` It ran until ${whenItWas(endsAt, 'dayAndMonthLong')}.` : ''
+  const ranUntil = endsOn ? ` It ran until ${whenItWas(endsOn, 'dayAndMonthLong')}.` : ''
   const who = isLeadViewer ? 'you' : (leadFirstName ?? 'the person running this check-in')
   const gives = isLeadViewer ? 'give' : 'gives'
   return `This check-in reached its end date.${ranUntil} Nothing new can be added until ${who} ${gives} it more time.`

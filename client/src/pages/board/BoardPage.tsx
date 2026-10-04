@@ -2156,11 +2156,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           to find out why nothing on the board is moving, so this is where the reason sits - in the
           prototype's own words, with the real end date and the lead's own name where the record
           holds them.
+
+          `endsOn`, NOT `endsAt`. The ground this was built against (`GET /grounds/:id`) sends the
+          date it was given as `endsOn` (`types/index.ts`, and already read this way on the Setup
+          tab - GroundAdminPage.tsx: "It ends on …") - `phaseSpine.endsAt` is read too, for a kind of
+          work that is sent one, as a second source for the same fact.
         */}
         {hasStalled((b as any)?.groundStatus) && (
           <Note tone="muted">
             {whenItRanOutOfTime({
-              endsAt: (groundForSignals as any)?.endsAt ?? (b as any)?.phaseSpine?.endsAt ?? null,
+              endsOn: (groundForSignals as any)?.endsOn ?? (b as any)?.phaseSpine?.endsAt ?? null,
               leadFirstName: (groundForSignals as any)?.leadFirstName ?? null,
               isLeadViewer: viewerRunsThisCheckIn,
             })}
