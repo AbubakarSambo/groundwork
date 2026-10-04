@@ -1,3 +1,4 @@
+import { theNumberAsWritten } from '../grounds/a-dump-is-many-things';
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Buffer }) => { getText: () => Promise<{ text: string }>; destroy: () => Promise<void> } };
@@ -574,7 +575,11 @@ export class DocumentsService {
     const resolve = (name: string) => whoThisNameIs(name, mayHoldANumber as any);
     const nameOf = theNameWeUseFor as (p: any) => string;
 
-    const rows = (read.forOnePerson ?? []).filter((r) => r?.personName?.trim() && r?.what?.trim() && Number.isFinite(r.target) && r.target > 0);
+    /* A fraction the model wrote for a percentage is kept only where the document says that percentage; see theNumberAsWritten. */
+    const rows = (read.forOnePerson ?? [])
+      .filter((r) => r?.personName?.trim() && r?.what?.trim())
+      .map((r) => ({ ...r, target: theNumberAsWritten(r.target, content) as number }))
+      .filter((r) => r.target != null);
     const held = new Set((ground.objectives ?? []).map((o) => `${o.ownerParticipantId ?? 'team'}::${(o.name ?? '').trim().toLowerCase()}`));
     const forOnePerson: WhatLanded['forOnePerson'] = [];
     const unmatched: string[] = [];
@@ -604,7 +609,7 @@ export class DocumentsService {
 
     /* The group's own numbers. A participant may add one: a total in a plan is not a claim about anybody. */
     const forEverybody: WhatLanded['forEverybody'] = [];
-    for (const t of (read.forEverybody ?? []).filter((t) => t?.what?.trim() && Number.isFinite(t.target) && t.target > 0)) {
+    for (const t of (read.forEverybody ?? []).filter((t) => t?.what?.trim()).map((t) => ({ ...t, target: theNumberAsWritten(t.target, content) as number })).filter((t) => t.target != null)) {
       const name = t.what.trim().slice(0, 120);
       if (held.has(`team::${name.toLowerCase()}`)) continue;
       held.add(`team::${name.toLowerCase()}`);
