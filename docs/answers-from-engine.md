@@ -4353,3 +4353,13 @@ Hafsah's answer, 5 October: only a database on this computer.
 **How.** The last read every one of these four goes through (`whatTheLeadHasNotShared` in `reports.service.ts`) now ends in `wherePeopleDoNotSeeEachOther`, which calls the same `askTheReportsDoor` as the board and the check-in page, with the people and the lead's names. The people's own words are held aside while the door runs, so it never rewrites them. Each round is walled on its own, so a round with one sentence about a colleague loses that sentence and is not dropped whole. A report sent without names is scrubbed here too, as it is on the report.
 
 **Tests.** `the-wall-holds-on-every-report-read.spec.ts`. One existing test, `no-internal-label-reaches-anyone.spec.ts`, matched the exact shape of the source (`return withoutLinesWithNoWords(`); the source now stores that result in `const walled` first, so its pattern was updated. It still checks the same thing: labels come off everything served.
+
+### 4. The admin who runs a check-in reads each person's goals on the check-in page
+
+**What changed for a reader.** On a check-in where each person reads only their own numbers (the default), the admin who set it up read, for Tobi, "Nobody has said what success looks like for this person.", though the lead had set goals for him and the admin's own board showed them. They now read his goals, and the one the lead has not told him yet is marked "Not told yet", as the lead reads it. Tobi still never reads the one not told, and a colleague reads none of Tobi's goals.
+
+**Cause.** The page asked whether the reader is the lead when it decided whose goals to hold back (`peersKeepTheirNumbers`), and everywhere else asks whether the reader runs the check-in. It now asks the same question (`viewerRunsIt`, which is `theyRunThisCheckIn`).
+
+**Left as it was, and a question for Hafsah.** The table of target numbers on the same page (`objectives`) still shows an admin who only reads the team target and not each person's share. The existing tests (`one-rule-for-whose-share-is-shown.spec.ts` and `a-decision-about-a-person-is-the-leads.spec.ts`) pin that, and say it is waiting on you. Decision 86.3 says admins see the figures on boards. Should the check-in page show an admin every person's share too, never the lead's decision about a person?
+
+**Tests.** `an-admin-who-runs-a-check-in-reads-its-goals-on-the-page.spec.ts`. One existing test, `one-answer-about-whose-numbers-somebody-reads.spec.ts`, pinned the source text `!viewerIsInitiator`; it now pins `!viewerRunsIt` and checks that `viewerRunsIt` is `theyRunThisCheckIn`.

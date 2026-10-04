@@ -2205,8 +2205,9 @@ export class GroundsService {
      * the heading says "Person by person" for them. Where the check-in is set so everybody sees
      * every number, nothing here changes.
      */
+    /* Whoever runs it reads each person's goals: the lead, and the admins who read the check-in, by the same rule as everywhere else (decisions 5, 56 and 86; privacy sweep finding 4). */
     const peersKeepTheirNumbers =
-      !viewerIsInitiator && ((ground as any).whoSeesTargets ?? 'THEIR_OWN') !== 'EVERYBODY';
+      !viewerRunsIt && ((ground as any).whoSeesTargets ?? 'THEIR_OWN') !== 'EVERYBODY';
 
     /**
      * THE LEAD'S FIRST NAME, TO ANYONE IN THE CHECK-IN, EVEN WHEN THE PEER RULE HIDES EVERYONE ELSE.
