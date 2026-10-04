@@ -12,6 +12,10 @@ describe('the latest finding in the check-in list', () => {
   it.each(STORED)('reads right: %s', (stored, right) => {
     expect(aFindingThatReadsRight(stored)).toBe(right);
   });
+  it('does not name the reader twice (request 135 item 5)', () => {
+    expect(aFindingThatReadsRight('You and You are waiting for the signed witness statement, and nothing on record says anybody has chased it.'))
+      .toBe('You are waiting for the signed witness statement, and nothing on record says anybody has chased it.');
+  });
   it('leaves a finding that is already right, and an empty one, alone', () => {
     expect(aFindingThatReadsRight('The objective is 40 approved facilities, and nobody in this check-in has a number of their own against it.')).toBe('The objective is 40 approved facilities, and nobody in this check-in has a number of their own against it.');
     expect(aFindingThatReadsRight(null)).toBeNull();

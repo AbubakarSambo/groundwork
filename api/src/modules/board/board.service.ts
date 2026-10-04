@@ -163,7 +163,7 @@ import { whatWasAgreedAtTheStart, theGoalsSetForAnyone } from './what-was-agreed
 import { changeSinceTheLastCheckIn } from './change-since-the-last-check-in';
 import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, theLeadActions, theObligations, theForecast, whoWaitedOnWhom, theContradictions, theQuestionsForTheLead, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject, theNewHireReadsTheLeadsWords } from '../reports/colleagues-exact-words-stay-with-the-manager';
-import { eachLineInTheirName, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
+import { eachLineInTheirName, eachLineWithTheKindThatFits, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
 import { theRecordAQuoteMayComeFromByParticipant } from '../reports/a-quote-built-at-the-read';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -1094,7 +1094,7 @@ export class BoardService {
       const firstSnapshots = await this.prisma.groundObjectiveSnapshot.findMany({
         where: { groundId },
         orderBy: { sessionNumber: 'asc' },
-        select: { objectiveId: true, count: true },
+        select: { objectiveId: true, count: true, sessionNumber: true },
       });
       const startOf = new Map<string, number>();
       for (const s of firstSnapshots) if (!startOf.has(s.objectiveId)) startOf.set(s.objectiveId, s.count);
@@ -1103,7 +1103,10 @@ export class BoardService {
          "before": prevCount is null, the change is 0, and the journey has no start. */
       const snapshotsOf = new Map<string, number>();
       for (const s of firstSnapshots) snapshotsOf.set(s.objectiveId, (snapshotsOf.get(s.objectiveId) ?? 0) + 1);
-      const theFirstCount = (o: { id: string; count: number }) => startOf.get(o.id) === 0 && o.count > 0 && (snapshotsOf.get(o.id) ?? 0) <= 1;
+      const firstSession = new Map<string, number>();
+      for (const s of firstSnapshots) if (!firstSession.has(s.objectiveId)) firstSession.set(s.objectiveId, (s as any).sessionNumber);
+      /* Only while that 0 is the newest session's: a 0 that an earlier session closed on, followed by a later session, is a real start. */
+      const theFirstCount = (o: { id: string; count: number }) => startOf.get(o.id) === 0 && o.count > 0 && (snapshotsOf.get(o.id) ?? 0) <= 1 && firstSession.get(o.id) === maxSession;
 
       /*
        * AND WHAT THE LEAD SAYS IS NOT SETTLED ABOUT THIS NUMBER, next to the number.
@@ -2902,6 +2905,8 @@ export class BoardService {
       /* And what is left on the reader's own rows is said to them, as "you" (item 18). After the said-once pass, which
          already says "you" for the reader where a sentence is true of several people (request 118, part 2). */
       /* And a sentence stored before the wording rules reads right as it is served (decision 91). */
+      /* A line typed as an intention that intends nothing is sent with no kind (requests 127 item 4, 129 item 5), after every board that reads the kind. */
+      if (Array.isArray((walled as any).whoOwnsWhat)) (walled as any).whoOwnsWhat = eachLineWithTheKindThatFits((walled as any).whoOwnsWhat);
       return aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null)), (ground.participants ?? []).map((p: any) => nameOf(p.id)).filter((n: any): n is string => typeof n === 'string' && n.length > 1)));
     }
   }

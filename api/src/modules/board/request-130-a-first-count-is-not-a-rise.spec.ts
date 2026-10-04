@@ -4,7 +4,7 @@ import { boardAs, SALES_RUN, BISI, FEMI, type Setup } from './the-switchboards-s
 const obj = (count: number, prevCount: number) => ({
   id: 'o-1', groundId: 'g-1', name: 'Orders dispatched on time', target: 95, count, prevCount, ownerParticipantId: null, setByParticipantId: 'p-bisi', sortOrder: 0, addedAtSession: null, assumes: [], direction: 'AIM',
 });
-const first: Setup = { ...SALES_RUN, whoSeesTargets: 'EVERYBODY', objectives: [obj(81, 0)] as any, snapshots: [{ objectiveId: 'o-1', sessionNumber: 1, count: 0 }] as any };
+const first: Setup = { ...SALES_RUN, whoSeesTargets: 'EVERYBODY', objectives: [obj(81, 0)] as any, snapshots: [{ objectiveId: 'o-1', sessionNumber: 2, count: 0 }] as any };
 const later: Setup = { ...first, objectives: [obj(81, 60)] as any, snapshots: [{ objectiveId: 'o-1', sessionNumber: 1, count: 60 }, { objectiveId: 'o-1', sessionNumber: 2, count: 81 }] as any };
 
 describe('the first count of a number', () => {

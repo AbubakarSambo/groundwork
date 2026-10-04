@@ -51,6 +51,9 @@ const OLD_WORDING: Array<[RegExp, string | ((...m: string[]) => string)]> = [
   [/Escalated all (\d+)\./g, (_m, n) => `All ${n} were taken above the person they were with.`],
   /* A question that says a call "has been open a while" on a check-in answered once, joined by a dash (requests 135, 136). */
   [/That call has been open a while\s*(?:[-\u2013\u2014]|\.)\s*what is the decision, and when\?/gi, 'What is the decision, and when will it be made?'],
+  /* The reader named twice in one list of people (request 135 item 5): "You and You are waiting for the signed witness statement". */
+  [/\bYou and (?:You|you)\b/g, 'You'],
+  [/\byou and (?:You|you)\b/g, 'you'],
   /* Under "Worth asking", advice not to ask (requests 130 e and 134 item 3). */
   [/This early, that is worth showing you rather than asking about\./g, 'It is early. What is being held up, and would help raising it be useful?'],
   [/This early, that is worth showing ([^.]+?) rather than asking about\./g, 'It is early, so ask $1 what is being held up and whether help raising it would be useful.'],
@@ -71,14 +74,16 @@ const OLD_WORDING: Array<[RegExp, string | ((...m: string[]) => string)]> = [
  * sentence that names nobody else before them.
  */
 function aSentenceAboutTheReaderSaysYou(text: string): string {
-  return text.split(/(?<=[.!?])\s+/).map((sentence) => {
+  /* The spaces and new lines between sentences are kept as they are: the pieces are the even places, the gaps the odd. */
+  return text.split(/(?<=[.!?])(\s+)/).map((sentence, at) => {
+    if (at % 2 === 1) return sentence;
     if (!/^You\b/.test(sentence) && !/^Your\b/.test(sentence)) return sentence;
     const beforeThem = sentence.split(/\bthey\b|\btheir\b/i)[0];
     if (/\b[A-Z][a-z]+ [A-Z][a-z]+\b/.test(beforeThem.replace(/^You(?:r)?\s/, ''))) return sentence;
     return sentence
       .replace(/\bthey said they would\b/g, 'you said you would')
       .replace(/\band their own\b/g, 'and your own');
-  }).join(' ');
+  }).join('');
 }
 
 export function oldWordingPutPlain(text: string): string {

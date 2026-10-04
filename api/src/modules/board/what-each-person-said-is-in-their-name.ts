@@ -90,10 +90,18 @@ export function saidWithoutTheirWords(who: string, type?: string | null): string
  * said "This is something Aisha Wanjiku intends to do." of what she does now, of a name and of what she once believed. A line typed
  * INTENT that holds no word of intending is sent with no type, and the screen says nothing about its kind. The words are not changed.
  */
-const SAYS_SOMETHING_IS_INTENDED = /\b(?:will|won['\u2019]t|going to|plan(?:s|ning|ned)?(?: to)?|want(?:s|ed)? to|aim(?:s|ing)?(?: to| for)?|hope(?:s|d)? to|intend(?:s|ed)?|would like|would|need(?:s)? to|should|shall|trying to|looking to|expect(?:s)? to|next|by (?:friday|monday|tuesday|wednesday|thursday|saturday|sunday|tomorrow|the end))\b|['\u2019]ll\b/i;
+const SAYS_SOMETHING_IS_INTENDED = /\b(?:will|won['\u2019]t|going to|plan(?:s|ning|ned)?(?: to)?|want(?:s|ed)? to|aim(?:s|ing)?(?: to| for)?|hope(?:s|d)? to|intend(?:s|ed)?|would like|would|need(?:s)? to|should|shall|trying to|looking to|expect(?:s)? to|next|(?:is|are) to|by (?:friday|monday|tuesday|wednesday|thursday|saturday|sunday|tomorrow|the end))\b|['\u2019]ll\b/i;
 export function theKindThatFits(text: string | null | undefined, type: string | null | undefined): string | null | undefined {
   if (type !== 'INTENT') return type;
   return SAYS_SOMETHING_IS_INTENDED.test(String(text ?? '')) ? type : null;
+}
+
+/** The served lines with the kind that fits each (see theKindThatFits). Run last: the other boards read the kind the record holds. */
+export function eachLineWithTheKindThatFits<T extends AWhoOwnsWhatRow>(rows: readonly T[] | null | undefined): T[] {
+  if (!Array.isArray(rows)) return (rows ?? []) as T[];
+  return rows.map((row) => (row && Array.isArray(row.items)
+    ? { ...row, items: row.items.map((it: any) => (it && it.type === 'INTENT' ? { ...it, type: theKindThatFits(it.text, it.type) } : it)) }
+    : row));
 }
 
 export function eachLineInTheirName<T extends AWhoOwnsWhatRow>(
@@ -111,8 +119,7 @@ export function eachLineInTheirName<T extends AWhoOwnsWhatRow>(
     return {
       ...row,
       items: row.items.map((item: any) => {
-        const { saidAs, ...fromItem } = item ?? {};
-        const rest = item && 'type' in fromItem ? { ...fromItem, type: theKindThatFits(fromItem.text, fromItem.type) } : fromItem;
+        const { saidAs, ...rest } = item ?? {};
         const text = typeof rest?.text === 'string' ? rest.text.trim() : '';
         /* Already said as theirs (this ran once before on it): left as it is. */
         const alreadyTheirs = saidAs === undefined && (text.startsWith(`${who} said`) || text.startsWith(`${who} has `) || text.startsWith(`${who} have `));
