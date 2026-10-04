@@ -1,4 +1,5 @@
-import { TheAnchorDoor, THE_SWITCH_IS_KEPT_FOR_MS } from './the-anchor-door';
+import { NotFoundException } from '@nestjs/common';
+import { TheAnchorDoor, THE_SWITCH_IS_KEPT_FOR_MS, aSourceMark } from './the-anchor-door';
 import { EntryController } from './entry.controller';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
 
@@ -29,8 +30,24 @@ describe('the anchor scenario front door', () => {
     expect(findUnique).toHaveBeenCalledTimes(2);
   });
 
+  it('starts an anchor draft with its marks when the switch is on', async () => {
+    const out = await new TheAnchorDoor(prismaWith(true).prisma).start('Founders-WhatsApp');
+    expect(out).toEqual({ available: true, scenario: 'HELP_TEAM_UNDERSTAND', startedFrom: 'anchor', groundLabel: 'Help my team understand', source: 'founders-whatsapp' });
+  });
+
+  it('answers as unavailable and starts nothing when the switch is off', async () => {
+    await expect(new TheAnchorDoor(prismaWith(false).prisma).start('x')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('keeps a source mark short and plain, and drops the rest', () => {
+    expect(aSourceMark('linkedin_post-3')).toBe('linkedin_post-3');
+    expect(aSourceMark('<script>alert(1)</script>')).toBeNull();
+    expect(aSourceMark('a'.repeat(41))).toBeNull();
+    expect(aSourceMark(undefined)).toBeNull();
+  });
+
   it('is reachable by a visitor who is not signed in', () => {
-    for (const name of ['anchorAvailable'] as const) {
+    for (const name of ['anchorAvailable', 'anchorStart'] as const) {
       expect(Reflect.getMetadata(IS_PUBLIC_KEY, EntryController.prototype[name])).toBe(true);
     }
   });

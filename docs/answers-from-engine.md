@@ -4251,3 +4251,18 @@ Done. `the-anchor-lead-conversation.ts` now reads, "You need to have been told, 
 or `{ "available": false }`. It is `false` whenever the anchor switch (`release.anchorScenario`) is off, missing, or cannot be read, which is today's state. The answer is kept for 30 seconds on the server, so a busy landing page costs one read. It is limited to 60 reads a minute for each address. Nothing else is revealed: no organisation, no counts, no switch name.
 
 What the landing page does with it: when `available` is `false`, send the visitor to `/start` as it does now. Code: `entry/the-anchor-door.ts`, `entry/entry.controller.ts`.
+
+## Request 144 (2) and (3): the anchor entry route, how an anchor draft is marked, and the seven field names
+
+**The route (done).** `GET /entry/anchor-start?source=<mark>`, open to a visitor who is not signed in, 30 a minute for each address. The screen's address `/start/team` (with `?source=founders-whatsapp`) calls it once on arrival. With the anchor switch on it answers:
+
+```
+{ "available": true, "scenario": "HELP_TEAM_UNDERSTAND", "startedFrom": "anchor",
+  "groundLabel": "Help my team understand", "source": "founders-whatsapp" }
+```
+
+`source` is a short mark of letters, digits, dashes and underscores (up to 40, lower-cased), or `null` when none was given or it was not plain. With the switch off it answers 404 with "This way in is not open yet." and nothing is created. It creates nothing in either case: the entry conversation lives in the visitor's browser until she saves it by email, as every entry conversation does, so there is no organisation and no row for a stranger.
+
+**What marks a draft as an anchor one.** The situation key `HELP_TEAM_UNDERSTAND`, which this route hands back as `scenario`. The screen keeps it as the draft's `scenario` and sends it on every entry call (`/entry/onboard`, `/entry/onboard/stream`, `/entry/chat/stream`) and on commit. That key alone makes the conversation run the anchor words (the switch must still be on). When the lead saves, `grounds.started_from` is written as `"anchor"`; this already works (`a-check-in-saved-from-the-anchor-remembers-it.spec.ts`). So the caller in `EntryChatPage.tsx` passes `anchorItems` whenever the draft's `scenario` is `HELP_TEAM_UNDERSTAND`. The source mark travels as `anchorSource` in the draft's payload (`PATCH /entry/draft`) and the engine writes a line to its log when the link is opened from a source. It is not stored on the check-in: that would need a new column, and I have not added one.
+
+**The seven field names.** The screens' names are confirmed except one, which had a stray letter: `whatTheydDoDifferently` is `whatTheyWouldDoDifferently`. The seven keys are `responsibleFor`, `tryingToMove`, `howItContributes`, `seeingToday`, `whyItBothersYou`, `whatTheyDontUnderstand` and `whatTheyWouldDoDifferently`, each a plain string once the conversation has heard it, in the lead's own words. **They are not served yet.** The set-up conversation does not return them, so `anchorItems` stays empty until a later piece extracts them. The type is `TheSevenThingsTheLeadHasSaid` in `entry/the-anchor-served-shapes.ts`. One wording point for the screens: the heading for `howItContributes` must not say "economic engine". The conversation is told never to say it to the lead, and nobody should read it on a screen either. Please use "How this group helps the organisation keep going".

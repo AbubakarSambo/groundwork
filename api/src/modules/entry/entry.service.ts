@@ -632,6 +632,13 @@ export class EntryService {
     return this.theAnchorDoor.available();
   }
 
+  /** Request 144 (2): how a draft is started for the lead who arrived from the anchor link. Writes nothing. */
+  async anchorStart(source?: string) {
+    const out = await this.theAnchorDoor.start(source);
+    if (out.source) this.logger.log(`The anchor link was opened from "${out.source}".`);
+    return out;
+  }
+
   opener(scenario?: string): string {
     if (scenario && SCENARIO_OPENERS[scenario]) return SCENARIO_OPENERS[scenario];
     return DEFAULT_OPENER;

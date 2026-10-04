@@ -455,6 +455,18 @@ export class EntryController {
     return this.service.anchorAvailable();
   }
 
+  /**
+   * THE ANCHOR ENTRY ROUTE (request 144). Tells the screen how to start a draft for the lead who arrived
+   * from the shared link (for example /start/team?source=founders-whatsapp). Creates nothing. With the
+   * anchor switch off it answers 404 and the screen sends the visitor to the ordinary door.
+   */
+  @Public()
+  @Throttle({ global: { limit: 30, ttl: 60_000 } })
+  @Get('anchor-start')
+  async anchorStart(@Query('source') source?: string) {
+    return this.service.anchorStart(source);
+  }
+
   /** Pre-auth update of the server-side entry draft, authorized by the bearer
    * draftToken issued at entry-save. Carries post-email edits (org name,
    * ground name, cadence, contributors) that previously lived only in

@@ -50,4 +50,10 @@ export class TheAnchorDoor {
     this.kept = { at: t, available };
     return { available };
   }
+
+  /** With the switch off, nothing is returned and nothing is created. This reads the switch fresh: it is the gate, not a hint. */
+  async start(source: unknown): Promise<TheAnchorDraftToStart> {
+    if (!(await theAnchorScenarioIsOn(this.prisma))) throw new NotFoundException('This way in is not open yet.');
+    return { available: true, scenario: ANCHOR_ENTRY_SCENARIO, startedFrom: STARTED_FROM_THE_ANCHOR, groundLabel: THE_ANCHOR_GROUND_LABEL, source: aSourceMark(source) };
+  }
 }
