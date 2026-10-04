@@ -257,6 +257,37 @@ export function theTellingInTheList(history: { role: 'user' | 'assistant'; conte
   return told || null;
 }
 
+/**
+ * A DATE THE PASTE NAMED, AS ONE PLAIN SENTENCE, FOR THE RECORD.
+ *
+ * Dates used to be said back and then dropped ("they stay in this conversation and are not put on the
+ * record"), so a quarter's end, a board meeting or a start date was lost the moment the lead said yes.
+ * They are kept as notes the whole check-in can read. The date is written exactly as the paste wrote
+ * it, never turned into another form.
+ *
+ * A date that only repeats the timing of a job somebody is down as doing is not kept twice: the job
+ * already carries it.
+ */
+const A_DAY = /^(?:\d|mon|tue|wed|thu|fri|sat|sun|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|the \d)/i;
+const A_WORD_FOR_WHEN = /^(?:by|on|before|until|till|from|at|in|after|during|every|within|for|since|between|this|next|end|start|mid|early|late)\b/i;
+export function aDateSaid(what: string, when: string): string {
+  const w = what.trim().replace(/[.:;,\s]+$/, '');
+  const t = when.trim().replace(/[.:;,\s]+$/, '');
+  if (!w) return `${t.charAt(0).toUpperCase()}${t.slice(1)}.`;
+  const joined = A_WORD_FOR_WHEN.test(t) ? `${w} ${t}` : A_DAY.test(t) ? `${w} on ${t}` : `${w}, ${t}`;
+  return `${joined.charAt(0).toUpperCase()}${joined.slice(1)}.`;
+}
+export function theDatesToKeep(got: Pick<WhatAPasteGives, 'dates' | 'commitments'>): string[] {
+  const out: string[] = [];
+  for (const d of got.dates ?? []) {
+    const covered = (got.commitments ?? []).some((c) => c.when && theSameMeasure(c.when, d.when) && (theSameMeasure(c.action, d.what) || wordsOf(d.what).some((w) => wordsOf(c.action).includes(w) && w.length > 4)));
+    if (covered) continue;
+    const line = aDateSaid(d.what, d.when);
+    if (!out.some((o) => theSameMeasure(o, line))) out.push(line);
+  }
+  return out;
+}
+
 export function whatWeTookFromThat(
   got: WhatAPasteGives,
   opts: { asking?: boolean; told?: string | null; /** Who is reading it: a line about them says "you". */ reader?: { participantId?: string | null } | null } = {},
@@ -290,9 +321,10 @@ export function whatWeTookFromThat(
       lines.push(`- ${called(p.who, p.participantId)}: "${p.expectation}"${numbers.length ? ` (${numbers.join('; ')})` : ''}`);
     }
   }
-  if (got.dates.length) {
-    lines.push('', 'These are the dates you named. They stay in this conversation and are not put on the record.');
-    for (const d of got.dates) lines.push(`- ${d.what}: ${d.when}`);
+  const dates = theDatesToKeep(got);
+  if (dates.length) {
+    lines.push('', `These are the dates you named. ${whoWillReadThese(ContextItemKind.NOTE)}`);
+    for (const d of dates) lines.push(`- ${d}`);
   }
   if (got.strategy?.length) {
     lines.push('', `The strategy, as I read it. ${whoWillReadThese(ContextItemKind.STRATEGY)}`);

@@ -95,7 +95,7 @@ import { EVALUATION_SCENARIOS, isEvaluationCheckIn } from '../reports/is-this-an
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, briefChangedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
-import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
+import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, theDatesToKeep, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExactQuestion, theLeadsOwnQuestionIfAddressedToThem, THE_EXACT_QUESTION_PROMPT, THE_EXACT_QUESTION_TOOL, whatGroundworkWillAsk, type AQuestionForAPerson } from './a-question-asked-word-for-word';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
@@ -4603,6 +4603,8 @@ export class GroundsService {
       for (const t of got.openDecisions) await line(ContextItemKind.DECISION, t);
       for (const t of got.notSettled) await line(ContextItemKind.UNSETTLED, t);
       for (const t of got.notes) await line(ContextItemKind.NOTE, t);
+      /* The dates it named, as notes everyone can read. They used to be said back and then dropped. */
+      for (const t of theDatesToKeep(got)) await line(ContextItemKind.NOTE, t);
       for (const a of got.aboutPeople) await line(ContextItemKind.ABOUT_A_PERSON, a.observation, { about: a.participantId });
       /*
        * A QUESTION IS KEPT WITH ITS EXACT SENTENCE, AND NOT CONFIRMED. The yes to the paste keeps it;

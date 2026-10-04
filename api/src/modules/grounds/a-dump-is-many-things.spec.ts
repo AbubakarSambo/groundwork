@@ -54,7 +54,8 @@ describe('a dump is many things at once', () => {
     /* Her line once, not once per number. */
     expect(said.match(/Chika Nwosu/g)).toHaveLength(1);
     expect(said).toContain('It is marked as yours, and they have not seen it yet.');
-    expect(said).toContain('- quarter ends: 31 December');
+    /* Changed 4 October 2026: dates are kept as notes everyone can read, one plain sentence each, not dropped. */
+    expect(said).toContain('These are the dates you named. Everyone on this check-in will see these.\n- Quarter ends on 31 December.');
     /* Changed 4 October 2026: the old sentence promised "add them and I will put their part on too" and the
        paste was refused as already taken when sent again. It now says nothing is saved for them yet. */
     expect(said).toContain('One name is not on this check-in, so nothing is saved for them yet. If you add them and send this again, I will put their part on too.\n- Bola Yusuf');
