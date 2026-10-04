@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { spendApi, type SpendBoard, type SpendWaiting } from '@/api/suites'
 import { useAuthStore } from '@/stores/auth'
-import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, Select, TextField } from '@/components/gw/ui'
+import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, FieldLabel, Select, TextField, Tag } from '@/components/gw/ui'
+import { AskAQuestion } from './AskAQuestion'
 
 /**
  * SPENDING AND BUDGETS (E7, #/suite/spend, group 2 piece 4). What each reader is given is the server's
@@ -20,9 +22,13 @@ import { Page, PageTitle, Section, Panel, Button, Note, Empty, RowList, Row, Fie
  * `FieldLabel`/`Select`/`TextField` for setting a budget, `Button` for Approve/Decline/Save, and
  * `Note`/`Empty` for loading, error and empty states.
  *
+ * UNDER EACH REQUEST: what the team has left (from the numbers), then the server's own sentences, where it
+ * stands (`where`), what the rules need (`needs`) and each question with its answer (`questions`), and
+ * the category as a tag. Whoever decides it can also ask a question. "How people use it" says where
+ * requests are made (request 26 is done), without the prototype's example chat, which is sample data.
+ *
  * LEFT OUT (item 28): "Once your accounting tool is connected under Connections, the real figures are
- * shown instead.", because no accounting tool can be connected yet; and "How people use it", because
- * asking in chat is the engine's and does not work yet (request 26).
+ * shown instead.", because no accounting tool can be connected (decision 86, item 4).
  *
  * WORDING NO SCREEN SHOWS (item 28): "An admin can approve this.", "... so an admin must approve it.",
  * "... is ... over its budget this month.", "... over" in the table, "Nothing is waiting for a yes or
@@ -34,19 +40,20 @@ const DID_NOT_GO = 'That did not go through, and nothing has changed. Try again.
 export const money = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 })
 const withCurrency = (currency: string | null, n: number) => (currency ? `${currency} ${money(n)}` : money(n))
 
-/** The one or two sentences under a request, in the prototype's order. */
+/**
+ * What the screen knows from the numbers: whether the request is over the most a lead may approve on
+ * their own, and what the team has left. WHO APPROVES IT, AND WHERE IT STANDS, IS THE SERVER'S SENTENCE
+ * (`where`), never the screen's own: a request that already has its first approval and now waits for
+ * finance must not read that the lead can approve it (4 October review, S3).
+ */
 export function whatToKnow(w: SpendWaiting, currency: string | null, limit: number | null): string {
   const budget = w.team && w.left != null
     ? (w.left >= 0
       ? `${w.team} has ${withCurrency(currency, w.left)} left this month.`
       : `${w.team} is ${withCurrency(currency, -w.left)} over its budget this month.`)
     : ''
-  if (w.over && limit != null) {
-    const who = w.approver.kind === 'person' && w.approver.firstName ? w.approver.firstName : 'an admin'
-    return [`This is over ${withCurrency(currency, limit)}, so ${who} must approve it.`, budget].filter(Boolean).join(' ')
-  }
-  const who = w.approver.kind === 'manager' ? `${w.firstName}’s lead can approve this.` : 'An admin can approve this.'
-  return [budget, who].filter(Boolean).join(' ')
+  const over = w.over && limit != null ? `This is over ${withCurrency(currency, limit)}.` : ''
+  return [over, budget].filter(Boolean).join(' ')
 }
 
 export function SpendingPage() {
@@ -81,6 +88,9 @@ export function SpendingPage() {
 
       {data && (
         <>
+          {data.reader === 'admin' && (
+            <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/spend/finance">Open the requests for finance</Link></p>
+          )}
           <Section heading="Waiting for a yes or no">
             {data.waiting.length === 0
               ? <Empty>Nothing is waiting for a yes or no.</Empty>
@@ -116,6 +126,10 @@ export function SpendingPage() {
             <p className="gwui-panel-text-muted">Spending comes from the requests people make here.</p>
           </Section>
 
+          <Section heading="How people use it">
+            <p className="gwui-panel-text">In their check-in, in chat, or on WhatsApp. Nobody fills in a form.</p>
+          </Section>
+
           {data.teams.length > 0 && <SetABudget teams={data.teams} />}
         </>
       )}
@@ -132,11 +146,19 @@ function ARequest({ w, board }: { w: SpendWaiting; board: SpendBoard }) {
     onError: (e: any) => setProblem(e?.response?.data?.message || DID_NOT_GO),
   })
   const title = `${w.firstName}: ${withCurrency(board.currency, w.amount)} for ${w.what}`
+  const known = whatToKnow(w, board.currency, board.limit)
   return (
     <Row columns="minmax(0, 1fr) auto">
       <div>
         <b>{title}</b>
-        <p className="gwui-panel-text">{whatToKnow(w, board.currency, board.limit)}</p>
+        {w.category && <Tag>{w.category}</Tag>}
+        {known && <p className="gwui-panel-text">{known}</p>}
+        <p className="gwui-panel-text">{w.where}</p>
+        {w.needs.map((n, i) => <p key={`n${i}`} className="gwui-panel-text">{n}</p>)}
+        {w.questions.map((q, i) => <p key={`q${i}`} className="gwui-panel-text">{q}</p>)}
+        {w.mayDecide && (
+          <AskAQuestion id={w.id} who={w.firstName} send={async q => qc.setQueryData(['suite-spend'], await spendApi.ask(w.id, q))} />
+        )}
         {problem && <Note tone="error">{problem}</Note>}
       </div>
       {w.mayDecide && (

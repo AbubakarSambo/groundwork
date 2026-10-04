@@ -2,7 +2,7 @@
 
 > **Rollback, always (decision 90):** restore the database backup and the old code together, never the code alone. Migration 8 dropped a column, so the old code cannot read the new database.
 
-Written on 1 October 2026, on branch `wip/plain-reports`, and brought in line with decision 74 (the seven deploy risks) on 2 October 2026. This document only describes. Nothing was deployed, pushed or changed to write it, and no database was touched except reading the local test database.
+Written on 1 October 2026, on branch `wip/plain-reports`, brought in line with decision 74 (the seven deploy risks) on 2 October 2026, and checked again on 4 October 2026 against every migration, every one-off script, every hidden-at-release switch and decisions 78 and 82 to 91. This document only describes. Nothing was deployed, pushed or changed to write it, and no database was touched except reading the local test database.
 
 **What decision 74 changed, in short:**
 1. A backup is taken before release. It stays a release question for whoever runs the hosting.
@@ -19,6 +19,27 @@ The questions that the person who deploys and owns the infrastructure must answe
 
 ---
 
+## The release night, in order
+
+This is the one list to follow. Each step that needs whoever runs the release to confirm it says so. The sections below explain each step. Nothing on this list has been run on a hosted database.
+
+1. **Before the night:** run the two checks of existing clients, `api/journey/existing-clients-compare.ts` and then `api/journey/existing-clients-check.ts`, on a copy of the live data, as `docs/existing-users.md` sections 5 and 7 say. Read every FAULT, LEAK, ASK, WHERE and SCHEDULE line. Release only when each one is explained. This needs access from Hafsah and has not been done.
+2. **Answer the release questions** in `docs/release-questions.md`, Part 1, especially the backup (question 2) and how the two histories are joined (question 13).
+3. **Join this branch with the live main line** on a new branch, and run every test and one full scenario run on the joined code (section 1). Needs Hafsah.
+4. **Take the database backup** and write down the time. Run `SELECT count(*) FROM check_ins WHERE next_commitment IS NOT NULL;` on each database. It must say 0.
+5. **Set the hosted settings** the API needs (section 3, and for WhatsApp `docs/whatsapp-settings.md`). Leave the free trial off, leave `whatsapp_enabled` off, and leave all the hidden-at-release switches at their defaults.
+6. **Release the API.** On its start it runs `prisma migrate deploy`, which applies all 81 new migrations (section 2), and then it adds the prompts (section 6). If a migration fails, the API does not start. Rollback is the rule at the top of this document.
+7. **Check the start** (section 7, "Before any person reads anything"): the migrations finished, `/health` answers, the active prompts match.
+8. **Run the word-for-word script**, `stamp-said-word-for-word.ts`: dry run first, then with `--hosted-database --write` (section 5). Needs the explicit confirmation of whoever runs the release, by typing the database's host name.
+9. **Run the checkability script**, `bring-the-checkability-read-up-to-date.ts`, the same way (section 5). Needs explicit confirmation.
+10. **Run `give-each-check-in-its-kind-of-work.ts`**: dry run first, then `--hosted-database --write` (section 5). It calls the model. Needs explicit confirmation. It must run before step 11.
+11. **Run `bring-a-check-in-up-to-date.ts`**: dry run first, read each sentence it prints, then `--hosted-database --write` (section 5). Needs explicit confirmation.
+12. **Read what each person reads** on a test organisation, and run the other checks (section 7).
+13. **Switch things on one at a time, never on the day of the migrations** (section 4): WhatsApp only after Meta has approved the templates, the free trial only after Stripe is tested, and the other hidden-at-release switches only when Hafsah says.
+14. **Read the logs the next morning** (section 7, "Watch for the first night").
+
+---
+
 ## 1. What "since main" means here
 
 The local `main` on this computer is old (11 August, pull request 130), so comparing with it would count work that is already live. Everything below is compared with the remote `main` (`origin/main`, last moved on 23 September at `f5c07d39`, pull request 317), which is the code that is deployed today.
@@ -30,9 +51,9 @@ The local `main` on this computer is old (11 August, pull request 130), so compa
 
 ## 2. The database migrations, in the order they run
 
-There are **79 new migrations** since the remote `main` (67 listed in the table below, and twelve added on 2 and 3 October, listed after it). They run in name order. The last one the remote `main` has is `20260923140000_what_we_have_so_far`; these come after it.
+There are **81 new migrations** since the remote `main` (67 in the first table below, and fourteen added from 2 to 4 October, in the second). Every migration folder in `api/prisma/migrations` after `20260923140000_what_we_have_so_far` is listed once, and none is missing. They run in name order. The last one the remote `main` has is `20260923140000_what_we_have_so_far`; these come after it.
 
-**Read this first: six of the 67 in the table do something to existing rows, and two of the four added on 2 October do too (see below). The rest only add new tables, new empty columns, new types or new indexes.**
+**Read this first: six of the 67 in the first table do something to existing rows, and three of the fourteen added later do too (numbers 70, 71 and 73). The rest only add new tables, new empty columns, new types or new indexes.**
 
 | What happens to existing rows | Migration |
 | --- | --- |
@@ -41,6 +62,9 @@ There are **79 new migrations** since the remote `main` (67 listed in the table 
 | **Backfills.** People who came in through the open link are marked as having done so, worked out from the placeholder address the link gives them, or from a typed name with no account. | `20260924175813_how_somebody_arrived` |
 | **Backfills, and starts a clock on release day.** Every pattern already seen in three or more periods gets `ready_at` set to the moment the migration runs. From then, the person it is about is shown it first (decision 62). Patterns are switched on in the code, so this is the moment patterns start reaching the person they are about. Whoever runs the check-in reads one as soon as the person has answered, three days after the person was shown it, or seven days after it was ready if the person never opened a page that shows it (decision 86). | `20260928090000_the_person_sees_their_pattern_first` |
 | **Adds a settings row, only if it is not there.** It writes `suggestions.thresholds` into `platform_settings` (extra support is suggested when fewer than half of a person's commitments are kept over six periods, decision 61). If the row already exists it is left alone. This switches suggestions on, on performance plans, promotions and renewals only. | `20260930110000_the_first_threshold_for_extra_support` |
+| **Fills a new column on existing reports.** Each existing report gets the list of sessions whose team picture is released, worked out from its completed sessions. A participant of an existing check-in now reads only the released sessions. | `20261002140000_each_sessions_picture_is_released_on_its_own` |
+| **Writes values into existing rows.** Sets the WhatsApp add-on price and monthly limit on every row of `pricing_plans`, and sets the free trial's months to 1 in the `pricing.freeTrial` row, leaving its switch as it was. | `20261002160000_whatsapp_is_a_paid_add_on` |
+| **Allows three existing columns to be empty.** `time_weeks` may now have no approved total, approver or approval time while a week waits at a later step. No value is changed. | `20261003120000_a_request_passes_through_approval_steps` |
 | **Changes nothing, on purpose.** This file used to reopen every stalled check-in. Hafsah decided on 29 September (decision 54) that a migration does not reopen check-ins, so the file now only says `SELECT 1;`. It stays so that the order of migrations is unchanged. `docs/ready-to-deploy.md` now says the same. | `20260923200000_reopen_every_check_in_that_ran_out_of_time` |
 
 Every migration, in order, in one sentence each:
@@ -115,7 +139,7 @@ Every migration, in order, in one sentence each:
 | 66 | `20261001190000_organisation_memory` | New table for what the organisation keeps as memory. | New table |
 | 67 | `20261001200000_a_target_is_an_aim_or_a_limit` | Adds whether a target is an aim or a limit, with a new type. | Untouched |
 
-**Added on 2 October, after the table above was written:**
+**Added from 2 to 4 October, after the table above was written (14 migrations, numbers 68 to 81):**
 
 | # | Migration | What it does | Existing rows |
 | --- | --- | --- | --- |
@@ -151,7 +175,7 @@ Things worth knowing about how they run:
 - Columns added with a fixed default (`false`, an empty list) do not rewrite the table on Postgres 11 or later, so none of these should lock a table for long.
 - The new unique indexes on existing tables (`organizations.join_domain`, `organizations.invite_link_code`) are on new columns that start empty, so they cannot fail on existing data.
 - Two pairs of migrations share a timestamp (`20260927180000_*` and `20260927190000_*`). Prisma runs them in full name order, which is the order above.
-- The local test database (`gw_pw9_1786222102`) has every one of them applied, up to `20261004000000_a_review_reads_the_record_and_the_person_corrects_it`.
+- The local test database (`gw_pw9_1786222102`) has every one of them applied (checked on 4 October: all 81), up to `20261004000000_a_review_reads_the_record_and_the_person_corrects_it`.
 
 ## 3. Settings and environment variables
 
@@ -181,6 +205,8 @@ For reference, the production start-up check (unchanged since the remote `main`)
 | `job.<name>.ran_for`, one per scheduled job | Written by each daily, weekly or hourly job when it runs (decision 74, item 7). | The time slot the job last ran for, so a second copy of the API does not run it again for the same night, week or hour. One row per job, overwritten each time. | Yes. A missing row is written by the first run. |
 | `suggestions.thresholds` | Written by migration 59 if absent; an admin can change it at Admin. | Sets when extra support is suggested about a person on a performance plan, promotion or renewal. | Yes. Without the row, no suggestion is ever reached. |
 | `pricing.freeTrial` | Written by migration 71 as `{"on": false, "teamsUnder": 20, "months": 1}` if absent; if present, only its months are set to 1. Switched on by an admin at Admin, System, Pricing. | Switches on the free trial for teams under 20 people for one month (decision 78), and stops the free plan for organisations created after that moment. The same switch starts decision 78's WhatsApp rules: after its trial, an organisation sends WhatsApp only with the paid add-on turned on, and is charged for it. | Yes. Without the row, or with `on: false`, the trial is off, nothing about WhatsApp is held or charged, and billing is exactly as today. |
+| `whatsapp_enabled` | Set by a platform admin in the admin area (`whatsapp.service.ts`). | The platform's WhatsApp switch. Off unless somebody switched it on. Nothing is sent by WhatsApp without it, even when the credentials are set. | Yes. Missing means off. |
+| `release.boardKindsOffered`, `release.contextInAskGroundwork`, `release.planAndBillingNewParts` | Written only by hand (see "Hidden at release"). | The hidden-at-release switches. | Yes. A missing or broken row reads as the default. |
 | `job.whatsapp-add-on-lines.ran_for` | Written by the nightly WhatsApp add-on job (01:00 UTC). | The night the job last ran, so it runs once across copies. | Yes. |
 
 **A changed default for an existing settings row:**
@@ -204,7 +230,8 @@ For reference, the production start-up check (unchanged since the remote `main`)
 | Suggestions about a person | Settings row `suggestions.thresholds` | **On**, on performance plans, promotions and renewals only, from migration 59. | Nothing, unless Hafsah wants them held back at release. |
 | Free trial | Settings row `pricing.freeTrial` | **Off**, one month long. | Stays off until Stripe billing is wired and tested, and Hafsah switches it on. |
 | WhatsApp as a paid add-on (decision 78) | The same `pricing.freeTrial` switch; prices and limits in `pricing_plans`; each organisation's choice in `organizations.whatsapp_add_on_on` | **Not charging and not holding anything** while the trial is off. The monthly WhatsApp limit for each plan applies from release. | Nothing at release. The add-on's Stripe prices are created in test mode only until Hafsah says otherwise. |
-| WhatsApp | Settings row `whatsapp_enabled`, and `WHATSAPP_APPROVED_TEMPLATES` | Unchanged; off unless someone switched it on. | Stays off until Meta approves the templates. Groundwork cannot write first on WhatsApp until then. |
+| WhatsApp, the platform's switch and the credentials | Settings row `whatsapp_enabled`; `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID`; `WHATSAPP_APPROVED_TEMPLATES` (the full guide is `docs/whatsapp-settings.md`) | Off unless somebody switched it on. | Stays off until Meta approves the templates. Groundwork cannot write first on WhatsApp until then. |
+| WhatsApp, each organisation's add-on | `organizations.whatsapp_add_on_on`, read by `api/src/modules/whatsapp/only-where-whatsapp-is-turned-on.ts` | Off for every organisation. | The morning reminder, the reminder before a session and the lead's daily summary go only to an organisation whose add-on is on, and only while the platform's switch is on. Existing clients get WhatsApp on the same terms as the paid client (decision 90), so each turns it on in the same way. |
 | Suites (leave, hours, spending, reviews, leaving, role map, customers, equipment) | Table `organization_suites`, one row per organisation and suite | **Off** for every organisation until an admin switches a suite on. | Nothing. Each organisation chooses. |
 | Real emails | `EMAIL_SENDS_FOR_REAL` | Production must say `true`; anything else must not. | Unchanged. |
 
@@ -255,6 +282,8 @@ Without `--hosted-database` it refuses any database that is not on the machine i
 
 Without `--hosted-database` it refuses any database that is not on the machine it runs on, and on a database on the machine it is a dry run until `--write` is added. The engine work never runs it on anything but a local database.
 
+**Not run on a hosted database, only on a copy of the live data:** `api/journey/existing-clients-check.ts` and `api/journey/existing-clients-compare.ts`. They only read and refuse every write. The steps are in `docs/existing-users.md` sections 5 and 7, and they are step 1 of the release night.
+
 **Must never run on a hosted database:**
 
 | Script | Why not |
@@ -301,11 +330,11 @@ Every report updated after the release should name the newest `report_synthesis`
 ## 7. The checks to run after deploy
 
 **Before any person reads anything:**
-1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 80;` shows all 79 new migrations finished, and none failed.
+1. `SELECT migration_name, finished_at FROM _prisma_migrations ORDER BY started_at DESC LIMIT 90;` shows all 81 new migrations finished, and none failed.
 2. The API answers `/health`.
 3. The active prompt versions match section 6.
-4. The script in section 5 has run, and a report built after it shows quotation marks around people's words again.
-5. `SELECT key, value FROM platform_settings WHERE key IN ('coaching_live', 'suggestions.thresholds', 'pricing.freeTrial', 'whatsapp_enabled');` shows what was agreed in section 4, and `pricing.freeTrial` says `"months": 1` and `"on": false`.
+4. The scripts in section 5 have run, and a report built after them shows quotation marks around people's words again, and an existing check-in has its kind of work.
+5. `SELECT key, value FROM platform_settings WHERE key IN ('coaching_live', 'suggestions.thresholds', 'pricing.freeTrial', 'whatsapp_enabled', 'release.boardKindsOffered', 'release.contextInAskGroundwork', 'release.planAndBillingNewParts');` shows what was agreed in section 4, and `pricing.freeTrial` says `"months": 1` and `"on": false`.
 6. `SELECT plan, whatsapp_add_on_cents, whatsapp_monthly_limit, whatsapp_add_on_stripe_price_id FROM pricing_plans ORDER BY plan;` shows the prices and limits in section 2, and no Stripe price id yet.
 
 **Then read what each person reads, on one test organisation made for the purpose** (never a customer's). Use a team check-in with at least three people, and one performance plan.
@@ -329,7 +358,7 @@ None of these files were changed. This is what they say.
 
 | File | What triggers it | What it would do |
 | --- | --- | --- |
-| `api/railway.toml` | Whatever branch the API's hosting project is connected to. That is set in the hosting dashboard, not in the repository. | On every start: marks one old failed migration (`20260627000000_contributor_code_system`) as rolled back, then **runs `prisma migrate deploy`, which applies all 79 migrations with no backup step**, and then starts the API. If a migration fails, the API does not start, and the host retries three times. |
+| `api/railway.toml` | Whatever branch the API's hosting project is connected to. That is set in the hosting dashboard, not in the repository. | On every start: marks one old failed migration (`20260627000000_contributor_code_system`) as rolled back, then **runs `prisma migrate deploy`, which applies all 81 migrations with no backup step**, and then starts the API. If a migration fails, the API does not start, and the host retries three times. |
 | `client/vercel.json` | A push to `main` or to the other long-lived branch, through the hosting provider's own link to the repository. | Builds and publishes the screens. Every other branch is switched off. |
 | `.github/workflows/staging-deploy.yml` | A push to the other long-lived branch that changes `client/`. | Builds the screens with the hosting provider's command-line tool and points the fixed preview address at the new build. Not triggered by `main`. |
 | `.github/workflows/preview-deploy.yml` | A pull request that changes `client/`. | Builds a preview of the screens and comments the address on the pull request. |

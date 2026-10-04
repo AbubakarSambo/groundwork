@@ -62,6 +62,47 @@ const refusal = () => Object.assign(new Error('403'), { response: { status: 403,
 
 beforeEach(() => { vi.clearAllMocks(); useAskStore.setState({ open: false }) })
 
+const LEVELS = [
+  { id: 'l0', depth: 0, level: 'Priority 2', title: 'Improve delivery', changedHere: null, fedBy: null },
+  { id: 'l1', depth: 1, level: 'Objective', title: 'Reduce delivery delays', changedHere: null, fedBy: 'Fed by Operations, Q3' },
+  { id: 'l2', depth: 2, level: 'Project', title: 'Buy 20 delivery vans', changedHere: 'The meaning changed here, from orders arriving on time to more vans.', fedBy: null },
+]
+
+describe('what each level understood, and the figures, as each reader is served them', () => {
+  const withLevels = (page: Page): Page => ({ ...page, priorities: page.priorities.map(p => (p.number === 2 ? { ...p, levels: LEVELS } : p)) })
+
+  it('Grace reads each level top down, with where the meaning changed, and a measure with no target in a plain sentence', async () => {
+    const onlyMeasure = withLevels({ ...GRACES, priorities: GRACES.priorities.map(p => (p.number === 1 ? { ...p, measure: 'companies', target: null } : p)) })
+    open(GRACE, '/company', onlyMeasure)
+    await screen.findByRole('heading', { level: 2, name: 'Is the strategy moving?' })
+    expect(within(priority(1)).getByText('It is measured by companies.')).toBeInTheDocument()
+    const levels = within(priority(2)).getByRole('list', { name: 'What each level understood, priority 2' })
+    expect([...levels.querySelectorAll('li')].map(li => li.textContent)).toEqual([
+      'Priority 2Improve delivery',
+      'ObjectiveReduce delivery delaysFed by Operations, Q3',
+      'ProjectBuy 20 delivery vansThe meaning changed here, from orders arriving on time to more vans.',
+    ])
+    expect(within(priority(2)).getByRole('heading', { level: 3, name: 'What each level understood' })).toBeInTheDocument()
+  })
+
+  it('a target with no measure reads "The target is ..."', async () => {
+    open(GRACE, '/company', { ...GRACES, priorities: [{ ...GRACES.priorities[0], measure: null, target: '3 by 31 December 2026' }] })
+    expect(await within(await screen.findByRole('region', { name: 'Priority 1' })).findByText('The target is 3 by 31 December 2026.')).toBeInTheDocument()
+  })
+
+  it('Miriam, served no measure, target or levels, reads none and no empty heading', async () => {
+    open(MIRIAM, '/company', MIRIAMS)
+    await screen.findByRole('heading', { level: 2, name: 'Is the strategy moving?' })
+    expect(document.body.textContent).not.toMatch(/measured by|the target is|What each level understood/)
+  })
+
+  it('a priority with only itself in its levels and nothing changed draws no list', async () => {
+    open(GRACE, '/company', { ...GRACES, priorities: [{ ...GRACES.priorities[0], levels: [LEVELS[0]] }] })
+    await screen.findByRole('heading', { level: 2, name: 'Is the strategy moving?' })
+    expect(screen.queryByText('What each level understood')).toBeNull()
+  })
+})
+
 describe('Grace, an admin, reads the Company page', () => {
   it('reads the name, the buttons, the week, and each priority as company.txt has it', async () => {
     open(GRACE, '/company', GRACES)
@@ -72,8 +113,9 @@ describe('Grace, an admin, reads the Company page', () => {
     expect(screen.getByRole('link', { name: 'Company context' })).toHaveAttribute('href', '/company/context')
     expect(screen.getByRole('heading', { level: 2, name: 'Is the strategy moving?' })).toBeInTheDocument()
 
-    expect(priority(1).textContent).toBe('Priority 1Grow revenue 50%, enterprise firstFed by Sales team, Q3')
-    expect(priority(2).textContent).toBe('Priority 2Improve deliveryThis was last updated on 28 August.Fed by Operations, Q3')
+    /* Changed: an admin is served the measure and the target of each priority (decision 86, item 3), and now reads them. */
+    expect(priority(1).textContent).toBe('Priority 1Grow revenue 50%, enterprise firstFed by Sales team, Q3It is measured by qualified enterprise deals, and the target is 12 this quarter.')
+    expect(priority(2).textContent).toBe('Priority 2Improve deliveryThis was last updated on 28 August.Fed by Operations, Q3It is measured by on-time delivery, and the target is 95%.')
     expect(priority(3).textContent).toBe('Priority 3Nobody owns it yetBuild a stronger organisationNo team feeds it')
   })
 

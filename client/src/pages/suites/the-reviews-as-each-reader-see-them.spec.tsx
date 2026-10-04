@@ -13,16 +13,19 @@ import type { ReviewsBoard, AReview } from '@/api/suites'
  * Here: what each person reads, in the prototype's words (suite-reviews.txt), and that no reader sees
  * a label, a verdict, a score or a rating.
  */
-vi.mock('@/api/suites', () => ({ reviewsApi: { board: vi.fn(), start: vi.fn(), one: vi.fn(), words: vi.fn(), view: vi.fn(), decide: vi.fn() } }))
+vi.mock('@/api/suites', () => ({ reviewsApi: { board: vi.fn(), mine: vi.fn(), start: vi.fn(), one: vi.fn(), words: vi.fn(), view: vi.fn(), decide: vi.fn() } }))
 import { reviewsApi } from '@/api/suites'
 
 const BOARD: ReviewsBoard = {
   every: 'Every 6 months',
   next: [
-    { dueId: 'd-a', name: 'Aisha Otieno', writtenWith: 'Wairimu Kamau', dueOn: '2027-03-01', stands: 'started', reviewId: 'r-a', mayStart: false },
-    { dueId: 'd-m', name: 'Miriam Wanjiku', writtenWith: 'Wairimu Kamau', dueOn: '2027-03-01', stands: 'ready', reviewId: null, mayStart: true },
+    { dueId: 'd-a', name: 'Aisha Otieno', writtenWith: 'Wairimu Kamau', dueOn: '2027-03-01', stands: 'started', standsSays: 'Started on 2 October. Aisha can read it and add a view of her own.', reviewId: 'r-a', mayStart: false, proposal: null },
+    { dueId: 'd-m', name: 'Miriam Wanjiku', writtenWith: 'Wairimu Kamau', dueOn: '2027-03-01', stands: 'ready', standsSays: 'Ready to start.', reviewId: null, mayStart: true, proposal: null },
   ],
 }
+/* Real served shape for a review that cannot start yet (where-a-review-stands.ts) and one Groundwork proposed. */
+const KWAME = { dueId: 'd-k', name: 'Kwame Boateng', writtenWith: 'Wairimu Kamau', dueOn: '2027-03-01', stands: 'not-yet' as const, standsSays: 'After “Kwame, first 90 days” is decided.', reviewId: null, mayStart: false, proposal: null }
+const PROPOSED = { dueId: 'd-p', name: 'Aisha Otieno', writtenWith: 'Wairimu Kamau', dueOn: '2027-03-01', stands: 'ready' as const, standsSays: 'Ready to start. 6 months of check-ins to draw on.', reviewId: null, mayStart: true, proposal: 'Groundwork suggests this review because it has been six months. Nothing reaches Aisha until you say yes.' }
 const NOTICED = [
   { says: 'Closed 9 sales since March. Paystack shows all 9 payments.', mark: 'proven' as const },
   { says: 'Says supermarkets take longer than butcheries. Nothing proves this yet.', mark: 'said' as const },
@@ -61,7 +64,7 @@ const refusal = (status: number, message: string) => Object.assign(new Error(Str
 const text = () => document.body.textContent ?? ''
 const LABELS = /\b(PIP|performance improvement plan|exit|at[- ]risk|low[- ]performer|verdict|rating|score \d|scored)\b/i
 
-beforeEach(() => { vi.clearAllMocks() })
+beforeEach(() => { vi.clearAllMocks(); (reviewsApi.mine as any).mockResolvedValue([]) })
 
 describe('the board of the next reviews', () => {
   it('reads the prototype’s heading, sentence and box, with the organisation’s own cycle', async () => {
@@ -83,10 +86,28 @@ describe('the board of the next reviews', () => {
     const rows = [...region.querySelectorAll('tr')].map(tr => [...tr.children].map(c => c.textContent))
     expect(rows).toEqual([
       ['Person', 'Written with', 'Where it stands', 'What you can do'],
-      ['Aisha Otieno', 'Wairimu Kamau', 'Started.', 'Open it'],
+      ['Aisha Otieno', 'Wairimu Kamau', 'Started on 2 October. Aisha can read it and add a view of her own.', 'Open it'],
       ['Miriam Wanjiku', 'Wairimu Kamau', 'Ready to start.', 'Start it'],
     ])
     expect(within(region).getByRole('link', { name: 'Open Aisha Otieno’s review' })).toHaveAttribute('href', '/suite/reviews/r-a')
+  })
+
+  it('a review that cannot start yet reads the server’s sentence and "Not yet", never "Decided." and never a button', async () => {
+    ;(reviewsApi.board as any).mockResolvedValue({ every: 'Every 6 months', next: [KWAME, PROPOSED] })
+    open(WAIRIMU, '/suite/reviews')
+    const region = await screen.findByRole('region', { name: 'The next reviews' })
+    const kwame = [...region.querySelectorAll('tr')].find(tr => tr.textContent?.includes('Kwame'))!
+    expect([...kwame.children].map(c => c.textContent)).toEqual(['Kwame Boateng', 'Wairimu Kamau', 'After “Kwame, first 90 days” is decided.', 'Not yet'])
+    expect(within(kwame as HTMLElement).queryByRole('button')).toBeNull()
+    expect(text()).not.toContain('Decided.')
+  })
+
+  it('a review Groundwork proposed says why under where it stands, and that nothing reaches the person until a yes', async () => {
+    ;(reviewsApi.board as any).mockResolvedValue({ every: 'Every 6 months', next: [PROPOSED] })
+    open(WAIRIMU, '/suite/reviews')
+    const region = await screen.findByRole('region', { name: 'The next reviews' })
+    expect(within(region).getByText('Groundwork suggests this review because it has been six months. Nothing reaches Aisha until you say yes.')).toBeInTheDocument()
+    expect(within(region).getByText(/Ready to start\. 6 months of check-ins to draw on\./)).toBeInTheDocument()
   })
 
   it('"Start it" starts the review and opens it', async () => {
@@ -127,6 +148,38 @@ describe('the board of the next reviews', () => {
     open(GRACE, '/suite/reviews')
     expect(await screen.findByRole('alert')).toHaveTextContent('The performance reviews suite is not switched on.')
     expect(screen.getByText('A review happens every 6 months. It is built from what each person did and proved in their check-ins, with their own view beside it. There are no scores.')).toBeInTheDocument()
+  })
+})
+
+describe('Aisha’s own reviews', () => {
+  const MINE = [
+    { id: 'r-a', dueOn: '2027-03-01', writtenWithFirstName: 'Wairimu', stands: 'started' as const, says: 'Wairimu has started your review. You can read it and add your own view before you meet.' },
+  ]
+  it('a member who cannot open the board reads her own reviews, with the server’s sentence and a way in, and not the refusal', async () => {
+    ;(reviewsApi.board as any).mockRejectedValue(refusal(403, 'Only an admin or a lead can open this board.'))
+    ;(reviewsApi.mine as any).mockResolvedValue(MINE)
+    open(AISHA, '/suite/reviews')
+    const list = await screen.findByRole('list', { name: 'Your reviews' })
+    expect(within(list).getByText('Your review, March')).toBeInTheDocument()
+    expect(within(list).getByText('Wairimu has started your review. You can read it and add your own view before you meet.')).toBeInTheDocument()
+    expect(within(list).getByRole('link', { name: 'Open your review, March' })).toHaveAttribute('href', '/suite/reviews/r-a')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('a lead who is also being reviewed reads her own beside the board', async () => {
+    ;(reviewsApi.board as any).mockResolvedValue(BOARD)
+    ;(reviewsApi.mine as any).mockResolvedValue(MINE)
+    open(WAIRIMU, '/suite/reviews')
+    expect(await screen.findByRole('list', { name: 'Your reviews' })).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'The next reviews' })).toBeInTheDocument()
+  })
+
+  it('with none started, there is no "Your reviews" at all', async () => {
+    ;(reviewsApi.board as any).mockResolvedValue(BOARD)
+    ;(reviewsApi.mine as any).mockResolvedValue([])
+    open(WAIRIMU, '/suite/reviews')
+    await screen.findByRole('region', { name: 'The next reviews' })
+    expect(screen.queryByRole('list', { name: 'Your reviews' })).toBeNull()
   })
 })
 

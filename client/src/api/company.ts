@@ -24,6 +24,24 @@ export interface CompanyPriority {
    * example "At risk" and "On time is 88% against 95%…". Not served yet; drawn only when it is.
    */
   reading?: { tag: string; says: string } | null
+  /**
+   * WHAT EACH LEVEL UNDERSTOOD, top down from the priority itself through each objective and project under
+   * it. Empty for a reader who may not read the company-wide picture, and until it is written.
+   */
+  levels?: CompanyLevel[]
+}
+
+export interface CompanyLevel {
+  id: string
+  /** 0 for the priority itself, 1 for what hangs directly under it, and so on. */
+  depth: number
+  /** "Priority 1", "Objective" or "Project". */
+  level: string
+  title: string
+  /** "The meaning changed here, from more farmers to more visits.", or null. */
+  changedHere: string | null
+  /** "Fed by Sales team, Q3" for the check-ins tied to exactly this level that the reader may open, or null. */
+  fedBy: string | null
 }
 
 export interface CompanyPage {

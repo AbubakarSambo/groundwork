@@ -25,13 +25,23 @@ export interface SuitesForAnAdmin {
 export interface SuitesForALead {
   reader: 'lead'
   suites: { key: string; name: string; line: string }[]
+  /** Only for a lead who also holds the HR or finance duty: the suites they set up, as a duty holder reads them. */
+  youSetUp?: AdminSuite[]
+  people?: { id: string; name: string }[]
 }
 
-export type SuitesPage = SuitesForAnAdmin | SuitesForALead
+/** A member who holds the HR or finance duty: only the suites that duty sets up, with their questions and answers. */
+export interface SuitesForADutyHolder {
+  reader: 'duty'
+  youSetUp: AdminSuite[]
+  people: { id: string; name: string }[]
+}
+
+export type SuitesPage = SuitesForAnAdmin | SuitesForALead | SuitesForADutyHolder
 
 export const suitesApi = {
   get: async (): Promise<SuitesPage> => (await apiClient.get('/suites')).data,
-  switch: async (key: string, on: boolean, answers?: Answers): Promise<SuitesForAnAdmin> =>
+  switch: async (key: string, on: boolean, answers?: Answers): Promise<SuitesPage> =>
     (await apiClient.put(`/suites/${key}`, answers ? { on, answers } : { on })).data,
 }
 
@@ -62,14 +72,30 @@ export interface LeaveWaiting {
   alsoOff: string[]
   standIn: string | null
   mayDecide: boolean
+  /** The kind of leave ("Annual leave"), or null when the organisation has set no kinds. */
+  leaveKind: string | null
+  /** Each leave rule that applies, in full sentences with the person's name. */
+  rules: string[]
+  /** Where it is, in a full sentence for this reader: "Wairimu has approved it, and it is now waiting for you." */
+  where: string
+  /** What the person owns in those days, each a full sentence. */
+  owns: string[]
+  /** Each question asked about it, and the answer, in full sentences. */
+  questions: string[]
+  /** The whole request as this reader reads it: the days, the days left, who else is off, the stand-in, what the person owns, the questions. */
+  said: string[]
 }
-export interface LeaveOff { id: string; name: string; startsOn: string; endsOn: string; kind: 'annual' }
-export interface LeaveBoard { waiting: LeaveWaiting[]; off: LeaveOff[] }
+export interface LeaveOff { id: string; name: string; startsOn: string; endsOn: string; kind: string; kindName?: string | null }
+/** A request whoever holds the HR duty is told of; served only to that person. */
+export interface LeaveToldToHr { id: string; name: string; startsOn: string; endsOn: string; status: 'waiting' | 'approved'; kindName: string | null; said: string[] }
+export interface LeaveBoard { reader?: 'admin' | 'lead' | 'approver' | 'hr'; waiting: LeaveWaiting[]; off: LeaveOff[]; toldToHr?: LeaveToldToHr[] }
 
 export const leaveBoardApi = {
   get: async (): Promise<LeaveBoard> => (await apiClient.get('/suites/leave/board')).data,
   decide: async (id: string, outcome: 'approve' | 'decline'): Promise<LeaveBoard> =>
     (await apiClient.post(`/suites/leave/requests/${id}/${outcome}`)).data,
+  ask: async (id: string, question: string): Promise<LeaveBoard> =>
+    (await apiClient.post(`/suites/leave/requests/${id}/question`, { question })).data,
 }
 
 /** Time sheets (GET /suites/time/board). For billing only. */
@@ -93,12 +119,48 @@ export interface NextReview {
   name: string
   writtenWith: string | null
   dueOn: string
-  stands: 'ready' | 'started' | 'decided'
+  /** 'not-yet' while a check-in that decides something about the person is still open. */
+  stands: 'ready' | 'started' | 'decided' | 'not-yet'
+  /** Where it stands, in a full sentence for this reader: "Ready to start. 6 months of check-ins to draw on." */
+  standsSays: string
   reviewId: string | null
   mayStart: boolean
+  /** Said when Groundwork proposed the review itself, so the reader knows why it is here and that nothing reaches the person until they say yes. */
+  proposal: string | null
+}
+/** One of the person's own reviews, once somebody has started it (GET /suites/reviews/mine). */
+export interface YourReview {
+  id: string
+  dueOn: string
+  writtenWithFirstName: string | null
+  stands: 'started' | 'decided'
+  says: string
 }
 export interface ReviewsBoard { every: string | null; next: NextReview[] }
 export interface Noticed { says: string; mark: 'proven' | 'said' }
+/** What Groundwork understands from the record, as one reader is served it: each part, each line, and the person's correction beside it. */
+export interface TheRecord {
+  intro: string
+  /** For the person: who reads their corrections and what stays with them. Null for anybody else. */
+  whoReads: string | null
+  parts: { part: string; heading: string; lines: { key: string; says: string; correction: { said: string; whatIsTrue: string } | null }[] }[]
+  /** Only the person corrects a line. */
+  mayCorrect: boolean
+}
+/** "Groundwork suggests recognising Aisha’s work", for the person who writes the review only. */
+export interface RecogniseForTheWriter { headline: string; why: string; whatWouldChangeIt: string; yourDecision: string }
+/** What the person reads about that suggestion: their own count, the line, and who decides. */
+export interface RecogniseForThePerson { facts: string; whoDecides: string }
+/** The writer's briefing: evidence and patterns, never a verdict. */
+export interface ABriefing {
+  heading: string
+  counts: string | null
+  patterns: { heading: string; whatHappened: string | null; howOften: string; checkIn: string; theirAnswer: string }[]
+  patternsNote: string | null
+  changedAfterEarlierConversations: string[]
+  corrections: { line: string; said: string; whatIsTrue: string }[]
+  whoDecides: string
+}
 export interface ReviewForTheWriter {
   reader: 'writer' | 'lead' | 'admin'
   id: string
@@ -112,6 +174,10 @@ export interface ReviewForTheWriter {
   theirView: string | null
   decision: { says: string; reasons: string } | null
   mayWrite: boolean
+  /** Null for a review started before the record was read. */
+  record?: TheRecord | null
+  recognise?: RecogniseForTheWriter | null
+  briefing?: ABriefing
 }
 export interface ReviewForThePerson {
   reader: 'person'
@@ -122,15 +188,20 @@ export interface ReviewForThePerson {
   noticed: Noticed[]
   theirView: string | null
   decision: { says: string; reasons: string } | null
+  record?: TheRecord | null
+  recognise?: RecogniseForThePerson
 }
 export type AReview = ReviewForTheWriter | ReviewForThePerson
 
 export const reviewsApi = {
   board: async (): Promise<ReviewsBoard> => (await apiClient.get('/suites/reviews/board')).data,
+  mine: async (): Promise<YourReview[]> => (await apiClient.get('/suites/reviews/mine')).data,
   start: async (dueId: string): Promise<{ id: string }> => (await apiClient.post(`/suites/reviews/due/${dueId}/start`)).data,
   one: async (id: string): Promise<AReview> => (await apiClient.get(`/suites/reviews/${id}`)).data,
   words: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/words`, { text })).data,
   view: async (id: string, text: string): Promise<AReview> => (await apiClient.put(`/suites/reviews/${id}/view`, { text })).data,
+  correct: async (id: string, lineKey: string, text: string): Promise<AReview> =>
+    (await apiClient.post(`/suites/reviews/${id}/lines/${encodeURIComponent(lineKey)}/correction`, { text })).data,
   decide: async (id: string, decision: string, reasons: string): Promise<AReview> =>
     (await apiClient.post(`/suites/reviews/${id}/decision`, { decision, reasons })).data,
 }
@@ -186,8 +257,17 @@ export interface SpendWaiting {
   over: boolean
   approver: SpendApprover
   mayDecide: boolean
+  /** Where it is, in a full sentence for this reader: "Wairimu has approved it, and it is now waiting for Omar in finance." */
+  where: string
+  /** The category it is for, when the spending rules have categories. */
+  category: string | null
+  /** The evidence the rules ask for, in full sentences: "Spending on Fuel needs a receipt." */
+  needs: string[]
+  /** Each question asked about it, and the answer, in full sentences. */
+  questions: string[]
 }
 export interface SpendBoard {
+  reader?: 'admin' | 'lead' | 'approver'
   currency: string | null
   limit: number | null
   waiting: SpendWaiting[]
@@ -199,6 +279,8 @@ export const spendApi = {
   get: async (): Promise<SpendBoard> => (await apiClient.get('/suites/spend/board')).data,
   decide: async (id: string, outcome: 'approve' | 'decline'): Promise<SpendBoard> =>
     (await apiClient.post(`/suites/spend/requests/${id}/${outcome}`)).data,
+  ask: async (id: string, question: string): Promise<SpendBoard> =>
+    (await apiClient.post(`/suites/spend/requests/${id}/question`, { question })).data,
   setBudget: async (team: string, amount: number): Promise<SpendBoard> =>
     (await apiClient.put('/suites/spend/budgets', { team, amount })).data,
 }
@@ -233,4 +315,46 @@ export const equipmentApi = {
     (await apiClient.post('/suites/equipment/items', item)).data,
   change: async (id: string, change: { holderId: string | null; condition: string | null }): Promise<EquipmentBoard> =>
     (await apiClient.put(`/suites/equipment/items/${id}`, change)).data,
+}
+
+/** One approved request to spend, as finance reads it: only what is on the request itself (GET /suites/spend/finance). */
+export interface FinanceRequest {
+  id: string
+  name: string
+  team: string | null
+  amount: number
+  what: string
+  category: string | null
+  askedOn: string
+  approvedBy: string[]
+  approvedOn: string | null
+  evidenceNeeded: string[]
+  evidenceGiven: string[]
+  checked: { by: string; on: string } | null
+  code: string | null
+  paidOn: string | null
+  /** The request in full sentences, with "you" for the reader. */
+  said: string[]
+}
+export interface FinanceView {
+  reader: 'finance' | 'admin'
+  currency: string | null
+  toPay: FinanceRequest[]
+  paid: FinanceRequest[]
+  /** Budget lines finance may choose from. Finance may also write its own. */
+  lines: string[]
+}
+
+export const financeApi = {
+  get: async (): Promise<FinanceView> => (await apiClient.get('/suites/spend/finance')).data,
+  check: async (id: string): Promise<FinanceView> => (await apiClient.post(`/suites/spend/requests/${id}/check`)).data,
+  code: async (id: string, code: string): Promise<FinanceView> => (await apiClient.put(`/suites/spend/requests/${id}/code`, { code })).data,
+  evidence: async (id: string, what: string): Promise<FinanceView> => (await apiClient.post(`/suites/spend/requests/${id}/evidence`, { what })).data,
+  paid: async (id: string, on: string): Promise<FinanceView> => (await apiClient.post(`/suites/spend/requests/${id}/paid`, { on })).data,
+  /** The approved requests not yet paid, as a file to take away. */
+  file: async (format: 'csv' | 'xlsx'): Promise<{ blob: Blob; fileName: string }> => {
+    const res = await apiClient.get('/suites/spend/finance/export', { params: { format }, responseType: 'blob' })
+    const named = /filename="([^"]+)"/.exec(String(res.headers?.['content-disposition'] ?? ''))
+    return { blob: res.data as Blob, fileName: named?.[1] ?? `requests-to-pay.${format}` }
+  },
 }

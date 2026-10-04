@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { companyApi, type CompanyPage as Page, type CompanyPriority } from '@/api/company'
+import { companyApi, type CompanyPage as Page, type CompanyPriority, type CompanyLevel } from '@/api/company'
 import { useAuthStore } from '@/stores/auth'
 import { useAskStore } from '@/stores/ask'
-import { Page as PageFrame, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row } from '@/components/gw/ui'
+import { Page as PageFrame, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row, SubHeading } from '@/components/gw/ui'
 
 /**
  * THE COMPANY PAGE (D2, #/company, group 2 piece 3). The wording is copied from
@@ -21,6 +21,11 @@ import { Page as PageFrame, PageTitle, Section, Panel, Button, Tag, Note, Empty,
  * column under "Named by more than one team"), and `.gwui-compare-table` (the plain comparison
  * table under "What you say, and where the time goes" - the prototype never draws a real `<table>`
  * itself, so this is the product's own shape, built at the same sizes the rest of this kit uses).
+ *
+ * ALSO DRAWN, WHEN THE SERVER SENDS THEM: each priority's measure and target, to admins only
+ * (decision 86, item 3; "It is measured by ... and the target is ..."), and "What each level
+ * understood" under it, top down from the priority through each objective and project, with the
+ * sentence saying where the meaning changed.
  *
  * NOT DRAWN HERE, ON PURPOSE (docs/morning-report-ui.md, item 26):
  *   - "Strategy v2, since 1 September.": nothing keeps versions of the strategy yet.
@@ -144,8 +149,24 @@ function ThePage({ p }: { p: Page }) {
   )
 }
 
+/** What success looks like, in the server's own words for the measure and the target. Served to admins only (decision 86, item 3). */
+export function whatSuccessLooksLike(measure?: string | null, target?: string | null): string {
+  /* A measure that begins "Qualified enterprise deals" reads after "measured by" in lower case; an acronym stays. */
+  const inSentence = (x?: string | null) => { const v = x?.trim() ?? ''; return /^[A-Z][a-z]/.test(v) ? `${v[0].toLowerCase()}${v.slice(1)}` : v }
+  const m = inSentence(measure)
+  const t = target?.trim()
+  if (m && t) return `It is measured by ${m}, and the target is ${t}.`
+  if (m) return `It is measured by ${m}.`
+  if (t) return `The target is ${t}.`
+  return ''
+}
+
 function Priority({ pr }: { pr: CompanyPriority }) {
   const tag = pr.reading?.tag ?? pr.tag
+  const success = whatSuccessLooksLike(pr.measure, pr.target)
+  const levels = pr.levels ?? []
+  /* The priority alone, with nothing under it and nothing that changed, says nothing more than its card. */
+  const showLevels = levels.length > 1 || levels.some(l => l.changedHere)
   return (
     <Panel as="section" aria-label={`Priority ${pr.number}`}>
       <div className="gwui-priority-top">
@@ -156,6 +177,28 @@ function Priority({ pr }: { pr: CompanyPriority }) {
       {pr.reading?.says && <p className="gwui-panel-text">{pr.reading.says}</p>}
       {pr.staleSays && <p className="gwui-panel-text-muted">{pr.staleSays}</p>}
       {pr.fedBy && <p className="gwui-panel-text-muted">{pr.fedBy}</p>}
+      {success && <p className="gwui-panel-text">{success}</p>}
+      {showLevels && (
+        <>
+          <SubHeading as="h3" tone="kicker">What each level understood</SubHeading>
+          <RowList label={`What each level understood, priority ${pr.number}`}>
+            {levels.map(l => <ALevel key={l.id} l={l} />)}
+          </RowList>
+        </>
+      )}
     </Panel>
+  )
+}
+
+function ALevel({ l }: { l: CompanyLevel }) {
+  return (
+    <Row columns="auto minmax(0, 1fr)">
+      <span className="gwui-panel-text-muted">{l.level}</span>
+      <div>
+        <b>{l.title}</b>
+        {l.changedHere && <p className="gwui-panel-text">{l.changedHere}</p>}
+        {l.fedBy && <p className="gwui-panel-text-muted">{l.fedBy}</p>}
+      </div>
+    </Row>
   )
 }

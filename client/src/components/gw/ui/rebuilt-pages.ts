@@ -102,6 +102,7 @@ export const REBUILT_PAGES: string[] = [
   'pages/suites/LeavingBoardPage.tsx',
   'pages/suites/RoleMapPage.tsx',
   'pages/suites/SpendingPage.tsx',
+  'pages/suites/FinancePage.tsx',
   'pages/suites/TodosPage.tsx',
   'pages/suites/CustomersPage.tsx',
   'pages/suites/EquipmentPage.tsx',
