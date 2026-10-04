@@ -83,20 +83,22 @@ test('Wairimu opens her invitation, sets up a check-in from a plan, invites peop
 
   await test.step('2. Groundwork reads her plan back, and nothing is saved until she says yes', async () => {
     await page.goto(`${APP}${theWorld().checkInPath}?tab=context`);
-    /* The Context tab has the conversation "Tell Groundwork how this team works" (the plan block "From a plan" is not built in the client yet). */
-    const box = page.getByPlaceholder('Type your answer…').or(page.getByRole('textbox', { name: /answer/i })).first();
-    await expect(box).toBeVisible({ timeout: 60_000 });
-    await box.fill(THE_PLAN);
-    await page.getByRole('button', { name: 'Send', exact: true }).click();
-    /* It says back what it found and asks; nothing is saved until she says yes. */
-    await page.waitForTimeout(2000);
-    await expect(page.getByText('Thinking…')).toHaveCount(0, { timeout: 180_000 });
-    await page.waitForTimeout(2000);
+    /* The Context tab's "From a plan": she pastes the plan, and every card waits for her own yes. */
+    await expect(page.getByRole('heading', { name: 'From a plan' })).toBeVisible({ timeout: 60_000 });
+    await page.getByRole('button', { name: 'Paste a plan instead' }).click();
+    await page.getByLabel('Paste your plan here').fill(THE_PLAN);
+    await page.getByRole('button', { name: 'Read this plan' }).click();
+    /* It says back how many things it found; nothing is saved until she confirms each card. */
+    await expect(page.getByText(/to confirm\. Nothing goes into Context until you do\./)).toBeVisible({ timeout: 180_000 });
+    await expect(page.getByRole('heading', { name: 'Waiting for you to confirm' })).toBeVisible();
     /* Amani's number is on Amani, and no sentence says a person is missing. */
     await expect(page.getByText(/is not on this check-in/)).toHaveCount(0);
-    await page.getByRole('button', { name: 'Yes, set it' }).click();
-    await page.waitForTimeout(2000);
-    await expect(page.getByText('Thinking…')).toHaveCount(0, { timeout: 180_000 });
+    const confirms = page.getByRole('button', { name: 'Confirm', exact: true });
+    while (await confirms.count() > 0) {
+      const before = await confirms.count();
+      await confirms.first().click();
+      await expect(confirms).toHaveCount(before - 1, { timeout: 30_000 });
+    }
     /* The number is kept, and is Amani's (read below in her own card), whatever the check-in ends up being called. */
     await expect(page.getByText(/4\.5 million|4,500,000/).first()).toBeVisible({ timeout: 60_000 });
     readsAsPlainSentences(await whatIsOnThePage(page));

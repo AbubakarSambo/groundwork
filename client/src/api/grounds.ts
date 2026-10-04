@@ -13,6 +13,20 @@ export interface Delivery {
 }
 
 
+/** One card the server read out of a plan, as it sends it. */
+export interface PlanCard {
+  id: string
+  kind: string
+  says: string
+  heading: string
+  landsIn: string
+  from: string
+  fromThePlan: string
+  note?: string
+  whichWay?: string
+  directionSuggested?: string
+}
+
 export type GroundScenario =
   | 'TEAM_UPDATES'
   | 'DISCOVERY'
@@ -533,6 +547,19 @@ export const groundsApi = {
       canShowMovement: boolean
       frozenReason: string
     }>(`/grounds/${groundId}/baseline-entries`).then(r => r.data),
+
+  /** A plan, pasted or already a document on the check-in, read into separate cards. Nothing is stored until a yes. */
+  readAPlan: (groundId: string, input: { text?: string; documentId?: string }) =>
+    apiClient.post<{ proposals: PlanCard[]; says: string }>(`/grounds/${groundId}/plan/proposals`, input).then(r => r.data),
+  /** "Waiting for you to confirm": the cards still waiting. The lead's only. */
+  planCardsWaiting: (groundId: string) =>
+    apiClient.get<{ proposals: PlanCard[] }>(`/grounds/${groundId}/plan/proposals`).then(r => r.data),
+  confirmPlanCard: (groundId: string, cardId: string, direction?: string | null) =>
+    apiClient.post(`/grounds/${groundId}/plan/proposals/${cardId}/confirm`, direction ? { direction } : {}).then(r => r.data),
+  planCardNotNow: (groundId: string, cardId: string) =>
+    apiClient.post(`/grounds/${groundId}/plan/proposals/${cardId}/not-now`).then(r => r.data),
+  editPlanCard: (groundId: string, cardId: string, says: string) =>
+    apiClient.patch<PlanCard>(`/grounds/${groundId}/plan/proposals/${cardId}`, { says }).then(r => r.data),
 
   contextChat: (groundId: string, history: { role: 'user' | 'assistant'; content: string }[]) =>
     apiClient
