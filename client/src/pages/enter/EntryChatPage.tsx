@@ -10,7 +10,7 @@ import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENC
  * tidier home and is a separate change - doing it here would bury the fix in a file move.
  */
 import { groupOfCard } from '@/pages/grounds/CreateGroundPage'
-import { useSearchParams, useNavigate, Link } from 'react-router-dom'
+import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
 import { billingApi } from '@/api/billing'
@@ -1176,9 +1176,21 @@ export function fallbackGroundName(situation?: string, where?: string): string {
 export function EntryChatPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const scenario = params.get('scenario') ?? ''
   const urlMode = params.get('mode') ?? ''
-  const urlInitial = params.get('initial') ?? ''
+  /**
+   * PIECE 25, "YES, SET IT UP" OPENS HERE PREFILLED (plan piece 25, docs/anchor-scenario-plan.md
+   * section 5 row 9; docs/answers-from-engine.md, "Request 148 (1)"). BoardPage.tsx's "Groundwork
+   * recommends" calls `POST /entry/draft-from-set-up` and navigates here with the answer as router
+   * state - never a query param, since `contributors` carries real addresses (never put personal
+   * data in a URL). `anchorSetUp.initial` joins the ordinary `?initial=` below, so everything that
+   * already seeds the first message from a URL (the restore branch, the auto-send effect) works
+   * for this path too without being duplicated. `aim` and `contributors` are seeded separately,
+   * just below, because nothing else carries those today.
+   */
+  const anchorSetUp = (location.state as { anchorSetUp?: { initial?: string; aim?: string | null; contributors?: { email: string; displayName?: string }[] } } | null)?.anchorSetUp
+  const urlInitial = params.get('initial') ?? anchorSetUp?.initial ?? ''
   /* The rail's Start a check-in. A saved setup used to swallow it: the page restored the old one and
      the picker never showed, "unless I click go backwards". Now it asks. */
   const wantsANewOne = params.get('new') === '1'
@@ -2146,6 +2158,25 @@ export function EntryChatPage() {
    * is already there. The early return above is kept as a cheap first check, but it
    * is no longer what makes this safe.
    */
+  /**
+   * THE REST OF "YES, SET IT UP": `aim` AND `contributors`. `aim` is the engine's own sentence for
+   * what the new check-in is working towards, kept as this draft's name - the same field the admin
+   * section lets the lead rename. `contributors` are taken in exactly as commit takes them
+   * elsewhere on this page (a plain email, the same shape typing one by hand produces), each shown
+   * as `leftOut[].why` already told the lead on the board, not repeated here. Seeded once, the same
+   * guard as the initial message just below, so a restored session is never overwritten.
+   */
+  useEffect(() => {
+    if (phase !== 'onboarding' || !anchorSetUp) return
+    /* `groundName` defaults to 'Entry session' (the store's own default, never a name anybody
+       chose), so the check is against that default rather than emptiness. */
+    if (anchorSetUp.aim && (!groundName || groundName === 'Entry session')) setGroundName(anchorSetUp.aim)
+    if (anchorSetUp.contributors?.length) {
+      setInviteAdded(prev => (prev.length ? prev : anchorSetUp.contributors!.map(c => c.email)))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
+
   useEffect(() => {
     if (phase !== 'onboarding') return
     const INTRO = THE_OPENING_QUESTION

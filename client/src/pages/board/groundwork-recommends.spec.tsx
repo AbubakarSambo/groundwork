@@ -19,7 +19,7 @@ import { groundsApi } from '@/api/grounds'
 vi.mock('@/api/board', () => ({ boardApi: { get: vi.fn() } }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn() } }))
 vi.mock('@/api/recommendedCheckIns', () => ({
-  recommendedCheckInsApi: { list: vi.fn(), yes: vi.fn(), notNow: vi.fn() },
+  recommendedCheckInsApi: { list: vi.fn(), yes: vi.fn(), notNow: vi.fn(), draftFromSetUp: vi.fn() },
 }))
 
 const navigated = vi.fn()
@@ -112,19 +112,24 @@ describe('for the lead, with the switch on', () => {
     expect(recommendedCheckInsApi.list).not.toHaveBeenCalled()
   })
 
-  it('"Yes, set it up" calls the yes route, then opens set-up prefilled from what it hands back', async () => {
+  it('"Yes, set it up" calls the yes route, then draft-from-set-up, then opens /start prefilled with what it hands back', async () => {
     ;(boardApi.get as any).mockResolvedValue(board(true))
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u1', participants: [] })
     ;(recommendedCheckInsApi.list as any).mockResolvedValue({ offers: [anOffer] })
-    ;(recommendedCheckInsApi.yes as any).mockResolvedValue({
-      state: 'ACCEPTED',
-      setUp: { kind: 'anchor_pair_check_in', about: anOffer.says, aim: null, people: [{ name: 'Kennedy', email: 'kennedy@x.test' }] },
-    })
+    const setUp = { kind: 'anchor_pair_check_in', about: anOffer.says, aim: null, people: [{ name: 'Kennedy', email: 'kennedy@x.test' }] }
+    ;(recommendedCheckInsApi.yes as any).mockResolvedValue({ state: 'ACCEPTED', setUp })
+    const opened = {
+      initial: anOffer.says, aim: 'The Nairobi launch',
+      contributors: [{ email: 'kennedy@x.test', displayName: 'Kennedy' }],
+      leftOut: [{ email: 'zed@elsewhere.com', why: 'Groundwork has no record of Zed in your organisation, so Zed is not added. You can add them yourself on the next step.' }],
+    }
+    ;(recommendedCheckInsApi.draftFromSetUp as any).mockResolvedValue(opened)
     renderBoard()
     const yesButton = await screen.findByText('Yes, set it up')
     fireEvent.click(yesButton)
     await waitFor(() => expect(recommendedCheckInsApi.yes).toHaveBeenCalledWith('g1', 'rec1'))
-    await waitFor(() => expect(navigated).toHaveBeenCalledWith(`/start?initial=${encodeURIComponent(anOffer.says)}`))
+    await waitFor(() => expect(recommendedCheckInsApi.draftFromSetUp).toHaveBeenCalledWith(setUp))
+    await waitFor(() => expect(navigated).toHaveBeenCalledWith('/start', { state: { anchorSetUp: opened } }))
   })
 
   it('"Not now" calls the not-now route and removes the offer', async () => {

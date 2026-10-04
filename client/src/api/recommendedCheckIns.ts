@@ -38,4 +38,21 @@ export const recommendedCheckInsApi = {
 
   notNow: (groundId: string, offerId: string): Promise<{ state: 'DECLINED' }> =>
     apiClient.post(`/grounds/${groundId}/recommended-check-ins/${offerId}/not-now`, {}).then(r => r.data),
+
+  /**
+   * PIECE 25, "YES, SET IT UP" (docs/answers-from-engine.md, "Request 148 (1)"). Sends back exactly
+   * the `setUp` the "Yes, set it up" answer handed over. Creates nothing and invites nobody: it
+   * answers the draft the set-up screen opens with. `contributors` are checked against the lead's
+   * own organisation server-side, so a person left out carries `why` - shown to the lead as it is,
+   * never invented or summarised here.
+   */
+  draftFromSetUp: (setUp: WhatToSetUp): Promise<WhatTheSetUpScreenOpensWith> =>
+    apiClient.post('/entry/draft-from-set-up', { setUp }).then(r => r.data),
+}
+
+export interface WhatTheSetUpScreenOpensWith {
+  initial: string
+  aim: string | null
+  contributors: { email: string; displayName?: string }[]
+  leftOut: { email: string; why: string }[]
 }

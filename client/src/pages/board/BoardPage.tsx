@@ -1006,23 +1006,26 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const answerRecommendation = useMutation({
     mutationFn: (vars: { offerId: string; yes: boolean }): Promise<{ state: 'ACCEPTED' | 'DECLINED'; setUp?: unknown }> =>
       vars.yes ? recommendedCheckInsApi.yes(id!, vars.offerId) : recommendedCheckInsApi.notNow(id!, vars.offerId),
-    onSuccess: (res, vars) => {
+    onSuccess: async (res, vars) => {
       qc.invalidateQueries({ queryKey: ['recommended-check-ins', id] })
       if (vars.yes && res.state === 'ACCEPTED' && (res as any).setUp) {
         /*
-         * THE SET-UP SCREEN'S OWN STARTING POINT. `/start` already takes a free-text `initial`
-         * that seeds its first message (EntryChatPage.tsx's `urlInitial`) - the only starting
-         * point it accepts today, so this opens it with that. `setUp.about` is the engine's own
-         * sentence for what the new check-in is about.
-         *
-         * STILL MISSING FROM THE ENGINE SIDE OF THIS SCREEN: a way to open `/start` already
-         * knowing WHO to invite. `setUp.people` (their names and emails, read back from this
-         * check-in's own record) has nowhere to land yet - the entry conversation has no route-
-         * state or query param for a person's name and email, only for free text and a scenario
-         * key - so the lead still adds each person herself in the conversation that follows, the
-         * same as starting fresh. Nothing here invents a parameter that screen does not read.
+         * PIECE 25: "YES, SET IT UP" OPENS A PREFILLED DRAFT (docs/answers-from-engine.md,
+         * "Request 148 (1)"), replacing the `/start?initial=...` stop-gap this used to be. The
+         * engine's answer carries exactly what the set-up screen needs: `initial` (the first
+         * thing said), `aim` (kept as the draft's name) and `contributors` (taken in exactly as
+         * commit takes them). It creates nothing and invites nobody - the lead still finishes on
+         * the set-up screen. None of this is personal data for a URL, so it travels as router
+         * state, which EntryChatPage.tsx reads once on arrival (`anchorSetUp`).
          */
-        navigate(`/start?initial=${encodeURIComponent((res as any).setUp.about)}`)
+        try {
+          const opened = await recommendedCheckInsApi.draftFromSetUp((res as any).setUp)
+          /* Shown to the lead as it is - never invented or summarised here. */
+          for (const left of opened.leftOut) toast.info(left.why)
+          navigate('/start', { state: { anchorSetUp: opened } })
+        } catch {
+          toast.error('That did not save. Try again.')
+        }
       }
     },
     onError: () => toast.error('That did not save. Try again.'),
