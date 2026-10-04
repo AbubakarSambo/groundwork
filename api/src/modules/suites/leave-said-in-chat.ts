@@ -62,7 +62,8 @@ export function soundsLikeLeave(message: string): boolean {
   const t = (message ?? '').trim();
   if (!ASKS_FOR_TIME_OFF.test(t) || !FIRST_PERSON.test(t)) return false;
   /* "Off" alone is too common ("kick off", "sign off"): it needs a day, a date or "next week" beside it. */
-  return new RegExp(`${WEEKDAY_RE}|${MONTH_RE}|\\d{4}-\\d{2}-\\d{2}|tomorrow|next week|\\bthe\\s+\\d{1,2}(?:st|nd|rd|th)\\b`, 'i').test(t);
+  /* A month or a weekday is a WORD: "decided" holds "dec", and "What leave have I asked for, and what was decided?" was read as a request for leave in December. */
+  return new RegExp(`\\b(?:${WEEKDAYS.join('|')}|${MONTHS.join('|')}|${MONTHS.map((m) => m.slice(0, 3)).join('|')}|sept)\\b|\\d{4}-\\d{2}-\\d{2}|tomorrow|next week|\\bthe\\s+\\d{1,2}(?:st|nd|rd|th)\\b`, 'i').test(t);
 }
 
 function dateOn(day: number, month: number, today: Date, year?: number): Date | null {
