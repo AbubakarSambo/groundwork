@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
+import { Note } from '@/components/gw/ui'
 
 /**
  * WHERE YOU ARE AGAINST THE THING YOU WERE ASKED TO DEFINE.
@@ -137,8 +138,8 @@ export function WhatSuccessLooksLike({
           to reach the reader either way, so it moves onto its own line rather than going with it. */}
       {headingIsTheCallers
         ? (of > 0 && (
-          <div className="gwui-fs-13 gwui-ink-sub gwui-mb-8">
-            {`${count} of ${of} ${data.counting === 'only-yours' ? 'you have spoken to' : 'spoken to'}`}
+          <div className="gwui-mb-8">
+            <Note>{`${count} of ${of} ${data.counting === 'only-yours' ? 'you have spoken to' : 'spoken to'}`}</Note>
           </div>
         ))
         : (
@@ -200,12 +201,12 @@ export function WhatSuccessLooksLike({
 
       {data.definitions.length > 0 && (
         <div className="gwui-rule-top gwui-mt-13 gwui-pt-11">
-          <div className="gwui-fs-13 gwui-ink-muted gwui-mb-7">
+          <div className="gwui-mb-7">
             {/* No verdict on whether these agree with the statement above. The report's own engine
                 decides what agrees and what diverges, reading the whole account; a second answer
                 worked out from word overlap would be the worse of two, printed next to the better
                 one. Both are on the page. That was the entire problem. */}
-            And what each person says it is
+            <Note tone="muted">And what each person says it is</Note>
           </div>
           <div className="gwui-gap-6" style={{ display: 'flex', flexDirection: 'column' }}>
             {data.definitions.map((d, i) => {
