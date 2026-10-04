@@ -1,3 +1,4 @@
+import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
 import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
@@ -1624,7 +1625,7 @@ export class GroundsService {
             if (!mayReadTheReport || (!latestFinding && !latestSummary)) return { latestFinding: null, latestSummary: null };
             const me = ((allParticipants ?? []) as any[]).find(isMe);
             const named = this.reportTextAsItWasShared({ ...(rest as any), participants: allParticipants, initiatorId: (rest as any).initiatorId ?? g.initiatorId ?? null }, { latestFinding, latestSummary }, fullReport?.sharedAs, me?.id ?? null, runsIt);
-            return { latestFinding: named.latestFinding, latestSummary: named.latestSummary };
+            return { latestFinding: aFindingThatReadsRight(named.latestFinding) as typeof named.latestFinding, latestSummary: named.latestSummary };
           })(),
           hasBoard,
           /* No count of other people either, where they are not named to this reader: not how many
