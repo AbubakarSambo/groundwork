@@ -4081,3 +4081,29 @@ Hafsah's answers of 5 October to `docs/privacy-restrictions-for-hafsah.md`. Each
 **Row 14: the forecast and "Where this is heading", for admins.** The forecast (`forecast`), the headline and where each target stands were already sent to an admin of the organisation (decision 86), and still are. What was still held back was `whereThisIsHeading` on the board (`GET /board/:id`): it went only to the lead and the admin who set the check-in up. It now goes to any admin of the organisation who has access to the check-in, for example Juma, who reads "Bisi Adeyemi decides." and "Bisi Adeyemi wrote this down as still to decide.", the same signals the lead reads, and `recordTheDecision` null (only the lead records it). On an evaluation check-in (a performance plan, promotion, renewal or probation) none of it is sent to anyone, as before, and an admin who was not given access to the plan is still not let in to that board. A colleague who checks in still reads none of it.
 
 **Row 23: a performance plan, promotion, renewal or probation on the Company page, for admins with access to it.** On the Company page (`GET /company`), `priorities[].reading` is the sentence on how a priority is moving. It was built with these check-ins left out for everybody. For a priority one of them feeds, a second plain reading is now stored beside it, built from the counts alone and counting that check-in in, and it rests on that check-in too, so it is served only to a reader who may open the check-in: an admin who was given access to it, and the lead who runs it. For example, with a performance plan "Tobi, the next six weeks" feeding priority 1, the admin with access reads the tag "At risk" and "2 check-ins feed this priority, and 5 were finished in the last 30 days. 1 handoff is stopping work on it.", and everybody else still reads the tag "Moving, but not enough of it" and "1 check-in feeds this priority, and 2 were finished in the last 30 days. 1 handoff is waiting on other work." The check-in's name was already shown on the page ("Fed by Sales team, Q3 and Tobi, the next six weeks") to a reader who may open it, and still is. Nothing about the plan reaches the model, the stored row holds no name and no word from the plan, and a person who only takes part in a check-in still reads none of the picture. The other parts of the picture (what more than one team named, where the strategy is not reaching the work, what is said against what is shown) still leave these check-ins out for everyone.
+
+
+## The anchor scenario: which screens are yours (decision 94, 5 October)
+
+Copied from `docs/anchor-scenario-plan.md` section 5. Everything here stays behind `release.anchorScenario`, off, until Hafsah turns it on. Items blocked by a "Needs Hafsah" question are marked in the plan.
+
+
+Ready to copy into `docs/answers-from-engine.md`. These are the screens that are theirs. The engine workspace builds none of the `client/` parts, and writes what it changes in the served data in the same commit (decision 84).
+
+| # | Screen | Prototype screen to start from | What is new | Piece |
+| --- | --- | --- | --- | --- |
+| 1 | The anchor landing page | none; nearest `F3-public-site/home` and `B1-starting-a-check-in/start` | Hafsah's hook words ("Help your team see the bigger picture."), the button, entering the conversation | 2 |
+| 2 | The conversation and "Fills in as you talk" | `B1/start-chat` | seven items from section 7 instead of the usual list | 3 |
+| 3 | The lead's reveal board, "Help my team understand" | none; nearest `B1/setup` and `B5/board-as-lead` | six parts and "How I'll work with your team" | 9 |
+| 4 | Add people, and "Start my Groundwork" | `B1/setup` ("Who's in it") | Hafsah's wording; a limit of 20 with a plain sentence | 11 |
+| 5 | The invitation page | `A3/join-invite` | the scenario's invitation words; the privacy sentence waits for Needs Hafsah 1 | 11 |
+| 6 | The lead's month board, "Are we moving together?" | `B5/board-as-lead` | the four lenses and the six parts, in sentences | 20 |
+| 7 | "Ideas from your team" on the board, and the yes in the check-in | none; reuse a board section's row | new part | 20, 21 |
+| 8 | "People helping the team move" | `B5/board-as-lead` ("Help nobody mentioned") | the sentences for each person | 23 |
+| 9 | "Groundwork recommends" and "Your team also needed" | `E-suites/suites-lead` for suite names; none for recommendations | new parts, opening a prefilled new check-in | 25, 27 |
+| 10 | The two chat buttons ("Request leave", "Create request") | none; the prototype's suites pages are the destinations | buttons inside the conversation | 27 |
+| 11 | The person's own Done page line | `B3/done` | one line, only after Needs Hafsah 9 | 18 |
+| 12 | The "active" line | `B5/board-as-lead` ("The team today") | one line | 31 |
+| 13 | The end-of-month page and the four continue options | `B6/ending-and-probation-review`, `B6/day-30-and-60`, `F2/upgrade` | eight parts, the reveal counts, four buttons | 33 |
+
+Three notes for them. Everything on the page is served by the engine: no screen computes a lens, a count or a recommendation. Everything is hidden when `anchorScenarioOn` is not served as true, so a screen draws nothing for it unless told. No label, score or ranking is ever drawn beside a person, and every sentence is copied from Hafsah's `docs/anchor-scenario.md` or from the prototype's `.txt` files, never from the prototype's code.
