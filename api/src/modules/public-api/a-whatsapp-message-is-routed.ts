@@ -49,8 +49,18 @@ export function pickedOne(said: string, open: AnOpenCheckIn[]): AnOpenCheckIn | 
   return null;
 }
 
+/**
+ * WHAT A FILE IS CALLED IN THE SENTENCE THAT SAYS IT ARRIVED. A document keeps the name its sender
+ * gave it. A photo has none, so it was stored under a name made from WhatsApp's message number
+ * ("image-wamid.HBgM...png") and the person was told that name. They are told "Your photo" instead.
+ */
+export function whatTheFileIsCalled(arrived: { fileName: string; named?: boolean; what?: string }): string {
+  if (arrived.named) return `"${arrived.fileName}"`;
+  return `Your ${arrived.what ?? 'file'}`;
+}
+
 /** The kind of thing that arrived, from Meta's message shape. */
-export function whatArrived(message: any): { kind: 'text'; text: string } | { kind: 'pick'; id: string } | { kind: 'media'; mediaId: string; mimeType: string; fileName: string; caption: string } | { kind: 'other' } {
+export function whatArrived(message: any): { kind: 'text'; text: string } | { kind: 'pick'; id: string } | { kind: 'media'; mediaId: string; mimeType: string; fileName: string; caption: string; /** The sender gave the file a name. A photo has none, and is named here only so it can be stored. */ named?: boolean; /** What it is, for a sentence: photo, document, recording or video. */ what?: 'photo' | 'document' | 'recording' | 'video' } | { kind: 'other' } {
   if (!message) return { kind: 'other' };
   if (message.type === 'text') return { kind: 'text', text: (message.text?.body ?? '').trim() };
   /* A template's quick-reply button ("Start", "Not now") arrives as its own type, with the words on it. */
@@ -64,7 +74,7 @@ export function whatArrived(message: any): { kind: 'text'; text: string } | { ki
       const m = message[t];
       const mime: string = m.mime_type ?? 'application/octet-stream';
       const ext = mime.split('/')[1]?.split(';')[0] ?? 'bin';
-      return { kind: 'media', mediaId: m.id, mimeType: mime, fileName: m.filename ?? `${t}-${message.id ?? Date.now()}.${ext}`, caption: (m.caption ?? '').trim() };
+      return { kind: 'media', mediaId: m.id, mimeType: mime, fileName: m.filename ?? `${t}-${message.id ?? Date.now()}.${ext}`, caption: (m.caption ?? '').trim(), named: !!m.filename, what: t === 'image' ? 'photo' : t === 'audio' ? 'recording' : t === 'video' ? 'video' : 'document' };
     }
   }
   return { kind: 'other' };

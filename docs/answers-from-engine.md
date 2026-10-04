@@ -3796,3 +3796,9 @@ Sending the same paste again after adding the person now works (it is matched on
 **11. A document's numbers** (`holds.waiting`, `forEverybody`, `forOnePerson`): a number given to a person is no longer also waiting for everyone, and a percentage is kept only as the document writes it.
 
 Prompts for the dump reader (`A_DUMP_PROMPT`), the plan reader (`A_PLAN_PROMPT`) and the document reader (`WHAT_A_DOCUMENT_HOLDS_PROMPT`) are passed straight from the code; the prompt store does not override them, so the file is what runs.
+
+## WhatsApp journeys driven through the signed webhook (4 October, Phase B item 3)
+
+What a person reads on WhatsApp (and, for the first item, in the app) that changed because a journey was driven end to end. Nothing in the board, reports or Today page changed unless it says so.
+
+**1. A photo sent on WhatsApp is called "Your photo".** The person used to read `"image-wamid.HBgM....png" is on your check-in` (a name made from WhatsApp's message number). They now read: "Your photo is on your check-in with your note: The signed order from Green Mart. Only you can see this, and nobody else can open it. Anything it backs up is read against what you said." A document keeps the name its sender gave it (`"renewals-notes.txt" is on your check-in.`). The same sentence about who can see a private document (`whoCanSeeIt` on the upload response, so also in the app) no longer says "It supports your own account": it is "Only you can see this, and nobody else can open it."

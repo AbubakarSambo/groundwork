@@ -22,7 +22,7 @@ describe('what arrived', () => {
   it('reads text, a tapped row, and media with its caption', () => {
     expect(whatArrived({ type: 'text', text: { body: ' hi ' } })).toEqual({ kind: 'text', text: 'hi' });
     expect(whatArrived({ type: 'interactive', interactive: { list_reply: { id: 'c2' } } })).toEqual({ kind: 'pick', id: 'c2' });
-    expect(whatArrived({ id: 'm1', type: 'image', image: { id: 'media9', mime_type: 'image/jpeg', caption: 'the rota' } })).toEqual({ kind: 'media', mediaId: 'media9', mimeType: 'image/jpeg', fileName: 'image-m1.jpeg', caption: 'the rota' });
+    expect(whatArrived({ id: 'm1', type: 'image', image: { id: 'media9', mime_type: 'image/jpeg', caption: 'the rota' } })).toEqual({ kind: 'media', mediaId: 'media9', mimeType: 'image/jpeg', fileName: 'image-m1.jpeg', caption: 'the rota', named: false, what: 'photo' });
     expect(whatArrived({ type: 'document', document: { id: 'd1', mime_type: 'application/pdf', filename: 'plan.pdf' } })).toMatchObject({ kind: 'media', fileName: 'plan.pdf' });
     expect(whatArrived({ type: 'sticker' })).toEqual({ kind: 'other' });
   });
