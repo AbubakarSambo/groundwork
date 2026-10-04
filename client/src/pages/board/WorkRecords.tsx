@@ -106,7 +106,10 @@ const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
   'engineering release': 'Every task, and what shows it',
   'support desk': 'Every ticket, and what shows it',
   'distribution operations': 'Every incident, and what shows it',
-  'trader training programme': 'Every trader group, and what shows it',
+  /* Programme board review 1, item 3: programme.txt's own heading for this table is "Every
+     trader, and what shows it" - not "Every trader group", which named the record's own item
+     kind (`group`) rather than what the prototype actually says a lead reads here. */
+  'trader training programme': 'Every trader, and what shows it',
   'asset loans': 'Every loan, and what shows it',
   'MarketView Q4': 'Every subscription, and what shows it',
   'a government programme': 'Every county, and what shows it',

@@ -1246,6 +1246,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   }>> = {
     'support desk': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true, themesAndAreaAfterTheTeam: true },
     'distribution operations': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true, themesAndAreaAfterTheTeam: true },
+    /*
+     * PROGRAMME BOARD REVIEW 1, FIX 1 (programme.txt): THE SAME TARGETS-AT-TOP, EARLY-WHO-
+     * CHECKED-IN, FOLDED-OPEN-ISSUES SHAPE AS SUPPORT DESK AND DISTRIBUTION OPERATIONS.
+     * `themesAndAreaAfterTheTeam` is also set so "By county" (ByAreaSection, given its own
+     * heading just below) draws right after "The team today", as programme.txt has it - but
+     * there is no separate "Themes" work-record section for this kind to pull forward beside it
+     * (RECORDS_FOR_EACH_KIND['trader training programme'] has only one section, "Deal grid",
+     * whose own stage track already draws inside it - see WorkRecords.tsx), so `themesSection`
+     * resolves to nothing here and only "By county" actually moves.
+     */
+    'trader training programme': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true, themesAndAreaAfterTheTeam: true },
   }
   const layoutFor = (k: string | null) => (k ? kindLayout[k] : undefined)
   const themesAndAreaAfterTheTeam = Boolean(layoutFor(kindOfWorkKey)?.themesAndAreaAfterTheTeam)

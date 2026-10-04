@@ -403,6 +403,9 @@ export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn
 const BY_AREA_HEADING: Partial<Record<string, string>> = {
   'support desk': 'By queue',
   'distribution operations': 'By site',
+  /* Programme board review 1, item 2: programme.txt's own heading for this section is "By
+     county" - the trader groups are organised by county, not a generic "By area". */
+  'trader training programme': 'By county',
 }
 
 /**
