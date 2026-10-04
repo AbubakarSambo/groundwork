@@ -4315,3 +4315,29 @@ It answers the draft the set-up screen opens with, and creates nothing and invit
 **Done in the client, and checked here by counting, not by the live test.** I could not run `e2e/the-prototype-count-of-buttons.spec.ts` (it needs the running app), so please run it. I counted the prototype's Context screen for the lead with the test's own rule by opening it: it has 16 buttons ("Your check-in", "Upload a plan", "Send", "Confirm", "Edit" and "Not now" twice, "Rewrite", "Change", "Decide" twice, "Change who sees them", "Notes on 5 others", and one unnamed one). The product's Context tab for the lead had these that the prototype does not: "Paste a plan instead", "Close", "Say what it assumes", "Something agreed on a call", and a row of five kinds of line to choose from (The strategy, How we work, Still to decide, Not settled, Notes).
 
 Following Hafsah's rule of 30 September (something that sends or changes something stays a button; something that only opens a form, hides one or hands a sentence to the chat is a quiet text link), those five are now quiet text links, `gwui-plain-link`, which the test does not count. The five kinds of line now sit behind one link, "Add a line". Every action is still on the page. Kept as buttons because they send a file or change something: "Upload a plan", "Send", the paperclip, "Delete", "Attach it", "Attach something", "Confirm", "Edit", "Not now", "Rewrite", "Change this". Files: `ThePlanPage.tsx`, `ContextChat.tsx`, `TargetsBand.tsx`, `ContextPage.tsx`. The new spec `the-lead-context-tab-button-count.spec.tsx` renders the lead's tab and keeps it at 14 or fewer, two under the prototype's 16, because the live page adds "Attach it" and "Attach something" for a lead who has promised something. Before the change the same render counted 18.
+
+## Request 142: the MarketView Q4 check-in, as a seed you can load
+
+**Done.** It is a small seed with no model call, exported read only from the check-in `6e84ca43-31d4-4e33-bf38-91defee0543a`, "MarketView, Q4". It holds the organisation, the three people with their memberships, the check-in with its kind of work (MarketView Q4), participants, check-ins, conversation turns, the report and its round, subjects, objectives, the system figures (Paystack and MarketView) and the board's records. Passwords, tokens, invite tokens and credential secrets are left empty, so nobody signs in with a password.
+
+**Who leads and who checks in.** Sign-in is by emailed link, as the handover says.
+
+| Role | Name | Sign-in email |
+| --- | --- | --- |
+| Leads | Wairimu Kamau | `wairimu.mvq4@example.test` |
+| Checks in | Otieno Mwangi | `otieno.mvq4@example.test` |
+| Checks in | Naliaka Wekesa | `naliaka.mvq4@example.test` |
+
+**The one command.** From `api/`, with the screens workspace's own database (the migrations must already be applied):
+
+`npx ts-node -T journey/seed-a-marketview-q4-check-in.ts postgresql://localhost:5432/groundwork_dev`
+
+Add your own user name in front of `localhost` if your database needs one. With no argument it reads this computer's own `DATABASE_URL`. It prints how many rows it loaded and the check-in's id. Running it twice changes nothing the second time. The files are `api/journey/seed-a-marketview-q4-check-in.ts` and the JSON beside it; `export-a-marketview-q4-check-in.ts` made the JSON.
+
+**What it refuses.** Any connection string whose host is not exactly `localhost` or `127.0.0.1`. It then says so and reads and writes nothing.
+
+**Checked here.** It loaded cleanly into a new empty database, `gw_seed_empty`, with the migrations applied: 153 rows, one check-in, three people, 51 conversation turns, one report, five system figures. A second load added 0 rows. The database is left in place. I did not make the `gw_seed_test` copy.
+
+**One gap.** The three people have no roster entries (`people` rows) on the source database, so the seed carries none. The memberships and the people's accounts are there.
+
+Hafsah's answer, 5 October: only a database on this computer.
