@@ -155,7 +155,7 @@ export class APlanIsManyProposalsService {
       proposals,
       says: proposals.length
         ? `That's ${proposals.length === 1 ? '1 thing' : `${proposals.length} things`} to confirm. Nothing goes into Context until you do.`
-        : 'Groundwork found no goals, roles, commitments or rules in that plan that it could quote back to you.',
+        : 'Groundwork found no goals, roles, commitments, rules, questions, decisions or dates in that plan that it could quote back to you.',
     };
   }
 
@@ -257,6 +257,40 @@ export class APlanIsManyProposalsService {
           },
         });
         return { table: 'GroundCommitment', id: made.id };
+      }
+      case 'question': {
+        /* Kept with its exact sentence and NOT confirmed: it is only ever asked once the lead says yes to that sentence (decision of 28 September). */
+        const made = await this.prisma.groundContextItem.create({
+          select: { id: true },
+          data: {
+            groundId,
+            kind: 'QUESTION_FOR_PERSON' as any,
+            text: f.what.slice(0, 400),
+            exactQuestion: f.what.slice(0, 400),
+            saidAs: held.fromThePlan.slice(0, 600),
+            audience: 'LEAD_ONLY' as any,
+            aboutParticipantId: f.participantId ?? null,
+            source: 'PASTE',
+            authorUserId: userId,
+          },
+        });
+        return { table: 'GroundContextItem', id: made.id };
+      }
+      case 'decision':
+      case 'date': {
+        const made = await this.prisma.groundContextItem.create({
+          select: { id: true },
+          data: {
+            groundId,
+            kind: (held.kind === 'decision' ? 'DECISION' : 'NOTE') as any,
+            text: held.says.slice(0, 400),
+            saidAs: held.fromThePlan.slice(0, 600),
+            audience: 'EVERYONE' as any,
+            source: 'PASTE',
+            authorUserId: userId,
+          },
+        });
+        return { table: 'GroundContextItem', id: made.id };
       }
       case 'rule':
       default: {
