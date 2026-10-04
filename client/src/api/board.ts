@@ -525,6 +525,45 @@ export type BoardPresent = {
   }
 
   /**
+   * REQUEST 133: AN ASSET LOANS COHORT'S OWN "WHERE THE COHORT STANDS" (loans.txt). One group per
+   * row the engine counts the cohort into (repaying, behind, blocked, not heard from), each with
+   * its own sentence and, for whoever runs the check-in, the names in it. A colleague or read-only
+   * admin gets `count` and `says` with no `who` at all (`whyNoNames` explains it once, for the
+   * whole section) - never names narrowed down after the fact on this side.
+   */
+  whereTheCohortStands?: {
+    heading: string
+    says: string
+    groups: ({
+      group: string
+      count: number
+      says: string
+      who: string[] | null
+    } | {
+      group: string
+      state: 'not-known'
+      why: string
+    })[]
+    /** Only when `who` is withheld from every group: who may read it instead. */
+    whyNoNames?: string
+  }
+
+  /**
+   * REQUEST 133: "SUPPORT GIVEN, AND WHETHER IT HELPED" (loans.txt). Today the record never says
+   * what support was given or whether it helped, so this is always `'not-known'`, with `why`; a
+   * later engine that does keep that record can send `'filled'`, with `says` and/or `rows` of its
+   * own sentences, drawn exactly as sent.
+   */
+  supportGiven?: {
+    heading: string
+    state: 'filled' | 'not-known'
+    says?: string
+    rows?: { id: string; says: string }[]
+    /** Only on `'not-known'`: why nothing can be said yet. */
+    why?: string
+  }
+
+  /**
    * REQUEST 108 (a): THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (board-as-lead.txt: "Will
    * we reach 25 sales by 30 September?"). Built only from the check-in's own team aims. Absent
    * where nothing qualifies - nothing is made up. Draw `question` above everything else, `answer`
