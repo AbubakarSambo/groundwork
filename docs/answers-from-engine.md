@@ -4150,3 +4150,19 @@ Nothing new is served and no field changed. A fault found while making the Marke
 ## 4 October: the anchor scenario's switch (piece 0)
 
 The board now carries `anchorScenarioOn`, a true or false, sent only to whoever runs the check-in (the lead and an admin who set it up), like `kindsOffered`. It is false unless the setting `release.anchorScenario` says `{"on": true}`, and a person in the check-in is not sent it. Nothing else on any board changes with it on or off; a test compares every reader's board both ways. Please read it from the board; the landing and the anchor sections can hide on it. Files: `api/src/modules/admin/what-is-hidden-at-release.ts` (`theAnchorScenarioIsOn`), `api/src/modules/board/board.service.ts`, `docs/deploy.md`.
+
+## 4 October: the anchor lead's conversation (pieces 5, 6 and 7)
+
+Nothing new is served to a screen and no field changed. With the setting `release.anchorScenario` on and the entry conversation started with the situation `HELP_TEAM_UNDERSTAND`, the lead's chat now follows the anchor scenario's words: it finds out by asking how the organisation keeps going (never assuming revenue means sales), challenges the lead once and kindly, and asks the hope question. The chat answer also carries `promptVersionId`, the stored version of those words that ran, for the anchor conversation only. With the setting off, or for any other situation, the prompt is exactly what it was (a test checks every situation).
+
+The words are the stored prompt `anchor_lead_conversation`. Three real conversations were run on a copy of the local database, with the setting on, on port 3010. The leads ran a sales team, a literacy programme funded by grants, and a ministry's programme office. In all three Groundwork asked how the money comes in before saying anything that depended on it, asked one question a turn, and challenged the lead once.
+
+One turn from each, as the lead read it:
+
+- A sales team, after the lead said it was a monthly fee for companies won. "Customers pay a monthly subscription once won. And your team does the prospecting, calls, and demos. What does your group do that keeps that monthly subscription money coming in?"
+- An NGO funded by grants, after the lead said the donors read the test scores. "They think it's paperwork, but it's the donors who read those scores and decide on renewal from them. Have you actually told them this?"
+- A government programme, after the lead said the sections would arrive in the right shape. "Sections arriving in the right shape and someone flagging problems proactively are what you would notice. Imagine a month from now and this is meaningfully better. What would you notice people doing without you having to ask?"
+
+What is not good enough yet, honestly: the model sometimes asks the hope question again after the lead has already answered it, and the general closing question from the engine's base rules ("what will you do about this, and by when?") still slipped in once in an earlier run; the short reminder read last now says not to, and it has not come back in the last run. The three transcripts are in the session's scratchpad (`anchor-transcript-sales.txt`, `anchor-transcript-ngo.txt`, `anchor-transcript-gov.txt`).
+
+No scenario in `api/journey/all-24` uses the entry conversation (all 24 run signed-in check-ins), so the 24-scenario run and the scorer were not repeated: nothing they read changed.

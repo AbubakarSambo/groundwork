@@ -409,9 +409,9 @@ The order follows decision 94's list. Each piece is small enough for one builder
 | 2 | The landing page, with Hafsah's words, entering the conversation | S | `client/src/App.tsx`, `client/src/pages/enter/`, `client/src/pages/enter/the-way-in.ts` | medium | 3 (the words "for a month") |
 | 3 | "Fills in as you talk" holds the seven items of section 7 | S | `client/src/pages/enter/FillsInAsYouTalk.tsx` | small | no |
 | 4 | The anchor situation, its first question, its probes and the seven extracted fields | E | `modules/conversation/the-scenario-table.ts`, `prompt-library.ts`, `modules/entry/entry.service.ts`, `prisma/schema.prisma` (the new key), `modules/prompts/`, `docs/THE-SCENARIO-TABLE.md` | large | 12 |
-| 5 | Discovering the economic engine, never assuming revenue means sales | E | `modules/conversation/` (new file), `modules/entry/entry.service.ts` | medium | no |
-| 6 | Challenging the lead, and the honest "missing context" sentence | E | `modules/conversation/` (new file) | medium | no |
-| 7 | The hope question and the list of behaviours to watch for | E | `modules/conversation/`, `modules/entry/entry.service.ts` | small | no |
+| 5 (done, 4 October) | Discovering the economic engine, never assuming revenue means sales | E | `modules/conversation/` (new file), `modules/entry/entry.service.ts` | medium | no |
+| 6 (done, 4 October) | Challenging the lead, and the honest "missing context" sentence | E | `modules/conversation/` (new file) | medium | no |
+| 7 (done, 4 October) | The hope question and the list of behaviours to watch for | E | `modules/conversation/`, `modules/entry/entry.service.ts` | small | no |
 | 8 | The lead's reveal, served: the six parts and the eight "How I'll work" lines | E | `modules/board/board-families.ts`, `board.service.ts` | medium | 8, 14 |
 | 9 | The reveal page | S | `client/src/pages/enter/TheSetup.tsx`, `client/src/pages/board/` | medium | no |
 | 10 | Up to 20 people, and the invitation's wording (email and WhatsApp) | E | `modules/entry/entry.service.ts`, `how-many-people-one-check-in-holds.ts`, `modules/email/email.service.ts`, `docs/whatsapp-templates.md` | medium | 1, 3, 8, 15 |
