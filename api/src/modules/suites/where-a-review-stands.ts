@@ -15,16 +15,16 @@ import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
  * renewal (is-this-an-evaluation-check-in.ts, the one list). Two decisions about one person are never
  * made at once, and the review would be written before the other one is known.
  *
- * Who reads the check-in's name. Only somebody who takes part in that check-in reads its name ("After
- * “Kwame, first 90 days” is decided."), because a name like "Kwame, performance plan" says what it is.
- * Anybody else who may read the board (an admin, the lead of the team) reads that a check-in about the
- * person comes first, and nothing more.
+ * Who reads the check-in's title. Somebody who takes part in that check-in reads its title ("After
+ * “Kwame, first 90 days” is decided."). Anybody else who may read the board (an admin, the lead of the
+ * team) reads the kind of check-in in its own words ("After Kwame’s 90 days are decided."), by decision
+ * 93, row 20; they used to read "After a check-in about Kwame is decided." and nothing more.
  */
 
 export type Stands = 'ready' | 'started' | 'decided' | 'not-yet';
 
 /** An open check-in that decides something about this person, as far as the board needs it. */
-export interface WaitingFor { groundId: string; label: string; userIds: string[] }
+export interface WaitingFor { groundId: string; label: string; userIds: string[]; scenario?: string | null }
 
 const CLOSED = ['RESOLVED', 'STALLED', 'CLOSED'];
 const MONTH = 30.44 * 86_400_000;
@@ -39,13 +39,13 @@ export async function theOpenDecisionsAbout(prisma: PrismaService, organizationI
       organizationId, scenario: { in: EVALUATION_SCENARIOS }, status: { notIn: CLOSED },
       participants: { some: { userId: { in: ids } } },
     },
-    select: { id: true, label: true, participants: { select: { id: true, userId: true, partyType: true, managingOnly: true, createdAt: true } } },
+    select: { id: true, label: true, scenario: true, participants: { select: { id: true, userId: true, partyType: true, managingOnly: true, createdAt: true } } },
   }).catch(() => []);
   for (const g of grounds ?? []) {
     const subject = theSubjectOfAnEvaluationCheckIn(g.participants ?? []);
     const who = (g.participants ?? []).find((p: any) => p.id === subject)?.userId;
     if (!who || out.has(who)) continue;
-    out.set(who, { groundId: g.id, label: String(g.label ?? '').trim(), userIds: (g.participants ?? []).map((p: any) => p.userId).filter(Boolean) });
+    out.set(who, { groundId: g.id, label: String(g.label ?? '').trim(), scenario: g.scenario ?? null, userIds: (g.participants ?? []).map((p: any) => p.userId).filter(Boolean) });
   }
   return out;
 }
@@ -74,6 +74,23 @@ export function monthsToDrawOn(first: Date | null | undefined, today: Date): num
   return Math.max(0, Math.floor((today.getTime() - first.getTime()) / MONTH));
 }
 
+/**
+ * "AFTER KWAME’S 90 DAYS ARE DECIDED." (decision 93, row 20). The prototype says "After his 90 days are decided."; the product
+ * does not guess a person's pronoun, so it says the name. The check-in is named by its kind's own words, which is what the
+ * prototype does, and what Hafsah chose over "After a check-in about Kwame is decided." A person who takes part in that check-in
+ * reads its own title instead (above).
+ */
+export function afterTheKindOfCheckInIsDecided(scenario: string | null | undefined, name: string): string {
+  const whose = `${name}’s`;
+  switch (scenario) {
+    case 'NEW_HIRE': return `After ${whose} 90 days are decided.`;
+    case 'PIP': return `After ${whose} performance plan is decided.`;
+    case 'CONTRACT_RENEWAL': return `After ${whose} contract renewal is decided.`;
+    case 'RECOGNITION': return `After the recognition round for ${name} is decided.`;
+    default: return `After the check-in about ${name} is decided.`;
+  }
+}
+
 /** The sentence under "Where it stands", for this reader. */
 export function whereItStandsSaid(input: {
   stands: Stands;
@@ -89,7 +106,7 @@ export function whereItStandsSaid(input: {
     const w = input.waitingFor;
     return w.label && w.userIds.includes(input.readerUserId)
       ? `After “${w.label}” is decided.`
-      : `After a check-in about ${name} is decided.`;
+      : afterTheKindOfCheckInIsDecided(w.scenario, name);
   }
   if (input.stands === 'decided') {
     const on = input.decidedAt ? whenItWas(input.decidedAt, 'full', 'UTC') : null;
