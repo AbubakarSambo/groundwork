@@ -29,7 +29,7 @@ export const ANCHOR_ENTRY_SCENARIO = 'HELP_TEAM_UNDERSTAND';
  */
 export const THE_ECONOMIC_ENGINE_GUIDANCE = `# How this organisation keeps going, found out by asking
 
-You must never assume that revenue means sales. Not every organisation earns its money by selling, and many of the people you will talk to do not use the word "revenue" at all. Before you say anything that depends on how the money comes in, you need to have been told, in the lead's own words.
+You must never assume that revenue means sales. Not every organisation earns its money by selling, and many of the people you will talk to do not use the word "revenue" at all. You need to have been told, in the lead's own words, how the money comes in, before you say anything that depends on it.
 
 Never ask "what is your revenue target?". Never use the words sales, customers, pipeline or revenue until the lead has used them first. Use the lead's own words for the people who pay and for what they pay for.
 

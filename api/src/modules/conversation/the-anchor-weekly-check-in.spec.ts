@@ -130,7 +130,7 @@ describe('anchor piece 15: the weekly check-in, as the model reads it', () => {
 
   it('says nothing about a wider aim when none has been told to this person', () => {
     const block = whatTheyToldYouBefore({ lastSession: null, theySaidTheyWould: [], whatTheGroupIsTryingToChange: [] }, new Date());
-    expect(block).toContain('do not connect their work to a wider aim');
+    expect(block).toContain('Do not connect their work to a wider aim');
   });
 
   it('comes before the returning-user note that asks for a new angle each week, in the guidance and in the words read last', () => {
