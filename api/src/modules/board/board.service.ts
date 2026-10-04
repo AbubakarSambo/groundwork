@@ -39,7 +39,7 @@ import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-in
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-served';
 import { theBoardKindsOffered } from '../admin/what-is-hidden-at-release';
-import { oneOfTheKinds, plainFields, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
+import { oneOfTheKinds, plainFields, theSameName, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
 
 /** What the lead sends to add or change a record of the kind of work. */
 export interface WorkItemInput {
@@ -124,7 +124,7 @@ import {
 } from './what-the-whole-place-is-waiting-on';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, readsHowTheLeadingIsLanding } from '../patterns/who-reads-a-pattern';
-import { overTimeAsServed, meetingsOnRecordFor } from '../reports/what-the-record-shows-over-time';
+import { overTimeAsServed, meetingsOnRecordFor, inOurVoice, looksLikeATimeOrADate } from '../reports/what-the-record-shows-over-time';
 import { everyStoredSentenceReadsRight } from '../reports/a-stored-sentence-reads-right';
 import { aBoardWithNoEmptyLine } from './a-board-has-no-empty-line';
 import { patternQuestionsToSettleFirst } from './pattern-questions-to-settle-first';
@@ -2284,6 +2284,42 @@ export class BoardService {
               ? { who: 'You', words, says: 'Your read, in your own words.' }
               : { who: r.owner, words, says: `${r.owner}'s read, in their own words.` })
             : null;
+        }
+      }
+      /*
+       * THE FOUNDER'S WORK PLAN HOLDS WHAT THE PERSON PROMISED IN THEIR CHECK-IN TOO (request 136 item 2). Its records were only
+       * the rows added on the board, so Wanjiru's two commitments from session 1 were not in the table. Each commitment on
+       * record, said by someone this reader may read, is a row, unless a row of the same name is there already. Nothing is made
+       * up: the name is the commitment's own words without "I will", and the time is the time they gave.
+       */
+      if (kind === "founder's own check-in") {
+        const taken = new Set(rows.map((r) => theSameName(String(r.name ?? ''))));
+        const promised = ((await ((this.prisma as any).groundCommitment?.findMany?.({ where: { groundId }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => [])) as any[]);
+        for (const c of promised) {
+          const mayRead = !!c.participantId && (c.participantId === me?.id || runsIt) && !hiddenFromThisReader(c.participantId);
+          const clause = inOurVoice(String(c.text ?? ''), c.participantId === me?.id ? 'you' : 'them');
+          if (!mayRead || !clause || taken.has(theSameName(clause))) continue;
+          taken.add(theSameName(clause));
+          const state = String(c.status ?? '').toUpperCase();
+          rows.push({
+            id: `commitment-${c.id}`,
+            kind: 'commitment',
+            name: clause,
+            stage: null,
+            owner: c.participantId === me?.id ? 'You' : (nameOf(c.participantId) ?? aColleague(c.participantId)),
+            ownerParticipantId: c.participantId,
+            due: null,
+            lastSaidOn: c.createdAt ? new Date(c.createdAt).toISOString().slice(0, 10) : null,
+            fields: {
+              ...(c.whenSaid && looksLikeATimeOrADate(String(c.whenSaid)) ? { 'Time given': String(c.whenSaid).trim().slice(0, 120) } : {}),
+              Status: state === 'DONE' ? 'Done' : state === 'NOT_DONE' ? 'Not done' : state === 'DROPPED' ? 'Dropped' : 'Open',
+            },
+            from: 'said',
+            ...(c.saidWordForWord === true ? { said: cleanText(String(c.text ?? '')) } : {}),
+            saidBy: c.participantId === me?.id ? 'You' : (nameOf(c.participantId) ?? null),
+            saidByParticipantId: c.participantId,
+            mark: 'said',
+          } as AServedRecord);
         }
       }
       out.workRecords = theRecordSections(kind, (ground as any).workStages, rows);

@@ -3998,3 +3998,7 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### "Nobody answering this check-in" on a check-in of one person, and an aim without a number as the standard (136 item 6; 132 g widened)
 
 **What changed (served, `againstSuccess.saying`, lead).** In a check-in where the lead is the only person, the line reads: You have not said what success looks like yet. It appears here as soon as you do. Until then, the report can say what you have said, but not whether things are going well. It no longer says "nobody answering this check-in has said it either". Also, any team aim the lead set (with or without a number) now counts as what success looks like, so Wanjiru's "Get to 20 paying customers by December." is read as the standard (earlier I read only aims with a number).
+
+### The founder's Work plan holds the commitments from the check-in (136 item 2)
+
+**What changed (served, `workRecords[]` section "Work plan", on the founder's own check-in only).** The table holds the commitments on record as well as the rows added on the board. Each is a row with `kind: "commitment"`, `name` the commitment's own words without "I will" (for example "send the data room"), `owner` ("You" to the founder), `fields["Time given"]` where they gave a time, `fields.Status` (Open, Done, Not done or Dropped), `from: "said"` and `mark: "said"`. A commitment that has the same name as a row already there is not added twice. A lead reads those of the people they may read; a participant reads their own.
