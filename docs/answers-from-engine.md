@@ -4204,3 +4204,19 @@ No scenario in `api/journey/all-24` uses the entry conversation (all 24 run sign
 **What is not good enough yet, honestly.** The model does not always follow the words read last. In some turns it still asks the engine's own "what will you do, and by when" question first, and in two of the six weekly turns it did not make the offer when the person had named a step of their own. It sometimes grades an event ("That is progress", "is a good sign"); the guidance forbids it, and the carrot principle (Needs Hafsah 5 and 6) is still open. The engine's other guards also sometimes swap a model question for a stock one when a question was asked in an earlier session. An offer that quotes the person's words is now exempt from the guard that cuts a reply for "saying it back", and the product removes a second telling of "written down" from the model's reply.
 
 **For the screens workspace.** Nothing to draw. No served field changed except that a check-in's opening and message replies may carry `promptVersionId` when the anchor's weekly words ran.
+
+## 5 October: anchor piece 24, recommended check-ins (behind the anchor switch)
+
+**Nothing changes with the switch off.** Nothing is looked for, the two routes below answer with an empty list, and the public API's list of recommendations is unchanged for every row it listed before (the new kinds are left out of it, and out of its accept and decline).
+
+**What it does.** When a person completes a check-in started from the anchor link, Groundwork looks once at that one check-in's own record (never another check-in the same people are in) and writes an offer for the lead where the record shows it. Three kinds, stored as `Recommendation` rows with the kinds `anchor_pair_check_in`, `anchor_project_check_in` and `anchor_aim_check_in`, kept under the subject `check-in:<id>`. An offer is made once; a "not now" is never asked again.
+
+**What the lead reads** (only the lead; anyone else is refused):
+- Two people with at least two open handoffs between them: "You and Kennedy seem to have different expectations about how work is handed over between you. Two handoffs between you are still waiting." Then: "Would a separate check-in help you align on this?" (Between two colleagues it names both, and says "between them".)
+- Four or more people in at least three open handoffs: "Five people are waiting on each other, and several handoffs keep appearing." Then: "Set up a project check-in?"
+- An aim nobody owns while at least three people each carry something open: "Nobody has been named as the owner of "Win the Nairobi tender", and three people are each carrying something open. Their responsibilities may not be completely clear." Then: "Set up a check-in for this aim?"
+- The two answers are "Yes, set it up" and "Not now".
+
+**Words that differ from the scenario, on purpose.** The scenario says "Ground" and "OKR Ground"; the product says check-in. The scenario's "depends on three people whose responsibilities aren't completely clear" claims a link the record does not hold (a commitment is not tied to an aim), so the sentence says only what is known.
+
+**For the screens workspace (piece 25).** `GET /grounds/:groundId/recommended-check-ins` returns `{ offers: [{ id, kind, says, question, yes, no }] }`. `POST /grounds/:groundId/recommended-check-ins/:offerId/yes` returns `{ state: "ACCEPTED", setUp: { kind, about, aim, people: [{ name, email }] } }`: what the prefilled new check-in starts from, without the lead herself. It creates no check-in and invites nobody; the lead finishes that on the set-up screen. `POST .../:offerId/not-now` returns `{ state: "DECLINED" }`. Code: `detectors/the-anchor-recommendations.ts`, `grounds/recommended-check-ins.service.ts`.
