@@ -70,7 +70,8 @@ describe('a document is read, not agreed', () => {
     expect(CONVO).toContain('const tookTheNumbers = await this.whatTheDocumentWaitsFor(checkIn as any, message)');
     /* Changed 4 October 2026: a long paste from the lead is told where it can be put, in the same place
        (a-long-paste-from-the-lead-has-a-better-door). The document's numbers are still first. */
-    expect(CONVO).toContain('[contextNotSaid, tookTheNumbers, whereToTakeIt, withRoomLeft].filter(Boolean)');
+    /* Changed 5 October 2026: the anchor's offer answer (request 149) is said after them; the document's numbers are still first. */
+    expect(CONVO).toContain('[contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay, withRoomLeft].filter(Boolean)');
     /*
      * The screen streams. Wiring only the non-streaming path meant a lead said yes in the browser,
      * read "Great. What moved this week?", and nothing was written - found by doing it, not by
@@ -89,7 +90,8 @@ describe('a document is read, not agreed', () => {
     /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
     const plain = CONVO.slice(CONVO.indexOf('async sendMessage(checkInId'), CONVO.indexOf('async *sendMessageStream('));
     /* Changed 4 October 2026: see above. */
-    expect(plain).toContain("const ourOwnWords = [contextNotSaid, tookTheNumbers, whereToTakeIt].filter(Boolean).join('\\n\\n')");
+    /* Changed 5 October 2026: see above. */
+    expect(plain).toContain("const ourOwnWords = [contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay].filter(Boolean).join('\\n\\n')");
     expect(plain).toContain('data: { content: `${ourOwnWords}');
     expect(theStreamedRouteRunsThePlainRoute(CONVO)).toBe(true);
   });
