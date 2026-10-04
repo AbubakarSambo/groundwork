@@ -18,6 +18,7 @@ import { GoogleCallbackPage } from '@/pages/auth/GoogleCallbackPage'
 import { ChoosePasswordPage } from '@/pages/auth/ChoosePasswordPage'
 import { GoogleFailedPage } from '@/pages/auth/GoogleFailedPage'
 import { EntryChatPage } from '@/pages/enter/EntryChatPage'
+import { AnchorLandingPage } from '@/pages/enter/AnchorLandingPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 import SessionReportPage from '@/pages/report/SessionReportPage'
 import RoundReportPage from '@/pages/report/RoundReportPage'
@@ -447,6 +448,13 @@ export default function App() {
               * whole point of this door. They become the admin of their own organisation.
               */}
             <Route path="/start" element={<MayOpenCheckIns><EntryChatPage /></MayOpenCheckIns>} />
+            {/*
+              The anchor scenario's own front door (plan piece 2, docs/anchor-scenario-plan.md
+              section 5, address suggested in section 1). Open to a stranger, like /start: the page
+              itself redirects to /start unless the engine's anchor switch is on, which it has no
+              way to read for a stranger yet (request 144) - so this always redirects today.
+            */}
+            <Route path="/start/team" element={<AnchorLandingPage />} />
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/join" element={<JoinPage />} />
             {/* The QR code's own door: answer first, say who you are at the end. */}

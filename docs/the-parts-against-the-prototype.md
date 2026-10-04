@@ -608,3 +608,16 @@ with a bold label, a flex header row for the title and tag), which this task lea
 
 BoardPage.tsx's one-off count drops from 597 to 596 (one-off-uses-per-file.ts updated to match). No
 wording or behaviour changed.
+
+## Phone check, item 6: `.gwui-work-group-row` (sales deal grid group heading)
+
+The sales deal grid's group heading row ("Possible", "Won", each with its reason - board-as-lead.txt)
+sat flush on the card's left border and ran into its rounded corner at 375px: `Panel pad={false}`
+leaves the grid unpadded, and every row above and below the group heading carries its own 16px
+left/right inset (`SalesDealGridHead`'s `WORK_HEAD_CLASS`, `SalesDealGridRow`), but the group row
+itself had none. New part `.gwui-work-group-row` (gw-ui.css, by `WORK RECORDS TABLE`): `padding: 10px
+16px 6px`, the same 16px each side as the header row, 10px above and 6px below. Used once, on the
+group row in `WorkRecords.tsx` (`dealGroups.map`). Not an inline style - `WorkRecords.tsx` is a
+rebuilt page, where `the-rebuilt-pages-use-only-the-new-parts.spec.ts` fails any inline
+`padding`/`margin`/`color`/`fontSize`/`gap` - and not one of the atomic one-off `gwui-pt-*` etc.
+classes, which `one-off-uses-only-go-down.spec.ts` freezes the per-file count of.

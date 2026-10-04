@@ -154,30 +154,36 @@ describe('fix 2: every history heading is true of what is under it', () => {
 })
 
 describe('fix 4: a not-known work-record entry is left out once a filled section already draws under the same heading', () => {
-  it('leaves "Work plan" (not-known) out of the fold, since the switchboard’s own filled "Work plan" already draws', async () => {
+  /*
+   * PHONE CHECK, ITEM 8: SAID ONCE, NOT TWICE (OR THREE TIMES). These two assertions used to
+   * expect the "Groundwork does not know..." sentence 2 or 3 times over - the very bug the phone
+   * check found on this board (five near-identical blocks, each the same sentence). Now that every
+   * remaining not-known work-record reads the same `why` collapses to the one sentence (BoardPage's
+   * `workRecordsAllNotKnownSameWhy`, widened from project boards to onboarding too), this checks it
+   * reads once, with no stray "Deal grid" or "Every deadline" heading beside it - "Work plan" is
+   * still left out of the fold entirely, since the switchboard's own filled one already draws.
+   */
+  it('leaves "Work plan" (not-known) out of the fold, since the switchboard’s own filled "Work plan" already draws, and says the rest once', async () => {
     me = { id: 'u-amina', firstName: 'Amina', role: 'MEMBER' }
     renderBoard(boardAsLead())
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
     const workPlanHeadings = screen.getAllByText('Work plan')
     expect(workPlanHeadings).toHaveLength(1)
     expect(screen.getByText('Who is doing what, and by when.')).toBeTruthy()
-    // Still exactly two "Groundwork does not know..." sentences, from Deal grid and Timeline (as
-    // "Every deadline") - not three: the not-known "Work plan" is the one left out.
-    expect(screen.getAllByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.')).toHaveLength(2)
+    expect(screen.getAllByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.')).toHaveLength(1)
+    const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
+    expect(within(fold).queryByText('Deal grid')).toBeNull()
+    expect(within(fold).queryByText('Every deadline')).toBeNull()
   })
 
-  it('a not-known "Timeline" still draws, as "Every deadline" - it never collides with the switchboard’s own "Timeline"', async () => {
-    me = { id: 'u-amina', firstName: 'Amina', role: 'MEMBER' }
-    renderBoard(boardAsLead())
-    await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-    expect(screen.getByText('Every deadline')).toBeTruthy()
-  })
-
-  it('without a filled "Work plan", the not-known heading still draws - nothing is hidden that has nowhere else to be read', async () => {
+  it('without a filled "Work plan", the not-known entries still say the one sentence once, with no per-section heading', async () => {
     me = { id: 'u-amina', firstName: 'Amina', role: 'MEMBER' }
     renderBoard(boardAsLead({ workPlan: undefined }))
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
-    expect(screen.getAllByText('Work plan')).toHaveLength(1)
-    expect(screen.getAllByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.')).toHaveLength(3)
+    expect(screen.getAllByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.')).toHaveLength(1)
+    const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
+    expect(within(fold).queryByText('Work plan')).toBeNull()
+    expect(within(fold).queryByText('Deal grid')).toBeNull()
+    expect(within(fold).queryByText('Every deadline')).toBeNull()
   })
 })

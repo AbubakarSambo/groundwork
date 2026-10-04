@@ -25,6 +25,10 @@ import { describe, it, expect } from 'vitest'
 
 /** Routes nothing links to on purpose, each with the thing that opens it. */
 const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
+  /* The anchor scenario's front door (docs/anchor-scenario-plan.md, piece 2). It is opened from the
+     anchor link Hafsah shares outside the app, never from inside it, and it shows only while
+     release.anchorScenario is on; otherwise it sends the visitor to /start. */
+  '/start/team': 'the anchor link, shared outside the app',
   /*
    * THE REPORT REBUILD'S REVIEW PAGE, and it has no door on purpose.
    *

@@ -38,6 +38,7 @@ import { PatternPanel } from '@/components/gw/ui'
 import type { ServedPattern } from '@/api/patterns'
 import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
 import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
+import { recommendedCheckInsApi, type AnOfferTheLeadReads } from '@/api/recommendedCheckIns'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -979,6 +980,54 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     retry: false,
   })
 
+  /**
+   * "GROUNDWORK RECOMMENDS" (anchor piece 25; docs/anchor-scenario-plan.md section 5, row 9;
+   * docs/answers-from-engine.md, "5 October: anchor piece 24, recommended check-ins").
+   *
+   * Groundwork looks at this one check-in's own record and, where the work itself shows it, offers
+   * the lead one more check-in - never a label on a person, only what the record shows and a
+   * question. Drawn only for whoever runs this check-in, only while the anchor switch is on
+   * (`anchorScenarioOn`, read off the raw board answer rather than `b` - these hooks have to sit
+   * above every early return below, the same as `today`'s own query, or the number of hooks this
+   * component runs would differ between the loading render and the loaded one). The route itself
+   * answers an empty list with the switch off or for a check-in not started from the anchor, so
+   * there is nothing to gate here beyond that - `recommendedCheckInsApi.list` is itself refused for
+   * anybody who is not the lead.
+   */
+  const anchorRecommendationsOn = viewerRunsThisCheckIn && !!(data as any)?.anchorScenarioOn
+  const { data: recommended } = useQuery({
+    queryKey: ['recommended-check-ins', id],
+    queryFn: () => recommendedCheckInsApi.list(id!),
+    enabled: !!id && anchorRecommendationsOn,
+    retry: false,
+  })
+  const recommendedOffers: AnOfferTheLeadReads[] = anchorRecommendationsOn ? (recommended?.offers ?? []) : []
+
+  const answerRecommendation = useMutation({
+    mutationFn: (vars: { offerId: string; yes: boolean }): Promise<{ state: 'ACCEPTED' | 'DECLINED'; setUp?: unknown }> =>
+      vars.yes ? recommendedCheckInsApi.yes(id!, vars.offerId) : recommendedCheckInsApi.notNow(id!, vars.offerId),
+    onSuccess: (res, vars) => {
+      qc.invalidateQueries({ queryKey: ['recommended-check-ins', id] })
+      if (vars.yes && res.state === 'ACCEPTED' && (res as any).setUp) {
+        /*
+         * THE SET-UP SCREEN'S OWN STARTING POINT. `/start` already takes a free-text `initial`
+         * that seeds its first message (EntryChatPage.tsx's `urlInitial`) - the only starting
+         * point it accepts today, so this opens it with that. `setUp.about` is the engine's own
+         * sentence for what the new check-in is about.
+         *
+         * STILL MISSING FROM THE ENGINE SIDE OF THIS SCREEN: a way to open `/start` already
+         * knowing WHO to invite. `setUp.people` (their names and emails, read back from this
+         * check-in's own record) has nowhere to land yet - the entry conversation has no route-
+         * state or query param for a person's name and email, only for free text and a scenario
+         * key - so the lead still adds each person herself in the conversation that follows, the
+         * same as starting fresh. Nothing here invents a parameter that screen does not read.
+         */
+        navigate(`/start?initial=${encodeURIComponent((res as any).setUp.about)}`)
+      }
+    },
+    onError: () => toast.error('That did not save. Try again.'),
+  })
+
   /*
    * THE FULL ROSTER, for a restricted `ground.participants` (see `fullParticipants` on
    * `buildSessionRows`). `GET /grounds/:id` sends a participant only their own row; the board's own
@@ -1523,25 +1572,30 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const restOfWorkRecordSectionsToShow = restOfWorkRecordSections.filter((s) =>
     s.state !== 'not-known' || !switchboardHeadingsAlreadyShown.has(sectionHeading((b as any).kindOfWork ?? null, s)))
   /*
-   * PROJECT BOARD REVIEW 1, FIX 3: SAID ONCE, WITH NO HEADING, ON THESE TWO BOARDS ONLY. A
-   * check-in with no kind of work chosen at all (the DRIFT fixture, "The partnerships work has
-   * gone quiet", dac969d3) sends every `workRecords` section back as not-known, with the same
-   * stock sentence - repeated once per section, under the raw switchboard names ("Deal grid",
-   * "Forecast", "Themes", "Work plan") for four of them. Said once instead, with no heading.
+   * PROJECT BOARD REVIEW 1, FIX 3; WIDENED, PHONE CHECK ITEM 8: SAID ONCE, WITH NO HEADING,
+   * WHENEVER EVERY RECORD IS NOT-KNOWN. A check-in with no kind of work chosen at all (the DRIFT
+   * fixture, "The partnerships work has gone quiet", dac969d3) sends every `workRecords` section
+   * back as not-known, with the same stock sentence - repeated once per section, under the raw
+   * switchboard names ("Deal grid", "Forecast", "Themes", "Work plan") for four of them. Said once
+   * instead, with no heading.
    *
-   * SCOPED TO `isProjectBoard`, NOT GUESSED FROM `switchboardHeadingsAlreadyShown`. An onboarding
-   * board (ONBOARDING family, scenario NEW_HIRE) also sends every `workRecords` entry as
-   * not-known with `kindOfWork: null` - and NEW_HIRE's own switchboard row (the-switchboard-g2-
-   * table.ts) does not turn "Timeline" on at all, so `shown.timeline` reads false whether or not
-   * `b.timeline` itself has rows, the same way a test with no filled "Work plan" of its own leaves
-   * `switchboardHeadingsAlreadyShown` empty too - an emptiness this fix used to read as "nothing
-   * else on the board", collapsing the onboarding board's own not-known "Work plan" away with it.
-   * `isProjectBoard` is the one fact that actually distinguishes the two: true only for the two
-   * project scenarios this fix is about, so onboarding is never touched, whatever is filled in.
+   * THIS USED TO BE SCOPED TO `isProjectBoard` ONLY, LEAVING THE ONBOARDING BOARD WITH THE SAME
+   * FIVE-HEADINGS BUG (phone check, item 8: "Deal grid", "Forecast", "Themes", "Every deadline",
+   * "The parties", each reading "Groundwork does not know what kind of work..."). The comment this
+   * replaced worried that collapsing by emptiness would wrongly fold away an onboarding board's own
+   * REAL "Work plan" - but that worry was about a different, now-gone heuristic
+   * (`switchboardHeadingsAlreadyShown` read as "nothing else on the board"). This check reads
+   * `b.workRecords` itself: the moment any one of its own entries is `'filled'` or `'none-yet'`
+   * rather than `'not-known'`, `allWorkRecords.every(...)` is already false and nothing here
+   * collapses - proven by the existing "keeps a work-record section with real rows exactly where it
+   * was" test, which sends a filled "Work plan" among `workRecords` and still finds it outside the
+   * fold. Onboarding's real work plan, shown separately as `WorkPlanSection`, never passes through
+   * `b.workRecords` at all, so this collapsing a genuinely all-not-known `workRecords` list cannot
+   * reach it either way.
    */
   const allWorkRecords = b.workRecords ?? []
   const workRecordsAllNotKnownSameWhy =
-    isProjectBoard &&
+    (isProjectBoard || isOnboarding) &&
     allWorkRecords.length > 1 &&
     allWorkRecords.every((s) => s.state === 'not-known') &&
     new Set(allWorkRecords.map((s) => (s as { why: string }).why)).size === 1
@@ -1736,6 +1790,44 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </>
               )}
               actions={<ActionButtons groundId={id!} action={d.action} />}
+            />
+          ))}
+        </EdgeList>
+      </Section>
+    )
+  }
+
+  const groundworkRecommendsSection = () => {
+    if (!recommendedOffers.length) return null
+    return (
+      <Section heading="Groundwork recommends">
+        <EdgeList label="Groundwork recommends">
+          {recommendedOffers.map((o) => (
+            <EdgeRow
+              key={o.id}
+              kind="decide"
+              title={o.says}
+              detail={o.question}
+              actions={(
+                <>
+                  <UIButton
+                    kind="secondary"
+                    size="small"
+                    disabled={answerRecommendation.isPending}
+                    onClick={() => answerRecommendation.mutate({ offerId: o.id, yes: true })}
+                  >
+                    {o.yes}
+                  </UIButton>
+                  <UIButton
+                    kind="quiet"
+                    size="small"
+                    disabled={answerRecommendation.isPending}
+                    onClick={() => answerRecommendation.mutate({ offerId: o.id, yes: false })}
+                  >
+                    {o.no}
+                  </UIButton>
+                </>
+              )}
             />
           ))}
         </EdgeList>
@@ -2391,6 +2483,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           (`decisionsForWhatNeedsYou`).
         */}
         {kindOfWorkKey === 'a law firm matter' && whatNeedsYouSection()}
+        {kindOfWorkKey === 'a law firm matter' && groundworkRecommendsSection()}
 
         {/*
           REQUEST 132: "WHERE IT STANDS", OUT OF THE FOLD, STRAIGHT AFTER THE AIM (gov.txt). Every
@@ -2432,6 +2525,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {layoutFor(kindOfWorkKey)?.whereItStandsAtTop && (
           <>
             {whatNeedsYouSection()}
+            {groundworkRecommendsSection()}
             {viewerRunsThisCheckIn && (b as any).questionsForTheLead?.length > 0 && (
               <QuestionsForTheLeadSection rows={(b as any).questionsForTheLead} />
             )}
@@ -2554,6 +2648,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           above, straight after "What changed this week").
         */}
         {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && whatNeedsYouSection()}
+        {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && groundworkRecommendsSection()}
 
         {/*
           REQUEST 133: AN ASSET LOANS COHORT'S OWN "WHERE THE COHORT STANDS" (loans.txt), RIGHT
@@ -2915,7 +3010,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 const been = s.state === 'done' || (s.state === 'current' && !groundEnded)
                 const face = sessionPillSentence(s, groundEnded)
                 const skinClass = `gwui-fs-13 gwui-rule gwui-pt-4 gwui-pr-10 gwui-pb-4 gwui-pl-10 ${s.state === 'current' ? 'gwui-ink-green' : 'gwui-ink-sub'}`
-                const skinStyle = { borderRadius: 20, background: s.state === 'current' ? 'var(--gw-green-bg)' : 'white', fontWeight: s.state === 'current' ? 700 : 500 } as const
+                /*
+                  PHONE CHECK, ITEM 9: THE SESSION PILLS WERE ONLY 30px TALL (8px of padding
+                  around one line of 13px text) - under the 40px a finger needs, on the button
+                  variant (a finished session, which opens its report). `inline-flex` plus
+                  `minHeight` grows the tap area without widening the pill's own left/right
+                  padding or changing its rounded shape, border or background.
+                */
+                const skinStyle = { borderRadius: 20, background: s.state === 'current' ? 'var(--gw-green-bg)' : 'white', fontWeight: s.state === 'current' ? 700 : 500, display: 'inline-flex', alignItems: 'center', minHeight: 40, boxSizing: 'border-box' } as const
                 if (!been) return <div key={s.n} className={skinClass} style={skinStyle}>{face}</div>
                 return (
                   <button
@@ -3309,7 +3411,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         <button
                           onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.suggestedCount! })}
                           disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
-                          className="gwui-fs-13 gwui-pt-2 gwui-pr-9 gwui-pb-2 gwui-pl-9 gwui-rule-blue gwui-ink-blue" style={{fontWeight: 700, borderRadius: 11, background: 'var(--gw-blue-bg)', cursor: 'pointer', fontFamily: 'inherit'}}
+                          /*
+                            PHONE CHECK, ITEM 9: "USE N" WAS 55 BY 25 - under the 40px tap area a
+                            finger needs. `inline-flex`/`minHeight` grows the hit area; the pill's
+                            own padding, border, colour and corner radius are unchanged.
+                          */
+                          className="gwui-fs-13 gwui-pt-2 gwui-pr-9 gwui-pb-2 gwui-pl-9 gwui-rule-blue gwui-ink-blue" style={{fontWeight: 700, borderRadius: 11, background: 'var(--gw-blue-bg)', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', minHeight: 40, boxSizing: 'border-box'}}
                         >
                           Use {o.suggestedCount}
                         </button>
@@ -3427,7 +3534,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               <Panel><div className="gwui-fs-15 gwui-ink-sub">{b.whatTheRoomIsAboutNote}</div></Panel>
             )}
             {b.whatTheRoomIsAbout && (
-              <div className={`gwui-gap-14 ${b.whatTheRoomIsAboutNote ? 'gwui-mt-14' : 'gwui-mt-0'}`} style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))'}}>
+              <div className={`gwui-gap-14 ${b.whatTheRoomIsAboutNote ? 'gwui-mt-14' : 'gwui-mt-0'}`} style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(300px,100%),1fr))'}}>
                 {/*
                   THE AIMS COME FIRST AND TAKE THE WIDTH THEY NEED. On a board where nobody set a
                   target, what each person is trying to do is the only thing there is to align on,
@@ -3694,7 +3801,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             heading={b.family === 'UPDATE' ? 'What each person said' : 'Who owns what'}
             note={b.family === 'UPDATE' ? 'Their own answers to the question, in their words.' : 'Read from what people said in their check-ins.'}
           >
-            <div className="gwui-gap-14" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))'}}>
+            <div className="gwui-gap-14" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(320px,100%),1fr))'}}>
               {b.whoOwnsWhat.map((p) => (
                 <Panel key={p.participantId} pad={false}>
                   <div className="gwui-pt-13 gwui-pr-15 gwui-pb-10 gwui-pl-15 gwui-rule-bottom">
@@ -3927,11 +4034,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <div className="gwui-fs-15 gwui-ink-muted gwui-mt-8" style={{lineHeight: 1.45, fontStyle: 'italic'}}>
                       Not enough on record yet to say anything about this person's contribution. {c.basis}
                     </div>
-                  ) : !c.remitDefined ? (
+                  ) : !c.remitDefined && c.note ? (
+                    /*
+                      PHONE CHECK, ITEM 7: AN EMPTY BLUE BOX. "Nobody has said what X's role covers
+                      yet." already says the one true thing when there is no remit - this box is
+                      only for a note that goes further than that sentence. `!c.remitDefined` alone
+                      drew it even when `c.note` was empty, so a reader saw a blank navy-on-blue
+                      panel under the sentence that already told them there was nothing to show.
+                    */
                     <div className="gwui-fs-15 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: 1.45}}>
                       {c.note}
                     </div>
-                  ) : (
+                  ) : !c.remitDefined ? null : (
                     <>
                       {/*
                         HAFSAH'S DECISION, 2 OCTOBER: THE CHECKABILITY RATING STAYS. It rates the
@@ -4498,6 +4612,14 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
       ? `Why am I still waiting on ${firstBlocker.what}?`
       : `Why is ${firstBlocker.from} still waiting on ${firstBlocker.what}?`)
     : 'Who is waiting on whom?'
+  /*
+   * PHONE CHECK, ITEM 4: THE PLACEHOLDER READ CUT OFF MID-EXAMPLE ("Ask about this board, for
+   * example "Why") at 375px. An `<input>`'s placeholder never wraps, however the box itself does,
+   * so the fix is a shorter line at phone width - the plain question itself, not the longer
+   * "for example" framing, which is exactly what the full example still offers above 640px.
+   */
+  const isAPhone = useIsAPhone()
+  const placeholder = isAPhone ? 'Ask about this board' : `Ask about this board, for example “${example}”`
   return (
     <form
       onSubmit={(e) => {
@@ -4513,7 +4635,7 @@ function AskTheBoard({ firstBlocker, myParticipantId }: {
         type="text"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        placeholder={`Ask about this board, for example “${example}”`}
+        placeholder={placeholder}
         aria-label="Ask about this board"
         className="gwui-pt-11 gwui-pr-14 gwui-pb-11 gwui-pl-14 gwui-rule gwui-fs-13-5 gwui-ink-text" style={{flex: 1, borderRadius: 8, background: 'white', fontFamily: 'inherit'}}
       />

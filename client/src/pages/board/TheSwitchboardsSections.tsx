@@ -360,7 +360,7 @@ export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn
    */
   const showObjectivesAsTargets = Boolean(targetsFromObjectivesWhenNoBars) && headline.bars.length === 0 && (objectives ?? []).length > 0
   return (
-    <div className="gwui-gap-16" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', alignItems: 'start' }}>
+    <div className="gwui-gap-16" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', alignItems: 'start' }}>
       {noBoxAtAll ? (
         <SubHeading>{headline.question}</SubHeading>
       ) : (

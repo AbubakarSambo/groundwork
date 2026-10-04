@@ -4,6 +4,63 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## The anchor scenario (5 October, in progress)
+
+- **Hafsah answered Needs Hafsah 1, 3, 4, 8 and 14 as the plan recommends** (request 143):
+  - "one to one", never "privately";
+  - 20 includes the lead;
+  - "for a month" may show;
+  - the end of month gets four continue options in Stripe test mode;
+  - the lead's "carrying" and "seeing" stay hers;
+  - patterns keep the three-period rule.
+- **Built, behind the switch:**
+  - piece 2, the front door, at `/start/team` (AnchorLandingPage.tsx, with the words in the-anchor-hook.ts; 181b637c);
+  - piece 3, "Fills in as you talk" with the seven items (a60c58e7).
+  Both draw nothing until the engine sends their signals; today `/start/team` redirects to `/start`.
+- **Waiting on the engine:**
+  - request 144: a public read of the switch, the anchor entry route, how an anchor draft is marked, and the seven field names;
+  - the served data for pieces 9 (the reveal page), 11 (people and invitation), 20 (the month board), 31 (the "active" line) and 33 (the end of month), from engine pieces 8, 10, 12 and 13, 30 and 32.
+  Build each as soon as its data is served. Hafsah answered Needs Hafsah 9, 10 and 11 (request 145), so pieces 18, 21, 23, 25 and 27 wait only on the engine now.
+- **MarketView Q4** waits on request 142 (a test check-in on this database).
+
+## Phone-width check: done (5 October)
+
+Every board was checked at 375 as the lead and as a participant, like a real user. Ten faults were fixed (68858359..96e444f1) and checked live:
+- "Ask" opens the chat page on a phone, keeping the typed question.
+- The check-in switcher stays on screen.
+- Headings in the fold have their gap.
+- Text boxes are 16px, so iPhone does not zoom.
+- No card sticks out past its section.
+- The deal grid's groups have their inset.
+- No empty box under a role.
+- "Groundwork does not know what kind of work…" is said once.
+- Every control has a 40px tap area.
+- No duplicate React keys.
+
+The client's mirror of the engine's ending labels is in step (78e3e1dc). The wording guard fails again on engine lines (request 141).
+
+**Next: the anchor scenario** (Hafsah, 5 October). Merge `mine/wip/plain-reports` to get `docs/anchor-scenario.md` and `docs/anchor-scenario-plan.md`. Build the screens the engine assigns to the screens workspace, almost word for word in its text and in the prototype's design:
+- the front door;
+- the lead's board;
+- adding up to 20 people;
+- the invitation page;
+- the lead's board during the month;
+- the end-of-month page.
+
+Keep it behind its switch. The plan was not yet on the engine's branch at 0b62fb38.
+
+## Next (5 October, Hafsah)
+
+- **Confirmed by Hafsah:**
+  - the operations heading, "Every incident, and what shows it";
+  - the government board's question block, as gov.txt shows it;
+  - patterns and coaching open on every board;
+  - MarketView Q4 waiting for a real test check-in, which the engine workspace will make.
+- **The one-off style clean-up waits until after release.** No new one-off classes, as before.
+- **Now:** check every board on a phone-width screen (375), as the lead and as a participant, like a real user. Fix anything broken, cramped or cut off. Then match MarketView Q4 once the engine's test check-in arrives.
+- **Merge the engine's work regularly.** The full API test suite runs on the engine workspace's computer, not here.
+- The untracked `scratchpad/` folder inside the project is deleted.
+
 ## Founder's own check-in board: done (4 October)
 
 "Founder’s own check-in, test" (3ca11603, one person), in founder.txt's order, after one review and its fixes (ee40c790..c2dd2f31), checked live (scratchpad `pictures/founder-A/`). A one-person check-in now says "you", not "the team", and no longer asks the founder to add somebody. The engine's part is request 136. The wording guard fails again on an engine file (request 137).

@@ -283,7 +283,7 @@ export function YourWork({
         }
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 20, alignItems: 'start' }}>
         <div>
           {/* THE NUMBER TILES THE SERVED DATA SUPPORTS. my-record.jpg shows a row of three; this
               check-in's own scenario decides how many of them mean anything here. */}

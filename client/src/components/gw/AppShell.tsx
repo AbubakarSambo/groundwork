@@ -14,6 +14,7 @@ import { useEntryStore } from '@/stores/entry'
 import { useFeedbackStore } from '@/stores/feedback'
 import { useHelpStore } from '@/stores/help'
 import { useAskStore } from '@/stores/ask'
+import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { AskGroundwork } from './AskGroundwork'
 import { hasEnded } from '@/lib/a-ground-that-has-ended'
 import { Button } from './kit'
@@ -1143,11 +1144,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
    * the source is correct. Only a mount could tell.
    */
   const location = useLocation()
+  const navigate = useNavigate()
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const askOpen = useAskStore(s => s.open)
   const hideAsk = useAskStore(s => s.hide)
   /* U.10 item 8: a question typed in the board's own Ask bar, handed to the panel once it opens. */
   const pendingAskMessage = useAskStore(s => s.pendingMessage)
+  const isAPhone = useIsAPhone()
+  /**
+   * PHONE CHECK, ITEM 1: "ASK" DID NOTHING ON A PHONE.
+   *
+   * The side drawer (`.gw-ask-drawer`) is hidden outright below 641px (next style block), because
+   * on a phone Ask Groundwork is its own page - #/chat, already built (AskPage.tsx) and already in
+   * the bottom bar. But every button that opens the panel (the header's "Ask", the board's Ask bar,
+   * the Company page's "Ask about...") only ever set `askOpen` true in the store; on a phone that
+   * state had nowhere to render, so the button did nothing and a typed question (`pendingMessage`)
+   * was silently dropped.
+   *
+   * Routing here, once, is cheaper than teaching every caller about phone width: whenever the store
+   * opens on a phone, send the person to the real page instead and clear the drawer's own flag.
+   * `pendingAskMessage` stays in the store - AskPage reads and consumes it itself, the same way the
+   * drawer already does below.
+   */
+  useEffect(() => {
+    if (isAPhone && askOpen) {
+      hideAsk()
+      if (location.pathname !== '/chat') navigate('/chat')
+    }
+  }, [isAPhone, askOpen, hideAsk, navigate, location.pathname])
   /* REVIEW ROUND 3, ITEM 7: SEE AppSidebar's OWN COPY OF THIS - the app's bottom bar does not
      render at all on the conversation, and the room it used to reserve (`--gw-bottom-nav`) is
      given back to the card so nothing leaves a blank strip where the bar used to sit. */

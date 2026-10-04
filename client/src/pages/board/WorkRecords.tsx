@@ -1078,7 +1078,20 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
             {dealGroups?.length
               ? dealGroups.map((g) => (
                 <div key={g.group}>
-                  <div role="row">
+                  {/*
+                    PHONE CHECK, ITEM 6: the group heading and its reason ("Possible", "Won") sat
+                    flush on the card's own left border and ran into its rounded corner - this grid
+                    draws inside `Panel pad={false}` (no padding of its own), and every row inside
+                    it carries its own inset (`SalesDealGridHead`'s `WORK_HEAD_CLASS`,
+                    `SalesDealGridRow`), but the group row between them had none. `.gwui-work-group-row`
+                    (gw-ui.css) gives it the same 16px left/right inset as the header row above it,
+                    so the heading lines up with "Deal" - a named shared part, not an inline style
+                    (`WorkRecords.tsx` is a rebuilt page, so an inline padding style fails
+                    `the-rebuilt-pages-use-only-the-new-parts.spec.ts`) and not one of the atomic
+                    one-off classes `one-off-uses-only-go-down.spec.ts` freezes the count of either.
+                    See docs/the-parts-against-the-prototype.md.
+                  */}
+                  <div role="row" className="gwui-work-group-row">
                     <SubHeading>{g.heading}</SubHeading>
                     <Note tone="muted">{g.reason}</Note>
                   </div>

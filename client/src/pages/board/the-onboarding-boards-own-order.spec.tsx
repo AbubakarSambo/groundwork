@@ -119,14 +119,23 @@ describe('the onboarding board’s own order (day-30-and-60.txt)', () => {
     expect(divergence).toBeGreaterThan(history)
   })
 
-  it('moves every not-known work-record heading into the end fold, out of the sales family’s way', async () => {
+  /*
+   * PHONE CHECK, ITEM 8: SAID ONCE, NOT AS THREE (OR FIVE) NEAR-IDENTICAL HEADINGS. This used to
+   * assert the opposite - "Deal grid", "Forecast" and "Themes" each drawn as their own heading in
+   * the fold, the same stock sentence repeated under each - which is exactly the bug the phone
+   * check found: a reader sees the same "Groundwork does not know what kind of work..." sentence
+   * three or five times in a row. Updated to check the one sentence it now reads, and that none of
+   * the raw switchboard names appear as a heading beside it.
+   */
+  it('says once, with no heading, that Groundwork does not know what kind of work this check-in is about, when every work record is not-known', async () => {
     me = { id: 'u-amina', firstName: 'Amina', role: 'MEMBER' }
     renderBoard(boardAsLead())
     await screen.findByRole('heading', { name: 'Engagement Director, first 90 days' })
     const fold = screen.getByText('Everything else from this check-in').closest('details') as HTMLElement
-    expect(within(fold).getByText('Deal grid')).toBeTruthy()
-    expect(within(fold).getByText('Forecast')).toBeTruthy()
-    expect(within(fold).getByText('Themes')).toBeTruthy()
+    expect(within(fold).getByText('Groundwork does not know what kind of work this check-in is about yet, so it keeps no records of this kind.')).toBeTruthy()
+    expect(within(fold).queryByText('Deal grid')).toBeNull()
+    expect(within(fold).queryByText('Forecast')).toBeNull()
+    expect(within(fold).queryByText('Themes')).toBeNull()
   })
 
   it('keeps a work-record section with real rows exactly where it was, not in the fold', async () => {

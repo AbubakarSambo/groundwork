@@ -84,7 +84,13 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 /* ── PAGE TITLE (prototype: .t-title, .crumb, .t-small, .av at 56px) ────── */
 .gwui-pt-eyebrow { font-size: 14.5px; color: var(--gw-sub); margin: 0 0 6px; }
 .gwui-pt-crumb { font-size: 14px; color: var(--gw-sub); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0 0 6px; }
-.gwui-pt-crumb a { color: var(--gw-navy); text-decoration: underline; }
+/*
+ * PHONE CHECK, ITEM 9: THE "CHECK-INS" CRUMB WAS A LINE OF TEXT, NO TALLER THAN ITS OWN TYPE. Padding
+ * plus an equal negative margin grows the tap area to 40px without moving the crumb row itself or
+ * widening the gap to "/" and the title beside it - the same technique used for a plain text link
+ * that must not shift the layout around it.
+ */
+.gwui-pt-crumb a { color: var(--gw-navy); text-decoration: underline; display: inline-block; padding: 9px 0; margin: -9px 0; }
 .gwui-pt-crumb .gwui-pt-sep { margin: 0 6px; }
 .gwui-pt-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
 .gwui-pt-head { display: flex; align-items: center; gap: 16px; min-width: 0; }
@@ -312,7 +318,19 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   .gwui-work-head { display: none; }
   .gwui-work-row { grid-template-columns: 1fr !important; align-items: start; gap: 6px; }
 }
-
+/*
+ * PHONE CHECK, ITEM 6: the sales deal grid's group heading ("Possible", "Won" and its reason) sat
+ * flush on the card's own left border, inside the rounded corner `Panel pad={false}` leaves
+ * unpadded - every row above and below it (`SalesDealGridHead`'s `WORK_HEAD_CLASS`,
+ * `SalesDealGridRow`) carries its own 16px left/right inset, but the group row between them had
+ * none. A named part, not an inline style (`WorkRecords.tsx` is a rebuilt page -
+ * `the-rebuilt-pages-use-only-the-new-parts.spec.ts` fails any `style={{ padding... }}` there) and
+ * not one of the atomic `gwui-pt-*`/`gwui-pr-*`/`gwui-pb-*`/`gwui-pl-*` one-off classes either
+ * (`one-off-uses-only-go-down.spec.ts` freezes how often a file may use those). Same 16px each side
+ * as the header row; 10px above and 6px below, between the stage's own hairline and its first row.
+ * See docs/the-parts-against-the-prototype.md.
+ */
+.gwui-work-group-row { padding: 10px 16px 6px; }
 /* ── FOLDED PANEL (prototype: "Who reports to whom", a closed .panel) ───── */
 .gwui-folded { background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; }
 .gwui-folded-summary {
@@ -331,6 +349,14 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-folded-note { font-size: 14.5px; color: var(--gw-sub); }
 .gwui-folded[open] .gwui-folded-summary { border-bottom: 1px solid var(--gw-border); }
 .gwui-folded-body { padding: 16px 22px 20px; }
+/*
+ * PHONE CHECK, ITEM 3: sections inside the fold ("Everything else from this check-in") sat flush
+ * against the card above - the page's own sections get 30px between them
+ * (`.gwui-page-wrap > * + *`, above), but a fold's body is a plain div with no such rule, so its
+ * own sections' headings touched the panel edge the fold itself draws above them. Same gap, every
+ * board, whichever sections a given check-in's fold happens to hold.
+ */
+.gwui-folded-body > * + * { margin-top: 30px; }
 
 /* ── SWITCH ROW (a heading and its sentence, sized so the heading reads bigger; a Toggle
    on the right - "Anyone with an @domain email", "Baridi's invite link", "Check-ins wait for an
@@ -362,9 +388,19 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 /* A plain text link that still does something (not a navigation), for a control that must not
    compete with the page's one real primary button (Hafsah, 30 September, item 2). Same look as
    .gwui-open-link, under its own name for anywhere that isn't a list row. */
+/*
+ * PHONE CHECK, ITEM 9: A TAP TARGET UNDER 40px. This quiet-text-link class draws the header's
+ * "Ask", "Hide"/"Show" (over time), "How to read this board", "Split one total across people",
+ * "Add a record" and "Set up an availability poll" - each one line of text with no padding, so the
+ * box a finger actually has to hit was only as tall as the text itself (22px or so). `min-height`
+ * plus `inline-flex`/`align-items: center` grows the hit area to 40px without changing the text's
+ * own size, weight or colour - the link reads exactly as it did, just with more room around it to
+ * tap.
+ */
 .gwui-plain-link {
   font-size: 14.5px; font-weight: 700; color: var(--gw-navy); background: none; border: 0;
   padding: 0; cursor: pointer; font-family: inherit; text-decoration: underline;
+  min-height: 40px; display: inline-flex; align-items: center;
 }
 .gwui-invite-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
 /* A FIELD BESIDE ITS BUTTON, EVEN ON A PHONE (group 1 review, "Add it, switched off"): `.gwui-input`
@@ -489,6 +525,23 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 }
 textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-input:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+/*
+ * PHONE CHECK, ITEM 4: ANY TEXT BOX UNDER 16px MAKES iOS SAFARI ZOOM IN ON TAP. The board's own
+ * smaller boxes (the Ask bar, "Add a target", "how many", the availability poll question, and
+ * other fields built the same way across the product) size themselves with the `.gwui-fs-13` /
+ * `.gwui-fs-13-5` utility classes rather than a type-size meant for a field, so the fix is scoped to
+ * `<input>` and `<textarea>` at phone width, not a blanket change to those utilities' many other,
+ * non-field uses (notes, captions, pills). `:not([type=checkbox]):not([type=radio])` keeps a radio
+ * row's own size alone - those are not text boxes a tap can zoom in on.
+ */
+@media (max-width: 640px) {
+  input.gwui-fs-13:not([type='checkbox']):not([type='radio']),
+  input.gwui-fs-13-5:not([type='checkbox']):not([type='radio']),
+  textarea.gwui-fs-13,
+  textarea.gwui-fs-13-5,
+  .gwui-ci-sheet-textarea,
+  .gwui-ci-assessment-textarea { font-size: 16px; }
+}
 
 /* ── BUTTON (prototype: .btn, plus a `danger` kind) ───────────────────────── */
 .gwui-btn {
@@ -869,15 +922,22 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* ── THE OTHER BOARDS YOU ARE IN (board review, 30 September) ─────────────────────────────── */
 .gwui-boards-switcher { position: relative; }
 .gwui-boards-trigger {
-  display: flex; align-items: center; gap: 8px; max-width: 220px;
+  display: flex; align-items: center; gap: 8px;
   background: white; border: 1px solid var(--gw-border); color: var(--gw-text);
   border-radius: 8px; padding: 6px 10px; font-size: 14.5px; font-weight: 600;
   cursor: pointer; font-family: inherit;
 }
-.gwui-boards-trigger-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/*
+ * PHONE CHECK, ITEM 2: the board's own name used to be cut with an ellipsis at a fixed 220px, and
+ * the menu below it was anchored `right: 0` - off a 375px screen's left edge once the trigger sat
+ * near the left of a narrow header. The label now wraps instead of truncating, and the menu anchors
+ * `left: 0` with a width that always fits the viewport, on every screen width, not only the phone.
+ */
+.gwui-boards-trigger-label { white-space: normal; word-break: break-word; }
 .gwui-boards-trigger-caret { color: var(--gw-sub); }
 .gwui-boards-menu {
-  position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; min-width: 260px; max-width: 360px;
+  position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: auto;
+  min-width: 260px; max-width: min(360px, calc(100vw - 36px));
   background: white; border: 1px solid var(--gw-border); border-radius: 10px; padding: 6px;
   box-shadow: 0 10px 30px rgba(20, 24, 40, .18); max-height: 320px; overflow-y: auto;
 }
