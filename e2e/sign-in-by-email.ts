@@ -117,3 +117,28 @@ export async function signIn(page: Page, email: string, app = 'http://localhost:
   await page.waitForTimeout(2500);
   kept.set(email.toLowerCase(), await page.context().storageState());
 }
+
+/**
+ * FOR THE USER JOURNEYS (journey-1-admin.spec.ts and its two companions): the same one catcher, read
+ * for ANY emailed link, not only a sign-in. A sign-up, an invitation to a team, an invitation to a
+ * check-in and a returning sign-in each arrive as a message to an address, with a link in it.
+ */
+export async function mailMark(): Promise<number> {
+  await startCatcher();
+  return mail.length;
+}
+
+/** The newest link to the app in a message sent to this address since `since`, matching `pattern`. */
+export async function linkSentTo(page: Page, email: string, pattern: RegExp, since: number): Promise<string> {
+  await startCatcher();
+  for (let t = 0; t < 80; t++) {
+    for (let i = mail.length - 1; i >= since; i--) {
+      const text = mail[i].replace(/=\r\n/g, '').replace(/=3D/gi, '=');
+      if (!text.toLowerCase().includes(email.toLowerCase())) continue;
+      const found = text.match(new RegExp(`https?://localhost:5173/${pattern.source}`, pattern.flags.replace('g', '')));
+      if (found) return found[0];
+    }
+    await page.waitForTimeout(500);
+  }
+  throw new Error(`No email with a ${pattern} link reached ${email} within 40 seconds.`);
+}
