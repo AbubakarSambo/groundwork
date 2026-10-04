@@ -77,7 +77,9 @@ describe('(a) the headline question, as Bisi, who runs it, reads it', () => {
     const b = await boardAs(project, ...BISI);
     expect(b.headline).toEqual({ question: 'Will we replace the payments integration by 31 October?', answer: null, bars: [] });
     const open = await boardAs({ ...project, clock: { createdAt: new Date('2026-09-01T09:00:00Z'), runsUntilEnded: true, timelineDays: 0, cadence: 'WEEKLY' } }, ...BISI);
-    expect(open.headline).toBeUndefined();
+    /* Changed on 5 October (requests 127 and 129): a check-in with no deadline still asks its question, without a day;
+       the prototype's support desk and depot boards open on one. Before, it asked nothing. */
+    expect(open.headline).toEqual({ question: 'Will we replace the payments integration?', answer: null, bars: [] });
   });
 
   it('asks a limit as a limit (decision 69), from the workplan run\'s spending', async () => {
