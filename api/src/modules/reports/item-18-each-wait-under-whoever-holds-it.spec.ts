@@ -33,7 +33,7 @@ describe('item 18: each wait under whoever holds it, and each thing once', () =>
       { what: 'the details for the analysis', who: 'Kwabena Mensah', daysOld: 7, escalated: false, since: '25 September' },
       { what: 'approval for the external dataset', who: 'Finance', daysOld: 7, escalated: false, since: '25 September' },
     ]);
-    expect(p.probe).toContain('Samuel Aryee has been waiting on Kwabena Mensah for the details for the analysis, and on Finance for approval for the external dataset, since 25 September, and nothing on record says it was raised higher. This early, that is worth showing Samuel Aryee rather than asking about.');
+    expect(p.probe).toContain('Samuel Aryee has been waiting on Kwabena Mensah for the details for the analysis, and on Finance for approval for the external dataset, since 25 September, and nothing on record says it was raised higher. It is early, so ask Samuel Aryee what is being held up and whether help raising it would be useful.');
   });
 
   it('the lead reads a wait recorded twice once', () => {
@@ -41,7 +41,7 @@ describe('item 18: each wait under whoever holds it, and each thing once', () =>
       { what: 'the data team\'s market sizing extract', who: null, daysOld: 7, escalated: false, since: '25 September' },
       { what: 'the data team\'s market sizing extract', who: null, daysOld: 7, escalated: false, since: '25 September' },
     ]);
-    expect(p.probe).toContain('Samuel Aryee has been waiting for the data team\'s market sizing extract since 25 September, and nothing on record says it was raised higher. This early, that is worth showing Samuel Aryee rather than asking about.');
+    expect(p.probe).toContain('Samuel Aryee has been waiting for the data team\'s market sizing extract since 25 September, and nothing on record says it was raised higher. It is early, so ask Samuel Aryee what is being held up and whether help raising it would be useful.');
   });
 
   it('a person reads each thing put in writing to the person who holds it, and the rest without a holder', () => {

@@ -29,3 +29,12 @@ describe('several waits and one "it" (request 132 g)', () => {
     expect(one).toMatch(/has chased it\. Ask what has been tried beyond writing to them\./);
   });
 });
+
+describe('coaching under "Worth asking" (requests 130 e, 134 item 3)', () => {
+  it('asks, and never says "worth showing ... rather than asking about", stored or new', () => {
+    expect(aStoredSentenceReadsRight('Amani Wekesa has been waiting for the tax view, and nothing on record says it was raised higher. This early, that is worth showing Amani Wekesa rather than asking about.'))
+      .toBe('Amani Wekesa has been waiting for the tax view, and nothing on record says it was raised higher. It is early, so ask Amani Wekesa what is being held up and whether help raising it would be useful.');
+    expect(aStoredSentenceReadsRight('You have been waiting for it. This early, that is worth showing you rather than asking about.'))
+      .toBe('You have been waiting for it. It is early. What is being held up, and would help raising it be useful?');
+  });
+});

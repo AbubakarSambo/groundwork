@@ -51,6 +51,9 @@ const OLD_WORDING: Array<[RegExp, string | ((...m: string[]) => string)]> = [
   [/Escalated all (\d+)\./g, (_m, n) => `All ${n} were taken above the person they were with.`],
   /* A question that says a call "has been open a while" on a check-in answered once, joined by a dash (requests 135, 136). */
   [/That call has been open a while\s*(?:[-\u2013\u2014]|\.)\s*what is the decision, and when\?/gi, 'What is the decision, and when will it be made?'],
+  /* Under "Worth asking", advice not to ask (requests 130 e and 134 item 3). */
+  [/This early, that is worth showing you rather than asking about\./g, 'It is early. What is being held up, and would help raising it be useful?'],
+  [/This early, that is worth showing ([^.]+?) rather than asking about\./g, 'It is early, so ask $1 what is being held up and whether help raising it would be useful.'],
   /* A colon joining two pieces (request 131 item 3). */
   [/(Updated after somebody added to or corrected their own check-in\.) What changed: ([^.]*?(?:,| and )[^.]*)\./g, '$1 The parts that changed were $2.'],
   [/(Updated after somebody added to or corrected their own check-in\.) What changed: ([^.]+)\./g, '$1 The part that changed was $2.'],
