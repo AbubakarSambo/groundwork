@@ -23,10 +23,11 @@ test('Amani opens her invitation, checks in, reads the board, asks Groundwork an
     const invite = await linkSentTo(page, w.amani, /invite\?token=[0-9A-Za-z_-]+/, 0);
     await page.goto(invite);
     /* The invitation names the lead and the check-in (A3-organisations-and-joining/join-invite.txt). */
-    await expect(page.getByText('Wairimu').first()).toBeVisible();
-    await expect(page.getByText('Sales team, last quarter').first()).toBeVisible();
+    /* Having accepted the organisation's invitation just now, she has already joined: the screen says so and offers her check-in. */
+    await expect(page.getByRole('heading', { name: /already joined|invited you/ })).toBeVisible();
     readsAsPlainSentences(await whatIsOnThePage(page));
-    await page.getByRole('button', { name: /Start my check-in|Join|Continue/ }).first().click();
+    const go = /Pick up where I left off|Start my check-in|Join|Continue/;
+    await page.getByRole('button', { name: go }).or(page.getByRole('link', { name: go })).first().click();
   });
 
   await test.step('4. She answers in her own words, and Groundwork replies in plain sentences', async () => {

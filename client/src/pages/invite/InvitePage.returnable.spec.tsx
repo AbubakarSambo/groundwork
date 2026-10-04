@@ -64,6 +64,14 @@ describe('coming back to an invite link you have already used', () => {
     })
   })
 
+  /* Found in the browser journeys: Chrome gave the button no name, because its words sat inside a status element, so a person using a screen reader (and any test that looks for the button by its words) could not find it. */
+  it('puts the button\'s words in the button itself, not in a status element inside it', async () => {
+    renderInvite()
+    const button = await screen.findByRole('button', { name: /Pick up where I left off/i })
+    expect(button.querySelector('[role="status"]')).toBeNull()
+    expect(button.textContent).toBe('Pick up where I left off')
+  })
+
   it('carries straight on when this is the browser they joined on', async () => {
     ;(participantsApi.accept as any).mockResolvedValue({ resumed: true, groundId: 'g1', checkInId: 'ci9' })
     renderInvite()
