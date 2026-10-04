@@ -354,3 +354,20 @@ Who should we ask about pricing?`;
     });
   });
 });
+
+describe('a private document is turned into shared notes only by the person who added it (decision 92)', () => {
+  it('the plan page refuses a lead-only document that somebody else added, and says why', async () => {
+    const { svc, prisma, writes } = aService();
+    prisma.groundDocument.findFirst = jest.fn(async () => ({ content: PLAN, fileName: 'Q4 plan.pdf', participantId: 'p-aisha', visibility: 'CLOSED' }));
+    await expect(svc.read('g1', 'u-lead', { documentId: 'd1' })).rejects.toThrow('Only the person who added this document can share what is in it, so nothing was shared.');
+    expect(writes).toEqual([]);
+  });
+  it('and reads one the lead added, and one that is open to everyone', async () => {
+    const { svc, prisma } = aService();
+    prisma.ground.findUnique = jest.fn(async () => ({ id: 'g1', initiatorId: 'u-lead', status: 'OPEN', endState: null, participants: [...ROSTER, { id: 'p-lead', email: 'l@x.test', nameGiven: 'Wairimu', managingOnly: false, userId: 'u-lead', leftAt: null, user: { firstName: 'Wairimu', lastName: 'K' } }] }));
+    prisma.groundDocument.findFirst = jest.fn(async () => ({ content: PLAN, fileName: 'Q4 plan.pdf', participantId: 'p-lead', visibility: 'CLOSED' }));
+    expect((await svc.read('g1', 'u-lead', { documentId: 'd1' })).proposals).toHaveLength(5);
+    prisma.groundDocument.findFirst = jest.fn(async () => ({ content: PLAN, fileName: 'Q4 plan.pdf', participantId: 'p-aisha', visibility: 'OPEN' }));
+    expect((await svc.read('g1', 'u-lead', { documentId: 'd1' })).proposals).toHaveLength(5);
+  });
+});

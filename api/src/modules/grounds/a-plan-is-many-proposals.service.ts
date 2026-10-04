@@ -6,6 +6,7 @@ import { AnthropicService } from '../conversation/anthropic.service';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
+import { ONLY_WHO_ADDED_IT_CAN_SHARE_IT } from '../documents/write-a-documents-numbers';
 import { whyItRefuses } from './a-ground-that-has-ended';
 import { BoardService } from '../board/board.service';
 import { asADirection, type TargetDirection } from '../board/an-aim-or-a-limit';
@@ -63,9 +64,13 @@ export class APlanIsManyProposalsService {
         select: { content: true, fileName: true, participantId: true, visibility: true },
       });
       const mine = ground.participants.find((p) => p.userId === userId)?.id ?? null;
-      if (!doc || !canSeeDocument(doc as any, { participantId: mine, isLead: true }, this.config.get<boolean>('app.contextEnabled') === true)) {
+      const contextEnabled = this.config.get<boolean>('app.contextEnabled') === true;
+      if (!doc || !canSeeDocument(doc as any, { participantId: mine, isLead: true }, contextEnabled)) {
         throw new NotFoundException('That document is not on this check-in.');
       }
+      /* A private document becomes shared notes only by a yes from the person who added it (decision 92). Everyone on the check-in may read an open one. */
+      const private_ = !contextEnabled || doc.visibility !== 'OPEN';
+      if (private_ && doc.participantId !== mine) throw new ForbiddenException(ONLY_WHO_ADDED_IT_CAN_SHARE_IT);
       return { text: withoutBankDetails(doc.content ?? '') as string, from: doc.fileName, fromDocument: doc.fileName as string | null };
     }
     const text = withoutBankDetails((input.text ?? '').trim()) as string;
