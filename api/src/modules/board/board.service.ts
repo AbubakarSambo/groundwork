@@ -2633,12 +2633,12 @@ export class BoardService {
         if (headline) out.headline = headline;
       }
       /*
-       * WHERE THIS IS HEADING (request 108 d). Only to whoever runs the check-in (the lead and the admin who set it
-       * up), never on an evaluation check-in, where the suggestion and the decision already have their own way
+       * WHERE THIS IS HEADING (request 108 d). To whoever runs the check-in (the lead and the admin who set it
+       * up) and, since decision 93 (row 14), to any admin of the organisation, never on an evaluation check-in, where the suggestion and the decision already have their own way
        * (decision 6). Built from what this reader is already served and the endings the check-in's own way of
        * recording a decision offers. See where-this-is-heading.
        */
-      if (!evaluation && runsIt) {
+      if (!evaluation && (runsIt || adminHere)) {
         const leadRow = (ground.participants as any[]).find((p) => p.id === theLeadsRow);
         const leadName = [leadRow?.user?.firstName, leadRow?.user?.lastName].filter(Boolean).join(' ').trim() || (leadRow?.nameGiven ?? '').trim() || null;
         out.whereThisIsHeading = whereThisIsHeading({
