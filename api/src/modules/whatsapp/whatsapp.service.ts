@@ -300,10 +300,18 @@ export class WhatsAppService {
     return this.counted(org, result);
   }
 
+  /**
+   * WHERE META'S GRAPH API IS. Meta's own address unless WHATSAPP_GRAPH_BASE_URL says otherwise, which only a test
+   * sets (to a recorder on this machine, so a local run of the journeys sends nothing to anyone).
+   */
+  private graphBase(): string {
+    return (this.config.get<string>('whatsapp.graphBaseUrl') || 'https://graph.facebook.com/v20.0').replace(/\/+$/, '');
+  }
+
   /** The one HTTP call both numbers make. Never throws: the answer is in the result. */
   private async post(phoneNumberId: string, accessToken: string, to: string, text: string): Promise<SendResult> {
     try {
-      const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+      const res = await fetch(`${this.graphBase()}/${phoneNumberId}/messages`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ messaging_product: 'whatsapp', to: to.replace('+', ''), type: 'text', text: { body: text } }),
@@ -435,7 +443,7 @@ export class WhatsAppService {
     if (!own || !own.enabled) return (await this.sendOnOurNumber(organizationId, WhatsAppService.normalize(phoneNumber), fallbackText, { kind: 'which-one' })).sent;
     const to = WhatsAppService.normalize(phoneNumber).replace('+', '');
     try {
-      const res = await fetch(`https://graph.facebook.com/v20.0/${own.phoneNumberId}/messages`, {
+      const res = await fetch(`${this.graphBase()}/${own.phoneNumberId}/messages`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${own.accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -461,7 +469,7 @@ export class WhatsAppService {
     const token = own?.accessToken ?? this.config.get<string>('whatsapp.accessToken');
     if (!token) return null;
     try {
-      const meta = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, { headers: { Authorization: `Bearer ${token}` } });
+      const meta = await fetch(`${this.graphBase()}/${mediaId}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!meta.ok) { this.logger.warn(`WhatsApp media lookup failed: ${meta.status}`); return null; }
       const info = (await meta.json()) as { url?: string; mime_type?: string; file_size?: number };
       if (!info.url) return null;
@@ -576,7 +584,7 @@ export class WhatsAppService {
       return result;
     }
     try {
-      const res = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+      const res = await fetch(`${this.graphBase()}/${phoneNumberId}/messages`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
