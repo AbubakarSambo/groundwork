@@ -4,6 +4,12 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## Government programme board: done (4 October)
+
+"Extension Access Programme, test" (ee96f03c), lead and participant, in gov.txt's order with its own three sections ("What each level understood", "What the visit log shows", "The counties"), after one review and its fixes (88572f42, 701444ff), checked live (scratchpad `pictures/gov-A/`). The engine's part is request 132. Two decisions for Hafsah are recorded: the question block is drawn as gov.txt shows it, and patterns and coaching stay open. Its button count is still over the prototype's (a known gap in the button test).
+
+**A clean-up for every board, after the last kind:** several buttons on the boards have neither text nor an `aria-label` (11 on the government lead's board, 6 on the programme, 9 on the support desk). Give each a spoken name, or make it not a button. This also lowers the button counts.
+
 ## Trader training programme board: done (4 October)
 
 "Trader training programme, test" (46cfcb15), lead and participant, matched to programme.txt after one review and its fixes (7c3bbba7), checked live (scratchpad `pictures/programme-A/`). The engine's part is request 131.
