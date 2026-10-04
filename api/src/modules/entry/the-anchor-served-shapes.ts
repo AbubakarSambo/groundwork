@@ -125,7 +125,7 @@ export type TheActiveLine = {
   total: number;
   /** People Groundwork has nudged and who are not yet active. */
   nudged: number;
-  /** A full sentence for the board: "18 of 20 people are active. Groundwork has nudged the remaining 2." */
+  /** The status line for the board, in Hafsah's own words from the spec: "18/20 active · Groundwork has nudged the remaining 2." */
   line: string;
 };
 
