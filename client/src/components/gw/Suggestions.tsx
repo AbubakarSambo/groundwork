@@ -13,7 +13,7 @@ import { Button } from '@/components/gw/kit'
    own CSS classes, in place of the old kit and YouPage's page-local gw-you-* classes, since YouPage
    no longer defines them for its own use. ASuggestionForTheLead and AnAppealToDecide, on the lead's
    board and Today, are unchanged. */
-import { Button as UIButton } from '@/components/gw/ui'
+import { Button as UIButton, Stack } from '@/components/gw/ui'
 
 /**
  * A VERDICT, TOLD LIKE A SIGNAL (C3, U.13; decisions rule 6). Three views of one suggestion, each
@@ -266,14 +266,16 @@ function WhereYouStand({ s }: { s: SuggestionForThePerson }) {
           onSubmit={(e) => { e.preventDefault(); if (text.trim()) (writing === 'side' ? side : appeal).mutate(text.trim()) }}
           className="gwui-mt-10"
         >
-          {writing === 'appeal' && (
-            <div className="gwui-mb-6">An admin looks at the decision, the facts and your reasons, and decides. {lead} sees that you appealed.</div>
-          )}
-          {writing === 'side' && <div className="gwui-mb-6">{lead} sees this next to the facts.</div>}
-          <label style={{ display: 'block' }}>
-            <span className={subClass} style={subStyle}>{writing === 'side' ? 'Your side' : 'Why do you disagree?'}</span>
-            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} maxLength={4000} className={fieldClass} style={fieldStyle} />
-          </label>
+          <Stack gap={6}>
+            {writing === 'appeal' && (
+              <div>An admin looks at the decision, the facts and your reasons, and decides. {lead} sees that you appealed.</div>
+            )}
+            {writing === 'side' && <div>{lead} sees this next to the facts.</div>}
+            <label style={{ display: 'block' }}>
+              <span className={subClass} style={subStyle}>{writing === 'side' ? 'Your side' : 'Why do you disagree?'}</span>
+              <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} maxLength={4000} className={fieldClass} style={fieldStyle} />
+            </label>
+          </Stack>
           <div className={rowClass} style={rowStyle}>
             <UIButton type="submit" size="small" disabled={!text.trim() || busy}>
               {busy ? 'Saving…' : writing === 'side' ? 'Save' : 'Send my appeal'}
@@ -316,9 +318,11 @@ function AnAppealToDecide({ a }: { a: AppealForAnAdmin }) {
     <div className={`${cardClass} gwui-rule gwui-mt-10`} style={{ background: cardStyle.background, borderRadius: cardStyle.borderRadius, lineHeight: cardStyle.lineHeight }}>
       <h3 className={h3Class} style={h3Style}>{a.aboutName} appealed {a.leadName}’s decision</h3>
       <div className={quietClass}>In {a.checkIn.label}.</div>
-      <div className="gwui-mt-6 gwui-mb-6">{a.headline}</div>
-      <Labelled label="Why:">{a.why}</Labelled>
-      {a.whatWouldChangeIt && <Labelled label="What would change this:">{a.whatWouldChangeIt}</Labelled>}
+      <Stack gap={6}>
+        <div className="gwui-mt-6">{a.headline}</div>
+        <Labelled label="Why:">{a.why}</Labelled>
+        {a.whatWouldChangeIt && <Labelled label="What would change this:">{a.whatWouldChangeIt}</Labelled>}
+      </Stack>
       {a.theirOwnAnswer && <Said who={`${a.aboutName}’s own answer.`}>{a.theirOwnAnswer}</Said>}
       {a.decision && (
         <>
@@ -341,11 +345,13 @@ function AnAppealToDecide({ a }: { a: AppealForAnAdmin }) {
       {a.mayDecide && outcome && (
         <form onSubmit={(e) => { e.preventDefault(); if (reasons.trim()) save.mutate() }} className="gwui-mt-10">
           <div className={subClass} style={subStyle}>{outcome === 'stands' ? 'Keep the decision' : 'Change the decision'}</div>
-          <div className="gwui-mb-6">{a.aboutName} and {a.leadName} both read your reasons.</div>
-          <label style={{ display: 'block' }}>
-            <span className={subClass} style={subStyle}>Your reasons</span>
-            <textarea value={reasons} onChange={(e) => setReasons(e.target.value)} rows={3} maxLength={2000} className={fieldClass} style={fieldStyle} />
-          </label>
+          <Stack gap={6}>
+            <div>{a.aboutName} and {a.leadName} both read your reasons.</div>
+            <label style={{ display: 'block' }}>
+              <span className={subClass} style={subStyle}>Your reasons</span>
+              <textarea value={reasons} onChange={(e) => setReasons(e.target.value)} rows={3} maxLength={2000} className={fieldClass} style={fieldStyle} />
+            </label>
+          </Stack>
           <div className={rowClass} style={rowStyle}>
             <Button type="submit" size="small" disabled={!reasons.trim() || save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</Button>
             <Button kind="quiet" size="small" onClick={() => { setOutcome(null); setReasons('') }}>Not yet</Button>
