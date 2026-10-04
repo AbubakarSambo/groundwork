@@ -16,6 +16,7 @@ const COLLEAGUE = 'u-colleague';
 const THE_ADMIN = 'u-admin-who-set-it-up';
 const UNTOLD = 'Build a pipeline for larger engagements and show progress on key prospects.';
 const TOLD = 'Have at least one significant proposal out, or a strong lead moving through';
+const TOLD_WITH_A_NUMBER = 'Bring in 8 proposals in his first year.';
 
 const person = (id: string, userId: string, partyType: PartyType, first: string, managingOnly = false) => ({
   id, userId, email: `${first}@x.test`, partyType, roleAsDescribed: null, nameGiven: null, organisationGiven: null, managingOnly,
@@ -29,6 +30,7 @@ const people = () => [
 ];
 const GOALS = [
   { id: 'o1', groundId: 'g1', participantId: 'p-tobi', text: UNTOLD, kind: 'GOAL', status: 'OPEN', authoredBy: 'lead', seenBySubject: false, awareness: 'NOT_TOLD', awarenessDetail: null, dueSaid: null, createdAt: new Date(Date.now() - 2 * 86400000), updatedAt: new Date() },
+  { id: 'o3', groundId: 'g1', participantId: 'p-tobi', text: TOLD_WITH_A_NUMBER, kind: 'GOAL', status: 'OPEN', authoredBy: 'lead', seenBySubject: false, awareness: 'TOLD', awarenessDetail: null, dueSaid: null, createdAt: new Date('2026-09-03'), updatedAt: new Date('2026-09-03') },
   { id: 'o2', groundId: 'g1', participantId: 'p-tobi', text: TOLD, kind: 'GOAL', status: 'OPEN', authoredBy: 'lead', seenBySubject: false, awareness: 'TOLD', awarenessDetail: null, dueSaid: null, createdAt: new Date('2026-09-04'), updatedAt: new Date('2026-09-04') },
 ];
 
@@ -72,6 +74,15 @@ describe('the check-in page, where each person reads only their own numbers', ()
     const all = (objective.all ?? []).map((o: any) => o.text);
     expect(all).toEqual(expect.arrayContaining([TOLD, UNTOLD]));
     expect((objective.all ?? []).find((o: any) => o.text === UNTOLD)?.notToldYet).toBe(true);
+  });
+
+  it('the admin who set it up reads a goal that carries Tobi\'s number; an admin who only reads does not', async () => {
+    const setter = await pageFor(THE_ADMIN, 'ADMIN');
+    expect((tobisRow(setter).objective.all ?? []).map((o: any) => o.text)).toContain(TOLD_WITH_A_NUMBER);
+    const reader = await pageFor('u-admin-who-only-reads', 'ADMIN');
+    expect(JSON.stringify(reader)).not.toContain(TOLD_WITH_A_NUMBER);
+    /* and is not left a goal with no words in it */
+    expect((tobisRow(reader).objective.all ?? []).every((o: any) => (o.text ?? '').trim().length > 0)).toBe(true);
   });
 
   it('the lead reads the same', async () => {

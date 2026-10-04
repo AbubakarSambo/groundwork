@@ -4360,6 +4360,8 @@ Hafsah's answer, 5 October: only a database on this computer.
 
 **Cause.** The page asked whether the reader is the lead when it decided whose goals to hold back (`peersKeepTheirNumbers`), and everywhere else asks whether the reader runs the check-in. It now asks the same question (`viewerRunsIt`, which is `theyRunThisCheckIn`).
 
+**Numbers in a goal's sentence.** The page takes out of a sentence the number of a target its reader may not read. The admin who set the check-in up set those targets, so they now read the sentence whole, as the lead does (for Tobi, "Bring in about $400,000 in new business in his first year."). An admin who only reads still reads it with the number's sentence left out, and a goal whose whole sentence was taken out is no longer served as an empty goal; that person's row reads "What this person is aiming for is set, and it carries a number you are not given on this page."
+
 **Left as it was, and a question for Hafsah.** The table of target numbers on the same page (`objectives`) still shows an admin who only reads the team target and not each person's share. The existing tests (`one-rule-for-whose-share-is-shown.spec.ts` and `a-decision-about-a-person-is-the-leads.spec.ts`) pin that, and say it is waiting on you. Decision 86.3 says admins see the figures on boards. Should the check-in page show an admin every person's share too, never the lead's decision about a person?
 
 **Tests.** `an-admin-who-runs-a-check-in-reads-its-goals-on-the-page.spec.ts`. One existing test, `one-answer-about-whose-numbers-somebody-reads.spec.ts`, pinned the source text `!viewerIsInitiator`; it now pins `!viewerRunsIt` and checks that `viewerRunsIt` is `theyRunThisCheckIn`.

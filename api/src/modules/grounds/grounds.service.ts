@@ -531,8 +531,9 @@ export class GroundsService {
     served: T,
   ): T {
     const me = (ground.participants ?? []).find((p: any) => !!requestingUserId && p.userId === requestingUserId);
+    /* Whoever set the targets reads everything: the lead, and the admin who set the check-in up for them (decisions 5 and 56; privacy sweep finding 4). */
     const hidden = targetsHiddenFrom(
-      { participantId: me?.id ?? null, isTheLead: !!requestingUserId && ground.initiatorId === requestingUserId },
+      { participantId: me?.id ?? null, isTheLead: !!requestingUserId && (ground.initiatorId === requestingUserId || (ground as any).createdByUserId === requestingUserId) },
       ground.whoSeesTargets,
       ground.objectives ?? [],
       namesOnTheRoster(ground.participants ?? []),
@@ -2584,7 +2585,7 @@ export class GroundsService {
     const objectivesNotToldHere = new Set(
       ((ground as any).objectives ?? []).filter((o: any) => !withoutWhatTheLeadHasNotToldThemAbout([o], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], viewerRunsIt).kept.length).map((o: any) => o.id),
     );
-    return withoutGoalsNotToldIn(this.withoutTheTargetsHiddenFrom(ground as any, requestingUserId, {
+    const thePage = withoutGoalsNotToldIn(this.withoutTheTargetsHiddenFrom(ground as any, requestingUserId, {
       ...rest,
       /*
        * WHAT THE ROOM IS ABOUT, AS THIS READER MAY READ IT (privacy sweep finding 2, decisions 17 and 75 item 14). Stored with
@@ -2887,6 +2888,18 @@ export class GroundsService {
       ...theWordsOfWhatTheLeadHasNotToldThemAbout(((ground as any).objectives ?? []) as any[], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], viewerRunsIt)
         .filter((t) => !objectiveRowsAsStored.some((o: any) => aWeekHasPassedSinceNotTold(o) && (o.text ?? '') === t)),
     ]);
+    /* A goal whose whole sentence carried a number this reader may not read is not left as a goal with no words (it is not served, and what the person's own row says is said plainly). */
+    if (!Array.isArray((thePage as any).participants)) return thePage;
+    return {
+      ...thePage,
+      participants: ((thePage as any).participants as any[]).map((p: any) => {
+        const o = p?.objective;
+        if (!o || typeof o !== 'object') return p;
+        const all = Array.isArray(o.all) ? o.all.filter((x: any) => typeof x?.text !== 'string' || x.text.trim()) : o.all;
+        const blank = typeof o.text === 'string' && !o.text.trim();
+        return { ...p, objective: { ...o, all, ...(blank ? { text: null, described: 'What this person is aiming for is set, and it carries a number you are not given on this page.' } : {}) } };
+      }),
+    } as typeof thePage;
   }
 
   /**
