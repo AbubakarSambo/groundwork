@@ -4220,3 +4220,18 @@ No scenario in `api/journey/all-24` uses the entry conversation (all 24 run sign
 **Words that differ from the scenario, on purpose.** The scenario says "Ground" and "OKR Ground"; the product says check-in. The scenario's "depends on three people whose responsibilities aren't completely clear" claims a link the record does not hold (a commitment is not tied to an aim), so the sentence says only what is known.
 
 **For the screens workspace (piece 25).** `GET /grounds/:groundId/recommended-check-ins` returns `{ offers: [{ id, kind, says, question, yes, no }] }`. `POST /grounds/:groundId/recommended-check-ins/:offerId/yes` returns `{ state: "ACCEPTED", setUp: { kind, about, aim, people: [{ name, email }] } }`: what the prefilled new check-in starts from, without the lead herself. It creates no check-in and invites nobody; the lead finishes that on the set-up screen. `POST .../:offerId/not-now` returns `{ state: "DECLINED" }`. Code: `detectors/the-anchor-recommendations.ts`, `grounds/recommended-check-ins.service.ts`.
+
+## 5 October: anchor piece 29, the lead's weekly letter by email (behind the anchor switch)
+
+**Nothing changes with the switch off.** The Friday job returns at once and sends nothing. No other email changes.
+
+**What the lead reads.** One email each Friday at three in the afternoon in Lagos, to the lead only, built from the past seven days of the check-ins they started from the anchor link that are still going. It is the prototype's "one weekly letter" (C1, every email and message), in the scenario's words (section 23). Subject: "Your team's week". Body, for a lead with one check-in, when eight of ten people checked in, four said what they will do next, two things were done, three handoffs wait and Omar and Juma did not check in:
+- Your team is starting to move.
+- This week, 8 of 10 people checked in. Four people said what they will do next. Two things people said they would do were done. Three handoffs are still waiting on someone. Omar and Juma did not check in.
+- The link reads "See this week's picture" and opens that check-in's board.
+
+In a quiet week it opens "Here is your team's week." and says "Nobody has checked in this week." With more than one anchor check-in, each is counted on its own under its name in quotation marks, and the link opens the list of check-ins.
+
+**What it never holds.** Nothing anybody said, nothing from Ask Groundwork, no one person's load across check-ins (every check-in is counted on its own, never added to another). It names only the people who did not check in, as the lead's morning WhatsApp already does, and the lead herself as "you". No label and no score. The scenario's lines about ideas, a person who raised a risk and a pattern "Groundwork is working on" are left out until the record can say them (pieces 16, 19 and 22).
+
+**The way to stop it.** It is a mail Groundwork decides to send, so the unsubscribe footer every such mail carries stops it, along with the other mail of that kind. A separate "stop these letters" switch would need a new column and is not built. The weekly WhatsApp insight is not built (Needs Hafsah, item 2). Code: `email/the-leads-weekly-letter.ts`, `EmailService.sendTheLeadsWeeklyLetter`, `GroundsCron.sendTheLeadsWeeklyLetters`.

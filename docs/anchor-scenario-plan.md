@@ -433,7 +433,7 @@ The order follows decision 94's list. Each piece is small enough for one builder
 | 26 | Suites offered when needed: the offer, when the suite is off, and the recurring-issue wording | E | `modules/suites/`, `modules/assistant/what-the-assistant-can-do.ts`, `modules/assistant/` | medium | 11 |
 | 27 | "Your team also needed": counts of needs surfaced, and the two chat buttons | E and S | `modules/suites/`, `client/src/pages/chat/`, `client/src/pages/suites/` | medium | 11 |
 | 28 | The weekly lead WhatsApp insight: the template, its builder and its cron | E | `modules/whatsapp/` (new file beside `the-leads-daily-summary.ts`), `a-message-outside-the-window.ts`, `modules/grounds/grounds.cron.ts`, `docs/whatsapp-templates.md` | large | 2 |
-| 29 | The weekly lead email, the prototype's "one weekly letter" | E | `modules/email/email.service.ts`, `modules/reports/` | medium | no |
+| 29 (done, 5 October) | The weekly lead email, the prototype's "one weekly letter" | E | `modules/email/email.service.ts`, `modules/reports/`. Built as `email/the-leads-weekly-letter.ts`, `EmailService.sendTheLeadsWeeklyLetter` and `GroundsCron.sendTheLeadsWeeklyLetters` (Friday 15:00 Lagos, only while the switch is on). | medium | no |
 | 30 | Nudges from the person's last commitment, and the "18/20 active" line served | E | `modules/conversation/remind.service.ts`, `modules/board/board.service.ts` | medium | 7 |
 | 31 | The "active" line on the board | S | `client/src/pages/board/BoardPage.tsx` | small | no |
 | 32 | The end-of-month read and the reveal counts, built once from the record | E | `modules/reports/reports.service.ts`, `the-four-reports.ts`, `modules/board/` | large | 4, 9 |
