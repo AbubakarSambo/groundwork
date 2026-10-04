@@ -1,4 +1,5 @@
 import { anAimTheHolderSet } from '../board/an-aim-is-a-sentence-about-somebody';
+import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
 import { whoIsNotLetInYet } from '../grounds/who-an-admin-did-not-let-in';
 import { asADirection } from '../board/an-aim-or-a-limit';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
@@ -274,6 +275,8 @@ export class TheWeeklyReportService {
    */
   async read(groundId: string, who: { userId: string; role?: string | null; organizationId?: string | null }, now: Date = new Date(), week?: string | null): Promise<TheWeeklySentences> {
     if (week != null && !/^\d{4}-\d{2}-\d{2}$/.test(week)) throw new BadRequestException('Pick a week by the date of its Monday, for example 2026-09-21.');
+    /* Nobody held for a seat reads the weekly report either (privacy sweep finding 3). */
+    await refuseSomeoneHeldForASeat(this.prisma as any, groundId, who.userId);
     const ground: any = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {

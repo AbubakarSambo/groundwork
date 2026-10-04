@@ -4374,3 +4374,15 @@ Hafsah's answer, 5 October: only a database on this computer.
 **How.** One function, `theRoomForThisReader` (`board/the-room-for-this-reader.ts`), now serves the board and the page. The board's own code was moved into it without changing what the board serves. On an evaluation check-in only the colleague's name is kept from the person reviewed (decision 17), so the lead's aim stays.
 
 **Tests.** `what-the-room-is-about-on-the-check-in-page.spec.ts`; the board's existing room tests still pass.
+
+### 3. Someone held for a seat reads nothing of the check-in
+
+**What changed for a reader.** A person held for a seat, who had a sign-in, read the board, the reports and the other people's words, for example on "Is the advisor worth the equity", "They stopped inviting me to the monthly call in August.", and on "Tobi in his first 90 days", "I have not sat with him since week two, we had the outage." Only the invitation page and the people waiting for the organisation's approval were turned away. Now every one of these reads answers them with the one sentence the invitation page gives, and nothing else: the board, the check-in page, the report, each session report, the rounds, where things stand against success, the weekly report, and the phone report and Ask Groundwork's report recall, which are built from the session report.
+
+> This check-in cannot start for you yet, because there is no seat for you on the plan. You will get your invitation as soon as there is one.
+
+Everyone else reads exactly what they read before, and a person who is not held is never told this sentence.
+
+**How.** `refuseSomeoneHeldForASeat` (`participants/held-for-a-seat.ts`), asked first by each read, before anything about the check-in is looked up. A lookup that fails refuses, the more private answer. The sentence moved to that file; `participants.service.ts` still exports it.
+
+**Tests.** `nobody-held-for-a-seat-reads-the-check-in.spec.ts`. One existing test, `no-board-is-not-a-permission-problem.spec.ts`, looks at the first 4,000 characters of the board's `get`; the new check made that read longer, so its window is 4,400. What it checks is unchanged.

@@ -141,6 +141,7 @@ import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-q
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { isFromOutside, leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
 import { adminsThisOrg, askedToApproveIt } from '../grounds/who-may-read-this-check-in';
+import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument, notNothingWhereThePageSaysSomething } from './where-each-person-is-against-their-number';
@@ -330,6 +331,8 @@ export class BoardService {
     opts: { mayWordNewLines?: boolean; now?: Date } = {},
   ) {
     const now = opts.now ?? new Date();
+    /* Nobody held for a seat reads the board (finding 3). */
+    await refuseSomeoneHeldForASeat(this.prisma as any, groundId, requestingUserId);
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: {

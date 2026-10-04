@@ -23,7 +23,7 @@ const SRC = readFileSync(join(__dirname, 'board.service.ts'), 'utf8');
 /** Comments stripped: the strings below appear in the explanatory comments too. */
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-const get = CODE.slice(CODE.indexOf('async get('), CODE.indexOf('async get(') + 4000);
+const get = CODE.slice(CODE.indexOf('async get('), CODE.indexOf('async get(') + 4400);
 
 describe('the board answers "is there one" before "who are you"', () => {
   it('both gates are still there', () => {

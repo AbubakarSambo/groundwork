@@ -196,6 +196,7 @@ import { whatThisSessionHolds } from './what-this-session-holds';
 import { adminsThisOrg, adminsTheOrg, readsAsAnAdmin, runsOrSetItUp } from '../grounds/who-may-read-this-check-in';
 import { ONLY_THE_LEAD_RELEASES } from './only-the-lead-releases';
 import { whoSharedItBecauseTheLeadLeft, fullNameOf, sharedByAnAdminFrom, type SharedBecauseLeadLeft } from './who-shared-it-because-the-lead-left';
+import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
@@ -2870,7 +2871,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * looked up, so the refusal says nothing about whether this check-in exists. A lookup that fails
    * refuses too: the more private answer when the fact cannot be read.
    */
-  private async refuseSomeoneNotYetLetIn(requestingUserId: string): Promise<void> {
+  private async refuseSomeoneNotYetLetIn(requestingUserId: string, groundId?: string): Promise<void> {
+    /* Held for a seat reads nothing either: the same refusal the invitation page gives (privacy sweep finding 3). */
+    await refuseSomeoneHeldForASeat(this.prisma as any, groundId, requestingUserId);
     const find = (this.prisma as any).user?.findUnique;
     if (!find || !requestingUserId) return;
     const me = await Promise.resolve(find.call((this.prisma as any).user, { where: { id: requestingUserId }, select: { awaitingOrgApproval: true } }))
@@ -2904,7 +2907,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
   /** Where things stand against what success was said to be, through the same last read. */
   async whereAgainstSuccess(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
-    await this.refuseSomeoneNotYetLetIn(requestingUserId);
+    await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const served = await this.whereAgainstSuccessAsBuilt(groundId, requestingUserId, requestingUserOrgId);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
   }
@@ -4065,7 +4068,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
   /** The rounds, through the same last read as every other report read. */
   async rounds(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
-    await this.refuseSomeoneNotYetLetIn(requestingUserId);
+    await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const served = await this.roundsAsBuilt(groundId, requestingUserId, requestingUserOrgId);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
   }
@@ -6678,7 +6681,7 @@ happened, and what is in the way.`;
    * for this reader. See whatTheLeadHasNotShared.
    */
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
-    await this.refuseSomeoneNotYetLetIn(requestingUserId);
+    await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const served = await this.getAsBuilt(groundId, requestingUserId, requestingUserOrgId);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, await this.withBeingWritten(groundId, requestingUserId, await this.withWhatTodayReads(groundId, requestingUserId, requestingUserOrgId, await this.withWhatHasStayedTheSame(groundId, requestingUserId, served, requestingUserOrgId))));
   }
@@ -6756,7 +6759,7 @@ happened, and what is in the way.`;
 
   /** The same for the report of one session. */
   async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string) {
-    await this.refuseSomeoneNotYetLetIn(requestingUserId);
+    await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const served = await this.sessionReportAsBuilt(groundId, sessionNumber, requestingUserId, requestingUserOrgId);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
   }
@@ -7481,7 +7484,7 @@ happened, and what is in the way.`;
    * whether the other side has also revealed.
    */
   async activate(groundId: string, requestingUserId: string) {
-    await this.refuseSomeoneNotYetLetIn(requestingUserId);
+    await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { participants: true, report: true },
@@ -7520,7 +7523,7 @@ happened, and what is in the way.`;
    * participant reads only their own row; the lead and an admin read every row.
    */
   async getActivationStatusForUser(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
-    await this.refuseSomeoneNotYetLetIn(requestingUserId);
+    await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { participants: true },

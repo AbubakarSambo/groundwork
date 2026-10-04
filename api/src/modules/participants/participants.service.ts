@@ -6,8 +6,8 @@ import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 import { needsApproval, isAnAdminOf, whoToAsk, WAITING_TO_BE_LET_IN } from './nobody-joins-your-company-by-being-invited-to-a-check-in';
 
-/** What somebody held for a seat reads if they open the link anyway (U.4 re-review). */
-export const HELD_FOR_A_SEAT = 'This check-in cannot start for you yet, because there is no seat for you on the plan. You will get your invitation as soon as there is one.';
+import { HELD_FOR_A_SEAT } from './held-for-a-seat';
+export { HELD_FOR_A_SEAT };
 import { tellTheAdminsSomebodyIsWaiting } from './somebody-is-waiting-at-the-door';
 import { assertInviteLinkStillOpens, hasExpired } from './an-invite-link-still-opens';
 import { whenItAsks } from './when-it-asks';
