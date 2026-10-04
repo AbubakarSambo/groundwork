@@ -312,7 +312,19 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   .gwui-work-head { display: none; }
   .gwui-work-row { grid-template-columns: 1fr !important; align-items: start; gap: 6px; }
 }
-
+/*
+ * PHONE CHECK, ITEM 6: the sales deal grid's group heading ("Possible", "Won" and its reason) sat
+ * flush on the card's own left border, inside the rounded corner `Panel pad={false}` leaves
+ * unpadded - every row above and below it (`SalesDealGridHead`'s `WORK_HEAD_CLASS`,
+ * `SalesDealGridRow`) carries its own 16px left/right inset, but the group row between them had
+ * none. A named part, not an inline style (`WorkRecords.tsx` is a rebuilt page -
+ * `the-rebuilt-pages-use-only-the-new-parts.spec.ts` fails any `style={{ padding... }}` there) and
+ * not one of the atomic `gwui-pt-*`/`gwui-pr-*`/`gwui-pb-*`/`gwui-pl-*` one-off classes either
+ * (`one-off-uses-only-go-down.spec.ts` freezes how often a file may use those). Same 16px each side
+ * as the header row; 10px above and 6px below, between the stage's own hairline and its first row.
+ * See docs/the-parts-against-the-prototype.md.
+ */
+.gwui-work-group-row { padding: 10px 16px 6px; }
 /* ── FOLDED PANEL (prototype: "Who reports to whom", a closed .panel) ───── */
 .gwui-folded { background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; }
 .gwui-folded-summary {
