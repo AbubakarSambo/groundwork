@@ -40,7 +40,7 @@ The founder's own check-in is matched too. It has one person, so there is no par
 | MarketView Q4 | Not done | No fair test check-in (below) |
 
 **The test results.**
-- **Client:** 4,066 tests pass. One fails: the wording guard, on lines in an engine file (request 137). The type check is clean.
+- **Client:** after the last merge, all 4,073 tests pass, including the wording guard, which the engine fixed. The type check is clean. One-off style uses went down by 32 more, with no visible change: BoardPage.tsx 584, ResolutionPanel 64, TargetsBand 52, Suggestions 46, WhatSuccessLooksLike 38.
 - **Browser:** the button count passes 55 of 55 (the government, loans, matter and where-next boards still show their known button gaps), and the page colour passes 4 of 4.
 - **API:** I have no totals. The whole run stops when Node runs out of memory on this Mac, twice. The first run named the files that failed:
   - `the-judgement-reaches-a-screen.spec.ts` pins the board's source text, which the where-next fix changed by one prop; the board still behaves the same (request 138);
