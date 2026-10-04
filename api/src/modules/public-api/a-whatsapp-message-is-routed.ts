@@ -88,8 +88,12 @@ export function reportAsText(report: any, label: string): string {
   const lines: string[] = [`Your report for ${label} is ready.`];
   if (report?.whereThingsStand?.saying) lines.push(report.whereThingsStand.saying);
   const glance = (report?.atAGlance ?? []) as { label: string; value: string; sub?: string }[];
-  if (glance.length) lines.push(glance.map((g) => `${g.label}: ${g.value}${g.sub ? ` (${g.sub})` : ''}`).join('\n'));
-  if (report?.theConversationWorthHaving) lines.push(`Worth having: ${report.theConversationWorthHaving}`);
+  /* Each read is its own sentence, not "Label: value (note)". The note is already a sentence; without one, the label and value make one. */
+  const sentence = (t: string) => { const x = t.trim().replace(/\s+/g, ' '); return `${x.charAt(0).toUpperCase()}${x.slice(1)}${/[.!?]$/.test(x) ? '' : '.'}`; };
+  const lower = (t: string) => `${t.charAt(0).toLowerCase()}${t.slice(1)}`;
+  const reads = glance.map((g) => (g.sub?.trim() ? sentence(g.sub) : g.value?.trim() ? sentence(`${g.label} is ${lower(g.value.trim())}`) : '')).filter(Boolean);
+  if (reads.length) lines.push(reads.join(' '));
+  if (report?.theConversationWorthHaving) lines.push(`Here is a conversation worth having. ${report.theConversationWorthHaving}`);
   const whole = lines.join('\n\n');
   /* Where the whole report would not fit in one WhatsApp message, one short line, and the app for the rest. */
   return whole.length <= A_TEXT_MESSAGE_LIMIT ? whole : `${reportAsOneLine(report, label)} Open Groundwork to read it.`;
