@@ -1622,9 +1622,9 @@ export class BoardService {
      * THE SAME THING, STILL OPEN, FOR THREE CHECK-INS (week 12, screens requests 3c and 11): the
      * prototype's "Samuel has chased the same 5 leads for 3 check-ins", from the record's own counts
      * and never from a rating. To the lead only: it is one person's work across their check-ins, so
-     * no colleague reads it, and neither does an admin who only reads. See the-same-thing-for-three-check-ins.
+     * no colleague reads it. An admin with access to the check-in reads it too (decision 93, row 9). See the-same-thing-for-three-check-ins.
      */
-    if (isInitiator) {
+    if (isInitiator || adminHere) {
       out.toLookAt = await this.whatHasStayedTheSameFor(groundId, ground as any, checkIns as any[], rawDependencies, me?.id ?? null, nameOf, aColleague);
     }
 
@@ -2039,9 +2039,9 @@ export class BoardService {
     }
 
     /* The coaching, from the report's own builders and under its privacy (request 79 b): your own note, and
-       for whoever runs the check-in, what to ask each person. Nothing for an admin who only reads. */
+       for whoever runs the check-in and an admin with access to it, what to ask each person (decision 93, row 9). */
     {
-      const coaching = await Promise.resolve().then(() => this.reports.coachingForTheBoard(groundId, requestingUserId)).catch(() => null);
+      const coaching = await Promise.resolve().then(() => this.reports.coachingForTheBoard(groundId, requestingUserId, { adminReadsIt: adminHere })).catch(() => null);
       if (coaching) (out as any).coaching = coaching;
     }
 
@@ -2129,9 +2129,9 @@ export class BoardService {
      * running"). Here that is the same sentence as `toLookAt`, from the same read of the record, so
      * the two can never disagree. The line is the one the lead's row already says; where something
      * keeps coming up it no longer ends "nothing here needs you", because something does. Lead only,
-     * like `toLookAt`: a colleague and an admin who only reads get no field.
+     * like `toLookAt`: a colleague gets no field, and an admin with access reads it (decision 93, row 9).
      */
-    if (isInitiator && Array.isArray(out.eachPerson)) {
+    if ((isInitiator || adminHere) && Array.isArray(out.eachPerson)) {
       const firstFor = new Map<string, any>();
       for (const t of (out.toLookAt as any[] | undefined) ?? []) if (!firstFor.has(t.participantId)) firstFor.set(t.participantId, t);
       /*
@@ -2149,7 +2149,8 @@ export class BoardService {
         const k = firstFor.get(row.participantId);
         const said = String(row.says ?? '');
         const line = k ? said.replace(/, and nothing here needs you this week\.$/, '.') : said;
-        const points = untoldByParticipant.get(row.participantId);
+        /* The conversation point is the lead's own (decision 56, item 3): an admin who reads the line reads no point beside it. */
+        const points = isInitiator ? untoldByParticipant.get(row.participantId) : undefined;
         return { participantId: row.participantId, who: row.who, line, ...(k ? { keepsComingUp: k.says } : {}), ...(points?.length ? { conversationPoints: points } : {}) };
       });
     }
