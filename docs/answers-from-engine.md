@@ -3760,3 +3760,39 @@ Drawn today from what the server already sends: finance's view, the duty holder'
 2. **The example chats under "How people ask" and "How people use it".** The pages say where requests are made ("In their check-in, in chat, or on WhatsApp. Nobody fills in a form.") but do not draw the prototype's example chat, because its days, names and amounts are made up. If the engine can serve a real example for the organisation (its own approver and balance), the screen will draw it.
 
 Not drawn, and why: a person's own leave and spending requests with an answer box (`GET /suites/leave/mine`, `GET /suites/spend/mine`, with `questionWaiting`) have no screen yet, so a question to a person can be answered on WhatsApp or in Ask Groundwork but not on a page. The Company page's `whatWeKeep` and `owner` are served and not drawn. The Teams and History tabs and "What new people keep asking" wait for Hafsah.
+
+
+## Dumps and documents: what a lead's long paste or document now does (4 October 2026)
+
+Nothing in `client/` is changed. These are the changes to what is served. Results of the four test dumps are in `docs/existing-users.md`, section 8.
+
+**1. The yes writes the list the lead was shown.** `POST /grounds/:id/context-chat` and Ask Groundwork's add-context lane say back what was found in a paste. The yes used to read the pasted words again, and the second reading is never the same list. The reading the lead was shown is kept for six hours and the yes writes that. No new field.
+
+**2. A number given to a person is theirs only.** `proposal.say` no longer lists a priority's number under "These are for the whole check-in" when it is also listed for its owner. A name in the paste who is not on the check-in is said, with what the paste said for them, and nothing is saved for them. The sentence is now (singular, then plural):
+
+    One name is not on this check-in, so nothing is saved for them yet. If you add them and send this again, I will put their part on too.
+    - Hannah Cole (Hires: 6; Turnover: 4)
+
+    2 names are not on this check-in, so nothing is saved for them yet. If you add them and send this again, I will put their part on too.
+
+Sending the same paste again after adding the person now works (it is matched on its words and on who is on the check-in).
+
+**3. Dates are kept.** The line "These are the dates you named. They stay in this conversation and are not put on the record." is now "These are the dates you named. Everyone on this check-in will see these." followed by one plain sentence each ("Quarter ends on 31 December.", "Kemi starts on the 13th.", "Price letter to customers by 10 November."). A yes keeps each as a note (kind `NOTE`, for everyone). A date that a job already carries is not listed twice.
+
+**4. A job has no full stop of its own.** "Call every butchery in Ikeja (by Friday 10 October)", not "Call every butchery in Ikeja. (by Friday 10 October)". A job that belongs to a person who is not on the check-in is no longer listed under "has no owner"; it is listed under that person's name above.
+
+**5. A percentage the model wrote as a fraction.** "Under 5%" is kept as 5, only where the paste or the document says 5%. Otherwise no number is kept and the line reads "tracked rather than counted". It was stored as a limit of 0.
+
+**6. A document the lead adds, in Ask Groundwork.** When a lead who runs the check-in says they have just added a document, and the document has 400 characters or more, Ask Groundwork now says back the whole document as it would a paste (the same `proposal` block, parked as `context`) and the yes writes it. The document's own numbers are then marked taken (`holds.takenAt` and `holds.wholeAt`) so they are not offered again. For anybody else's own document, nothing changes.
+
+**7. A paste is for the check-in it was pasted on.** If a setup conversation was left open on one check-in and the lead pastes from another check-in's page (`groundId` is sent), the old turn is let go and the paste is read for the check-in named. No new field.
+
+**8. In the lead's own session**, a message from the lead of 400 characters or more is answered as before, and the reply now begins with: "That is a lot to read. To put the numbers, dates, decisions and questions in it on this check-in, paste it into Ask Groundwork. It will say back what it found, and nothing is saved until you say yes." (When Ask Groundwork does not take context: "...paste it into the chat on this check-in's Context and resources page. It will say back...") This is in `reply`, before the model's words. Nothing is read or written.
+
+**9. In a plan** (`POST /grounds/:id/plan/proposals`): a goal whose only number is the day of its date ("racking installed by 24 October") is now a commitment with that date, with no number and no `whichWay`. The day of a date is never the number. The prompt also asks for the owner named beside a priority to be the `personName` of each goal under it, and for a number the whole team is held to to be a goal with no person.
+
+**10. What people are told about a check-in** no longer carries a sentence that promises a combined report ("You will receive a consolidated report each time.").
+
+**11. A document's numbers** (`holds.waiting`, `forEverybody`, `forOnePerson`): a number given to a person is no longer also waiting for everyone, and a percentage is kept only as the document writes it.
+
+Prompts for the dump reader (`A_DUMP_PROMPT`), the plan reader (`A_PLAN_PROMPT`) and the document reader (`WHAT_A_DOCUMENT_HOLDS_PROMPT`) are passed straight from the code; the prompt store does not override them, so the file is what runs.

@@ -179,6 +179,94 @@ It asks for the host name to be typed back, as in section 5. It exits 0 when not
 4. Read every FAULT, LEAK, ASK and WHERE line, then the summary. A WHERE line says in which part of which page a sentence went missing, and for which reader. Anything about a lead or an admin, any LEAK, and any FAULT blocks the release. The lines about participants are read against the two explained groups above.
 5. Then run `api/journey/existing-clients-check.ts` as in section 5 for the schedule and the nightly jobs.
 
+## 8. Dumps and documents (4 October)
+
+**What was asked.** A lead can paste a long dump, or add a document, in the check-in or in Ask Groundwork. Groundwork reads it, says back what it found, and after a yes puts each piece in the right place (targets on the right people, commitments, dates, decisions, context lines, expectations, questions for people), keeps the rest as context, puts nothing on the wrong person and invents nothing.
+
+**What exists, and what each way in does.**
+
+| Way in | What reads it | What it can put in the right place | What it does not do |
+| --- | --- | --- | --- |
+| The check-in's setup chat (`POST /grounds/:id/context-chat`, then `/confirm`), and Ask Groundwork's add-context lane, which calls the same two methods (`GroundsService.contextChat` and `applyContextProposal`; Ask Groundwork's lane is off at release, `release.contextInAskGroundwork`) | `A_DUMP_PROMPT` (the reading of a paste of 400 characters or more, `grounds/a-dump-is-many-things.ts`) | Team numbers, each person's numbers and expectation, dates, ways of working, strategy, notes, what is still to decide, what is not settled, commitments (owned or not), questions for people, what is between two people, what the lead thinks of a person | Nothing is written before the yes. A name that is not on the check-in is said, not saved. |
+| "From a plan" on the Context and resources page (`POST /grounds/:id/plan/proposals`, with the pasted text or a document), `grounds/a-plan-is-many-proposals*.ts` | `A_PLAN_PROMPT` | One proposal each, confirmed on its own: a goal, a role, a commitment or a rule | Does not take dates on their own, decisions, notes, expectations or questions for people (the page promises goals, roles and commitments). A goal's date is not kept, because a target has no date field. |
+| A document added to a check-in (`POST /grounds/:id/documents`) | `WHAT_A_DOCUMENT_HOLDS_PROMPT`, in the background (`documents/what-a-document-holds.ts`) | Its numbers, each on the person it names, and its dates, waiting for a yes | Only numbers and dates. Decisions, rules, questions and expectations in it were not read. |
+| Ask Groundwork after "I have just added the document" | Before today, the document's numbers only. **Now, for a lead who runs the check-in, the same reading as a paste.** | As for the first row, on one yes | Anybody else's own document is still read for their own numbers only. |
+| The lead's own session (`POST /check-ins/:id/messages`) | The conversation, one answer at a time | Nothing stored from a dump. **Now it tells the lead once where the dump can be put on the check-in.** | The session never reads the dump into everyone's targets. |
+
+The prompts for the dump reader, the plan reader and the document reader are passed to the model straight from the code. Nothing in the prompt store (`PromptVersion`) overrides them, so the file is the version that runs; there is no `promptVersionId` for them.
+
+**The test.** Four long, messy dumps, written as a lead would paste them, are in `api/journey/dumps/` (`sales.txt`, `onboarding.txt`, `project.txt`, `planning.txt`), with what is true of each in `truth.json` (the people on the check-in, the people named who are not, each number and whose it is, the numbers that must not be stored, the jobs, the jobs that have no owner, the questions). `api/journey/dumps/run-dumps.mjs <dump> <way in>` runs one through one way in against the API on a local database, with the real model, and checks the rows. The runs below were on a copy of the local test database (`gw_dumps_1`, made from `gw_pw9_1786222102`) through the API on port 3005. Nothing was run on any hosted database and no email was sent. The ways in are `chat` (the setup chat), `ask` (Ask Groundwork's add-context lane, switched on in the copy only), `plan` (every proposal confirmed), `doc` (a document uploaded, its numbers read), `askdoc` (a document uploaded and "I have just added the document" said in Ask Groundwork) and `checkin` (pasted into the lead's own session).
+
+**What is checked.** For each run: how many of the expected rows were stored on the right person ("right"), how many stored rows were on the wrong person or were not a target at all ("wrong"), how many stored rows were not in the dump ("invented"; each stored row is read against the dump by eye as well as by a word-overlap check), whether anything was written before the yes, whether the list said back is the list that was written, and whether a name that is not on the check-in was said and not given a target. The model gives a slightly different reading each time, so a missing row in one run and not the next is the model, not the code; the figures are from one run each.
+
+**Before and after.** "Expected" counts targets, jobs and questions in `truth.json`. Before is the code of this morning (`b3a3b6e8`). After is the code on this branch.
+
+| Dump | Way in | Expected | Right, before | Right, after | Wrong, before | Wrong, after | Invented |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Sales | setup chat | 12 | 10 | 11 | 0 | 0 | 0 |
+| Sales | Ask Groundwork | 12 | 10 | 12 | 0 | 0 | 0 |
+| Sales | plan, confirmed | 12 | not run (rate limit) | 9 | not run | 0 | 0 |
+| Sales | document | 8 numbers | 7 | 7 | 0 | 0 | 0 |
+| Sales | document in Ask Groundwork | 12 | numbers only | 11 | 0 | 0 | 0 |
+| Onboarding | setup chat | 8 | 8 | 8 | 0 | 0 | 0 |
+| Onboarding | Ask Groundwork | 8 | not run | 8 | not run | 0 | 0 |
+| Onboarding | plan, confirmed | 8 | not run | 6 | not run | 0 | 0 |
+| Onboarding | document | 5 numbers | 5, and two waiting as a target of 0 | 5 | 2 (zero targets) | 1 (a discount cap of 10 kept as a limit for everyone, which the document does say) | 0 |
+| Onboarding | document in Ask Groundwork | 8 | numbers only | 8 | 0 | 0 | 0 |
+| Project | setup chat | 10 | 6 | 9 | 0 | 0 | 0 |
+| Project | Ask Groundwork | 10 | not run | 9 | not run | 1 (a 10% contingency as a limit; the prompt now names it) | 0 |
+| Project | plan, confirmed | 10 | not run | 6 | 8 (the day of a date kept as a target) | 0 | 0 |
+| Project | document | 2 numbers | 2 | 1 | 1 | 0 | 0 |
+| Project | document in Ask Groundwork | 10 | numbers only | 8 | 0 | 0 | 0 |
+| Company planning | setup chat | 10 | 1 | 9 | 12 (every priority's number kept for the whole team, and two numbers of an owner who is not on the check-in) | 0 | 0 |
+| Company planning | Ask Groundwork | 10 | not run | 9 | not run | 0 | 0 |
+| Company planning | plan, confirmed | 10 | not run | 8 | not run (10 goals read as the team's) | 0 | 0 |
+| Company planning | document | 9 numbers | 9, each priority twice | 9 | 10 (each also waiting for everyone) | 1 (a price increase of 6 that the document says is not settled) | 0 |
+| Company planning | document in Ask Groundwork | 10 | numbers only | 9 | 0 | 0 | 0 |
+| Sales | the lead's own session | nothing stored | nothing stored, no word about where to put it | nothing stored, and the lead is told where | 0 | 0 | 0 |
+
+The rows that are missing after are the model reading a line differently on that run (a question put to Ngozi read as a job, a count of 4,200 read as part of a job, five working days read as a rule). Nothing was written before a yes in any run. No name that is not on a check-in received a target in any run after the fixes.
+
+**Faults found, and fixed** (each commit has a test that fails on the old code):
+
+1. **The yes wrote a second reading.** The yes read the pasted words again, and the model never reads the same words the same way twice, so the lead said yes to one list and a different list was written (the project plan said back Zainab's count and her labelling and wrote a different job for her). The reading the lead was shown is kept for six hours and is what the yes writes (`80f6036f`).
+2. **A person's number was also the team's, and an owner who is not on the check-in had no place.** On the quarterly plan every priority's number was kept for the whole team as well as for its owner, so the board counted it twice; Hannah Cole's two numbers were kept for the whole team and for nobody else; Musa Bello's payment (a customer) was kept as a job for the team with no owner. A number given to a person is theirs only; what is meant for a person who is not on the check-in is said under their name and not saved (`3e8a94a3`).
+3. **A credit ceiling of 35 was said back and never written.** "Q4 sales" and "credit as a share of sales" both end in "sales" and were taken for one measure. Two names are one measure only when their numbers agree (`3e8a94a3`).
+4. **"Add them and I will put their part on" was refused as "already on the record".** The pasted words are now matched together with who is on the check-in (`3e8a94a3`).
+5. **Dates were said back and dropped** ("They stay in this conversation and are not put on the record"). Each is now one plain sentence kept as a note everyone on the check-in can read (`970803d4`).
+6. **Prompts.** An owner named beside a priority or task now gets its numbers and tasks; a customer's job is not the team's; a figure not approved is nobody's number; a count inside a job is not a target; a reserve is not a target; the lead's expectation is not the label "Owner: Amina Yusuf, Sales"; "I", "me" and "my" are not written into lines the team reads; a question put to a named person is found (`79b4c515`, `26d1d878`).
+7. **A document the lead added was read for its numbers only.** In Ask Groundwork it is now read as a paste is (`342c428c`).
+8. **A paste was written on the wrong check-in.** A setup chat left open on one check-in answered what the lead said next from another check-in's page (`7885af57`).
+9. **A long paste in the lead's own session went nowhere and said nothing.** The lead is told once where to put it (`baa63e62`).
+10. **A percentage was stored as zero.** "Under 5%" came back as 0.05 and was rounded to a limit of 0, in a paste and in a document. It is kept as 5 only where the paste says 5%, and otherwise no number is kept (`42a91eff`, `c9e2681a`).
+11. **A count inside a job, and a full stop before the bracket.** "Tell the top 30 customers" was a target of 30; every job was said back as "Call every butchery in Ikeja. (by Friday 10 October)" (`26d1d878`).
+12. **In a plan, the day of a date was a target.** "Racking installed by 24 October" became a target of 24 on the person who owns the racking. A dated job is now a commitment with its date (`9f602b56`).
+13. **A document's numbers were waiting twice** (for the owner and for everyone) (`78cf083f`).
+14. **What people are told promised a report.** "You will receive a consolidated report each time" is left out (`f832a1dc`).
+
+**What a person reads now** (the quarterly plan, through Ask Groundwork, before the yes; Hannah Cole and Dayo Adeyemi are named in the plan and are not on the check-in):
+
+> These are the dates you named. Everyone on this check-in will see these.
+> - Price increase on 1 December.
+> - Board review on 12 January.
+> - Q4 ends on 31 December.
+> - Hiring plan due on 15 October.
+>
+> One name is not on this check-in, so nothing is saved for them yet. If you add them and send this again, I will put their part on too.
+> - Hannah Cole (Hires: 6; Turnover: 4; Agree 30 60 90 or quarterly plan for everyone (by 31 October); Deliver hiring plan (15 October))
+
+and in the lead's own session, after a pasted update of 400 characters or more:
+
+> That is a lot to read. To put the numbers, dates, decisions and questions in it on this check-in, paste it into Ask Groundwork. It will say back what it found, and nothing is saved until you say yes.
+
+(While Ask Groundwork does not take context, it reads "paste it into the chat on this check-in's Context and resources page".)
+
+**Open, for Hafsah.**
+- A document the lead adds is read into notes everyone on the check-in can read, after the lead's yes, the same as a paste. The file itself stays as private as it was set. If a private document's contents should never become shared notes, say so and it will be restricted.
+- The plan page ("From a plan") still takes only goals, roles, commitments and rules, and the page promises exactly that. Questions for people, decisions and dates come from a paste, or from a document through Ask Groundwork. Say if the plan page should take them too.
+- A question the lead writes to themselves in a dump ("Amina - which accounts actually have a buying process?" when Amina is the lead) is kept as a question for the lead in their own check-in. It is not asked of anyone until the lead confirms it.
+- Ask Groundwork's setup lane is off at release, so at release the way in for a dump is the setup chat on the check-in page, and a document the lead adds is read for its numbers there. Everything above through Ask Groundwork needs `release.contextInAskGroundwork` on.
+
 ## Hafsah's decision 90 (4 October)
 
 - Existing clients get the whole new build on the same terms as the paid client. It must work at least as well as today on their existing data (check-ins, boards, reports, Company page, suites, Ask Groundwork); the check below proves it on existing local check-ins. Nothing gets worse, no use case is lost, running check-ins carry on as scheduled, and stalled check-ins stay as the live main line leaves them, with no messages.

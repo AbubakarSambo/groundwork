@@ -48,6 +48,11 @@ The engine workspace keeps this file current. The screens workspace reads it aft
 - [ ] **(Needs Hafsah: staging access) Run `api/journey/existing-clients-check.ts` on staging, on a copy of the live data**, and read its summary (every FAULT, LEAK and SCHEDULE line). *Not done.*
 - [ ] **Whatever that check shows is missing**, built. *Not done.*
 
+## Phase B: dumps and documents
+- [x] **A lead can paste a long dump or add a document, have it said back, and after a yes have each piece put in the right place** (targets on the right people, commitments, dates, decisions, context lines, expectations, questions for people), with nothing on the wrong person and nothing invented. Four long, messy dumps (sales, onboarding, project, company planning) were run through the setup chat, Ask Groundwork, the plan page, a document, a document in Ask Groundwork and the lead's own session, with the real model, on a copy of the local test database. Fourteen faults found and fixed, each with a test. Results per dump and way in are in `docs/existing-users.md`, section 8. *Done locally.*
+- [ ] **(Needs Hafsah) The four open questions at the end of `docs/existing-users.md`, section 8**: whether a private document's contents may become shared notes after a yes, whether the plan page should also take questions, decisions and dates, what happens to a question the lead writes to themselves, and that at release Ask Groundwork's setup lane is off. *Not answered.*
+- [ ] **Run `api/journey/dumps/run-dumps.mjs` for the four dumps once more on the release build**, after the last merge, against a local copy. *Not done.*
+
 ## Hidden at release (never hide something an existing client uses today)
 - [x] Boards for kinds of work nobody uses yet. Hidden from new check-ins by `release.boardKindsOffered`; existing check-ins keep their kind. `docs/deploy.md`, "Hidden at release".
 - [x] The back office rebuild. Checked: none of it was built, so nothing to hide. The existing back office stays for Groundwork's staff.

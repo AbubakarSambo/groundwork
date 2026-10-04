@@ -131,6 +131,13 @@ if (via === 'doc') {
   await new Promise((r) => setTimeout(r, 25000));
   const d = await p.groundDocument.findUnique({ where: { id: docId } });
   log.holds = d?.holds; log.visibility = d?.visibility;
+  /* What the document's numbers would write on a yes, checked against the truth. */
+  const w = (d?.holds?.waiting ?? []).map((x) => ({ owner: x.ownerParticipantId ? byName[x.ownerParticipantId] : 'team', target: x.target, name: x.name }));
+  const wanted2 = truth.targets.map(([who, n]) => ({ who, n }));
+  log.numbersWaiting = {
+    missing: [...wanted2.filter((t) => !w.some((x) => x.owner === t.who && x.target === t.n)).map((t) => `${t.who} ${t.n}`), ...truth.teamTargets.filter((n) => !w.some((x) => x.owner === 'team' && x.target === n)).map((n) => `team ${n}`)],
+    wrong: w.filter((x) => x.owner === 'team' ? !truth.teamTargets.includes(x.target) : !wanted2.some((t) => t.who === x.owner && t.n === x.target)).map((x) => `${x.owner} ${x.name} ${x.target}`),
+  };
   const mid = await snapshot(); log.writtenAfterUploadBeforeYes = count(mid) - count(before);
   const r = await call(L, 'POST', `/grounds/${gid}/plan/proposals`, { documentId: docId });
   log.planStatus = r.status; log.says = r.data?.says; log.proposals = (r.data?.proposals ?? []).map((x) => ({ kind: x.kind, says: x.says, who: x.fields?.personOnTheCheckIn ?? x.fields?.personName ?? null, notOn: !!x.note }));
