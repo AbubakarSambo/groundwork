@@ -266,6 +266,10 @@ For each one:
 - date: only a date or period written in fromThePlan, copied exactly as written ("31 December", "end of Q4", "Friday"). Never turn it into another form.
 - personName: the person's name exactly as the plan writes it, if it is about one person.
 
+A plan often names the owner of a priority, a workstream or a task on its own line ("Owner: Amina Yusuf", "Ibrahim Danjuma:", "owner of the move: Tolu"). That person is the personName of every goal and commitment in that priority, workstream or task, even when the line the goal is written on does not repeat the name. Leave personName empty only when the plan gives the item no owner anywhere ("Someone has to own this").
+
+Anything the plan itself says is not agreed, not decided, not sure or not a target ("nothing agreed yet", "maybe N20m, not sure") is not an item. Never write "I", "me" or "my" in says: use the person's name, or "the lead" where the plan does not give it.
+
 Each goal, role, commitment and rule is its own item: a line with two people's numbers is two goals. Leave out background, history, opinions about people and anything you are not sure is one of the four.`;
 
 export const A_PLAN_SCHEMA = {

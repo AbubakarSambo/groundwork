@@ -66,6 +66,14 @@ describe('a number the paste gave to a person is theirs and not also the team\'s
     expect(said).toContain("- Musa Bello (Pay N900k owed for Samuel's Cold Rooms (by the 15th))");
   });
 
+  it('a team ceiling is kept when one person has the same figure for a narrower measure of their own', async () => {
+    const got = await read({
+      teamTargets: [{ name: 'Credit as a share of sales', target: 35, notToExceed: true }],
+      forPeople: [{ personName: 'Amina Yusuf', expectation: 'Keep credit low.', targets: [{ name: 'Credit as a share of his own book', number: 35 }] }],
+    });
+    expect(got.teamTargets.map((t: any) => t.name)).toEqual(['Credit as a share of sales']);
+  });
+
   it('two numbers that are not the same figure are never one measure because their names end alike', async () => {
     const got = await read({
       teamTargets: [{ name: 'Q4 sales', target: 180_000_000 }, { name: 'Credit as a share of sales', target: 35, notToExceed: true }],

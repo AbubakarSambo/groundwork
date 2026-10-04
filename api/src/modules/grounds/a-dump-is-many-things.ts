@@ -74,11 +74,11 @@ export const A_DUMP_PROMPT = `Somebody running a team check-in has pasted everyt
 
 WHAT DOING WELL LOOKS LIKE. Their own sentence about what would make this period a good one. Take the sentence that says what they want out of it, in their words, not a summary of the whole paste. A rule, an instruction or a slogan off a list is not it: "celebrate revenue not meetings" and "no proposal before qualification" are ways of working, not a picture of a good quarter. Nor is a remark about check-ins, accountability or this product itself - a paste often contains notes addressed to whoever set the check-in up, and none of those say what the work should look like. If no sentence in the paste says what a good period looks like, leave this out.
 
-NUMBERS THE WHOLE TEAM IS HELD TO. A total to reach, a ceiling not to pass. "N180m for Q4" is a target of 180000000. "Credit under 35%" is 35, not to exceed. Take the number they have settled on, not one they are arguing with: "the board wants 200 but I have agreed 180" is 180.
+NUMBERS THE WHOLE TEAM IS HELD TO. A total to reach, a ceiling not to pass. "N180m for Q4" is a target of 180000000. "Credit under 35%" is 35, not to exceed. Take the number they have settled on, not one they are arguing with: "the board wants 200 but I have agreed 180" is 180. A figure the paste says is not approved, not agreed, only a request, a maybe or a guess ("budget N1.2m, not approved yet", "maybe N20m, not sure") is not a number for anybody: leave it out of the numbers and put it under what is not settled. Last quarter's figure, a current figure and an amount somebody owes are never targets.
 
 NAME EVERY MEASURE IN WORDS, as a person would read it on a board: "Q4 sales", "credit as a share of sales", "arrears", "new dealers signed". Never put the figure, a currency symbol or a currency letter in the name - "N for Q4" and "N180m" are not names of anything. The number goes in the number field and nowhere else.
 
-WHAT THEY EXPECT OF EACH NAMED PERSON. One entry per person, in the lead's own words, with EVERY number they gave for that person. "I want Dayo at N45m with credit under 35% of his own book" is Dayo, that sentence, and two numbers: Q4 sales 45000000, and credit as a share of his sales 35. "N35m and at least 4 new dealers signed" is two numbers, not one. Their last quarter's figure is not a target: it is what happened.
+WHAT THEY EXPECT OF EACH NAMED PERSON. One entry per person, in the lead's own words, with EVERY number they gave for that person. A plan that gives each priority or workstream an owner ("Priority 2. Keep customers. Owner: Tobi Lawal. Complaints under 3 per 100 orders.") gives the numbers in it to that owner: put them on that person, and never also in the numbers for the whole team. The expectation is what the priority is ("Keep customers"), never the label that names the owner ("Owner: Tobi Lawal"). If the owner is somebody the paste does not otherwise describe, still give their name and numbers exactly as written, so they can be told apart from the team's. "I want Dayo at N45m with credit under 35% of his own book" is Dayo, that sentence, and two numbers: Q4 sales 45000000, and credit as a share of his sales 35. "N35m and at least 4 new dealers signed" is two numbers, not one. Their last quarter's figure is not a target: it is what happened.
 
 DATES. What is due and when, in the paste's own words: "quarter ends 31 December", "board meeting 15 January".
 
@@ -94,7 +94,7 @@ WHAT IS STILL TO DECIDE. Anything the paste says needs deciding and has not been
 
 WHAT IS NOT SETTLED. Anything the paste contradicts itself about, is unsure of, or says explicitly not to treat as fact or as a target: two numbers for the same thing, a figure somebody mentioned but nobody approved, a task nobody knows is finished. Say the competing versions where the paste gives both.
 
-WHAT IS TO BE DONE. Every action the paste names: a proposal to send, a call somebody has to make, a list to clean, a thing to finish. One entry each, in the paste's words. Give the person ONLY where the paste says whose it is - most of a list of outstanding things has no owner, and leaving the owner out is the correct answer, never the nearest name. Give the timing only where the paste gives one, in its own words ("this week", "friday", "before Thursday"). Say whether the person said it themselves ("she said she would do it this week") or the lead is the one saying it needs doing.
+WHAT IS TO BE DONE. Every action the paste names: a proposal to send, a call somebody has to make, a list to clean, a thing to finish. One entry each, in the paste's words. A task listed under a person's name or under a workstream that person owns ("Ibrahim: racking installed by 24 October, power backup tested by 31 October") is one entry for each task, with that person as the owner and its own date. An action for somebody who is clearly not part of this team, such as a customer paying a bill or a supplier delivering, is not an action for this team: leave it out of this list and put it under notes. Give the person ONLY where the paste says whose it is - most of a list of outstanding things has no owner, and leaving the owner out is the correct answer, never the nearest name. Give the timing only where the paste gives one, in its own words ("this week", "friday", "before Thursday"). Say whether the person said it themselves ("she said she would do it this week") or the lead is the one saying it needs doing.
 
 QUESTIONS THE LEAD WANTS ASKED. Where the paste writes a question for a named person - "Amina - which accounts actually have a buying process?" - take the person and the question as written.
 
@@ -102,7 +102,7 @@ WHAT IS BETWEEN TWO PEOPLE. Where the paste describes something that involves tw
 
 WHAT THEY SAY ABOUT EACH PERSON THAT IS NOT A NUMBER OR A JOB. The lead's read of somebody: how they work, what they are good at, what they keep doing. One entry per person, their words. This is an observation, never a fact about the person, and it is kept where only the lead can read it.
 
-Give names and wording exactly as the paste writes them. Do not correct them, expand them, or match them to anybody. Leave out anything that is an opinion about a person rather than a number or a job for them - that belongs somewhere else and not here. An empty field is a correct answer.`;
+Never write "I", "me" or "my" in a line you write: the team reads these lines, so say the person's name, or "the lead" where the paste does not give it. Give names and wording exactly as the paste writes them. Do not correct them, expand them, or match them to anybody. Leave out anything that is an opinion about a person rather than a number or a job for them - that belongs somewhere else and not here. An empty field is a correct answer.`;
 
 export const A_DUMP_SCHEMA = {
   name: 'emit_what_the_paste_holds',
@@ -671,6 +671,13 @@ const stem = (w: string): string =>
    demos supported" were written as two of David's measures by one paste read twice. */
 const wordsOf = (name: string): string[] =>
   (name ?? '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2).map(stem);
+
+/** Whether these two names are made of the same words, whatever the order. Stricter than theSameMeasure, which lets one name sit inside another. */
+export function theSameWords(a: string, b: string): boolean {
+  const x = [...new Set(wordsOf(a))].sort();
+  const y = [...new Set(wordsOf(b))].sort();
+  return x.length > 0 && x.length === y.length && x.every((w, i) => w === y[i]);
+}
 
 /** Whether these two names are the same thing said at different lengths. */
 export function theSameMeasure(a: string, b: string): boolean {
