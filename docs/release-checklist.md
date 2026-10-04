@@ -63,6 +63,7 @@ The engine workspace keeps this file current. The screens workspace reads it aft
 - [x] Boards for kinds of work nobody uses yet. Hidden from new check-ins by `release.boardKindsOffered`; existing check-ins keep their kind. `docs/deploy.md`, "Hidden at release".
 - [x] The back office rebuild. Checked: none of it was built, so nothing to hide. The existing back office stays for Groundwork's staff.
 - [x] The Context tab's move to Ask Groundwork. Hidden by `release.contextInAskGroundwork` (off). The old context chat stays.
+- [x] The anchor scenario. Hidden by `release.anchorScenario` (off). Nothing is built behind it yet.
 - [x] Plan and billing's new parts. Hidden by `release.planAndBillingNewParts` (off); the trial switch stays off.
 
 ## Release

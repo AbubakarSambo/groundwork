@@ -9,6 +9,7 @@
  *  - `release.boardKindsOffered`        { "kinds": [ ... ] }  the kinds of work a NEW check-in may be given
  *  - `release.contextInAskGroundwork`   { "on": false }       the setup and context lanes in Ask Groundwork
  *  - `release.planAndBillingNewParts`   { "on": false }       the WhatsApp add-on's price, use and limit
+ *  - `release.anchorScenario`           { "on": false }       whether a new anchor check-in can be started (docs/anchor-scenario-plan.md, section 3)
  *
  * A bad or unreadable row reads as the default, never as "everything on".
  */
@@ -17,6 +18,7 @@ import { KINDS_OF_WORK, type KindOfWork } from '../board/the-kind-of-work';
 export const BOARD_KINDS_OFFERED_KEY = 'release.boardKindsOffered';
 export const CONTEXT_IN_ASK_GROUNDWORK_KEY = 'release.contextInAskGroundwork';
 export const PLAN_AND_BILLING_NEW_PARTS_KEY = 'release.planAndBillingNewParts';
+export const ANCHOR_SCENARIO_KEY = 'release.anchorScenario';
 
 /**
  * The kinds of work a NEW check-in may be given at release (decision 91, item 3). The paid client
@@ -71,3 +73,11 @@ async function aSwitch(prisma: Reader, key: string): Promise<boolean> {
 /** Off unless Hafsah has written `{ "on": true }`. */
 export const contextIsInAskGroundwork = (prisma: Reader) => aSwitch(prisma, CONTEXT_IN_ASK_GROUNDWORK_KEY);
 export const theNewBillingPartsAreShown = (prisma: Reader) => aSwitch(prisma, PLAN_AND_BILLING_NEW_PARTS_KEY);
+
+/**
+ * Whether a NEW anchor check-in can be started (docs/anchor-scenario-plan.md, section 3). Off unless
+ * the row says `{ "on": true }`; a missing or broken row reads as off. Every later anchor piece calls
+ * this one function and nothing else. A check-in already started as an anchor one keeps behaving as
+ * one when this is turned off, so the caller asks this only for something new.
+ */
+export const theAnchorScenarioIsOn = (prisma: Reader) => aSwitch(prisma, ANCHOR_SCENARIO_KEY);

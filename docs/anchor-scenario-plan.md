@@ -404,7 +404,7 @@ The order follows decision 94's list. Each piece is small enough for one builder
 
 | # | Piece | Who | Files it touches | Size | Blocked |
 | --- | --- | --- | --- | --- | --- |
-| 0 | The switch `release.anchorScenario`, and `anchorScenarioOn` served to the client | E | `modules/admin/what-is-hidden-at-release.ts`, `modules/board/board.service.ts`, `modules/entry/entry.controller.ts`, `docs/deploy.md` | small | no |
+| 0 (done, 4 October) | The switch `release.anchorScenario`, and `anchorScenarioOn` served to the client | E | `modules/admin/what-is-hidden-at-release.ts`, `modules/board/board.service.ts`, `modules/entry/entry.controller.ts`, `docs/deploy.md` | small | no |
 | 1 | The entry link: a route that starts an anchor draft with a source mark, no organisation first | E | `modules/entry/entry.controller.ts`, `entry.service.ts`, `prisma/schema.prisma` (a source mark on `EntryDraft` plus migration), `modules/auth/` (automatic organisation naming) | medium | 12, 13 |
 | 2 | The landing page, with Hafsah's words, entering the conversation | S | `client/src/App.tsx`, `client/src/pages/enter/`, `client/src/pages/enter/the-way-in.ts` | medium | 3 (the words "for a month") |
 | 3 | "Fills in as you talk" holds the seven items of section 7 | S | `client/src/pages/enter/FillsInAsYouTalk.tsx` | small | no |
