@@ -370,7 +370,8 @@ export class ReviewsService {
     if (!readsIt) throw new ForbiddenException(REVIEW_REFUSED.notYours);
     const record = await this.theRecordServed(row, person, reader.userId, writerId, writerFirst);
     const briefing = await this.theBriefing(row, person, reader.userId, writes, writerFirst, record);
-    const suggestion = writes && person.userId && this.suggestions
+    /* The writer, and (decision 93, row 17) an admin; the suggestion service itself reads only a check-in the admin has access to. A lead who does not write it reads none. */
+    const suggestion = (writes || role === 'ADMIN') && person.userId && this.suggestions
       ? await this.suggestions.latestForTheLeadAbout(person.userId, reader).catch(() => null)
       : null;
     return {

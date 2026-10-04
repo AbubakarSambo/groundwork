@@ -170,3 +170,27 @@ describe('with the setting on', () => {
     }
   });
 });
+
+describe('decision 93, row 17: the suggestion about the person, on the review', () => {
+  const SUGGESTION = { headline: 'Groundwork suggests extra support for Aisha Otieno' };
+  function withSuggestions() {
+    const { svc, as } = setup({});
+    const asked: string[] = [];
+    (svc as any).suggestions = { latestForTheLeadAbout: jest.fn(async (_p: string, reader: { userId: string }) => { asked.push(reader.userId); return reader.userId === 'u-leila' ? null : SUGGESTION; }) };
+    return { svc, as, asked };
+  }
+
+  it('Wairimu, who writes it, and Grace, an admin, are asked for it; Leila, a lead who does not write it, is not', async () => {
+    const { svc, as, asked } = withSuggestions();
+    expect(((await svc.one(as('u-wairimu'), 'r-aisha')) as any).suggestion).toEqual(SUGGESTION);
+    expect(((await svc.one(as('u-grace'), 'r-aisha')) as any).suggestion).toEqual(SUGGESTION);
+    expect(((await svc.one(as('u-leila'), 'r-aisha')) as any).suggestion).toBeNull();
+    expect(asked).toEqual(['u-wairimu', 'u-grace']);
+  });
+
+  it('Aisha is not served it', async () => {
+    const { svc, as } = withSuggestions();
+    expect(await svc.one(as('u-aisha'), 'r-aisha')).not.toHaveProperty('suggestion');
+  });
+});
+

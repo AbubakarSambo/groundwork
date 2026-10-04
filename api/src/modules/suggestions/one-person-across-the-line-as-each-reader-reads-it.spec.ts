@@ -31,6 +31,8 @@ const people = {
   miriam: { userId: 'u-miriam', firstName: 'Miriam', lastName: 'Wanjiku', role: 'MEMBER' },
   grace: { userId: 'u-grace', firstName: 'Grace', lastName: 'Achieng', role: 'ADMIN' },
   omar: { userId: 'u-omar', firstName: 'Omar', lastName: 'Haddad', role: 'ADMIN' },
+  /* A lead of another team, who runs nothing here (decision 93, row 17). */
+  leila: { userId: 'u-leila', firstName: 'Leila', lastName: 'Hassan', role: 'LEAD' },
 };
 type Who = keyof typeof people;
 
@@ -480,3 +482,42 @@ describe('the same record on an ordinary team check-in', () => {
     expect(all).not.toMatch(/Groundwork suggests|commitments|What would change|kept|extra help/i);
   });
 });
+
+/**
+ * DECISION 93, ROW 17 (5 October 2026): GROUNDWORK'S SUGGESTION ABOUT THE PERSON, ON THEIR REVIEW (what `ReviewsService.one`
+ * serves as `suggestion`, read through `latestForTheLeadAbout`). It was read only by whoever runs the check-in. Hafsah
+ * removed that for admins: Grace, an admin who set it up and so has access, reads it. Omar, an admin given no access to a
+ * performance plan (decision 5), and Leila, a lead who runs nothing here, still read nothing; nor do Tobi or Miriam.
+ */
+describe('decision 93, row 17: who reads the suggestion about Tobi on his review', () => {
+  it('Wairimu, who runs it, reads it with her choices; Grace, an admin with access, reads what Groundwork suggests without the choices', async () => {
+    const w = await acrossTheLine();
+    await w.service.addSide(w.suggestions[0].id, w.as('tobi'), { side: 'Two of the shops were closed for the holiday week.' });
+    const lead: any = await w.service.latestForTheLeadAbout('u-tobi', w.as('wairimu'));
+    const admin: any = await w.service.latestForTheLeadAbout('u-tobi', w.as('grace'));
+    expect(lead.ifYouAgree).toBe('Extra support for Tobi Okafor over the next four weeks, agreed with Tobi.');
+    expect(admin.headline).toBe('Groundwork suggests extra support for Tobi Okafor');
+    expect(admin.why).toBe('In the last four weeks, Tobi Okafor kept two of the six commitments made in this check-in. That is 33%. When fewer than half are kept, Groundwork suggests extra support.');
+    expect(admin.whatWouldChangeIt).toBe('If Tobi Okafor keeps at least half of the commitments made in this check-in over the next four weeks.');
+    expect(admin.theirSide).toBe('Two of the shops were closed for the holiday week.');
+    expect(admin.ifYouAgree).toBeNull();
+    expect(admin.otherChoices).toEqual([]);
+    expect(admin.mayChangeTheDecision).toBe(false);
+    expect(served(admin)).not.toMatch(A_RATING);
+    expect(served(admin)).not.toMatch(THE_PERSONS_OWN_COUNT);
+  });
+
+  it('she reads it only once Tobi has had his turn, as Wairimu does (decision 53)', async () => {
+    const w = await acrossTheLine();
+    expect(await w.service.latestForTheLeadAbout('u-tobi', w.as('grace'))).toBeNull();
+    jest.setSystemTime(new Date(at('2026-09-21').getTime() + 3 * DAY + 1));
+    expect(await w.service.latestForTheLeadAbout('u-tobi', w.as('grace'))).not.toBeNull();
+  });
+
+  it.each(['omar', 'leila', 'miriam', 'tobi'] as const)('%s reads nothing of it', async (who) => {
+    const w = await acrossTheLine();
+    await w.service.addSide(w.suggestions[0].id, w.as('tobi'), { side: 'Two of the shops were closed for the holiday week.' });
+    expect(await w.service.latestForTheLeadAbout('u-tobi', w.as(who))).toBeNull();
+  });
+});
+

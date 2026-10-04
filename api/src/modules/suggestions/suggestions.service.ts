@@ -19,6 +19,7 @@ import {
 } from './a-suggestion-told-like-a-signal';
 import { aSuggestionFromTheRecord, backAtTheLine, type TheRecordForOnePerson } from './a-suggestion-reached-from-the-record';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { readsAsAnAdmin } from '../grounds/who-may-read-this-check-in';
 import { thresholdsInForce, SUGGESTION_THRESHOLDS_KEY, type SuggestionThresholds } from './thresholds';
 
 /** The words the server says when it refuses, in plain full sentences. */
@@ -263,8 +264,8 @@ export class SuggestionsService {
   }
 
   /**
-   * FOR A REVIEW (week 11): the newest suggestion about one person, on a check-in the reader runs, as
-   * that lead reads it. Exactly what `forGround` hands the lead, so the same rules hold - the person
+   * FOR A REVIEW (week 11): the newest suggestion about one person, on a check-in the reader runs or, since
+   * decision 93 (row 17), an admin has access to, as that lead reads it (an admin without the lead's choices). Exactly what `forGround` hands the lead, so the same rules hold - the person
    * has had their turn (decision 53), the count behind it (decision 86), no verdict - and nothing for anybody who
    * does not run a check-in the person is in. Null when there is none.
    */
@@ -273,13 +274,23 @@ export class SuggestionsService {
       where: { organizationId: reader.organizationId, about: { userId: personUserId } },
       orderBy: { createdAt: 'desc' },
     })) as unknown as SuggestionRow[];
+    const anAdmin = await this.isAdminOf(reader.userId, reader.organizationId).catch(() => false);
     for (const r of rows) {
       const ground = await this.theGround(r.groundId);
       if (!aVerdictIsReachedOn(ground)) continue;
-      if (ground.initiatorId !== reader.userId) continue;
+      const runsIt = ground.initiatorId === reader.userId;
+      /*
+       * AN ADMIN READS IT TOO (decision 93, row 17), on a check-in they have access to (decision 5: never a
+       * performance plan they were not given). A lead who does not run the check-in still does not.
+       */
+      const adminReadsIt = !runsIt && anAdmin
+        && readsAsAnAdmin({ userId: reader.userId, role: 'ADMIN', organizationId: reader.organizationId }, ground);
+      if (!runsIt && !adminReadsIt) continue;
       if (!theLeadMayReadIt(r, now)) continue;
       const names = await this.deciders([r]);
-      return forTheLead(r, this.whoIsWho(ground, r, 'lead', names));
+      const shaped = forTheLead(r, this.whoIsWho(ground, r, 'lead', names));
+      /* The admin reads what Groundwork suggests; the choice stays with whoever runs the check-in. */
+      return adminReadsIt ? { ...shaped, ifYouAgree: null, otherChoices: [], mayChangeTheDecision: false } : shaped;
     }
     return null;
   }
@@ -391,6 +402,7 @@ export class SuggestionsService {
       where: { id: groundId },
       select: {
         id: true, label: true, organizationId: true, initiatorId: true, scenario: true, peersVisibleToEachOther: true,
+        createdByUserId: true, status: true, approvedById: true,
         participants: { select: PARTY_SELECT },
       },
     });
