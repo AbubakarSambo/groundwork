@@ -1,3 +1,4 @@
+import { theWaitSaid } from './a-wait-said-in-full';
 import { inOurVoice } from '../reports/what-the-record-shows-over-time';
 import { theReaderSaidAsYou, aThingWithoutItsHolder } from './a-holder-in-their-own-words';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
@@ -182,7 +183,7 @@ export function theBlockers(
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
     const what = inASentence(on ? aThingWithoutItsHolder(d.what, d.onLabel) : d.what);
-    const says = `${on ? `${who} ${isAre(who)} waiting on ${on} for ${what}.` : `${who} ${isAre(who)} waiting for ${what}.`}${thatWaitsOn(d)}`;
+    const says = `${theWaitSaid(who, isAre(who), on, what)}${thatWaitsOn(d)}`;
 
     /* Every time it was raised: the days, and the sessions where the record says which. */
     const raisedRows = d.raisedAt?.length ? d.raisedAt : [{ at: d.createdAt ?? null, checkInId: d.sourceCheckInId ?? null }];

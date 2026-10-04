@@ -56,7 +56,18 @@ export interface WriteADocumentsNumbersInput {
  * DEDUPED AGAINST THE RECORD, NOT AGAINST ITSELF, and read fresh here rather than trusted from the
  * caller: two people confirming the same document a moment apart must not both write it.
  */
+export const ONLY_WHO_ADDED_IT_CAN_SHARE_IT = 'Only the person who added this document can share what is in it, so nothing was shared.';
+
 export async function writeADocumentsNumbers(prisma: PrismaService, input: WriteADocumentsNumbersInput): Promise<string> {
+  /*
+   * ONLY THE PERSON WHO ADDED A DOCUMENT CAN MAKE ITS CONTENTS SHARED (decision 92). Its numbers go on
+   * the board and a note goes up for everyone, so the yes has to be the adder's. Read from the document
+   * itself, here, where every way of saying yes arrives; a caller that picked the wrong document is
+   * stopped too. Nothing is written and the document stays waiting.
+   */
+  const doc = await Promise.resolve(prisma.groundDocument?.findUnique?.({ where: { id: input.documentId }, select: { participantId: true } })).catch(() => null);
+  if (doc && doc.participantId !== input.setByParticipantId) return ONLY_WHO_ADDED_IT_CAN_SHARE_IT;
+
   const already = await prisma.groundObjective.findMany({
     where: { groundId: input.groundId },
     select: { name: true, ownerParticipantId: true },

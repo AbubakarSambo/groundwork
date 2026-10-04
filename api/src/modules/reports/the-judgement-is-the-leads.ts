@@ -111,6 +111,8 @@ export function whatAParticipantMayRead<T extends Record<string, any>>(
  * a row. Kept beside the list so the board cannot drift from the report: a field added above is
  * gone from both the moment it is added, and neither caller has to be edited.
  */
+import { aJudgementThatReadsRight } from './the-judgement-reads-right';
+
 export function theBoardsJudgementFor(
   report: { theJudgement?: unknown; theTable?: unknown } | null | undefined,
   viewer: { isLead: boolean },
@@ -130,5 +132,5 @@ export function theBoardsJudgementFor(
    * the-table-is-for-the-engine, which is also where the report's own read strips it, so a board
    * built from an already-stripped row and this line agree.
    */
-  return { theJudgement: report?.theJudgement ?? null, theTable: null };
+  return { theJudgement: aJudgementThatReadsRight(report?.theJudgement ?? null), theTable: null };
 }

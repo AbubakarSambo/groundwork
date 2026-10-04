@@ -243,7 +243,8 @@ function whereTheMatterStands(i: WhatTheKindsBoardIsBuiltFrom, now: Date) {
   const toDecide = whatNeedsDeciding(i).length;
   if (toDecide) says.push(`${plural(toDecide, 'thing is', 'things are')} waiting for a decision.`);
   if (!deadlines.length) says.unshift('No deadline is on record yet.');
-  return { heading, says };
+  /* `state`, like every other section of this board (request 134 item 7): filled once a deadline, a wait or a decision is on record. */
+  return { heading, state: (deadlines.length || open || toDecide ? 'filled' : 'none-yet') as 'filled' | 'none-yet', says };
 }
 
 function whatYouNeedToDecide(i: WhatTheKindsBoardIsBuiltFrom) {

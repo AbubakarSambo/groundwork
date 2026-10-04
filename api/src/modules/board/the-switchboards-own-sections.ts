@@ -1,3 +1,4 @@
+import { theWaitSaid, aHolderThatIsOnlyTheThing } from './a-wait-said-in-full';
 import { howManyGoalsAreNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { holdsItSaid, theReaderSaidAsYou, aThingWithoutItsHolder } from './a-holder-in-their-own-words';
 import { aCommitmentSaid, looksLikeATimeOrADate, inOurVoice } from '../reports/what-the-record-shows-over-time';
@@ -141,6 +142,19 @@ const theirSentencesQuoted = (them: string[]): string => {
  * found in what they typed in that check-in, otherwise the sentences of theirs it was drawn from. Where
  * no sentence of theirs is its source, only that they have said it. Never their words without marks.
  */
+/**
+ * THE TALLY AS A SENTENCE, NO ZERO COUNTED (request 131 item 4). "0 are done, 0 are not done or dropped, and 1 is still open."
+ * counted what is not there. Only what there is gets a number, and none done is said as none done yet.
+ */
+export function theTallySaid(done: number, notDone: number, open: number): string {
+  const parts: string[] = [];
+  parts.push(done > 0 ? `${done} ${done === 1 ? 'is' : 'are'} done` : 'None is done yet');
+  if (notDone > 0) parts.push(`${notDone} ${notDone === 1 ? 'is' : 'are'} not done or dropped`);
+  if (open > 0) parts.push(`${open} ${open === 1 ? 'is' : 'are'} still open`);
+  if (parts.length === 1) return `${parts[0]}.`;
+  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}.`;
+}
+
 export function whatWasTriedSaid(d: AHandoff, who: string): string | null {
   if (!d.triedSaid?.trim()) return null;
   const them = d.triedSaidTheirWords;
@@ -301,7 +315,7 @@ export function theRisks(
     const blocking = String(d.status).toUpperCase() === 'BLOCKING';
     const says = blocking
       ? (on ? `${who} cannot move on ${what} until it comes from ${on}.` : `${who} cannot move on ${what}, and nobody has been named to provide it.`)
-      : (on ? `${who} ${isAre(who)} waiting on ${on} for ${what}.` : `${who} ${isAre(who)} waiting for ${what}, and nobody has been named to provide it.`);
+      : (on ? theWaitSaid(who, isAre(who), on, what) : `${who} ${isAre(who)} waiting for ${what}, and nobody has been named to provide it.`);
     out.push({ id: `handoff-${d.id}`, says: `${says}${thatWaitsOn(d)}`, because: theFactsOfAWait(d, who) });
   }
 
@@ -451,7 +465,7 @@ export function thePersonHistory(
     /* How many were kept is the person's own (decision 24): only they are told the tally, never whoever runs the check-in. */
     const theirOwn = !!r.meId && p.id === r.meId;
     const summary = total
-      ? `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')} and made ${plural(total, 'commitment', 'commitments')}.${theirOwn ? ` ${doneCount} ${doneCount === 1 ? 'is' : 'are'} done, ${notDone} ${notDone === 1 ? 'is' : 'are'} not done or dropped, and ${open} ${open === 1 ? 'is' : 'are'} still open.` : ''}`
+      ? `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')} and made ${plural(total, 'commitment', 'commitments')}.${theirOwn ? ` ${theTallySaid(doneCount, notDone, open)}` : ''}`
       /* The name once (run-25): "Kwame Mensah has answered 1 session, and the record holds no commitment from Kwame Mensah yet." */
       : `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')}, and ${who === 'You' ? 'have' : 'has'} made no commitment on record yet.`;
     out.push({ participantId: p.id, who, says: summary, sessions: perSession });
@@ -492,7 +506,7 @@ export function theBlockerCheck(handoffs: AHandoff[], r: WhoIsReading): ABlocker
     out.push({
       id: d.id,
       who,
-      says: `${on ? `${who} ${isAre(who)} waiting on ${on} for ${what}.` : `${who} ${isAre(who)} waiting for ${what}.`}${thatWaitsOn(d)}`,
+      says: `${theWaitSaid(who, isAre(who), on, what)}${thatWaitsOn(d)}`,
       namesWhoHoldsIt: named,
       saidWhatWasTried: wentBack,
       timeGiven,
@@ -706,7 +720,7 @@ export function theObligations(
   const waitSaid = (d: AHandoff) => {
     const who = whoIs(r, d.fromParticipantId);
     const on = whoIsWaitedOn(r, d);
-    return `${on ? `${who} ${isAre(who)} waiting on ${on} for ${inASentence(aThingWithoutItsHolder(d.what, d.onLabel))}.` : `${who} ${isAre(who)} waiting for ${inASentence(d.what)}.`}${thatWaitsOn(d)}`;
+    return `${on ? theWaitSaid(who, isAre(who), on, inASentence(aThingWithoutItsHolder(d.what, d.onLabel))) : `${who} ${isAre(who)} waiting for ${inASentence(d.what)}.`}${thatWaitsOn(d)}`;
   };
   const out: AnObligationSide[] = [];
   for (const p of people) {
@@ -983,11 +997,14 @@ export function theQuestionsForTheLead(
     const who = whoIs(r, d.fromParticipantId);
     /* Omar read "What has been tried to get the full, detailed breakdowns ... from Marketing and Product Development, which
        you are waiting for?" with "only you can find out what was done": his own wait, asked as if somebody else's (item 21). */
+    /* A holder that is only the thing waited for is not asked about twice: "What has been tried to get "the tax view" from the tax view". */
+    const theThing = inASentence(String(d.what ?? '').trim().replace(/^["\u201c](.*)["\u201d]$/, '$1'));
+    const fromWhom = aHolderThatIsOnlyTheThing(d.onLabel, d.what) ? '' : ` from ${(d.onLabel ?? '').trim()}`;
     out.push(who === 'You'
-      ? { id: `chased-${d.id}`, question: `What have you tried to get ${inASentence(d.what)} from ${(d.onLabel ?? '').trim()}?`, because: 'Nothing on record says you have chased it. If you did, outside the check-in, say so in your check-in.' }
+      ? { id: `chased-${d.id}`, question: `What have you tried to get ${theThing}${fromWhom}?`, because: 'Nothing on record says you have chased it. If you did, outside the check-in, say so in your check-in.' }
       : {
         id: `chased-${d.id}`,
-        question: `What has been tried to get ${inASentence(d.what)} from ${(d.onLabel ?? '').trim()}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
+        question: `What has been tried to get ${theThing}${fromWhom}, which ${midSentence(who)} ${isAre(who)} waiting for?`,
         because: `Nothing on record says anybody has chased it, so ${onlyTheLead} what was done outside the check-in.`,
       });
   }

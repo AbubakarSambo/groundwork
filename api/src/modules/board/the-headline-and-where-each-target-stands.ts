@@ -207,12 +207,23 @@ function theNumberIsInIt(name: string, target: number): boolean {
   return said !== String(target) && name.toLowerCase().includes(said.toLowerCase());
 }
 
-interface APhrase { verbPhrase: string; thing: string | null; tail: string | null; aim: ATeamAim }
+/* `subject`: set where the aim is a finished state of something ("All 100 tasks for the release are deployed to production."),
+   asked as "Will all 100 tasks for the release be deployed to production by 30 September?" (requests 127, 129). */
+interface APhrase { verbPhrase: string; thing: string | null; tail: string | null; aim: ATeamAim; subject?: string }
+
+const A_THING_IN_A_STATE = /^(?!(?:i|we|they|he|she|you|our|my|the team)\b)((?:\S+\s+){0,9}?\S+)\s+(?:is|are)\s+((?:\w+ed|\w+en|done|live|complete|met|sent|built|paid|made|set|open|closed|signed)\b.*)$/i;
 
 function aPhraseFor(aim: ATeamAim): APhrase | null {
   const raw = (aim.name ?? '').trim().replace(/[.!?;:]+$/, '').replace(/\s+/g, ' ');
   /* A full stop alone does not make an instruction a sentence about somebody: "Sign 12 shops for kitchen appliances
      in Nairobi." was the team's aim, and its headline had no answer and no bar (request 117, part 2). */
+  const inAState = raw.split(' ').length <= 16 ? raw.match(A_THING_IN_A_STATE) : null;
+  if (inAState && aim.direction !== 'DEADLINE' && aim.direction !== 'ZERO' && aim.direction !== 'LIMIT' && aim.direction !== 'RATE') {
+    const tailMatch = inAState[2].match(A_TIME_AT_THE_END);
+    const rest = (tailMatch ? inAState[2].slice(0, tailMatch.index) : inAState[2]).trim();
+    const tail = tailMatch ? tailMatch[1] : (aim.dueDay ? `by ${aim.dueDay}` : null);
+    return { verbPhrase: `be ${rest}`, thing: null, tail, aim, subject: lowerFirst(inAState[1].trim()) };
+  }
   const aSentence = SAID_AS_A_SENTENCE.test(aim.name.trim()) && !(STARTS_WITH_A_DOING_WORD.test(raw) && !SAID_AS_A_SENTENCE.test(raw));
   if (!raw || raw.split(' ').length > 14 || aSentence) return null;
   const tailMatch = raw.match(A_TIME_AT_THE_END);
@@ -298,6 +309,9 @@ function anAnswerFor(p: APhrase, when: string | null): string {
  * number is asked only where there is a deadline and no aim with a number.
  */
 export function theHeadlineQuestion(aims: ATeamAim[], deadline: Date | null, now: Date = new Date()): AHeadline | null {
+  /* An aim the lead already put as a question ("Is the cohort repaying, and why not where it isn't?") is the question (request 133). */
+  const alreadyAsked = aims.find((a) => a.target == null && /\?\s*$/.test(a.name ?? '') && (a.name ?? '').trim().split(/\s+/).length <= 20);
+  if (alreadyAsked) return { question: alreadyAsked.name.trim().replace(/\s+/g, ' '), answer: null, bars: [] };
   const phrases = aims.map(aPhraseFor).filter((p): p is APhrase => !!p);
   const counted = phrases.filter((p) => typeof p.aim.target === 'number' || p.aim.direction === 'DEADLINE' || p.aim.direction === 'ZERO').slice(0, 2);
   const byDate = deadline ? `by ${theDayInWords(deadline, now)}` : null;
@@ -309,11 +323,17 @@ export function theHeadlineQuestion(aims: ATeamAim[], deadline: Date | null, now
       ? `reach ${parts[0].slice(6)} and ${parts[1].slice(6)}`
       : parts.join(' and ');
     const when = oneTail ?? (counted.some((p) => p.tail) ? null : byDate);
-    const question = `Will we ${joined}${when ? ` ${when}` : ''}?`;
+    const question = counted.length === 1 && counted[0].subject
+      ? `Will ${counted[0].subject} ${counted[0].verbPhrase}${when ? ` ${when}` : ''}?`
+      : `Will we ${joined}${when ? ` ${when}` : ''}?`;
     const answer = counted.map((p) => anAnswerFor(p, counted.length === 1 ? (p.tail ?? byDate) : null)).join(' ');
     return { question, answer, bars: counted.map((p) => aBar(p.aim)).filter((b): b is AHeadlineBar => !!b) };
   }
   const words = phrases.find((p) => p.aim.target == null);
-  if (!words || !(words.tail || byDate)) return null;
-  return { question: `Will we ${words.verbPhrase} ${words.tail ?? byDate}?`, answer: null, bars: [] };
+  if (!words) return null;
+  /* No day is made up: a support desk or a depot has no deadline, and the prototype asks it without one
+     ("Resolve customer issues within a day, without reopening them?"). */
+  const day = words.tail ?? byDate;
+  const asked = words.subject ? `Will ${words.subject} ${words.verbPhrase}` : `Will we ${words.verbPhrase}`;
+  return { question: `${asked}${day ? ` ${day}` : ''}?`, answer: null, bars: [] };
 }

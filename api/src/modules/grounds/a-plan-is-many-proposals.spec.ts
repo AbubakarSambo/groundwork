@@ -276,3 +276,98 @@ describe('the day of a date is not a number to reach', () => {
     expect(out[1]).toMatchObject({ kind: 'goal', fields: { personName: 'Zainab Musa', number: 4200, date: '20 October' } });
   });
 });
+
+/*
+ * DECISION 92: THE PLAN PAGE TAKES QUESTIONS, DECISIONS AND DATES, the way the setup chat's paste reader does.
+ * Said back as a card, stored only after a yes, on the right person, with nothing invented.
+ */
+describe('a plan also holds questions, decisions and dates', () => {
+  const PLAN2 = `Planning notes for Q4.
+The quarter ends 31 December.
+Aisha - which accounts actually have a buying process?
+Still to decide whether the Lagos target stays at 12m.
+Kemi - how many of the Abuja shops have signed?
+Who should we ask about pricing?`;
+  const READ2: PlanRead[] = [
+    { kind: 'date', says: 'ignored', fromThePlan: 'The quarter ends 31 December.', what: 'The quarter ends', date: '31 December' },
+    { kind: 'question', says: 'ignored', fromThePlan: 'Aisha - which accounts actually have a buying process?', personName: 'Aisha', what: 'Aisha - which accounts actually have a buying process?' },
+    { kind: 'decision', says: 'It is not decided yet whether the Lagos target stays at 12m.', fromThePlan: 'Still to decide whether the Lagos target stays at 12m.', what: 'whether the Lagos target stays at 12m' },
+    { kind: 'question', says: 'x', fromThePlan: 'Kemi - how many of the Abuja shops have signed?', personName: 'Kemi', what: 'how many of the Abuja shops have signed?' },
+  ];
+  const out = proposalsFromAPlan(PLAN2, READ2, PEOPLE, { from: 'Q4 notes.pdf' });
+
+  it('says each one back as the lead reads it, with where it would go', () => {
+    expect(out.map((p) => p.kind)).toEqual(['date', 'question', 'decision', 'question']);
+    expect(out[0].says).toBe('The quarter ends on 31 December.');
+    expect(out[0].heading).toBe('A date, from Q4 notes.pdf. It would go in notes.');
+    expect(out[1].says).toBe('Groundwork will ask Aisha: "Which accounts actually have a buying process?"');
+    expect(out[1].heading).toBe('A question, from Q4 notes.pdf. It would go in questions you want asked.');
+    expect(out[1].note).toBe('This question is not asked until you confirm it. You can confirm it, change it or leave it out.');
+    expect(out[2].says).toBe('It is not decided yet whether the Lagos target stays at 12m.');
+    expect(out[2].heading).toBe('A decision, from Q4 notes.pdf. It would go in still to decide.');
+  });
+
+  it('puts a question on the person it names, and a person who is not on the check-in is said, never guessed onto somebody else', () => {
+    expect(out[1].fields.participantId).toBe('p-aisha');
+    expect(out[3].fields.participantId).toBeUndefined();
+    expect(out[3].note).toBe('One name in it, Kemi, is not on this check-in. Add them, and this will go on too.');
+  });
+
+  it('invents nothing: a question that is not in the plan, a question for nobody, and a date not as written are dropped', () => {
+    const none = proposalsFromAPlan(PLAN2, [
+      { kind: 'question', says: '', fromThePlan: 'Aisha - which accounts actually have a buying process?', personName: 'Aisha', what: 'Which accounts have signed a contract?' },
+      { kind: 'question', says: '', fromThePlan: 'Who should we ask about pricing?', what: 'Who should we ask about pricing?' },
+      { kind: 'date', says: '', fromThePlan: 'The quarter ends 31 December.', what: 'The quarter ends', date: '2026-12-31' },
+      { kind: 'date', says: '', fromThePlan: 'The quarter ends 31 December.', what: 'The quarter ends' },
+      { kind: 'question', says: '', fromThePlan: 'Still to decide whether the Lagos target stays at 12m.', personName: 'Aisha', what: 'Whether the Lagos target stays at 12m' },
+    ], PEOPLE);
+    expect(none).toEqual([]);
+  });
+
+  describe('through the routes', () => {
+    it('are kept as waiting, written nowhere, and written once, on a yes, in the right place', async () => {
+      const { svc, writes, stored, prisma } = aService({ read: READ2 });
+      const got = await svc.read('g1', 'u-lead', { text: PLAN2 });
+      expect(got.proposals).toHaveLength(4);
+      expect(stored.map((r) => r.kind)).toEqual(['DATE', 'QUESTION', 'DECISION', 'QUESTION']);
+      expect(writes).toEqual([]);
+      await svc.confirm('g1', 'u-lead', 'pp-2');
+      await svc.confirm('g1', 'u-lead', 'pp-3');
+      await svc.confirm('g1', 'u-lead', 'pp-1');
+      const made = prisma.groundContextItem.create.mock.calls.map((c: any) => c[0].data);
+      expect(made[0]).toMatchObject({ kind: 'QUESTION_FOR_PERSON', aboutParticipantId: 'p-aisha', exactQuestion: 'Which accounts actually have a buying process?', audience: 'LEAD_ONLY' });
+      expect(made[0].questionConfirmedAt).toBeUndefined();
+      expect(made[1]).toMatchObject({ kind: 'DECISION', audience: 'EVERYONE', text: 'It is not decided yet whether the Lagos target stays at 12m.' });
+      expect(made[2]).toMatchObject({ kind: 'NOTE', audience: 'EVERYONE', text: 'The quarter ends on 31 December.' });
+    });
+    it('a question for somebody not on the check-in is not written on anybody', async () => {
+      const { svc, writes } = aService({ read: READ2 });
+      await svc.read('g1', 'u-lead', { text: PLAN2 });
+      await expect(svc.confirm('g1', 'u-lead', 'pp-4')).rejects.toThrow('Kemi is not on this check-in yet. Add them first, then confirm this.');
+      expect(writes).toEqual([]);
+    });
+    it('a participant cannot read or confirm them', async () => {
+      const { svc } = aService({ read: READ2 });
+      await svc.read('g1', 'u-lead', { text: PLAN2 });
+      await expect(svc.waiting('g1', 'u-samuel')).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(svc.confirm('g1', 'u-samuel', 'pp-2')).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+});
+
+describe('a private document is turned into shared notes only by the person who added it (decision 92)', () => {
+  it('the plan page refuses a lead-only document that somebody else added, and says why', async () => {
+    const { svc, prisma, writes } = aService();
+    prisma.groundDocument.findFirst = jest.fn(async () => ({ content: PLAN, fileName: 'Q4 plan.pdf', participantId: 'p-aisha', visibility: 'CLOSED' }));
+    await expect(svc.read('g1', 'u-lead', { documentId: 'd1' })).rejects.toThrow('Only the person who added this document can share what is in it, so nothing was shared.');
+    expect(writes).toEqual([]);
+  });
+  it('and reads one the lead added, and one that is open to everyone', async () => {
+    const { svc, prisma } = aService();
+    prisma.ground.findUnique = jest.fn(async () => ({ id: 'g1', initiatorId: 'u-lead', status: 'OPEN', endState: null, participants: [...ROSTER, { id: 'p-lead', email: 'l@x.test', nameGiven: 'Wairimu', managingOnly: false, userId: 'u-lead', leftAt: null, user: { firstName: 'Wairimu', lastName: 'K' } }] }));
+    prisma.groundDocument.findFirst = jest.fn(async () => ({ content: PLAN, fileName: 'Q4 plan.pdf', participantId: 'p-lead', visibility: 'CLOSED' }));
+    expect((await svc.read('g1', 'u-lead', { documentId: 'd1' })).proposals).toHaveLength(5);
+    prisma.groundDocument.findFirst = jest.fn(async () => ({ content: PLAN, fileName: 'Q4 plan.pdf', participantId: 'p-aisha', visibility: 'OPEN' }));
+    expect((await svc.read('g1', 'u-lead', { documentId: 'd1' })).proposals).toHaveLength(5);
+  });
+});

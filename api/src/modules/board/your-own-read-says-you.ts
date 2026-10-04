@@ -11,6 +11,7 @@
  */
 const SWAPS: [RegExp, string][] = [
   [/\bwhat they said\b/g, 'what you said'],
+  [/\bmost of their time\b/g, "most of your time"],
   [/\bTheir work\b/g, 'Your work'],
   [/\btheir work\b/g, 'your work'],
   [/\bTheir responsibilities are staying with them\b/g, 'Your responsibilities are staying with you'],

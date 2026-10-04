@@ -89,7 +89,15 @@ export function whereThisIsHeading(a: {
   const differ = Array.isArray(b.divergence?.items) ? b.divergence.items.length : 0;
   if (differ) {
     signals.push({
-      says: differ === 1 ? 'People in this check-in said different things about 1 thing.' : `People in this check-in said different things about ${differ} things.`,
+      /* One thing is named (request 129 item 7): "about 1 thing" is a count where the thing belongs. */
+      says: differ === 1
+        ? (() => {
+          const topic = String((b.divergence.items[0] as any)?.topic ?? '').trim().replace(/[.!?]+$/, '');
+          /* Only a thing, said as a thing: it starts with a determiner or a question word. A clause ("There is no owner") is not named after "about". */
+          const asked = topic && topic.split(/\s+/).length <= 14 && !/[.!?]/.test(topic) && /^(?:The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/i.test(topic) ? `People in this check-in said different things about ${topic.charAt(0).toLowerCase() + topic.slice(1)}.` : null;
+          return asked ?? 'People in this check-in said different things about one thing.';
+        })()
+        : `People in this check-in said different things about ${differ} things.`,
       from: 'This comes from what people said in their check-ins.',
     });
   }

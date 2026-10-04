@@ -210,7 +210,7 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
         : `${He} ${has} been waiting${howLong(oldest)} ${onEach}`;
       probe.push(
         earlyDays(i)
-          ? `${waited}, and nothing on record says it was raised higher. This early, that is worth showing ${you ? 'you' : them} rather than asking about.`
+          ? `${waited}, and nothing on record says it was raised higher. ${you ? 'It is early. What is being held up, and would help raising it be useful?' : `It is early, so ask ${them} what is being held up and whether help raising it would be useful.`}`
           : `${waited}, and nothing on record says it was raised higher. Ask what has stopped ${you ? 'you' : them} raising it.`,
       );
       const kind = whatKindOfThing(notYet);

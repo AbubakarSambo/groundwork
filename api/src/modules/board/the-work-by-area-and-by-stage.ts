@@ -17,7 +17,7 @@ import type { AServedSection, AServedRecord, KindOfWork } from './the-kind-of-wo
  *    that the rules are not on record.
  */
 const AREA_KEYS: [RegExp, string][] = [
-  [/^site$/i, 'By site'],
+  [/^(?:site|depot|warehouse|hub|town)$/i, 'By site'],
   [/^county$/i, 'By county'],
   [/^team$/i, 'By team'],
   [/^queue$/i, 'By queue'],
@@ -56,9 +56,12 @@ export function theWorkByArea(sections: AServedSection[] | null | undefined): Th
     state: 'filled',
     heading,
     areas: [...areas.entries()].map(([area, rs]) => {
-      const kinds = [...new Set(rs.map((r) => r.kind))];
-      const counted = kinds.length === 1 ? plural(rs.length, kinds[0]) : plural(rs.length, 'record');
-      return { area, records: rs.length, says: `${area} has ${counted} on record.` };
+      /* The area's own row is not work in it: "Kiambu County has 1 county on record" (request 132 d). */
+      const inIt = rs.filter((r) => !(r.kind === 'county' && r.name.trim() === area));
+      if (!inIt.length) return { area, records: 0, says: `${area} is on record, and no piece of work in it is on record yet.` };
+      const kinds = [...new Set(inIt.map((r) => r.kind))];
+      const counted = kinds.length === 1 ? plural(inIt.length, kinds[0]) : plural(inIt.length, 'record');
+      return { area, records: inIt.length, says: `${area} has ${counted} on record.` };
     }),
   };
 }
@@ -78,9 +81,18 @@ export const NO_DEAL_REPORTED_YET = 'Nobody has reported a deal at any stage yet
 export const NO_STAGE_RULES = 'Nothing on record says what a deal must show at each stage. The board counts what people reported, and how much of it has a document behind it. It cannot count how many meet the rules.';
 
 export function reportedAgainstTheRules(kind: KindOfWork | null, sections: AServedSection[] | null | undefined): ReportedAtEachStage | null {
-  if (kind !== 'sales org') return null;
-  const grid = (sections ?? []).find((s: any) => Array.isArray(s.rows) && s.rows.some((r: AServedRecord) => r.kind === 'deal')) as any;
-  const deals: AServedRecord[] = grid ? grid.rows.filter((r: AServedRecord) => r.kind === 'deal') : [];
+  if (!kind) return null;
+  /*
+   * ANY KIND WITH STAGES (request 127 item 11). Only the sales board had "reported against the rules, stage by stage", so the
+   * engineering board, whose releases and tasks have stages too, was sent none. Each stage says what was reported in the kind's
+   * own word ("2 tasks were reported at Merged"), and the sales board is unchanged.
+   */
+  const grid = (sections ?? []).find((s: any) => Array.isArray(s.rows) && Array.isArray(s.stages) && s.stages.length && s.rows.length) as any;
+  if (kind !== 'sales org' && !grid) return null;
+  const deals: AServedRecord[] = grid ? grid.rows.filter((r: AServedRecord) => kind === 'sales org' ? r.kind === 'deal' : true) : [];
+  const kinds = [...new Set(deals.map((d) => d.kind))];
+  const noun = kind === 'sales org' ? 'deal' : kinds.length === 1 ? kinds[0] : 'piece of work';
+  const rules = kind === 'sales org' ? NO_STAGE_RULES : NO_STAGE_RULES.replace('what a deal must show at each stage', 'what each piece of work must show at each stage');
   const order: string[] = Array.isArray(grid?.stages) ? grid.stages : [];
   /*
    * ONLY STAGES WITH SOMETHING IN THEM (request 115 f). Four rows of "Nobody has reported a deal at ..."
@@ -103,14 +115,14 @@ export function reportedAgainstTheRules(kind: KindOfWork | null, sections: AServ
         : withProof === 0 ? 'none of them has a document behind it'
           : withProof === at.length ? 'all of them have a document behind them'
             : `${withProof} of them ${withProof === 1 ? 'has' : 'have'} a document behind ${withProof === 1 ? 'it' : 'them'}`;
-      const reportedSays = at.length ? `${plural(at.length, 'deal')} ${at.length === 1 ? 'was' : 'were'} reported at ${stage}, and ${proof}.` : '';
+      const reportedSays = at.length ? `${plural(at.length, noun)} ${at.length === 1 ? 'was' : 'were'} reported at ${stage}, and ${proof}.` : '';
       const addedSays = added.length
         ? at.length
-          ? `${plural(added.length, 'more deal')} ${added.length === 1 ? 'was' : 'were'} added on the board at ${stage}, not reported in a check-in.`
-          : `${plural(added.length, 'deal')} ${added.length === 1 ? 'was' : 'were'} added on the board at ${stage}, not reported in a check-in.`
+          ? `${plural(added.length, `more ${noun}`)} ${added.length === 1 ? 'was' : 'were'} added on the board at ${stage}, not reported in a check-in.`
+          : `${plural(added.length, noun)} ${added.length === 1 ? 'was' : 'were'} added on the board at ${stage}, not reported in a check-in.`
         : '';
       const says = [reportedSays, addedSays].filter(Boolean).join(' ');
       return { stage, reported: at.length, withProof, ...(added.length ? { addedOnTheBoard: added.length } : {}), says };
     });
-  return { state: 'not-known', why: NO_STAGE_RULES, stages, ...(stages.length ? {} : { says: NO_DEAL_REPORTED_YET }) };
+  return { state: 'not-known', why: rules, stages, ...(stages.length ? {} : { says: kind === 'sales org' ? NO_DEAL_REPORTED_YET : `Nobody has reported a ${noun} at any stage yet.` }) };
 }

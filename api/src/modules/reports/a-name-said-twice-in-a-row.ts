@@ -72,6 +72,11 @@ export function aNameSaidAgainInOneSentence(text: string, names: Iterable<string
   return text.split(/(?<=[.!?])(\s+)/).map((sentence) => {
     for (const full of people) {
       const forms = formsOf(full);
+      /* "Aisha says that for refunds, Aisha closes the ticket" is "Aisha says that for refunds, they close the ticket" (request 129 item 6). */
+      sentence = sentence.replace(
+        new RegExp(`(?<![\\p{L}])((?:${forms})\\s+${REPORTING_VERBS}(?:\\s+that)?\\s+(?:[^,.;]{2,40}),\\s+)(?:${forms})\\s+(\\p{Ll}[\\p{L}'’]*)`, 'gu'),
+        (_m: string, start: string, verb: string) => `${start}they ${forTheyAfterAName(verb)}`,
+      );
       /* "Tobi says that Tobi does not know ..." and "Hauwa Ibrahim says Hauwa told ..." are "... says that they do not know ...", wherever in the
          sentence they stand, with or without "that": no he or she is guessed (run-29: 27 of them, in six scenarios). */
       sentence = sentence.replace(

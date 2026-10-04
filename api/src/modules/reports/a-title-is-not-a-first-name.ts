@@ -81,3 +81,15 @@ export function theFirstNameOfAParticipant(p: { user?: { firstName?: string | nu
   const given = (p?.nameGiven ?? '').trim();
   return given ? theShortNameOf(given) : null;
 }
+
+
+/**
+ * A SURNAME THAT IS A ROLE IS NO SURNAME (request 127 item 9). A person whose sign-up put "Lead" in the surname field was
+ * read as "Wanjiru Lead has not said it" in one sentence and "Wanjiru" in the next. A last name that is only one of these
+ * role or placeholder words is left off, wherever the full name is made.
+ */
+const NOT_A_SURNAME = new Set(['lead', 'leader', 'participant', 'member', 'admin', 'administrator', 'user', 'manager', 'owner', 'staff', 'team']);
+export function aSurnameOrNothing(last: string | null | undefined): string | undefined {
+  const l = (last ?? '').trim();
+  return l && !NOT_A_SURNAME.has(l.toLowerCase().replace(/\.+$/, '')) ? l : undefined;
+}

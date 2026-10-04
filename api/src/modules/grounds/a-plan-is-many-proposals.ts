@@ -1,4 +1,6 @@
 import { whatTheWordsSuggest, theQuestionAboutWhichWay, type TargetDirection } from '../board/an-aim-or-a-limit';
+import { plainQuestionFrom, whatGroundworkWillAsk, THIS_ONE_IS_NOT_ASKED_UNTIL_YOU_CONFIRM_IT } from './a-question-asked-word-for-word';
+import { aDateSaid } from './a-dump-is-many-things';
 /**
  * A PLAN IS MANY PROPOSALS, EACH CONFIRMED ON ITS OWN (week 13, screens request 6a).
  *
@@ -16,7 +18,7 @@ import { whatTheWordsSuggest, theQuestionAboutWhichWay, type TargetDirection } f
  * A name nobody on the check-in has is kept, and said out loud, never guessed onto somebody else.
  */
 
-export type PlanProposalKind = 'goal' | 'role' | 'commitment' | 'rule';
+export type PlanProposalKind = 'goal' | 'role' | 'commitment' | 'rule' | 'question' | 'decision' | 'date';
 
 /** What the model returns for one thing in the plan, before any of it is believed. */
 export interface PlanRead {
@@ -79,13 +81,16 @@ export interface SomebodyNamed {
   name: string;
 }
 
-const KINDS: PlanProposalKind[] = ['goal', 'role', 'commitment', 'rule'];
+const KINDS: PlanProposalKind[] = ['goal', 'role', 'commitment', 'rule', 'question', 'decision', 'date'];
 
 const LANDS_IN: Record<PlanProposalKind, string> = {
   goal: 'Targets',
   role: 'People and roles',
   commitment: 'Commitments',
   rule: 'How we work',
+  question: 'Questions you want asked',
+  decision: 'Still to decide',
+  date: 'Notes',
 };
 
 const A_KIND: Record<PlanProposalKind, string> = {
@@ -93,6 +98,9 @@ const A_KIND: Record<PlanProposalKind, string> = {
   role: 'A role',
   commitment: 'A commitment',
   rule: 'A rule',
+  question: 'A question',
+  decision: 'A decision',
+  date: 'A date',
 };
 
 /** Lower case, one space, straight quotes and dashes, so a quote copied with curly quotes still matches. */
@@ -162,6 +170,13 @@ export function sentenceFor(kind: PlanProposalKind, f: PlanProposalFields): stri
       return f.personName ? `${f.personName} is responsible for ${what}.` : `Somebody is responsible for ${what}.`;
     case 'commitment':
       return `${f.personName ?? 'Somebody'} will ${what}${by}.`;
+    case 'question':
+      return whatGroundworkWillAsk(f.personName ?? 'them', f.what);
+    case 'decision': {
+      return /^whether\b/i.test(what) ? `It is not decided yet ${what}.` : `${what.charAt(0).toUpperCase()}${what.slice(1)} is not decided yet.`;
+    }
+    case 'date':
+      return aDateSaid(what, (f.date ?? '').replace(/^by\s+/i, 'by '));
     case 'rule':
     default: {
       const s = what.charAt(0).toUpperCase() + what.slice(1);
@@ -230,10 +245,22 @@ export function proposalsFromAPlan(
       else note = NOT_ON_THIS_CHECK_IN(name, kind);
     }
     if (kind === 'role' && !name) continue;
+    /* 4b. A QUESTION is for one named person, is a question, and is the lead's own words: the sentence
+       Groundwork would ask has to be in the quote, with only a capital letter and a question mark added. */
+    if (kind === 'question') {
+      if (!name || !/\?/.test(quote)) continue;
+      const exact = plainQuestionFrom(what, name);
+      if (!exact || !flatten(quote).includes(flatten(exact.replace(/\?+$/, '')))) continue;
+      fields.what = exact;
+    }
+    /* 4c. A DATE on its own is a date the plan names with nothing else to hang it on: it needs the date, as written. */
+    if (kind === 'date' && (!fields.date || name)) continue;
     /* 5. The sentence the lead reads may not carry a figure the quote does not. */
     let says = (r?.says ?? '').trim().replace(/\s+/g, ' ');
     const held = numbersIn(quote);
-    if (!says || !/[.!?]$/.test(says) || figuresIn(says).some((n) => !held.has(n)) || says.includes(':')) {
+    /* A question and a date are said by the code, in the words the setup chat uses for them. */
+    if (kind === 'question' || kind === 'date') says = sentenceFor(kind, fields);
+    else if (!says || !/[.!?]$/.test(says) || figuresIn(says).some((n) => !held.has(n)) || says.includes(':')) {
       says = sentenceFor(kind, fields);
     }
     const key = `${kind}::${flatten(quote)}::${flatten(says)}`;
@@ -248,7 +275,7 @@ export function proposalsFromAPlan(
       heading: `${A_KIND[kind]}, from ${from}. It would go in ${LANDS_IN[kind].toLowerCase()}.`,
       landsIn: LANDS_IN[kind],
       from,
-      ...(note ? { note } : {}),
+      ...(note || kind === 'question' ? { note: note ?? THIS_ONE_IS_NOT_ASKED_UNTIL_YOU_CONFIRM_IT } : {}),
       line: says,
       saidAs: quote,
       ...(kind === 'goal' && fields.number !== undefined
@@ -259,7 +286,7 @@ export function proposalsFromAPlan(
   return out;
 }
 
-export const A_PLAN_PROMPT = `Somebody who runs a team check-in has given you their plan. Take out each separate thing in it that is one of these four kinds, and nothing else.
+export const A_PLAN_PROMPT = `Somebody who runs a team check-in has given you their plan. Take out each separate thing in it that is one of these seven kinds, and nothing else.
 
 GOAL. A result the team or one person is to reach, with its number and date if the plan gives them. "25 freezer sales this quarter" is a goal: what is "freezer sales", number 25, date "this quarter". A number the whole team is held to ("N180m for the quarter", "credit under 35%", "arrears under 8%") is a goal with no personName; take the number the plan has settled on, never one it is arguing with. A job that is to be done by a date, with no number to reach ("racking installed by 24 October", "go live on 15 November"), is a commitment and not a goal. The day of a date is never the number.
 ROLE. Who owns or is responsible for what. "Aisha looks after the Lagos supermarkets" is a role: personName Aisha, what "the Lagos supermarkets".
@@ -272,16 +299,19 @@ For each one:
 - number: only a number written in fromThePlan. Never work one out.
 - date: only a date or period written in fromThePlan, copied exactly as written ("31 December", "end of Q4", "Friday"). Never turn it into another form.
 - personName: the person's name exactly as the plan writes it, if it is about one person.
+QUESTION. A question the plan writes for one named person: "Amina - which accounts actually have a buying process?" is a question: personName Amina, what "Which accounts actually have a buying process?". Take the person and the question exactly as written. A question the plan asks of nobody in particular is not a question item.
+DECISION. Something the plan says is still to be decided: "whether the target stays at 12m", "we still have to decide who covers Kano". what is that, as the plan words it. Something the plan says IS decided is not a decision item.
+DATE. A date or period the plan names that belongs to nobody and to no measure: "the quarter ends 31 December", "board meeting on 14 November", "launch is 15 November". what is what happens on that date, date is the date exactly as written. A date that goes with a goal or a job somebody is to do is part of that goal or commitment and is not its own item.
 
 A plan often names the owner of a priority, a workstream or a task on its own line ("Owner: Amina Yusuf", "Ibrahim Danjuma:", "owner of the move: Tolu"). That person is the personName of every goal and commitment in that priority, workstream or task, even when the line the goal is written on does not repeat the name. Leave personName empty only when the plan gives the item no owner anywhere ("Someone has to own this").
 
 Anything the plan itself says is not agreed, not decided, not sure or not a target ("nothing agreed yet", "maybe N20m, not sure") is not an item. Never write "I", "me" or "my" in says: use the person's name, or "the lead" where the plan does not give it.
 
-Each goal, role, commitment and rule is its own item: a line with two people's numbers is two goals. Leave out background, history, opinions about people and anything you are not sure is one of the four.`;
+Each goal, role, commitment, rule, question, decision and date is its own item: a line with two people's numbers is two goals. Leave out background, history, opinions about people and anything you are not sure is one of the seven.`;
 
 export const A_PLAN_SCHEMA = {
   name: 'emit_the_proposals_in_a_plan',
-  description: 'Emit each goal, role, commitment and rule in the plan, one item each.',
+  description: 'Emit each goal, role, commitment, rule, question, decision and date in the plan, one item each.',
   input_schema: {
     type: 'object',
     properties: {

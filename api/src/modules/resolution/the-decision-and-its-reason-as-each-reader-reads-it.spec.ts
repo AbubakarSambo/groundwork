@@ -217,8 +217,10 @@ describe('decision 75, item 48: every ending is one plain sentence, read the sam
     const panel: any = await svc.get('g1', WAIRIMU);
     const board = whereThisIsHeading({ scenario: GroundScenario.OKR_ALIGNMENT, hadAnObjective: true, readerIsTheLead: true, leadName: 'Wairimu Kamau', board: {}, decided: null });
     expect(panel.options.map((o: any) => o.label)).toEqual([
-      'The team\'s goals match where the company is going.',
-      'Gaps were found, and the goals need to be changed.',
+      /* Changed on 5 October (request 130 f): the prototype's "On course", "Reach it with a change" and "Change the target", as sentences. */
+      'The team is on course.',
+      'The team can reach it, with a change in how the work is done.',
+      'The target needs to change.',
       'It is not settled yet, and more sessions are needed.',
     ]);
     expect(board.outcomes.map((o) => o.says)).toEqual(panel.options.map((o: any) => o.label));

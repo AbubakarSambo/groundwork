@@ -309,6 +309,10 @@ export function aCommitmentSaid(
 
   /* What they said they would do, said about them ("ask Amina to provide them with ...") where it is not in their own marks. */
   const clause = inOurVoice(c.what, who === 'You' ? 'you' : 'them');
+  const whenAlreadySaidIn = (when: string, what: string) => { const f = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim(); return !!f(when) && ` ${f(what)} `.includes(` ${f(when)} `); };
+  /* A piece that is not a sentence: it has no stop, starts in lower case and holds no "I" or "my". */
+  const aFragmentOfTheirs = c.theySaidIt && quoteWhat && !!clause && !/[.!?]["\u201d]?\s*$/.test(String(c.what ?? '').trim()) && /^[a-z]/.test(String(c.what ?? '').trim()) && !FIRST_PERSON_WORD.test(String(c.what ?? ''));
+  let whenIsInTheSentence = false;
 
   if (!c.theySaidIt) {
     if (quoteWhat) {
@@ -325,6 +329,14 @@ export function aCommitmentSaid(
         : `${leadFirst} committed ${mid} to something, which is in the record.`);
     }
     out.push(`${who} did not say it.`);
+  } else if (aFragmentOfTheirs) {
+    /* "In session 1, you said, "send the data room". The time you gave for it was "on Wednesday"." is two clipped quotes. A piece of
+       theirs that is not a sentence is said as what they said they would do, with the time inside it (request 136 item 3). */
+    const theTime = c.when && (quoteWhen || looksLikeATimeOrADate(c.when)) && !whenAlreadySaidIn(c.when, c.what) ? ` ${c.when.trim().replace(/[.!?]+$/, '')}` : '';
+    whenIsInTheSentence = true;
+    out.push(stated !== null
+      ? `In session ${stated}, ${mid} said ${who === 'You' ? 'you' : 'they'} would ${clause}${theTime}.`
+      : c.fromAPaste ? `In what ${leadMid} pasted in, ${mid} ${isWord} down to ${clause}${theTime}.` : `${who} said ${who === 'You' ? 'you' : 'they'} would ${clause}${theTime}.`);
   } else if (quoteWhat) {
     if (stated !== null) out.push(`In session ${stated}, ${mid} said, "${c.what}"`);
     else if (c.fromAPaste) out.push(`In what ${leadMid} pasted in, ${mid} ${isWord} down to do this, "${c.what}"`);
@@ -339,7 +351,7 @@ export function aCommitmentSaid(
      for it was "on 9 October"." said it twice (request 111 e). Where the words already say it, it is not repeated. */
   const flat = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
   const whenAlreadySaid = !!c.when && !!flat(c.when) && ` ${flat(c.what ?? '')} `.includes(` ${flat(c.when)} `) && (quoteWhat || !!clause);
-  if (whenAlreadySaid) { /* said in the words above */ }
+  if (whenAlreadySaid || whenIsInTheSentence) { /* said in the words above */ }
   else if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was "${c.when}".`);
   else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was ${c.when}.`);
   if (c.restatedIn.length) {
@@ -744,6 +756,32 @@ export function aMeetingIsOnRecord(lines: { text: string }[]): boolean {
   return lines.some((l) => /\b(?:meetings?|met|meet|introduc\w*|visit(?:s|ed)?|appointments?)\b/i.test(String(l.text ?? '')));
 }
 
+/**
+ * A STORED REPORT THAT SPEAKS OF MEETINGS NOBODY MENTIONED (requests 127, 129, 130, 131, 132, 134, 135, 136).
+ *
+ * The line about who arranged the meetings is only written where a meeting is on the record. Reports stored before
+ * that rule still hold it, and a report is not rewritten when a board is opened. So it is left out when the record is
+ * read now: the support desk, the loans, the outage and the founder's own check-in never spoke of a meeting.
+ */
+export const THE_MEETINGS_LINE = /^Nobody on record has said who arranged the meetings that happened/;
+
+export async function meetingsOnRecordFor(prisma: any, groundId: string): Promise<boolean | undefined> {
+  try {
+    const rows: { text: string }[] | undefined = await prisma?.recordEntry?.findMany?.({
+      where: { disputedAt: null, participant: { groundId } },
+      select: { text: true },
+    });
+    return Array.isArray(rows) ? aMeetingIsOnRecord(rows) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function withoutTheMeetingsLine(lines: string[] | undefined, meetingsOnRecord: boolean | undefined): string[] {
+  const all = lines ?? [];
+  return meetingsOnRecord === false ? all.filter((l) => !THE_MEETINGS_LINE.test(String(l))) : all;
+}
+
 export function whatThisCannotTellYou(o: {
   documentsAttached: number;
   peopleWhoAnswered: number;
@@ -805,12 +843,12 @@ export function toSettleFirst(o: {
 
   const inside = o.dependencies.filter((d) => !d.chased && d.onParticipantId);
   if (inside.length) {
-    out.push(`${inside.length === 1 ? 'One thing is' : `${inside.length} things are`} waiting on somebody in this check-in, and nothing on record says anybody has gone back about it. Ask whether it was raised outside the sessions, because the record cannot tell you.`);
+    out.push(`${inside.length === 1 ? 'One thing is' : `${inside.length} things are`} waiting on somebody in this check-in, and nothing on record says anybody has gone back about ${inside.length === 1 ? 'it' : 'them'}. Ask whether ${inside.length === 1 ? 'it was' : 'they were'} raised outside the sessions, because the record cannot tell you.`);
   }
 
   const outside = o.dependencies.filter((d) => !d.onParticipantId && !d.chased);
   if (outside.length) {
-    out.push(`${outside.length === 1 ? 'One thing is' : `${outside.length} things are`} waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.`);
+    out.push(`${outside.length === 1 ? 'One thing is' : `${outside.length} things are`} waiting on somebody outside this check-in, and nothing on record says anybody has chased ${outside.length === 1 ? 'it' : 'them'}. Ask what has been tried beyond writing to ${outside.length === 1 ? 'them' : 'those people'}.`);
   }
 
   if (!o.anybodySaidWhoArrangedThings && o.meetingsOnRecord !== false) {
@@ -881,7 +919,7 @@ export function overTimeAsServed(
    * Tunde read "It has been open for 2 sessions" here and "It has been open for 1 session" in the work plan, about
    * the same commitment. The board passes its own count, the one the work plan uses.
    */
-  opts: { sessionsSoFar?: number | null } = {},
+  opts: { sessionsSoFar?: number | null; meetingsOnRecord?: boolean } = {},
 ): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
   const sessionsSoFar = opts.sessionsSoFar && opts.sessionsSoFar > 0 ? opts.sessionsSoFar : (it.sessions ?? 0);
@@ -910,11 +948,12 @@ export function overTimeAsServed(
     commitments,
     stillOpen: (rebuilt as unknown[]).filter(theThingIsNamed).map((x) => oldWordingPutPlain(String(x))),
     patterns: [],
+    cannotTellYou: withoutTheMeetingsLine(it.cannotTellYou, opts.meetingsOnRecord),
     /* And by its count too (item 21, the support desk board): where the person asked is the reader, the question's end has
        already become "Your own account of this is not in this check-in." by the time it is read here, so Maria read "The
        record names another person positively with specific evidence of their contribution. Seen in 1 sessions. Your own
        account of this is not in this check-in." */
-    toSettleFirst: (it.toSettleFirst ?? []).filter((q) => !String(q).endsWith(A_QUESTION_BUILT_FROM_A_PATTERN_ENDS)
+    toSettleFirst: withoutTheMeetingsLine(it.toSettleFirst, opts.meetingsOnRecord).filter((q) => !String(q).endsWith(A_QUESTION_BUILT_FROM_A_PATTERN_ENDS)
       && !/(?:^|[.!?]\s+)(?:It was seen|Seen) in (?:one session|\d+ sessions?)\.\s/.test(String(q))).map((q) => oldWordingPutPlain(String(q))),
   };
 }
@@ -966,9 +1005,10 @@ export function theRecordOverTime(o: {
 export function overTimeForThisReader(
   it: WhatTheRecordShowsOverTime | null | undefined,
   viewer: { isLead: boolean; participantId: string | null },
+  opts: { meetingsOnRecord?: boolean } = {},
 ): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
-  if (viewer.isLead) return overTimeAsServed(it);
+  if (viewer.isLead) return overTimeAsServed(it, { meetingsOnRecord: opts.meetingsOnRecord });
   const mine = viewer.participantId;
   if (!mine) return null;
   return {
@@ -982,6 +1022,6 @@ export function overTimeForThisReader(
     stillOpen: [],
     toSettleFirst: [],
     /* What none of it can tell anybody is true for every reader, and identifies nobody. */
-    cannotTellYou: it.cannotTellYou ?? [],
+    cannotTellYou: withoutTheMeetingsLine(it.cannotTellYou, opts.meetingsOnRecord),
   };
 }

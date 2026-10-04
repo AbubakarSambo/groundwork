@@ -2,6 +2,7 @@ import { wholeDaysTo, theDayItBegan, theRecordsClock } from './a-wait-is-dated-n
 import { aFindingThatDoesNotSayTheWaitAgain } from './where-each-person-is-against-their-number';
 import { eachRepeatedSentenceSaidOnce } from './each-repeated-sentence-said-once';
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
+import { theGlanceInASentence } from './the-glance-in-a-sentence';
 import { aPartyOutside, aWaitOnOneself, theWaitsAsABoardReadsThem } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
 import { whoSeesThisDifferently } from './who-sees-this-differently';
@@ -38,7 +39,7 @@ import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-in
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { coverageAsThisReaderMayRead, withNoRatingNumber } from './no-rating-is-served';
 import { theBoardKindsOffered } from '../admin/what-is-hidden-at-release';
-import { oneOfTheKinds, plainFields, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
+import { oneOfTheKinds, plainFields, theSameName, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
 
 /** What the lead sends to add or change a record of the kind of work. */
 export interface WorkItemInput {
@@ -123,13 +124,13 @@ import {
 } from './what-the-whole-place-is-waiting-on';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, readsHowTheLeadingIsLanding } from '../patterns/who-reads-a-pattern';
-import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
+import { overTimeAsServed, meetingsOnRecordFor, inOurVoice, looksLikeATimeOrADate } from '../reports/what-the-record-shows-over-time';
 import { everyStoredSentenceReadsRight } from '../reports/a-stored-sentence-reads-right';
 import { aBoardWithNoEmptyLine } from './a-board-has-no-empty-line';
 import { patternQuestionsToSettleFirst } from './pattern-questions-to-settle-first';
 import { everyDivergenceReadable } from '../reports/a-field-name-is-not-a-heading';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
-import { theFirstNameFrom, theShortNameOf, theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+import { theFirstNameFrom, theShortNameOf, theFirstNameOfAParticipant, aSurnameOrNothing } from '../reports/a-title-is-not-a-first-name';
 import { aWaitInTheirOwnWords } from './a-holder-in-their-own-words';
 import { yourOwnRowsSayYou } from './your-own-read-says-you';
 import { theRoomAsThisReaderReadsIt } from './the-room-as-each-reader-reads-it';
@@ -162,7 +163,7 @@ import { whatWasAgreedAtTheStart, theGoalsSetForAnyone } from './what-was-agreed
 import { changeSinceTheLastCheckIn } from './change-since-the-last-check-in';
 import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, theLeadActions, theObligations, theForecast, whoWaitedOnWhom, theContradictions, theQuestionsForTheLead, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject, theNewHireReadsTheLeadsWords } from '../reports/colleagues-exact-words-stay-with-the-manager';
-import { eachLineInTheirName, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
+import { eachLineInTheirName, eachLineWithTheKindThatFits, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
 import { theRecordAQuoteMayComeFromByParticipant } from '../reports/a-quote-built-at-the-read';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -675,7 +676,7 @@ export class BoardService {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
       if (hiddenFromThisReader(pid)) return aColleague(pid);
-      const n = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim();
+      const n = [p.user?.firstName, aSurnameOrNothing(p.user?.lastName)].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim();
       /*
        * AND WHO THEY ANSWERED FOR, THE SAME WAY THE REPORT DOES IT.
        *
@@ -882,9 +883,10 @@ export class BoardService {
       /* Without its patterns while they are not served, or the lines built from them. See patterns-are-served. */
       /* Counted to the sessions somebody has finished, as the work plan counts them, so one commitment is open for the
          same number of sessions in both (item 18). */
-      overTime: isInitiator ? (() => {
+      overTime: isInitiator ? await (async () => {
         const served = overTimeAsServed((ground as any).report?.overTime ?? null, {
           sessionsSoFar: Math.max(0, ...checkIns.filter((c: any) => !c.isSetup && c.status === CheckInStatus.COMPLETED).map((c: any) => c.sessionNumber ?? 0)),
+          meetingsOnRecord: await meetingsOnRecordFor(this.prisma, groundId),
         });
         return served && patternQuestions.length ? { ...served, toSettleFirst: [...(served.toSettleFirst ?? []), ...patternQuestions] } : served;
       })() : null,
@@ -1092,10 +1094,19 @@ export class BoardService {
       const firstSnapshots = await this.prisma.groundObjectiveSnapshot.findMany({
         where: { groundId },
         orderBy: { sessionNumber: 'asc' },
-        select: { objectiveId: true, count: true },
+        select: { objectiveId: true, count: true, sessionNumber: true },
       });
       const startOf = new Map<string, number>();
       for (const s of firstSnapshots) if (!startOf.has(s.objectiveId)) startOf.set(s.objectiveId, s.count);
+      /* THE FIRST COUNT IS NOT A RISE (request 130 a). A number counted once, on top of a starting 0 nobody counted, was
+         read "81 now, up from 0" and "up 81 this session". With one snapshot at 0 and a count above it, there is no
+         "before": prevCount is null, the change is 0, and the journey has no start. */
+      const snapshotsOf = new Map<string, number>();
+      for (const s of firstSnapshots) snapshotsOf.set(s.objectiveId, (snapshotsOf.get(s.objectiveId) ?? 0) + 1);
+      const firstSession = new Map<string, number>();
+      for (const s of firstSnapshots) if (!firstSession.has(s.objectiveId)) firstSession.set(s.objectiveId, (s as any).sessionNumber);
+      /* Only while that 0 is the newest session's: a 0 that an earlier session closed on, followed by a later session, is a real start. */
+      const theFirstCount = (o: { id: string; count: number }) => startOf.get(o.id) === 0 && o.count > 0 && (snapshotsOf.get(o.id) ?? 0) <= 1 && firstSession.get(o.id) === maxSession;
 
       /*
        * AND WHAT THE LEAD SAYS IS NOT SETTLED ABOUT THIS NUMBER, next to the number.
@@ -1151,7 +1162,7 @@ export class BoardService {
       out.objectives = (mayReadUntold as typeof ground.objectives).map((o) => ({
         /* The lead's own direction where they set one (decision 69); otherwise the words of the name, as before. */
         journey: theJourneySoFar({
-          start: startOf.get(o.id) ?? null, now: o.count, target: o.target, name: o.name, direction: asADirection((o as any).direction),
+          start: theFirstCount(o) ? null : (startOf.get(o.id) ?? null), now: o.count, target: o.target, name: o.name, direction: asADirection((o as any).direction),
           /* A date to meet says its day, and whether it has passed, on the board's own clock (decision 75, item 17). */
           dueDay: theDayItIsDue((o as any).dueOn, now), isPast: aDeadlineHasPassed((o as any).dueOn, now),
         }),
@@ -1170,7 +1181,7 @@ export class BoardService {
         directionQuestion: isInitiator && asADirection((o as any).direction) == null ? theQuestionAboutWhichWay(o.target) : null,
         /** The lead's own sentence about what is unsettled here, where there is one. Never a block. */
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledLines),
-        id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
+        id: o.id, name: o.name, count: o.count, prevCount: theFirstCount(o) ? null : o.prevCount, target: o.target,
         /* What the target assumes (U.7), to whoever may read the target, and to nobody else. */
         assumes: Array.isArray((o as any).assumes) ? ((o as any).assumes as string[]).filter((a) => typeof a === 'string' && a.trim()) : [],
         /* Where nothing is written down, said plainly rather than left empty (request 115 c). Nothing is made up. */
@@ -1187,7 +1198,7 @@ export class BoardService {
          */
         ownerParticipantId: o.ownerParticipantId ?? null,
         owner: o.ownerParticipantId ? nameOf(o.ownerParticipantId) : null,
-        delta: o.count - o.prevCount,
+        delta: theFirstCount(o) ? 0 : o.count - o.prevCount,
         isNew: o.addedAtSession != null && o.addedAtSession >= maxSession,
         // Only present when the record disagrees with the lead's number. Never
         // applied automatically - it is a prompt, not a correction.
@@ -2278,6 +2289,42 @@ export class BoardService {
             : null;
         }
       }
+      /*
+       * THE FOUNDER'S WORK PLAN HOLDS WHAT THE PERSON PROMISED IN THEIR CHECK-IN TOO (request 136 item 2). Its records were only
+       * the rows added on the board, so Wanjiru's two commitments from session 1 were not in the table. Each commitment on
+       * record, said by someone this reader may read, is a row, unless a row of the same name is there already. Nothing is made
+       * up: the name is the commitment's own words without "I will", and the time is the time they gave.
+       */
+      if (kind === "founder's own check-in") {
+        const taken = new Set(rows.map((r) => theSameName(String(r.name ?? ''))));
+        const promised = ((await ((this.prisma as any).groundCommitment?.findMany?.({ where: { groundId }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => [])) as any[]);
+        for (const c of promised) {
+          const mayRead = !!c.participantId && (c.participantId === me?.id || runsIt) && !hiddenFromThisReader(c.participantId);
+          const clause = inOurVoice(String(c.text ?? ''), c.participantId === me?.id ? 'you' : 'them');
+          if (!mayRead || !clause || taken.has(theSameName(clause))) continue;
+          taken.add(theSameName(clause));
+          const state = String(c.status ?? '').toUpperCase();
+          rows.push({
+            id: `commitment-${c.id}`,
+            kind: 'commitment',
+            name: clause,
+            stage: null,
+            owner: c.participantId === me?.id ? 'You' : (nameOf(c.participantId) ?? aColleague(c.participantId)),
+            ownerParticipantId: c.participantId,
+            due: null,
+            lastSaidOn: c.createdAt ? new Date(c.createdAt).toISOString().slice(0, 10) : null,
+            fields: {
+              ...(c.whenSaid && looksLikeATimeOrADate(String(c.whenSaid)) ? { 'Time given': String(c.whenSaid).trim().slice(0, 120) } : {}),
+              Status: state === 'DONE' ? 'Done' : state === 'NOT_DONE' ? 'Not done' : state === 'DROPPED' ? 'Dropped' : 'Open',
+            },
+            from: 'said',
+            ...(c.saidWordForWord === true ? { said: cleanText(String(c.text ?? '')) } : {}),
+            saidBy: c.participantId === me?.id ? 'You' : (nameOf(c.participantId) ?? null),
+            saidByParticipantId: c.participantId,
+            mark: 'said',
+          } as AServedRecord);
+        }
+      }
       out.workRecords = theRecordSections(kind, (ground as any).workStages, rows);
     }
 
@@ -2485,6 +2532,36 @@ export class BoardService {
         reader,
       );
       if (blockers.length) out.blockers = blockers;
+      /*
+       * THE GLANCE COUNTS WHAT THE BLOCKERS LIST HOLDS (request 132 a and b, request 129 item 2). The glance was counted by
+       * its own rule, with a bar of substance the list does not use, so the lead read "1 thing is in the way" over a list of
+       * 2, and a participant read "Nothing is in the way" over her own blocking wait. For the same reader, the count is the
+       * list's, and the oldest is the oldest one on it.
+       */
+      if (out.howItIsGoing?.glance?.inTheWay && blockers.length !== out.howItIsGoing.glance.inTheWay.count) {
+        const theWay = out.howItIsGoing.glance.inTheWay;
+        const oldestListed = [...blockers].filter((b: any) => b.raised?.firstRaisedAt).sort((a: any, b: any) => String(a.raised.firstRaisedAt).localeCompare(String(b.raised.firstRaisedAt)))[0];
+        const oldestName = oldestListed ? String(oldestListed.name ?? '').trim().replace(/^["\u201c](.*)["\u201d]$/, '$1') : null;
+        out.howItIsGoing = {
+          ...out.howItIsGoing,
+          glance: {
+            ...out.howItIsGoing.glance,
+            inTheWay: blockers.length === 0
+              ? { ...theWay, count: 0, oldest: null, daysWaiting: null, since: null, sinceSays: null }
+              : { ...theWay, count: blockers.length, ...(theWay.oldest ? {} : { oldest: oldestName || null, since: oldestListed?.raised?.firstRaisedAt ?? null, sinceSays: oldestListed?.raised?.firstRaisedAt ? `since ${theDayItBegan(oldestListed.raised.firstRaisedAt, new Date(oldestListed.raised.firstRaisedAt))}` : null }) },
+          },
+        };
+      }
+      /* And the header said in full sentences for this reader, from the list they are served (request 134 item 6). */
+      if (out.howItIsGoing?.glance?.inTheWay) {
+        out.howItIsGoing = {
+          ...out.howItIsGoing,
+          glance: {
+            ...out.howItIsGoing.glance,
+            inTheWay: { ...out.howItIsGoing.glance.inTheWay, says: theGlanceInASentence(blockers as any[], (iso) => theDayItBegan(iso, recordsClock)) },
+          },
+        };
+      }
       const contradictions = theContradictions(mine.commitments, sessions, reader);
       if (contradictions.length) out.contradictions = contradictions;
       const questionsForTheLead = theQuestionsForTheLead(mine.commitments, handoffs, sessions, reader);
@@ -2828,7 +2905,9 @@ export class BoardService {
       /* And what is left on the reader's own rows is said to them, as "you" (item 18). After the said-once pass, which
          already says "you" for the reader where a sentence is true of several people (request 118, part 2). */
       /* And a sentence stored before the wording rules reads right as it is served (decision 91). */
-      return aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null))));
+      /* A line typed as an intention that intends nothing is sent with no kind (requests 127 item 4, 129 item 5), after every board that reads the kind. */
+      if (Array.isArray((walled as any).whoOwnsWhat)) (walled as any).whoOwnsWhat = eachLineWithTheKindThatFits((walled as any).whoOwnsWhat);
+      return aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null)), (ground.participants ?? []).map((p: any) => nameOf(p.id)).filter((n: any): n is string => typeof n === 'string' && n.length > 1)));
     }
   }
 

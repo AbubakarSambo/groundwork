@@ -62,7 +62,7 @@ describe('a ground that is held', () => {
        "This check-in ended: keep." Now they read the ending's own sentence, and never the raw value. */
     expect(whyItRefuses(GroundStatus.CLOSED, 'KEEP', 'anybody else', 'NEW_HIRE')).toBe('This check-in has ended. The new person stays in the role.');
     expect(whyItRefuses(GroundStatus.CLOSED, 'KEEP', 'the lead', 'NEW_HIRE')).toBe('This check-in has ended. The new person stays in the role.');
-    expect(whyItRefuses(GroundStatus.CLOSED, 'ALIGNED', 'anybody else', 'OKR_ALIGNMENT')).toBe('This check-in has ended. The team\'s goals match where the company is going.');
+    expect(whyItRefuses(GroundStatus.CLOSED, 'ALIGNED', 'anybody else', 'OKR_ALIGNMENT')).toBe('This check-in has ended. The team is on course.');
     expect(whyItRefuses(GroundStatus.CLOSED, 'NOT_A_REAL_ENDING', 'anybody else', 'NEW_HIRE')).toBe('This check-in has ended.');
     expect(whyItRefuses(GroundStatus.ACTIVE)).toBeNull();
   });

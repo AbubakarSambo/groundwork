@@ -1,5 +1,5 @@
 import { whoIs, whoIsWaitedOn, type ACommitment, type AHandoff, type ASession, type WhoIsReading } from './the-switchboards-own-sections';
-import { dayOneOf, theDayNumber, stepOfDay, type AnAgreedGoal } from './what-was-agreed-at-the-start';
+import { dayOneOf, theDayNumber, stepOfDay, aPromiseNotAGoal, type AnAgreedGoal } from './what-was-agreed-at-the-start';
 import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
 
 /**
@@ -61,7 +61,11 @@ export function theNinetyDaysInThreeSteps(a: {
   const today = theDayNumber(a.now);
   if (dayOne === null) return null;
   /* The people the three steps are about: those who take part, among those this reader may read. */
-  const subjects = a.people.filter((p) => !p.managingOnly && r.personMayBeRead(p.id)).map((p) => p.id);
+  /* The 90 days are about the person who is new, never about whoever runs the check-in (request 128 item 1): "Are you and Tobi
+     Adewale settled in?" counted the lead's own goal. Kept only if nobody else is there to be about. */
+  const everyone = a.people.filter((p) => !p.managingOnly && r.personMayBeRead(p.id)).map((p) => p.id);
+  const withoutTheLead = everyone.filter((id) => id !== r.theLeadsId);
+  const subjects = withoutTheLead.length ? withoutTheLead : everyone;
   if (!subjects.length) return null;
   const names = subjects.map((id) => whoIs(r, id));
   const you = (n: string) => n === 'You';
@@ -73,7 +77,7 @@ export function theNinetyDaysInThreeSteps(a: {
 
   const goalsFor = (day: number) => a.goals.filter((g) => {
     if (!subjects.includes(g.participantId) || notToldYet(g)) return false;
-    if (['REFERENCE', 'COMMITMENT'].includes(String(g.kind ?? '').toUpperCase()) || !(g.text ?? '').trim()) return false;
+    if (['REFERENCE', 'COMMITMENT'].includes(String(g.kind ?? '').toUpperCase()) || !(g.text ?? '').trim() || aPromiseNotAGoal(g.text)) return false;
     const due = theDayNumber(g.dueDate);
     return due !== null && stepOfDay(due - dayOne + 1) === `By day ${day}`;
   });
@@ -112,7 +116,7 @@ export function theNinetyDaysInThreeSteps(a: {
     }
     if (reached && day === 90) {
       const goalsOpen = a.goals.filter((g) => subjects.includes(g.participantId) && !notToldYet(g)
-        && !['REFERENCE', 'COMMITMENT'].includes(String(g.kind ?? '').toUpperCase()) && (g.text ?? '').trim() && statusOf(g) === 'OPEN').length;
+        && !['REFERENCE', 'COMMITMENT'].includes(String(g.kind ?? '').toUpperCase()) && (g.text ?? '').trim() && !aPromiseNotAGoal(g.text) && statusOf(g) === 'OPEN').length;
       const left = [
         goalsOpen ? plural(goalsOpen, 'goal', 'goals') : null,
         openCommitments ? plural(openCommitments, 'commitment', 'commitments') : null,

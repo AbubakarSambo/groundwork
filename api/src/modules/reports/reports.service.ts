@@ -140,7 +140,7 @@ import { onePerPerson, howManyPeople, AnAnswerInItsSession } from './one-person-
 import { howFarBehind } from './a-report-behind-the-answers';
 import {
   commitmentsOverTime, dependenciesOverTime, patternsOverTime, gapsOverTime, theOnesStillOpen,
-  whatThisCannotTellYou, theRecordOverTime, toSettleFirst, overTimeForThisReader, WhatTheRecordShowsOverTime, aMeetingIsOnRecord,
+  whatThisCannotTellYou, theRecordOverTime, toSettleFirst, overTimeForThisReader, WhatTheRecordShowsOverTime, aMeetingIsOnRecord, meetingsOnRecordFor,
 } from './what-the-record-shows-over-time';
 /*
  * THE ONE WORDING RULEBOOK, SPLIT BY SURFACE. The post-report guide is written to one person in the
@@ -174,6 +174,7 @@ import { periodOf, periodsTheRecordHolds, aTruePeriodCount } from '../patterns/p
 import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
+import { aStoredSentenceReadsRight } from './a-stored-sentence-reads-right';
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
 import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
@@ -3552,14 +3553,23 @@ Close the report by framing - neutrally, without recommending one - the choice n
       orderBy: { createdAt: 'asc' },
       select: { type: true, text: true, participantId: true },
     });
+    /* A team target the lead set is what success looks like, said as a number (request 132 g): "No standard is set. You have not
+       said what success looks like" was read by a lead who had set 6,000. Only to the lead, who may read every target. */
+    const theTargetTheLeadSet = !(baseline?.successLooksLike ?? '').trim() && isInitiator
+      ? await Promise.resolve((this.prisma as any).groundObjective?.findFirst?.({
+        where: { groundId: (ground as any).id, ownerParticipantId: null },
+        orderBy: { sortOrder: 'asc' }, select: { name: true },
+      })).then((o: any) => (typeof o?.name === 'string' && o.name.trim() ? o.name.trim() : null)).catch(() => null)
+      : null;
     const againstSuccess = whereYouAreAgainstWhatYouNamed({
       counting: readableParticipantIds.length === ground.participants.length ? 'everyone' : 'only-yours',
-      stated: baseline?.successLooksLike ?? null,
+      stated: baseline?.successLooksLike ?? theTargetTheLeadSet ?? null,
       leadHasSaidIt: everyEntrySoFar.some(
         (e) => e.type === RecordEntryType.SUCCESS_DEFINITION
           && ground.participants.find((x) => x.id === e.participantId)?.userId === ground.initiatorId,
       ),
       readerIsTheLead: isInitiator,
+      onlyTheLeadIsHere: ground.participants.filter((x) => !x.managingOnly).length === 1 && ground.participants.filter((x) => !x.managingOnly)[0].userId === ground.initiatorId,
       leadName: ((id) => (id ? whoOf(id) : null))(ground.participants.find((x) => !!ground.initiatorId && x.userId === ground.initiatorId)?.id),
       version: baseline?.version ?? null,
       conditions: Array.isArray(baseline?.conditions) ? (baseline!.conditions as string[]) : [],
@@ -4044,7 +4054,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
         : null,
       takenAt: snapshot?.takenAt ?? null,
       amendedAt: snapshot?.amendedAt ?? null,
-      amendedNote: snapshot?.amendedNote ?? null,
+      /* Put right where it is served, so a note stored with a colon reads as a sentence (request 131 item 3). */
+      amendedNote: snapshot?.amendedNote ? aStoredSentenceReadsRight(snapshot.amendedNote) : null,
       /* Before release a party sees the counts and their own words, and is told so plainly. */
       showsEverybody: released || viewerIsLead,
     };
@@ -7018,7 +7029,7 @@ happened, and what is in the way.`;
            anonymously shared report loses its identifying detail, and a read that skips it would
            name people on a check-in shared without names. */
         overTime: (this.asItWasShared(
-          { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }) } },
+          { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id) }) } },
           participant?.id ?? null,
           isInitiator || isOrgAdmin,
         ) as any).overTime,
@@ -7184,7 +7195,7 @@ happened, and what is in the way.`;
        */
       /* And named through the wrapper, for the reason in the forming branch above. */
       overTime: (this.asItWasShared(
-        { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }) } },
+        { ...(ground as any), report: { overTime: overTimeForThisReader((ground.report as any)?.overTime as any, { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }, { meetingsOnRecord: await meetingsOnRecordFor(this.prisma, (ground as any).id) }) } },
         participant?.id ?? null,
         isInitiator || isOrgAdmin,
       ) as any).overTime,

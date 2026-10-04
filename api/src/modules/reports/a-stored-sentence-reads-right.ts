@@ -16,6 +16,7 @@
  * Words inside quotation marks are a person's own and are never touched (see a-quote-is-what-they-said).
  */
 import { theQuotesKept } from './a-quote-is-what-they-said';
+import { aNameSaidAgainInOneSentence } from './a-name-said-twice-in-a-row';
 
 /* A word that, after a full stop, means the full stop was a label's and not a sentence's. */
 const CONTINUES = 'is|are|was|were|be|been|has|have|had|will|would|can|could|should|may|might|must|does|did|owes|owe|believes|committed|said|says|wants|needs|works|waits|for|on|to|about|from|with|in|at|by|of|and|or|but|because|which|that';
@@ -48,19 +49,68 @@ const OLD_WORDING: Array<[RegExp, string | ((...m: string[]) => string)]> = [
   [/Asked, and the record shows no escalation\./g, 'It was asked for, and nothing on record shows it was taken any further.'],
   [/Escalated (\d+) of (\d+)\. The (other was|others were) asked for and not escalated\./g, (_m, a, b, were) => `${a} of ${b} ${a === '1' ? 'was' : 'were'} taken above the person ${a === '1' ? 'it was' : 'they were'} with. The ${were} asked for, and nothing more is on record.`],
   [/Escalated all (\d+)\./g, (_m, n) => `All ${n} were taken above the person they were with.`],
+  /* A question that says a call "has been open a while" on a check-in answered once, joined by a dash (requests 135, 136). */
+  [/That call has been open a while\s*(?:[-\u2013\u2014]|\.)\s*what is the decision, and when\?/gi, 'What is the decision, and when will it be made?'],
+  /* The reader named twice in one list of people (request 135 item 5): "You and You are waiting for the signed witness statement". */
+  [/\bYou and (?:You|you)\b/g, 'You'],
+  [/\byou and (?:You|you)\b/g, 'you'],
+  /* Under "Worth asking", advice not to ask (requests 130 e and 134 item 3). */
+  [/This early, that is worth showing you rather than asking about\./g, 'It is early. What is being held up, and would help raising it be useful?'],
+  [/This early, that is worth showing ([^.]+?) rather than asking about\./g, 'It is early, so ask $1 what is being held up and whether help raising it would be useful.'],
+  /* A colon joining two pieces (request 131 item 3). */
+  [/(Updated after somebody added to or corrected their own check-in\.) What changed: ([^.]*?(?:,| and )[^.]*)\./g, '$1 The parts that changed were $2.'],
+  [/(Updated after somebody added to or corrected their own check-in\.) What changed: ([^.]+)\./g, '$1 The part that changed was $2.'],
+  /* Several things, but "it" (request 132 g). */
+  [/(\d+ things are waiting on somebody outside this check-in, and nothing on record says anybody has chased) it\. Ask what has been tried beyond writing to them\./g, '$1 them. Ask what has been tried beyond writing to those people.'],
+  [/(\d+ things are waiting on somebody in this check-in, and nothing on record says anybody has gone back about) it\. Ask whether it was raised/g, '$1 them. Ask whether they were raised'],
   [/Escalated it\./g, 'It was taken above the person it was with.'],
 ];
+
+/**
+ * A SENTENCE THAT IS ABOUT THE READER SAYS "YOU" THROUGHOUT (requests 129 item 3, 131 item 1, 132 e). The writer began
+ * "Your goal is not being met, and their own open task is part of the problem." and "You have not yet made the visit
+ * to Kisumu they said they would." A sentence that begins with "You" or "Your" is about the reader, so the "their own"
+ * and "they said they would" inside it are the reader's too. Only those two phrasings are changed, and only in a
+ * sentence that names nobody else before them.
+ */
+function aSentenceAboutTheReaderSaysYou(text: string): string {
+  /* The spaces and new lines between sentences are kept as they are: the pieces are the even places, the gaps the odd. */
+  return text.split(/(?<=[.!?])(\s+)/).map((sentence, at) => {
+    if (at % 2 === 1) return sentence;
+    if (!/^You\b/.test(sentence) && !/^Your\b/.test(sentence)) return sentence;
+    const beforeThem = sentence.split(/\bthey\b|\btheir\b/i)[0];
+    if (/\b[A-Z][a-z]+ [A-Z][a-z]+\b/.test(beforeThem.replace(/^You(?:r)?\s/, ''))) return sentence;
+    return sentence
+      .replace(/\bthey said they would\b/g, 'you said you would')
+      .replace(/\band their own\b/g, 'and your own');
+  }).join('');
+}
 
 export function oldWordingPutPlain(text: string): string {
   let out = text;
   for (const [pattern, to] of OLD_WORDING) out = out.replace(pattern, to as any);
-  return out;
+  return aSentenceAboutTheReaderSaysYou(out);
+}
+
+/**
+ * A WAIT WITH ITS HOLDER AND ITS THING AS ONE (requests 127 and 134). "waiting on the tax view for "the tax view"" and
+ * "waiting on the pipeline for a fix for the pipeline" say one thing twice. The holder is dropped: "waiting for the tax
+ * view", "waiting for a fix for the pipeline". Done before the quotation marks are set aside, because the thing is quoted.
+ */
+const A_HOLDER_THAT_IS_THE_THING = /\bwaiting on ((?:the|a|an) [^.,;"\u201c\u201d]{2,60}?) for (?:"|\u201c)?(\1)(?:"|\u201d)?(?=[\s.,;]|$)/gi;
+const A_HOLDER_INSIDE_THE_THING = /\bwaiting on (the [a-z][a-z-]*(?: [a-z][a-z-]*)?) for ((?:a|an|the) [^.,;"\u201c\u201d]*?\b\1\b[^.,;"\u201c\u201d]*?)(?=[.,;]| since\b|$)/gi;
+export function aWaitSaidOnce(text: string): string {
+  return text.replace(A_HOLDER_THAT_IS_THE_THING, 'waiting for $1').replace(A_HOLDER_INSIDE_THE_THING, 'waiting for $2');
 }
 
 /** Both repairs, on everything outside the quotation marks. */
-export function aStoredSentenceReadsRight(text: string): string {
+export function aStoredSentenceReadsRight(text: string, names?: readonly string[]): string {
   if (!text || typeof text !== 'string') return text;
-  return theQuotesKept(text, (outside) => aLabelEndsWithoutAFullStop(oldWordingPutPlain(outside)));
+  return theQuotesKept(aWaitSaidOnce(text), (outside) => {
+    const plain = aLabelEndsWithoutAFullStop(oldWordingPutPlain(outside));
+    /* A name is not said again in the sentence about that person (requests 129, 133, 135): "Amani Wekesa says Amani paid ...". */
+    return names?.length ? aNameSaidAgainInOneSentence(plain, names) : plain;
+  });
 }
 
 /* Fields that carry a person's own words, which no repair touches. */
@@ -70,9 +120,9 @@ const THEIR_OWN_WORDS = new Set(['theirWords', 'said', 'quote', 'quotes', 'theyS
  * The same repair over a whole served payload (the board's), for the sentences the board composes after the
  * names are put in. Plain objects and lists are walked; dates and other instances are sent as they are.
  */
-export function everyStoredSentenceReadsRight<T>(payload: T): T {
+export function everyStoredSentenceReadsRight<T>(payload: T, names?: readonly string[]): T {
   const walk = (v: any): any => {
-    if (typeof v === 'string') return aStoredSentenceReadsRight(v);
+    if (typeof v === 'string') return aStoredSentenceReadsRight(v, names);
     if (Array.isArray(v)) return v.map(walk);
     if (!v || typeof v !== 'object') return v;
     const proto = Object.getPrototypeOf(v);

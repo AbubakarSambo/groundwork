@@ -76,5 +76,5 @@ function whatChanged(now: RoundPicture, kept: Kept): string {
     ? `${moved.slice(0, -1).join(', ')} and ${moved[moved.length - 1]}`
     : moved[0] ?? 'this round';
 
-  return `Updated after somebody added to or corrected their own check-in. What changed: ${list}.`;
+  return `Updated after somebody added to or corrected their own check-in. ${moved.length > 1 ? 'The parts that changed were' : 'The part that changed was'} ${list}.`;
 }

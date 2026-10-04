@@ -142,9 +142,22 @@ describe('the approval messages keep the sender\'s rules', () => {
     expect(body.template.name).toBe('groundwork_request_waiting');
     expect(body.template.components[0].parameters.map((p: any) => p.text)).toEqual(['Wairimu', 'Amina', 'leave from Monday 5 October to Friday 9 October']);
   });
-  it('the approver\'s message counts as Groundwork writing first, so after the morning summary it waits for the next one', async () => {
+  it('the approver is told straight away, whatever else they have had today (decision 92)', async () => {
+    const { wa } = aSender(inside, [{ kind: 'lead-summary' }, { kind: 'checkin-open' }, { kind: 'overdue' }]);
+    expect((await wa.sendFor('org-1', '+254711000111', w.text, { kind: w.kind, params: w.params })).sent).toBe(true);
+  });
+  it('an approval does not use up the one message of the day, so a check-in notice still goes after it', async () => {
+    const { wa } = aSender(inside, [{ kind: 'request-waiting' }, { kind: 'request-waiting' }]);
+    expect((await wa.sendFor('org-1', '+254711000111', 'Hi Wairimu, your check-in is open.', { kind: 'checkin-open' })).sent).toBe(true);
+  });
+  it('a first message other than an approval is still held after the summary (decision 83)', async () => {
     const { wa } = aSender(inside, [{ kind: 'lead-summary' }]);
-    expect(await wa.sendFor('org-1', '+254711000111', w.text, { kind: w.kind, params: w.params })).toEqual({ sent: false, error: NOT_TODAY });
+    const sent = await wa.sendFor('org-1', '+254711000111', 'Hi Wairimu, your check-in is overdue.', { kind: 'overdue' });
+    expect(sent).toEqual({ sent: false, error: NOT_TODAY });
+  });
+  it('"Not now" still holds an approval, because that is the person\'s own word', async () => {
+    const { wa } = aSender(inside, [{ kind: 'not-now' }]);
+    expect((await wa.sendFor('org-1', '+254711000111', w.text, { kind: w.kind, params: w.params })).sent).toBe(false);
   });
   it('the person\'s message answers their own request, so it is not held back by how often', async () => {
     const { wa } = aSender(inside, [{ kind: 'overdue' }, { kind: 'checkin-open' }]);

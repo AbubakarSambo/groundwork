@@ -3874,3 +3874,176 @@ What a person reads on WhatsApp (and, for the first item, in the app) that chang
 ### Request 137: answered
 
 Done in commit 821b0854. The paste-reading prompt now says who owns the numbers in short sentences, so the client's wording guard is back at 60.
+
+## Decision 92 (5 October): approvals go straight away, the plan page takes questions, decisions and dates, and only the person who added a document shares it
+
+**1. An approval is told straight away, whatever else the person has had today.** A person who approves things used to be told "Hi Wairimu, Amani has asked for leave from Tuesday 20 October to Thursday 22 October, and it is waiting for you. Reply here to approve or decline it, or open Groundwork to read it first." only if Groundwork had not already written to them first that day. If it had (a check-in opening, a reminder, the morning summary), the message was held and the request waited for the next morning's summary. It now goes at once, on WhatsApp and in the app. That holds for a request waiting, for a request passed on to the next approver, and for an answer to the approver's question ("Hi Wairimu, Amani has answered your question about ..."). What the person is told about the decision, and the question put to them, were never held, and still are not. An approval does not use up the person's one message of the day either, so a check-in notice or the morning summary still goes after it. Every other message keeps decision 83's limit (one a day, two on a day a check-in opens or closes). "Not now" still holds an approval, because that is the person's own word, and so does "stop". Code: `APPROVALS` in `api/src/modules/whatsapp/a-message-outside-the-window.ts` and `howOftenToday` in `whatsapp.service.ts`.
+
+### One fault in eight requests: "Nobody on record has said who arranged the meetings that happened" (127 item 10, 129 item 4, 130 c, 131 item 2, 132 g, 134 item 2, 135 item 4, 136 item 5)
+
+**What was wrong.** The sentence is only written now where somebody spoke of a meeting, but every check-in you reviewed held a report stored before that rule, and a stored report is not rewritten when a board is opened. `bring-a-check-in-up-to-date.ts` could not fix it, because the sentence is not a row it reads.
+
+**What changed (served).** The sentence is left out when the record, read now, has no meeting in it. This is done when the line is served, not when it is stored, so no script has to be run and no report is rebuilt. It applies to `overTime.toSettleFirst` (the lead's board: "What to settle together") and to `overTime.cannotTellYou` (the lead's board, and a participant's report). Where a meeting is on the record the two sentences are served exactly as before: "Nobody on record has said who arranged the meetings that happened. Ask who secured each one before crediting anybody with them." and "Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them." Screens: nothing to change; if the screen kept its own copy of either sentence, remove it. The dry run of the update script saying "Nothing would change" is therefore right; it does not need to.
+
+**2. The plan page takes questions, decisions and dates, as well as goals, roles, commitments and rules.** `POST /grounds/:id/plan/proposals` now reads seven kinds, and the lead still confirms each card on its own, so nothing is stored until a yes. Each card carries `kind` ("question", "decision" or "date"), `says`, `heading`, `landsIn`, `fromThePlan` and, where it applies, `note`. What the lead reads:
+
+- A question for a named person: "Groundwork will ask Aisha: "Which accounts actually have a buying process?"" under the heading "A question, from Q4 notes.pdf. It would go in questions you want asked." with the note "This question is not asked until you confirm it. You can confirm it, change it or leave it out." These are the same sentences the setup chat's paste reader uses. The question is the lead's own words with only a capital letter and a question mark added, and it must be in the plan. A question for nobody in particular is not taken. On a yes it is stored on that person as a question only the lead sees, with its exact sentence, and it is still not asked until the lead confirms that sentence on its own.
+- A decision still to be made: "It is not decided yet whether the Lagos target stays at 12m." under "A decision, from Q4 notes.pdf. It would go in still to decide." On a yes it is a line under "Still to decide" that everyone on the check-in can read.
+- A date that belongs to nobody and to no measure: "The quarter ends on 31 December." under "A date, from Q4 notes.pdf. It would go in notes." The date is kept exactly as the plan wrote it. On a yes it is a note everyone on the check-in can read.
+
+A name that is not on the check-in is said ("One name in it, Kemi, is not on this check-in. Add them, and this will go on too.") and a question for that name is not stored on anybody else; the yes is refused with "Kemi is not on this check-in yet. Add them first, then confirm this." A date given without being written in the plan, or a question whose words are not in the plan, is dropped, never repaired. When nothing is found the lead reads: "Groundwork found no goals, roles, commitments, rules, questions, decisions or dates in that plan that it could quote back to you." Only the person who runs the check-in reads or confirms any of it, as before. Code: `a-plan-is-many-proposals.ts` and `.service.ts`.
+
+### The headline question on more boards (127 item 1, 129 item 1, 133 item 4, 130 d, 131 item 6)
+
+**What changed (served, `headline` on `GET /board/:groundId`).** Three more kinds of aim are asked, all from the lead's own aim and nothing invented. (1) An aim stored as a finished state, "All 100 tasks for the release are deployed to production.", is asked as "Will all 100 tasks for the release be deployed to production by 30 September?", with its answer and bar. (2) An aim with no number and no deadline is asked without a day, for example "Will we resolve customer issues within a day, without reopening them?" (a support desk or a depot has no deadline). Before, nothing was asked unless the check-in had a deadline; the prototype's support, depot and engineering boards open on a question without one. (3) An aim the lead already put as a question, for example "Is the cohort repaying, and why not where it isn't?", is the question as it is, with no answer and no bars. Where the check-in has no aim at all, `headline` is still not sent. Not done: the founder's aim has no number stored (136 item 1) and the numbers a person says ("11 paying customers") are not counted into it; that is the conversation's count and needs Hafsah's word. The count answer for loans (71 percent repaid) needs the repayment numbers in the record and is not built.
+
+### Request 130 (a): the first count of a number is not a rise
+
+**What changed (served, `objectives[]` on the board, both readers).** Where a number has been counted once and the only count before it is the starting 0 nobody counted, `prevCount` is now null, `delta` is 0 and `journey.start` is null. So `journey.say` reads "It is 81 now, and the aim is 95." and not "It was 0 at the start and is 81 now". The screen should draw no "up from" and no "up 81 this session" when `prevCount` is null or `delta` is 0. From the second count on, nothing changes: it is a rise from the count before.
+
+### The check-in list's latest finding, and the number in the objective line (127 item 8, 129 item 8, 135 item 5, 136 item 8)
+
+**What changed (served, `latestFinding` on `GET /grounds`, every reader).** "The objective is 100 All 100 tasks for the release are deployed to production., and nobody in this check-in..." now reads: The objective, in the lead's own words, is "All 100 tasks for the release are deployed to production", and nobody in this check-in has a number of their own against it. A last sentence with no full stop gets one: The objective, in the lead's own words, is "All 40 traders are fully up to date". It is done when the list is served, so stored reports are right at once; new reports are written with the same wording. Where the objective's name does not hold its number (for example "approved facilities"), nothing changes: "The objective is 40 approved facilities, and nobody...". Not changed here: "You and You are waiting for the signed witness statement" (135 item 5, participant), which is a name pass on a model-written finding and is listed below as open.
+
+**3. A private document becomes shared notes only by a yes from the person who added it.** When somebody says yes to what a document holds (in the setup chat, in a check-in, or in Ask Groundwork), the numbers go on the board and a note goes up for the whole check-in. That write now checks, in one place (`writeADocumentsNumbers`), that the person saying yes is the person who added the document. If not, nothing is written, the document keeps waiting, and the person reads: "Only the person who added this document can share what is in it, so nothing was shared." A document nobody is recorded as having added is shared by nobody. The plan page says the same, as a refusal, when the person who runs the check-in asks it to read a document that is not open to everyone and was added by somebody else. A document opened to everyone on the check-in can still be read there by the lead.
+
+### The question about a call nobody had mentioned (135 item 1, 136 item 4)
+
+**What changed (served, any question on the board).** "That call has been open a while - what is the decision, and when?" (and the same with a full stop) now reads: What is the decision, and when will it be made? It no longer says a call "has been open a while", and no dash joins two pieces. It is done where the text is served, so stored questions are right too, and the founder's coaching question in the role map is worded the same way for new ones. The detection that picks the question is not touched. This is still the founder's question, so on a check-in that is not about a founder's call (loans, request 133 item 1) the question should come from the report; see request 133 below.
+
+### "They" and "their" for the person reading (127 item 5, 129 item 3, 131 item 1; 132 e in part)
+
+**What changed (served, any sentence on the board).** A sentence that begins with "You" or "Your" and names nobody else before the word is now said to you all the way through. "Your goal is not being met, and their own open task is part of the problem." reads "Your goal is not being met, and your own open task is part of the problem." "You have not yet made the visit to Kisumu they said they would." reads "You have not yet made the visit to Kisumu you said you would." On the reader's own row of "Contribution against role" and "Where work is landing", "most of their time" reads "most of your time". Words inside quotation marks are never changed. Not changed: "You said they would write to them" (132 e) and "while you have been working on a different task at their own request" (127 item 5), where "they" may be somebody else; the writer has to say who. That is open.
+
+### Waits that said the holder and the thing as one, and one wait sent twice (127 items 2 and 3, 134 item 1)
+
+**What changed (served, every sentence about a wait: `blockers[].says`, `risks[].says`, `whoWaitedOnWhom[].says`, `dependencies[].waitingSays`, `eachPerson[].says`, `timeline[].says`, `questionsForTheLead[].question`, `obligations`).** Where the holder is only the thing waited for, it is said once. Lead: "Amani Wekesa is waiting for the tax view, and nobody has been named to provide it." The person waiting: "You are waiting for the tax view, and nobody has been named to provide it." "waiting on the pipeline for a fix for the pipeline" reads "waiting for a fix for the pipeline". A holder that is itself a decision ("a decision on who owns them") is waited for beside the thing: "You are waiting for a decision on who owns them, and for owners with dates for the API format and the data structure." The question to the lead reads "What has been tried to get the tax view, which Amani Wekesa is waiting for?" A real holder is unchanged ("waiting on the warehouse for the delivery notes"). Two waits by one person that differ only in a holder that is the thing ("for a fix for the pipeline" and "for the pipeline fix") are now one wait. Stored sentences are put right where they are served. Screens: for `dependencies[].waitingSays` the "on" in "Waiting on" may now be "for"; draw the sentence as it is sent.
+
+### A name said twice in "The team today" and "What the numbers say" (129 item 6, 133 item 3, 135 item 2)
+
+**What changed (served, every sentence on the board).** The rule the reports already follow now runs on the board too, and also handles a few words between "says that" and the second name. "Amani Wekesa says Amani paid 1,200 shillings on Tuesday by M-Pesa." reads "Amani Wekesa says they paid 1,200 shillings on Tuesday by M-Pesa." "Amani Wekesa says Amani is growing maize and soya in Kaduna and Kano." reads "...says they are growing maize and soya in Kaduna and Kano." "Aisha says that for refunds, Aisha closes the ticket..." reads "Aisha says that for refunds, they close the ticket...". No he or she is guessed, so the house style is "they", not the passive form the requests suggested (decided for Hafsah to confirm). Names inside quotation marks, and a sentence that names two people, are not changed.
+
+**Decided for Hafsah to confirm:** "they" for one named person, as the reports already do, instead of rewriting to the passive.
+
+### "Different things about 1 thing" names the thing (129 item 7)
+
+**What changed (served, `whereThisIsHeading.signals[].says`, lead).** With one difference, the line names it from the topic of that difference: "People in this check-in said different things about the refund rule." Where the topic is empty or a whole sentence it reads "People in this check-in said different things about one thing." With several it still counts: "about 2 things."
+
+### The glance counts what the Blockers list holds (132 a and b, 129 item 2 in part)
+
+**What changed (served, `howItIsGoing.glance.inTheWay` on the board, lead and participant).** The one-line header was counted by its own rule, with a bar the Blockers list does not use. So the lead read "1 thing is in the way" over a list of 2, and the person waiting read "Nothing is in the way" over her own blocking wait. For the same reader, `inTheWay.count` is now the number of items in `blockers`, and `oldest` is the oldest one on it when the header had none. With no blockers the count is 0 and `oldest` and `sinceSays` are null. Screens: nothing to change if the header draws `count` and `oldest` as sent. Not covered: request 129 item 2 where `blockers` itself is empty although the board says someone is waiting for a macro Aisha is preparing; the wait is not stored as a wait, and that comes from the conversation, which is not changed here (open).
+
+### Two readings of one fact (132 c)
+
+**What changed (served, `quickRead[]` "Differences" tile, both readers).** The tile already took a difference from the report's opening when the opening said people "disagree" or "differ". It now also takes one said as "They give different numbers for the total plan" (also "different figures", "dates", "amounts", "answers", "views", "costs", "estimates"). The tile then reads "1", with "People said different things about the total plan." instead of "Nobody sees anything differently. The written report finds no disagreement." Where the opening names no difference, the tile is as before.
+
+### The county is not counted as work in itself (132 d)
+
+**What changed (served, `byArea.areas[].says`, lead).** A county's own row is no longer counted as work in the county. "Kiambu County has 1 county on record." reads "Kiambu County is on record, and no piece of work in it is on record yet." Where there are projects, they are counted in their own word: "Kiambu County has 1 project on record." `records` is the count of work in the area, and is 0 for the first sentence.
+
+### "No standard is set" while the lead had set a target (132 g, first part)
+
+**What changed (served, `againstSuccess.saying`, lead only).** When the lead has set a team target and has not written down what success looks like, the target is read as the standard, so "No standard is set. You have not said what success looks like, so nobody is being measured against anything yet." is not sent. Nobody else's report changes (a hidden target is not read for anyone but the lead). Still open in 132 g: "Nobody on record has said who arranged the meetings" is fixed above; "nothing on record says anybody has chased it" said about two things ("them") has no change yet.
+
+### "Chased it" about several things (132 g, second part)
+
+**What changed (served, `overTime.toSettleFirst`, lead).** With more than one thing waiting, the sentence says "them": "2 things are waiting on somebody outside this check-in, and nothing on record says anybody has chased them. Ask what has been tried beyond writing to those people." (and "gone back about them. Ask whether they were raised outside the sessions"). With one thing it is as before. Stored sentences are put right as they are served.
+
+### A colon in the note on an updated round (131 item 3)
+
+**What changed (served, `amendedNote` on the report, every reader).** "Updated after somebody added to or corrected their own check-in. What changed: the shared picture, what was agreed and the question it left open." now reads: Updated after somebody added to or corrected their own check-in. The parts that changed were the shared picture, what was agreed and the question it left open. With one part: The part that changed was the shared picture. Notes already stored are put right as they are served.
+
+### Counts as words in "What you have done" (131 item 4)
+
+**What changed (served, `personHistory[].says`, the person's own row only; the lead never reads the tally).** Only what there is gets a number. "You have answered 2 sessions and made 1 commitment. 0 are done, 0 are not done or dropped, and 1 is still open." reads "...made 1 commitment. None is done yet, and 1 is still open." Other examples: "1 is done." and "2 are done, and 1 is not done or dropped."
+
+### The header says who waits (134 item 6)
+
+**New field (served, `howItIsGoing.glance.inTheWay.says`, every reader of a board).** One finished sentence for the header, from the Blockers list that reader is served. The person waiting reads: One thing is in the way. You have been waiting for the tax view since 29 September. The lead reads: One thing is in the way. Amani Wekesa has been waiting for the tax view since 29 September. With several: 2 things are in the way. The one waiting longest is the tax view, since 29 September. With none: Nothing is in the way. Screens: draw `says` in place of "N things are in the way, the oldest being ...", which said "the oldest" of one thing; `count`, `oldest` and `sinceSays` are unchanged.
+
+### "Your own account" for somebody else's (133 item 2)
+
+**What changed (served, `theJudgement.whatThisCannotTellYou[].toKnow`, lead only).** Under "Who the other trader with the broken freezer is." the line reads "That trader's own account is not in this check-in." and not "Your own account of this is not in this check-in." Under a thing that is the lead's own to say, it is unchanged. Only the one stock sentence is changed, and only where the unknown is who somebody else is.
+
+### Request 128: answered
+
+**1. The 90 days are about the new person, not about the lead (served, `ninetyDays`, both readers).** When whoever runs the check-in also takes part, her own goals are no longer counted. Amina reads "Is Tobi Adewale settled in?", "Is Tobi Adewale doing the job?" and "1 goal was agreed for Tobi Adewale to be met by day 30. It is still open." Tobi reads "Are you settled in?" and "1 goal was agreed for you to be met by day 30. It is still open." Nothing reads "you and Tobi Adewale".
+
+**2. A promise stored as a goal is a commitment (served, `startingState.rows[]`).** "If the information is incomplete, I will follow up with her for the missing details." no longer reads "A goal was agreed for Tobi Adewale." The row has `kind: "commitment"`, `what: null`, and `says` reads (to Amina) Tobi Adewale said, "If the information is incomplete, I will follow up with her for the missing details." and (to Tobi) You said, "If the information is incomplete, I will follow up with her for the missing details." Such a promise is also not counted among the goals in `ninetyDays`. A first-person promise means a sentence that begins with I will, I'll, we will, I am going to, or one of those after "if ...,".
+
+### A line that intends nothing is not typed as an intention (127 item 4, 129 item 5)
+
+**What changed (served, `whoOwnsWhat[].items[].type`, lead and participant).** A line typed INTENT is sent with `type: null` unless its words say something is intended (will, going to, want to, aim, plan, hope, intend, need to, should, next week, by a named day, and the like). So "I close refunds when I send the instruction, because the old rule said so.", "Zainab Suleiman, partnerships." and "I believed Zainab was driving this forward." no longer carry INTENT, and the screen must not say "This is something Aisha Wanjiku intends to do." when `type` is null (say nothing about its kind). The words themselves are not changed. The stored kind (what the conversation wrote) is not changed either; whether the conversation should have typed them so is open, because that is the record reader's work.
+
+### A surname field holding "Lead" (127 item 9)
+
+**What changed (served, every name on the board and in reports).** A last name that is only a role or placeholder word (Lead, Leader, Participant, Member, Admin, Administrator, User, Manager, Owner, Test, Tester, Demo, Staff, Team) is left off, so "Wanjiru Lead has not said it" reads "Wanjiru has not said it". Decided for Hafsah to confirm: this list is a guess at placeholder words; the fix for the account itself is to give Wanjiru her real surname.
+
+**Decided for Hafsah to confirm:** the list of placeholder surnames above.
+
+### The outcomes on a team-goals check-in (130 f)
+
+**What changed (served, `whereThisIsHeading.outcomes` on the board, and `options` on the resolution panel, for check-ins that are about setting goals and keeping the team on track).** The three outcomes follow the prototype's "On course", "Reach it with a change" and "Change the target", said as full sentences: The team is on course. The team can reach it, with a change in how the work is done. The target needs to change. The values are `ALIGNED`, `REACH_WITH_A_CHANGE` (new) and `GAPS_IDENTIFIED`; "It is not settled yet, and more sessions are needed." (`NOT_YET`) stays. Screens: `client/src/lib/end-states.ts` holds its own copy of this list for the resolution panel; update it to match. The prototype's other boards show other outcome names (for example "Start as planned", "Look closer at named areas", "Support named traders"); those belong to other kinds of check-in and are not changed here.
+
+**Decided for Hafsah to confirm:** sentences instead of the prototype's short labels (decision 75, item 48), and a new ending `REACH_WITH_A_CHANGE`. Already-recorded endings keep their value; only the words changed.
+
+### Coaching under "Worth asking" no longer says not to ask (130 e, 134 item 3)
+
+**What changed (served, the coaching probes in a person's report and on the lead's board).** "This early, that is worth showing Amani Wekesa rather than asking about." reads: It is early, so ask Amani Wekesa what is being held up and whether help raising it would be useful. To the person themself: It is early. What is being held up, and would help raising it be useful? The finding that triggers it (a wait with nothing on record about raising it) is not changed. Stored sentences are put right as they are served.
+
+### Clipped quotes in a commitment (136 item 3)
+
+**What changed (served, `workPlan[].says`, `obligations`, `timeline` and wherever a commitment is said; lead and the person).** Where what a person said is only a piece of a sentence, with no full stop, in lower case and with no "I", it is no longer put in quotation marks beside a second quoted time. `In session 1, you said, "send the data room". The time you gave for it was "on Wednesday".` reads: In session 1, you said you would send the data room on Wednesday. Nobody has said yet whether it happened. The lead reads: In session 1, Wanjiru Kamau said they would send the data room on Wednesday. When a whole sentence of theirs is held ("I will send the data room."), it is quoted as before.
+
+### "Nobody answering this check-in" on a check-in of one person, and an aim without a number as the standard (136 item 6; 132 g widened)
+
+**What changed (served, `againstSuccess.saying`, lead).** In a check-in where the lead is the only person, the line reads: You have not said what success looks like yet. It appears here as soon as you do. Until then, the report can say what you have said, but not whether things are going well. It no longer says "nobody answering this check-in has said it either". Also, any team aim the lead set (with or without a number) now counts as what success looks like, so Wanjiru's "Get to 20 paying customers by December." is read as the standard (earlier I read only aims with a number).
+
+### The founder's Work plan holds the commitments from the check-in (136 item 2)
+
+**What changed (served, `workRecords[]` section "Work plan", on the founder's own check-in only).** The table holds the commitments on record as well as the rows added on the board. Each is a row with `kind: "commitment"`, `name` the commitment's own words without "I will" (for example "send the data room"), `owner` ("You" to the founder), `fields["Time given"]` where they gave a time, `fields.Status` (Open, Done, Not done or Dropped), `from: "said"` and `mark: "said"`. A commitment that has the same name as a row already there is not added twice. A lead reads those of the people they may read; a participant reads their own.
+
+### The matter board: `whereTheMatterStands.state` (134 item 7, part)
+
+**New field (served, `whereTheMatterStands.state`, both readers of a law firm matter).** `"filled"` once a deadline, a wait or a decision is on record, and `"none-yet"` otherwise, like the board's other sections. **Not built:** the matter line from the prototype ("Breach of a maize supply contract. High Court, Commercial Division, Nairobi. Stage: pleadings."). The court, the stage and the nature of the matter are not on record anywhere the board reads; only the reply deadline is, and it is already sent in `says` ("The reply to the supplier is due on 2 October."). Needs Hafsah: whether setup should ask for the court and the stage. **The "52 rounds":** the count comes from the length the check-in was set up with (a weekly check-in with no end date plans 52 rounds), not from the reply date; the lead should set the check-in's end date to the reply date if the plan should stop there.
+
+### "Reported against the rules, stage by stage" on every kind with stages (127 item 11)
+
+**New on other boards (served, `reportedAgainstCriteria`).** It was sent only on the sales board. It is now sent on any board whose records have stages (engineering releases and tasks, depot incidents, loans, trader groups), with the kind's own word: "2 tasks were reported at Merged, and none of them has a document behind it." and "1 task was reported at Deployed, and it has a document behind it." `why` reads: Nothing on record says what each piece of work must show at each stage. The board counts what people reported, and how much of it has a document behind it. It cannot count how many meet the rules. With nothing at any stage, `says` is "Nobody has reported a task at any stage yet." (or the kind's word). The sales board is unchanged. Not built: the prototype's stage-by-stage compare with evidence needs rules per stage, which are not on record.
+
+(Also in this commit: the line for one difference on "Where this is heading" names the topic only when the topic is a thing, so a clause such as "There is no agreed owner" is not put after "about"; the first version of that fix, in 129 item 7 above, did so.)
+
+### Corrections after the full run (5 October)
+
+- **"You and You are waiting" (135 item 5, participant).** `latestFinding` on `GET /grounds` now names the reader once: You are waiting for the signed witness statement, and nothing on record says anybody has chased it. (The finding also goes through the same repairs as every other stored sentence.)
+- **The first count is a rise-free count only while it is the newest session's (130 a).** The rule applies where the only snapshot is a 0 closed on the newest session and the count is above 0 now. A 0 that an earlier session closed on, followed by a later session, is a real start, and still reads "It was 0 at the start and is 81 now".
+- **The kind of a line is changed last (127 item 4, 129 item 5).** `whoOwnsWhat[].items[].type` is set to null at the end of the board, so the kind boards that read it (what each level understood) still see INTENT. "My responsibility is to ensure the system is deployed" and "is to / are to" count as an intention.
+- **The placeholder surnames are Lead, Leader, Participant, Member, Admin, Administrator, User, Manager, Owner, Staff and Team** (Test, Tester and Demo are not: they are the surnames of the test fixtures).
+- Fixed from the run: a sentence repair that joined paragraphs into one line; one test that pinned the exact source line that serves the finding.
+
+### Headings under "What this cannot tell you" are sentences (131 item 5), and "By site" reads more field names (130 d, part)
+
+**What changed (served, `theJudgement.whatThisCannotTellYou[].about`, lead only).** A piece of a sentence is now a sentence: "the work in Kisumu" reads This check-in cannot tell you about the work in Kisumu. "what is blocking the work" reads This check-in cannot tell you what is blocking the work. A line that is already a sentence is left as it is ("Nobody has said who arranged the visits."). `byArea` now also groups on a record's depot, warehouse, hub or town field as "By site". **Not built (130 d):** the prototype's Themes for depots (incidents by site and type, last 8 weeks) and stages for incidents; neither the type nor the site of an incident is a field the conversation reliably records, so there is nothing to build them from. Needs Hafsah: whether the record reader should be asked to write a site and a type on each incident.
+
+### Status of requests 127 to 138 (5 October 2026)
+
+All served-text fixes are made where the line is served, so rows already stored read right at once; `journey/bring-a-check-in-up-to-date.ts` needed no new rule, and the screens workspace does not need to run it again for these. (It still should be run for the earlier rules in requests 111 and 117.)
+
+| Request | State | Commits |
+| --- | --- | --- |
+| 127 | Answered, with open parts below | 8b0fc6fe, 7b780610, 0c53cfd2, 134d8030, c4a48fdd, 1ad52a5a, 8a768060, 940995c5, 615fb75f |
+| 128 | Answered | 988a77fc |
+| 129 | Answered, with open parts below | 8b0fc6fe, 7b780610, 0c53cfd2, 134d8030, 49756eb0, 3c2417d1, 1ad52a5a, 49c2bbfc |
+| 130 | Answered, with open parts below | 8b0fc6fe, 89dd6551, 5dd03174, 8c6ab576, 289ce991, 615fb75f |
+| 131 | Answered, with open parts below | 8b0fc6fe, 134d8030, 3376bc4c, e15b88fd, 289ce991 |
+| 132 | Answered, with open parts below | 8b0fc6fe, 49c2bbfc, f7e24c9b, 89b4d804, 32b74b9e, 4cc8247f |
+| 133 | Answered, with open parts below | 7b780610, 49756eb0, b6d409f6 |
+| 134 | Answered, with open parts below | c4a48fdd, 5dd03174, 11930784, 7d697ae6 |
+| 135 | Answered, with open parts below | 8b0fc6fe, ded89222, 49756eb0, 615fb75f |
+| 136 | Answered, with open parts below | 8b0fc6fe, ded89222, 3376bc4c, 4c0c2679, 7e865347, 37a25ce7, 0c53cfd2 |
+| 137 | Answered (done earlier) | 821b0854 |
+| 138 | Answered | a16f5fba |
+
+**Not changed, and why (open).** 127 item 1: `startingState` on a project board and a headline where the check-in has no aim: nothing on record to build it from, and no screen in the prototype for it. 127 item 5 (participant) "at their own request" and 132 e "You said they would write to them": "they" may be somebody else, so the writer must say who. 127 item 6 "founder or CEO work": it comes from the detected function, which is not changed. 129 item 2: a wait that is only said in a report finding is not a stored wait. 130 b (Aisha's empty `whoOwnsWhat`) and 130 d (Themes, sites and stages for incidents): not reproducible without the screens workspace's data, and no field to build from. 131 item 6: no "Women" share target or county for groups on record. 133 item 1 (a sales question on a loans check-in) and 134 item 4, 135 item 3, 136 item 7 (the model-written judgement miscounts and contradicts itself): these are in the judgement's prompt and the question choice, and need the prompt and a stored prompt version changed together; not touched here. 134 item 5 ("Ask Amani Wekesa to find out who owns this by name"): left, because the existing tests and `reports.service` call it the right first move; Hafsah to decide who should be asked. 136 item 1 numbers (11 of 20) are not counted into the founder's aim.
+
+**Decided for Hafsah to confirm (taken closest to the prototype and her decisions).** (1) "They" for one named person, as the reports already do, instead of the passive. (2) Outcomes for a goals check-in as sentences, with a new ending `REACH_WITH_A_CHANGE`. (3) The list of placeholder surnames. (4) A headline asked without a day where the check-in has no deadline.
