@@ -3856,10 +3856,12 @@ export class GroundsService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
+        initiatorId: true,
         participants: { select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } } },
       },
     });
     const people = (ground?.participants ?? []).filter((p) => !p.managingOnly);
+    const theLeadsOwnRow = (ground?.participants ?? []).find((p) => !!ground?.initiatorId && p.userId === ground.initiatorId) ?? null;
     const forPeople: WhatAPasteGives['forPeople'] = [];
     const unmatched: string[] = [];
     /* What the paste said for each name that is not on this check-in, so it can be said, and so a
@@ -3922,7 +3924,9 @@ export class GroundsService {
     }
     const questionsForPeople: WhatAPasteGives['questionsForPeople'] = [];
     for (const r of (read.questionsForPeople ?? []).filter((r) => r?.personName?.trim() && r?.question?.trim())) {
-      const who = whoThisNameIs(r.personName, people as any);
+      /* A question the lead puts to themselves is kept for the lead alone: their row, nobody else's. */
+      const toThemselves = /^(?:the lead|me|myself|i|self|you)$/i.test(r.personName.trim()) && theLeadsOwnRow;
+      const who = toThemselves ? theLeadsOwnRow : whoThisNameIs(r.personName, people as any);
       if (!who) {
         if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim());
         (unmatchedParts[r.personName.trim()] ??= []).push(`a question, ${r.question.trim().slice(0, 300)}`);
@@ -3936,6 +3940,8 @@ export class GroundsService {
      * drafter. See a-question-asked-word-for-word.
      */
     for (const q of questionsForPeople) {
+      /* Put to themselves, the lead's own words are the question; no drafter turns it into one for somebody else. */
+      if (theLeadsOwnRow && q.participantId === theLeadsOwnRow.id) { q.exactQuestion = plainQuestionFrom(q.question); continue; }
       const person = people.find((p) => p.id === q.participantId) as any;
       const privateWords = [
         person?.roleAsDescribed,
