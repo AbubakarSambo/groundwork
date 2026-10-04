@@ -2452,8 +2452,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           left the reader to work out that no amount of waiting would change it. The rule refuses a
           shared report below two people, so the page says the same thing the rule does, and names
           who can change it.
+
+          NOT FOR THE FOUNDER'S OWN CHECK-IN BOARD: founder.txt's own check-in is always one
+          person, by design - "One person. Weekly check-in." is the board's own subtitle, not a
+          gap to be told about or filled by adding somebody else.
         */}
-        {onlyOnePersonHere && (
+        {onlyOnePersonHere && kindOfWorkKey !== "founder's own check-in" && (
           <div role="status" className="gwui-rule-amber gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-12 gwui-fs-15 gwui-ink-amber" style={{background: 'var(--gw-amber-bg)', borderRadius: 12, lineHeight: 1.6}}>
             This board compares accounts, and there is one person on this check-in.{' '}
             {b.canEditFrame ? 'Add somebody and it will build from the next round.' : 'It will build once the person running this check-in adds somebody.'}
