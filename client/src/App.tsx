@@ -42,6 +42,7 @@ import { CompanyContextPage } from '@/pages/company/CompanyContextPage'
 import { SuitesPage } from '@/pages/suites/SuitesPage'
 import { OnboardingBoardPage } from '@/pages/suites/OnboardingBoardPage'
 import { LeaveBoardPage } from '@/pages/suites/LeaveBoardPage'
+import { YourRequestsPage } from '@/pages/suites/YourRequestsPage'
 import { TimeSheetsPage } from '@/pages/suites/TimeSheetsPage'
 import { ReviewsBoardPage } from '@/pages/suites/ReviewsBoardPage'
 import { ReviewPage } from '@/pages/suites/ReviewPage'
@@ -478,6 +479,7 @@ export default function App() {
             {/* THE SUITES PAGE (E, U.17). What each reader is given is the server's (GET /suites). */}
             <Route path="/settings/suites" element={<RequireOrgSetup><SuitesPage /></RequireOrgSetup>} />
             <Route path="/suite/onboard" element={<RequireOrgSetup><OnboardingBoardPage /></RequireOrgSetup>} />
+            <Route path="/suite/mine" element={<RequireOrgSetup><YourRequestsPage /></RequireOrgSetup>} />
             <Route path="/suite/leave" element={<RequireOrgSetup><LeaveBoardPage /></RequireOrgSetup>} />
             <Route path="/suite/time" element={<RequireOrgSetup><TimeSheetsPage /></RequireOrgSetup>} />
             <Route path="/suite/reviews" element={<RequireOrgSetup><ReviewsBoardPage /></RequireOrgSetup>} />

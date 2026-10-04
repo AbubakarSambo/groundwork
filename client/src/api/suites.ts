@@ -358,3 +358,28 @@ export const financeApi = {
     return { blob: res.data as Blob, fileName: named?.[1] ?? `requests-to-pay.${format}` }
   },
 }
+
+/**
+ * A PERSON'S OWN REQUESTS (GET /suites/leave/mine and /suites/spend/mine). Only the person's own;
+ * the server writes every sentence: where each one stands, the questions asked and the answers, and
+ * what was said when it was declined. An answer to a waiting question goes back with the whole list.
+ */
+export interface YourRequest {
+  id: string
+  status: 'waiting' | 'approved' | 'declined'
+  where: string
+  questions: string[]
+  questionWaiting: { id: string; question: string; askedBy: string } | null
+  declinedBecause: string | null
+}
+export interface YourLeave { daysLeftSaid: string; requests: YourRequest[] }
+export interface YourSpending { requests: YourRequest[] }
+
+export const yourRequestsApi = {
+  leave: async (): Promise<YourLeave> => (await apiClient.get('/suites/leave/mine')).data,
+  spending: async (): Promise<YourSpending> => (await apiClient.get('/suites/spend/mine')).data,
+  answerLeave: async (id: string, answer: string): Promise<YourLeave> =>
+    (await apiClient.post(`/suites/leave/requests/${id}/answer`, { answer })).data,
+  answerSpending: async (id: string, answer: string): Promise<YourSpending> =>
+    (await apiClient.post(`/suites/spend/requests/${id}/answer`, { answer })).data,
+}
