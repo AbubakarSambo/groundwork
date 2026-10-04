@@ -9,7 +9,8 @@ import { PrismaService } from '../../src/modules/prisma/prisma.service';
 import { AnthropicService, ChatTurn } from '../../src/modules/conversation/anthropic.service';
 import { THE_SCENARIOS as SUITE, thePersonaFor, AScenario, APerson } from '../the-suite/scenarios';
 import { THE_REST } from './scenarios';
-const THE_SCENARIOS: AScenario[] = [...SUITE, ...THE_REST];
+import { THE_ADVERSARIAL } from './adversarial-scenarios';
+const THE_SCENARIOS: AScenario[] = [...SUITE, ...THE_REST, ...(THE_ADVERSARIAL as unknown as AScenario[])];
 import * as bcrypt from 'bcrypt';
 import * as fs from 'fs';
 
@@ -302,7 +303,10 @@ async function runCheckIn(prisma: any, model: AnthropicService, gid: string, s: 
   for (let t = 0; t < MAX_TURNS && !closed; t++) {
     chat.push({ role: 'user', content: asked });
     let said = '';
-    try { said = (await model.respond(system, chat)).trim(); } catch { said = 'I would have to check that.'; }
+    /* A person may have a prepared first message (adversarial set): it is sent word for word, never shortened by the simulator. */
+    const scripted = (p as any).firstSay as string | undefined;
+    if (t === 0 && scripted) said = scripted;
+    else try { said = (await model.respond(system, chat)).trim(); } catch { said = 'I would have to check that.'; }
     chat.push({ role: 'assistant', content: said });
     turns.push({ from: p.name.toUpperCase(), text: said });
     try {
@@ -324,7 +328,8 @@ async function main() {
   const prisma = app.get(PrismaService);
   const model = app.get(AnthropicService);
   for (const s of THE_SCENARIOS) {
-    if (ONLY && !ONLY.includes(s.key)) continue;
+    /* ONLY accepts exact keys and a trailing star, so ONLY=adversarial-* runs the whole adversarial set. */
+    if (ONLY && !ONLY.some((k) => (k.endsWith('*') ? s.key.startsWith(k.slice(0, -1)) : k === s.key))) continue;
     try { await runScenario(prisma, model, s); }
     catch (e: any) { log(`\n${s.key} FAILED: ${e?.message?.slice(0, 400)}`); }
   }

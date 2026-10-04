@@ -311,10 +311,8 @@ export function ContextChat({ groundId }: { groundId: string }) {
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>
           Tell Groundwork how this team works
         </div>
-        <button
-          onClick={() => setOpen(false)}
-          style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
-        >
+        {/* A quiet text link: the prototype's "Tell Groundwork how this team works" has no Close button. */}
+        <button type="button" onClick={() => setOpen(false)} className="gwui-plain-link">
           Close
         </button>
       </div>

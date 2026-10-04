@@ -4235,3 +4235,109 @@ In a quiet week it opens "Here is your team's week." and says "Nobody has checke
 **What it never holds.** Nothing anybody said, nothing from Ask Groundwork, no one person's load across check-ins (every check-in is counted on its own, never added to another). It names only the people who did not check in, as the lead's morning WhatsApp already does, and the lead herself as "you". No label and no score. The scenario's lines about ideas, a person who raised a risk and a pattern "Groundwork is working on" are left out until the record can say them (pieces 16, 19 and 22).
 
 **The way to stop it.** It is a mail Groundwork decides to send, so the unsubscribe footer every such mail carries stops it, along with the other mail of that kind. A separate "stop these letters" switch would need a new column and is not built. The weekly WhatsApp insight is not built (Needs Hafsah, item 2). Code: `email/the-leads-weekly-letter.ts`, `EmailService.sendTheLeadsWeeklyLetter`, `GroundsCron.sendTheLeadsWeeklyLetters`.
+
+## Request 146: the client's wording guard
+
+Done. `the-anchor-lead-conversation.ts` now reads, "You need to have been told, in the lead's own words, how the money comes in, before you say anything that depends on it." `the-anchor-weekly-check-in.ts` now reads, "What the group is trying to change: this person has not been told yet. Do not connect their work to a wider aim." The meaning and the quoted words are the same. The guard, its ceiling of 60 and the quoted words are untouched, and the guard passes. The weekly line is built when the conversation runs, so it changes at once. The lead's line is a stored prompt: on next start the library adds the new words as a new version, and a version somebody activated by hand stays active and keeps its own words. The running lead version therefore changes on next start only where nobody activated one by hand. One conversation spec that pinned the old wording of the weekly line was updated to the new capital letter.
+
+## Request 144 (1): a public signal that the anchor scenario is open
+
+**Done.** `GET /entry/anchor-available`, open to a visitor who is not signed in. It answers exactly one field and nothing else:
+
+```
+{ "available": true }
+```
+
+or `{ "available": false }`. It is `false` whenever the anchor switch (`release.anchorScenario`) is off, missing, or cannot be read, which is today's state. The answer is kept for 30 seconds on the server, so a busy landing page costs one read. It is limited to 60 reads a minute for each address. Nothing else is revealed: no organisation, no counts, no switch name.
+
+What the landing page does with it: when `available` is `false`, send the visitor to `/start` as it does now. Code: `entry/the-anchor-door.ts`, `entry/entry.controller.ts`.
+
+## Request 144 (2) and (3): the anchor entry route, how an anchor draft is marked, and the seven field names
+
+**The route (done).** `GET /entry/anchor-start?source=<mark>`, open to a visitor who is not signed in, 30 a minute for each address. The screen's address `/start/team` (with `?source=founders-whatsapp`) calls it once on arrival. With the anchor switch on it answers:
+
+```
+{ "available": true, "scenario": "HELP_TEAM_UNDERSTAND", "startedFrom": "anchor",
+  "groundLabel": "Help my team understand", "source": "founders-whatsapp" }
+```
+
+`source` is a short mark of letters, digits, dashes and underscores (up to 40, lower-cased), or `null` when none was given or it was not plain. With the switch off it answers 404 with "This way in is not open yet." and nothing is created. It creates nothing in either case: the entry conversation lives in the visitor's browser until she saves it by email, as every entry conversation does, so there is no organisation and no row for a stranger.
+
+**What marks a draft as an anchor one.** The situation key `HELP_TEAM_UNDERSTAND`, which this route hands back as `scenario`. The screen keeps it as the draft's `scenario` and sends it on every entry call (`/entry/onboard`, `/entry/onboard/stream`, `/entry/chat/stream`) and on commit. That key alone makes the conversation run the anchor words (the switch must still be on). When the lead saves, `grounds.started_from` is written as `"anchor"`; this already works (`a-check-in-saved-from-the-anchor-remembers-it.spec.ts`). So the caller in `EntryChatPage.tsx` passes `anchorItems` whenever the draft's `scenario` is `HELP_TEAM_UNDERSTAND`. The source mark travels as `anchorSource` in the draft's payload (`PATCH /entry/draft`) and the engine writes a line to its log when the link is opened from a source. It is not stored on the check-in: that would need a new column, and I have not added one.
+
+**The seven field names.** The screens' names are confirmed except one, which had a stray letter: `whatTheydDoDifferently` is `whatTheyWouldDoDifferently`. The seven keys are `responsibleFor`, `tryingToMove`, `howItContributes`, `seeingToday`, `whyItBothersYou`, `whatTheyDontUnderstand` and `whatTheyWouldDoDifferently`, each a plain string once the conversation has heard it, in the lead's own words. **They are not served yet.** The set-up conversation does not return them, so `anchorItems` stays empty until a later piece extracts them. The type is `TheSevenThingsTheLeadHasSaid` in `entry/the-anchor-served-shapes.ts`. One wording point for the screens: the heading for `howItContributes` must not say "economic engine". The conversation is told never to say it to the lead, and nobody should read it on a screen either. Please use "How this group helps the organisation keep going".
+
+## Request 147: the anchor's served shapes, ahead of the data
+
+Every shape below is a TypeScript type in `api/src/modules/entry/the-anchor-served-shapes.ts`, with its keys pinned by `the-anchor-served-shapes.spec.ts`, so whoever builds a piece serves exactly this. The example sentences are Hafsah's, from `docs/anchor-scenario.md`. **Nothing here is served yet** except what is marked "served already". Where a part is for the lead alone, the field is `null` for anybody else, never filled and hidden on screen.
+
+**Piece 8, the lead's reveal (`TheLeadsReveal`). Shape only.**
+Fields: `title` ("Help my team understand"), `subtitle` ("One-month Groundwork"), `carrying`, `whatTheTeamNeedsToUnderstand`, `sharedWithTheTeam` (boolean), `whoYouAreTryingToMove`, `seeingToday`, `whatMeaningfulChangeWouldLookLike` (list of sentences), `whatGroundworkWillExplore` (list of sentences), `howIWillWorkWithYourTeam` (eight items, each `{ key, heading, sentence }`). `carrying` and `seeingToday` are `null` for anyone but the lead. `whatTheTeamNeedsToUnderstand` is `null` for the team until the lead has shared it (decision 96, item 8). The eight items are fixed words, already in the file as `HOW_I_WILL_WORK_WITH_YOUR_TEAM`. Example: `{ key: "followThrough", heading: "Follow through", sentence: "Remember commitments and return to them." }`. The eighth reads: "Show the lead what's happening across the group without turning private check-ins into employee surveillance."
+
+**Piece 10, up to 20 people and the invitation. Partly served.**
+- *Served already:* the people step sends `{ contributors: [{ email, colleagueId?, context?, note? }] }` on commit. `context` is the optional "What do they do / why are they part of this?"; `note` is the lead's own note and is never shown to the person.
+- *Shape only, `ThePeopleStepRules`:* `limit: 20`, `theLeadCounts: true`, `mayAdd: 19` (the lead plus 19, decision 96, item 3), `heading` "Who needs to be part of this?", `intro` "Add up to 20 people. They don't need to report directly to you—they simply need to be part of the work you're trying to move.", `contextLabel` "What do they do / why are they part of this?", `button` "Start my Groundwork." The limit sentence is `limitSentence`; I propose: "This one-month Groundwork holds 20 people, and you are one of them, so you can add 19 more." Today the check-in limit is 200 and is not yet changed for the anchor.
+- *Shape only, `TheAnchorInvitation`:* `subject`, `heading`, `lines` (plain sentences, in order), `leadHasSharedWhatTheyAreSeeing` (boolean), `button`. Example, for Hafsah: heading "Hafsah is trying a different way to help the team get on the same page."; line one "For the next month, Groundwork will check in with each person one to one about the work you're doing, what you're seeing, what's getting in the way and how it connects to the bigger picture." (decision 96, item 1: "one to one", not "privately"); line two, only when the lead has shared what she is trying to get across: "Hafsah has shared what she's trying to get across. Groundwork now wants to understand your side too."; otherwise: "Hafsah wants to hear your side."; line three "There aren't right answers. The point is to help the team understand one another better and make the work move."; `button` "Start your first check-in". The page keeps the prototype's sentence about who can see what.
+
+**Pieces 12 and 13, the month board (`TheMonthBoard`). Shape only.**
+`question` ("Are we moving together?"), `weekOfTheMonth` (1 to 4), `lenses` (four items `{ key, heading, question, reading }`), then six lists of plain sentences: `whatIsMoving`, `whatTheTeamIsContributing`, `peopleHelpingThingsMove` (each `{ name, sentence }`), `wherePerspectivesDiffer`, `whatIsStillGettingInTheWay`, `whatGroundworkIsWorkingOnNext`. The four lenses are `understanding` ("Do people see the bigger picture?"), `ownership` ("Are they carrying outcomes rather than only assigned tasks?"), `contribution` ("Are they bringing ideas, insights and help?") and `action` ("Is understanding translating into actual movement?"). `reading` is one plain sentence about what the record shows, never a score or a number out of ten. In weeks one and two, `whatIsStillGettingInTheWay` uses blockers and differences from the record; patterns appear from week three (decision 96, item 14). Example of an entry under people helping things move: `{ name: "Omar", sentence: "Connected a project delay to a renewal risk and raised it before it became a customer issue." }`.
+
+**Piece 30, the "active" line (`TheActiveLine`). Shape only.**
+`{ active: 18, total: 20, nudged: 2, line: "18/20 active · Groundwork has nudged the remaining 2." }`. This is Hafsah's own line from the spec. It is a status line, so her wording overrides the house wording rule here (her answer, 5 October). The engine serves exactly that text in `line`, and the screens workspace draws exactly that line. `total` includes the lead and is never more than 20.
+
+**Piece 32, the end-of-month read (`TheEndOfMonthRead`). Shape only.**
+`yourOwnWords` (the lead's own words, quoted, under "You wanted your team to understand..."), then the eight parts as lists of sentences: `whatWeFound`, `whatTheyNowUnderstandDifferently`, `whatTheyAreDoingDifferently`, `whatYourTeamContributed`, `peopleWhoHelpedMoveTheThinking` (each `{ name, sentence }`), `whatYouChangedAsALead`, `whatIsStillStuck`, `whatShouldHappenNext`. Then `reveal` with six counts and `continueOptions` with four items `{ key, label }`. The counts are `projectsThatCouldHaveTheirOwnGround`, `sharedObjectivesWorthTracking`, `workingRelationshipsNeedingAlignment`, `activeCommitments`, `teamGeneratedIdeas`, `suitesRelevantToWorkAlreadyBeingDone`. Example: `{ projectsThatCouldHaveTheirOwnGround: 3, sharedObjectivesWorthTracking: 2, workingRelationshipsNeedingAlignment: 4, activeCommitments: 17, teamGeneratedIdeas: 7, suitesRelevantToWorkAlreadyBeingDone: 3 }`, which the screen sets under "This started as one Ground." and closes with "Your team has already started building its Groundwork." The four options are `keepThisGroundRunning` ("Keep this Ground running"), `startRecommendedGrounds` ("Start recommended Grounds"), `turnOnRelevantSuites` ("Turn on relevant suites") and `continueGroundworkForTheTeam` ("Continue Groundwork for the team"); decision 96, item 4: they lead to the existing plan choice, Stripe in test mode only. It is built once from the record and never rebuilt on opening.
+
+## Request 148 (1): a new check-in can start from a recommendation
+
+**Done.** `POST /entry/draft-from-set-up`, for the signed-in lead (20 a minute). The screen sends back exactly the `setUp` that "Yes, set it up" gave it:
+
+```
+{ "setUp": { "kind": "anchor_project_check_in",
+             "about": "The Nairobi project keeps moving between four people.",
+             "aim": "The Nairobi launch",
+             "people": [ { "name": "Omar", "email": "omar@acme.org" } ] } }
+```
+
+It answers the draft the set-up screen opens with, and creates nothing and invites nobody:
+
+```
+{ "initial": "The Nairobi project keeps moving between four people.",
+  "aim": "The Nairobi launch",
+  "contributors": [ { "email": "omar@acme.org", "displayName": "Omar" } ],
+  "leftOut": [ { "email": "zed@elsewhere.com", "why": "Groundwork has no record of Zed in your organisation, so Zed is not added. You can add them yourself on the next step." } ] }
+```
+
+**How the screen passes it.** Open the set-up screen with `initial` as the first thing said, keep `aim` as the aim, and put `contributors` in the people step exactly as `commit` takes them (`{ email }`, with `displayName` only for showing the name). Show each `leftOut.why` to the lead as it is. The lead herself is never in `contributors`, and the same address is never listed twice. People are checked against the lead's own organisation (a person with an account in it, or already a guest on one of its check-ins), so the route cannot be used to put a stranger's address into a draft. Anything that is not one of the three recommended kinds is refused with 400. Code: `entry/a-set-up-can-start-from-a-recommendation.ts`.
+
+## Request 148 (2): the check-in page's buttons
+
+**Done in the client, and checked here by counting, not by the live test.** I could not run `e2e/the-prototype-count-of-buttons.spec.ts` (it needs the running app), so please run it. I counted the prototype's Context screen for the lead with the test's own rule by opening it: it has 16 buttons ("Your check-in", "Upload a plan", "Send", "Confirm", "Edit" and "Not now" twice, "Rewrite", "Change", "Decide" twice, "Change who sees them", "Notes on 5 others", and one unnamed one). The product's Context tab for the lead had these that the prototype does not: "Paste a plan instead", "Close", "Say what it assumes", "Something agreed on a call", and a row of five kinds of line to choose from (The strategy, How we work, Still to decide, Not settled, Notes).
+
+Following Hafsah's rule of 30 September (something that sends or changes something stays a button; something that only opens a form, hides one or hands a sentence to the chat is a quiet text link), those five are now quiet text links, `gwui-plain-link`, which the test does not count. The five kinds of line now sit behind one link, "Add a line". Every action is still on the page. Kept as buttons because they send a file or change something: "Upload a plan", "Send", the paperclip, "Delete", "Attach it", "Attach something", "Confirm", "Edit", "Not now", "Rewrite", "Change this". Files: `ThePlanPage.tsx`, `ContextChat.tsx`, `TargetsBand.tsx`, `ContextPage.tsx`. The new spec `the-lead-context-tab-button-count.spec.tsx` renders the lead's tab and keeps it at 14 or fewer, two under the prototype's 16, because the live page adds "Attach it" and "Attach something" for a lead who has promised something. Before the change the same render counted 18.
+
+## Request 142: the MarketView Q4 check-in, as a seed you can load
+
+**Done.** It is a small seed with no model call, exported read only from the check-in `6e84ca43-31d4-4e33-bf38-91defee0543a`, "MarketView, Q4". It holds the organisation, the three people with their memberships, the check-in with its kind of work (MarketView Q4), participants, check-ins, conversation turns, the report and its round, subjects, objectives, the system figures (Paystack and MarketView) and the board's records. Passwords, tokens, invite tokens and credential secrets are left empty, so nobody signs in with a password.
+
+**Who leads and who checks in.** Sign-in is by emailed link, as the handover says.
+
+| Role | Name | Sign-in email |
+| --- | --- | --- |
+| Leads | Wairimu Kamau | `wairimu.mvq4@example.test` |
+| Checks in | Otieno Mwangi | `otieno.mvq4@example.test` |
+| Checks in | Naliaka Wekesa | `naliaka.mvq4@example.test` |
+
+**The one command.** From `api/`, with the screens workspace's own database (the migrations must already be applied):
+
+`npx ts-node -T journey/seed-a-marketview-q4-check-in.ts postgresql://localhost:5432/groundwork_dev`
+
+Add your own user name in front of `localhost` if your database needs one. With no argument it reads this computer's own `DATABASE_URL`. It prints how many rows it loaded and the check-in's id. Running it twice changes nothing the second time. The files are `api/journey/seed-a-marketview-q4-check-in.ts` and the JSON beside it; `export-a-marketview-q4-check-in.ts` made the JSON.
+
+**What it refuses.** Any connection string whose host is not exactly `localhost` or `127.0.0.1`. It then says so and reads and writes nothing.
+
+**Checked here.** It loaded cleanly into a new empty database, `gw_seed_empty`, with the migrations applied: 153 rows, one check-in, three people, 51 conversation turns, one report, five system figures. A second load added 0 rows. The database is left in place. I did not make the `gw_seed_test` copy.
+
+**One gap.** The three people have no roster entries (`people` rows) on the source database, so the seed carries none. The memberships and the people's accounts are there.
+
+Hafsah's answer, 5 October: only a database on this computer.

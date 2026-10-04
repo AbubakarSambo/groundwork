@@ -137,8 +137,7 @@ export function TargetsBand({
           {isTheLead && editing !== t.id && (
             <button
               onClick={() => { setEditing(t.id); setDraft(assumes.join('\n')) }}
-              className="gwui-fs-13 gwui-ink-navy gwui-mt-6 gwui-p-0 gwui-rule-none"
-              style={{ fontWeight: 600, background: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+              className="gwui-plain-link gwui-mt-6"
             >
               {assumes.length ? 'Change what it assumes' : 'Say what it assumes'}
             </button>

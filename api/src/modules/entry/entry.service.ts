@@ -69,6 +69,8 @@ import { PromptsService } from '../prompts';
 import { theAnchorGuidance, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
+import { TheAnchorDoor } from './the-anchor-door';
+import { draftFromASetUp, type ASetUpToStartFrom } from './a-set-up-can-start-from-a-recommendation';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
@@ -620,6 +622,28 @@ export class EntryService {
     /* The stored version of the anchor conversation's words (anchor piece 5 to 7). Optional so that every other way of building this service is unchanged. */
     @Optional() private prompts?: PromptsService,
   ) {}
+
+  private anchorDoor?: TheAnchorDoor;
+  private get theAnchorDoor(): TheAnchorDoor {
+    return (this.anchorDoor ??= new TheAnchorDoor(this.prisma));
+  }
+
+  /** Request 148 (1): the draft a new check-in starts from, out of a recommendation the lead said yes to. Writes nothing. */
+  draftFromSetUp(organizationId: string, leadUserId: string, setUp: ASetUpToStartFrom) {
+    return draftFromASetUp(this.prisma, organizationId, leadUserId, setUp);
+  }
+
+  /** Request 144 (1): is the anchor's front door open. */
+  anchorAvailable() {
+    return this.theAnchorDoor.available();
+  }
+
+  /** Request 144 (2): how a draft is started for the lead who arrived from the anchor link. Writes nothing. */
+  async anchorStart(source?: string) {
+    const out = await this.theAnchorDoor.start(source);
+    if (out.source) this.logger.log(`The anchor link was opened from "${out.source}".`);
+    return out;
+  }
 
   opener(scenario?: string): string {
     if (scenario && SCENARIO_OPENERS[scenario]) return SCENARIO_OPENERS[scenario];

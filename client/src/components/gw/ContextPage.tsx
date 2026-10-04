@@ -169,6 +169,7 @@ export function ContextPage({
   const [briefDraft, setBriefDraft] = useState<string | null>(null)
   /* Which bucket is being typed into, and what. Only offered where there is no chat to say it in. */
   const [typingInto, setTypingInto] = useState<string | null>(null)
+  const [addingALine, setAddingALine] = useState(false)
   const [lineDraft, setLineDraft] = useState('')
   const saveBrief = useMutation({
     mutationFn: (text: string) => groundsApi.update(id, { brief: text }),
@@ -1140,9 +1141,10 @@ export function ContextPage({
                       own. Something agreed on a call goes in by saying it in the conversation above.
                     </p>
                     <div className="gwui-mt-8">
-                      <Button kind="secondary" size="small" onClick={() => changeThisInTheChat('On the call today, ')}>
+                      {/* A quiet text link: the prototype's Context screen has no button here. */}
+                      <button type="button" className="gwui-plain-link" onClick={() => changeThisInTheChat('On the call today, ')}>
                         Something agreed on a call
-                      </Button>
+                      </button>
                     </div>
                   </Panel>
                 )}
@@ -1223,13 +1225,19 @@ export function ContextPage({
                         ? 'Add a line. Every check-in is guided by what is here.'
                         : 'Nothing here yet. Put anything the check-ins should know in the right place, and every check-in is guided by it.'}
                     </p>
+                    {/* One quiet link, then the five kinds: the prototype's Context screen shows no row of kinds to choose from. */}
                     <div className="gwui-mt-8">
+                    {!addingALine && !typingInto && (
+                      <button type="button" className="gwui-plain-link" onClick={() => setAddingALine(true)}>Add a line</button>
+                    )}
+                    {(addingALine || typingInto) && (
                       <Choices
                         label="Which kind of line"
                         value={typingInto ?? ''}
                         onChange={(kind) => { setTypingInto(typingInto === kind ? null : kind); setLineDraft('') }}
                         options={BUCKETS.map((b) => ({ key: b.kind, label: b.title, description: b.sub }))}
                       />
+                    )}
                     </div>
                     {typingInto && (
                       <div className="gwui-mt-10">

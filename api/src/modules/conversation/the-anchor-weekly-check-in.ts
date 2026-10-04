@@ -111,7 +111,7 @@ export function whatTheyToldYouBefore(w: WhatTheyToldYouBefore, now: Date): stri
   }
   parts.push(w.whatTheGroupIsTryingToChange.length
     ? `What the group is trying to change, as this person has been told it:\n${w.whatTheGroupIsTryingToChange.map((a) => `- ${a}`).join('\n')}`
-    : 'What the group is trying to change: nothing has been told to this person yet, so do not connect their work to a wider aim.');
+    : 'What the group is trying to change: this person has not been told yet. Do not connect their work to a wider aim.');
   return `# What this person has told you before\n\n${parts.join('\n\n')}`;
 }
 

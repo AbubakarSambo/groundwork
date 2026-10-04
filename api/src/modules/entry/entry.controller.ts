@@ -443,6 +443,30 @@ export class EntryController {
   private readonly logger = new Logger(EntryController.name);
   constructor(private service: EntryService) {}
 
+  /**
+   * WHETHER THE ANCHOR SCENARIO'S FRONT DOOR IS OPEN, for a visitor who is not signed in (request 144).
+   * It answers `{ available }` and nothing else, and is kept for a short time so a busy landing page
+   * does not read the setting for every visitor.
+   */
+  @Public()
+  @Throttle({ global: { limit: 60, ttl: 60_000 } })
+  @Get('anchor-available')
+  async anchorAvailable() {
+    return this.service.anchorAvailable();
+  }
+
+  /**
+   * THE ANCHOR ENTRY ROUTE (request 144). Tells the screen how to start a draft for the lead who arrived
+   * from the shared link (for example /start/team?source=founders-whatsapp). Creates nothing. With the
+   * anchor switch off it answers 404 and the screen sends the visitor to the ordinary door.
+   */
+  @Public()
+  @Throttle({ global: { limit: 30, ttl: 60_000 } })
+  @Get('anchor-start')
+  async anchorStart(@Query('source') source?: string) {
+    return this.service.anchorStart(source);
+  }
+
   /** Pre-auth update of the server-side entry draft, authorized by the bearer
    * draftToken issued at entry-save. Carries post-email edits (org name,
    * ground name, cadence, contributors) that previously lived only in
@@ -615,6 +639,20 @@ class OpenFinishDto {
   @IsOptional() @IsString() @MaxLength(160) organisation?: string;
 }
 
+class ASetUpPersonDto {
+  @IsOptional() @IsString() @MaxLength(120) name?: string | null;
+  @IsEmail() @MaxLength(254) email: string;
+}
+class ASetUpDto {
+  @IsString() @MaxLength(60) kind: string;
+  @IsString() @IsNotEmpty() @MaxLength(2000) about: string;
+  @IsOptional() @IsString() @MaxLength(500) aim?: string | null;
+  @IsArray() @ArrayMaxSize(19) @ValidateNested({ each: true }) @Type(() => ASetUpPersonDto) people: ASetUpPersonDto[];
+}
+class EntryDraftFromSetUpDto {
+  @ValidateNested() @Type(() => ASetUpDto) setUp: ASetUpDto;
+}
+
 @Controller('entry')
 export class EntryCommitController {
   constructor(
@@ -626,6 +664,18 @@ export class EntryCommitController {
   async commit(@CurrentUser() user: CurrentUserData, @Body() dto: EntryCommitDto) {
     if (!user?.organizationId) throw new UnauthorizedException('Account not linked to an organisation');
     return this.service.commit(user.organizationId, user.id, dto);
+  }
+
+  /**
+   * A NEW CHECK-IN STARTED FROM A RECOMMENDATION (request 148). The lead said yes to "Groundwork
+   * recommends" and the screen hands back the `setUp` it was given. Answers the draft the set-up screen
+   * opens with, its people checked against the lead's own organisation. Creates nothing, invites nobody.
+   */
+  @Post('draft-from-set-up')
+  @Throttle({ global: { limit: 20, ttl: 60_000 } })
+  async draftFromSetUp(@CurrentUser() user: CurrentUserData, @Body() dto: EntryDraftFromSetUpDto) {
+    if (!user?.organizationId) throw new UnauthorizedException('Account not linked to an organisation');
+    return this.service.draftFromSetUp(user.organizationId, user.id, dto.setUp as any);
   }
 
   @Public()
