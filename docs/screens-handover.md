@@ -4,6 +4,10 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## Law firm matter board: done (4 October)
+
+"Kasarani Foods v Pwani Mills, test" (92625659), lead and participant, in matter.txt's order with "Where the matter stands", "What you need to decide" and "What changed this week, and what it changed" drawn, after one review and its fixes (015c1058..c0e419c9), checked live (scratchpad `pictures/matter-A/`). The engine's part is request 134.
+
 ## Asset loans board: done (4 October)
 
 "Asset loans, cohort 3, test" (4e89d79c), lead and participant, in loans.txt's order with "Where the cohort stands" and "Support given, and whether it helped" drawn, after one review and its fixes (b5f1a789..0b5efc00), checked live (scratchpad `pictures/loans-A/`). The engine's part is request 133.
