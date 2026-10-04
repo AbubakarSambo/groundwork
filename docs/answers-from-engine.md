@@ -3924,3 +3924,7 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 **What changed (served, every sentence on the board).** The rule the reports already follow now runs on the board too, and also handles a few words between "says that" and the second name. "Amani Wekesa says Amani paid 1,200 shillings on Tuesday by M-Pesa." reads "Amani Wekesa says they paid 1,200 shillings on Tuesday by M-Pesa." "Amani Wekesa says Amani is growing maize and soya in Kaduna and Kano." reads "...says they are growing maize and soya in Kaduna and Kano." "Aisha says that for refunds, Aisha closes the ticket..." reads "Aisha says that for refunds, they close the ticket...". No he or she is guessed, so the house style is "they", not the passive form the requests suggested (decided for Hafsah to confirm). Names inside quotation marks, and a sentence that names two people, are not changed.
 
 **Decided for Hafsah to confirm:** "they" for one named person, as the reports already do, instead of rewriting to the passive.
+
+### "Different things about 1 thing" names the thing (129 item 7)
+
+**What changed (served, `whereThisIsHeading.signals[].says`, lead).** With one difference, the line names it from the topic of that difference: "People in this check-in said different things about the refund rule." Where the topic is empty or a whole sentence it reads "People in this check-in said different things about one thing." With several it still counts: "about 2 things."

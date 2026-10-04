@@ -89,7 +89,14 @@ export function whereThisIsHeading(a: {
   const differ = Array.isArray(b.divergence?.items) ? b.divergence.items.length : 0;
   if (differ) {
     signals.push({
-      says: differ === 1 ? 'People in this check-in said different things about 1 thing.' : `People in this check-in said different things about ${differ} things.`,
+      /* One thing is named (request 129 item 7): "about 1 thing" is a count where the thing belongs. */
+      says: differ === 1
+        ? (() => {
+          const topic = String((b.divergence.items[0] as any)?.topic ?? '').trim().replace(/[.!?]+$/, '');
+          const asked = topic && topic.split(/\s+/).length <= 14 && !/[.!?]/.test(topic) ? `People in this check-in said different things about ${/^(?:The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(topic) ? topic.charAt(0).toLowerCase() + topic.slice(1) : topic}.` : null;
+          return asked ?? 'People in this check-in said different things about one thing.';
+        })()
+        : `People in this check-in said different things about ${differ} things.`,
       from: 'This comes from what people said in their check-ins.',
     });
   }
