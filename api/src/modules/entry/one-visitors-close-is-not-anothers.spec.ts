@@ -18,8 +18,8 @@ describe('the close flag', () => {
   });
   it('comes back beside the reply and is what the controller reads', () => {
     expect(service).toMatch(/return \{ reply: forHumans\(best\), closed: hadCloseMarker\(best\) \};/);
-    expect(service).toMatch(/async chat\([\s\S]*?\): Promise<\{ reply: string; closed: boolean \}>/);
-    expect(controller).toMatch(/const \{ reply, closed \} = await this\.service\.chat\(/);
+    expect(service).toMatch(/async chat\([\s\S]*?\): Promise<\{ reply: string; closed: boolean; promptVersionId\?: string \| null \}>/);
+    expect(controller).toMatch(/const \{ reply, closed(, promptVersionId)? \} = await this\.service\.chat\(/);
     expect(controller).toMatch(/private sessionCompleteFrom\(reply: string, markerClosed: boolean\)/);
   });
 });

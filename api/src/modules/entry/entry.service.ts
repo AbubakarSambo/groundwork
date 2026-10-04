@@ -478,6 +478,13 @@ export function buildEntrySystemPrompt(
    * knew the situation and the label. So the names travel now.
    */
   peopleNamed?: string[],
+  /**
+   * THE ANCHOR CONVERSATION'S OWN WORDS, in place of the situation's pack. The pack of the situation
+   * it would otherwise fall back to asks for a project's roster and a definition of success, and read
+   * in the same prompt it pulled the anchor lead back into those questions. Left out, nothing
+   * changes, and the prompt is byte for byte what it was.
+   */
+  anchorPack?: string,
 ): string {
   // partyType drives the opener + framing. INITIATOR (default) is the person
   // opening the ground ("what are you starting"); PARTICIPANT is an invitee
@@ -489,7 +496,7 @@ export function buildEntrySystemPrompt(
    * own first check-in, before a ground exists. So the table's "first" cell is the right one and
    * there is nothing to work out. See the-scenario-table.ts.
    */
-  const scenarioPack = buildScenarioPackForParty(scenario, partyType, moment, 'first');
+  const scenarioPack = anchorPack ?? buildScenarioPackForParty(scenario, partyType, moment, 'first');
   const runtimeCtx = buildRuntimeContext({
     scenario,
     partyType,
@@ -510,7 +517,8 @@ export function buildEntrySystemPrompt(
   });
   /* ONE SCRIPT. Where the situation says how to open, the base prompt's own interview is not sent
      alongside it. Nothing is deleted; see one-script-per-conversation.ts. */
-  return [oneScriptOnly(ENGINE_RULES, scenarioPack), scenarioPack, runtimeCtx, ...(settled ? [settled] : []), ENTRY_SESSION_ADDENDUM].join('\n\n---\n\n');
+  /* The anchor conversation leaves out the situation's intake as well: it carries the same project questions as the pack it replaces. */
+  return [oneScriptOnly(ENGINE_RULES, scenarioPack), scenarioPack, ...(anchorPack === undefined ? [runtimeCtx] : []), ...(settled ? [settled] : []), ENTRY_SESSION_ADDENDUM].join('\n\n---\n\n');
 }
 
 /** Merge the server-side EntryDraft (base) with whatever the browser sent
@@ -1369,8 +1377,8 @@ from finishing at all.`;
      * THE ANCHOR LEAD'S GUIDANCE, ONLY WHEN THE SWITCH IS ON AND THIS IS THE ANCHOR CONVERSATION.
      * Otherwise it is null and the text below is exactly what it always was.
      */
-    const anchor = await theAnchorGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, scenario);
-    const entrySystem = `${buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed)}${anchor ? `\n\n---\n\n${anchor.text}` : ''}\n\n---\n\n${theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast))}`;
+    const anchor = await theAnchorGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, scenario, messages);
+    const entrySystem = `${buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed, anchor?.text)}\n\n---\n\n${theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast))}${anchor ? `\n\n---\n\n${anchor.last}` : ''}`;
     const out = await this.guardedReplyWithClose(
       entrySystem,
       messages,

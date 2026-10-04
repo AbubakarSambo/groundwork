@@ -12,6 +12,8 @@ import {
   THE_HOPE_GUIDANCE,
   THE_HOPE_QUESTION,
   BEHAVIOURS_THAT_WOULD_SHOW_IT_WAS_BETTER,
+  whatTheConversationHasAlreadyUsed,
+  THE_ANCHOR_REMINDER,
 } from './the-anchor-lead-conversation';
 
 /**
@@ -57,6 +59,12 @@ describe('anchor piece 5: how this organisation keeps going is found out by aski
     expect(ANCHOR_LEAD_PROMPT).toContain('Never invent a fact, a name, a number or a reason.');
   });
 
+  it('comes before the situation\'s own questions, and every turn ends with one question', () => {
+    expect(ANCHOR_LEAD_PROMPT).toContain('comes before the situation\'s own opening and questions');
+    expect(ANCHOR_LEAD_PROMPT).toContain('Every turn ends with exactly one question, and only one.');
+    expect(ANCHOR_LEAD_PROMPT).toContain('never ask the first question again');
+  });
+
   it('starts from the scenario\'s first question, never from a target', () => {
     expect(ANCHOR_LEAD_PROMPT).toContain("What's happening right now that makes you wish your team saw more of what you see?");
   });
@@ -93,11 +101,12 @@ describe('anchor piece 6: the lead is challenged kindly, once, and the gaps are 
     expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain("Part of what you're describing may not be an ownership problem. Your team may not have enough context to make the decisions you're hoping they'll make.");
   });
 
-  it('asks once, kindly, after the lead has been heard, and only where it fits', () => {
-    expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('Do it once.');
+  it('asks once, kindly, after the lead has been heard, and where it fits', () => {
+    expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('Do it once, in the whole conversation.');
+    expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('you have used your one challenge, and none of the others may be asked');
     expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('Never in the first turns.');
     expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('with no blame and no verdict');
-    expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('If nothing the lead has said gives you a reason, do not challenge at all.');
+    expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('Leave the challenge out only when the lead has already answered it themselves');
   });
 
   it('says plainly when it lacks context, and does not fill the gap', () => {
@@ -119,6 +128,8 @@ describe('anchor piece 7: the hope question, and the behaviours to watch for', (
 
   it('asks it once, alone in its turn, after the lead has been heard', () => {
     expect(THE_HOPE_GUIDANCE).toContain('Ask it once, and as the only question in that turn.');
+    expect(THE_HOPE_GUIDANCE).toContain('Your turn right after the lead answers the one challenge is the hope question');
+    expect(CHALLENGING_THE_LEAD_GUIDANCE).toContain('The turn after the lead answers your challenge is the hope question below.');
     expect(THE_HOPE_GUIDANCE).toContain('Do not ask it before the lead has been heard');
   });
 
@@ -137,6 +148,46 @@ describe('anchor piece 7: the hope question, and the behaviours to watch for', (
 
   it('is part of the stored prompt too', () => {
     expect(SEED_PROMPTS.find((s) => s.key === ANCHOR_LEAD_PROMPT_KEY)?.content).toContain(THE_HOPE_GUIDANCE);
+  });
+});
+
+describe('the conversation is told what it has already used, read from its own earlier turns', () => {
+  const ask = (t: string) => [{ role: 'assistant', content: 'What is happening?' }, { role: 'user', content: 'x' }, { role: 'assistant', content: t }, { role: 'user', content: 'y' }];
+
+  it('says the one challenge is spent once any of the six has been asked', () => {
+    for (const t of ['Have you actually told them this?', 'How much context do they have about it?', 'Would somebody know this was expected from their current role?', 'Could someone do their formal job extremely well and still fail it?']) {
+      expect(whatTheConversationHasAlreadyUsed(ask(t))).toContain('You have already used your one challenge');
+    }
+  });
+
+  it('says the hope question is spent once it has been asked', () => {
+    expect(whatTheConversationHasAlreadyUsed(ask('Imagine a month from now and this is meaningfully better. What would you notice?'))).toContain('You have already asked the hope question');
+  });
+
+  it('says nothing before either has been used, and never counts what the lead typed', () => {
+    expect(whatTheConversationHasAlreadyUsed(ask('What do you wish people worried about a little more?'))).toBe('');
+    expect(whatTheConversationHasAlreadyUsed([{ role: 'user', content: 'Have you actually told them? Imagine a month from now' }])).toBe('');
+  });
+
+  it('reaches the model, in the conversation where it has happened', async () => {
+    const { service, seen } = world(true);
+    await service.chat([...ask('Have you actually told them this?'), { role: 'user' as const, content: 'No.' }] as any, ANCHOR_ENTRY_SCENARIO);
+    expect(seen[0]).toContain('You have already used your one challenge');
+    expect(seen[0].endsWith(whatTheConversationHasAlreadyUsed([...ask('Have you actually told them this?')]))).toBe(true);
+    expect(seen[0]).toContain(THE_ANCHOR_REMINDER);
+    const fresh = world(true);
+    await fresh.service.chat(said, ANCHOR_ENTRY_SCENARIO);
+    expect(fresh.seen[0]).not.toContain('You have already used your one challenge');
+  });
+});
+
+describe('the anchor conversation does not also run the questions of the situation it would fall back to', () => {
+  it('replaces the situation\'s pack and the general interview with its own words', async () => {
+    const { service, seen } = world(true);
+    await service.chat(said, ANCHOR_ENTRY_SCENARIO);
+    expect(seen[0]).toContain('You must never assume that revenue means sales.');
+    expect(seen[0]).not.toContain('What would you want them to be able to point at');
+    expect(seen[0]).toContain('This situation has its own opening and its own follow-ups, below. Run those.');
   });
 });
 
