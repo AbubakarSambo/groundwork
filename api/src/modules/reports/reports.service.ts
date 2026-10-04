@@ -109,7 +109,7 @@ import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-labe
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from './is-this-an-evaluation-check-in';
-import { onlyCountsAndPatternsAboutTheOthers, theLeadsNamesOf } from './one-persons-circumstances-stay-their-own';
+import { onlyCountsAndPatternsAboutTheOthers, theLeadsNamesOf, askTheReportsDoor, withoutSentencesAboutOneOfThem } from './one-persons-circumstances-stay-their-own';
 
 /** The names of everybody in it but the reader and the lead, full and first, for the item 14 wall. */
 function theOtherPeoplesNames(participants: any[], readerParticipantId: string | null, leadUserId: string | null): string[] {
@@ -196,6 +196,8 @@ import { whatThisSessionHolds } from './what-this-session-holds';
 import { adminsThisOrg, adminsTheOrg, readsAsAnAdmin, runsOrSetItUp } from '../grounds/who-may-read-this-check-in';
 import { ONLY_THE_LEAD_RELEASES } from './only-the-lead-releases';
 import { whoSharedItBecauseTheLeadLeft, fullNameOf, sharedByAnAdminFrom, type SharedBecauseLeadLeft } from './who-shared-it-because-the-lead-left';
+import { theReaderIsYouOnTheirOwnLines } from './the-reader-is-you-on-their-own-lines';
+import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
@@ -2870,7 +2872,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * looked up, so the refusal says nothing about whether this check-in exists. A lookup that fails
    * refuses too: the more private answer when the fact cannot be read.
    */
-  private async refuseSomeoneNotYetLetIn(requestingUserId: string): Promise<void> {
+  private async refuseSomeoneNotYetLetIn(requestingUserId: string, groundId?: string): Promise<void> {
+    /* Held for a seat reads nothing either: the same refusal the invitation page gives (privacy sweep finding 3). */
+    await refuseSomeoneHeldForASeat(this.prisma as any, groundId, requestingUserId);
     const find = (this.prisma as any).user?.findUnique;
     if (!find || !requestingUserId) return;
     const me = await Promise.resolve(find.call((this.prisma as any).user, { where: { id: requestingUserId }, select: { awaitingOrgApproval: true } }))
@@ -2904,7 +2908,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
   /** Where things stand against what success was said to be, through the same last read. */
   async whereAgainstSuccess(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
-    await this.refuseSomeoneNotYetLetIn(requestingUserId);
+    await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const served = await this.whereAgainstSuccessAsBuilt(groundId, requestingUserId, requestingUserOrgId);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
   }
@@ -4065,7 +4069,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
   /** The rounds, through the same last read as every other report read. */
   async rounds(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
-    await this.refuseSomeoneNotYetLetIn(requestingUserId);
+    await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const served = await this.roundsAsBuilt(groundId, requestingUserId, requestingUserOrgId);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
   }
@@ -5527,7 +5531,12 @@ happened, and what is in the way.`;
     );
     /* A field name the model wrote into a divergence comes out at every read, for reports already stored (item 21). */
     const readable = withMarks && Array.isArray((withMarks as any).divergences) ? { ...(withMarks as any), divergences: everyDivergenceReadable((withMarks as any).divergences) } : withMarks;
-    const withNamesPutIn = this.applyNames(gapsAsTheirSentences(findingsWithoutTheirLabels(theTableStaysWithTheEngine(readable))), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
+    const withNamesPutIn = this.withoutTheNamesTheReaderMayNotRead(
+      this.applyNames(gapsAsTheirSentences(findingsWithoutTheirLabels(theTableStaysWithTheEngine(readable))), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named),
+      (ground.participants ?? []) as any[],
+      viewerParticipantId,
+      viewerIsLead || this.peersAreNamed(ground as any, viewerParticipantId),
+    );
     /*
      * DECISION 75, ITEM 14: WHERE PEOPLE DO NOT SEE EACH OTHER, ONE PERSON'S CIRCUMSTANCES NEVER REACH ANOTHER. The
      * shared picture a participant reads carries counts and patterns across people, never a sentence about one
@@ -5543,6 +5552,42 @@ happened, and what is in the way.`;
       name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || null,
       organisation: p.organisationGiven ?? null,
     }))));
+  }
+
+  /**
+   * A NAME INSIDE A QUOTE IS A NAME LIKE ANY OTHER, FOR A READER WHO MAY NOT READ IT (privacy sweep, 5 October 2026, finding 5).
+   *
+   * A report is stored with its names turned into labels, and `withNames` turns the labels back into the right words for each
+   * reader, but it leaves the inside of a quotation alone, because a quote is what the person said (a-quote-is-what-they-said).
+   * So a quote that held a colleague's name ("Aisha is current", "Seyi tells me partnerships are close") reached a reader who
+   * may not read that name, with the name in it. For that reader, and only that reader, the name inside the quote is swapped for
+   * the plain words everything else says for that person ("a colleague", "another colleague"), exactly as it is outside a quote.
+   * Nothing else in a quote is touched, and a reader who may read the name reads the quote as it was said. Stored rows need no
+   * rewrite: this is applied to whatever is stored, on every read.
+   */
+  private withoutTheNamesTheReaderMayNotRead<T>(value: T, parties: any[], viewerParticipantId: string | null, readerMayReadNames: boolean): T {
+    if (readerMayReadNames || !parties.length) return value;
+    let people: { label: string; name: string }[] = [];
+    try {
+      const visible = namesVisibleTo(viewerParticipantId, parties as any, false);
+      const plain = plainWordsByPerson(parties as any, visible, viewerLabelOf(viewerParticipantId, parties as any));
+      people = parties
+        .filter((p: any) => p.id !== viewerParticipantId && p.partyType !== 'INITIATOR' && !!plain.get(p.id) && !!displayName(p))
+        .map((p: any) => ({ label: plain.get(p.id)!, name: displayName(p)! }));
+    } catch {
+      return value;
+    }
+    if (!people.length) return value;
+    const NOT_A_NAME_FIELD = new Set(['label', 'participantLabel']);
+    const walk = (v: any, key?: string): any => {
+      if (typeof v === 'string') return key && NOT_A_NAME_FIELD.has(key) ? v : aNameInTheirWordsIsTheLabel(v, people, { asTheReadSeesIt: true });
+      if (v instanceof Date || v === null || typeof v !== 'object') return v;
+      if (Array.isArray(v)) return v.map((x) => walk(x, key));
+      const out: Record<string, any> = {};
+      for (const [k, x] of Object.entries(v)) out[k] = walk(x, k);
+      return out;
+    };
+    return walk(value);
   }
 
   private peersAreNamed(
@@ -6678,7 +6723,7 @@ happened, and what is in the way.`;
    * for this reader. See whatTheLeadHasNotShared.
    */
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
-    await this.refuseSomeoneNotYetLetIn(requestingUserId);
+    await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const served = await this.getAsBuilt(groundId, requestingUserId, requestingUserOrgId);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, await this.withBeingWritten(groundId, requestingUserId, await this.withWhatTodayReads(groundId, requestingUserId, requestingUserOrgId, await this.withWhatHasStayedTheSame(groundId, requestingUserId, served, requestingUserOrgId))));
   }
@@ -6756,7 +6801,7 @@ happened, and what is in the way.`;
 
   /** The same for the report of one session. */
   async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string) {
-    await this.refuseSomeoneNotYetLetIn(requestingUserId);
+    await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const served = await this.sessionReportAsBuilt(groundId, sessionNumber, requestingUserId, requestingUserOrgId);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
   }
@@ -6775,6 +6820,7 @@ happened, and what is in the way.`;
         initiatorId: true, organizationId: true, createdByUserId: true, whoSeesTargets: true, scenario: true, peersVisibleToEachOther: true,
         participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } } },
         objectives: { select: { name: true, ownerParticipantId: true, target: true } },
+        report: { select: { sharedAs: true } },
       } as any,
     }) as Promise<any>).catch(() => null);
     if (!ground) return served;
@@ -6817,11 +6863,70 @@ happened, and what is in the way.`;
     }
     /* What people said stays as they said it: the hidden-target rule is for the report's own words.
        See board/their-own-words-stay (screens request 77). */
-    return withoutLinesWithNoWords(withTheirOwnWordsKept(
+    const walled = withoutLinesWithNoWords(withTheirOwnWordsKept(
       withoutPrivateFileNamesIn(withoutInternalLabelsIn(served, called), privateNames),
       THEIR_OWN_WORDS_IN_A_REPORT,
       (v) => withoutHiddenTargetsIn(v, hiddenTargets),
     ));
+    /* WHERE PEOPLE DO NOT SEE EACH OTHER, ONE PERSON'S CIRCUMSTANCES NEVER REACH ANOTHER (decision 75, item 14). The
+       session report, the rounds and the against-success read are served through here as well as the report, so the
+       same wall, through the same door, stands on every one of them. See wherePeopleDoNotSeeEachOther. */
+    return this.wherePeopleDoNotSeeEachOther(ground, me, isInitiator || isOrgAdmin, theReaderIsYouOnTheirOwnLines(walled));
+  }
+
+  /**
+   * THE WALL OF DECISION 75 ITEM 14, ON EVERY REPORT READ A PARTICIPANT CAN REACH.
+   *
+   * Only `GET /report` applied it (in `asItWasShared`); the session report, the rounds and the against-success read
+   * were built from the record and the stored rounds, and served each colleague's circumstances, and the lead's
+   * lines about named colleagues, to people who must not read them. They now go through the same door as the
+   * report and the board, `askTheReportsDoor`, handed the people and the lead's names like every other caller.
+   *
+   * A person's own words are held aside while the door runs, so its rules for Groundwork's own sentences (names,
+   * dashes) never touch them (their-own-words-stay). The wall is then applied to the lines of every row that is not
+   * the reader's own, which drops a sentence about one of the others and changes nothing else. The reader's own row,
+   * and everything a reader who runs the check-in reads, is left whole.
+   */
+  private wherePeopleDoNotSeeEachOther<T>(
+    ground: { initiatorId?: string | null; scenario?: any; peersVisibleToEachOther?: boolean | null; participants?: any[]; report?: any },
+    me: { id: string } | null,
+    viewerRunsIt: boolean,
+    served: T,
+  ): T {
+    if (!served || typeof served !== 'object') return served;
+    if (viewerRunsIt) return served;
+    const namedToThisReader = this.peersAreNamed(ground as any, me?.id ?? null);
+    /* An evaluation check-in keeps its own rule (decision 17): the person reviewed is not told a colleague's name, a quote included, and nothing more is taken out. */
+    if (isEvaluationCheckIn(ground.scenario)) return this.withoutTheNamesTheReaderMayNotRead(served, ground.participants ?? [], me?.id ?? null, namedToThisReader);
+    if (namedToThisReader) return served;
+    const others = {
+      names: theOtherPeoplesNames(ground.participants ?? [], me?.id ?? null, ground.initiatorId ?? null),
+      lead: theLeadsNamesOf(ground.participants, ground.initiatorId),
+    };
+    const sharedAs = ground.report?.sharedAs ?? null;
+    const throughTheDoor = (piece: any): any => withTheirOwnWordsKept(piece, THEIR_OWN_WORDS_IN_A_REPORT, (v: any) => {
+      const shared = askTheReportsDoor(
+        this,
+        { scenario: ground.scenario, peersVisibleToEachOther: ground.peersVisibleToEachOther, initiatorId: ground.initiatorId ?? null, participants: ground.participants ?? [], report: { ...v, sharedAs } },
+        me?.id ?? null,
+        false,
+      );
+      if (shared && typeof shared === 'object' && 'sharedAs' in shared && !('sharedAs' in v)) { const { sharedAs: _gone, ...rest } = shared; return rest; }
+      return shared ?? v;
+    });
+    /* Each round on its own, so a round with one sentence about a colleague loses that sentence and is not dropped whole. */
+    const { rounds, ...theRest } = served as any;
+    const thatDoor = Array.isArray(rounds)
+      ? { ...throughTheDoor(theRest), rounds: rounds.map((r: any) => throughTheDoor(r)) }
+      : throughTheDoor(served);
+    /* The lines of every other row: the lead's, about a colleague, and a colleague's own. */
+    if (Array.isArray(thatDoor?.whatEachPersonSaid)) {
+      thatDoor.whatEachPersonSaid = thatDoor.whatEachPersonSaid
+        .map((row: any) => (row && !row.isYou && Array.isArray(row.lines)
+          ? { ...row, lines: row.lines.map((l: any) => (typeof l === 'string' ? withoutSentencesAboutOneOfThem(l, others) : l)).filter((l: any) => !(typeof l === 'string' && !l.trim())) }
+          : row));
+    }
+    return thatDoor;
   }
 
   /** The lead's untold goals with the first name of the person each is about (decision 56, point 3). */
@@ -6883,7 +6988,8 @@ happened, and what is in the way.`;
     const participant = ground.participants.find((p) => p.userId === requestingUserId);
     // Org admins can read reports for grounds in their own org (read-only, same view as initiator).
     const isOrgAdmin = !isInitiator && !participant && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground, groundId));
-    if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a participant in this check-in');
+    /* NotFound, not Forbidden: a 403 tells a stranger, or an admin without access to a review, that the check-in is real (GW-PRI-04). */
+    if (!participant && !isInitiator && !isOrgAdmin) throw new NotFoundException('Check-in not found');
     /* Decision 58: narrower than isInitiator || isOrgAdmin - a pattern (the lead's probe list
        included) goes only to the lead or the admin who set this check-in up for them, never to
        every admin of the organisation. See patterns/who-reads-a-pattern, runsItForAPattern. */
@@ -7425,7 +7531,7 @@ happened, and what is in the way.`;
    * whether the other side has also revealed.
    */
   async activate(groundId: string, requestingUserId: string) {
-    await this.refuseSomeoneNotYetLetIn(requestingUserId);
+    await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { participants: true, report: true },
@@ -7464,7 +7570,7 @@ happened, and what is in the way.`;
    * participant reads only their own row; the lead and an admin read every row.
    */
   async getActivationStatusForUser(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
-    await this.refuseSomeoneNotYetLetIn(requestingUserId);
+    await this.refuseSomeoneNotYetLetIn(requestingUserId, groundId);
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { participants: true },

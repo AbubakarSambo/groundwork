@@ -4341,3 +4341,108 @@ Add your own user name in front of `localhost` if your database needs one. With 
 **One gap.** The three people have no roster entries (`people` rows) on the source database, so the seed carries none. The memberships and the people's accounts are there.
 
 Hafsah's answer, 5 October: only a database on this computer.
+
+## Privacy sweep, 5 October: fixes, one at a time
+
+### 1. Where people do not see each other, every report read now has the wall of decision 75 item 14
+
+**What changed for a reader.** In a check-in where people do not see each other (a cohort, for example), a colleague used to read the other people's circumstances in the session report, in the rounds and in the read of where things stand against success, and on the phone report that is built from the session report. They read, for example, under what each person said, the lead's lines "Lola is behind on outbound and I keep hearing about the list quality rather than calls made." and "Seyi tells me partnerships are close but nothing has signed.", and in a section, from "One colleague": "I am two instalments behind and I lost 220 birds in month two." They now read none of those sentences. They keep their own words exactly as said, the lead's lines about the plan (for example "I want twelve shops signed by June."), and the counts and patterns across people, as `GET /report` already gave them.
+
+**Who is not changed.** The lead, an admin who reads the check-in, and everyone in a check-in where people do see each other, read exactly what they read before. An evaluation check-in keeps its own rule (decision 17).
+
+**How.** The last read every one of these four goes through (`whatTheLeadHasNotShared` in `reports.service.ts`) now ends in `wherePeopleDoNotSeeEachOther`, which calls the same `askTheReportsDoor` as the board and the check-in page, with the people and the lead's names. The people's own words are held aside while the door runs, so it never rewrites them. Each round is walled on its own, so a round with one sentence about a colleague loses that sentence and is not dropped whole. A report sent without names is scrubbed here too, as it is on the report.
+
+**Tests.** `the-wall-holds-on-every-report-read.spec.ts`. One existing test, `no-internal-label-reaches-anyone.spec.ts`, matched the exact shape of the source (`return withoutLinesWithNoWords(`); the source now stores that result in `const walled` first, so its pattern was updated. It still checks the same thing: labels come off everything served.
+
+### 4. The admin who runs a check-in reads each person's goals on the check-in page
+
+**What changed for a reader.** On a check-in where each person reads only their own numbers (the default), the admin who set it up read, for Tobi, "Nobody has said what success looks like for this person.", though the lead had set goals for him and the admin's own board showed them. They now read his goals, and the one the lead has not told him yet is marked "Not told yet", as the lead reads it. Tobi still never reads the one not told, and a colleague reads none of Tobi's goals.
+
+**Cause.** The page asked whether the reader is the lead when it decided whose goals to hold back (`peersKeepTheirNumbers`), and everywhere else asks whether the reader runs the check-in. It now asks the same question (`viewerRunsIt`, which is `theyRunThisCheckIn`).
+
+**Numbers in a goal's sentence.** The page takes out of a sentence the number of a target its reader may not read. The admin who set the check-in up set those targets, so they now read the sentence whole, as the lead does (for Tobi, "Bring in about $400,000 in new business in his first year."). An admin who only reads still reads it with the number's sentence left out, and a goal whose whole sentence was taken out is no longer served as an empty goal; that person's row reads "What this person is aiming for is set, and it carries a number you are not given on this page."
+
+**Left as it was, and a question for Hafsah.** The table of target numbers on the same page (`objectives`) still shows an admin who only reads the team target and not each person's share. The existing tests (`one-rule-for-whose-share-is-shown.spec.ts` and `a-decision-about-a-person-is-the-leads.spec.ts`) pin that, and say it is waiting on you. Decision 86.3 says admins see the figures on boards. Should the check-in page show an admin every person's share too, never the lead's decision about a person?
+
+**Tests.** `an-admin-who-runs-a-check-in-reads-its-goals-on-the-page.spec.ts`. One existing test, `one-answer-about-whose-numbers-somebody-reads.spec.ts`, pinned the source text `!viewerIsInitiator`; it now pins `!viewerRunsIt` and checks that `viewerRunsIt` is `theyRunThisCheckIn`.
+
+### 2. The check-in page serves what the room is about the way the board does
+
+**What changed for a reader.** `GET /grounds/:id` served the room's read as stored, with every person's full name. A cohort colleague read, beside each aim, who else held it, for example `Pay the loan` held by Halima Sule, Grace Danjuma, Yusuf Garba and Aisha Bello, and what each person named (`bird`, Halima Sule). The person on a first-90-days check-in read `Know how a team member is doing`, held by Hafsah Lead and Priya Nair, which names the colleague giving views. They now read:
+- A cohort colleague, Yusuf: `Pay the loan`, held by `You` and 3 others, `clutch`, named by `You`. Nothing that only one other borrower holds or named.
+- Tobi on his first 90 days: `Know how a team member is doing`, held by `Hafsah Lead`, and `Get clear information to do my job`, held by `You`. Not Priya.
+- The lead and an admin who reads the check-in read every name, as before.
+
+**How.** One function, `theRoomForThisReader` (`board/the-room-for-this-reader.ts`), now serves the board and the page. The board's own code was moved into it without changing what the board serves. On an evaluation check-in only the colleague's name is kept from the person reviewed (decision 17), so the lead's aim stays.
+
+**Tests.** `what-the-room-is-about-on-the-check-in-page.spec.ts`; the board's existing room tests still pass.
+
+### 3. Someone held for a seat reads nothing of the check-in
+
+**What changed for a reader.** A person held for a seat, who had a sign-in, read the board, the reports and the other people's words, for example on "Is the advisor worth the equity", "They stopped inviting me to the monthly call in August.", and on "Tobi in his first 90 days", "I have not sat with him since week two, we had the outage." Only the invitation page and the people waiting for the organisation's approval were turned away. Now every one of these reads answers them with the one sentence the invitation page gives, and nothing else: the board, the check-in page, the report, each session report, the rounds, where things stand against success, the weekly report, and the phone report and Ask Groundwork's report recall, which are built from the session report.
+
+> This check-in cannot start for you yet, because there is no seat for you on the plan. You will get your invitation as soon as there is one.
+
+Everyone else reads exactly what they read before, and a person who is not held is never told this sentence.
+
+**How.** `refuseSomeoneHeldForASeat` (`participants/held-for-a-seat.ts`), asked first by each read, before anything about the check-in is looked up. A lookup that fails refuses, the more private answer. The sentence moved to that file; `participants.service.ts` still exports it.
+
+**Tests.** `nobody-held-for-a-seat-reads-the-check-in.spec.ts`. One existing test, `no-board-is-not-a-permission-problem.spec.ts`, looks at the first 4,000 characters of the board's `get`; the new check made that read longer, so its window is 4,400. What it checks is unchanged.
+
+### 7. An admin without access to a review is told "Check-in not found"
+
+**What changed for a reader.** An admin who was not given access to a performance plan or a first-90-days check-in, and a person who has no part in a check-in at all, read "You are not a participant in this check-in" on its board and report, which told them the check-in exists. They now read "Check-in not found" on both, as on every other route. An admin who was given access, and everyone who takes part, read what they read before.
+
+**Tests.** `an-admin-without-access-is-told-the-check-in-is-not-found.spec.ts`. Four existing tests pinned the old sentence for the board (`an-admin-does-not-read-an-evaluation-check-in-in-grounds-or-on-the-board.spec.ts`, `the-admin-asked-to-approve-reads-what-they-approve.spec.ts`, and two checks in `no-board-is-not-a-permission-problem.spec.ts`, which now find the gate by its condition); they now expect the new sentence. The other routes that still say "You are not a participant in this check-in" (for example the person's own report and rating) are about the person's own record and were not part of this finding.
+
+### 8. The reader is "You" under their own lines in their session report
+
+**What changed for a reader.** In a person's own session report, the lines under "Progress and priorities", "Commitments", "Risks and concerns", "Asks" and "What success looks like" carried their own name as the one who said them (for Yusuf, `"who": "Yusuf Garba"` beside "Sometimes the roads are bad. And the weather."). They now carry `"You"`, so the line under the quote reads "You said this." Other people's lines are unchanged, and the lead reads a participant's lines under the participant's name, as before.
+
+**Tests.** `the-reader-is-you-on-their-own-lines.spec.ts`. The cohort fixture used by the first fix's tests moved to `reports/__fixtures__/a-cohort-for-the-session-report.ts` so the two specs share it.
+
+### 6. Ask Groundwork tells a member with no department that they have no team
+
+**What changed for a reader.** A member with no department in the staff directory, asking "Who is off next week?", read "You are not on approved leave next week. I can only tell you about other people’s leave if you are an admin or a lead." That is wrong for a member (members read their team's leave, decision 93 row 25); there is simply no team to read from. They now read:
+
+> You are not on approved leave next week. You are not in a department yet, so you have no team, and there is no one else’s leave for me to show you.
+
+If they are off themselves, the same sentence follows their own dates. In an organisation that has switched leave off, a member reads what a lead reads ("Leave requests are not switched on in your organisation, so there are no leave days to count."). A guest still reads the old sentence, because a guest is only ever told their own leave (decision 75 item 28).
+
+**Tests.** `your-own-requests-through-ask-groundwork.spec.ts`; the old test of the member with no team pinned the old sentence (a choice, not a decision), so it now pins the new one.
+
+### 5. A name inside a quote is a name, for a reader who may not read it
+
+**What changed for a reader.** A stored report keeps what a person said inside quotation marks word for word, name included (Hafsah's ruling of 27 September: a quote is the person's original words), and the read never rewrote the inside of a quote. So a reader who may not read a colleague's name, for example Tobi on his first 90 days, still read it inside a quote, such as `Priya told me "Tobi has not sat with Priya since week two."`. For that reader the name inside the quote is now swapped for the same plain words the rest of the report uses for that person, and nothing else in the quote changes:
+
+> Priya told me "Tobi has not sat with a colleague since week two." (as Tobi reads it, with "Priya" outside the quotes already turned into "a colleague" by the usual rule)
+
+The lead, an admin who reads the check-in, a reader who may read the colleagues' names where the lead switched that on, and a person reading their own name in a quote, read the quote exactly as it was said. In a check-in where people do not see each other, the whole sentence is already left out by the wall of decision 75 item 14, which now also counts a name inside a quote.
+
+**Storage, and a decision I did not change.** I did not change what is stored. The stored quote keeps the name on purpose (`a-quote-is-what-they-said.ts`: every quote is the person's original words, taken from the record, and the first attempt to rewrite names inside quotes at the read was rejected). Taking names out of quotes at storage would put labels inside what people said, which that ruling forbids, and every read would have to put them back. Because the swap is done on every read of every stored row, no rewrite of stored rows is needed, and `api/journey/bring-a-check-in-up-to-date.ts` is not changed. If you want names taken out of quotes when the report is stored, that reverses the 27 September ruling, so it is your call.
+
+**Tests.** `a-name-inside-a-quote-is-a-name-for-a-reader-who-may-not-read-it.spec.ts`. Also `privacy-isolation.spec.ts` (GW-PRI-01) now expects "Check-in not found" instead of a 403, for finding 7.
+
+### 9. Someone waiting for the organisation's approval reads neither the check-in page nor the weekly report (row 5, kept by decision 93)
+
+**What changed for a reader.** The board and the reports already turned away a person waiting for an admin to let them into the organisation. The check-in page (`GET /grounds/:id`) and the weekly report did not, so that person still read them. They are now refused first, before anything about the check-in is looked up, the same way a person held for a seat is. On the check-in page they read:
+
+> This check-in cannot start until an admin at the organisation that invited you approves you joining it.
+
+On the weekly report they read:
+
+> You can read this check-in's report once an admin at the organisation that invited you approves you joining it.
+
+Everyone who has been let in is unchanged.
+
+**Tests.** `nobody-waiting-for-the-organisation-reads-the-check-in.spec.ts`, which reads the board, the check-in page, the report and the weekly report through the real services as a person waiting and as a person let in.
+
+### 10. An admin who only reads sees the figures on the check-in page, as on the board (decision 86 item 3, decision 93)
+
+**Decided for Hafsah to confirm.** Hafsah was asked on 3 October whether admins, the chief executive included, see the figures on the check-in page as well as on the board and the weekly report, and had not answered. I followed decision 86 item 3 and the admin rows of decision 93, so tell me if you want the narrower reading back.
+
+**What changed for a reader.** On the check-in page (`GET /grounds/:id`) and on the list of check-ins, an admin with access to the check-in now reads the targets table, with every person's share, and the report sentences that carry a colleague's target number, for example "Kwame is aiming for seventeen approved facilities." Before, only the lead and the admin who set the check-in up read them, and an admin who only reads had those sentences taken out.
+
+**What did not change.** A colleague and the person themselves read only what they read before. An admin without access to a review, a first 90 days, a renewal or a promotion is still told "Check-in not found". A decision the lead has to make about a person (Aisha's confirmation, for example) stays the lead's alone, on the page as on the board. The session report is unchanged.
+
+**Tests.** Five existing test files pinned the narrower reading and now pin this one, because the reading was a choice, not one of Hafsah's decisions: `an-admin-who-runs-a-check-in-reads-its-goals-on-the-page`, `a-hidden-target-cannot-slip-through`, `a-target-in-the-leads-words-stays-hidden`, `one-rule-for-whose-share-is-shown`, `a-number-with-a-name-on-it-goes-through-one-rule`.

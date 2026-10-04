@@ -199,10 +199,13 @@ export interface AwayRow { name: string; startsOn: string; endsOn: string }
 
 export const ONLY_AN_ADMIN_OR_A_LEAD_SEES_OTHERS = 'I can only tell you about other people’s leave if you are an admin or a lead.';
 
-export function whoIsAwaySaid(rows: AwayRow[], window: AwayWindow, scope: 'everyone' | 'your team' | 'you'): string {
-  const closing = scope === 'you' ? ` ${ONLY_AN_ADMIN_OR_A_LEAD_SEES_OTHERS}` : '';
+/** A member whose staff-directory entry has no department has no team, so there is no one else's leave to show (privacy sweep finding 6, decision 93 row 25). */
+export const A_MEMBER_WITH_NO_TEAM_SEES_NO_ONE_ELSES = 'You are not in a department yet, so you have no team, and there is no one else’s leave for me to show you.';
+
+export function whoIsAwaySaid(rows: AwayRow[], window: AwayWindow, scope: 'everyone' | 'your team' | 'you' | 'no team'): string {
+  const closing = scope === 'you' ? ` ${ONLY_AN_ADMIN_OR_A_LEAD_SEES_OTHERS}` : scope === 'no team' ? ` ${A_MEMBER_WITH_NO_TEAM_SEES_NO_ONE_ELSES}` : '';
   if (!rows.length) {
-    return scope === 'you'
+    return scope === 'you' || scope === 'no team'
       ? `You are not on approved leave ${window.said}.${closing}`
       : `Nobody ${scope === 'your team' ? 'in your team ' : ''}is off ${window.said}, as far as approved leave goes.`;
   }

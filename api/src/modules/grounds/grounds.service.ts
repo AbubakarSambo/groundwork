@@ -1,5 +1,8 @@
 import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+import { refuseSomeoneHeldForASeat, refuseSomeoneAwaitingTheOrganisation } from '../participants/held-for-a-seat';
+import { CANNOT_CHECK_IN_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
+import { theRoomForThisReader } from '../board/the-room-for-this-reader';
 import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
@@ -527,10 +530,13 @@ export class GroundsService {
     ground: { initiatorId?: string | null; whoSeesTargets?: string | null; participants?: any[]; objectives?: { ownerParticipantId: string | null; target: number | null }[] },
     requestingUserId: string | null | undefined,
     served: T,
+    /* An admin with access to the check-in reads the figures too (decisions 86 item 3 and 93). */
+    readsAsAnAdmin = false,
   ): T {
     const me = (ground.participants ?? []).find((p: any) => !!requestingUserId && p.userId === requestingUserId);
+    /* Whoever set the targets reads everything: the lead, and the admin who set the check-in up for them (decisions 5 and 56; privacy sweep finding 4). */
     const hidden = targetsHiddenFrom(
-      { participantId: me?.id ?? null, isTheLead: !!requestingUserId && ground.initiatorId === requestingUserId },
+      { participantId: me?.id ?? null, isTheLead: readsAsAnAdmin || (!!requestingUserId && (ground.initiatorId === requestingUserId || (ground as any).createdByUserId === requestingUserId)) },
       ground.whoSeesTargets,
       ground.objectives ?? [],
       namesOnTheRoster(ground.participants ?? []),
@@ -1696,7 +1702,7 @@ export class GroundsService {
             const named = [lead.user?.firstName, lead.user?.lastName].filter(Boolean).join(' ').trim() || (lead.nameGiven ?? '').trim();
             return named || null;
           })(),
-        });
+        }, runsIt);
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }
@@ -1709,6 +1715,10 @@ export class GroundsService {
      * agreements and divergences, the objectives and the participants included. Same rule as the
      * list, asked here too; and the same answer as assertMaySeeGround gives every other read.
      */
+    /* Nobody held for a seat reads the check-in page: the invitation page's own refusal, asked first (privacy sweep finding 3). */
+    await refuseSomeoneHeldForASeat(this.prisma as any, id, requestingUserId);
+    /* Nor anyone waiting for the organisation's approval (row 5). */
+    await refuseSomeoneAwaitingTheOrganisation(this.prisma as any, requestingUserId, CANNOT_CHECK_IN_YET);
     const mayRead = requestingUserId ? await this.assertMaySeeGround(id, requestingUserId) : null;
     // Primary lookup by org - works for org members and the initiator.
     const CHECKIN_SELECT = { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, availableFrom: true, startedAt: true, isFinal: true, specificityLevel: true, specificityDimensions: true } as const;
@@ -2205,8 +2215,9 @@ export class GroundsService {
      * the heading says "Person by person" for them. Where the check-in is set so everybody sees
      * every number, nothing here changes.
      */
+    /* Whoever runs it reads each person's goals: the lead, and the admins who read the check-in, by the same rule as everywhere else (decisions 5, 56 and 86; privacy sweep finding 4). */
     const peersKeepTheirNumbers =
-      !viewerIsInitiator && ((ground as any).whoSeesTargets ?? 'THEIR_OWN') !== 'EVERYBODY';
+      !viewerRunsIt && ((ground as any).whoSeesTargets ?? 'THEIR_OWN') !== 'EVERYBODY';
 
     /**
      * THE LEAD'S FIRST NAME, TO ANYONE IN THE CHECK-IN, EVEN WHEN THE PEER RULE HIDES EVERYONE ELSE.
@@ -2579,8 +2590,26 @@ export class GroundsService {
     const objectivesNotToldHere = new Set(
       ((ground as any).objectives ?? []).filter((o: any) => !withoutWhatTheLeadHasNotToldThemAbout([o], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], viewerRunsIt).kept.length).map((o: any) => o.id),
     );
-    return withoutGoalsNotToldIn(this.withoutTheTargetsHiddenFrom(ground as any, requestingUserId, {
+    const thePage = withoutGoalsNotToldIn(this.withoutTheTargetsHiddenFrom(ground as any, requestingUserId, {
       ...rest,
+      /*
+       * WHAT THE ROOM IS ABOUT, AS THIS READER MAY READ IT (privacy sweep finding 2, decisions 17 and 75 item 14). Stored with
+       * every person's full name, and served raw: a cohort colleague read the other borrowers by name beside their aims, and the
+       * person on a first-90-days check-in read the colleague giving views. The board's own read, shared: see
+       * board/the-room-for-this-reader.
+       */
+      ...((rest as any).whatTheRoomIsAbout
+        ? {
+            whatTheRoomIsAbout: theRoomForThisReader((rest as any).whatTheRoomIsAbout, {
+              participants: (ground.participants ?? []) as any[],
+              me: ((ground.participants ?? []) as any[]).find((p: any) => !!requestingUserId && p.userId === requestingUserId) ?? null,
+              initiatorId: ground.initiatorId,
+              viewerRunsIt: viewerRunsThisGround,
+              wallOffTheOthers: hidePeers,
+              evaluation: isEvaluationCheckIn((ground as any).scenario),
+            }),
+          }
+        : {}),
       /* Until the lead ends it: no length to show. The flag says so (request 37). */
       timelineDays: (rest as any).runsUntilEnded ? null : (rest as any).timelineDays,
       /* Everyone on the check-in may see what is to be done; only the lead's private notes are walled. */
@@ -2614,7 +2643,7 @@ export class GroundsService {
         ((ground as any).objectives ?? []) as any[],
         (ground.participants ?? []).find((p: any) => !!requestingUserId && p.userId === requestingUserId)?.id ?? null,
         ((ground as any).whoSeesTargets ?? 'THEIR_OWN') === 'EVERYBODY' ? 'everybody' : 'their own',
-        { isLead: viewerIsInitiator },
+        { isLead: viewerIsInitiator, seesEveryShare: viewerRunsThisGround },
       /* And none that is a goal the lead has not told its person about (decisions 48 and 56): the board already left it out, and this page said it in full. */
       ).shown.filter((o: any) => !objectivesNotToldHere.has(o.id)).map((o: any) => ({
         ...o,
@@ -2858,12 +2887,24 @@ export class GroundsService {
       guestIn: ground.organizationId !== organizationId
         ? ((ground as any).organization?.name ?? 'another organisation')
         : null,
-    }), [
+    }, viewerRunsThisGround), [
       ...goalsNotToldHere,
       /* And the objectives the engine wrote from them, in its own words (decisions 48 and 56). A goal past its week is said as the area sentence, so its stored words are not kept out again. */
       ...theWordsOfWhatTheLeadHasNotToldThemAbout(((ground as any).objectives ?? []) as any[], objectiveRowsAsStored as any[], (ground.participants ?? []) as any[], viewerRunsIt)
         .filter((t) => !objectiveRowsAsStored.some((o: any) => aWeekHasPassedSinceNotTold(o) && (o.text ?? '') === t)),
     ]);
+    /* A goal whose whole sentence carried a number this reader may not read is not left as a goal with no words (it is not served, and what the person's own row says is said plainly). */
+    if (!Array.isArray((thePage as any).participants)) return thePage;
+    return {
+      ...thePage,
+      participants: ((thePage as any).participants as any[]).map((p: any) => {
+        const o = p?.objective;
+        if (!o || typeof o !== 'object') return p;
+        const all = Array.isArray(o.all) ? o.all.filter((x: any) => typeof x?.text !== 'string' || x.text.trim()) : o.all;
+        const blank = typeof o.text === 'string' && !o.text.trim();
+        return { ...p, objective: { ...o, all, ...(blank ? { text: null, described: 'What this person is aiming for is set, and it carries a number you are not given on this page.' } : {}) } };
+      }),
+    } as typeof thePage;
   }
 
   /**

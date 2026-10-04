@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { EVALUATION_SCENARIOS } from '../reports/is-this-an-evaluation-check-in';
 import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
 import { BoardService } from './board.service';
@@ -156,7 +156,7 @@ describe('the board opens for every reader, on every kind of check-in', () => {
 
   it('somebody in neither the check-in nor the organisation is refused, and it is a refusal', async () => {
     await expect(openTheBoard(aGround({ scenario: GroundScenario.OKR_ALIGNMENT, peers: false, sharedAs: null }), 'u-stranger', { role: 'MEMBER', organizationId: 'org-9' }))
-      .rejects.toBeInstanceOf(ForbiddenException);
+      .rejects.toBeInstanceOf(NotFoundException);
   });
 });
 
@@ -241,7 +241,7 @@ describe('where people see only themselves, a participant reads no colleague’s
     const leads = JSON.stringify(await openTheBoard(g, 'u-lead', { role: 'MEMBER', organizationId: 'org-1' }));
     for (const name of ['Miriam', 'Aisha', 'Kofi']) expect(leads).toContain(name);
     /* Changed with request 78: an admin who is not in a performance plan is refused its board. */
-    await expect(openTheBoard(g, 'u-admin', { role: 'ADMIN', organizationId: 'org-1' })).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(openTheBoard(g, 'u-admin', { role: 'ADMIN', organizationId: 'org-1' })).rejects.toBeInstanceOf(NotFoundException);
     const team = withEverything(aGround({ scenario: GroundScenario.OKR_ALIGNMENT, peers: null, sharedAs: null }));
     const admins = JSON.stringify(await openTheBoard(team, 'u-admin', { role: 'ADMIN', organizationId: 'org-1' }));
     for (const name of ['Miriam', 'Aisha', 'Kofi']) expect(admins).toContain(name);

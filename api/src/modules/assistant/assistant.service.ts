@@ -3695,6 +3695,8 @@ export class AssistantService {
       return rules(lane, text(whoIsAwaySaid(rows, window, m.role === 'ADMIN' ? 'everyone' : 'your team')));
     }
     const mine = await this.leave.mine(reader).catch(() => null);
+    /* Leave switched off for a member is said as it is for a lead, not as "no team" (privacy sweep finding 6). */
+    if (!mine && m?.role === 'MEMBER') return rules(lane, text(LEAVE_IS_OFF_FOR_YOUR_QUESTION));
     const rows: AwayRow[] = (mine?.requests ?? []).filter((r) => r.status === 'approved' && overlaps(r)).map((r) => ({ name: 'You', startsOn: r.startsOn, endsOn: r.endsOn }));
     /*
      * A MEMBER ALSO READS THEIR TEAMMATES' APPROVED LEAVE, dates only (decision 93, row 25). The reader's team is the staff
@@ -3705,7 +3707,8 @@ export class AssistantService {
       const theirs: AwayRow[] = team.filter(overlaps);
       return rules(lane, text(whoIsAwaySaid([...rows, ...theirs].sort((a, b) => a.startsOn.localeCompare(b.startsOn)), window, 'your team')));
     }
-    return rules(lane, text(whoIsAwaySaid(rows, window, 'you')));
+    /* A member with no department has no team, and says so plainly; a guest is only ever told their own leave (decision 75, item 28). */
+    return rules(lane, text(whoIsAwaySaid(rows, window, m?.role === 'MEMBER' ? 'no team' : 'you')));
   }
 
   /** Whether anything waits for this person to approve or decline. The WhatsApp router asks, so a decision is never taken into a check-in. */

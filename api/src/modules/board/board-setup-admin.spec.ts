@@ -1,5 +1,5 @@
 import { BoardService } from './board.service';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { GroundMode, GroundScenario } from '@prisma/client';
 
 /**
@@ -79,7 +79,7 @@ describe('the admin who set the ground up', () => {
   });
 
   it('leaves everybody else exactly where they were', async () => {
-    await expect(serviceFor().get('g1', 'a-stranger')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(serviceFor().get('g1', 'a-stranger')).rejects.toBeInstanceOf(NotFoundException);
     await expect(serviceFor().get('g1', 'lead')).resolves.toBeDefined();
     await expect(serviceFor().get('g1', 'member')).resolves.toBeDefined();
   });
@@ -89,6 +89,6 @@ describe('the admin who set the ground up', () => {
     // here would hand the board to anyone whose id was also missing.
     const selfServe = { ...GROUND, createdByUserId: null };
     await expect(serviceFor(selfServe).get('g1', undefined as any))
-      .rejects.toBeInstanceOf(ForbiddenException);
+      .rejects.toBeInstanceOf(NotFoundException);
   });
 });

@@ -147,7 +147,7 @@ describe('every board and report read goes through it', () => {
   it('and the last read and the board both take out every label', () => {
     /* Since screens request 77 the hidden-target read runs inside withTheirOwnWordsKept, which holds
        aside the lines people said; labels still come off everything served, those lines included. */
-    expect(REPORTS).toMatch(/return withoutLinesWithNoWords\(withTheirOwnWordsKept\(\s*withoutPrivateFileNamesIn\(withoutInternalLabelsIn\(served, called\), privateNames\),\s*THEIR_OWN_WORDS_IN_A_REPORT,\s*\(v\) => withoutHiddenTargetsIn\(v, hiddenTargets\)/);
+    expect(REPORTS).toMatch(/const walled = withoutLinesWithNoWords\(withTheirOwnWordsKept\(\s*withoutPrivateFileNamesIn\(withoutInternalLabelsIn\(served, called\), privateNames\),\s*THEIR_OWN_WORDS_IN_A_REPORT,\s*\(v\) => withoutHiddenTargetsIn\(v, hiddenTargets\)/);
     expect(BOARD).toMatch(/withTheirOwnWordsKept\(\s*withoutPrivateFileNamesIn\(withoutInternalLabelsIn\(out, called\), privateNames\),\s*THEIR_OWN_WORDS_ON_THE_BOARD,\s*\(v\) => withoutHiddenTargetsIn\(v, hiddenTargets\)/);
   });
 });

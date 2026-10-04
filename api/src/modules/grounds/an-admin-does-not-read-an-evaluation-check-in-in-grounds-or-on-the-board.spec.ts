@@ -122,7 +122,7 @@ describe.each([['a performance plan', 'PIP'], ['a promotion', 'RECOGNITION'], ['
   });
 
   it('its board is refused to an admin without access and served to the one who set it up', async () => {
-    await expect(boardService(scenario).get('g1', OTHER_ADMIN)).rejects.toThrow('You are not a participant in this check-in');
+    await expect(boardService(scenario).get('g1', OTHER_ADMIN)).rejects.toThrow('Check-in not found');
     await expect(boardService(scenario).get('g1', SETTER)).resolves.toBeTruthy();
   });
 

@@ -19,7 +19,7 @@ describe('one answer about whose numbers somebody reads', () => {
     .replace(/^\s*\/\/.*$/gm, '');
 
   it('the ground read knows about the setting at all', () => {
-    expect(src).toMatch(/const peersKeepTheirNumbers =\s*\n?\s*!viewerIsInitiator && \(\(ground as any\)\.whoSeesTargets \?\? 'THEIR_OWN'\) !== 'EVERYBODY'/);
+    expect(src).toMatch(/const peersKeepTheirNumbers =\s*\n?\s*!viewerRunsIt && \(\(ground as any\)\.whoSeesTargets \?\? 'THEIR_OWN'\) !== 'EVERYBODY'/);
   });
 
   it('and withholds somebody else’s expectations, both shapes of them', () => {
@@ -37,7 +37,9 @@ describe('one answer about whose numbers somebody reads', () => {
   });
 
   it('and never from the lead, whose page says "person by person"', () => {
-    expect(src).toMatch(/!viewerIsInitiator &&/);
+    /* Whoever runs it reads every person's goals, the lead first (the same rule as everywhere else: theyRunThisCheckIn). */
+    expect(src).toMatch(/!viewerRunsIt &&/);
+    expect(src).toMatch(/const viewerRunsIt = theyRunThisCheckIn\(/);
   });
 
   it('a check-in set so everybody sees every number is unchanged', () => {

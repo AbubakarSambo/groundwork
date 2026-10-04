@@ -118,6 +118,7 @@ const WAITING_TWO = '2 requests are waiting for you to approve or decline.\nAmin
 const WHERE_SPEND = 'Your request to spend KES 12,000 for fuel is approved by Wairimu and is now waiting for Omar in finance.';
 const APPROVES = 'Your requests to spend go to Wairimu to approve. Anything over KES 50,000 goes to Grace to approve, and then to Omar in finance.';
 const NOBODY_ELSE = 'I can only tell you about other people’s leave if you are an admin or a lead.';
+const NO_TEAM = 'You are not in a department yet, so you have no team, and there is no one else’s leave for me to show you.';
 
 describe('the questions that used to get "I cannot answer that one yet", as each reader reads them', () => {
   it.each(['MEMBER', 'LEAD', 'ADMIN'] as const)('how many days of leave are left (%s)', async (role) => {
@@ -190,15 +191,25 @@ describe('the questions that used to get "I cannot answer that one yet", as each
     expect((await said(svc({ role: 'LEAD', ...WORLD, off: [] }), 'Who is off next week?')).text).toBe('Nobody in your team is off next week, as far as approved leave goes.');
   });
 
-  /* Changed by decision 93, row 25. The member half pinned "only their own leave"; a member with no team still reads that, a guest always does. */
-  it('who is off next week tells a guest, and a member with no team, only their own leave (decision 75, item 28)', async () => {
+  /* Changed by decision 93, row 25 and privacy sweep finding 6. A member with no department has no team and is told that, not that they would need to be an admin or a lead; a guest still reads their own leave only (decision 75, item 28). */
+  it('who is off next week tells a member with no team, plainly, that they have no team, and a guest only their own leave', async () => {
     const mine = { leaveRequests: [{ id: 'l3', startsOn: '2026-10-08', endsOn: '2026-10-09', days: 2, status: 'approved', where: 'x' }] };
-    expect((await said(svc({ role: 'MEMBER', ...WORLD, ...mine }), 'Who is off next week?')).text).toBe(`One person is off next week, from approved leave.\nYou are off from Thursday 8 October to Friday 9 October.\n${NOBODY_ELSE}`);
-    for (const role of ['MEMBER', 'GUEST'] as const) {
-      const out = await said(svc({ role, ...WORLD, teammates: role === 'GUEST' ? [{ name: 'Baraka', startsOn: '2026-10-08', endsOn: '2026-10-09' }] : null }), 'Who is off next week?');
-      expect(out.text).toBe(`You are not on approved leave next week. ${NOBODY_ELSE}`);
-      expect(out.text).not.toMatch(/Baraka|Far Away/);
-    }
+    expect((await said(svc({ role: 'MEMBER', ...WORLD, ...mine }), 'Who is off next week?')).text).toBe(`One person is off next week, from approved leave.\nYou are off from Thursday 8 October to Friday 9 October.\n${NO_TEAM}`);
+    const member = await said(svc({ role: 'MEMBER', ...WORLD, teammates: null }), 'Who is off next week?');
+    expect(member.text).toBe(`You are not on approved leave next week. ${NO_TEAM}`);
+    expect(member.text).not.toContain('admin or a lead');
+    const guest = await said(svc({ role: 'GUEST', ...WORLD, teammates: [{ name: 'Baraka', startsOn: '2026-10-08', endsOn: '2026-10-09' }] }), 'Who is off next week?');
+    expect(guest.text).toBe(`You are not on approved leave next week. ${NOBODY_ELSE}`);
+    expect(`${member.text} ${guest.text}`).not.toMatch(/Baraka|Far Away/);
+  });
+
+  it('who is off next week tells a member in an organisation that has switched leave off the same as it tells a lead, not that they have no team', async () => {
+    const member = (await said(svc({ role: 'MEMBER', ...WORLD, leaveOff: true }), 'Who is off next week?')).text;
+    const lead = (await said(svc({ role: 'LEAD', ...WORLD, leaveOff: true }), 'Who is off next week?')).text;
+    expect(member).toBe(lead);
+    expect(member).toMatch(/not switched on/);
+    expect(member).not.toContain('department');
+    expect(member).not.toContain('admin or a lead');
   });
 
   it('who is off next week tells a member who in their team is off, by first name and dates only (decision 93, row 25)', async () => {

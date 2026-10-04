@@ -134,14 +134,14 @@ import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-san
 import { theFirstNameFrom, theShortNameOf, theFirstNameOfAParticipant, aSurnameOrNothing } from '../reports/a-title-is-not-a-first-name';
 import { aWaitInTheirOwnWords } from './a-holder-in-their-own-words';
 import { yourOwnRowsSayYou } from './your-own-read-says-you';
-import { theRoomAsThisReaderReadsIt } from './the-room-as-each-reader-reads-it';
+import { theRoomForThisReader } from './the-room-for-this-reader';
 import { askTheReportsDoor, theLeadsNamesOf, theLeadsLineAsAParticipantMayRead, aboutOneOfThem } from '../reports/one-persons-circumstances-stay-their-own';
-import { theRoomWithoutOneOfTheOthers } from './the-room-without-one-of-the-others';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { isFromOutside, leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
 import { adminsThisOrg, askedToApproveIt } from '../grounds/who-may-read-this-check-in';
+import { refuseSomeoneHeldForASeat } from '../participants/held-for-a-seat';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument, notNothingWhereThePageSaysSomething } from './where-each-person-is-against-their-number';
@@ -331,6 +331,8 @@ export class BoardService {
     opts: { mayWordNewLines?: boolean; now?: Date } = {},
   ) {
     const now = opts.now ?? new Date();
+    /* Nobody held for a seat reads the board (finding 3). */
+    await refuseSomeoneHeldForASeat(this.prisma as any, groundId, requestingUserId);
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: {
@@ -444,7 +446,8 @@ export class BoardService {
        item 2). Patterns and colleagues' exact words still go only to whoever runs it or set it up. */
     const adminHere = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any) || askedToApproveIt({ ...viewer, userId: requestingUserId }, ground as any);
     if (!me && !isInitiator && !isSetupAdmin && !adminHere) {
-      throw new ForbiddenException('You are not a participant in this check-in');
+      /* NotFound, not Forbidden: a 403 tells a stranger, or an admin without access to a review, that the check-in is real (GW-PRI-04). */
+      throw new NotFoundException('Check-in not found');
     }
 
     /*
@@ -2729,31 +2732,14 @@ export class BoardService {
       }
       /* An aim whose only sentence was the hidden number is not left on the board as an empty line. */
       if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
-      /* What the room is about, said to this reader: their own aims say "you", and a row a wall emptied is dropped. See the-room-as-each-reader-reads-it. */
+      /* What the room is about, said to this reader: the wall of decision 75 item 14 where people do not see each other, then their own aims in "you", and a row a wall emptied is dropped. The check-in page reads it the same way. See the-room-for-this-reader. */
       if (walled.whatTheRoomIsAbout) {
-        const roomLabels = labelsForParties(ground.participants as any);
-        const readerLabel = me?.id ? roomLabels.get(me.id) ?? null : null;
-        const fullNameOf = (p: any) => [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim() || (p?.nameGiven ?? '').trim() || null;
-        /*
-         * WHERE PEOPLE DO NOT SEE EACH OTHER, ONE PERSON'S CIRCUMSTANCES NEVER REACH ANOTHER (decision 75, item 14), as
-         * the report's own wall: the reader's own rows, the lead's and several people's stay; one other person's go,
-         * and the other people's names are said as a count. Whoever runs it, and an admin, read it whole. See
-         * the-room-without-one-of-the-others.
-         */
-        if (whoMaySee.peersHidden && !isEvaluationCheckIn(ground.scenario)) {
-          const leadRow = (ground.participants as any[]).find((p) => p.id === theLeadsRow);
-          walled.whatTheRoomIsAbout = theRoomWithoutOneOfTheOthers(walled.whatTheRoomIsAbout, {
-            reader: me ? fullNameOf(me) : null,
-            lead: leadRow ? fullNameOf(leadRow) : null,
-            otherNames: (ground.participants as any[]).filter((p) => p.id !== me?.id && p.id !== theLeadsRow)
-              .flatMap((p) => [fullNameOf(p), (p.user?.firstName ?? '').trim().length > 2 ? p.user.firstName.trim() : null].filter(Boolean) as string[]),
-          });
-        }
-        walled.whatTheRoomIsAbout = theRoomAsThisReaderReadsIt(walled.whatTheRoomIsAbout, {
-          fullName: me ? fullNameOf(me) : null,
-          otherNames: (ground.participants as any[]).filter((p) => p.id !== me?.id)
-            .flatMap((p) => [fullNameOf(p), p.user?.firstName, p.user?.lastName, p.nameGiven].filter(Boolean) as string[]),
-          name: (t: string) => withNames(t, visibleNames, roomLabels.values(), { viewerLabel: readerLabel }),
+        walled.whatTheRoomIsAbout = theRoomForThisReader(walled.whatTheRoomIsAbout, {
+          participants: ground.participants as any[],
+          me,
+          initiatorId: ground.initiatorId,
+          viewerRunsIt: runsThisGround,
+          wallOffTheOthers: whoMaySee.peersHidden && !isEvaluationCheckIn(ground.scenario),
         });
       }
       /* And a line with no words is left out here, never served for the page to draw as an empty line. */
