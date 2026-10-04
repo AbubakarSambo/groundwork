@@ -4,6 +4,10 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## Founder's own check-in board: done (4 October)
+
+"Founder’s own check-in, test" (3ca11603, one person), in founder.txt's order, after one review and its fixes (ee40c790..c2dd2f31), checked live (scratchpad `pictures/founder-A/`). A one-person check-in now says "you", not "the team", and no longer asks the founder to add somebody. The engine's part is request 136. The wording guard fails again on an engine file (request 137).
+
 ## "MarketView, where next" board: done (4 October)
 
 "MarketView, where next, test" (a6ec96f6, stalled), lead and participant, in mvnext.txt's order: "In short", "By who they are", "Where next, ranked", "Where they disagree", "What this can't tell you", "Where this is heading" with each outcome's second line. This came after one review and its fixes (054fbc68..40b0e209), checked live (scratchpad `pictures/mvnext-A/`). A stalled check-in now reads "Out of time" with the prototype's sentence, "This check-in reached its end date. It ran until 30 September. Nothing new can be added until you give it more time." The engine's part is request 135.
