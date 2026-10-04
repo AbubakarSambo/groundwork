@@ -5531,7 +5531,12 @@ happened, and what is in the way.`;
     );
     /* A field name the model wrote into a divergence comes out at every read, for reports already stored (item 21). */
     const readable = withMarks && Array.isArray((withMarks as any).divergences) ? { ...(withMarks as any), divergences: everyDivergenceReadable((withMarks as any).divergences) } : withMarks;
-    const withNamesPutIn = this.applyNames(gapsAsTheirSentences(findingsWithoutTheirLabels(theTableStaysWithTheEngine(readable))), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
+    const withNamesPutIn = this.withoutTheNamesTheReaderMayNotRead(
+      this.applyNames(gapsAsTheirSentences(findingsWithoutTheirLabels(theTableStaysWithTheEngine(readable))), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named),
+      (ground.participants ?? []) as any[],
+      viewerParticipantId,
+      viewerIsLead || this.peersAreNamed(ground as any, viewerParticipantId),
+    );
     /*
      * DECISION 75, ITEM 14: WHERE PEOPLE DO NOT SEE EACH OTHER, ONE PERSON'S CIRCUMSTANCES NEVER REACH ANOTHER. The
      * shared picture a participant reads carries counts and patterns across people, never a sentence about one
@@ -5547,6 +5552,42 @@ happened, and what is in the way.`;
       name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || null,
       organisation: p.organisationGiven ?? null,
     }))));
+  }
+
+  /**
+   * A NAME INSIDE A QUOTE IS A NAME LIKE ANY OTHER, FOR A READER WHO MAY NOT READ IT (privacy sweep, 5 October 2026, finding 5).
+   *
+   * A report is stored with its names turned into labels, and `withNames` turns the labels back into the right words for each
+   * reader, but it leaves the inside of a quotation alone, because a quote is what the person said (a-quote-is-what-they-said).
+   * So a quote that held a colleague's name ("Aisha is current", "Seyi tells me partnerships are close") reached a reader who
+   * may not read that name, with the name in it. For that reader, and only that reader, the name inside the quote is swapped for
+   * the plain words everything else says for that person ("a colleague", "another colleague"), exactly as it is outside a quote.
+   * Nothing else in a quote is touched, and a reader who may read the name reads the quote as it was said. Stored rows need no
+   * rewrite: this is applied to whatever is stored, on every read.
+   */
+  private withoutTheNamesTheReaderMayNotRead<T>(value: T, parties: any[], viewerParticipantId: string | null, readerMayReadNames: boolean): T {
+    if (readerMayReadNames || !parties.length) return value;
+    let people: { label: string; name: string }[] = [];
+    try {
+      const visible = namesVisibleTo(viewerParticipantId, parties as any, false);
+      const plain = plainWordsByPerson(parties as any, visible, viewerLabelOf(viewerParticipantId, parties as any));
+      people = parties
+        .filter((p: any) => p.id !== viewerParticipantId && p.partyType !== 'INITIATOR' && !!plain.get(p.id) && !!displayName(p))
+        .map((p: any) => ({ label: plain.get(p.id)!, name: displayName(p)! }));
+    } catch {
+      return value;
+    }
+    if (!people.length) return value;
+    const NOT_A_NAME_FIELD = new Set(['label', 'participantLabel']);
+    const walk = (v: any, key?: string): any => {
+      if (typeof v === 'string') return key && NOT_A_NAME_FIELD.has(key) ? v : aNameInTheirWordsIsTheLabel(v, people, { asTheReadSeesIt: true });
+      if (v instanceof Date || v === null || typeof v !== 'object') return v;
+      if (Array.isArray(v)) return v.map((x) => walk(x, key));
+      const out: Record<string, any> = {};
+      for (const [k, x] of Object.entries(v)) out[k] = walk(x, k);
+      return out;
+    };
+    return walk(value);
   }
 
   private peersAreNamed(
@@ -6853,7 +6894,11 @@ happened, and what is in the way.`;
     served: T,
   ): T {
     if (!served || typeof served !== 'object') return served;
-    if (viewerRunsIt || isEvaluationCheckIn(ground.scenario) || this.peersAreNamed(ground as any, me?.id ?? null)) return served;
+    if (viewerRunsIt) return served;
+    const namedToThisReader = this.peersAreNamed(ground as any, me?.id ?? null);
+    /* An evaluation check-in keeps its own rule (decision 17): the person reviewed is not told a colleague's name, a quote included, and nothing more is taken out. */
+    if (isEvaluationCheckIn(ground.scenario)) return this.withoutTheNamesTheReaderMayNotRead(served, ground.participants ?? [], me?.id ?? null, namedToThisReader);
+    if (namedToThisReader) return served;
     const others = {
       names: theOtherPeoplesNames(ground.participants ?? [], me?.id ?? null, ground.initiatorId ?? null),
       lead: theLeadsNamesOf(ground.participants, ground.initiatorId),

@@ -4408,3 +4408,15 @@ Everyone else reads exactly what they read before, and a person who is not held 
 If they are off themselves, the same sentence follows their own dates. In an organisation that has switched leave off, a member reads what a lead reads ("Leave requests are not switched on in your organisation, so there are no leave days to count."). A guest still reads the old sentence, because a guest is only ever told their own leave (decision 75 item 28).
 
 **Tests.** `your-own-requests-through-ask-groundwork.spec.ts`; the old test of the member with no team pinned the old sentence (a choice, not a decision), so it now pins the new one.
+
+### 5. A name inside a quote is a name, for a reader who may not read it
+
+**What changed for a reader.** A stored report keeps what a person said inside quotation marks word for word, name included (Hafsah's ruling of 27 September: a quote is the person's original words), and the read never rewrote the inside of a quote. So a reader who may not read a colleague's name, for example Tobi on his first 90 days, still read it inside a quote, such as `Priya told me "Tobi has not sat with Priya since week two."`. For that reader the name inside the quote is now swapped for the same plain words the rest of the report uses for that person, and nothing else in the quote changes:
+
+> Priya told me "Tobi has not sat with a colleague since week two." (as Tobi reads it, with "Priya" outside the quotes already turned into "a colleague" by the usual rule)
+
+The lead, an admin who reads the check-in, a reader who may read the colleagues' names where the lead switched that on, and a person reading their own name in a quote, read the quote exactly as it was said. In a check-in where people do not see each other, the whole sentence is already left out by the wall of decision 75 item 14, which now also counts a name inside a quote.
+
+**Storage, and a decision I did not change.** I did not change what is stored. The stored quote keeps the name on purpose (`a-quote-is-what-they-said.ts`: every quote is the person's original words, taken from the record, and the first attempt to rewrite names inside quotes at the read was rejected). Taking names out of quotes at storage would put labels inside what people said, which that ruling forbids, and every read would have to put them back. Because the swap is done on every read of every stored row, no rewrite of stored rows is needed, and `api/journey/bring-a-check-in-up-to-date.ts` is not changed. If you want names taken out of quotes when the report is stored, that reverses the 27 September ruling, so it is your call.
+
+**Tests.** `a-name-inside-a-quote-is-a-name-for-a-reader-who-may-not-read-it.spec.ts`. Also `privacy-isolation.spec.ts` (GW-PRI-01) now expects "Check-in not found" instead of a 403, for finding 7.
