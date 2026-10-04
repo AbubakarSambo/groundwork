@@ -343,12 +343,22 @@ export function standsTone(word: string): import('@/components/gw/ui').TagTone {
  * box, not a heading - while "Where each target stands" beside it, which answers a different
  * question, still draws exactly as before.
  */
-export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn }: { headline: BoardPresent['headline']; objectives: BoardPresent['objectives']; glance?: Glance | null; waitingToBeLetIn?: string | null }) {
+export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn, targetsFromObjectivesWhenNoBars, readerIsTheOnlyPerson }: { headline: BoardPresent['headline']; objectives: BoardPresent['objectives']; glance?: Glance | null; waitingToBeLetIn?: string | null; targetsFromObjectivesWhenNoBars?: boolean; readerIsTheOnlyPerson?: boolean }) {
   if (!headline) return null
   const names = new Map((objectives ?? []).map((o) => [o.id, o.name]))
   const noAnswer = !headline.answer
   const glanceGoesInTheBox = noAnswer && !!glance
   const noBoxAtAll = noAnswer && !glance
+  /*
+   * THE FOUNDER'S OWN CHECK-IN BOARD (founder.txt): "WHERE EACH TARGET STANDS" FROM THE
+   * OBJECTIVES THEMSELVES, WHEN THE HEADLINE HAS NO BARS OF ITS OWN. This board is sent a
+   * headline question but no `headline.bars` (there is only one person, so the engine has no bar
+   * to draw per target) - unlike the project and support-desk boards above, which have no
+   * headline at all and so get their own "Where each target stands" panel at the top of the page.
+   * Gated on `targetsFromObjectivesWhenNoBars`, a flag only this kind sets, so no other kind's
+   * headline changes shape.
+   */
+  const showObjectivesAsTargets = Boolean(targetsFromObjectivesWhenNoBars) && headline.bars.length === 0 && (objectives ?? []).length > 0
   return (
     <div className="gwui-gap-16" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', alignItems: 'start' }}>
       {noBoxAtAll ? (
@@ -369,16 +379,16 @@ export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn
             */}
             <SubHeading>{headline.question}</SubHeading>
             {headline.answer && <Callout tone="emphasis">{headline.answer}</Callout>}
-            {glanceGoesInTheBox && <HowItIsGoing glance={glance} waitingToBeLetIn={waitingToBeLetIn} />}
+            {glanceGoesInTheBox && <HowItIsGoing glance={glance} waitingToBeLetIn={waitingToBeLetIn} readerIsTheOnlyPerson={readerIsTheOnlyPerson} />}
           </Stack>
         </Panel>
       )}
-      {headline.bars.length > 0 && (
+      {(headline.bars.length > 0 || showObjectivesAsTargets) && (
         <Panel>
           <Stack gap={10}>
             <div className="gwui-fs-15 gwui-ink-dark" style={{ fontWeight: 700 }}>Where each target stands</div>
             <Stack gap={10}>
-              {headline.bars.map((bar) => (
+              {headline.bars.length > 0 ? headline.bars.map((bar) => (
                 <div key={bar.objectiveId} className="gwui-gap-12" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
                   <p className="gwui-panel-text-muted" style={{ flex: 1, minWidth: 140 }}>{names.get(bar.objectiveId) ?? ''}</p>
                   <div style={{ width: 140, height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden' }}>
@@ -387,6 +397,11 @@ export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn
                   <p className="gwui-panel-text-muted" style={{ minWidth: 90, textAlign: 'right' }}>{bar.now} of {bar.target}</p>
                   {bar.word && <Tag tone={standsTone(bar.word)}>{bar.word}</Tag>}
                 </div>
+              )) : (objectives ?? []).map((o) => (
+                <Stack key={o.id} gap={2}>
+                  <Note tone="muted">{o.name}</Note>
+                  <Note tone="muted">{o.journey?.say ?? ''}</Note>
+                </Stack>
               ))}
             </Stack>
           </Stack>

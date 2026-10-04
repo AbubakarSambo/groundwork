@@ -1263,6 +1263,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      * usual, open place for this kind too) stays open where the prototype itself keeps it.
      */
     teamInFoldRecordsOpen?: boolean
+    /**
+     * THE FOUNDER'S OWN CHECK-IN BOARD'S OWN SHAPE (founder.txt). "Who checked in" moves into the
+     * end fold on its own - unlike every table above, "Over time" and "Reports" stay open, in
+     * their usual place, right where founder.txt itself draws them.
+     */
+    whoCheckedInInFold?: boolean
+    /** "Where each target stands" draws beside the headline, built from `objectives` rather than
+        `headline.bars`, when the headline has a question but no bars of its own. */
+    targetsBesideHeadlineFromObjectives?: boolean
   }>> = {
     'support desk': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true, themesAndAreaAfterTheTeam: true },
     'distribution operations': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true, themesAndAreaAfterTheTeam: true },
@@ -1310,6 +1319,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      * `teamInFoldRecordsOpen` instead, the same as an asset loans cohort.
      */
     'MarketView where next': { openIssuesInFold: true, teamInFoldRecordsOpen: true },
+    /*
+     * THE FOUNDER'S OWN CHECK-IN BOARD'S OWN SHAPE (founder.txt, a one-person board). "Open
+     * issues" folds, the same as every other kind-of-work table above; `whoCheckedInInFold` folds
+     * only "Who checked in" with it - "Over time" and "Reports" stay open, in founder.txt's own
+     * place for them.
+     */
+    "founder's own check-in": { openIssuesInFold: true, whoCheckedInInFold: true, targetsBesideHeadlineFromObjectives: true },
   }
   const layoutFor = (k: string | null) => (k ? kindLayout[k] : undefined)
   const themesAndAreaAfterTheTeam = Boolean(layoutFor(kindOfWorkKey)?.themesAndAreaAfterTheTeam)
@@ -1317,6 +1333,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const foldTeamKeepRecordsOpen = Boolean(layoutFor(kindOfWorkKey)?.teamInFoldRecordsOpen)
   /** Either shape folds "The team today", "Who checked in", "Over time" and "Reports". */
   const foldTeam = foldTeamAndRecords || foldTeamKeepRecordsOpen
+  /**
+   * THE FOUNDER'S OWN CHECK-IN BOARD: "WHO CHECKED IN" FOLDS ON ITS OWN, EVEN WHEN NOTHING ELSE
+   * ABOUT THE TEAM DOES. `foldTeam` stays false for this kind - "The team today", "Over time" and
+   * "Reports" all keep their usual, open place - so this is its own flag, not folded in with it.
+   */
+  const foldWhoCheckedIn = foldTeam || Boolean(layoutFor(kindOfWorkKey)?.whoCheckedInInFold)
   /*
    * SUPPORT DESK BOARD FIX 2: "THE SHAPE OF THE WORK" AND "BY QUEUE", RIGHT AFTER "THE TEAM
    * TODAY" - support.txt's own place for them, not the end fold both sit in today. Pulled out of
@@ -2233,7 +2255,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {(b as any).headline && (
           <Stack gap={12}>
-            <HeadlineSection headline={(b as any).headline} objectives={b.objectives} glance={(b as any).howItIsGoing?.glance ?? null} waitingToBeLetIn={b.waitingToBeLetIn ?? null} />
+            <HeadlineSection headline={(b as any).headline} objectives={b.objectives} glance={(b as any).howItIsGoing?.glance ?? null} waitingToBeLetIn={b.waitingToBeLetIn ?? null} targetsFromObjectivesWhenNoBars={layoutFor(kindOfWorkKey)?.targetsBesideHeadlineFromObjectives} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere} />
           </Stack>
         )}
 
@@ -2276,7 +2298,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {(b as any).howItIsGoing?.glance && !((b as any).headline && !(b as any).headline.answer) && (
           <div className="gwui-mt-16">
-            <HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} />
+            <HowItIsGoing glance={(b as any).howItIsGoing.glance} waitingToBeLetIn={b.waitingToBeLetIn ?? null} readerIsTheOnlyPerson={viewerRunsThisCheckIn && onlyOnePersonHere} />
           </div>
         )}
 
@@ -2670,7 +2692,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           REQUEST 132: NOT HERE FOR A GOVERNMENT PROGRAMME BOARD - folded, with "Who checked in",
           "The team today" and "Reports".
         */}
-        {!foldTeam && (isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
+        {!foldWhoCheckedIn && (isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
         {!foldTeam && <BlockersSection blockers={(b as any).blockers} />}
         {/*
           REQUEST 132 AND REQUEST 133: NOT HERE FOR A GOVERNMENT PROGRAMME BOARD OR AN ASSET LOANS
@@ -2691,7 +2713,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         <ReportedAgainstCriteriaSection data={(b as any).reportedAgainstCriteria} kindOfWork={(b as any).kindOfWork ?? null} />
 
-        {!foldTeam && !(isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
+        {!foldWhoCheckedIn && !(isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
 
         {/*
           U.10 ITEM 7: "OVER TIME" MOVES OUT OF THE FOLD, TO THE PROTOTYPE'S OWN PLACE
@@ -2832,6 +2854,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             {reportsSection()}
           </>
         )}
+
+        {/*
+          THE FOUNDER'S OWN CHECK-IN BOARD: "WHO CHECKED IN" FOLDS HERE ON ITS OWN
+          (`whoCheckedInInFold`) - "The team today", "Over time" and "Reports" all stay open,
+          above, in founder.txt's own place for them; only this one table moves.
+        */}
+        {!foldTeam && layoutFor(kindOfWorkKey)?.whoCheckedInInFold && whoCheckedIn()}
 
         {/*
           PROJECT BOARD REVIEW 1, FIX 11: "OPEN ISSUES", FOLDED HERE ON THESE BOARDS - see the
