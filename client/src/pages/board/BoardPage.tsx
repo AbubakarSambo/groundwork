@@ -39,6 +39,7 @@ import type { ServedPattern } from '@/api/patterns'
 import { WhatToWorkOnNext } from '@/components/gw/WhatToWorkOnNext'
 import { WhatToProbeThemOn } from '@/components/gw/WhatToProbeThemOn'
 import { recommendedCheckInsApi, type AnOfferTheLeadReads } from '@/api/recommendedCheckIns'
+import { TheMonthBoard } from '@/components/gw/TheMonthBoard'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -995,6 +996,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * anybody who is not the lead.
    */
   const anchorRecommendationsOn = viewerRunsThisCheckIn && !!(data as any)?.anchorScenarioOn
+
+  /**
+   * PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?" (section 24;
+   * docs/answers-from-engine.md, "Request 147", `TheMonthBoard`). Lead only, and only while the
+   * anchor switch is on - the same two gates `anchorRecommendationsOn` already uses, read off the
+   * raw board answer rather than `b` for the same reason (these hooks must sit above every early
+   * return below). Shape only on the engine side today, so `theMonthBoardForTheLead` is undefined
+   * on every board until it is served, and the component below draws nothing then.
+   */
+  const theMonthBoardForTheLead = viewerRunsThisCheckIn && !!(data as any)?.anchorScenarioOn
+    ? (data as any)?.theMonthBoard
+    : undefined
   const { data: recommended } = useQuery({
     queryKey: ['recommended-check-ins', id],
     queryFn: () => recommendedCheckInsApi.list(id!),
@@ -2340,6 +2353,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!shown.checkInGrid && b.myParticipantId && kindOfWorkKey !== 'MarketView where next' && everySessionLink()}
 
         <MaybeFolded fold={participantFoldsWhole}>
+
+        {/*
+          PIECES 12, 13 AND 20: THE MONTH BOARD, "Are we moving together?", AT THE TOP (plan
+          section 5, row 6). Lead only; draws nothing while `theMonthBoardForTheLead` is undefined.
+        */}
+        {theMonthBoardForTheLead && <TheMonthBoard monthBoard={theMonthBoardForTheLead} />}
 
         {/*
           THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (request 108 a; board-as-lead.txt:
