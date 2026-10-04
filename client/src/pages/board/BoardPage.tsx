@@ -1092,7 +1092,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             No shared board here
           </div>
           <div className="gwui-fs-14 gwui-ink-text gwui-mb-16" style={{lineHeight: 1.6}}>{data.reason}</div>
-          <div className="gwui-gap-8" style={{display: 'flex'}}>
+          <div className="gwui-button-row">
             <UIButton kind="primary" to={`/grounds/${id}/report`}>Read the report</UIButton>
             <UIButton kind="secondary" onClick={() => navigate(`/grounds/${id}`)}>Back to the check-in</UIButton>
           </div>
@@ -1121,7 +1121,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             Your answer first
           </div>
           <div className="gwui-fs-14 gwui-ink-text gwui-mb-16" style={{lineHeight: 1.6}}>{(data as any).saying}</div>
-          <div className="gwui-gap-8" style={{display: 'flex'}}>
+          <div className="gwui-button-row">
             <UIButton kind="primary" onClick={() => navigate(`/grounds/${id}`)}>Do my check-in</UIButton>
             <UIButton kind="secondary" onClick={() => navigate('/grounds')}>Back to check-ins</UIButton>
           </div>
@@ -4222,7 +4222,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           Changing the times clears everyone's availability, because an answer to a question that changed is not an answer.
                         </div>
                       )}
-                      <div className="gwui-gap-8" style={{display: 'flex'}}>
+                      <div className="gwui-button-row">
                         {/* Secondary, not navy: the board's one primary is "Your check-in", in the header. */}
                         <UIButton kind="secondary" size="small" type="submit" disabled={!pollQ.trim() || !pollOpts.trim() || savePoll.isPending}>
                           {savePoll.isPending ? 'Saving...' : 'Save'}
