@@ -248,10 +248,12 @@ export async function journeys(c: any): Promise<void> {
   const l3 = (await leaveRows())[2];
   check('Leave 3 is saved, waiting', !!l3 && l3.status === 'waiting', JSON.stringify(l3));
   await says(amani, 'back');
-  /* Asking a question is done in the app: there is no way to ask one by replying on WhatsApp. The person is told on her phone. */
+  /* Wairimu asks by replying on WhatsApp, the way she approves: said back word for word, and sent only on her yes, through the same code the app's box uses. */
   const qFrom = outbox.length;
-  const q = await api(`/suites/leave/requests/${l3.id}/question`, { token: wairimu.token, body: { question: 'Who will cover the Renewals calls?' } });
-  log(`  Wairimu asks in the app: ${q?.refused ? `REFUSED ${q.refused}: ${q.message}` : 'asked'}`);
+  const askedBack = await says(wairimu, 'question for Amani about her leave: Who will cover the Renewals calls?');
+  check('Her question is said back word for word, and nothing has gone to Amani yet', askedBack.text === 'You are asking Amani, “Who will cover the Renewals calls?” It is about Amani\'s leave from Tuesday 3 November to Wednesday 4 November. I will send it as you wrote it, and the request stays waiting for you. Shall I send it?' && since(qFrom).filter((s: any) => s.to === amani.phone).length === 0, askedBack.text);
+  const sentQ = await says(wairimu, 'yes');
+  check('After her yes she is told it went, and that the request still waits for her', sentQ.text === 'I have sent your question to Amani. The request is still waiting for you to decide.', sentQ.text);
   await waitQuiet(1000);
   const asked = since(qFrom).filter((s: any) => s.to === amani.phone);
   check('Amani is told on her phone that Wairimu has a question, with the question in Wairimu\'s own words, and that the request still waits', asked.length === 1 && asked[0].text === 'Hi Amani, Wairimu has a question about your request for leave from Tuesday 3 November to Wednesday 4 November. Wairimu asked, “Who will cover the Renewals calls?” You can reply here with your answer, or answer it in Groundwork. Your request is still waiting for Wairimu to decide.', JSON.stringify(asked.map(bodyOf)));

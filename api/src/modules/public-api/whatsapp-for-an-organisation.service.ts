@@ -17,6 +17,7 @@ import { plainToInstance } from 'class-transformer';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { asATextMessage } from './a-reply-reads-as-a-text-message';
 import { aDecisionIn } from '../suites/a-request-in-words';
+import { aQuestionAskedAboutARequest } from '../suites/an-approver-asks-by-saying-so';
 import { BACK_TO_THE_CHECK_IN, YES_OR_NO_TO_AN_ANSWER, isThisYourAnswer, type AQuestionWaiting } from '../suites/a-question-about-a-request';
 import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
   NOT_ENOUGH_YET_TO_FINISH, AN_ASK_WORD, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
@@ -374,10 +375,10 @@ export class WhatsAppForAnOrganisationService {
         await say(YES_OR_NO(pending.kind as ARequest));
         return;
       }
-    } else if (who.personId && aDecisionIn(text) && (await this.aDecisionWaitsFor(organizationId, who.personId))) {
+    } else if (who.personId && (aDecisionIn(text) || aQuestionAskedAboutARequest(text)) && (await this.aDecisionWaitsFor(organizationId, who.personId))) {
       /*
-       * AN APPROVER'S "APPROVE" OR "DECLINE" DURING A CHECK-IN (decision 82, item 1) is not an answer
-       * in it. It goes to Ask Groundwork, which says back what they are deciding and acts only on a
+       * AN APPROVER'S "APPROVE" OR "DECLINE", OR A QUESTION ABOUT A REQUEST ("question for Amina about her
+       * leave: ...") DURING A CHECK-IN (decision 82, item 1) is not an answer in it. It goes to Ask Groundwork, which says back what they are deciding and acts only on a
        * yes; the conversation stays there for that yes, until "back".
        */
       await this.rememberAsking(organizationId, from, current.id);
