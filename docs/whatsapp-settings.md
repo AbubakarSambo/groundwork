@@ -12,15 +12,37 @@ The secret ones are marked **secret**. Anyone who has a secret can send messages
 | `WHATSAPP_ACCESS_TOKEN` | The permanent token that lets Groundwork send messages from that number. | **Secret.** | **business.facebook.com** → Business settings → Users → **System users** → add (or choose) a system user with the Admin role → **Add assets**: give it Groundwork's app and the WhatsApp account → **Generate new token** for the app, with the permissions `whatsapp_business_messaging` and `whatsapp_business_management`, and no expiry. Copy it once; Meta does not show it again. Do not use the temporary token on the API Setup page: it stops working after 24 hours. |
 | `WHATSAPP_APP_SECRET` | The secret Meta signs every incoming message with. Groundwork checks the signature on each one and refuses anything that does not match. | **Secret.** | **developers.facebook.com** → Groundwork's app → **App settings** → **Basic** → **App secret** → Show (Meta asks for the password). |
 | `WHATSAPP_WEBHOOK_VERIFY_TOKEN` | A word or phrase Groundwork's side chooses. Meta sends it back once, when the webhook is first connected, to prove it is talking to the right server. | **Secret.** | Not found in Meta: whoever runs the hosting makes it up (a long random string), puts it in the server's settings, and types the same string into **developers.facebook.com** → Groundwork's app → **WhatsApp** → **Configuration** → **Webhook** → Edit → **Verify token**. |
-| `WHATSAPP_APPROVED_TEMPLATES` | The names of the message templates Meta has approved, separated by commas. Groundwork can only send the first message to someone (a session opening, a reminder, a report, the lead's daily summary) through an approved template; it records anything else as not sent. | No. | **business.facebook.com** → **WhatsApp Manager** → **Message templates**. Copy the name of each template whose status is **Active**, exactly as written. The wording to submit is in `docs/whatsapp-templates.md`. |
+| `WHATSAPP_APPROVED_TEMPLATES` | The names of the message templates Meta has approved, separated by commas. Groundwork can only write first to someone, or write more than 24 hours after they last wrote, through an approved template; it records anything else as not sent. The 13 names the code expects are listed under "The templates" below. | No. | **business.facebook.com** → **WhatsApp Manager** → **Message templates**. Copy the name of each template whose status is **Active**, exactly as written. The wording to submit is in `docs/whatsapp-templates.md`. |
 | `WHATSAPP_DISPLAY_NUMBER` | Groundwork's WhatsApp number as people should read it, for example "+44 7700 900123", shown on the Connections page. | No. | **WhatsApp Manager** → **Phone numbers**: the number as listed. |
 | `PUBLIC_API_URL` | The hosted API's public address, for example "https://api.example.com", used to build the webhook address shown to admins. | No. | Not in Meta: it is wherever the API is hosted. |
+
+## The templates
+
+`WHATSAPP_APPROVED_TEMPLATES` should end up holding these 13 names, which are the ones the code can send (`THE_NAMES_TO_SUBMIT` in `api/src/modules/whatsapp/a-message-outside-the-window.ts`). The wording of each, to submit in Meta's WhatsApp Manager, is in `docs/whatsapp-templates.md`. Add a name to the setting only when Meta shows it as Active.
+
+| Name | What it is for |
+| --- | --- |
+| `checkin_open` | A check-in has opened. |
+| `checkin_due_tomorrow` | A check-in closes tomorrow. |
+| `checkin_opens_soon` | A check-in opens soon. |
+| `checkin_closes_soon` | A check-in is about to close. |
+| `checkin_overdue` | A check-in is still open and the person has not answered. |
+| `checkin_team_almost_in` | At least half the team has checked in. |
+| `checkin_your_view_matters` | Fewer than half the team has checked in. |
+| `lead_daily_summary` | The lead's daily summary. See the note in `docs/whatsapp-templates.md`: as written, Meta will refuse it, because it ends with a blank. |
+| `groundwork_report_ready` | A report is ready. |
+| `groundwork_request_waiting` | A leave, hours or spending request is waiting for an approver, or a person has answered a question about one. |
+| `groundwork_request_decided` | A person is told their request was approved, declined or asked about. |
+| `groundwork_review_started` | A review waits for the person. |
+| `groundwork_review_decided` | The person is told their review is decided. |
+
+Two more are written in `docs/whatsapp-templates.md` as proposed and are **not** in the code yet, so they are not in the list above and are not needed for the first release: `groundwork_request_question` (a question about a request) and `groundwork_leave_told_to_hr` (leave told to the person who holds the HR duty). Until they exist, a question outside the 24 hours goes through `groundwork_request_decided`, and HR reads leave on the leave board only. Do not add either name to the setting until the code sends it.
 
 ## The webhook, once hosted
 
 In **developers.facebook.com** → Groundwork's app → **WhatsApp** → **Configuration** → **Webhook** → Edit:
 
-- **Callback URL:** `<PUBLIC_API_URL>/api/v1/webhooks/whatsapp`
+- **Callback URL:** `<PUBLIC_API_URL>/api/v1/webhooks/whatsapp` (the controller that receives Groundwork's own number is `whatsapp.controller.ts`)
 - **Verify token:** the same string as `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
 - Then, under **Webhook fields**, subscribe to **messages**.
 
@@ -28,7 +50,12 @@ Meta checks the address straight away by calling it with the verify token, so th
 
 ## Then, in Groundwork
 
-The platform admin turns WhatsApp on in Groundwork's admin area (the WhatsApp switch). It is off until then, whatever the settings say. Nothing is sent by WhatsApp until both the settings are present and the switch is on.
+Two switches decide whether a client's WhatsApp works, and both must be on.
+
+1. **The platform's switch.** The platform admin turns WhatsApp on in Groundwork's admin area. It is kept in the settings row `whatsapp_enabled` and is off until somebody switches it on, whatever the server's settings say. Nothing is sent by WhatsApp until `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` are present and this switch is on.
+2. **The organisation's add-on.** Each organisation turns WhatsApp on for itself (`organizations.whatsapp_add_on_on`, set by its admin through `PATCH /billing/whatsapp`). The morning reminder, the reminder before a session and the lead's daily summary go only to an organisation that has turned it on, and only while the platform's switch is on (`api/src/modules/whatsapp/only-where-whatsapp-is-turned-on.ts`). An organisation that has not turned it on is told plainly that its check-ins stay in the app. Existing clients and the paid client are treated the same way (decision 90).
+
+While the free trial's switch (`pricing.freeTrial`) is off, nothing is charged or held for the add-on, but each plan's monthly message limit still applies (decision 78). Charging starts only when the trial is switched on, after Stripe is tested.
 
 ## Not needed for the first client
 

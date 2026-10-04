@@ -57,7 +57,7 @@ The engine workspace keeps this file current. The screens workspace reads it aft
 ## Release
 - [ ] Join with the live main line. *Not done: needs Hafsah. The safety guard allows merging only `mine/wip/<branch>`, so the engine workspace cannot merge the live main line, even into a scratch branch.*
 - [ ] One full 24-scenario run on the combined code. *Not done.*
-- [ ] `docs/deploy.md`, `docs/release-questions.md` and the WhatsApp settings guide (`docs/whatsapp-settings.md`) up to date. *Not done.*
+- [x] `docs/deploy.md`, `docs/release-questions.md` and the WhatsApp settings guide (`docs/whatsapp-settings.md`) up to date. *Done on 4 October: all 81 migrations listed, the release night is one numbered list, the four one-off scripts and the existing-clients checks are in order, the hidden-at-release switches match the code, answered questions are marked with their decisions, and the WhatsApp guide lists the 13 templates and the two switches.*
 
 ## Waiting on Hafsah (does not block the items above unless marked)
 - The "picture" count in "proof asked for".
