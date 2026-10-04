@@ -157,6 +157,44 @@ export type TheEndOfMonthRead = {
   continueOptions: TheContinueOption[];
 };
 
+/* ------------------------------------------------------------------------------------------------
+ * PIECE 19 AND 20. "IDEAS FROM YOUR TEAM" (section 18; plan section 5 row 7; decision 96, item 10). SHAPE ONLY.
+ * Nothing is stored or served yet: ideas need their own record (piece 19). Served on the board read as
+ * `BoardPresent.ideasFromYourTeam`, to everyone in that check-in, and only after the person said yes to
+ * capturing the idea for the team. Before the yes nothing exists for anybody to read.
+ * ---------------------------------------------------------------------------------------------- */
+export type AnIdeaFromTheTeam = {
+  id: string;
+  /** The idea, in the person's own words. */
+  title: string;
+  /** "Raised by Lucy." */
+  raisedBy: string;
+  /** "Similar needs have appeared across three check-ins." Never names anybody. Null when it has appeared once. */
+  similarNeedsSentence: string | null;
+};
+export type TheIdeasFromYourTeam = {
+  heading: 'Ideas from your team';
+  ideas: AnIdeaFromTheTeam[];
+  /** Said when there are none. */
+  whenThereAreNone: string;
+};
+
+/* ------------------------------------------------------------------------------------------------
+ * PIECE 21. THE YES IN THE PERSON'S CHECK-IN (section 18; plan section 5 row 21; decision 96, item 10). SHAPE ONLY.
+ * When the person says something that is a concrete idea, the reply carries this beside it. Only the person's
+ * yes captures it; "Not now" leaves nothing behind. It is served to that person alone, in their own check-in.
+ * ---------------------------------------------------------------------------------------------- */
+export type TheIdeaOfferInTheCheckIn = {
+  /** The idea, in the person's own words, so they can see exactly what would be captured. */
+  idea: string;
+  /** "That sounds like a concrete idea. Want me to capture it for the team?" */
+  question: string;
+  /** Who will see it if they say yes, in a sentence. */
+  whoWillSeeIt: string;
+  yes: string;
+  no: string;
+};
+
 /** For the spec: the keys each shape holds, so a later builder cannot rename one quietly. */
 export const THE_SHAPES_KEYS = {
   reveal: ['title', 'subtitle', 'carrying', 'whatTheTeamNeedsToUnderstand', 'sharedWithTheTeam', 'whoYouAreTryingToMove', 'seeingToday', 'whatMeaningfulChangeWouldLookLike', 'whatGroundworkWillExplore', 'howIWillWorkWithYourTeam'],
@@ -165,5 +203,8 @@ export const THE_SHAPES_KEYS = {
   monthBoard: ['question', 'weekOfTheMonth', 'lenses', 'whatIsMoving', 'whatTheTeamIsContributing', 'peopleHelpingThingsMove', 'wherePerspectivesDiffer', 'whatIsStillGettingInTheWay', 'whatGroundworkIsWorkingOnNext'],
   activeLine: ['active', 'total', 'nudged', 'line'],
   endOfMonth: ['yourOwnWords', 'whatWeFound', 'whatTheyNowUnderstandDifferently', 'whatTheyAreDoingDifferently', 'whatYourTeamContributed', 'peopleWhoHelpedMoveTheThinking', 'whatYouChangedAsALead', 'whatIsStillStuck', 'whatShouldHappenNext', 'reveal', 'continueOptions'],
+  ideasFromYourTeam: ['heading', 'ideas', 'whenThereAreNone'],
+  anIdea: ['id', 'title', 'raisedBy', 'similarNeedsSentence'],
+  ideaOffer: ['idea', 'question', 'whoWillSeeIt', 'yes', 'no'],
   revealCounts: ['projectsThatCouldHaveTheirOwnGround', 'sharedObjectivesWorthTracking', 'workingRelationshipsNeedingAlignment', 'activeCommitments', 'teamGeneratedIdeas', 'suitesRelevantToWorkAlreadyBeingDone'],
 } as const;

@@ -4582,3 +4582,11 @@ They are sent their invitation as soon as there is a seat for them, as before. P
 - "Turn on relevant suites" opens the Suites page, `/settings/suites`.
 
 **Tests.** `board/the-anchor-end-of-month.spec.ts`, through the real `BoardService.get`: the whole served text as the lead, none for a participant or an admin, not served before the month has run, served early when the check-in has ended, and switch off, not-an-anchor and no words of hers.
+
+## Request 149, missing (1): the pinned shapes for "Ideas from your team" and the yes in the person's check-in. Shapes only
+
+**Shapes only. Nothing is stored or served.** Both are types in `api/src/modules/entry/the-anchor-served-shapes.ts`, with their keys pinned in `the-anchor-served-shapes.spec.ts`. Ideas need their own record (piece 19), so there is nothing to serve yet. Following decision 96, item 10: a captured idea is seen by everyone in that check-in, with "Raised by <name>", and only after the person says yes. Before the yes, nothing exists for anybody to read.
+
+**"Ideas from your team" (`TheIdeasFromYourTeam`), to be served as `BoardPresent.ideasFromYourTeam`.** `heading` "Ideas from your team"; `ideas`, each `{ id, title, raisedBy, similarNeedsSentence }`; `whenThereAreNone`. Example from the scenario: title "Client review one month before project close", `raisedBy` "Raised by Lucy.", `similarNeedsSentence` "Similar needs have appeared across three check-ins." (null when it has appeared once; it never names anybody). `whenThereAreNone` is "No idea from your team has been captured yet.", the same sentence the month board already uses.
+
+**The yes in the person's check-in (`TheIdeaOfferInTheCheckIn`), to be attached to the reply that offers it.** `{ idea, question, whoWillSeeIt, yes, no }`. `idea` is the person's own words, so they see exactly what would be captured. `question` is the scenario's: "That sounds like a concrete idea. Want me to capture it for the team?" `whoWillSeeIt` is a proposal: "Everyone in this check-in will see it, with your name on it." `yes` is a proposal: "Yes, capture it"; `no`: "Not now". It is served to that person alone, in their own check-in. A "Not now" leaves nothing behind. Please tell me if you want different button words.
