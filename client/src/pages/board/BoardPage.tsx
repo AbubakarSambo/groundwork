@@ -2858,6 +2858,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           workStages={(groundForSignals as any)?.workStages}
           canEdit={canEditKindOfWork}
           kindsOffered={(b as any).kindsOffered}
+          readerIsTheFounder={viewerRunsThisCheckIn && kindOfWorkKey === "founder's own check-in"}
         />
 
         {has('phaseSpine') && b.phaseSpine && (

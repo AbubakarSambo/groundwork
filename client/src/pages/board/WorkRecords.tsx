@@ -268,7 +268,7 @@ const noneYetHoldsSentence = (holds: string) => (NONE_YET_HOLDS_SAYS[holds] ?? h
  * an admin of this organisation, can change it and its stage names; a participant reads it and
  * cannot change it. A name the server refuses is shown exactly as it says it.
  */
-export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit, kindsOffered }: {
+export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit, kindsOffered, readerIsTheFounder }: {
   groundId: string
   kindOfWork: KindOfWork | null
   workStages?: string[] | null
@@ -280,6 +280,14 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit, ki
    * server - keep today's full list then.
    */
   kindsOffered?: KindOfWork[]
+  /**
+   * THE FOUNDER'S OWN CHECK-IN BOARD, READ BY THE FOUNDER (founder.txt): "This is your own
+   * check-in as a founder, about your own commitments and decisions." - "you", not "their", the
+   * one time the person reading this sentence is the founder it is about. Every other reader of
+   * this kind (a read-only admin, say) still reads `KIND_OF_WORK_SENTENCE`'s own third-person
+   * wording, and every other kind of work is unaffected.
+   */
+  readerIsTheFounder?: boolean
 }) {
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -299,7 +307,9 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit, ki
   })
 
   const sentence = kindOfWork
-    ? KIND_OF_WORK_SENTENCE[kindOfWork]
+    ? (readerIsTheFounder && kindOfWork === "founder's own check-in"
+      ? "This is your own check-in as a founder, about your own commitments and decisions."
+      : KIND_OF_WORK_SENTENCE[kindOfWork])
     : (canEdit
       ? 'Nobody has said what kind of work this check-in is about yet. Choose one, so its board can keep the right kind of record.'
       : 'Nobody has said what kind of work this check-in is about yet.')
