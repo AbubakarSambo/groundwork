@@ -8,6 +8,7 @@ import { whatYouCanAskSaid } from './what-you-can-ask-here';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
 import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
 import { ReportsService } from '../reports/reports.service';
+import { howManyAnsweredInWords } from '../reports/the-picture-in-plain-sentences';
 import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds } from './what-they-said-that-you-may-read';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { theOneToDoFirst, whatMustSurviveIn } from './what-to-do-next';
@@ -529,6 +530,8 @@ export class AssistantService {
         return this.compose(await this.whereAmINeeded(organizationId, who));
       case 'what_is_stuck':
         return this.compose(await this.whatIsStuck(organizationId, who, message));
+      case 'how_is_the_team':
+        return this.howIsTheTeam(organizationId, who, userId ?? null);
       case 'how_am_i_doing':
         return this.compose(await this.howAmIDoing(organizationId, who));
       case 'what_can_you_do':
@@ -861,6 +864,52 @@ export class AssistantService {
       parts.push(`${mine.length > 1 ? 'You have said you are waiting for these things.\n' : ''}${aList(mine.map(yours))}`);
     }
     return rules('what_is_stuck', text(parts.join('\n\n')));
+  }
+
+  /**
+   * "HOW IS THE TEAM DOING" (4 October 2026, the user journeys). Private to the lead who asks, and read from what the
+   * board and the latest report of each check-in they RUN already say: the board's own sentence on how it is going and
+   * its count of who has answered and what is in the way, read as the lead, so nothing is added to it and nothing is
+   * hidden by this lane alone. A check-in somebody only takes part in is not the team they lead. Nothing is rebuilt:
+   * the board is read, never opened for writing (decision 7).
+   */
+  private async howIsTheTeam(organizationId: string, who: string | null, userId: string | null): Promise<Reply> {
+    const lane = 'how_is_the_team';
+    if (!userId) return rules(lane, text('I cannot look that up without knowing who you are.'));
+    const kept = await keptInTheApp(this.prisma as any, organizationId);
+    const run = (await this.prisma.ground.findMany({
+      where: { organizationId, initiatorId: userId },
+      select: { id: true, label: true },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    })).filter((g) => mayBeRead(kept, g.id));
+    if (!run.length) {
+      return rules(lane, text('You do not run a check-in yet, so there is no team for me to tell you about. You can ask me how you are doing, or what you are waiting on.'));
+    }
+
+    const parts: string[] = [];
+    for (const g of run.slice(0, 3)) {
+      let board: any;
+      try { board = await this.board.get(g.id, userId); } catch { continue; }
+      if (!board || board.renders === false) continue;
+      const going = board.howItIsGoing ?? {};
+      const progress = going.glance?.progress;
+      const lines: string[] = [];
+      if (typeof going.latestSummary === 'string' && going.latestSummary.trim()) lines.push(going.latestSummary.trim());
+      if (progress && progress.ofPeople > 0) lines.push(howManyAnsweredInWords(progress.answeredThisRound ?? 0, progress.ofPeople));
+      const way = going.glance?.inTheWay;
+      if (way?.count > 0) {
+        const oldest = typeof way.oldest === 'string' ? way.oldest.trim().replace(/[.!?]+$/, '') : '';
+        lines.push(way.count === 1 ? 'One thing is in the way.' : `${way.count} things are in the way.`);
+        if (oldest) lines.push(`The one that has waited longest is "${oldest}"${way.sinceSays ? `, ${way.sinceSays}` : ''}.`);
+      }
+      if (!lines.length) continue;
+      parts.push(`${run.length > 1 ? `This is about ${String(g.label).replace(/[.\s]+$/, '')}. ` : ''}${lines.join(' ')}`);
+    }
+    if (!parts.length) {
+      return rules(lane, text('Nobody has answered in the check-ins you run yet, so there is nothing to tell you about the team so far. I will have more once people have finished.'));
+    }
+    return rules(lane, text(`${parts.join('\n\n')}\n\nThis is what your board and your latest report say, and only you can read it here.`));
   }
 
   /**
