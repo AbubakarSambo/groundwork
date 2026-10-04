@@ -4024,3 +4024,26 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### Headings under "What this cannot tell you" are sentences (131 item 5), and "By site" reads more field names (130 d, part)
 
 **What changed (served, `theJudgement.whatThisCannotTellYou[].about`, lead only).** A piece of a sentence is now a sentence: "the work in Kisumu" reads This check-in cannot tell you about the work in Kisumu. "what is blocking the work" reads This check-in cannot tell you what is blocking the work. A line that is already a sentence is left as it is ("Nobody has said who arranged the visits."). `byArea` now also groups on a record's depot, warehouse, hub or town field as "By site". **Not built (130 d):** the prototype's Themes for depots (incidents by site and type, last 8 weeks) and stages for incidents; neither the type nor the site of an incident is a field the conversation reliably records, so there is nothing to build them from. Needs Hafsah: whether the record reader should be asked to write a site and a type on each incident.
+
+### Status of requests 127 to 138 (5 October 2026)
+
+All served-text fixes are made where the line is served, so rows already stored read right at once; `journey/bring-a-check-in-up-to-date.ts` needed no new rule, and the screens workspace does not need to run it again for these. (It still should be run for the earlier rules in requests 111 and 117.)
+
+| Request | State | Commits |
+| --- | --- | --- |
+| 127 | Answered, with open parts below | 8b0fc6fe, 7b780610, 0c53cfd2, 134d8030, c4a48fdd, 1ad52a5a, 8a768060, 940995c5, 615fb75f |
+| 128 | Answered | 988a77fc |
+| 129 | Answered, with open parts below | 8b0fc6fe, 7b780610, 0c53cfd2, 134d8030, 49756eb0, 3c2417d1, 1ad52a5a, 49c2bbfc |
+| 130 | Answered, with open parts below | 8b0fc6fe, 89dd6551, 5dd03174, 8c6ab576, 289ce991, 615fb75f |
+| 131 | Answered, with open parts below | 8b0fc6fe, 134d8030, 3376bc4c, e15b88fd, 289ce991 |
+| 132 | Answered, with open parts below | 8b0fc6fe, 49c2bbfc, f7e24c9b, 89b4d804, 32b74b9e, 4cc8247f |
+| 133 | Answered, with open parts below | 7b780610, 49756eb0, b6d409f6 |
+| 134 | Answered, with open parts below | c4a48fdd, 5dd03174, 11930784, 7d697ae6 |
+| 135 | Answered, with open parts below | 8b0fc6fe, ded89222, 49756eb0, 615fb75f |
+| 136 | Answered, with open parts below | 8b0fc6fe, ded89222, 3376bc4c, 4c0c2679, 7e865347, 37a25ce7, 0c53cfd2 |
+| 137 | Answered (done earlier) | 821b0854 |
+| 138 | Answered | a16f5fba |
+
+**Not changed, and why (open).** 127 item 1: `startingState` on a project board and a headline where the check-in has no aim: nothing on record to build it from, and no screen in the prototype for it. 127 item 5 (participant) "at their own request" and 132 e "You said they would write to them": "they" may be somebody else, so the writer must say who. 127 item 6 "founder or CEO work": it comes from the detected function, which is not changed. 129 item 2: a wait that is only said in a report finding is not a stored wait. 130 b (Aisha's empty `whoOwnsWhat`) and 130 d (Themes, sites and stages for incidents): not reproducible without the screens workspace's data, and no field to build from. 131 item 6: no "Women" share target or county for groups on record. 133 item 1 (a sales question on a loans check-in) and 134 item 4, 135 item 3, 136 item 7 (the model-written judgement miscounts and contradicts itself): these are in the judgement's prompt and the question choice, and need the prompt and a stored prompt version changed together; not touched here. 134 item 5 ("Ask Amani Wekesa to find out who owns this by name"): left, because the existing tests and `reports.service` call it the right first move; Hafsah to decide who should be asked. 136 item 1 numbers (11 of 20) are not counted into the founder's aim.
+
+**Decided for Hafsah to confirm (taken closest to the prototype and her decisions).** (1) "They" for one named person, as the reports already do, instead of the passive. (2) Outcomes for a goals check-in as sentences, with a new ending `REACH_WITH_A_CHANGE`. (3) The list of placeholder surnames. (4) A headline asked without a day where the check-in has no deadline.
