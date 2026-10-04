@@ -2,6 +2,7 @@ import { wholeDaysTo, theDayItBegan, theRecordsClock } from './a-wait-is-dated-n
 import { aFindingThatDoesNotSayTheWaitAgain } from './where-each-person-is-against-their-number';
 import { eachRepeatedSentenceSaidOnce } from './each-repeated-sentence-said-once';
 import { isAWholeSentence } from '../reports/what-people-said-differently-about';
+import { theGlanceInASentence } from './the-glance-in-a-sentence';
 import { aPartyOutside, aWaitOnOneself, theWaitsAsABoardReadsThem } from './a-thing-is-not-somebody';
 import { theClaimOn, theClaimQuestion, afterTheLeadsAnswer, whatIsNotADetail, theAnswerSaidBack } from './a-claim-on-a-record-is-checked-first';
 import { whoSeesThisDifferently } from './who-sees-this-differently';
@@ -2509,6 +2510,16 @@ export class BoardService {
             inTheWay: blockers.length === 0
               ? { ...theWay, count: 0, oldest: null, daysWaiting: null, since: null, sinceSays: null }
               : { ...theWay, count: blockers.length, ...(theWay.oldest ? {} : { oldest: oldestName || null, since: oldestListed?.raised?.firstRaisedAt ?? null, sinceSays: oldestListed?.raised?.firstRaisedAt ? `since ${theDayItBegan(oldestListed.raised.firstRaisedAt, new Date(oldestListed.raised.firstRaisedAt))}` : null }) },
+          },
+        };
+      }
+      /* And the header said in full sentences for this reader, from the list they are served (request 134 item 6). */
+      if (out.howItIsGoing?.glance?.inTheWay) {
+        out.howItIsGoing = {
+          ...out.howItIsGoing,
+          glance: {
+            ...out.howItIsGoing.glance,
+            inTheWay: { ...out.howItIsGoing.glance.inTheWay, says: theGlanceInASentence(blockers as any[], (iso) => theDayItBegan(iso, recordsClock)) },
           },
         };
       }

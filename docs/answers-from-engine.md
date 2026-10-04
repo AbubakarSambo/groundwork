@@ -3956,3 +3956,7 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### Counts as words in "What you have done" (131 item 4)
 
 **What changed (served, `personHistory[].says`, the person's own row only; the lead never reads the tally).** Only what there is gets a number. "You have answered 2 sessions and made 1 commitment. 0 are done, 0 are not done or dropped, and 1 is still open." reads "...made 1 commitment. None is done yet, and 1 is still open." Other examples: "1 is done." and "2 are done, and 1 is not done or dropped."
+
+### The header says who waits (134 item 6)
+
+**New field (served, `howItIsGoing.glance.inTheWay.says`, every reader of a board).** One finished sentence for the header, from the Blockers list that reader is served. The person waiting reads: One thing is in the way. You have been waiting for the tax view since 29 September. The lead reads: One thing is in the way. Amani Wekesa has been waiting for the tax view since 29 September. With several: 2 things are in the way. The one waiting longest is the tax view, since 29 September. With none: Nothing is in the way. Screens: draw `says` in place of "N things are in the way, the oldest being ...", which said "the oldest" of one thing; `count`, `oldest` and `sinceSays` are unchanged.
