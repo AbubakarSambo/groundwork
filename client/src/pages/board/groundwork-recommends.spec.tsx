@@ -120,7 +120,7 @@ describe('for the lead, with the switch on', () => {
     ;(recommendedCheckInsApi.yes as any).mockResolvedValue({ state: 'ACCEPTED', setUp })
     const opened = {
       initial: anOffer.says, aim: 'The Nairobi launch',
-      contributors: [{ email: 'kennedy@x.test', displayName: 'Kennedy' }],
+      people: [{ email: 'kennedy@x.test', displayName: 'Kennedy' }],
       leftOut: [{ email: 'zed@elsewhere.com', why: 'Groundwork has no record of Zed in your organisation, so Zed is not added. You can add them yourself on the next step.' }],
     }
     ;(recommendedCheckInsApi.draftFromSetUp as any).mockResolvedValue(opened)

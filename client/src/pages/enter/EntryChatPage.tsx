@@ -1183,13 +1183,13 @@ export function EntryChatPage() {
    * PIECE 25, "YES, SET IT UP" OPENS HERE PREFILLED (plan piece 25, docs/anchor-scenario-plan.md
    * section 5 row 9; docs/answers-from-engine.md, "Request 148 (1)"). BoardPage.tsx's "Groundwork
    * recommends" calls `POST /entry/draft-from-set-up` and navigates here with the answer as router
-   * state - never a query param, since `contributors` carries real addresses (never put personal
-   * data in a URL). `anchorSetUp.initial` joins the ordinary `?initial=` below, so everything that
-   * already seeds the first message from a URL (the restore branch, the auto-send effect) works
-   * for this path too without being duplicated. `aim` and `contributors` are seeded separately,
-   * just below, because nothing else carries those today.
+   * state - never a query param, since `people` carries real addresses (never put personal data in
+   * a URL). `anchorSetUp.initial` joins the ordinary `?initial=` below, so everything that already
+   * seeds the first message from a URL (the restore branch, the auto-send effect) works for this
+   * path too without being duplicated. `aim` and `people` are seeded separately, just below,
+   * because nothing else carries those today.
    */
-  const anchorSetUp = (location.state as { anchorSetUp?: { initial?: string; aim?: string | null; contributors?: { email: string; displayName?: string }[] } } | null)?.anchorSetUp
+  const anchorSetUp = (location.state as { anchorSetUp?: { initial?: string; aim?: string | null; people?: { email: string; displayName?: string }[] } } | null)?.anchorSetUp
   const urlInitial = params.get('initial') ?? anchorSetUp?.initial ?? ''
   /* The rail's Start a check-in. A saved setup used to swallow it: the page restored the old one and
      the picker never showed, "unless I click go backwards". Now it asks. */
@@ -2159,11 +2159,11 @@ export function EntryChatPage() {
    * is no longer what makes this safe.
    */
   /**
-   * THE REST OF "YES, SET IT UP": `aim` AND `contributors`. `aim` is the engine's own sentence for
-   * what the new check-in is working towards, kept as this draft's name - the same field the admin
-   * section lets the lead rename. `contributors` are taken in exactly as commit takes them
-   * elsewhere on this page (a plain email, the same shape typing one by hand produces), each shown
-   * as `leftOut[].why` already told the lead on the board, not repeated here. Seeded once, the same
+   * THE REST OF "YES, SET IT UP": `aim` AND `people`. `aim` is the engine's own sentence for what
+   * the new check-in is working towards, kept as this draft's name - the same field the admin
+   * section lets the lead rename. `people` are taken in exactly as commit takes them elsewhere on
+   * this page (a plain email, the same shape typing one by hand produces), each shown as
+   * `leftOut[].why` already told the lead on the board, not repeated here. Seeded once, the same
    * guard as the initial message just below, so a restored session is never overwritten.
    */
   useEffect(() => {
@@ -2171,8 +2171,8 @@ export function EntryChatPage() {
     /* `groundName` defaults to 'Entry session' (the store's own default, never a name anybody
        chose), so the check is against that default rather than emptiness. */
     if (anchorSetUp.aim && (!groundName || groundName === 'Entry session')) setGroundName(anchorSetUp.aim)
-    if (anchorSetUp.contributors?.length) {
-      setInviteAdded(prev => (prev.length ? prev : anchorSetUp.contributors!.map(c => c.email)))
+    if (anchorSetUp.people?.length) {
+      setInviteAdded(prev => (prev.length ? prev : anchorSetUp.people!.map(c => c.email)))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
@@ -3916,7 +3916,9 @@ export function EntryChatPage() {
                 />
                 {emailError && <div className="gwui-ec-savecard-error">{emailError}</div>}
                 <Button kind="primary" wide type="submit" disabled={saving || (generatingReport && !sessionReport)}>
-                  {saving ? 'Saving…' : isAnchorDraft() ? ANCHOR_PEOPLE_STEP_RULES.button : 'Save my check-in'}
+                  {/* The anchor label replaces the ordinary one; "Saving…" is shared either way. */}
+                  {isAnchorDraft() ? <>{saving ? 'Saving…' : ANCHOR_PEOPLE_STEP_RULES.button}</> : null}
+                  {!isAnchorDraft() && <>{saving ? 'Saving…' : 'Save my check-in'}</>}
                 </Button>
                 </form>
                 <div className="gwui-ec-savecard-helper">

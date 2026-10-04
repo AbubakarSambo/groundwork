@@ -42,17 +42,24 @@ export const recommendedCheckInsApi = {
   /**
    * PIECE 25, "YES, SET IT UP" (docs/answers-from-engine.md, "Request 148 (1)"). Sends back exactly
    * the `setUp` the "Yes, set it up" answer handed over. Creates nothing and invites nobody: it
-   * answers the draft the set-up screen opens with. `contributors` are checked against the lead's
+   * answers the draft the set-up screen opens with. The people on it are checked against the lead's
    * own organisation server-side, so a person left out carries `why` - shown to the lead as it is,
    * never invented or summarised here.
+   *
+   * ONE WORD FOR A PERSON (one-word-for-a-person.spec.ts): the wire answer names its list
+   * `contributors`, the engine's own field name, but nothing downstream of this one line may ever
+   * read or say that word - the product's word is `people`, exactly as `WhatToSetUp.people` already
+   * uses above. This is the one place the two names meet.
    */
   draftFromSetUp: (setUp: WhatToSetUp): Promise<WhatTheSetUpScreenOpensWith> =>
-    apiClient.post('/entry/draft-from-set-up', { setUp }).then(r => r.data),
+    apiClient.post<{ initial: string; aim: string | null; contributors: { email: string; displayName?: string }[]; leftOut: { email: string; why: string }[] }>(
+      '/entry/draft-from-set-up', { setUp },
+    ).then(r => ({ initial: r.data.initial, aim: r.data.aim, people: r.data.contributors, leftOut: r.data.leftOut })),
 }
 
 export interface WhatTheSetUpScreenOpensWith {
   initial: string
   aim: string | null
-  contributors: { email: string; displayName?: string }[]
+  people: { email: string; displayName?: string }[]
   leftOut: { email: string; why: string }[]
 }

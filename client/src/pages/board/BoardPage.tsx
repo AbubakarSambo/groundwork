@@ -1013,8 +1013,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
          * PIECE 25: "YES, SET IT UP" OPENS A PREFILLED DRAFT (docs/answers-from-engine.md,
          * "Request 148 (1)"), replacing the `/start?initial=...` stop-gap this used to be. The
          * engine's answer carries exactly what the set-up screen needs: `initial` (the first
-         * thing said), `aim` (kept as the draft's name) and `contributors` (taken in exactly as
-         * commit takes them). It creates nothing and invites nobody - the lead still finishes on
+         * thing said), `aim` (kept as the draft's name) and `people` (taken in exactly as commit
+         * takes them). It creates nothing and invites nobody - the lead still finishes on
          * the set-up screen. None of this is personal data for a URL, so it travels as router
          * state, which EntryChatPage.tsx reads once on arrival (`anchorSetUp`).
          */

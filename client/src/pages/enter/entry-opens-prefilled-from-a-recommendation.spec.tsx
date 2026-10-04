@@ -10,7 +10,7 @@ import { EntryChatPage } from './EntryChatPage'
  *
  * BoardPage.tsx now navigates to `/start` with `{ state: { anchorSetUp } }` instead of the old
  * `?initial=...` stop-gap. This checks the entry chat reads it: `initial` opens the conversation
- * (the same mechanism `?initial=` already uses), `aim` becomes the draft's name, and `contributors`
+ * (the same mechanism `?initial=` already uses), `aim` becomes the draft's name, and `people`
  * land on the invite list exactly as a typed address would.
  */
 
@@ -44,12 +44,12 @@ beforeEach(() => {
 })
 
 describe('the entry chat, opened from "Yes, set it up"', () => {
-  it('opens with the first thing said, the aim as the draft\'s name, and contributors on the invite list', async () => {
+  it('opens with the first thing said, the aim as the draft\'s name, and people on the invite list', async () => {
     renderAt({
       anchorSetUp: {
         initial: 'The Nairobi project keeps moving between four people.',
         aim: 'The Nairobi launch',
-        contributors: [{ email: 'omar@acme.org', displayName: 'Omar' }],
+        people: [{ email: 'omar@acme.org', displayName: 'Omar' }],
         leftOut: [],
       },
     })
