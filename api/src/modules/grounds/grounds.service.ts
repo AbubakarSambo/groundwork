@@ -3124,6 +3124,8 @@ export class GroundsService {
         })
       : null;
     if (fromAPaste) {
+      /* The read the lead is about to be shown is kept, so a yes writes this and not a second reading. */
+      this.rememberThePasteWeSaidBack(groundId, lastFromLead!, fromAPaste);
       /* What participants would be told, worked out now so it can be said back before the yes. */
       const told = await this.theTellingAPasteWouldWrite(groundId, fromAPaste).catch(() => null);
       const say = whatWeTookFromThat(fromAPaste, { asking: true, told, reader });
@@ -3697,6 +3699,33 @@ export class GroundsService {
    * The last few drafts, so the list the lead is shown and the line that is written from their yes a
    * minute later carry the same sentence where the paste read gave the same question twice.
    */
+  /**
+   * THE READ OF A PASTE THE LEAD WAS SHOWN, KEPT FOR THEIR YES.
+   *
+   * Found on realistic dumps (4 October 2026): the yes read the paste again, and the model's second
+   * reading of the same words is a different list. The lead said yes to one set of commitments and
+   * numbers and a different set was written. Keyed by the check-in and the exact words, held for six
+   * hours, and handed out as a copy so a "yes, but not that one" cannot change what is held. When it
+   * has gone (a restart), the yes reads the paste again, as it always did.
+   */
+  private readonly pastesWeSaidBack = new Map<string, { at: number; got: WhatAPasteGives }>();
+  private thePasteKey(groundId: string, pasted: string) {
+    return `${groundId}:${createHash('sha256').update(pasted.trim()).digest('hex')}`;
+  }
+  private rememberThePasteWeSaidBack(groundId: string, pasted: string, got: WhatAPasteGives) {
+    const now = Date.now();
+    if (this.pastesWeSaidBack.size > 200) {
+      for (const [k, v] of this.pastesWeSaidBack) if (now - v.at > 6 * 3_600_000) this.pastesWeSaidBack.delete(k);
+      if (this.pastesWeSaidBack.size > 200) this.pastesWeSaidBack.clear();
+    }
+    this.pastesWeSaidBack.set(this.thePasteKey(groundId, pasted), { at: now, got: structuredClone(got) });
+  }
+  private thePasteWeSaidBack(groundId: string, pasted: string): WhatAPasteGives | null {
+    const held = this.pastesWeSaidBack.get(this.thePasteKey(groundId, pasted));
+    if (!held || Date.now() - held.at > 6 * 3_600_000) return null;
+    return structuredClone(held.got);
+  }
+
   private _draftedQuestions?: Map<string, string>;
   private get draftedQuestions(): Map<string, string> {
     if (!this._draftedQuestions) this._draftedQuestions = new Map();
@@ -4145,7 +4174,9 @@ export class GroundsService {
       if (takenBefore && !exception) {
         return { changed: 'nothing new', say: 'That is already on the record, exactly as you sent it. Nothing was written twice.' };
       }
-      const read = await this.whatAPasteGives(groundId, thePaste).catch(() => null);
+      /* WHAT WAS SAID BACK IS WHAT IS WRITTEN. A second reading of the same words by the model is
+         never the same list, so the yes uses the reading the lead was shown when it is still held. */
+      const read = this.thePasteWeSaidBack(groundId, thePaste) ?? await this.whatAPasteGives(groundId, thePaste).catch(() => null);
       /* What participants are told is written only if the list the lead is answering said it. */
       if (read) read.toldToParticipants = theTellingInTheList(dto.history as any);
       /* And each number's direction only as that list said it (decision 69); a number it did not show stays not set. */
