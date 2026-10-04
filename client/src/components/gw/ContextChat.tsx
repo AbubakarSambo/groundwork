@@ -176,8 +176,18 @@ export function ContextChat({ groundId }: { groundId: string }) {
       const said = [...next].reverse().find(m => m.role === 'user')?.content ?? ''
       setProposal(res.proposal && said ? { ...res.proposal, said } : null)
     },
-    onError: () => toast.error('That did not go through. Try again.'),
+    /*
+     * A FAILED LOOK FOR THE NEXT QUESTION IS NOT A FAILED YES. After a yes the page asks the chat once
+     * more for the next gap. That second request is slow (a model reads the whole record), and when it
+     * failed the lead read a red "That did not go through" under a target that HAD been saved. It is
+     * asked quietly: the lead's own message failing is still said, a follow-up that fails is not.
+     */
+    onError: () => {
+      if (asking.current === 'next') { asking.current = 'message'; return }
+      toast.error('That did not go through. Try again.')
+    },
   })
+  const asking = useRef<'message' | 'next'>('message')
 
   function start() {
     setOpen(true)
@@ -228,6 +238,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
     setHistory(next)
     setText('')
     setProposal(null)
+    asking.current = 'message'
     send.mutate(next)
   }
 
@@ -238,6 +249,7 @@ export function ContextChat({ groundId }: { groundId: string }) {
       setProposal(null)
       qc.invalidateQueries({ queryKey: ['ground', groundId] })
       /** Ask again with the gap now closed, so the next question is the next real one. */
+      asking.current = 'next'
       send.mutate(history)
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That could not be saved. Try again.'),
