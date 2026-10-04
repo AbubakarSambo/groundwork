@@ -749,7 +749,13 @@ export class GroundsCron implements OnApplicationBootstrap {
         const user = ci.participant.user;
         if (user && (user.isActive === false || user.deletedAt)) continue;
         const before: { kind: string | null; createdAt: Date }[] = await this.prisma.whatsAppSend.findMany({
-          where: { checkInId: ci.id, kind: { in: MORNING_KINDS } },
+          /*
+           * ONLY WHAT WENT, OR WAS HELD BY THE ADD-ON OR THE LIMIT. A message refused because the person had
+           * said STOP, or because its template was not approved yet, reached nobody, and was written down
+           * all the same. Counted as "had", it stopped the overdue and the due-tomorrow message for good:
+           * after START, or once Meta approved the template, the person never read them.
+           */
+          where: { checkInId: ci.id, kind: { in: MORNING_KINDS }, OR: [{ sentAt: { not: null } }, { kind: { endsWith: ':held' } }] },
           orderBy: { createdAt: 'desc' },
           select: { kind: true, createdAt: true },
         });
