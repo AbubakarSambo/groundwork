@@ -3840,7 +3840,7 @@ export class BoardService {
    *
    * The shaping - four buckets, no score, what it refuses to mean - is in who-needs-you-this-week.ts.
    */
-  async whoNeedsYouThisWeek(organizationId: string, managerKey: string, opts: { leaveOut?: ReadonlySet<string> } = {}) {
+  async whoNeedsYouThisWeek(organizationId: string, managerKey: string, opts: { leaveOut?: ReadonlySet<string>; readerIsAdmin?: boolean } = {}) {
     const key = managerKey.toLowerCase();
     const now = new Date();
     const { waiting } = await this.waitingAcrossTheOrg(organizationId, now, opts);
@@ -3855,7 +3855,7 @@ export class BoardService {
 
     for (const w of waiting as any[]) {
       /* By name where this reader may read it, else "somebody in <the check-in>". Never an address. */
-      const who = thePersonWaitingAsTheyRead(w, key);
+      const who = thePersonWaitingAsTheyRead(w, key, { readerIsAdmin: opts.readerIsAdmin });
       const day = theDay(w.createdAt);
       /*
        * THE MANAGER'S OWN QUEUE FIRST. A manager reading a list of people who need attention while
