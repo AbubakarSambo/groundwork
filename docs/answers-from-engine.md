@@ -4468,3 +4468,18 @@ Everyone who has been let in is unchanged.
 **One fix beside it.** `EntryReportSummaryDto` did not declare `leadsReveal`, so saving the report the lead read would have been refused as an unknown field. It is declared now. This also fixes `the-report-you-read-is-kept.spec.ts`, which was already failing because the client's `EntryReport` had the key.
 
 **Tests.** `entry/the-anchor-reveal.spec.ts`: the served text through the real `EntryService.report` for the lead with the switch on and off and for another situation, and the builder as the lead and as the team (a participant or an admin).
+
+## Request 149 (2 of 6): the people step's rules are served when the anchor draft is started
+
+**Done.** `ThePeopleStepRules` is served as `thePeopleStep` on the answer of `GET /entry/anchor-start`, the one call that starts an anchor draft, so it exists only with `release.anchorScenario` on (with it off the call answers 404 and nothing else changes). Code: `entry/the-anchor-people-step.ts`, `entry/the-anchor-door.ts`. The screen can read it from the draft start instead of its own constant.
+
+**What the lead reads now.**
+- Heading: "Who needs to be part of this?"
+- "Add up to 20 people. They don’t need to report directly to you—they simply need to be part of the work you’re trying to move."
+- Label: "What do they do / why are they part of this?"
+- Button: "Start my Groundwork."
+- When she tries to add a twentieth other person: "This one-month Groundwork holds 20 people, and you are one of them, so you can add 19 more."
+
+**Not done, said plainly.** The server still holds 200 people per check-in (`how-many-people-one-check-in-holds.ts`). The 19-person limit for an anchor check-in is not enforced on commit yet; the screen enforces it. I did not change the commit in this step.
+
+**Test changed.** `the-anchor-door.spec.ts` compared the whole start answer with `toEqual`; it now includes `thePeopleStep`, because the answer has one more key. Tests: `entry/the-anchor-people-step.spec.ts`.
