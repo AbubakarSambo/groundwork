@@ -12,6 +12,7 @@
 import { quotedThenEnding } from './a-quote-takes-no-second-mark';
 import { parseAskAPerson } from './a-line-or-a-note-typed-in-chat';
 import { SET_UP_A_SUITE_PATTERNS } from './a-suite-set-up-by-talking';
+import { WHAT_YOU_CAN_HELP_WITH_PATTERNS } from './what-you-can-ask-here';
 import { WHAT_IS_DUE_PATTERNS, WHO_APPROVES_PATTERNS, WHO_IS_AWAY_PATTERNS, YOUR_REQUESTS_PATTERNS } from './your-own-requests-asked-about';
 
 /** A sentence that asks one named person something. Shares its reading with the lane that acts on it. */
@@ -64,6 +65,8 @@ export type Lane =
   | 'what_is_due'
   /** Who is off, from approved leave, as far as this reader may know. */
   | 'who_is_away'
+  /** "What can you help me with?": what this reader can do here, from what the router offers them. */
+  | 'what_can_you_do'
   | 'unplaced';
 
 export interface Routed {
@@ -87,6 +90,8 @@ const rule = (lane: Lane, patterns: RegExp[]) => ({ lane, patterns });
  * swallow it sits below.
  */
 const RULES = [
+  /* Whole-message only, and first, so "help" is never read as a handbook question. */
+  rule('what_can_you_do', WHAT_YOU_CAN_HELP_WITH_PATTERNS),
   /*
    * DECISION 85: AN ADMIN SETS A SUITE UP BY SAYING SO ("Set up our employee leave process"). First,
    * because it is narrow (a word for setting up, then only the suite's name and words like "process"

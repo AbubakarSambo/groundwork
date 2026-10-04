@@ -54,6 +54,14 @@ export interface Capability {
  */
 export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   {
+    key: 'what_can_you_do',
+    does: 'Say what this reader can do here, in plain sentences: the check-ins they are in or run, the suites switched on for them and what waits for them to approve',
+    writes: 'nothing',
+    ordered: 'First, because "help" and "what can you do" are whole messages that no other lane should read, and "how do I use this" would otherwise be read as a handbook question. Whole message only, so "help me think through the Q4 target" stays with its own lane.',
+    owns: ['What can you help me with?', 'help', 'what can you do', 'what can I ask you?', 'how can you help', 'how do I use this'],
+    refuses: ['help me think through the Q4 target', 'what can you see', 'how do I swap the on-call rota'],
+  },
+  {
     key: 'set_up_a_suite',
     does: 'For an admin, set up how leave requests, spending requests, time sheets or performance reviews work by describing it. Only what is missing is asked, one question at a time, the whole of it is said back in plain sentences, and nothing is set until you say yes. Anybody else is told that an admin sets it up, and nothing changes.',
     writes: 'after you confirm it',

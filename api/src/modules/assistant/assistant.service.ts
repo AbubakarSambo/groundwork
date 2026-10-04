@@ -3,6 +3,7 @@ import { NOTHING_FLAGGED } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { contextIsInAskGroundwork } from '../admin/what-is-hidden-at-release';
 import { DependencyStatus } from '@prisma/client';
+import { whatYouCanAskSaid } from './what-you-can-ask-here';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
 import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
 import { ReportsService } from '../reports/reports.service';
@@ -514,6 +515,8 @@ export class AssistantService {
         return this.compose(await this.whatIsStuck(organizationId, who, message));
       case 'how_am_i_doing':
         return this.compose(await this.howAmIDoing(organizationId, who));
+      case 'what_can_you_do':
+        return this.whatYouCanAsk(organizationId, personId, userId ?? null);
       case 'your_requests':
         return this.aboutYourRequests(organizationId, userId ?? null, message);
       case 'who_approves':
@@ -3490,6 +3493,36 @@ export class AssistantService {
    * nothing here decides who may know what, and nothing about anybody else is read. Said in plain
    * sentences, to this reader only. Nothing is written.
    */
+  /**
+   * "WHAT CAN YOU HELP ME WITH?": the check-ins this reader is in or runs, the suites switched on for
+   * them and what waits for them to approve, said in plain sentences. Reads only this reader's own.
+   */
+  private async whatYouCanAsk(organizationId: string, personId: string, userId: string | null): Promise<Reply> {
+    const me = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { email: true } }).catch(() => null);
+    const email = me?.email?.toLowerCase() ?? null;
+    const links: any[] = (userId || email)
+      ? await Promise.resolve().then(() => (this.prisma as any).groundParticipant.findMany({
+          where: {
+            OR: [...(userId ? [{ userId }] : []), ...(email ? [{ email: { equals: email, mode: 'insensitive' } }] : [])],
+            ground: { organizationId, status: { in: ['OPEN', 'AWAITING_PARTIES', 'REPORT_READY', 'ACTIVE'] } },
+          },
+          select: { groundId: true, partyType: true },
+        })).catch(() => [])
+      : [];
+    const grounds = new Set(links.map((l) => l.groundId));
+    const run = new Set(links.filter((l) => l.partyType === 'INITIATOR').map((l) => l.groundId));
+    const on = async (probe: (() => Promise<unknown>) | null) => (probe && userId ? probe().then(() => true).catch(() => false) : false);
+    const [leaveIsOn, spendingIsOn, hoursAreOn, waiting] = await Promise.all([
+      on(this.leave ? () => this.leave!.mine({ userId: userId!, organizationId }) : null),
+      on(this.spending ? () => this.spending!.mine({ userId: userId!, organizationId }) : null),
+      on(this.timeSheets ? () => (this.timeSheets as any).forChat(organizationId, userId!) : null),
+      userId ? this.waitingForYouToDecide(organizationId, userId).catch(() => []) : Promise.resolve([]),
+    ]);
+    return rules('what_can_you_do', text(whatYouCanAskSaid({
+      checkInsYouAreIn: grounds.size, checkInsYouRun: run.size, leaveIsOn, spendingIsOn, hoursAreOn, waitingForYou: waiting.length,
+    })));
+  }
+
   private async aboutYourRequests(organizationId: string, userId: string | null, message: string): Promise<Reply> {
     const lane = 'your_requests';
     if (!userId) return rules(lane, text(NO_SIGN_IN_FOR_YOUR_QUESTION));
