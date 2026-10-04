@@ -60,7 +60,8 @@ describe('and the report endpoint uses it', () => {
     // A stranger gets the bare sentence: the reason is only for somebody already on the check-in.
     const from = callSite;
     const around = src.slice(Math.max(0, from - 1200), from);
-    expect(around).toContain("if (!mine) throw new NotFoundException('Report not found')");
+    /* Changed for the second review's leak B: the stranger is now told "Check-in not found", the sentence every other route gives. */
+    expect(around).toContain("if (!mine) throw new NotFoundException('Check-in not found')");
   });
 
   it('is still a 404, because the shape is what protects a stranger', () => {

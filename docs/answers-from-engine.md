@@ -4508,3 +4508,13 @@ Everyone who has been let in is unchanged.
 A person who has a seat reads Today and You as before.
 
 **Tests.** `nobody-held-for-a-seat-reads-the-check-in-on-today-or-you.spec.ts`, which reads the list, Today and You through the real services, as the person held and as a person with a seat.
+
+### 13. A member with no part in a check-in is told "Check-in not found" before its report exists too (GW-PRI-04, second review, new leak B)
+
+**What changed for a reader.** Before a check-in had a report, the report read counted any member of the organisation as having a part in it, so a member with no access read "There is no report yet." and how many people had not finished. Now anyone who may not read the check-in reads the same sentence every other route gives:
+
+> Check-in not found
+
+A person in the check-in, its lead, and an admin who may read it read what they read before. An admin without access to a first 90 days, a review, a renewal or a promotion reads "Check-in not found", as on every other route.
+
+**Tests.** `a-member-with-no-part-is-told-the-check-in-is-not-found.spec.ts`.
