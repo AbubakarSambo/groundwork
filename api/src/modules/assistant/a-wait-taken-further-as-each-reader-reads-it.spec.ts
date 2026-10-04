@@ -1,7 +1,7 @@
 import { AssistantService } from './assistant.service';
 import { WhatIsTrueService } from './what-is-true.service';
 import { BoardService } from '../board/board.service';
-import { NOT_A_RANKING, NOTHING_FLAGGED, WHAT_IT_ASKS } from '../detectors/who-needs-you-this-week';
+import { NOT_A_RANKING, STUCK_AND_RAISED_FOR_SOMEBODY_WHO_DOES_NOT_RUN_IT, WHAT_IT_ASKS } from '../detectors/who-needs-you-this-week';
 import { whatIsNotPlainIn } from '../reports/a-product-sentence-is-plain';
 import { WHAT_NEEDS_YOU_SOURCE } from './a-source-says-where-it-came-from';
 import { Logger } from '@nestjs/common';
@@ -10,7 +10,13 @@ import { Logger } from '@nestjs/common';
 beforeAll(() => { jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined); });
 
 /**
- * A WAIT THAT WAS TAKEN FURTHER IS SAID TO WHOEVER RUNS THAT CHECK-IN, AND TO NOBODY ELSE (3 October 2026).
+ * A WAIT THAT WAS TAKEN FURTHER IS SAID TO ANYBODY WHO ASKS "WHERE AM I NEEDED" (3 October 2026; widened by decision 93, row 2).
+ *
+ * CHANGED ON 5 OCTOBER (decision 93, row 2): it was said to whoever runs that check-in and to nobody else, and the
+ * tests below for Miriam, Tom, Femi and Grace pinned "nothing". Hafsah removed that restriction. They now pin what
+ * each reads instead. The names are still said only as each reader may read them, a performance plan is still not
+ * listed to somebody who is not in it (the Company page keeps its row 23), and the person it is about reads
+ * their own queue only. Wairimu's tests are unchanged.
  *
  * "Where am I needed" has a group for waits that were taken further. It could never show: the waits across
  * the organisation never selected `escalatedAt`, so nothing ever reached it. And its sentence said the
@@ -213,43 +219,75 @@ describe('Wairimu, who runs every check-in here', () => {
   });
 });
 
+const WESTGATE_RAISED_TO_A_STRANGER = `- Somebody in ${KEPT} has been waiting on the Westgate landlord for the Westgate margin figures since 11 September. It was still open after 14 days, so Groundwork raised it on 25 September.`;
+const HEADING_FOR_OTHERS = STUCK_AND_RAISED_FOR_SOMEBODY_WHO_DOES_NOT_RUN_IT;
+
 describe('Miriam, the person waited on and a colleague in the sales check-in', () => {
-  it('reads Femi waiting on her, and nothing of the waits taken further', async () => {
-    for (const door of DOORS) {
-      const said = await aBaridi().ask(door, 'miriam', 'where am I needed');
-      expect(said).toBe([
-        WHAT_IT_ASKS.WAITING_ON_YOU,
-        'Femi Ade has been waiting on you for the signed delivery schedule for Westgate since 10 September.',
-        ...TAIL,
-      ].join('\n'));
-      expect(said).not.toMatch(/Juma|finance|Groundwork raised|took it higher/);
-    }
+  it('reads Femi waiting on her, and now also each wait taken further, named as she may read it', async () => {
+    const app = await aBaridi().ask('app', 'miriam', 'where am I needed');
+    expect(app).toBe([
+      WHAT_IT_ASKS.WAITING_ON_YOU,
+      'Femi Ade has been waiting on you for the signed delivery schedule for Westgate since 10 September.',
+      '',
+      HEADING_FOR_OTHERS,
+      WESTGATE_RAISED_TO_A_STRANGER,
+      JUMA_RAISED,
+      ...TAIL,
+    ].join('\n'));
+    /* Her own wait on Tom is hers, not somebody needing her, and the performance plan is hers to read only as a colleague in it. */
+    expect(app).not.toContain('Gigiri');
+    const phone = await aBaridi().ask('whatsapp', 'miriam', 'where am I needed');
+    expect(phone).toBe([
+      WHAT_IT_ASKS.WAITING_ON_YOU,
+      'Femi Ade has been waiting on you for the signed delivery schedule for Westgate since 10 September.',
+      '',
+      HEADING_FOR_OTHERS,
+      JUMA_RAISED.replace(/^- /, ''),
+      ...TAIL,
+    ].join('\n'));
   });
 });
 
 describe('Tom, the person a performance plan is about', () => {
-  it('is never told who waits on him there, nor that it was taken further', async () => {
+  it('is never told who waits on him there, and reads the waits taken further elsewhere without a colleague named', async () => {
     for (const door of DOORS) {
       const said = await aBaridi().ask(door, 'tom', 'where am I needed');
-      expect(said).toBe([
+      expect(said).toContain([
         WHAT_IT_ASKS.WAITING_ON_YOU,
         `Somebody in ${PIP} has been waiting on you for the handover notes for the Gigiri account since 16 September.`,
-        ...TAIL,
       ].join('\n'));
-      expect(said).not.toMatch(/Miriam|Njeri|Femi|Juma|Groundwork raised/);
+      expect(said).toContain(HEADING_FOR_OTHERS);
+      expect(said).toContain(`- Somebody in ${SALES} says they cannot go on without the signed delivery schedule for Westgate, and has been waiting for it since 10 September. It was still open after 14 days, so Groundwork raised it on 24 September.`);
+      expect(said).toContain(`- Somebody in ${SALES} has been waiting on the finance office for the approved budget for the Karen shop since 12 September. They have said they took it higher.`);
+      expect(said).not.toMatch(/Miriam|Njeri|Femi|Juma/);
     }
   });
 });
 
 describe('Femi, whose own waits were taken further', () => {
-  it('is not told about his own wait as somebody needing him', async () => {
-    for (const door of DOORS) expect(await aBaridi().ask(door, 'femi', 'where am I needed')).toBe(NOTHING_FLAGGED);
+  it('is not told about his own wait as somebody needing him, and reads the one that is not his', async () => {
+    for (const door of DOORS) {
+      const said = await aBaridi().ask(door, 'femi', 'where am I needed');
+      expect(said).toBe([
+        HEADING_FOR_OTHERS,
+        JUMA_RAISED.replace(/^- /, ''),
+        ...TAIL,
+      ].join('\n'));
+      expect(said).not.toMatch(/Westgate margin|signed delivery|Gigiri/);
+    }
   });
 });
 
 describe('Grace, an admin who runs none of these check-ins', () => {
-  it('reads that nothing needs her, and nothing of the waits taken further', async () => {
-    for (const door of DOORS) expect(await aBaridi().ask(door, 'grace', 'where am I needed')).toBe(NOTHING_FLAGGED);
+  it('reads each wait taken further by name, except the performance plan she is not in', async () => {
+    for (const door of DOORS) {
+      const said = await aBaridi().ask(door, 'grace', 'where am I needed');
+      expect(said).toContain(HEADING_FOR_OTHERS);
+      expect(said).toContain(FEMI_RAISED);
+      expect(said).toContain(JUMA_RAISED);
+      expect(said).not.toMatch(/Gigiri|Tom Mwangi/);
+      expect(said.includes('Westgate margin')).toBe(door === 'app');
+    }
   });
 });
 

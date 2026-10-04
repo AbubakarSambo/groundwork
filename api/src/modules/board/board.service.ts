@@ -157,7 +157,7 @@ import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-spli
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
-import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { isEvaluationCheckIn, theSubjectOfAnEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
 import { whatWasAgreedAtTheStart, theGoalsSetForAnyone } from './what-was-agreed-at-the-start';
 import { changeSinceTheLastCheckIn } from './change-since-the-last-check-in';
@@ -3881,19 +3881,27 @@ export class BoardService {
        * Groundwork raising it, never as the person having raised it. The person raised it only where they
        * said so themselves (`triedSaid`, read by `itWasTakenFurther`, the one reader of those words).
        *
-       * WHO READS IT. Only whoever runs the check-in it was said in: that is who can clear it, or tell them
-       * it is not being cleared. A colleague, the person a performance plan is about, and an admin who does
-       * not run that check-in are told nothing of it, not even "somebody", because what is waited for is
-       * that check-in's own content. And nobody is told about their own wait as somebody needing them.
+       * WHO READS IT. Everybody who asks, since 5 October (decision 93, row 2). It was only whoever runs the
+       * check-in it was said in; Hafsah removed that, so a colleague, an admin and the person a performance
+       * plan is about read it too. The name of the person waiting is still said only as that reader may read
+       * it (`thePersonWaitingAsTheyRead`), and nobody is told about their own wait as somebody needing them.
        */
       if (w.fromPersonKey === key) continue;
+      /*
+       * A PERFORMANCE PLAN, PROMOTION, RENEWAL OR PROBATION IS NOT LISTED TO SOMEBODY NOT IN IT. Row 23 is kept
+       * (the Company page lists none of them), and listing its label and its waits here would say what it
+       * refuses to say there. The person it is about reads their own queue above, never this group.
+       */
       const theReader = ((w.naming?.participants ?? []) as any[]).find((p) => p.key === key);
-      if (!theReader?.runsIt) continue;
+      if (isEvaluationCheckIn(w.naming?.scenario)
+        && (!theReader || theSubjectOfAnEvaluationCheckIn((w.naming?.participants ?? []) as any) === theReader.id)) continue;
       const theySaidSo = itWasTakenFurther({ triedSaid: w.triedSaid ?? null });
       const groundworkRaisedIt = !!w.escalatedAt;
       if (!theySaidSo && !groundworkRaisedIt) continue;
       const Who = atTheStartOfASentence(who);
-      const on = (w.onName ?? '').trim() || (w.onLabel ?? '').trim() || null;
+      /* Who it waits on is named only where the person waiting is, so a reader outside the check-in learns neither. */
+      const nameIsSaid = who !== somebodyIn(w.groundLabel);
+      const on = (nameIsSaid ? (w.onName ?? '').trim() : '') || (w.onLabel ?? '').trim() || null;
       const since = day ? ` since ${day}` : '';
       const where = who === somebodyIn(w.groundLabel) || !w.groundLabel?.trim() ? '' : `, in the check-in ${w.groundLabel.trim()}`;
       const waited = w.status === DependencyStatus.BLOCKING
@@ -3912,6 +3920,7 @@ export class BoardService {
         waitingDays: w.waitingDays,
         sinceSays: day ? `since ${day}` : null,
         sentence: `${waited} ${raised}`,
+        youRunIt: !!theReader?.runsIt,
       });
     }
 

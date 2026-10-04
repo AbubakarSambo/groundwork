@@ -44,8 +44,10 @@ describe('the manager\'s week groups what was already decided', () => {
     expect(WEEK).toContain('if (!theySaidSo && !groundworkRaisedIt) continue;');
   });
 
-  it('says a wait was taken further only to whoever runs the check-in it was said in', () => {
-    expect(WEEK).toContain('if (!theReader?.runsIt) continue;');
+  it('says a wait was taken further to anybody who asks, but never as their own wait (decision 93, row 2: this pinned "only to whoever runs the check-in")', () => {
+    expect(WEEK).not.toContain('if (!theReader?.runsIt) continue;');
+    expect(WEEK).toContain('if (w.fromPersonKey === key) continue;');
+    expect(WEEK).toContain('youRunIt: !!theReader?.runsIt');
   });
 
   it('reaches asked-to-be-shown only from what the person said about themselves', () => {

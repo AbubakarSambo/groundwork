@@ -27,7 +27,7 @@ export type NeedKind =
   /* The manager is the blocker. First, because it is the only bucket that is their own work. */
   | 'WAITING_ON_YOU'
   /* Somebody is stuck on something the company has not cleared, and it has been taken further: by Groundwork's
-     overnight check after a fortnight, or by the person, in their own words. Read only by whoever runs that check-in. */
+     overnight check after a fortnight, or by the person, in their own words. Read by anybody who asks (decision 93, row 2). */
   | 'STUCK_AND_RAISED'
   /* The ordinary cycle has been tried on the same thing and has not moved it. */
   | 'CYCLE_RAN_OUT'
@@ -49,6 +49,8 @@ export interface Need {
   sinceSays?: string | null;
   /** The whole of it as one plain sentence, with the person's name and "you" for the reader. */
   sentence?: string;
+  /** For a wait taken further: whether the reader runs the check-in it was said in. Decides what the group asks of them. */
+  youRunIt?: boolean;
 }
 
 /**
@@ -64,6 +66,15 @@ export const WHAT_IT_ASKS: Record<NeedKind, string> = {
   ASKED_TO_BE_SHOWN: 'They have asked to be shown. That is an hour of somebody\'s time, not a conversation about performance.',
 };
 
+/**
+ * WHAT THE GROUP OF WAITS TAKEN FURTHER ASKS, BY WHO READS IT (decision 93, row 2). It is read by anybody now, not
+ * only by whoever runs the check-in, so it only says "you run" where every wait in it is in a check-in the reader runs.
+ */
+export const STUCK_AND_RAISED_FOR_SOMEBODY_WHO_DOES_NOT_RUN_IT =
+  'This has been taken further and is still open. Whoever runs that check-in can clear it, or tell the person it is not being cleared.';
+export const STUCK_AND_RAISED_FOR_SOME_THEY_RUN =
+  'This has been taken further and is still open. Where it is in a check-in you run, either clear it, or tell the person it is not being cleared.';
+
 /* The order the buckets are read in. The manager's own work first; the person's nerve last. */
 const ORDER: NeedKind[] = ['WAITING_ON_YOU', 'STUCK_AND_RAISED', 'CYCLE_RAN_OUT', 'ASKED_TO_BE_SHOWN'];
 
@@ -73,11 +84,17 @@ export interface TheWeek {
   whatThisIsNot: string[];
 }
 
+function whatTheRaisedGroupAsks(group: Need[]): string {
+  const runs = group.filter((n) => n.youRunIt).length;
+  if (runs === group.length) return WHAT_IT_ASKS.STUCK_AND_RAISED;
+  return runs === 0 ? STUCK_AND_RAISED_FOR_SOMEBODY_WHO_DOES_NOT_RUN_IT : STUCK_AND_RAISED_FOR_SOME_THEY_RUN;
+}
+
 export function whoNeedsYou(needs: Need[]): TheWeek {
   const buckets = ORDER
     .map((kind) => ({
       kind,
-      asks: WHAT_IT_ASKS[kind],
+      asks: kind === 'STUCK_AND_RAISED' ? whatTheRaisedGroupAsks(needs.filter((n) => n.kind === kind)) : WHAT_IT_ASKS[kind],
       /*
        * LONGEST WAIT FIRST, and that is the only sort in this file. It is a property of the
        * situation - how long somebody has been waiting - and not a property of a person. Sorting by
