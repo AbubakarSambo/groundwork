@@ -109,6 +109,9 @@ describe('every surface that hands out whose number it is', () => {
     /* Request 110: a person's own aim kept only as their promise is put among the rows the board then passes through targetsFor, before any reader is served. */
     'modules/board/an-aim-kept-only-as-their-promise.ts': 'builds rows the board adds to ground.objectives before it asks targetsFor; serves nobody itself',
     'modules/board/__fixtures__/a-page-that-contradicts-itself.ts': 'test rows for a-board-that-does-not-contradict-itself; the board asks targetsFor',
+    /* Anchor piece 24: it reads the owner of an aim only to see whether an aim has no owner. It reads no
+       number and no target, and what it writes is offered to the lead alone (the 'recommended check-ins'). */
+    'modules/detectors/the-anchor-recommendations.ts': 'reads only whether an aim has an owner, never a number; the offer it writes is the lead\'s alone',
     /* Request 117: the sales board as the fifth review read it; the board asks targetsFor over these rows. */
     'modules/board/__fixtures__/sales-board-review-5.ts': 'test rows for the request 117 specs; the board asks targetsFor',
   };

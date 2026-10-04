@@ -1,0 +1,119 @@
+# Staging compatibility
+
+Checked on the night of 4 to 5 October 2026, on branch `wip/plain-reports` (commit `01a72bd2` and the commits before it), against `mine/wip/live-base`, which is Hafsah's exact copy of Abubakar's staging at commit `5197f22d`. Nothing was deployed, pushed or merged, and no hosted database was touched. This is decision 97, item 3.
+
+In short: our branch already contains everything on staging, merging it into staging has no conflicts, every migration applies on a fresh local database, and the API starts with every new setting missing. One test on our side was failing and is fixed. One check could not be run, because the safety guard refused it (section 3).
+
+## 1. Staging's own work
+
+Our work began on 26 September 2026, from commit `be8b48d9`. The last commit that our branch and staging had in common before the final catch-up is `ed2b4996`. Since then staging has gained 20 commits (not counting merge commits). All 20 are listed here with what became of each.
+
+| Commit | Who | What it did | Still in our branch? |
+| --- | --- | --- | --- |
+| `0c51dfec` | Hafsah | What you shared, not your private record | Yes. Two lines were reworded later on our side. |
+| `259f3204` | Hafsah | A failed Google sign-in says so, and leaves a trace | Yes. Its test passes. |
+| `c0c38ab4` | Hafsah | The sentence about quiet handoffs reaches a reader | Yes, in reworded form. |
+| `96f92590` | Hafsah | The board asks whether anything sits above the objective | Yes. The board still has the cascade question; only the wording and layout were changed later. |
+| `96dd1488` | Hafsah | Five ordinary sentences were producing a cascade that was not there | Yes, every added line is present. |
+| `5ead9978` | Hafsah | The product knows what a weekend is (working days) | Yes. The working-days column, the first-working-day rule and its test are present. The signup form was rebuilt later. |
+| `51b4a312` | Hafsah | What keeps happening becomes a question in the next check-in | Yes. The file and its test are present and pass. |
+| `c11e9526` | Hafsah | A role nobody mapped is still a person | Yes. Its test passes. |
+| `71c9ec9f` | Hafsah | The job is read from what they do | Yes, every added line is present. |
+| `35751ece` | Hafsah | The detector remembers last period | Yes. The file is present and its test passes. |
+| `11755f93` | Hafsah | A fairness read never crosses a company boundary | Yes. Its test passes. |
+| `1433936e` | Hafsah | The agreement arrives as a file | Yes. |
+| `58e3fe5f` | Hafsah | Two people reading one sentence two ways is the thing to find | Yes. Its test passes. |
+| `4b3e52d5` | Hafsah | A document can set the bar, when somebody says to | Yes. Its test passes. |
+| `1907c3a7` | Hafsah | A measure that goes down is still going well | Yes. The file and its test are present and pass. The objective band moved to a different component. |
+| `6eaf1bed` | Hafsah | Three reads no longer count what somebody unsaid | Yes. |
+| `9613a743` | Hafsah | That is not what I said, for an agreement | Yes, every added line is present. |
+| `5db4300b` | Abubakar | Remove a duplicate block left in a merge | Yes. It only removed lines. |
+| `12d495d5` | Abubakar | Fix the production build: import `describe`, `it` and `expect` from vitest | Yes. |
+| `1138df4f` | Abubakar | "updates": three client fixes | Yes, see below. |
+
+The 17 commits by Hafsah are her earlier work, which was already carried on our branch under different commit numbers and has been improved since. For each one I compared every added line with our tree. The lines that are not in our tree are lines that were reworded or moved later (for example, the board's "What this sits under" text, and the sign-up form). I found no change that was dropped.
+
+The three changes in Abubakar's `1138df4f`:
+
+1. **Who is still out (`WhoIsStillOut.tsx`).** Whether a person has answered comes from the round everyone is counted against, not from matching a local session number. Our branch keeps this and builds on it. It also adds "said no to this round" for a person who declined.
+2. **Adding a file with no check-in open (`ChatPage.tsx`).** The message "Context missing. Please open this session from your check-in page." is in our file.
+3. **The "Ends on" date in setup.** The date is measured from the check-in's start date, or from when it was created, never from today. In our branch this code moved into `CheckInPeopleAndSetup.tsx` and keeps the same rule.
+
+The commit also removed a long comment from `alignment.module.ts`. Our file matches staging's exactly.
+
+**Staging's own tests.** I ran every test file that those 20 commits added or changed (123 files in the API, 3 in the client). All pass, once the one failure below was fixed.
+
+**One problem found and fixed.** The test `a-number-with-a-name-on-it-goes-through-one-rule` failed, because a new anchor file, `the-anchor-recommendations.ts`, reads who owns an aim. It reads it only to see whether an aim has no owner. It shows no number, and what it writes is offered to the lead alone. It is now on the test's list of files excused with a reason (commit `01a72bd2`). The rest of the test is unchanged, including the check that excused files are still not readers.
+
+## 2. A clean merge
+
+- `mine/wip/live-base` (`5197f22d`) is an ancestor of `wip/plain-reports`, so our branch already holds staging's latest commit.
+- `git merge-tree --write-tree mine/wip/live-base HEAD` gave a merged tree with no conflicts and no messages.
+- Staging's tree and ours differ in many files, because of our work, but nothing is in conflict.
+
+## 3. The database
+
+**Order and names.** Staging has 291 migrations, the last being `20260924175813_how_somebody_arrived`. Our branch has 359. Every one of staging's 291 is also in ours with the same name, and our 68 new ones are all later than staging's last, so they apply after it. The newest is `20261004100000_a_check_in_remembers_it_began_at_the_anchor_link`.
+
+- **No clashing names.** The name `the_number_out_of_the_sentence` appears twice, and two pairs of timestamps are shared (`20260907120000`, `20260911230000`). All three are already on staging, so they have been applied there. Two more shared timestamps (`20260927180000`, `20260927190000`) are ours; the folders have different names, so the order is fixed by the full folder name and is the same on every database.
+- **No duplicate changes.** A fresh run (below) applied all 359 without an error, which it could not do if two of them added the same column or table.
+
+**One staging migration was changed on our side.** `20260923200000_reopen_every_check_in_that_ran_out_of_time` used to set every stalled check-in back to active. Decision 54 (29 September) says existing check-ins are not reopened by a migration, so our copy is now a harmless `SELECT 1`. Staging already ran the old version, so any reopening it did has happened there. The file is not run again on a database that has already recorded it, so there is no conflict. The one thing to know: if staging has not run it yet, nothing is reopened, which is what decision 54 intends.
+
+**From scratch.** I created `gw_compat_scratch` and ran `npx prisma migrate deploy`. All 359 migrations applied and a second run said there was nothing to apply. A comparison of the result with `schema.prisma` found one cosmetic difference only: Postgres shortens the name of one index (`leaving_checklists_organization_id_person_external_id_last_...`) to 63 characters, and Prisma wants the full name. It changes no data and no behaviour.
+
+**From staging's schema, with data. Not done.** The plan was to build a database from staging's migrations alone in a separate checkout, add a few rows, and run our migrations on top. The first command was refused by the safety guard ("Nothing may touch staging"). As instructed, I did not retry or reword it. A checkout of staging's files exists in the scratchpad (`staging-only`), and no database named `gw_compat_from_staging` was made. What I did instead was read all 68 new migrations for anything that could fail on existing data:
+
+- No new migration drops a column or table.
+- Every new column that is `NOT NULL` has a default.
+- The unique indexes are on new tables or on new empty columns (`join_domain`, `invite_link_code`, and the like), so existing rows cannot clash.
+- Two migrations change existing rows. `20260928090000` sets `ready_at` to now for patterns already seen three times; `20261002140000` fills a new list on reports that were already released. Both are plain `UPDATE`s on columns created in the same or an earlier migration, and neither can fail on data.
+- `20261002160000` sets the prices for the WhatsApp add-on on the five plan rows. It updates by plan name and does nothing if a row is missing.
+- `20261003120000` makes three columns on approvals nullable (it relaxes, not tightens).
+
+So I expect all of them to apply on staging's data, but this was **not tested**. It needs one run on a copy of staging's real data before release; the release steps in `docs/deploy.md` already say to take a backup first.
+
+## 4. Settings
+
+**New environment variables** (read by our branch, not by staging):
+
+| Setting | What it does | Missing means |
+| --- | --- | --- |
+| `WHATSAPP_DISPLAY_NUMBER` | The number shown on the Connections page | The page says "Groundwork's WhatsApp number" with no number |
+| `PUBLIC_API_URL` | Builds the webhook address shown to admins | The page says the address is known once hosted |
+| `WHATSAPP_GRAPH_BASE_URL` | Lets a test point WhatsApp at a recorder | Meta's own address is used |
+| `PRINT_TABLE`, `PRINT_THE_APPROVER_TABLE` | Only print helpers for scripts | Nothing |
+
+**New `platform_settings` keys.** `release.boardKindsOffered`, `release.contextInAskGroundwork`, `release.planAndBillingNewParts` (the WhatsApp add-on's price, use and limit), `release.anchorScenario`, `suggestions.thresholds`, and one row per scheduled job named `job.<name>.ran_for`. Each has a safe default for a database with no row: the three switches and the anchor scenario read as off, and the board offers only the sales and engineering kinds.
+
+**Test.** I built the API from a clean checkout of our commit and started it on port 3012, against `gw_compat_scratch`, with only `PORT`, `DATABASE_URL`, `JWT_SECRET` (a test value) and `EMAIL_SENDS_FOR_REAL=false` set, so every setting above was missing along with the WhatsApp, Stripe, Resend and Google ones. It started ("Nest application successfully started", the health address answered "ok"). The API's log showed only the warnings that mean the feature is off: no Stripe key (billing refuses), no Resend key (mail is logged, not sent), and no model credentials (the engine probe says so and carries on). The WhatsApp webhook answered 401 to an unsigned post and 403 to a wrong verify token, so WhatsApp is off, not crashing. It seeded 58 prompts into the empty database. I then stopped it, and nothing is left running.
+
+I did not need to fix a crash. Note: with `NODE_ENV=production` the API also needs the variables it already asked for on staging (`JWT_SECRET`, `CORS_ORIGINS`, `FRONTEND_URL`, Stripe and so on). Our branch adds none to that list.
+
+## 5. The build staging runs
+
+- **The API** is on Railway (`api/railway.toml`): build command `npm run build && npx prisma generate`, start command `npx prisma migrate resolve --rolled-back 20260627000000_contributor_code_system 2>/dev/null; npx prisma migrate deploy && node dist/main`, health path `/health`. Our `railway.toml` is identical to staging's.
+- **The client** is on Vercel (`client/vercel.json`): `npm run build` (`tsc -b && vite build`), output `dist`. Identical to staging's. The staging workflow uses Node 20.
+- **Node.** Both `package.json` files say Node 20.x and npm 10.x. This Mac has only Node 26 and npm 11, so I could not build on Node 20. A build on Node 26 passed; npm 11 does not run package install scripts, so the `prisma generate` after install is the one step that matters, and the build command runs it.
+- **Clean install and build** in a fresh checkout of our commit: `npm ci` and `npm run build` for the API (passed; `dist/main.js` exists and the embed files are copied), then `npm ci` and `npm run build` for the client (passed; one warning that the main script is 1.9 MB, which staging's build has too).
+- **Dependencies.** The only package change since staging is in the client: two font packages, `@fontsource/atkinson-hyperlegible` and `@fontsource/literata`. They install from the lock file with `npm ci`.
+
+## 6. Anything else that would differ on staging
+
+- **Time zones.** Every scheduled job is pinned to UTC, as on staging. A few places use the machine's own clock to find the day of the week or the start of today (`which-days-this-team-works.ts`, `session-count.ts`, one place in `grounds.service.ts`). This Mac is three hours ahead of UTC and the hosted server is on UTC, so these can differ by a day near midnight. See the result below.
+- **File paths.** The API reads no file outside `api/` at run time. The embed script and panel (`embed.js`, `panel.html`) are copied into `dist` by the build and were present in the clean build. The model credentials file `api/credentials/service-account.json` is not in the repository, as on staging.
+- **Scheduled jobs running twice.** Most jobs claim their time slot first (`once-across-copies.ts`), so two copies of the API run each once. Three do not, and they were already that way on staging: the held-mail sender (it uses a database lock), the Stripe retry (it is safe to repeat) and the engine probe (one cheap model call every five minutes per copy).
+- **Rate limits.** The default is 60 a minute for each address, with tighter limits on sign-in. The API does not set "trust proxy", so behind the host's proxy every visitor may be counted as one address. This is the same on staging today and was not changed by us, but if sign-in limits (5 a minute) trip for several people at once, this is the cause. It is a question for Abubakar.
+- **Prompt seeds.** The seeding wrote 58 prompt versions, 293,000 characters in all; the largest, the base prompt, is 118,590 characters. The column is `TEXT`, which has no limit that matters. A start never replaces a prompt somebody activated by hand, and the new base prompt is activated only where the active one is the seeding's own.
+- **Listening address.** The API listens on all addresses unless `NODE_ENV` is exactly `development`, so a hosted server is not affected by the new local-only rule.
+
+**The time zone test.** I ran the grounds, common, board, reports and conversation tests (1,003 files, 9,512 tests) with the clock set to UTC, as on the hosted server. Two tests failed in that run, both about timing while the machine was busy with a scenario run (`the-report-is-written-in-parallel` and `the-first-night-warns-only-after-the-release`). Run again on their own, both pass in UTC and in the East Africa time zone. So no test depends on this Mac's time zone.
+
+## What I could not do
+
+1. Run our migrations on top of a database built at staging's schema with sample rows. The guard refused the command and I stopped, as told.
+2. Build on Node 20. Only Node 26 is installed here.
+
+## Databases left behind
+
+`gw_compat_scratch`, on this Mac only. Nothing else was created.
