@@ -174,6 +174,7 @@ import { periodOf, periodsTheRecordHolds, aTruePeriodCount } from '../patterns/p
 import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
+import { aStoredSentenceReadsRight } from './a-stored-sentence-reads-right';
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
 import { doesThisReportMarkItsInferences } from './a-report-that-marks-nothing';
@@ -4052,7 +4053,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
         : null,
       takenAt: snapshot?.takenAt ?? null,
       amendedAt: snapshot?.amendedAt ?? null,
-      amendedNote: snapshot?.amendedNote ?? null,
+      /* Put right where it is served, so a note stored with a colon reads as a sentence (request 131 item 3). */
+      amendedNote: snapshot?.amendedNote ? aStoredSentenceReadsRight(snapshot.amendedNote) : null,
       /* Before release a party sees the counts and their own words, and is told so plainly. */
       showsEverybody: released || viewerIsLead,
     };

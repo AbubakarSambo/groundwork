@@ -3948,3 +3948,7 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### "Chased it" about several things (132 g, second part)
 
 **What changed (served, `overTime.toSettleFirst`, lead).** With more than one thing waiting, the sentence says "them": "2 things are waiting on somebody outside this check-in, and nothing on record says anybody has chased them. Ask what has been tried beyond writing to those people." (and "gone back about them. Ask whether they were raised outside the sessions"). With one thing it is as before. Stored sentences are put right as they are served.
+
+### A colon in the note on an updated round (131 item 3)
+
+**What changed (served, `amendedNote` on the report, every reader).** "Updated after somebody added to or corrected their own check-in. What changed: the shared picture, what was agreed and the question it left open." now reads: Updated after somebody added to or corrected their own check-in. The parts that changed were the shared picture, what was agreed and the question it left open. With one part: The part that changed was the shared picture. Notes already stored are put right as they are served.
