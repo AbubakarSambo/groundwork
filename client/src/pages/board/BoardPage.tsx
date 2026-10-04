@@ -148,13 +148,14 @@ import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
 import { scrollTo } from '@/lib/scroll-to'
-import { KindOfWorkBanner, WorkRecordsSections, YourOwnRecordsSections, sectionHeading } from './WorkRecords'
+import { KindOfWorkBanner, WorkRecordsSections, YourOwnRecordsSections, TheShapeOfTheWorkStrip, sectionHeading } from './WorkRecords'
 import {
   RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockersSection,
   EvidenceIndexSection, BusyOrMovingSection, ObligationsSection, ForecastSection,
   ContradictionsSection, QuestionsForTheLeadSection, sameAsTheWorkPlan,
   HeadlineSection, WhereThisIsHeadingSection, standsTone, ByAreaSection, ReportedAgainstCriteriaSection,
   WhatEachLevelUnderstoodSection, WhatTheVisitLogShowsSection, TheCountiesSection,
+  WhereTheCohortStandsSection, SupportGivenSection,
 } from './TheSwitchboardsSections'
 
 /**
@@ -1252,6 +1253,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      * "Where this is heading" - Hafsah's decision: protected, never folded.
      */
     teamAndRecordsInFold?: boolean
+    /**
+     * REQUEST 133: AN ASSET LOANS COHORT'S OWN SHAPE (loans.txt). "The team today", "Who checked
+     * in", "Over time" and "Reports" move into the end fold, same as `teamAndRecordsInFold` - but
+     * the records table (and its own "Support given" and "What to ask each person" coaching
+     * stays open with "What keeps coming up"; see `patternsAndCoachingSection()`, called in its
+     * usual, open place for this kind too) stays open where the prototype itself keeps it.
+     */
+    teamInFoldRecordsOpen?: boolean
   }>> = {
     'support desk': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true, themesAndAreaAfterTheTeam: true },
     'distribution operations': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true, themesAndAreaAfterTheTeam: true },
@@ -1274,10 +1283,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      * (see `teamAndRecordsInFold`, below, and where it is drawn).
      */
     'a government programme': { targetsAtTopWithNoHeadline: true, openIssuesInFold: true, whereItStandsAtTop: true, teamAndRecordsInFold: true },
+    /*
+     * REQUEST 133: AN ASSET LOANS COHORT'S OWN SHAPE (loans.txt). "Open issues" folds, the same as
+     * every other kind-of-work table above; `teamInFoldRecordsOpen` folds "The team today", "Who
+     * checked in", "Over time" and "Reports" too, but - unlike a government programme board -
+     * leaves the records table itself open, in the prototype's own place for it.
+     */
+    'asset loans': { openIssuesInFold: true, teamInFoldRecordsOpen: true },
   }
   const layoutFor = (k: string | null) => (k ? kindLayout[k] : undefined)
   const themesAndAreaAfterTheTeam = Boolean(layoutFor(kindOfWorkKey)?.themesAndAreaAfterTheTeam)
   const foldTeamAndRecords = Boolean(layoutFor(kindOfWorkKey)?.teamAndRecordsInFold)
+  const foldTeamKeepRecordsOpen = Boolean(layoutFor(kindOfWorkKey)?.teamInFoldRecordsOpen)
+  /** Either shape folds "The team today", "Who checked in", "Over time" and "Reports". */
+  const foldTeam = foldTeamAndRecords || foldTeamKeepRecordsOpen
   /*
    * SUPPORT DESK BOARD FIX 2: "THE SHAPE OF THE WORK" AND "BY QUEUE", RIGHT AFTER "THE TEAM
    * TODAY" - support.txt's own place for them, not the end fold both sit in today. Pulled out of
@@ -1653,6 +1672,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * and coaching are protected, and never fold - this only ever changes where they sit, never
    * whether they show.
    */
+  /*
+   * REQUEST 133: AN ASSET LOANS COHORT'S OWN HEADING FOR "WHAT KEEPS COMING UP" (loans.txt: "One
+   * person, a place, or the model?", then "Patterns named after three check-ins in a row" as its
+   * note). Every other kind of work keeps the plain heading and note it already had.
+   */
+  const patternsHeading = kindOfWorkKey === 'asset loans' ? 'One person, a place, or the model?' : 'What keeps coming up'
+  const patternsNote = kindOfWorkKey === 'asset loans'
+    ? 'Patterns named after three check-ins in a row'
+    : 'Named after three check-ins in a row, never after one. Each describes the work.'
+
   const patternsAndCoachingSection = () => (
     <>
       {shown.patterns && b.patterns && (
@@ -1664,7 +1693,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             a pattern and in what words). `visiblePatterns` is filtered again here for a colleague,
             on top of what the server already withheld: see the comment on `visiblePatterns` above.
           */}
-          <Section heading="What keeps coming up" note="Named after three check-ins in a row, never after one. Each describes the work.">
+          <Section heading={patternsHeading} note={patternsNote}>
             <Panel pad={false}>
               <RowList label="What keeps coming up">
               {visiblePatterns.length === 0 ? (
@@ -1724,6 +1753,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         lead-only, `WhatToProbeThemOn` for the read on everybody else. Neither component invents
         anything; both already render nothing when the server has nothing to say.
       */}
+      {/*
+        REQUEST 133: "SUPPORT GIVEN, AND WHETHER IT HELPED" (loans.txt), AN ASSET LOANS COHORT'S
+        OWN SECTION, RIGHT HERE - after "What keeps coming up" and before coaching, the prototype's
+        own place for it. Every other kind of work is sent no `supportGiven` at all, so this draws
+        nothing for them (`SupportGivenSection` itself returns `null` when `data` is absent).
+      */}
+      {kindOfWorkKey === 'asset loans' && <SupportGivenSection data={(b as any).supportGiven} />}
+
       {shown.coaching && b.coaching?.yours && <WhatToWorkOnNext note={b.coaching.yours} />}
       {shown.coaching && viewerRunsThisCheckIn && b.coaching?.eachPerson && (
         <WhatToProbeThemOn reads={b.coaching.eachPerson} />
@@ -2329,6 +2366,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && whatNeedsYouSection()}
 
         {/*
+          REQUEST 133: AN ASSET LOANS COHORT'S OWN "WHERE THE COHORT STANDS" (loans.txt), RIGHT
+          AFTER "WHAT NEEDS YOU", BEFORE THE RECORDS TABLE. Drawn for every kind of work - it is
+          absent, and so draws nothing, for every kind other than asset loans (`WhereTheCohortStandsSection`
+          itself returns `null` when `data` is not sent).
+        */}
+        <WhereTheCohortStandsSection data={(b as any).whereTheCohortStands} />
+
+        {/*
           ONBOARDING BOARD FIX 1: THE PROTOTYPE'S OWN ORDER, RIGHT AFTER "WHAT NEEDS YOU"
           (day-30-and-60.txt: "What was agreed at the start", then "His history", then "Where you
           both see it differently", in that order). Every other family keeps these sections exactly
@@ -2410,10 +2455,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
             readerIsLead={viewerRunsThisCheckIn}
             canEdit={b.canEditFrame}
+            hideStageTrack={foldTeamKeepRecordsOpen}
           />
         )}
 
-        {!foldTeamAndRecords && shown.eachPerson && (
+        {!foldTeam && shown.eachPerson && (
           <Section
             heading="The team today"
             note="Each person’s line, their last 10 check-ins, and what keeps coming up."
@@ -2462,15 +2508,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           REQUEST 132: NOT HERE FOR A GOVERNMENT PROGRAMME BOARD - folded, with "Who checked in",
           "The team today" and "Reports".
         */}
-        {!foldTeamAndRecords && (isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
-        {!foldTeamAndRecords && <BlockersSection blockers={(b as any).blockers} />}
+        {!foldTeam && (isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
+        {!foldTeam && <BlockersSection blockers={(b as any).blockers} />}
         {/*
-          REQUEST 132: NOT HERE FOR A GOVERNMENT PROGRAMME BOARD. "What keeps coming up" and
-          coaching stay open for this kind too (Hafsah's decision: protected, never folded), but
-          move to just before "Where this is heading" - see `patternsAndCoachingSection()`, called
-          both here (every other kind) and there (this kind only).
+          REQUEST 132 AND REQUEST 133: NOT HERE FOR A GOVERNMENT PROGRAMME BOARD OR AN ASSET LOANS
+          COHORT. "What keeps coming up" and coaching stay open for both kinds (Hafsah's decision:
+          protected, never folded), but move to just before "Where this is heading" - see
+          `patternsAndCoachingSection()`, called both here (every other kind) and there (these two).
         */}
-        {!foldTeamAndRecords && patternsAndCoachingSection()}
+        {!foldTeam && patternsAndCoachingSection()}
 
         {/*
           REQUEST 107 (c), PART 4: "REPORTED, STAGE BY STAGE" (board-as-lead.txt: "Reported vs
@@ -2483,7 +2529,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         <ReportedAgainstCriteriaSection data={(b as any).reportedAgainstCriteria} kindOfWork={(b as any).kindOfWork ?? null} />
 
-        {!foldTeamAndRecords && !(isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
+        {!foldTeam && !(isProjectBoard || layoutFor(kindOfWorkKey)?.whoCheckedInEarly) && whoCheckedIn()}
 
         {/*
           U.10 ITEM 7: "OVER TIME" MOVES OUT OF THE FOLD, TO THE PROTOTYPE'S OWN PLACE
@@ -2495,9 +2541,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           REQUEST 132: NOT HERE FOR A GOVERNMENT PROGRAMME BOARD - folded; see `overTimeSection()`
           and where it is called inside the fold, below.
         */}
-        {!foldTeamAndRecords && overTimeSection()}
+        {!foldTeam && overTimeSection()}
 
-        {!foldTeamAndRecords && reportsSection()}
+        {!foldTeam && reportsSection()}
 
         {/*
           REQUEST 115 (c): "HELP NOBODY MENTIONED" (board-as-lead.txt: "You see the help, not who
@@ -2549,12 +2595,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         </div>
 
         {/*
-          REQUEST 132: "WHAT KEEPS COMING UP" AND COACHING, OPEN, JUST BEFORE "WHERE THIS IS
-          HEADING" - a government programme board's own place for them (Hafsah's decision:
-          protected, never folded). Every other kind already drew these, in their usual place,
-          above - see `foldTeamAndRecords` beside `patternsAndCoachingSection()`.
+          REQUEST 132 AND REQUEST 133: "WHAT KEEPS COMING UP" AND COACHING, OPEN, JUST BEFORE
+          "WHERE THIS IS HEADING" - a government programme board's and an asset loans cohort's own
+          place for them (Hafsah's decision: protected, never folded). Every other kind already
+          drew these, in their usual place, above - see `foldTeam` beside `patternsAndCoachingSection()`.
         */}
-        {foldTeamAndRecords && patternsAndCoachingSection()}
+        {foldTeam && patternsAndCoachingSection()}
 
         {/*
           "WHERE THIS IS HEADING" (request 108 d; board-as-lead.txt). Sent to whoever runs the
@@ -2589,20 +2635,26 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           the comment where each would otherwise have drawn, above. "What keeps coming up" and
           coaching are NOT here - Hafsah's decision keeps them open, just before "Where this is
           heading" (see `patternsAndCoachingSection()`, called there for this kind).
+
+          REQUEST 133: NOT THE RECORDS TABLE ON AN ASSET LOANS COHORT (`teamInFoldRecordsOpen`) -
+          its table stays open, above, where loans.txt itself draws it; only "The shape of the
+          work" strip under that table moves here instead (loans.txt does not show it at all) -
+          see `TheShapeOfTheWorkStrip`, and `hideStageTrack` on the open table, above.
         */}
-        {foldTeamAndRecords && (
+        {foldTeamAndRecords && (!isParticipantView || !isSalesOrg) && (
+          <WorkRecordsSections
+            groundId={id!}
+            kindOfWork={(b as any).kindOfWork ?? null}
+            sections={dealGridSections}
+            participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
+            leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+            readerIsLead={viewerRunsThisCheckIn}
+            canEdit={b.canEditFrame}
+          />
+        )}
+        {foldTeamKeepRecordsOpen && <TheShapeOfTheWorkStrip kindOfWork={kindOfWorkKey as any} sections={dealGridSections} />}
+        {foldTeam && (
           <>
-            {(!isParticipantView || !isSalesOrg) && (
-              <WorkRecordsSections
-                groundId={id!}
-                kindOfWork={(b as any).kindOfWork ?? null}
-                sections={dealGridSections}
-                participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
-                leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
-                readerIsLead={viewerRunsThisCheckIn}
-                canEdit={b.canEditFrame}
-              />
-            )}
             {shown.eachPerson && (
               <Section
                 heading="The team today"
