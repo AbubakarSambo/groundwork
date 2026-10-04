@@ -164,6 +164,8 @@ describe('a law firm matter', () => {
     const b = await boardAs(MATTER, ...LEAD);
     expect(b.whereTheMatterStands).toEqual({
       heading: 'Where the matter stands',
+      /* `state` added on 5 October (request 134 item 7), like the other sections of this board. */
+      state: 'filled',
       says: ['The reply to the supplier is due on 2 October.', 'Nothing is in the way that has not been cleared.', '1 thing is waiting for a decision.'],
     });
     expect(b.whatYouNeedToDecide.heading).toBe('What you need to decide');
