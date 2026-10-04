@@ -84,6 +84,10 @@ export interface Setup {
   mentions?: any[];
   /** Stored patterns (PatternDetection rows), as the detector keeps them. */
   patterns?: any[];
+  /** Whole models a spec supplies itself (for example `platformSetting` or `groundParticipant`), replacing the empty ones. */
+  prismaExtras?: Record<string, any>;
+  /** Anything else the ground row holds (for example `startedFrom: 'anchor'`). */
+  groundRow?: Record<string, any>;
 }
 
 /**
@@ -124,6 +128,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     kindOfWork: setup.kindOfWork ?? null, workStages: null, subjectExternalId: setup.subjectExternalId ?? null,
     ...(({ now: _now, ...rest }) => rest)(setup.clock ?? {}),
     ...(setup.room ? { whatTheRoomIsAbout: setup.room, whatTheRoomIsAboutSession: 2 } : {}),
+    ...(setup.groundRow ?? {}),
     ...(setup.status ? { status: setup.status } : {}),
     ...(setup.endState !== undefined ? { endState: setup.endState } : {}),
     ...(setup.resolvedAt !== undefined ? { resolvedAt: setup.resolvedAt } : {}),
@@ -169,6 +174,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
       if (args?.where?.id?.in) return clone((setup.recordLines ?? []).filter((l: any) => args.where.id.in.includes(l.id)).map((l: any) => ({ disputedAt: null, type: 'PROGRESS', ...l })));
       return clone(setup.lines ?? []);
     }) }),
+    ...(setup.prismaExtras ?? {}),
   } as any, {
     get(target: any, prop: string) {
       if (!(prop in target) && typeof prop === 'string' && !prop.startsWith('$')) target[prop] = model();

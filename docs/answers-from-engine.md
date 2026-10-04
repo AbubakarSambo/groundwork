@@ -4518,3 +4518,13 @@ A person who has a seat reads Today and You as before.
 A person in the check-in, its lead, and an admin who may read it read what they read before. An admin without access to a first 90 days, a review, a renewal or a promotion reads "Check-in not found", as on every other route.
 
 **Tests.** `a-member-with-no-part-is-told-the-check-in-is-not-found.spec.ts`.
+
+## Request 149 (4 of 6): the active line is served on the board
+
+**Done.** `BoardPresent.activeLine`, on the board read, only for a check-in with `started_from` "anchor", only while `release.anchorScenario` is on, and only to whoever runs the check-in (the lead, the admin who set it up, an admin with access). A participant is served no `activeLine` key. With the switch off, or for any other check-in, the board is exactly what it was. Code: `board/the-anchor-active-line.ts`, `board/the-anchor-board-parts.ts` (the one door the anchor's board parts go through), and one call at the end of `board.service.ts` after every wall.
+
+**What the lead reads now.** For five people where three have answered and Groundwork has nudged the other two: "3/5 active · Groundwork has nudged the remaining 2." Hafsah's wording from the spec, as decision 98 says. The same counts are read by an admin, and they hold no name. The other two sentences, said plainly: "3/5 active · Groundwork has nudged 1 of the remaining 2." and "3/5 active · Groundwork has not nudged the remaining 2 yet." With everybody active: "4/4 active."
+
+**Where the numbers come from.** Active is the people who have answered the round that is open, counted exactly as "N of M have answered" counts them (nobody an admin has not let in, nobody away). Total is those same people, the lead included, never more than 20. Nudged is, of those who have not answered, the people whose last nudge (`last_nudged_at`) is since the round opened. It reads the record and writes nothing.
+
+**Tests.** `board/the-anchor-active-line.spec.ts`, through the real `BoardService.get`: the line as the lead and as an admin, no key for a participant, the partial and none cases, and switch off and not-an-anchor. I added two optional fields to the board test harness (`prismaExtras` and `groundRow`) so a spec can give the board a ground started from the anchor; no existing spec uses them.
