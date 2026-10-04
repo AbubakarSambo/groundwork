@@ -160,6 +160,7 @@ import {
   WhereTheCohortStandsSection, SupportGivenSection,
   WhereTheMatterStandsSection, WhatYouNeedToDecideSection, WhatChangedThisWeekSection,
   ByWhoTheyAreSection, WhereTheyDisagreeSection,
+  WhatTheSystemsShowSection, WhereWhatWasSaidAndTheSystemsDifferSection,
 } from './TheSwitchboardsSections'
 
 /**
@@ -702,8 +703,12 @@ function TheParticipantsOwnView({ groundId, teamPicture, kindOfWork, workRecords
         Only you and Wairimu see your share."). `yourShare` is already the engine's own sentence,
         each entry already ending in who else may see it - drawn exactly as sent, nothing left out
         only because the field now exists where it did not before.
+
+        THE MARKETVIEW Q4 BOARD, TOO (B5's participant board shows it the same way): a participant
+        on this kind of work has their own objective, the same shape as a sales target, so this
+        reads it the same way rather than only for `isSalesKindOfWork`.
       */}
-      {isSalesKindOfWork && !!yourShare?.length && (
+      {(isSalesKindOfWork || kindOfWork === 'MarketView Q4') && !!yourShare?.length && (
         <Section heading="Your share">
           <Stack gap={8}>
             {yourShare.map((s) => (
@@ -1343,6 +1348,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     /** "Where each target stands" draws beside the headline, built from `objectives` rather than
         `headline.bars`, when the headline has a question but no bars of its own. */
     targetsBesideHeadlineFromObjectives?: boolean
+    /** "Help nobody mentioned" draws only in the end fold, never in its usual place on the main board. */
+    helpNobodyMentionedInFold?: boolean
   }>> = {
     'support desk': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true, themesAndAreaAfterTheTeam: true },
     'distribution operations': { targetsAtTopWithNoHeadline: true, whoCheckedInEarly: true, openIssuesInFold: true, themesAndAreaAfterTheTeam: true },
@@ -1397,6 +1404,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      * place for them.
      */
     "founder's own check-in": { openIssuesInFold: true, whoCheckedInInFold: true, targetsBesideHeadlineFromObjectives: true },
+    /*
+     * THE MARKETVIEW Q4 BOARD'S OWN SHAPE (mvq4.txt). "Open issues" folds, the same as every
+     * other kind-of-work table above; `teamAndRecordsInFold` folds the records table, "The team
+     * today", "Who checked in", "Over time" and "Reports" into the end fold too, the same as a
+     * government programme board or a law firm matter. `helpNobodyMentionedInFold` moves "Help
+     * nobody mentioned" into the end fold as well - mvq4.txt does not show it in its usual place,
+     * straight after "Reports", because "Reports" itself is already folded here.
+     */
+    'MarketView Q4': { openIssuesInFold: true, teamAndRecordsInFold: true, helpNobodyMentionedInFold: true },
   }
   const layoutFor = (k: string | null) => (k ? kindLayout[k] : undefined)
   const themesAndAreaAfterTheTeam = Boolean(layoutFor(kindOfWorkKey)?.themesAndAreaAfterTheTeam)
@@ -2680,6 +2696,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!layoutFor(kindOfWorkKey)?.whereItStandsAtTop && kindOfWorkKey !== 'a law firm matter' && groundworkRecommendsSection()}
 
         {/*
+          THE MARKETVIEW Q4 BOARD'S OWN "WHAT THE SYSTEMS SHOW" AND "WHERE WHAT PEOPLE SAID AND
+          THE SYSTEMS DIFFER" (mvq4.txt), right after "What needs you", before patterns - drawn for
+          every kind of work, but absent, so drawing nothing, for every kind other than MarketView
+          Q4 (the engine sends neither field to any other kind).
+        */}
+        <WhatTheSystemsShowSection data={(b as any).whatTheSystemsShow} />
+        <WhereWhatWasSaidAndTheSystemsDifferSection data={(b as any).whereWhatWasSaidAndTheSystemsDiffer} />
+
+        {/*
           REQUEST 133: AN ASSET LOANS COHORT'S OWN "WHERE THE COHORT STANDS" (loans.txt), RIGHT
           AFTER "WHAT NEEDS YOU", BEFORE THE RECORDS TABLE. Drawn for every kind of work - it is
           absent, and so draws nothing, for every kind other than asset loans (`WhereTheCohortStandsSection`
@@ -2869,8 +2894,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           said it."), right after "Reports", in the prototype's own place for it. Sent only to
           whoever runs the check-in - one person's work, read across other people's check-ins, so
           no colleague and no read-only admin reads it. Never who said it, and never what they said.
+
+          THE MARKETVIEW Q4 BOARD'S OWN SHAPE (mvq4.txt): NOT HERE. mvq4.txt does not show this
+          section in its usual place, because "Reports" itself is already folded for this kind -
+          it moves into the end fold instead (`helpNobodyMentionedInFold`; see where it draws
+          there, below).
         */}
-        {(b as any).helpNobodyMentioned && (
+        {!layoutFor(kindOfWorkKey)?.helpNobodyMentionedInFold && (b as any).helpNobodyMentioned && (
           <Section heading="Help nobody mentioned" note={(b as any).helpNobodyMentioned.why}>
             <Stack gap={6}>
               {(b as any).helpNobodyMentioned.lines.map((l: string, i: number) => <Note key={i} tone="muted">{l}</Note>)}
@@ -2988,6 +3018,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             {whoCheckedIn()}
             {overTimeSection()}
             {reportsSection()}
+            {/*
+              THE MARKETVIEW Q4 BOARD'S OWN SHAPE: "HELP NOBODY MENTIONED" HERE, RIGHT AFTER
+              "REPORTS", FOLDED TOGETHER WITH THE REST OF THE TEAM AND RECORDS
+              (`helpNobodyMentionedInFold`) - see the comment where it would otherwise have drawn,
+              above.
+            */}
+            {layoutFor(kindOfWorkKey)?.helpNobodyMentionedInFold && (b as any).helpNobodyMentioned && (
+              <Section heading="Help nobody mentioned" note={(b as any).helpNobodyMentioned.why}>
+                <Stack gap={6}>
+                  {(b as any).helpNobodyMentioned.lines.map((l: string, i: number) => <Note key={i} tone="muted">{l}</Note>)}
+                </Stack>
+              </Section>
+            )}
           </>
         )}
 
