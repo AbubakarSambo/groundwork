@@ -157,7 +157,10 @@ describe('every surface that hands out whose number it is', () => {
    */
   it('and the ground read asks one question about who is reading', () => {
     const src = readFileSync(join(API, 'modules/grounds/grounds.service.ts'), 'utf8');
-    expect(src).toMatch(/const peersKeepTheirNumbers =\s*\n?\s*!viewerIsInitiator/);
+    /* Each person's goals are held back from anyone who does not run the check-in (the lead, and the admins who read it: decisions 5, 56 and
+       86, privacy sweep finding 4). The table of target numbers below still asks about the lead alone, until Hafsah answers the open question in
+       docs/answers-from-engine.md about admins and each person's share on this page. */
+    expect(src).toMatch(/const peersKeepTheirNumbers =\s*\n?\s*!viewerRunsIt/);
     const at = src.indexOf('objectives: targetsFor(');
     expect(at).toBeGreaterThan(-1);
     expect(src.slice(at, at + 420)).toMatch(/\{ isLead: viewerIsInitiator \}/);
