@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import type { TheLeadsReveal } from './anchorShapes';
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/v1` : '/api/v1'
 
@@ -28,6 +29,14 @@ export interface EntryReport {
   alsoCameUp?: { name: string; context: string }[]
   alsoCameUpNote?: string | null
   suggestedParties: { role: string; reason: string }[]
+  /**
+   * PIECE 8/9: THE LEAD'S REVEAL, "Help my team understand" (plan section 5, row 3;
+   * docs/answers-from-engine.md, "Request 147", `TheLeadsReveal`). Shape only - not served yet, so
+   * this is `undefined` on every report today. Present only on an anchor draft's own report
+   * (`scenario === 'HELP_TEAM_UNDERSTAND'`), and only for the lead: there is no other reader of a
+   * setup report, since it is read before anybody else has joined.
+   */
+  leadsReveal?: TheLeadsReveal | null
 }
 
 // ── Entry session storage ─────────────────────────────────────────────────────

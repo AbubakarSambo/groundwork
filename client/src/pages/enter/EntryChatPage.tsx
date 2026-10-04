@@ -25,6 +25,7 @@ import { toast } from 'sonner'
 import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { TheDoor } from './TheDoor'
 import { TheSetup, theDay, ANCHOR_PEOPLE_STEP_RULES } from './TheSetup'
+import { TheLeadsReveal } from '@/components/gw/TheLeadsReveal'
 import { FillsInAsYouTalk } from './FillsInAsYouTalk'
 import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
 import { EverySituation } from './EverySituation'
@@ -3816,6 +3817,16 @@ export function EntryChatPage() {
                 It always did set a date; the label just never said so. It says so now, and the date
                 field it opens is the answer to the question the button asks.
               */}
+              {/*
+                PIECE 9: THE LEAD'S REVEAL, "Help my team understand" (plan section 5, row 3).
+                Drawn only for an anchor draft, and only once the engine has actually sent one -
+                `sessionReport?.leadsReveal` is not served yet, so this draws nothing today, the
+                same as before this existed. Placed as the set-up screen's own last step, right
+                before the schedule and the people step, following the plan's "if unclear, show it
+                on the set-up screen's last step for an anchor draft".
+              */}
+              {isAnchorDraft() && <TheLeadsReveal reveal={sessionReport?.leadsReveal} />}
+
               {/* U.6: the prototype's setup (setup.txt). The start date is still what the invitations wait for. */}
               <TheSetup
                 cadence={cadence}
