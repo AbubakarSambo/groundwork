@@ -4341,3 +4341,15 @@ Add your own user name in front of `localhost` if your database needs one. With 
 **One gap.** The three people have no roster entries (`people` rows) on the source database, so the seed carries none. The memberships and the people's accounts are there.
 
 Hafsah's answer, 5 October: only a database on this computer.
+
+## Privacy sweep, 5 October: fixes, one at a time
+
+### 1. Where people do not see each other, every report read now has the wall of decision 75 item 14
+
+**What changed for a reader.** In a check-in where people do not see each other (a cohort, for example), a colleague used to read the other people's circumstances in the session report, in the rounds and in the read of where things stand against success, and on the phone report that is built from the session report. They read, for example, under what each person said, the lead's lines "Lola is behind on outbound and I keep hearing about the list quality rather than calls made." and "Seyi tells me partnerships are close but nothing has signed.", and in a section, from "One colleague": "I am two instalments behind and I lost 220 birds in month two." They now read none of those sentences. They keep their own words exactly as said, the lead's lines about the plan (for example "I want twelve shops signed by June."), and the counts and patterns across people, as `GET /report` already gave them.
+
+**Who is not changed.** The lead, an admin who reads the check-in, and everyone in a check-in where people do see each other, read exactly what they read before. An evaluation check-in keeps its own rule (decision 17).
+
+**How.** The last read every one of these four goes through (`whatTheLeadHasNotShared` in `reports.service.ts`) now ends in `wherePeopleDoNotSeeEachOther`, which calls the same `askTheReportsDoor` as the board and the check-in page, with the people and the lead's names. The people's own words are held aside while the door runs, so it never rewrites them. Each round is walled on its own, so a round with one sentence about a colleague loses that sentence and is not dropped whole. A report sent without names is scrubbed here too, as it is on the report.
+
+**Tests.** `the-wall-holds-on-every-report-read.spec.ts`. One existing test, `no-internal-label-reaches-anyone.spec.ts`, matched the exact shape of the source (`return withoutLinesWithNoWords(`); the source now stores that result in `const walled` first, so its pattern was updated. It still checks the same thing: labels come off everything served.

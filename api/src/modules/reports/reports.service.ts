@@ -109,7 +109,7 @@ import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-labe
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from './is-this-an-evaluation-check-in';
-import { onlyCountsAndPatternsAboutTheOthers, theLeadsNamesOf } from './one-persons-circumstances-stay-their-own';
+import { onlyCountsAndPatternsAboutTheOthers, theLeadsNamesOf, askTheReportsDoor, withoutSentencesAboutOneOfThem } from './one-persons-circumstances-stay-their-own';
 
 /** The names of everybody in it but the reader and the lead, full and first, for the item 14 wall. */
 function theOtherPeoplesNames(participants: any[], readerParticipantId: string | null, leadUserId: string | null): string[] {
@@ -6775,6 +6775,7 @@ happened, and what is in the way.`;
         initiatorId: true, organizationId: true, createdByUserId: true, whoSeesTargets: true, scenario: true, peersVisibleToEachOther: true,
         participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } } },
         objectives: { select: { name: true, ownerParticipantId: true, target: true } },
+        report: { select: { sharedAs: true } },
       } as any,
     }) as Promise<any>).catch(() => null);
     if (!ground) return served;
@@ -6817,11 +6818,66 @@ happened, and what is in the way.`;
     }
     /* What people said stays as they said it: the hidden-target rule is for the report's own words.
        See board/their-own-words-stay (screens request 77). */
-    return withoutLinesWithNoWords(withTheirOwnWordsKept(
+    const walled = withoutLinesWithNoWords(withTheirOwnWordsKept(
       withoutPrivateFileNamesIn(withoutInternalLabelsIn(served, called), privateNames),
       THEIR_OWN_WORDS_IN_A_REPORT,
       (v) => withoutHiddenTargetsIn(v, hiddenTargets),
     ));
+    /* WHERE PEOPLE DO NOT SEE EACH OTHER, ONE PERSON'S CIRCUMSTANCES NEVER REACH ANOTHER (decision 75, item 14). The
+       session report, the rounds and the against-success read are served through here as well as the report, so the
+       same wall, through the same door, stands on every one of them. See wherePeopleDoNotSeeEachOther. */
+    return this.wherePeopleDoNotSeeEachOther(ground, me, isInitiator || isOrgAdmin, walled);
+  }
+
+  /**
+   * THE WALL OF DECISION 75 ITEM 14, ON EVERY REPORT READ A PARTICIPANT CAN REACH.
+   *
+   * Only `GET /report` applied it (in `asItWasShared`); the session report, the rounds and the against-success read
+   * were built from the record and the stored rounds, and served each colleague's circumstances, and the lead's
+   * lines about named colleagues, to people who must not read them. They now go through the same door as the
+   * report and the board, `askTheReportsDoor`, handed the people and the lead's names like every other caller.
+   *
+   * A person's own words are held aside while the door runs, so its rules for Groundwork's own sentences (names,
+   * dashes) never touch them (their-own-words-stay). The wall is then applied to the lines of every row that is not
+   * the reader's own, which drops a sentence about one of the others and changes nothing else. The reader's own row,
+   * and everything a reader who runs the check-in reads, is left whole.
+   */
+  private wherePeopleDoNotSeeEachOther<T>(
+    ground: { initiatorId?: string | null; scenario?: any; peersVisibleToEachOther?: boolean | null; participants?: any[]; report?: any },
+    me: { id: string } | null,
+    viewerRunsIt: boolean,
+    served: T,
+  ): T {
+    if (!served || typeof served !== 'object') return served;
+    if (viewerRunsIt || isEvaluationCheckIn(ground.scenario) || this.peersAreNamed(ground as any, me?.id ?? null)) return served;
+    const others = {
+      names: theOtherPeoplesNames(ground.participants ?? [], me?.id ?? null, ground.initiatorId ?? null),
+      lead: theLeadsNamesOf(ground.participants, ground.initiatorId),
+    };
+    const sharedAs = ground.report?.sharedAs ?? null;
+    const throughTheDoor = (piece: any): any => withTheirOwnWordsKept(piece, THEIR_OWN_WORDS_IN_A_REPORT, (v: any) => {
+      const shared = askTheReportsDoor(
+        this,
+        { scenario: ground.scenario, peersVisibleToEachOther: ground.peersVisibleToEachOther, initiatorId: ground.initiatorId ?? null, participants: ground.participants ?? [], report: { ...v, sharedAs } },
+        me?.id ?? null,
+        false,
+      );
+      if (shared && typeof shared === 'object' && 'sharedAs' in shared && !('sharedAs' in v)) { const { sharedAs: _gone, ...rest } = shared; return rest; }
+      return shared ?? v;
+    });
+    /* Each round on its own, so a round with one sentence about a colleague loses that sentence and is not dropped whole. */
+    const { rounds, ...theRest } = served as any;
+    const thatDoor = Array.isArray(rounds)
+      ? { ...throughTheDoor(theRest), rounds: rounds.map((r: any) => throughTheDoor(r)) }
+      : throughTheDoor(served);
+    /* The lines of every other row: the lead's, about a colleague, and a colleague's own. */
+    if (Array.isArray(thatDoor?.whatEachPersonSaid)) {
+      thatDoor.whatEachPersonSaid = thatDoor.whatEachPersonSaid
+        .map((row: any) => (row && !row.isYou && Array.isArray(row.lines)
+          ? { ...row, lines: row.lines.map((l: any) => (typeof l === 'string' ? withoutSentencesAboutOneOfThem(l, others) : l)).filter((l: any) => !(typeof l === 'string' && !l.trim())) }
+          : row));
+    }
+    return thatDoor;
   }
 
   /** The lead's untold goals with the first name of the person each is about (decision 56, point 3). */
