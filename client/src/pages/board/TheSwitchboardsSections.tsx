@@ -641,6 +641,63 @@ export function WhereTheCohortStandsSection({ data }: { data: BoardPresent['wher
 }
 
 /**
+ * THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN "BY WHO THEY ARE" (mvnext.txt), modelled on
+ * `WhereTheCohortStandsSection` above. Groundwork does not keep which group a person belongs to, so
+ * this almost always reads as the one `not-known` sentence (`why`), with `says` giving the plain
+ * count of who has answered either way.
+ */
+export function ByWhoTheyAreSection({ data }: { data: BoardPresent['byWhoTheyAre'] }) {
+  if (!data) return null
+  return (
+    <Section heading={data.heading} note={data.says}>
+      {data.state === 'not-known' && <Note tone="muted">{data.why}</Note>}
+    </Section>
+  )
+}
+
+/**
+ * THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN "WHERE THEY DISAGREE" (mvnext.txt), modelled on
+ * `WhereTheCohortStandsSection` above. `items` is the engine's own `divergence.items`, drawn the
+ * same way `DivergenceSectionBody` draws one (BoardPage.tsx) - a topic, who sees it differently, in
+ * their own words, and why it matters - but without that body's own "who sees this differently"
+ * framing, which needs the viewer's own name; this board never shows both, so there is nothing to
+ * keep in step with it. Where nothing differs yet, `says` carries the one plain sentence instead.
+ */
+export function WhereTheyDisagreeSection({ data }: { data: BoardPresent['whereTheyDisagree'] }) {
+  if (!data) return null
+  const items = data.state === 'filled' ? (data.items ?? []) : []
+  return (
+    <Section heading={data.heading}>
+      {items.length > 0 ? (
+        <Panel pad={false}>
+          {items.map((d: any, i: number) => (
+            <div key={i} className="gwui-panel-row">
+              <Stack gap={4}>
+                <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{d.topic ?? d.tag ?? 'Where they disagree'}</p>
+                {d.text && <p className="gwui-panel-text">{d.text}</p>}
+                {Array.isArray(d.positions) && d.positions.some((p: any) => p.view) && (
+                  <Stack gap={4}>
+                    {d.positions.filter((p: any) => p.view).map((p: any, j: number) => (
+                      <Stack gap={2} key={j}>
+                        <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{p.who ?? 'A colleague'}</p>
+                        <Note tone="muted">{p.view}</Note>
+                      </Stack>
+                    ))}
+                  </Stack>
+                )}
+                {d.atStake && <Note tone="muted">{d.atStake}</Note>}
+              </Stack>
+            </div>
+          ))}
+        </Panel>
+      ) : (
+        data.says && <Note tone="muted">{data.says}</Note>
+      )}
+    </Section>
+  )
+}
+
+/**
  * REQUEST 133: "SUPPORT GIVEN, AND WHETHER IT HELPED" (loans.txt). Drawn for an asset loans cohort
  * after "What keeps coming up" and before coaching and "Where this is heading". Today the record
  * never says what support was given, so this always reads as the one `not-known` sentence; a later
@@ -719,7 +776,13 @@ export function WhereThisIsHeadingSection({ data, onRecordTheDecision }: {
         {data.outcomes.length > 0 ? (
           <Stack gap={6}>
             <Note tone="muted">The possible outcomes</Note>
-            <SentenceRows rows={data.outcomes.map((o) => ({ id: o.value, says: o.says }))} />
+            {/*
+              REQUEST, MVNEXT REVIEW: THE SECOND LINE, TOO (mvnext.txt: "Kano maize first" /
+              "For processors, with a named-buyer feed."). Every outcome the engine sends already
+              carries `more`, its own second sentence - this used to read only `says`, leaving the
+              detail behind each outcome unread wherever this draws, not only on this one board.
+            */}
+            <SentenceRows rows={data.outcomes.map((o) => ({ id: o.value, says: o.says, because: o.more }))} />
           </Stack>
         ) : (
           data.outcomesSays && <Note tone="muted">{data.outcomesSays}</Note>

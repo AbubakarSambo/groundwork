@@ -669,6 +669,33 @@ export type BoardPresent = {
     | { state: 'filled'; heading: string; areas: { area: string; records: number; says: string }[] }
     | { state: 'not-known'; why: string }
 
+  /**
+   * THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN "BY WHO THEY ARE" (mvnext.txt: "By who they are" /
+   * "What each group said it needs"). Lead only. Groundwork does not keep which group a person
+   * belongs to - processor, distributor, researcher - so this reads `not-known`, with `why`; `says`
+   * carries the plain count of who has answered either way (docs/answers-from-engine.md, "(d)
+   * MarketView where next").
+   */
+  byWhoTheyAre?: {
+    heading: string
+    state: 'filled' | 'not-known'
+    says?: string
+    why?: string
+  }
+
+  /**
+   * THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN "WHERE THEY DISAGREE" (mvnext.txt). Lead only, and the
+   * engine's own `divergence.items`, under this heading - the two are never both drawn on this
+   * board (see BoardPage.tsx, where the general `divergence` block is left out for this kind).
+   * `none-yet`, with `says`, where nobody has said anything that differs yet.
+   */
+  whereTheyDisagree?: {
+    heading: string
+    state: 'filled' | 'none-yet'
+    says?: string
+    items?: any[]
+  }
+
   /** REQUEST 107 (c), part 4: a sales board only - what was reported at each stage, never "criteria met". */
   reportedAgainstCriteria?: {
     state: 'not-known'
