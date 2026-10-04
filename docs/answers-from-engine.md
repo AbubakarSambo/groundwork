@@ -4363,3 +4363,14 @@ Hafsah's answer, 5 October: only a database on this computer.
 **Left as it was, and a question for Hafsah.** The table of target numbers on the same page (`objectives`) still shows an admin who only reads the team target and not each person's share. The existing tests (`one-rule-for-whose-share-is-shown.spec.ts` and `a-decision-about-a-person-is-the-leads.spec.ts`) pin that, and say it is waiting on you. Decision 86.3 says admins see the figures on boards. Should the check-in page show an admin every person's share too, never the lead's decision about a person?
 
 **Tests.** `an-admin-who-runs-a-check-in-reads-its-goals-on-the-page.spec.ts`. One existing test, `one-answer-about-whose-numbers-somebody-reads.spec.ts`, pinned the source text `!viewerIsInitiator`; it now pins `!viewerRunsIt` and checks that `viewerRunsIt` is `theyRunThisCheckIn`.
+
+### 2. The check-in page serves what the room is about the way the board does
+
+**What changed for a reader.** `GET /grounds/:id` served the room's read as stored, with every person's full name. A cohort colleague read, beside each aim, who else held it, for example `Pay the loan` held by Halima Sule, Grace Danjuma, Yusuf Garba and Aisha Bello, and what each person named (`bird`, Halima Sule). The person on a first-90-days check-in read `Know how a team member is doing`, held by Hafsah Lead and Priya Nair, which names the colleague giving views. They now read:
+- A cohort colleague, Yusuf: `Pay the loan`, held by `You` and 3 others, `clutch`, named by `You`. Nothing that only one other borrower holds or named.
+- Tobi on his first 90 days: `Know how a team member is doing`, held by `Hafsah Lead`, and `Get clear information to do my job`, held by `You`. Not Priya.
+- The lead and an admin who reads the check-in read every name, as before.
+
+**How.** One function, `theRoomForThisReader` (`board/the-room-for-this-reader.ts`), now serves the board and the page. The board's own code was moved into it without changing what the board serves. On an evaluation check-in only the colleague's name is kept from the person reviewed (decision 17), so the lead's aim stays.
+
+**Tests.** `what-the-room-is-about-on-the-check-in-page.spec.ts`; the board's existing room tests still pass.

@@ -1,5 +1,6 @@
 import { aFindingThatReadsRight } from './a-finding-reads-right';
 import { theFirstNameOfAParticipant } from '../reports/a-title-is-not-a-first-name';
+import { theRoomForThisReader } from '../board/the-room-for-this-reader';
 import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
@@ -2582,6 +2583,24 @@ export class GroundsService {
     );
     return withoutGoalsNotToldIn(this.withoutTheTargetsHiddenFrom(ground as any, requestingUserId, {
       ...rest,
+      /*
+       * WHAT THE ROOM IS ABOUT, AS THIS READER MAY READ IT (privacy sweep finding 2, decisions 17 and 75 item 14). Stored with
+       * every person's full name, and served raw: a cohort colleague read the other borrowers by name beside their aims, and the
+       * person on a first-90-days check-in read the colleague giving views. The board's own read, shared: see
+       * board/the-room-for-this-reader.
+       */
+      ...((rest as any).whatTheRoomIsAbout
+        ? {
+            whatTheRoomIsAbout: theRoomForThisReader((rest as any).whatTheRoomIsAbout, {
+              participants: (ground.participants ?? []) as any[],
+              me: ((ground.participants ?? []) as any[]).find((p: any) => !!requestingUserId && p.userId === requestingUserId) ?? null,
+              initiatorId: ground.initiatorId,
+              viewerRunsIt: viewerRunsThisGround,
+              wallOffTheOthers: hidePeers,
+              evaluation: isEvaluationCheckIn((ground as any).scenario),
+            }),
+          }
+        : {}),
       /* Until the lead ends it: no length to show. The flag says so (request 37). */
       timelineDays: (rest as any).runsUntilEnded ? null : (rest as any).timelineDays,
       /* Everyone on the check-in may see what is to be done; only the lead's private notes are walled. */

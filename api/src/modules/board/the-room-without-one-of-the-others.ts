@@ -31,6 +31,11 @@ export interface WhoIsWho {
   lead: string | null;
   /** Every other person's names, full, first and last, as a sentence might say them. */
   otherNames: string[];
+  /**
+   * An evaluation check-in (decision 17): only a person's NAME is kept from the person reviewed, so a sentence goes only where it names one of
+   * the others. "Know how a team member is doing" is the lead's aim and stays; without this its "a team member" read as one colleague.
+   */
+  namesOnly?: boolean;
 }
 
 const same = (a: string | null | undefined, b: string | null | undefined) =>
@@ -50,7 +55,7 @@ export function theRoomWithoutOneOfTheOthers<T extends TheRoomStored | null | un
     ? room.aims.flatMap((a) => {
       const { kept, others } = split(a?.held);
       if (!keeps(kept, others)) return [];
-      const aim = typeof a?.aim === 'string' ? withoutSentencesAboutOneOfThem(a.aim, { names: who.otherNames }) : '';
+      const aim = typeof a?.aim === 'string' ? withoutSentencesAboutOneOfThem(a.aim, { names: who.otherNames }, { namesOnly: !!who.namesOnly }) : '';
       if (!aim.trim()) return [];
       return [{ ...a, aim, held: kept, ...(others ? { andOthers: others } : {}) }];
     })
