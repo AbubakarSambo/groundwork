@@ -123,7 +123,7 @@ import {
 } from './what-the-whole-place-is-waiting-on';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, readsHowTheLeadingIsLanding } from '../patterns/who-reads-a-pattern';
-import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
+import { overTimeAsServed, meetingsOnRecordFor } from '../reports/what-the-record-shows-over-time';
 import { everyStoredSentenceReadsRight } from '../reports/a-stored-sentence-reads-right';
 import { aBoardWithNoEmptyLine } from './a-board-has-no-empty-line';
 import { patternQuestionsToSettleFirst } from './pattern-questions-to-settle-first';
@@ -882,9 +882,10 @@ export class BoardService {
       /* Without its patterns while they are not served, or the lines built from them. See patterns-are-served. */
       /* Counted to the sessions somebody has finished, as the work plan counts them, so one commitment is open for the
          same number of sessions in both (item 18). */
-      overTime: isInitiator ? (() => {
+      overTime: isInitiator ? await (async () => {
         const served = overTimeAsServed((ground as any).report?.overTime ?? null, {
           sessionsSoFar: Math.max(0, ...checkIns.filter((c: any) => !c.isSetup && c.status === CheckInStatus.COMPLETED).map((c: any) => c.sessionNumber ?? 0)),
+          meetingsOnRecord: await meetingsOnRecordFor(this.prisma, groundId),
         });
         return served && patternQuestions.length ? { ...served, toSettleFirst: [...(served.toSettleFirst ?? []), ...patternQuestions] } : served;
       })() : null,

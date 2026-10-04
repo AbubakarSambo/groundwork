@@ -744,6 +744,32 @@ export function aMeetingIsOnRecord(lines: { text: string }[]): boolean {
   return lines.some((l) => /\b(?:meetings?|met|meet|introduc\w*|visit(?:s|ed)?|appointments?)\b/i.test(String(l.text ?? '')));
 }
 
+/**
+ * A STORED REPORT THAT SPEAKS OF MEETINGS NOBODY MENTIONED (requests 127, 129, 130, 131, 132, 134, 135, 136).
+ *
+ * The line about who arranged the meetings is only written where a meeting is on the record. Reports stored before
+ * that rule still hold it, and a report is not rewritten when a board is opened. So it is left out when the record is
+ * read now: the support desk, the loans, the outage and the founder's own check-in never spoke of a meeting.
+ */
+export const THE_MEETINGS_LINE = /^Nobody on record has said who arranged the meetings that happened/;
+
+export async function meetingsOnRecordFor(prisma: any, groundId: string): Promise<boolean | undefined> {
+  try {
+    const rows: { text: string }[] | undefined = await prisma?.recordEntry?.findMany?.({
+      where: { disputedAt: null, participant: { groundId } },
+      select: { text: true },
+    });
+    return Array.isArray(rows) ? aMeetingIsOnRecord(rows) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function withoutTheMeetingsLine(lines: string[] | undefined, meetingsOnRecord: boolean | undefined): string[] {
+  const all = lines ?? [];
+  return meetingsOnRecord === false ? all.filter((l) => !THE_MEETINGS_LINE.test(String(l))) : all;
+}
+
 export function whatThisCannotTellYou(o: {
   documentsAttached: number;
   peopleWhoAnswered: number;
@@ -881,7 +907,7 @@ export function overTimeAsServed(
    * Tunde read "It has been open for 2 sessions" here and "It has been open for 1 session" in the work plan, about
    * the same commitment. The board passes its own count, the one the work plan uses.
    */
-  opts: { sessionsSoFar?: number | null } = {},
+  opts: { sessionsSoFar?: number | null; meetingsOnRecord?: boolean } = {},
 ): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
   const sessionsSoFar = opts.sessionsSoFar && opts.sessionsSoFar > 0 ? opts.sessionsSoFar : (it.sessions ?? 0);
@@ -910,11 +936,12 @@ export function overTimeAsServed(
     commitments,
     stillOpen: (rebuilt as unknown[]).filter(theThingIsNamed).map((x) => oldWordingPutPlain(String(x))),
     patterns: [],
+    cannotTellYou: withoutTheMeetingsLine(it.cannotTellYou, opts.meetingsOnRecord),
     /* And by its count too (item 21, the support desk board): where the person asked is the reader, the question's end has
        already become "Your own account of this is not in this check-in." by the time it is read here, so Maria read "The
        record names another person positively with specific evidence of their contribution. Seen in 1 sessions. Your own
        account of this is not in this check-in." */
-    toSettleFirst: (it.toSettleFirst ?? []).filter((q) => !String(q).endsWith(A_QUESTION_BUILT_FROM_A_PATTERN_ENDS)
+    toSettleFirst: withoutTheMeetingsLine(it.toSettleFirst, opts.meetingsOnRecord).filter((q) => !String(q).endsWith(A_QUESTION_BUILT_FROM_A_PATTERN_ENDS)
       && !/(?:^|[.!?]\s+)(?:It was seen|Seen) in (?:one session|\d+ sessions?)\.\s/.test(String(q))).map((q) => oldWordingPutPlain(String(q))),
   };
 }
@@ -966,9 +993,10 @@ export function theRecordOverTime(o: {
 export function overTimeForThisReader(
   it: WhatTheRecordShowsOverTime | null | undefined,
   viewer: { isLead: boolean; participantId: string | null },
+  opts: { meetingsOnRecord?: boolean } = {},
 ): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
-  if (viewer.isLead) return overTimeAsServed(it);
+  if (viewer.isLead) return overTimeAsServed(it, { meetingsOnRecord: opts.meetingsOnRecord });
   const mine = viewer.participantId;
   if (!mine) return null;
   return {
@@ -982,6 +1010,6 @@ export function overTimeForThisReader(
     stillOpen: [],
     toSettleFirst: [],
     /* What none of it can tell anybody is true for every reader, and identifies nobody. */
-    cannotTellYou: it.cannotTellYou ?? [],
+    cannotTellYou: withoutTheMeetingsLine(it.cannotTellYou, opts.meetingsOnRecord),
   };
 }
