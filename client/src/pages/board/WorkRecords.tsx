@@ -118,7 +118,11 @@ const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
   'a government programme': 'Every county, and what shows it',
 }
 const WORK_PLAN_HEADING: Partial<Record<KindOfWork, string>> = {
-  "founder's own check-in": 'Every commitment and decision, and what shows it',
+  /* THE FOUNDER'S OWN CHECK-IN BOARD (founder.txt): the prototype's own heading for this table is
+     "Every item, and what shows it" - the same words every other kind uses (see
+     `DEAL_GRID_HEADING`, above), not "Every commitment and decision", which named the record's
+     own item kinds rather than what founder.txt actually reads here. */
+  "founder's own check-in": 'Every item, and what shows it',
 }
 
 /**
@@ -1158,6 +1162,20 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       {isEngineeringDealGrid && (
         <div>
           <Link to={`/grounds/${groundId}?tab=chat`} className="gwui-plain-link">Not right? Tell the check-in</Link>
+        </div>
+      )}
+
+      {/*
+        THE FOUNDER'S OWN CHECK-IN BOARD (founder.txt): "Something here wrong? Anyone can correct
+        what's about their own work in their check-in; the change and the original both show
+        here." - the prototype's own words, exactly, the same invitation `DealDetail` and
+        `isEngineeringDealGrid` give for their own kinds. Only when the founder actually can
+        correct a record here (`canEdit`) - this is a one-person board, so a reader without that
+        right (a read-only admin, say) is never told to go correct what is not theirs to correct.
+      */}
+      {isFounder && canEdit && (
+        <div>
+          <Note tone="muted">Something here wrong? Anyone can correct what's about their own work in their check-in; the change and the original both show here.</Note>
         </div>
       )}
 

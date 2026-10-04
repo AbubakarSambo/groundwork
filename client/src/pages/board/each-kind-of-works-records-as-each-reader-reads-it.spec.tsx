@@ -238,10 +238,19 @@ describe('the founder’s own check-in: a Work plan with none yet', () => {
   }
 
   it('says Groundwork keeps this but nothing has come up yet, under its own plain heading, and offers to add one', async () => {
+    /*
+     * THE FOUNDER'S OWN CHECK-IN BOARD (founder.txt): two wordings changed here, not the test's
+     * own behaviour. "Wairimu" is this ground's initiator, so `viewerRunsThisCheckIn` is true and
+     * she reads the kind-of-work sentence in the second person, as the founder it is about
+     * ("This is your own check-in as a founder..."), not the third-person sentence every other
+     * reader still gets (see the next test, a colleague). And founder.txt's own heading for this
+     * table is "Every item, and what shows it" - the same words every other kind uses - not
+     * "Every commitment and decision", which named the record's own item kinds instead.
+     */
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(FOUNDER)
-    expect(await screen.findByText("This is a founder's own check-in, about their own commitments and decisions.")).toBeTruthy()
-    expect(screen.getByRole('region', { name: 'Every commitment and decision, and what shows it' })).toBeTruthy()
+    expect(await screen.findByText('This is your own check-in as a founder, about your own commitments and decisions.')).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Every item, and what shows it' })).toBeTruthy()
     expect(screen.getByText('No commitments and decisions have come up yet. They appear here when someone names one in a check-in, or when you add one below.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add one' })).toBeTruthy()
   })
@@ -249,7 +258,8 @@ describe('the founder’s own check-in: a Work plan with none yet', () => {
   it('a colleague reads the same none-yet sentence without the offer to add one', async () => {
     me = { id: 'u-akinyi', firstName: 'Akinyi', role: 'MEMBER' }
     renderBoard({ ...FOUNDER, myParticipantId: 'p-akinyi', canEditFrame: false })
-    expect(await screen.findByText('No commitments and decisions have come up yet. They appear here when someone names one in a check-in.')).toBeTruthy()
+    expect(await screen.findByText("This is a founder's own check-in, about their own commitments and decisions.")).toBeTruthy()
+    expect(screen.getByText('No commitments and decisions have come up yet. They appear here when someone names one in a check-in.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Add one' })).toBeNull()
   })
 })
