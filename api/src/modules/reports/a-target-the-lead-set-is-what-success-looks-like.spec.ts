@@ -19,3 +19,18 @@ describe('the section "What everybody said good looks like", as the lead reads i
     expect(src).toMatch(/stated: baseline\?\.successLooksLike \?\? theTargetTheLeadSet \?\? null/);
   });
 });
+
+/** Request 136 item 6: "You have not said it, and nobody answering this check-in has said it either." in a check-in with one person. */
+describe('what success looks like, in a check-in of one person', () => {
+  const sole = (onlyTheLeadIsHere: boolean) => whereYouAreAgainstWhatYouNamed({
+    counting: 'everyone', stated: null, leadHasSaidIt: false, version: null, conditions: [], entries: [], readerIsTheLead: true, leadName: 'Wanjiru', onlyTheLeadIsHere,
+  } as any).saying;
+  it('does not speak of nobody else answering', () => {
+    const said = sole(true) as string;
+    expect(said).toBe('You have not said what success looks like yet. It appears here as soon as you do. Until then, the report can say what you have said, but not whether things are going well.');
+    expect(said).not.toMatch(/nobody answering/);
+  });
+  it('still says it for a team', () => {
+    expect(sole(false)).toMatch(/nobody answering this check-in has said it either/);
+  });
+});

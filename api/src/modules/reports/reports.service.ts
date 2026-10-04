@@ -3557,7 +3557,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
        said what success looks like" was read by a lead who had set 6,000. Only to the lead, who may read every target. */
     const theTargetTheLeadSet = !(baseline?.successLooksLike ?? '').trim() && isInitiator
       ? await Promise.resolve((this.prisma as any).groundObjective?.findFirst?.({
-        where: { groundId: (ground as any).id, ownerParticipantId: null, target: { not: null } },
+        where: { groundId: (ground as any).id, ownerParticipantId: null },
         orderBy: { sortOrder: 'asc' }, select: { name: true },
       })).then((o: any) => (typeof o?.name === 'string' && o.name.trim() ? o.name.trim() : null)).catch(() => null)
       : null;
@@ -3569,6 +3569,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           && ground.participants.find((x) => x.id === e.participantId)?.userId === ground.initiatorId,
       ),
       readerIsTheLead: isInitiator,
+      onlyTheLeadIsHere: ground.participants.filter((x) => !x.managingOnly).length === 1 && ground.participants.filter((x) => !x.managingOnly)[0].userId === ground.initiatorId,
       leadName: ((id) => (id ? whoOf(id) : null))(ground.participants.find((x) => !!ground.initiatorId && x.userId === ground.initiatorId)?.id),
       version: baseline?.version ?? null,
       conditions: Array.isArray(baseline?.conditions) ? (baseline!.conditions as string[]) : [],

@@ -3994,3 +3994,7 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### Clipped quotes in a commitment (136 item 3)
 
 **What changed (served, `workPlan[].says`, `obligations`, `timeline` and wherever a commitment is said; lead and the person).** Where what a person said is only a piece of a sentence, with no full stop, in lower case and with no "I", it is no longer put in quotation marks beside a second quoted time. `In session 1, you said, "send the data room". The time you gave for it was "on Wednesday".` reads: In session 1, you said you would send the data room on Wednesday. Nobody has said yet whether it happened. The lead reads: In session 1, Wanjiru Kamau said they would send the data room on Wednesday. When a whole sentence of theirs is held ("I will send the data room."), it is quoted as before.
+
+### "Nobody answering this check-in" on a check-in of one person, and an aim without a number as the standard (136 item 6; 132 g widened)
+
+**What changed (served, `againstSuccess.saying`, lead).** In a check-in where the lead is the only person, the line reads: You have not said what success looks like yet. It appears here as soon as you do. Until then, the report can say what you have said, but not whether things are going well. It no longer says "nobody answering this check-in has said it either". Also, any team aim the lead set (with or without a number) now counts as what success looks like, so Wanjiru's "Get to 20 paying customers by December." is read as the standard (earlier I read only aims with a number).
