@@ -108,7 +108,7 @@ export async function allMail(): Promise<{ to_header: string; subject: string }[
  */
 export function composer(page: Page) {
   /* A box that can be typed in right now: the setup screen leaves its own, disabled, in the page after it hands over, and the rebuilt screens call the box "Your answer". */
-  return page.locator('textarea:not([disabled]), input[type="text"]:not([disabled])').and(page.getByPlaceholder(/Type your response|Share what you have been working on/i)).first();
+  return page.locator('textarea:not([disabled]), input[type="text"]:not([disabled])').and(page.getByPlaceholder(/Type your response|Type, or hold to speak|Share what you have been working on/i)).first();
 }
 
 export async function say(page: Page, text: string): Promise<void> {
@@ -116,7 +116,10 @@ export async function say(page: Page, text: string): Promise<void> {
   await expect(box).toBeVisible({ timeout: 60_000 });
   await expect(box).toBeEnabled({ timeout: 120_000 });
   await box.fill(text);
-  await page.getByRole('button', { name: '↑' }).or(page.getByRole('button', { name: 'Send message' })).or(page.getByRole('button', { name: 'Send', exact: true })).first().click();
+  const sendButton = page.getByRole('button', { name: '↑' }).or(page.getByRole('button', { name: 'Send message' })).or(page.getByRole('button', { name: 'Send', exact: true })).first();
+  /* The check-in's arrow button has no words of its own; Enter sends there. */
+  if (await sendButton.isVisible().catch(() => false)) await sendButton.click();
+  else await box.press('Enter');
   await page.waitForTimeout(1500);
 
   /**

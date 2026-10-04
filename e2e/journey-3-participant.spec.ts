@@ -41,12 +41,14 @@ test('Amani opens her invitation, checks in, reads the board, asks Groundwork an
 
   await test.step('4. She finishes, and reads what was written down from her answers', async () => {
     await page.getByRole('button', { name: /Complete|Finish|Done|Submit/i }).first().click();
-    await expect(page.getByText(/in your record|Your record/i).first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/Done\. Thanks, Amani\./).first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText('Two reports come from this')).toBeVisible();
+    readsAsPlainSentences(await whatIsOnThePage(page));
   });
 
   await test.step('5. She reads the board; it shows the team\'s picture and never a judgement of her', async () => {
-    await page.goto(`${APP}${w.checkInPath ?? '/grounds'}`);
-    await expect(page.getByText(/Last updated on/)).toBeVisible();
+    await page.goto(`${APP}${theWorld().checkInPath}/board`);
+    await expect(page.getByText(/Last updated on/)).toBeVisible({ timeout: 60_000 });
     const text = await whatIsOnThePage(page);
     readsAsPlainSentences(text);
     expect(text).not.toMatch(/\b(PIP|at risk)\b/);
@@ -63,7 +65,7 @@ test('Amani opens her invitation, checks in, reads the board, asks Groundwork an
     await expect(panel.getByText(/20 October/).first()).toBeVisible({ timeout: 90_000 });
     await panel.getByRole('button', { name: 'Yes' }).last().click();
     await page.goto(`${APP}/suite/mine`);
-    await expect(page.getByRole('heading', { name: 'Your requests' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your requests', exact: true })).toBeVisible();
     await expect(page.getByText(/20 October/).first()).toBeVisible();
     readsAsPlainSentences(await whatIsOnThePage(page));
   });
