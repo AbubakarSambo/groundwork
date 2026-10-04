@@ -125,7 +125,7 @@ describe('finishing a check-in the engine already closed', () => {
     await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalled())
     // The card comes down, the server's own sentence is never shown, and the plain explanation
     // and a live composer take its place.
-    expect(await screen.findByText(/Groundwork needs one or two more answers before this can finish/i)).toBeTruthy()
+    expect(await screen.findByText(/I need a little more from you before this check-in can close/i)).toBeTruthy()
     expect(screen.queryByText(/Not enough on record to close this session yet/i)).toBeNull()
     expect(screen.queryByRole('button', { name: /That’s right, finish/i })).toBeNull()
     expect((screen.getByPlaceholderText('Type, or hold to speak') as HTMLTextAreaElement).disabled).toBe(false)
