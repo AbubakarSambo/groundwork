@@ -4,6 +4,10 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## "MarketView, where next" board: done (4 October)
+
+"MarketView, where next, test" (a6ec96f6, stalled), lead and participant, in mvnext.txt's order: "In short", "By who they are", "Where next, ranked", "Where they disagree", "What this can't tell you", "Where this is heading" with each outcome's second line. This came after one review and its fixes (054fbc68..40b0e209), checked live (scratchpad `pictures/mvnext-A/`). A stalled check-in now reads "Out of time" with the prototype's sentence, "This check-in reached its end date. It ran until 30 September. Nothing new can be added until you give it more time." The engine's part is request 135.
+
 ## Law firm matter board: done (4 October)
 
 "Kasarani Foods v Pwani Mills, test" (92625659), lead and participant, in matter.txt's order with "Where the matter stands", "What you need to decide" and "What changed this week, and what it changed" drawn, after one review and its fixes (015c1058..c0e419c9), checked live (scratchpad `pictures/matter-A/`). The engine's part is request 134.
