@@ -24,7 +24,7 @@ The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`
 
 "Extension Access Programme, test" (ee96f03c), lead and participant, in gov.txt's order with its own three sections ("What each level understood", "What the visit log shows", "The counties"), after one review and its fixes (88572f42, 701444ff), checked live (scratchpad `pictures/gov-A/`). The engine's part is request 132. Two decisions for Hafsah are recorded: the question block is drawn as gov.txt shows it, and patterns and coaching stay open. Its button count is still over the prototype's (a known gap in the button test).
 
-**A clean-up for every board, after the last kind:** several buttons on the boards have neither text nor an `aria-label` (11 on the government lead's board, 6 on the programme, 9 on the support desk). Give each a spoken name, or make it not a button. This also lowers the button counts.
+**Corrected (4 October):** the "buttons with no name" noted here earlier were a misreading by the capture script. They sit inside closed folds, where their text reads as empty. With the folds open, every button on every board has a name. A test now guards it (06612147).
 
 ## Trader training programme board: done (4 October)
 
