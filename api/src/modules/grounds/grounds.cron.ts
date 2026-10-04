@@ -4,6 +4,8 @@ import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { organisationsThatTurnedWhatsAppOn } from '../whatsapp/only-where-whatsapp-is-turned-on';
 import { sendTheLeadsDailySummaries } from '../whatsapp/the-leads-daily-summary';
+import { sendTheLeadsWeeklyLetters } from '../email/the-leads-weekly-letter';
+import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { onceAcrossCopies, theDay, theWeek } from '../prisma/once-across-copies';
 import { theReleaseMoment, reachedTheWarningPointBefore } from './the-release-moment';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
@@ -818,6 +820,26 @@ export class GroundsCron implements OnApplicationBootstrap {
       now,
     ).catch((err: any) => { this.logger.warn(`The leads' daily summaries could not be sent: ${err?.message}`); return { tried: 0 }; });
     if (result.tried) this.logger.log(`WhatsApp: ${result.tried} lead summary message(s) tried.`);
+    return result;
+  }
+
+  /**
+   * THE LEAD'S WEEKLY LETTER BY EMAIL (anchor piece 29), Friday at three in the afternoon in Lagos, only
+   * while the anchor switch is on. One letter per lead, from the past seven days of the check-ins they
+   * started from the anchor link. What it says and never says is in email/the-leads-weekly-letter.ts.
+   */
+  @Cron('0 15 * * 5', { timeZone: 'Africa/Lagos' })
+  async sendTheLeadsWeeklyLetters() {
+    await onceAcrossCopies(this.prisma, 'lead-weekly-letter', theWeek(), () => this.sendTheLeadsWeeklyLettersInner());
+  }
+
+  async sendTheLeadsWeeklyLettersInner(now: Date = new Date()): Promise<{ tried: number }> {
+    if (!(await theAnchorScenarioIsOn(this.prisma))) return { tried: 0 };
+    const result = await sendTheLeadsWeeklyLetters(
+      { prisma: this.prisma, email: this.email, frontendUrl: this.config.get<string>('resend.frontendUrl') || '' },
+      now,
+    ).catch((err: any) => { this.logger.warn(`The leads' weekly letters could not be sent: ${err?.message}`); return { tried: 0 }; });
+    if (result.tried) this.logger.log(`Email: ${result.tried} weekly lead letter(s) tried.`);
     return result;
   }
 

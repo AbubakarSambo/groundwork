@@ -428,12 +428,12 @@ The order follows decision 94's list. Each piece is small enough for one builder
 | 21 | The yes button for an idea in the person's check-in | S | `client/src/pages/chat/ChatPage.tsx` | small | 10 |
 | 22 | Hidden contributors: a sentence for each person from their own work | E | `modules/board/help-nobody-mentioned.ts`, `coverage.ts` | medium | 9 |
 | 23 | The "People helping the team move" part | S | `client/src/pages/board/` | small | 9 |
-| 24 | Recommended check-ins: three kinds, from this Ground only, with the lead's yes | E | `modules/detectors/detectors.service.ts`, `Recommendation` (new kinds), `modules/entry/entry.service.ts` | large | no |
+| 24 (done, 5 October) | Recommended check-ins: three kinds, from this Ground only, with the lead's yes | E | `modules/detectors/detectors.service.ts`, `Recommendation` (new kinds), `modules/entry/entry.service.ts`. Built as `detectors/the-anchor-recommendations.ts` plus `grounds/recommended-check-ins.*` (the lead's routes and the listener). The lead's yes marks the offer accepted and hands back what the new check-in starts from; nothing is created and nobody is invited until she finishes the set-up screen. | large | no |
 | 25 | "Groundwork recommends" on the board, opening a prefilled new check-in | S | `client/src/pages/board/`, `client/src/pages/enter/TheSetup.tsx` | medium | no |
 | 26 | Suites offered when needed: the offer, when the suite is off, and the recurring-issue wording | E | `modules/suites/`, `modules/assistant/what-the-assistant-can-do.ts`, `modules/assistant/` | medium | 11 |
 | 27 | "Your team also needed": counts of needs surfaced, and the two chat buttons | E and S | `modules/suites/`, `client/src/pages/chat/`, `client/src/pages/suites/` | medium | 11 |
 | 28 | The weekly lead WhatsApp insight: the template, its builder and its cron | E | `modules/whatsapp/` (new file beside `the-leads-daily-summary.ts`), `a-message-outside-the-window.ts`, `modules/grounds/grounds.cron.ts`, `docs/whatsapp-templates.md` | large | 2 |
-| 29 | The weekly lead email, the prototype's "one weekly letter" | E | `modules/email/email.service.ts`, `modules/reports/` | medium | no |
+| 29 (done, 5 October) | The weekly lead email, the prototype's "one weekly letter" | E | `modules/email/email.service.ts`, `modules/reports/`. Built as `email/the-leads-weekly-letter.ts`, `EmailService.sendTheLeadsWeeklyLetter` and `GroundsCron.sendTheLeadsWeeklyLetters` (Friday 15:00 Lagos, only while the switch is on). | medium | no |
 | 30 | Nudges from the person's last commitment, and the "18/20 active" line served | E | `modules/conversation/remind.service.ts`, `modules/board/board.service.ts` | medium | 7 |
 | 31 | The "active" line on the board | S | `client/src/pages/board/BoardPage.tsx` | small | no |
 | 32 | The end-of-month read and the reveal counts, built once from the record | E | `modules/reports/reports.service.ts`, `the-four-reports.ts`, `modules/board/` | large | 4, 9 |

@@ -243,6 +243,8 @@ export const WHAT_EACH_MAIL_IS: Record<string, WhatKindOfMail> = {
   sendParticipantBlockedNudge: 'we decided to send it',
   sendCodeExpiryReminder: 'we decided to send it',
   sendRoundDigest: 'we decided to send it',
+  /* The lead's weekly letter on the anchor check-ins. Nobody asked this morning, so the stop link stops it. */
+  sendTheLeadsWeeklyLetter: 'we decided to send it',
 };
 
 export function whatThisMailIs(sender: string): WhatKindOfMail {

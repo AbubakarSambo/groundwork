@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { DetectorsService } from './detectors.service';
 import { RolesService, RoleInput, ActionInput } from './roles-and-their-action.service';
 import { ScenariosService } from './scenarios.service';
+import { ANCHOR_KINDS } from './the-anchor-recommendations';
 import { IMPLEMENTED, GENUINELY_NEW } from './one-vocabulary-two-scopes';
 
 /**
@@ -118,7 +119,8 @@ export class DetectorsController {
   @ApiOperation({ summary: 'Work an objective needs that nobody has picked up. Proposed, never created.' })
   async recommendations(@Req() req: { machine: MachineCaller }) {
     const rows = await this.prisma.recommendation.findMany({
-      where: { organizationId: req.machine.organizationId, state: 'PROPOSED' },
+      /* The recommended check-ins on an anchor check-in are the lead's alone and are not part of this list. */
+      where: { organizationId: req.machine.organizationId, state: 'PROPOSED', kind: { notIn: [...ANCHOR_KINDS] } },
       orderBy: { proposedAt: 'desc' },
       take: 100,
     });
@@ -163,7 +165,7 @@ export class DetectorsController {
    */
   private async resolve(organizationId: string, id: string, state: 'ACCEPTED' | 'DECLINED', by?: string) {
     const { count } = await this.prisma.recommendation.updateMany({
-      where: { id, organizationId, state: 'PROPOSED' },
+      where: { id, organizationId, state: 'PROPOSED', kind: { notIn: [...ANCHOR_KINDS] } },
       data: { state, resolvedAt: new Date(), resolvedByExternalId: by ?? null },
     });
     if (!count) throw new BadRequestException('No recommendation waiting under that id.');

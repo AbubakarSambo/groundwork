@@ -909,6 +909,19 @@ export class EmailService implements OnModuleInit {
   }
 
   /**
+   * THE LEAD'S WEEKLY LETTER (anchor piece 29). The words are built in the-leads-weekly-letter.ts from
+   * counts and first names only; here they are escaped, wrapped and posted. The way to stop it is the
+   * footer every mail we decide to send carries, and a lead who used it is not written to.
+   */
+  async sendTheLeadsWeeklyLetter(email: string, subject: string, lines: string[], linkLabel: string, linkUrl: string): Promise<void> {
+    await this.sendEmail({
+      to: email,
+      subject,
+      html: this.layout(lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') + `<p><a href="${linkUrl}">${escapeHtml(linkLabel)}</a></p>`),
+    }, undefined, 'sendTheLeadsWeeklyLetter');
+  }
+
+  /**
    * "GET UPDATES FROM YOUR TEAM" HAS TWO EMAILS AND THEY ARE THE WHOLE PRODUCT FOR THAT CARD.
    *
    * A two-minute setup is only worth anybody's time because of what arrives in the same week, so

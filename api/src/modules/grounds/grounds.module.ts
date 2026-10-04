@@ -15,6 +15,8 @@ import { CompanyController } from './company.controller';
 import { CompanyService } from './company.service';
 import { CompanyPictureService } from './the-company-picture.service';
 import { APlanIsManyProposalsService } from './a-plan-is-many-proposals.service';
+import { RecommendedCheckInsController } from './recommended-check-ins.controller';
+import { RecommendedCheckInsService } from './recommended-check-ins.service';
 import { BillingModule } from '../billing';
 import { PatternsModule } from '../patterns/patterns.module';
 import { UsageModule } from '../usage/usage.module';
@@ -33,8 +35,8 @@ import { SuitesModule } from '../suites/suites.module';
    * starting the thing finds it.
    */
   imports: [BillingModule, PatternsModule, UsageModule, ConversationModule, SuggestionsModule, SuitesModule],
-  controllers: [GroundsController, ParticipantRequestsController, AskingForMoreTimeController, TodayController, YouController, CompanyController, CheckInLinksController],
-  providers: [GroundsService, GroundsCron, AskingForMoreTimeService, WhatNeedsYouService, YourBoardService, CompanyService, CompanyPictureService, CheckInLinksService, APlanIsManyProposalsService],
+  controllers: [GroundsController, ParticipantRequestsController, AskingForMoreTimeController, TodayController, YouController, CompanyController, CheckInLinksController, RecommendedCheckInsController],
+  providers: [GroundsService, GroundsCron, AskingForMoreTimeService, WhatNeedsYouService, YourBoardService, CompanyService, CompanyPictureService, CheckInLinksService, APlanIsManyProposalsService, RecommendedCheckInsService],
   exports: [GroundsService],
 })
 export class GroundsModule {}
