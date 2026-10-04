@@ -27,10 +27,18 @@ const row = (overrides: Partial<Row>): Row => ({
 })
 
 describe('WhereEachPersonIs: the tag never contradicts the "Waiting on" section', () => {
-  it('reads "Nothing to do" when nobody is waiting on the reader', () => {
+  /*
+   * PROJECT BOARD REVIEW 1, FIX 4: NO TAG AT ALL FOR "NOTHING TO DO". Updated because this used
+   * to assert the engine's own internal reason code ("Nothing to do") printed as a tag on the
+   * person - exactly the label-on-a-person CLAUDE.md rules out, and never what the prototype's
+   * own "team today" rows show for somebody on pace with nothing needed of the reader (eng.txt:
+   * Miriam and Aisha read no tag at all, just their own sentence).
+   */
+  it('draws no tag when nobody is waiting on the reader - just the row\'s own sentence', () => {
     render(<WhereEachPersonIs rows={[row({})]} />)
-    expect(screen.getByText('Nothing to do')).toBeTruthy()
+    expect(screen.queryByText('Nothing to do')).toBeNull()
     expect(screen.queryByText('Waiting on you')).toBeNull()
+    expect(screen.getByText('Baraka Mwangi has checked in.')).toBeTruthy()
   })
 
   it('reads "Waiting on you" instead, when this person is waiting on the reader for something', () => {

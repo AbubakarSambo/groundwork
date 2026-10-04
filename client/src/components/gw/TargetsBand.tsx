@@ -200,8 +200,8 @@ export function TargetsBand({
         </RowList>
       </Panel>
       {!numbersShared && (
-        <div className="gwui-fs-13 gwui-ink-sub gwui-mt-8">
-          Each person sees their own share and the team{'’'}s totals, never someone else{'’'}s share.
+        <div className="gwui-mt-8">
+          <Note>Each person sees their own share and the team{'’'}s totals, never someone else{'’'}s share.</Note>
         </div>
       )}
     </section>
@@ -239,8 +239,8 @@ export function WhatTheTargetAssumes({ figure, assumes, assumesSays }: {
           <ul className="gwui-m-0 gwui-pl-18 gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6 }}>
             {assumes.map((a, k) => <li key={k}>{a}</li>)}
           </ul>
-          <div className="gwui-fs-13 gwui-ink-sub gwui-mt-6">
-            If one of these stops being true, the target needs a second look.
+          <div className="gwui-mt-6">
+            <Note>If one of these stops being true, the target needs a second look.</Note>
           </div>
         </>
       ) : (

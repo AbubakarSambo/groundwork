@@ -69,10 +69,17 @@ function roundsSentence(progress: Glance['progress']): string {
  *  - several of several:    "4 of 6 people have answered this round."
  *  - everybody, more than one: "Everybody has answered this round."
  */
-function answeredSentence(progress: Glance['progress']): string {
+function answeredSentence(progress: Glance['progress'], readerIsTheOnlyPerson?: boolean): string {
   const { answeredThisRound: a, ofPeople: n } = progress
   if (a === 0) return 'Nobody has answered this round yet.'
-  if (n === 1) return 'The one person in this round has answered.'
+  /*
+   * THE FOUNDER'S OWN CHECK-IN BOARD, AND ANY OTHER ONE-PERSON CHECK-IN READ BY THAT PERSON
+   * (founder.txt): "The one person in this round has answered." talks about the reader in the
+   * third person, on their own board - "You have answered this round." says the same true thing,
+   * the way the rest of the board already speaks to "you". A reader who is NOT that person (a
+   * read-only admin, say) still reads the third-person sentence, unchanged.
+   */
+  if (n === 1) return readerIsTheOnlyPerson ? 'You have answered this round.' : 'The one person in this round has answered.'
   if (a === n) return 'Everybody has answered this round.'
   return `${a} of ${n} people ${a === 1 ? 'has' : 'have'} answered this round.`
 }
@@ -84,7 +91,7 @@ function answeredSentence(progress: Glance['progress']): string {
  * it is actually going. Falls back to the brief only where no round has finished - a check-in
  * nobody has answered has no picture yet and still has to say what it is for.
  */
-export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingToBeLetIn }: {
+export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingToBeLetIn, readerIsTheOnlyPerson }: {
   summary?: string | null
   brief?: string | null
   glance?: Glance | null
@@ -97,6 +104,9 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingTo
    * folded into it.
    */
   waitingToBeLetIn?: string | null
+  /** True when the one person this round's "answered" count is about is the reader themselves
+      (the founder's own check-in board, among any other one-person check-in) - see `answeredSentence`. */
+  readerIsTheOnlyPerson?: boolean
 }) {
   const late = (glance?.inTheWay.count ?? 0) > 0
   const vars = tone === 'dark'
@@ -133,7 +143,7 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light', waitingTo
             */}
             <span className="gwui-how-strong">{roundsSentence(glance.progress)}</span>
             {glance.progress.ofPeople > 0 && (
-              <span className="gwui-how-people"> {answeredSentence(glance.progress)}</span>
+              <span className="gwui-how-people"> {answeredSentence(glance.progress, readerIsTheOnlyPerson)}</span>
             )}
           </div>
           {/* Decision 77: beside the count, never inside it - a fact about the organisation's own

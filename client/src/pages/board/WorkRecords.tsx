@@ -106,13 +106,23 @@ const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
   'engineering release': 'Every task, and what shows it',
   'support desk': 'Every ticket, and what shows it',
   'distribution operations': 'Every incident, and what shows it',
-  'trader training programme': 'Every trader group, and what shows it',
-  'asset loans': 'Every loan, and what shows it',
+  /* Programme board review 1, item 3: programme.txt's own heading for this table is "Every
+     trader, and what shows it" - not "Every trader group", which named the record's own item
+     kind (`group`) rather than what the prototype actually says a lead reads here. */
+  'trader training programme': 'Every trader, and what shows it',
+  /* Request 133: loans.txt's own heading for this table is "Every trader, and what shows it" -
+     named after who the cohort is (traders), the same words the trader training programme uses,
+     not the record's own item kind (`loan`). The "Loan" column itself is untouched. */
+  'asset loans': 'Every trader, and what shows it',
   'MarketView Q4': 'Every subscription, and what shows it',
   'a government programme': 'Every county, and what shows it',
 }
 const WORK_PLAN_HEADING: Partial<Record<KindOfWork, string>> = {
-  "founder's own check-in": 'Every commitment and decision, and what shows it',
+  /* THE FOUNDER'S OWN CHECK-IN BOARD (founder.txt): the prototype's own heading for this table is
+     "Every item, and what shows it" - the same words every other kind uses (see
+     `DEAL_GRID_HEADING`, above), not "Every commitment and decision", which named the record's
+     own item kinds rather than what founder.txt actually reads here. */
+  "founder's own check-in": 'Every item, and what shows it',
 }
 
 /**
@@ -155,6 +165,20 @@ function DealGridKey({ rows }: { rows: AServedWorkRow[] }) {
 }
 const THEMES_HEADING: Partial<Record<KindOfWork, string>> = {
   'MarketView where next': 'Where next, ranked',
+  /* Support desk board fix 2: support.txt's own heading, right after "The team today". */
+  'support desk': 'The shape of the work',
+  /* Distribution operations board: ops.txt's own heading, right after "The team today". */
+  'distribution operations': 'The shape of the work',
+}
+
+/**
+ * THE SUPPORT DESK'S OWN NOTE FOR "THE SHAPE OF THE WORK" (support.txt, directly under its
+ * heading: "Volume from the helpdesk, causes from the check-ins"). Said once here, the same way
+ * `DEAL_GRID_NOTE` already does for the deal grid's own subtitle.
+ */
+const THEMES_NOTE: Partial<Record<KindOfWork, string>> = {
+  'support desk': 'Volume from the helpdesk, causes from the check-ins.',
+  'distribution operations': 'Incidents by site and type, last 8 weeks.',
 }
 
 /** The word for one row's kind, at the head of its own column ("Deal", "Task", "Item", "Trader"...). */
@@ -219,15 +243,51 @@ export function sectionHeading(kindOfWork: KindOfWork | null, section: AServedWo
 const dueSentence = (due: string | null) => (due ? `Due on ${whenItWas(due, 'dayAndMonthLong')}.` : null)
 
 /**
+ * PROJECT BOARD REVIEW 1, FIX 9: "NO RELEASES OR TASKS HAVE COME UP YET.", NOT "AND". The
+ * engineering kind's `holds` ("releases and tasks") is a plain label joining the two item kinds it
+ * covers - right as a heading, but read inside "No {holds} have come up yet.", "and" says neither
+ * has come up only together, where the true meaning is that neither has come up at all: "or" is
+ * the correct word. A small, named exception rather than a general rule, so every other kind's own
+ * "No ... have come up yet." sentence (e.g. "commitments and decisions") is unchanged.
+ */
+const NONE_YET_HOLDS_SAYS: Record<string, string> = {
+  'releases and tasks': 'releases or tasks',
+}
+/*
+ * LAW FIRM MATTER BOARD, FIX 4: "NONE OF THE THE PARTIES SO FAR IS YOURS." The engine's own
+ * `holds` for the parties section is sent as "the parties" (api/src/modules/board/
+ * the-kind-of-work.ts), which reads right as a heading ("The parties") but doubles the article
+ * once it sits inside "None of the {holds} so far is yours." or "No {holds} have come up yet." A
+ * leading "the " is stripped here, at render time, rather than in the engine's own field - no
+ * other kind's `holds` starts with "the ", so every other sentence is unchanged.
+ */
+const noneYetHoldsSentence = (holds: string) => (NONE_YET_HOLDS_SAYS[holds] ?? holds).replace(/^the\s+/i, '')
+
+/**
  * THE KIND OF WORK, NEAR THE TOP OF THE BOARD (item 4). One plain sentence, said once. The lead, or
  * an admin of this organisation, can change it and its stage names; a participant reads it and
  * cannot change it. A name the server refuses is shown exactly as it says it.
  */
-export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: {
+export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit, kindsOffered, readerIsTheFounder }: {
   groundId: string
   kindOfWork: KindOfWork | null
   workStages?: string[] | null
   canEdit: boolean
+  /**
+   * THE RELEASE'S REQUEST (4 October 2026): A NEW CHECK-IN MAY BE GIVEN ONLY SOME OF THE ELEVEN
+   * KINDS. The dialog lists only `kindsOffered`, plus the kind this check-in already holds
+   * (`kindOfWork`), so a check-in that holds another kind can still be saved. Absent on an older
+   * server - keep today's full list then.
+   */
+  kindsOffered?: KindOfWork[]
+  /**
+   * THE FOUNDER'S OWN CHECK-IN BOARD, READ BY THE FOUNDER (founder.txt): "This is your own
+   * check-in as a founder, about your own commitments and decisions." - "you", not "their", the
+   * one time the person reading this sentence is the founder it is about. Every other reader of
+   * this kind (a read-only admin, say) still reads `KIND_OF_WORK_SENTENCE`'s own third-person
+   * wording, and every other kind of work is unaffected.
+   */
+  readerIsTheFounder?: boolean
 }) {
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -247,7 +307,9 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
   })
 
   const sentence = kindOfWork
-    ? KIND_OF_WORK_SENTENCE[kindOfWork]
+    ? (readerIsTheFounder && kindOfWork === "founder's own check-in"
+      ? "This is your own check-in as a founder, about your own commitments and decisions."
+      : KIND_OF_WORK_SENTENCE[kindOfWork])
     : (canEdit
       ? 'Nobody has said what kind of work this check-in is about yet. Choose one, so its board can keep the right kind of record.'
       : 'Nobody has said what kind of work this check-in is about yet.')
@@ -267,7 +329,8 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
               <FieldLabel htmlFor="kind-of-work-select">Kind of work</FieldLabel>
               <Select id="kind-of-work-select" value={kind} onChange={(e) => setKind(e.target.value)}>
                 <option value="">Not known yet</option>
-                {KIND_OF_WORK_OPTIONS.map((k) => <option key={k} value={k}>{KIND_OF_WORK_OPTION_LABEL[k]}</option>)}
+                {(kindsOffered ? KIND_OF_WORK_OPTIONS.filter((k) => kindsOffered.includes(k) || k === kindOfWork) : KIND_OF_WORK_OPTIONS)
+                  .map((k) => <option key={k} value={k}>{KIND_OF_WORK_OPTION_LABEL[k]}</option>)}
               </Select>
             </div>
             <div>
@@ -854,7 +917,7 @@ function ThemesList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
  * nothing has come up, "not-known" says this is not something Groundwork knows, in the server's own
  * words, quieter.
  */
-function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, leadFirstName, readerIsLead, canEdit }: {
+function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, leadFirstName, readerIsLead, canEdit, hideStageTrack }: {
   groundId: string
   kindOfWork: KindOfWork | null
   section: AServedWorkSection
@@ -862,6 +925,9 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   leadFirstName: string | null
   readerIsLead: boolean
   canEdit: boolean
+  /** Request 133: an asset loans cohort's own "The shape of the work" strip moves into the end
+      fold instead of drawing here - see the comment above where it would otherwise draw. */
+  hideStageTrack?: boolean
 }) {
   const qc = useQueryClient()
   const invalidate = () => qc.invalidateQueries({ queryKey: ['board', groundId] })
@@ -906,7 +972,17 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
    * once the engine has actually put the rows into groups.
    */
   const dealGroups = section.state === 'filled' || section.state === 'none-yet' ? section.groups : undefined
-  const note = (isDealGrid && kindOfWork && dealGroups?.length ? DEAL_GRID_NOTE[kindOfWork] : undefined) ?? undefined
+  /*
+   * PROJECT BOARD REVIEW 1, FIX 9: THE ENGINE'S OWN "ONLY YOURS" NOTE. A participant's own board
+   * already has each section filtered server-side to just their rows (`a-participants-board-is-
+   * their-own.ts`), which sends `onlyYours: 'Only yours.'` on that section - drawn nowhere here
+   * before, so a participant read the whole kind-of-work record with no sign it had already been
+   * narrowed to theirs.
+   */
+  const onlyYours = section.state !== 'not-known' ? section.onlyYours ?? undefined : undefined
+  const note = (isDealGrid && kindOfWork && dealGroups?.length ? DEAL_GRID_NOTE[kindOfWork] : undefined)
+    ?? (section.section === 'Themes' && kindOfWork ? THEMES_NOTE[kindOfWork] : undefined)
+    ?? onlyYours ?? undefined
 
   if (section.state === 'not-known') {
     return (
@@ -919,10 +995,21 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   const canAdd = canEdit && !!ITEM_KINDS_FOR_HOLDS[section.holds]?.length
 
   if (section.state === 'none-yet') {
+    /*
+     * BOARD REVIEW, OPS BOARD, ITEM 5: A PARTICIPANT WHOSE OWN ROWS ARE EMPTY STILL READS "NO
+     * {RECORD}S HAVE COME UP YET.", EVEN WHEN THE LEAD HAS ALREADY ADDED ONE FOR SOMEBODY ELSE. The
+     * sentence is true of the whole check-in, not of what this reader was actually sent - this
+     * section is already narrowed to "only yours" (`onlyYours` above), so an empty `section.rows`
+     * here means none of those rows is this reader's own, not that nothing has been said at all.
+     */
+    const holdsWord = noneYetHoldsSentence(section.holds)
+    const sentence = onlyYours
+      ? `None of the ${holdsWord} so far is yours. Yours appear here when you name one in a check-in${canAdd ? ', or when you add one below.' : '.'}`
+      : `No ${holdsWord} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`
     return (
       <Section heading={heading} note={note}>
         <p className="gwui-ink-sub gwui-fs-15" style={{lineHeight: 1.55}}>
-          {`No ${section.holds} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`}
+          {sentence}
         </p>
         {canAdd && (
           <div className="gwui-mt-10">
@@ -960,6 +1047,16 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
      (item 3 a, c, d - see `SalesDealGridHead`/`SalesDealGridRow`), not the generic table every
      other kind of work shares. */
   const isSalesDealGrid = isDealGrid && kindOfWork === 'sales org'
+  /*
+   * PROJECT BOARD REVIEW 1, FIX 10: "NOT RIGHT? TELL THE CHECK-IN" ON THE ENGINEERING GRID TOO.
+   * eng.txt's own grid carries this line under its rows ("Something here wrong? Anyone can
+   * correct what's about their own work in their check-in; the change and the original both show
+   * here."), the same invitation the sales deal grid already gives through `DealDetail` - but
+   * the engine does not yet send the sales grid's own per-row detail fields (`groupSays`,
+   * `contactHistory`, `theirRead`) for an engineering release, so there is no row-level fold to
+   * hang it on yet. Said once, under the grid, rather than left out until that data exists.
+   */
+  const isEngineeringDealGrid = isDealGrid && kindOfWork === 'engineering release'
   const dealGridContent = isTimeline ? (
         <TimelineList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} readerIsLead={readerIsLead} onEdit={setEditingRow} />
       ) : isObligations ? (
@@ -1061,11 +1158,34 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
         readings of the same shape, under two different headings. Every other kind of work has no
         such section anywhere else on the board, so it keeps "The shape of the work" here, the
         only place it is told at all.
+
+        REQUEST 133: NOT HERE FOR AN ASSET LOANS COHORT EITHER. loans.txt does not show this strip
+        under its own table - the records table stays open for this kind
+        (`kindLayout['asset loans'].teamInFoldRecordsOpen`) while this strip alone moves into the
+        end fold; see `hideStageTrack`, passed in from BoardPage.tsx, and
+        `TheShapeOfTheWorkStrip`, exported below for the fold to draw it there instead.
       */}
-      {!!section.stages?.length && !isSalesDealGrid && (
-        <div className="gwui-mt-14">
-          <p className="gwui-mb-8 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
-          <StageTrack stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
+      {!!section.stages?.length && !isSalesDealGrid && !hideStageTrack && (
+        <TheShapeOfTheWork stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
+      )}
+
+      {isEngineeringDealGrid && (
+        <div>
+          <Link to={`/grounds/${groundId}?tab=chat`} className="gwui-plain-link">Not right? Tell the check-in</Link>
+        </div>
+      )}
+
+      {/*
+        THE FOUNDER'S OWN CHECK-IN BOARD (founder.txt): "Something here wrong? Anyone can correct
+        what's about their own work in their check-in; the change and the original both show
+        here." - the prototype's own words, exactly, the same invitation `DealDetail` and
+        `isEngineeringDealGrid` give for their own kinds. Only when the founder actually can
+        correct a record here (`canEdit`) - this is a one-person board, so a reader without that
+        right (a read-only admin, say) is never told to go correct what is not theirs to correct.
+      */}
+      {isFounder && canEdit && (
+        <div>
+          <Note tone="muted">Something here wrong? Anyone can correct what's about their own work in their check-in; the change and the original both show here.</Note>
         </div>
       )}
 
@@ -1181,7 +1301,7 @@ export function YourOwnRecordsSections({ groundId, kindOfWork, sections, myParti
  * rebuilt pages already use - `Section` itself carries no spacing of its own, so without this a
  * button at the foot of one section sits flush against the next section's heading.
  */
-export function WorkRecordsSections({ groundId, kindOfWork, sections, participants, leadFirstName, readerIsLead, canEdit }: {
+export function WorkRecordsSections({ groundId, kindOfWork, sections, participants, leadFirstName, readerIsLead, canEdit, collapseWhenAllNotKnown, hideStageTrack }: {
   groundId: string
   kindOfWork?: KindOfWork | null
   sections?: AServedWorkSection[]
@@ -1189,8 +1309,33 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
   leadFirstName: string | null
   readerIsLead: boolean
   canEdit: boolean
+  /** Request 133: passed through to each section so an asset loans cohort's own "The shape of the
+      work" strip can move into the end fold instead - see `WorkRecordSectionBlock`. */
+  hideStageTrack?: boolean
+  /**
+   * PROJECT BOARD REVIEW 1, FIX 3: NO KIND OF WORK, ONE SENTENCE, NOT SIX HEADED SECTIONS. A
+   * check-in with no kind of work chosen at all (the DRIFT fixture, "The partnerships work has
+   * gone quiet", dac969d3) gets every `workRecords` section back as not-known with the exact same
+   * `why`, and nothing else on the board to say instead - drawn as before, that repeated the same
+   * italic sentence six times, each under its own heading, four of them the switchboard's own
+   * internal names ("Deal grid", "Forecast", "Themes", "Work plan"), never a sentence a person
+   * reads. The caller works out whether that is really true for this board (it is not, for the
+   * onboarding board's own `workRecords`, which looks the same but has real "Work plan" and
+   * "Timeline" content elsewhere) and passes the answer in here, rather than this component
+   * guessing from the sections alone.
+   */
+  collapseWhenAllNotKnown?: boolean
 }) {
   if (!sections?.length) return null
+
+  if (collapseWhenAllNotKnown) {
+    return (
+      <div className="gwui-page-wrap">
+        <Note tone="muted">{(sections[0] as { why: string }).why}</Note>
+      </div>
+    )
+  }
+
   return (
     <div className="gwui-page-wrap">
       {sections.map((s) => (
@@ -1203,8 +1348,38 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
           leadFirstName={leadFirstName}
           readerIsLead={readerIsLead}
           canEdit={canEdit}
+          hideStageTrack={hideStageTrack}
         />
       ))}
     </div>
   )
+}
+
+/**
+ * THE ACTUAL STRIP, FACTORED OUT SO ITS MARKUP - AND THE ONE-OFF CLASSES IT CARRIES - EXISTS ONCE
+ * IN THIS FILE, NOT ONCE INLINE AND ONCE AGAIN FOR THE FOLD (one-off-uses-only-go-down.spec.ts:
+ * counts rise when the same classes are typed out twice).
+ */
+function TheShapeOfTheWork({ stages, counts, itemNoun }: { stages: string[]; counts: Record<string, number>; itemNoun: string }) {
+  return (
+    <div className="gwui-mt-14">
+      <p className="gwui-mb-8 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
+      <StageTrack stages={stages} counts={counts} itemNoun={itemNoun} />
+    </div>
+  )
+}
+
+/**
+ * REQUEST 133: "THE SHAPE OF THE WORK", DRAWN ALONE, FOR THE END FOLD (loans.txt does not show
+ * this strip under its own table - see `hideStageTrack`, above). Reads the same Deal grid section
+ * `WorkRecordSectionBlock` would have drawn it from, so the fold shows the same stage counts, only
+ * moved.
+ */
+export function TheShapeOfTheWorkStrip({ kindOfWork, sections }: { kindOfWork?: KindOfWork | null; sections?: AServedWorkSection[] }) {
+  const section = (sections ?? []).find((s) => s.section === 'Deal grid')
+  if (!section || section.state === 'not-known' || !section.stages?.length) return null
+  const stageCounts: Record<string, number> = {}
+  for (const row of section.rows) if (row.stage) stageCounts[row.stage] = (stageCounts[row.stage] ?? 0) + 1
+  const itemNoun = kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item'
+  return <TheShapeOfTheWork stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
 }

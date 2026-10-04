@@ -4,6 +4,44 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## Founder's own check-in board: done (4 October)
+
+"Founder’s own check-in, test" (3ca11603, one person), in founder.txt's order, after one review and its fixes (ee40c790..c2dd2f31), checked live (scratchpad `pictures/founder-A/`). A one-person check-in now says "you", not "the team", and no longer asks the founder to add somebody. The engine's part is request 136. The wording guard fails again on an engine file (request 137).
+
+## "MarketView, where next" board: done (4 October)
+
+"MarketView, where next, test" (a6ec96f6, stalled), lead and participant, in mvnext.txt's order: "In short", "By who they are", "Where next, ranked", "Where they disagree", "What this can't tell you", "Where this is heading" with each outcome's second line. This came after one review and its fixes (054fbc68..40b0e209), checked live (scratchpad `pictures/mvnext-A/`). A stalled check-in now reads "Out of time" with the prototype's sentence, "This check-in reached its end date. It ran until 30 September. Nothing new can be added until you give it more time." The engine's part is request 135.
+
+## Law firm matter board: done (4 October)
+
+"Kasarani Foods v Pwani Mills, test" (92625659), lead and participant, in matter.txt's order with "Where the matter stands", "What you need to decide" and "What changed this week, and what it changed" drawn, after one review and its fixes (015c1058..c0e419c9), checked live (scratchpad `pictures/matter-A/`). The engine's part is request 134.
+
+## Asset loans board: done (4 October)
+
+"Asset loans, cohort 3, test" (4e89d79c), lead and participant, in loans.txt's order with "Where the cohort stands" and "Support given, and whether it helped" drawn, after one review and its fixes (b5f1a789..0b5efc00), checked live (scratchpad `pictures/loans-A/`). The engine's part is request 133.
+
+## Government programme board: done (4 October)
+
+"Extension Access Programme, test" (ee96f03c), lead and participant, in gov.txt's order with its own three sections ("What each level understood", "What the visit log shows", "The counties"), after one review and its fixes (88572f42, 701444ff), checked live (scratchpad `pictures/gov-A/`). The engine's part is request 132. Two decisions for Hafsah are recorded: the question block is drawn as gov.txt shows it, and patterns and coaching stay open. Its button count is still over the prototype's (a known gap in the button test).
+
+**Corrected (4 October):** the "buttons with no name" noted here earlier were a misreading by the capture script. They sit inside closed folds, where their text reads as empty. With the folds open, every button on every board has a name. A test now guards it (06612147).
+
+## Trader training programme board: done (4 October)
+
+"Trader training programme, test" (46cfcb15), lead and participant, matched to programme.txt after one review and its fixes (7c3bbba7), checked live (scratchpad `pictures/programme-A/`). The engine's part is request 131.
+
+## Distribution operations board: done (4 October)
+
+"Distribution operations, test" (f76b7a18), lead and participant, matched to ops.txt after one review and its six screen fixes, checked live (scratchpad `pictures/ops-A/`). The engine's part is request 130. Note: an earlier builder saved captures into an untracked `scratchpad/` folder inside the project. It is not committed, and can be deleted.
+
+## Support desk board: done (4 October)
+
+"Support desk, test" (48896035), lead and participant, matched to support.txt after one review and three fixes (a2596ea5..aa4c6d3b), checked live (scratchpad `pictures/support-A/`). BoardPage.tsx now has a per-kind table, `kindLayout`, for where sections sit. Each later kind is one row. The engine's part is request 129.
+
+## Project boards: done (4 October)
+
+Both situations, "Get a new project off to a good start" (555ac67d, engineering) and "Get a project back on track" (dac969d3), as lead and participant. The first review's eleven screen faults are fixed (06c9a1ac..6a207536) and checked live, with captures in the scratchpad's `pictures/project-check-eng/` and `project-check-drift/`. The engine's part is request 127. The local API runs the engine's 0b15efca, because its newest code does not compile (request 126). Next: Phase B, the other eight kinds of work, one at a time.
+
 ## Onboarding board: done (3 October)
 
 The fourth review, on the engine's 0b15efca, says both Amina (the lead) and Tobi (the new hire) match what the prototype shows for a new hire, apart from the engine's faults (requests 123 and 125). Captures are in the scratchpad's `pictures/review-onboard-4/`. Next is the project board.

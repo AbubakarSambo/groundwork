@@ -94,6 +94,36 @@ describe('decisionDuplicatesALeadAction', () => {
     const bare = [{ id: 'd00f8473-1b51-454c-97dd-a5c8a373e5c3', from: null, what: null }]
     expect(decisionDuplicatesALeadAction(DECISIONS[0], LEAD_ACTIONS, bare)).toBe(false)
   })
+
+  /*
+   * PROJECT BOARD REVIEW 1, FIX 1: "nobody-named-" ROWS DUPLICATE TOO. The real fixture
+   * (eng-lead-1440, NEW_PROJECT 555ac67d) shows the lead reading both "You need to find out who
+   * can provide owners with dates for the API format and the data structure, because nobody has
+   * been named yet..." (a `leadActions` row, id `nobody-named-9b41fa1c-...`) and "You are waiting
+   * for owners with dates for the API format and the data structure, and nobody has been named to
+   * provide it." (the matching `source: 'blocker'` decision). The dependency's `from` here is the
+   * lead's own name (Wanjiru Lead), so the decision reads "You", not the name - the match needs
+   * the reader's own name to see through that.
+   */
+  const NOBODY_NAMED_DEPENDENCIES = [
+    { id: '9b41fa1c-16b6-45db-959b-4d33b154341a', from: 'Wanjiru Lead', what: 'owners with dates for the API format and the data structure' },
+    { id: '06023673-d3fb-43ab-bc5c-59a6f95504c1', from: 'Aisha Wanjiku', what: 'the data structure decision' },
+  ]
+  const NOBODY_NAMED_LEAD_ACTIONS = [
+    { id: 'nobody-named-9b41fa1c-16b6-45db-959b-4d33b154341a', says: 'You need to find out who can provide owners with dates for the API format and the data structure, because nobody has been named yet. That waits on a decision on who owns them.' },
+    { id: 'nobody-named-06023673-d3fb-43ab-bc5c-59a6f95504c1', says: 'You need to find out who can provide the data structure decision Aisha Wanjiku is waiting for, because nobody has been named yet.' },
+  ]
+  const NOBODY_NAMED_DECISIONS = [
+    { question: 'You are waiting for owners with dates for the API format and the data structure, and nobody has been named to provide it.', why: 'You cannot move until it comes.', owner: 'Nobody has been named to provide it.', source: 'blocker' as const },
+    { question: 'Aisha Wanjiku is waiting on the data structure decision, so it needs deciding.', why: 'Aisha Wanjiku cannot move until this is decided.', owner: 'Nobody has been named to decide this.', source: 'blocker' as const },
+  ]
+
+  it('matches a "nobody-named-" lead action for the lead\'s own wait, read as "You"', () => {
+    expect(decisionDuplicatesALeadAction(NOBODY_NAMED_DECISIONS[0], NOBODY_NAMED_LEAD_ACTIONS, NOBODY_NAMED_DEPENDENCIES, 'Wanjiru Lead')).toBe(true)
+  })
+  it('matches a "nobody-named-" lead action for somebody else\'s wait, read by name', () => {
+    expect(decisionDuplicatesALeadAction(NOBODY_NAMED_DECISIONS[1], NOBODY_NAMED_LEAD_ACTIONS, NOBODY_NAMED_DEPENDENCIES, 'Wanjiru Lead')).toBe(true)
+  })
 })
 
 describe('"What needs you in this check-in" does not repeat a blocker', () => {

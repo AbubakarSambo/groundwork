@@ -4,6 +4,64 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## Morning, 5 October: in short
+
+**What I finished.** Every board the client needs is matched to its prototype and checked live, as the lead and as a participant, at both widths:
+- the sales team;
+- onboarding;
+- project, which is both "a new project" and "a project back on track".
+
+After those, seven more kinds are matched the same way. Each had one review, then its fixes, then a live check of both readers:
+- support desk;
+- distribution operations;
+- trader training programme;
+- government programme;
+- asset loans;
+- law firm matter;
+- "where next".
+
+The founder's own check-in is matched too. It has one person, so there is no participant to check. MarketView Q4 is not matched: there is no fair local test check-in for it (below). BoardPage.tsx now has one small table, `kindLayout`, for where each kind's sections sit, so a new kind is one row. The one-off style clean-up has started (BoardPage.tsx 596 to 584 uses), but it is slow: most of what is left carries styling no shared part reproduces exactly.
+
+**The boards, kind by kind** (L is the lead, P the participant):
+
+| Kind of work | Matched to its prototype | What is still wrong, and whose |
+| --- | --- | --- |
+| Sales team | Done, L and P | Engine: requests 121 and 122 |
+| Onboarding (a new hire) | Done, L and P | Engine: 123 and 128 (the 90-day questions count the lead in; a commitment read as a goal) |
+| Project, both situations | Done, L and P | Engine: 127 (no headline; one wait sent twice) |
+| Support desk | Done, L and P | Engine: 129 (a wait not sent; no headline) |
+| Distribution operations | Done, L and P | Engine: 130 (the first count read as a rise) |
+| Trader training programme | Done, L and P | Engine: 131 |
+| Government programme | Done, L and P | Engine: 132. More buttons than the prototype's two (a known gap) |
+| Asset loans | Done, L and P | Engine: 133 (a sales question on a loans check-in) |
+| Law firm matter | Done, L and P | Engine: 134 |
+| MarketView, where next | Done, L and P | Engine: 135 |
+| Founder's own check-in | Done (one person) | Engine: 136 (no target numbers) |
+| MarketView Q4 | Not done | No fair test check-in (below) |
+
+**The test results.**
+- **Client:** after the last merge, all 4,073 tests pass, including the wording guard, which the engine fixed. The type check is clean. One-off style uses went down by 32 more, with no visible change: BoardPage.tsx 584, ResolutionPanel 64, TargetsBand 52, Suggestions 46, WhatSuccessLooksLike 38.
+- **Browser:** the button count passes 55 of 55 (the government, loans, matter and where-next boards still show their known button gaps), and the page colour passes 4 of 4.
+- **API:** I have no totals. The whole run stops when Node runs out of memory on this Mac, twice. The first run named the files that failed:
+  - `the-judgement-reaches-a-screen.spec.ts` pins the board's source text, which the where-next fix changed by one prop; the board still behaves the same (request 138);
+  - `the-board-serves-patterns-under-the-rules.spec.ts` and eight `journey/` files stopped when memory ran out.
+
+  None of these is in code this workspace owns. Run on its own, the engine's suite may pass; request 138 asks the engine to confirm.
+
+**Needs Hafsah**
+- **Decided for you to confirm:**
+  - **The operations table's heading.** ops.txt says "Every % on time, and what shows it", which reads like a template slip. The screen says "Every incident, and what shows it".
+  - **The government board's question block.** The switchboard turns it off for this situation, but gov.txt shows it and the engine sends it, so the screen draws it.
+  - **Patterns and coaching where a prototype does not show them** (the government board). They stay open, before "Where this is heading", because they are protected.
+  - **MarketView Q4 is not matched.** Its only test check-in is a borrowed new-hire one. Giving another check-in that kind would need the engine's script that asks the AI model, and the board's own control offers only "sales org" at release. No client uses this kind.
+- **Still open from before:**
+  - the three restrictions made under the withdrawn rule (the admin's To-dos board, the "role, as described" column, email addresses where they are hidden);
+  - the engine's list in `docs/privacy-restrictions-for-hafsah.md`.
+- **For the engine** (not yours, but worth knowing): requests 121 to 138. Several stored lines about "meetings that happened" show on boards where nobody spoke of a meeting, and the engine's update script does not rewrite them (request 131).
+- **Small housekeeping:**
+  - an earlier helper saved captures into an untracked `scratchpad/` folder inside the project; it can be deleted;
+  - your guard version 2 is committed (99e55c65).
+
 ## This morning, 2 October: in short
 
 **A question for you (3 October): what the new hire reads of the lead.** On "Engagement Director, first 90 days", Tobi, the new hire, is shown only himself in "Who checked in", and Amina's words are left out of "Where you both see it differently", because the engine treats it as a check-in where people answer without seeing each other. Yet he is sent all eight of her "what success looks like" quotes word for word. The prototype says the lead and the new hire "see the same pictures" for the 30, 60 and 90-day steps, but it does not picture the new hire's own board. Should the new hire read his lead's words and her row on his board? Nothing is restricted or opened until you say (request 124).

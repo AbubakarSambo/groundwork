@@ -213,8 +213,20 @@ export function LeadActionsSection({ rows }: { rows: BoardPresent['leadActions']
  * lists - the same record read twice under two headings. Drawn once: when every one of
  * `leadActions`'s sentences already appears in `workPlan`, `LeadActionsSection` is left out and
  * `WorkPlanSection` alone carries it.
+ *
+ * SUPPORT DESK BOARD FIX 5: NEVER TRUE WHILE THE WORK PLAN SITS INSIDE THE CLOSED FOLD. That
+ * assumption only holds if a reader can actually see `WorkPlanSection` without first opening
+ * something - but `WorkPlanSection` always sits inside "Everything else from this check-in"
+ * (`FoldEverythingElseUnless` in BoardPage.tsx), a disclosure closed by default for every reader.
+ * Dropping the row left nothing in its place for a reader who never opens that fold: support.txt's
+ * own example board still lists "The ready-made answer for import errors has still not been
+ * written" under "What needs you in this check-in", with "This comes from the plan." said once, in
+ * full view, and its own "Has it happened?" choice ("Yes, it's done" / "Not yet") right there.
+ * `workPlanSitsInTheFold` is passed in by the caller, which is the one place that actually knows
+ * whether `WorkPlanSection` is folded for this render - today that is always true.
  */
-export function sameAsTheWorkPlan(leadActions: BoardPresent['leadActions'], workPlan: BoardPresent['workPlan']): boolean {
+export function sameAsTheWorkPlan(leadActions: BoardPresent['leadActions'], workPlan: BoardPresent['workPlan'], workPlanSitsInTheFold: boolean): boolean {
+  if (workPlanSitsInTheFold) return false
   if (!leadActions?.length || !workPlan?.length) return false
   const plan = new Set(workPlan.map((r) => r.says))
   return leadActions.every((r) => plan.has(r.says))
@@ -331,12 +343,22 @@ export function standsTone(word: string): import('@/components/gw/ui').TagTone {
  * box, not a heading - while "Where each target stands" beside it, which answers a different
  * question, still draws exactly as before.
  */
-export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn }: { headline: BoardPresent['headline']; objectives: BoardPresent['objectives']; glance?: Glance | null; waitingToBeLetIn?: string | null }) {
+export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn, targetsFromObjectivesWhenNoBars, readerIsTheOnlyPerson }: { headline: BoardPresent['headline']; objectives: BoardPresent['objectives']; glance?: Glance | null; waitingToBeLetIn?: string | null; targetsFromObjectivesWhenNoBars?: boolean; readerIsTheOnlyPerson?: boolean }) {
   if (!headline) return null
   const names = new Map((objectives ?? []).map((o) => [o.id, o.name]))
   const noAnswer = !headline.answer
   const glanceGoesInTheBox = noAnswer && !!glance
   const noBoxAtAll = noAnswer && !glance
+  /*
+   * THE FOUNDER'S OWN CHECK-IN BOARD (founder.txt): "WHERE EACH TARGET STANDS" FROM THE
+   * OBJECTIVES THEMSELVES, WHEN THE HEADLINE HAS NO BARS OF ITS OWN. This board is sent a
+   * headline question but no `headline.bars` (there is only one person, so the engine has no bar
+   * to draw per target) - unlike the project and support-desk boards above, which have no
+   * headline at all and so get their own "Where each target stands" panel at the top of the page.
+   * Gated on `targetsFromObjectivesWhenNoBars`, a flag only this kind sets, so no other kind's
+   * headline changes shape.
+   */
+  const showObjectivesAsTargets = Boolean(targetsFromObjectivesWhenNoBars) && headline.bars.length === 0 && (objectives ?? []).length > 0
   return (
     <div className="gwui-gap-16" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', alignItems: 'start' }}>
       {noBoxAtAll ? (
@@ -357,16 +379,16 @@ export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn
             */}
             <SubHeading>{headline.question}</SubHeading>
             {headline.answer && <Callout tone="emphasis">{headline.answer}</Callout>}
-            {glanceGoesInTheBox && <HowItIsGoing glance={glance} waitingToBeLetIn={waitingToBeLetIn} />}
+            {glanceGoesInTheBox && <HowItIsGoing glance={glance} waitingToBeLetIn={waitingToBeLetIn} readerIsTheOnlyPerson={readerIsTheOnlyPerson} />}
           </Stack>
         </Panel>
       )}
-      {headline.bars.length > 0 && (
+      {(headline.bars.length > 0 || showObjectivesAsTargets) && (
         <Panel>
           <Stack gap={10}>
             <div className="gwui-fs-15 gwui-ink-dark" style={{ fontWeight: 700 }}>Where each target stands</div>
             <Stack gap={10}>
-              {headline.bars.map((bar) => (
+              {headline.bars.length > 0 ? headline.bars.map((bar) => (
                 <div key={bar.objectiveId} className="gwui-gap-12" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
                   <p className="gwui-panel-text-muted" style={{ flex: 1, minWidth: 140 }}>{names.get(bar.objectiveId) ?? ''}</p>
                   <div style={{ width: 140, height: 7, borderRadius: 6, background: 'var(--gw-bar-track)', overflow: 'hidden' }}>
@@ -375,6 +397,11 @@ export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn
                   <p className="gwui-panel-text-muted" style={{ minWidth: 90, textAlign: 'right' }}>{bar.now} of {bar.target}</p>
                   {bar.word && <Tag tone={standsTone(bar.word)}>{bar.word}</Tag>}
                 </div>
+              )) : (objectives ?? []).map((o) => (
+                <Stack key={o.id} gap={2}>
+                  <Note tone="muted">{o.name}</Note>
+                  <Note tone="muted">{o.journey?.say ?? ''}</Note>
+                </Stack>
               ))}
             </Stack>
           </Stack>
@@ -385,22 +412,37 @@ export function HeadlineSection({ headline, objectives, glance, waitingToBeLetIn
 }
 
 /**
+ * THE SUPPORT DESK'S OWN HEADING FOR THIS SECTION (support.txt: "By queue", right after "The
+ * shape of the work"). Every other kind of work keeps the plain "By area".
+ */
+const BY_AREA_HEADING: Partial<Record<string, string>> = {
+  'support desk': 'By queue',
+  'distribution operations': 'By site',
+  /* Programme board review 1, item 2: programme.txt's own heading for this section is "By
+     county" - the trader groups are organised by county, not a generic "By area". */
+  'trader training programme': 'By county',
+  /* Request 132: gov.txt groups the records by county too, for the same reason. */
+  'a government programme': 'By county',
+}
+
+/**
  * REQUEST 107 (c), PART 3: BY AREA (board-as-lead.txt doesn't show this one - no board in the
  * suite's own test data has a site, county, team or queue said about its records). Drawn only
  * when the server has something to group; the "not-known" state says why in the server's own
  * words, so nothing is claimed Groundwork cannot back.
  */
-export function ByAreaSection({ data }: { data: BoardPresent['byArea'] }) {
+export function ByAreaSection({ data, kindOfWork }: { data: BoardPresent['byArea']; kindOfWork?: string | null }) {
   if (!data) return null
+  const heading = (kindOfWork && BY_AREA_HEADING[kindOfWork]) ?? (data.state === 'not-known' ? 'By area' : data.heading)
   if (data.state === 'not-known') {
     return (
-      <Section heading="By area">
+      <Section heading={heading}>
         <Note tone="muted">{data.why}</Note>
       </Section>
     )
   }
   return (
-    <Section heading={data.heading}>
+    <Section heading={heading}>
       <Panel pad={false}>
         {data.areas.map((a) => (
           <div key={a.area} className="gwui-panel-row">
@@ -416,14 +458,309 @@ export function ByAreaSection({ data }: { data: BoardPresent['byArea'] }) {
 }
 
 /**
+ * REQUEST 105, PART 1 (a), AND REQUEST 132: A GOVERNMENT PROGRAMME'S OWN THREE SECTIONS
+ * (gov.txt: "What each level understood", "What the visit log shows", "The counties"), drawn
+ * straight after "Where it stands" in BoardPage.tsx. Each sentence is drawn exactly as sent -
+ * nothing here is built up or reworded.
+ */
+export function WhatEachLevelUnderstoodSection({ data }: { data: BoardPresent['whatEachLevelUnderstood'] }) {
+  if (!data) return null
+  return (
+    <Section heading={data.heading}>
+      {data.state === 'none-yet' ? (
+        <Note tone="muted">{data.says}</Note>
+      ) : (
+        <Panel pad={false}>
+          {(data.levels ?? []).map((level) => (
+            <div key={level.participantId ?? level.who} className="gwui-panel-row">
+              <Stack gap={4}>
+                <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{level.who}</p>
+                {level.said.map((line, i) => (
+                  <p key={i} className="gwui-panel-text">{line}</p>
+                ))}
+              </Stack>
+            </div>
+          ))}
+        </Panel>
+      )}
+      <Note tone="muted">{data.note}</Note>
+    </Section>
+  )
+}
+
+export function WhatTheVisitLogShowsSection({ data }: { data: BoardPresent['whatTheVisitLogShows'] }) {
+  if (!data) return null
+  if (data.state === 'not-known') {
+    return (
+      <Section heading={data.heading}>
+        <Note tone="muted">{data.why}</Note>
+      </Section>
+    )
+  }
+  return (
+    <Section heading={data.heading}>
+      <Panel pad={false}>
+        {(data.numbers ?? []).map((n) => (
+          <div key={n.key} className="gwui-panel-row">
+            <p className="gwui-panel-text">{n.says}</p>
+          </div>
+        ))}
+      </Panel>
+      {(data.whatANumberIsNot ?? []).map((line, i) => (
+        <Note key={i} tone="muted">{line}</Note>
+      ))}
+    </Section>
+  )
+}
+
+export function TheCountiesSection({ data }: { data: BoardPresent['theCounties'] }) {
+  if (!data) return null
+  if (data.state === 'none-yet') {
+    return (
+      <Section heading={data.heading}>
+        <Note tone="muted">{data.says}</Note>
+      </Section>
+    )
+  }
+  return (
+    <Section heading={data.heading}>
+      <Panel pad={false}>
+        {(data.counties ?? []).map((c) => (
+          <div key={c.id} className="gwui-panel-row">
+            <Stack gap={2}>
+              <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{c.name}</p>
+              <Note tone="muted">{c.says}</Note>
+            </Stack>
+          </div>
+        ))}
+      </Panel>
+    </Section>
+  )
+}
+
+/**
+ * THE LAW FIRM MATTER BOARD'S OWN "WHERE THE MATTER STANDS" (matter.txt). Drawn straight after the
+ * glance in BoardPage.tsx, only for this kind, only when the engine sends it - a short list of
+ * plain sentences, each drawn exactly as sent.
+ */
+export function WhereTheMatterStandsSection({ data }: { data: BoardPresent['whereTheMatterStands'] }) {
+  if (!data) return null
+  return (
+    <Section heading={data.heading}>
+      <Stack gap={6}>
+        {data.says.map((line, i) => (
+          <p key={i} className="gwui-panel-text">{line}</p>
+        ))}
+      </Stack>
+    </Section>
+  )
+}
+
+/**
+ * THE LAW FIRM MATTER BOARD'S OWN "WHAT YOU NEED TO DECIDE" (matter.txt). Each item is a question
+ * still open, with why it matters and who owns settling it - drawn here as its own section, in
+ * matter.txt's own place, rather than folded into "What needs you in this check-in" below. See
+ * BoardPage.tsx, where a decision already read here is kept out of "What needs you" for this kind,
+ * so nobody reads the same question twice.
+ */
+export function WhatYouNeedToDecideSection({ data }: { data: BoardPresent['whatYouNeedToDecide'] }) {
+  if (!data) return null
+  if (data.state === 'none-yet') {
+    return (
+      <Section heading={data.heading}>
+        <Note tone="muted">{data.says}</Note>
+      </Section>
+    )
+  }
+  return (
+    <Section heading={data.heading}>
+      <Panel pad={false}>
+        {(data.items ?? []).map((item, i) => (
+          <div key={i} className="gwui-panel-row">
+            <Stack gap={4}>
+              <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{item.question}</p>
+              <Note tone="muted">{item.why}</Note>
+              <Note tone="muted">{item.owner}</Note>
+            </Stack>
+          </div>
+        ))}
+      </Panel>
+    </Section>
+  )
+}
+
+/**
+ * THE LAW FIRM MATTER BOARD'S OWN "WHAT CHANGED THIS WEEK, AND WHAT IT CHANGED" (matter.txt). Each
+ * line is one thing said in the newest session, with `markSays` saying how it is known ("Only
+ * someone's word", "From memory only", ...), then `cannotTell` - when sent - says plainly that
+ * nothing here links a change to what it changed.
+ */
+export function WhatChangedThisWeekSection({ data }: { data: BoardPresent['whatChangedThisWeek'] }) {
+  if (!data) return null
+  if (data.state === 'none-yet') {
+    return (
+      <Section heading={data.heading}>
+        <Note tone="muted">{data.says}</Note>
+      </Section>
+    )
+  }
+  return (
+    <Section heading={data.heading} note={data.says}>
+      <Panel pad={false}>
+        {(data.lines ?? []).map((line) => (
+          <div key={line.id} className="gwui-panel-row">
+            <Stack gap={4}>
+              <p className="gwui-panel-text">{line.text}</p>
+              <Note tone="muted">{line.markSays}</Note>
+            </Stack>
+          </div>
+        ))}
+      </Panel>
+      {data.cannotTell && <Note tone="muted">{data.cannotTell}</Note>}
+    </Section>
+  )
+}
+
+/**
+ * REQUEST 133: AN ASSET LOANS COHORT'S OWN "WHERE THE COHORT STANDS" (loans.txt: "40 traders",
+ * then one tile per group - "Repaying and trading", "Behind, but trading", "Genuinely blocked",
+ * "Not heard from" - each with a count, a sentence, and, for whoever runs the check-in, who is in
+ * it). Drawn straight after "What needs you" (BoardPage.tsx), before the records table. A group
+ * can also come back `not-known` (no loan record at all yet), which reads as one plain sentence
+ * instead of a tile.
+ */
+export function WhereTheCohortStandsSection({ data }: { data: BoardPresent['whereTheCohortStands'] }) {
+  if (!data) return null
+  return (
+    <Section heading={data.heading} note={data.says}>
+      <Panel pad={false}>
+        {data.groups.map((g) => (
+          <div key={g.group} className="gwui-panel-row">
+            {'state' in g && g.state === 'not-known' ? (
+              <Note tone="muted">{g.why}</Note>
+            ) : (
+              <Stack gap={4}>
+                <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{(g as { count: number }).count}</p>
+                <p className="gwui-panel-text">{(g as { says: string }).says}</p>
+                {(g as { who: string[] | null }).who && (g as { who: string[] | null }).who!.length > 0 && (
+                  <Note tone="muted">{(g as { who: string[] }).who.join(', ')}</Note>
+                )}
+              </Stack>
+            )}
+          </div>
+        ))}
+      </Panel>
+      {data.whyNoNames && <Note tone="muted">{data.whyNoNames}</Note>}
+    </Section>
+  )
+}
+
+/**
+ * THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN "BY WHO THEY ARE" (mvnext.txt), modelled on
+ * `WhereTheCohortStandsSection` above. Groundwork does not keep which group a person belongs to, so
+ * this almost always reads as the one `not-known` sentence (`why`), with `says` giving the plain
+ * count of who has answered either way.
+ */
+export function ByWhoTheyAreSection({ data }: { data: BoardPresent['byWhoTheyAre'] }) {
+  if (!data) return null
+  return (
+    <Section heading={data.heading} note={data.says}>
+      {data.state === 'not-known' && <Note tone="muted">{data.why}</Note>}
+    </Section>
+  )
+}
+
+/**
+ * THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN "WHERE THEY DISAGREE" (mvnext.txt), modelled on
+ * `WhereTheCohortStandsSection` above. `items` is the engine's own `divergence.items`, drawn the
+ * same way `DivergenceSectionBody` draws one (BoardPage.tsx) - a topic, who sees it differently, in
+ * their own words, and why it matters - but without that body's own "who sees this differently"
+ * framing, which needs the viewer's own name; this board never shows both, so there is nothing to
+ * keep in step with it. Where nothing differs yet, `says` carries the one plain sentence instead.
+ */
+export function WhereTheyDisagreeSection({ data }: { data: BoardPresent['whereTheyDisagree'] }) {
+  if (!data) return null
+  const items = data.state === 'filled' ? (data.items ?? []) : []
+  return (
+    <Section heading={data.heading}>
+      {items.length > 0 ? (
+        <Panel pad={false}>
+          {items.map((d: any, i: number) => (
+            <div key={i} className="gwui-panel-row">
+              <Stack gap={4}>
+                <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{d.topic ?? d.tag ?? 'Where they disagree'}</p>
+                {d.text && <p className="gwui-panel-text">{d.text}</p>}
+                {Array.isArray(d.positions) && d.positions.some((p: any) => p.view) && (
+                  <Stack gap={4}>
+                    {d.positions.filter((p: any) => p.view).map((p: any, j: number) => (
+                      <Stack gap={2} key={j}>
+                        <p className="gwui-panel-text" style={{ fontWeight: 700 }}>{p.who ?? 'A colleague'}</p>
+                        <Note tone="muted">{p.view}</Note>
+                      </Stack>
+                    ))}
+                  </Stack>
+                )}
+                {d.atStake && <Note tone="muted">{d.atStake}</Note>}
+              </Stack>
+            </div>
+          ))}
+        </Panel>
+      ) : (
+        data.says && <Note tone="muted">{data.says}</Note>
+      )}
+    </Section>
+  )
+}
+
+/**
+ * REQUEST 133: "SUPPORT GIVEN, AND WHETHER IT HELPED" (loans.txt). Drawn for an asset loans cohort
+ * after "What keeps coming up" and before coaching and "Where this is heading". Today the record
+ * never says what support was given, so this always reads as the one `not-known` sentence; a later
+ * engine that does keep it can send `says` and/or `rows`, drawn exactly as sent.
+ */
+export function SupportGivenSection({ data }: { data: BoardPresent['supportGiven'] }) {
+  if (!data) return null
+  if (data.state === 'not-known') {
+    return (
+      <Section heading={data.heading}>
+        <Note tone="muted">{data.why}</Note>
+      </Section>
+    )
+  }
+  return (
+    <Section heading={data.heading} note={data.says}>
+      {!!data.rows?.length && (
+        <Panel pad={false}>
+          {data.rows.map((r) => (
+            <div key={r.id} className="gwui-panel-row">
+              <p className="gwui-panel-text">{r.says}</p>
+            </div>
+          ))}
+        </Panel>
+      )}
+    </Section>
+  )
+}
+
+/**
  * REQUEST 107 (c), PART 4: REPORTED AGAINST CRITERIA, STAGE BY STAGE (board-as-lead.txt: "Reported
  * vs criteria met, stage by stage"). The record holds no criteria, so this is always `not-known` -
  * it counts what people reported and how much has a document behind it, never "criteria met".
+ *
+ * PROJECT BOARD REVIEW 1, FIX 10: ENG.TXT'S OWN HEADING. An engineering release's own prototype
+ * example (eng.txt) gives this section a different heading, word for word - "Reported vs evidence,
+ * stage by stage" - from the sales board's "Reported vs criteria met, stage by stage" this section
+ * was named after. Every other kind of work keeps the plain "Reported, stage by stage".
  */
-export function ReportedAgainstCriteriaSection({ data }: { data: BoardPresent['reportedAgainstCriteria'] }) {
+const REPORTED_AGAINST_CRITERIA_HEADING: Partial<Record<string, string>> = {
+  'engineering release': 'Reported vs evidence, stage by stage',
+}
+
+export function ReportedAgainstCriteriaSection({ data, kindOfWork }: { data: BoardPresent['reportedAgainstCriteria']; kindOfWork?: string | null }) {
   if (!data) return null
+  const heading = (kindOfWork && REPORTED_AGAINST_CRITERIA_HEADING[kindOfWork]) ?? 'Reported, stage by stage'
   return (
-    <Section heading="Reported, stage by stage" note={data.why}>
+    <Section heading={heading} note={data.why}>
       <Panel pad={false}>
         {data.stages.map((s) => (
           <div key={s.stage} className="gwui-panel-row">
@@ -454,7 +791,13 @@ export function WhereThisIsHeadingSection({ data, onRecordTheDecision }: {
         {data.outcomes.length > 0 ? (
           <Stack gap={6}>
             <Note tone="muted">The possible outcomes</Note>
-            <SentenceRows rows={data.outcomes.map((o) => ({ id: o.value, says: o.says }))} />
+            {/*
+              REQUEST, MVNEXT REVIEW: THE SECOND LINE, TOO (mvnext.txt: "Kano maize first" /
+              "For processors, with a named-buyer feed."). Every outcome the engine sends already
+              carries `more`, its own second sentence - this used to read only `says`, leaving the
+              detail behind each outcome unread wherever this draws, not only on this one board.
+            */}
+            <SentenceRows rows={data.outcomes.map((o) => ({ id: o.value, says: o.says, because: o.more }))} />
           </Stack>
         ) : (
           data.outcomesSays && <Note tone="muted">{data.outcomesSays}</Note>

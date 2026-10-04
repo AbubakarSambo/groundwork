@@ -79,6 +79,45 @@ export interface StartingStateAtTheStart {
   }[]
 }
 
+/**
+ * REQUEST 123: "Change since last check-in", the onboarding board's own field (docs/answers-from-
+ * engine.md, "`changeSinceLast`, 'Change since last check-in'"). One row per area between the last
+ * two finished sessions. Absent until two sessions are finished, and absent for a reader who may
+ * read nothing in it.
+ */
+export interface ChangeSinceLast {
+  /** "Change since last check-in". */
+  heading: string
+  /** "Between session 5 and session 6." */
+  between: string
+  rows: {
+    /** "Commitments", "Waits", or the goal's own words. */
+    area: string
+    state: 'moved' | 'held' | 'late'
+    /** One or more full sentences. */
+    says: string
+    kind: 'commitments' | 'waits' | 'goal'
+  }[]
+}
+
+/**
+ * REQUEST 123: "The 90 days, in three steps" (docs/answers-from-engine.md, "Request 123, the
+ * rest"). Built from the goals told to the person, their commitments, and what they wait for.
+ */
+export interface NinetyDays {
+  /** "The 90 days, in three steps". */
+  heading: string
+  steps: {
+    step: number
+    day: number
+    /** E.g. "Is Tobi Adewale settled in?" to the lead, "Are you settled in?" to the new hire. */
+    question: string
+    /** One or more full sentences. */
+    says: string
+    reached: boolean
+  }[]
+}
+
 export type BoardPresent = {
   groundId: string
   renders: true
@@ -158,6 +197,10 @@ export type BoardPresent = {
    * 60, 90, or after). Every other board still gets the plain sentence, or null, unchanged.
    */
   startingState?: string | StartingStateAtTheStart | null
+  /** REQUEST 123: "Change since last check-in", on the onboarding board only. */
+  changeSinceLast?: ChangeSinceLast
+  /** REQUEST 123: "The 90 days, in three steps", on the onboarding board only. */
+  ninetyDays?: NinetyDays
   quickRead?: { label: string; value: string; sub: string; tone: string }[]
   objectives?: {
     /** What the target assumes, the lead's lines (U.7). */
@@ -372,6 +415,14 @@ export type BoardPresent = {
    */
   kindOfWork?: KindOfWork | null
   /**
+   * THE KINDS A NEW CHECK-IN MAY BE GIVEN (request for the screens workspace, 4 October 2026). The
+   * release offers only some of the eleven kinds; this is that list, exactly as the server writes
+   * it. The kind-of-work dialog (`WorkRecords.tsx`) lists only these, plus `kindOfWork` itself so a
+   * check-in that already holds another kind can still be saved. Absent on an older server - keep
+   * today's full list then.
+   */
+  kindsOffered?: KindOfWork[]
+  /**
    * THE RECORDS THE KIND OF WORK KEEPS: deals and their stages, releases, tickets, a matter's
    * deadlines and parties, and so on - one section per name in the switchboard (`section`, e.g.
    * "Deal grid"). Each section says what it holds, in plain words, and whether it is filled, has
@@ -428,6 +479,130 @@ export type BoardPresent = {
   contradictions?: { id: string; commitmentId: string; participantId: string | null; who: string; says: string }[]
   /** Questions only whoever runs the check-in can answer. At most 10, for that reader only. */
   questionsForTheLead?: { id: string; question: string; because: string }[]
+
+  /**
+   * REQUEST 105, PART 1 (a), AND REQUEST 132: A GOVERNMENT PROGRAMME'S OWN THREE SECTIONS
+   * (gov.txt: "What each level understood", "What the visit log shows", "The counties"). Built
+   * only from the record this reader is already served - nothing made up - and sent only to
+   * whoever runs the check-in, the admin who set it up, or an admin of the organisation (the same
+   * readers as every other kind-of-work section in this file). See docs/answers-from-engine.md,
+   * "Request 105, part 1: five kinds of work get their own board shape".
+   */
+  /**
+   * The aim that was set, then each person's own words for what it means, in the order they
+   * joined. `who` is "You" for the reader themselves. `note` is always sent and explains why the
+   * order is by join date and not by level - Groundwork does not keep which level each person
+   * works at (api/src/modules/board/each-kind-gets-its-own-board.ts, `NO_LEVEL_ON_RECORD`).
+   */
+  whatEachLevelUnderstood?: {
+    heading: string
+    state: 'filled' | 'none-yet'
+    levels?: { participantId: string | null; who: string; said: string[] }[]
+    note: string
+    /** Only on `'none-yet'`: "Nobody has said yet what the aim means to them." */
+    says?: string
+  }
+  /**
+   * The numbers brought in from another system for what this check-in is about (`ProductMetric`
+   * rows). `numbers[].says` is the sentence for one number; `whatANumberIsNot` is the three
+   * standing sentences that come with them, as on the report - drawn exactly as sent, in order.
+   */
+  whatTheVisitLogShows?: {
+    heading: string
+    state: 'filled' | 'not-known'
+    numbers?: { key: string; source: string; value: number; unit: string | null; measuredAt: string; says: string }[]
+    whatANumberIsNot?: string[]
+    /** Only on `'not-known'`: why nothing can be said yet. */
+    why?: string
+  }
+  /** Each county on record, with the project names that name it, or why there is nothing yet. */
+  theCounties?: {
+    heading: string
+    state: 'filled' | 'none-yet'
+    counties?: { id: string; name: string; said: string | null; saidBy: string | null; projects: string[]; says: string }[]
+    /** Only on `'none-yet'`: "No county is on record yet." */
+    says?: string
+  }
+
+  /**
+   * REQUEST 133: AN ASSET LOANS COHORT'S OWN "WHERE THE COHORT STANDS" (loans.txt). One group per
+   * row the engine counts the cohort into (repaying, behind, blocked, not heard from), each with
+   * its own sentence and, for whoever runs the check-in, the names in it. A colleague or read-only
+   * admin gets `count` and `says` with no `who` at all (`whyNoNames` explains it once, for the
+   * whole section) - never names narrowed down after the fact on this side.
+   */
+  whereTheCohortStands?: {
+    heading: string
+    says: string
+    groups: ({
+      group: string
+      count: number
+      says: string
+      who: string[] | null
+    } | {
+      group: string
+      state: 'not-known'
+      why: string
+    })[]
+    /** Only when `who` is withheld from every group: who may read it instead. */
+    whyNoNames?: string
+  }
+
+  /**
+   * REQUEST 133: "SUPPORT GIVEN, AND WHETHER IT HELPED" (loans.txt). Today the record never says
+   * what support was given or whether it helped, so this is always `'not-known'`, with `why`; a
+   * later engine that does keep that record can send `'filled'`, with `says` and/or `rows` of its
+   * own sentences, drawn exactly as sent.
+   */
+  supportGiven?: {
+    heading: string
+    state: 'filled' | 'not-known'
+    says?: string
+    rows?: { id: string; says: string }[]
+    /** Only on `'not-known'`: why nothing can be said yet. */
+    why?: string
+  }
+
+  /**
+   * THE LAW FIRM MATTER BOARD'S OWN "WHERE THE MATTER STANDS" (matter.txt). Drawn straight after
+   * the glance, only for this kind, only when the engine sends it. `says` is one plain sentence
+   * per line, drawn exactly as sent - never built up here from other fields.
+   */
+  whereTheMatterStands?: {
+    heading: string
+    says: string[]
+  }
+
+  /**
+   * THE LAW FIRM MATTER BOARD'S OWN "WHAT YOU NEED TO DECIDE" (matter.txt). Each item is a question
+   * still open, why it matters, and who owns settling it - the same shape as a `decisions` row, but
+   * kept as its own section, in matter.txt's own place, rather than folded into "What needs you in
+   * this check-in" (see `decisionDuplicatesALeadAction`-style de-duplication in BoardPage.tsx, which
+   * keeps this kind's own "What needs you" from repeating a question already read here).
+   */
+  whatYouNeedToDecide?: {
+    heading: string
+    state: 'filled' | 'none-yet'
+    items?: { question: string; why: string; owner: string }[]
+    /** Only on `'none-yet'`: "Nothing is waiting on a decision right now." */
+    says?: string
+  }
+
+  /**
+   * THE LAW FIRM MATTER BOARD'S OWN "WHAT CHANGED THIS WEEK, AND WHAT IT CHANGED" (matter.txt).
+   * Each line is one thing said in the newest session, with `markSays` saying how it is known
+   * ("Only someone's word", "From memory only", ...) - the same marks `whoOwnsWhat` already carries
+   * for this kind - then `cannotTell` says plainly that nothing here links a change to what it
+   * changed.
+   */
+  whatChangedThisWeek?: {
+    heading: string
+    state: 'filled' | 'none-yet'
+    sessionNumber?: number
+    says?: string
+    lines?: { id: string; participantId: string | null; text: string; mark: string; markSays: string }[]
+    cannotTell?: string
+  }
 
   /**
    * REQUEST 108 (a): THE HEADLINE QUESTION, WITH ITS ANSWER AND ITS BAR (board-as-lead.txt: "Will
@@ -493,6 +668,33 @@ export type BoardPresent = {
   byArea?:
     | { state: 'filled'; heading: string; areas: { area: string; records: number; says: string }[] }
     | { state: 'not-known'; why: string }
+
+  /**
+   * THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN "BY WHO THEY ARE" (mvnext.txt: "By who they are" /
+   * "What each group said it needs"). Lead only. Groundwork does not keep which group a person
+   * belongs to - processor, distributor, researcher - so this reads `not-known`, with `why`; `says`
+   * carries the plain count of who has answered either way (docs/answers-from-engine.md, "(d)
+   * MarketView where next").
+   */
+  byWhoTheyAre?: {
+    heading: string
+    state: 'filled' | 'not-known'
+    says?: string
+    why?: string
+  }
+
+  /**
+   * THE "MARKETVIEW, WHERE NEXT" BOARD'S OWN "WHERE THEY DISAGREE" (mvnext.txt). Lead only, and the
+   * engine's own `divergence.items`, under this heading - the two are never both drawn on this
+   * board (see BoardPage.tsx, where the general `divergence` block is left out for this kind).
+   * `none-yet`, with `says`, where nobody has said anything that differs yet.
+   */
+  whereTheyDisagree?: {
+    heading: string
+    state: 'filled' | 'none-yet'
+    says?: string
+    items?: any[]
+  }
 
   /** REQUEST 107 (c), part 4: a sales board only - what was reported at each stage, never "criteria met". */
   reportedAgainstCriteria?: {
@@ -614,6 +816,8 @@ export type AServedWorkSection =
       groups?: { group: 'likely' | 'possible' | 'next-quarter' | 'cooling' | 'cold' | 'won'; heading: string; reason: string; rowIds: string[] }[]
       /** What the record cannot support, said plainly once under the grid - never claimed by a group. */
       groupsNote?: string[]
+      /** Present only on a participant's own board, where this section already holds only their own rows ("Only yours."). */
+      onlyYours?: string | null
     }
 
 /** What the lead sends to add or change a record of the kind of work. */

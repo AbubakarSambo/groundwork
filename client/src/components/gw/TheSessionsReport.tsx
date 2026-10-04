@@ -426,7 +426,8 @@ function blockersSentence(value: string, sub: string): string {
   const waiting = value.match(/^(\d+) waiting$/)
   if (waiting) {
     const n2 = Number(waiting[1])
-    return `${capitalize(smallWord(n2))} ${n2 === 1 ? 'person is' : 'people are'} waiting on somebody else, ${lowerFirst(sub)}.`
+    const lead2 = `${capitalize(smallWord(n2))} ${n2 === 1 ? 'person is' : 'people are'} waiting on somebody else.`
+    return `${lead2} ${withPeriod(capitalize(sub))}`
   }
   const worry = value.match(/^(\d+) worr(?:y|ies)$/)
   if (worry) return withPeriod(capitalize(sub))

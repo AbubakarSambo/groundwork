@@ -4,7 +4,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { resolutionApi } from '@/api/resolution'
 import { toast } from 'sonner'
 import { Confirm } from './a-second-press-before-it-is-gone'
-import { Panel, Callout, Button } from './ui'
+import { Panel, Callout, Button, Note } from './ui'
 
 /**
  * HOW A GROUND ENDS.
@@ -129,12 +129,14 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
     <Panel className="gwui-mb-12">
       <div className={headingClass}>How this ended</div>
       <div className="gwui-fs-15 gwui-ink-green" style={{ fontWeight: 700 }}>{label(resolution.endState)}</div>
-      <div className="gwui-fs-13 gwui-ink-sub gwui-mt-4">
-        {viewerIsLead
-          ? `You decided this on ${onTheDay(resolution.closedAt!)}.`
-          : leadName
-            ? `${leadName} decided this on ${onTheDay(resolution.closedAt!)}.`
-            : `This was decided on ${onTheDay(resolution.closedAt!)}.`}
+      <div className="gwui-mt-4">
+        <Note>
+          {viewerIsLead
+            ? `You decided this on ${onTheDay(resolution.closedAt!)}.`
+            : leadName
+              ? `${leadName} decided this on ${onTheDay(resolution.closedAt!)}.`
+              : `This was decided on ${onTheDay(resolution.closedAt!)}.`}
+        </Note>
       </div>
       {resolution.reason && (
         <>
@@ -143,8 +145,8 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
         </>
       )}
       {!viewerIsLead && viewerIsParty && (
-        <div className="gwui-fs-13 gwui-ink-sub gwui-mt-12">
-          Your account is kept, and you can still correct it.
+        <div className="gwui-mt-12">
+          <Note>Your account is kept, and you can still correct it.</Note>
         </div>
       )}
     </Panel>
@@ -239,8 +241,8 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
             className="gwui-rule gwui-fs-13 gwui-pt-9 gwui-pr-11 gwui-pb-9 gwui-pl-11"
             style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, fontFamily: 'inherit', lineHeight: 1.5 }}
           />
-          <div className="gwui-fs-13 gwui-ink-sub gwui-mt-4 gwui-mb-12">
-            {whoElse} reads this with the outcome.
+          <div className="gwui-mt-4 gwui-mb-12">
+            <Note>{whoElse} reads this with the outcome.</Note>
           </div>
         </>
       )}
@@ -293,8 +295,10 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
       */}
       {totalActive > 0 && !leadDecides && (
         <div className="gwui-rule-top gwui-mt-14 gwui-pt-10" style={{ borderTopColor: 'var(--gw-bg)' }}>
-          <div className="gwui-fs-13 gwui-ink-muted gwui-mb-6">
-            {confirmedCount} of {totalActive} {totalActive === 1 ? 'person has' : 'people have'} answered
+          <div className="gwui-mb-6">
+            <Note tone="muted">
+              {confirmedCount} of {totalActive} {totalActive === 1 ? 'person has' : 'people have'} answered
+            </Note>
           </div>
           {confirmations.map(c => (
             <div key={c.participantId} className="gwui-gap-12 gwui-pt-4 gwui-pb-4 gwui-fs-13" style={{ display: 'flex', justifyContent: 'space-between' }}>
