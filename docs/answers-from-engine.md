@@ -3944,3 +3944,7 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### "No standard is set" while the lead had set a target (132 g, first part)
 
 **What changed (served, `againstSuccess.saying`, lead only).** When the lead has set a team target and has not written down what success looks like, the target is read as the standard, so "No standard is set. You have not said what success looks like, so nobody is being measured against anything yet." is not sent. Nobody else's report changes (a hidden target is not read for anyone but the lead). Still open in 132 g: "Nobody on record has said who arranged the meetings" is fixed above; "nothing on record says anybody has chased it" said about two things ("them") has no change yet.
+
+### "Chased it" about several things (132 g, second part)
+
+**What changed (served, `overTime.toSettleFirst`, lead).** With more than one thing waiting, the sentence says "them": "2 things are waiting on somebody outside this check-in, and nothing on record says anybody has chased them. Ask what has been tried beyond writing to those people." (and "gone back about them. Ask whether they were raised outside the sessions"). With one thing it is as before. Stored sentences are put right as they are served.

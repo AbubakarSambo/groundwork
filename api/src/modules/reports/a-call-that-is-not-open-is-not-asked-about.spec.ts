@@ -12,3 +12,20 @@ describe('the question about a call', () => {
     expect(JSON.stringify(ROLE_MAPS)).not.toMatch(/open a while/);
   });
 });
+
+describe('several waits and one "it" (request 132 g)', () => {
+  it('says them, stored or new', () => {
+    expect(aStoredSentenceReadsRight('2 things are waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.'))
+      .toBe('2 things are waiting on somebody outside this check-in, and nothing on record says anybody has chased them. Ask what has been tried beyond writing to those people.');
+    expect(aStoredSentenceReadsRight('One thing is waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.'))
+      .toMatch(/has chased it\./);
+  });
+  it('writes them for several and it for one', () => {
+    const { toSettleFirst } = require('./what-the-record-shows-over-time');
+    const dep = (i: number) => ({ chased: false, onParticipantId: null, say: `x${i}` });
+    const two = toSettleFirst({ commitments: [], dependencies: [dep(1), dep(2)], patterns: [], documentsAttached: 1, anybodySaidWhoArrangedThings: true }).join(' ');
+    expect(two).toMatch(/has chased them\. Ask what has been tried beyond writing to those people\./);
+    const one = toSettleFirst({ commitments: [], dependencies: [dep(1)], patterns: [], documentsAttached: 1, anybodySaidWhoArrangedThings: true }).join(' ');
+    expect(one).toMatch(/has chased it\. Ask what has been tried beyond writing to them\./);
+  });
+});

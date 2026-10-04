@@ -831,12 +831,12 @@ export function toSettleFirst(o: {
 
   const inside = o.dependencies.filter((d) => !d.chased && d.onParticipantId);
   if (inside.length) {
-    out.push(`${inside.length === 1 ? 'One thing is' : `${inside.length} things are`} waiting on somebody in this check-in, and nothing on record says anybody has gone back about it. Ask whether it was raised outside the sessions, because the record cannot tell you.`);
+    out.push(`${inside.length === 1 ? 'One thing is' : `${inside.length} things are`} waiting on somebody in this check-in, and nothing on record says anybody has gone back about ${inside.length === 1 ? 'it' : 'them'}. Ask whether ${inside.length === 1 ? 'it was' : 'they were'} raised outside the sessions, because the record cannot tell you.`);
   }
 
   const outside = o.dependencies.filter((d) => !d.onParticipantId && !d.chased);
   if (outside.length) {
-    out.push(`${outside.length === 1 ? 'One thing is' : `${outside.length} things are`} waiting on somebody outside this check-in, and nothing on record says anybody has chased it. Ask what has been tried beyond writing to them.`);
+    out.push(`${outside.length === 1 ? 'One thing is' : `${outside.length} things are`} waiting on somebody outside this check-in, and nothing on record says anybody has chased ${outside.length === 1 ? 'it' : 'them'}. Ask what has been tried beyond writing to ${outside.length === 1 ? 'them' : 'those people'}.`);
   }
 
   if (!o.anybodySaidWhoArrangedThings && o.meetingsOnRecord !== false) {
