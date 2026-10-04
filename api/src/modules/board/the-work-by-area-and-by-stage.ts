@@ -17,7 +17,7 @@ import type { AServedSection, AServedRecord, KindOfWork } from './the-kind-of-wo
  *    that the rules are not on record.
  */
 const AREA_KEYS: [RegExp, string][] = [
-  [/^site$/i, 'By site'],
+  [/^(?:site|depot|warehouse|hub|town)$/i, 'By site'],
   [/^county$/i, 'By county'],
   [/^team$/i, 'By team'],
   [/^queue$/i, 'By queue'],

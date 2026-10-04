@@ -18,3 +18,17 @@ describe('what this cannot tell the lead', () => {
     expect(theBoardsJudgementFor({ theJudgement: judgement }, { isLead: false }).theJudgement).toBeNull();
   });
 });
+
+describe('what this cannot tell the lead, as headings (request 131 item 5)', () => {
+  const j = { whatThisCannotTellYou: ['the work in Kisumu', 'the printed workbooks', 'what is blocking the work', 'Nobody has said who arranged the visits.', 'Who the other trader with the broken freezer is.'].map((about) => ({ about, why: 'x' })) };
+  const served: any = theBoardsJudgementFor({ theJudgement: j }, { isLead: true }).theJudgement;
+  it('are sentences', () => {
+    expect(served.whatThisCannotTellYou.map((x: any) => x.about)).toEqual([
+      'This check-in cannot tell you about the work in Kisumu.',
+      'This check-in cannot tell you about the printed workbooks.',
+      'This check-in cannot tell you what is blocking the work.',
+      'Nobody has said who arranged the visits.',
+      'This check-in cannot tell you who the other trader with the broken freezer is.',
+    ]);
+  });
+});
