@@ -4239,3 +4239,15 @@ In a quiet week it opens "Here is your team's week." and says "Nobody has checke
 ## Request 146: the client's wording guard
 
 Done. `the-anchor-lead-conversation.ts` now reads, "You need to have been told, in the lead's own words, how the money comes in, before you say anything that depends on it." `the-anchor-weekly-check-in.ts` now reads, "What the group is trying to change: this person has not been told yet. Do not connect their work to a wider aim." The meaning and the quoted words are the same. The guard, its ceiling of 60 and the quoted words are untouched, and the guard passes. The weekly line is built when the conversation runs, so it changes at once. The lead's line is a stored prompt: on next start the library adds the new words as a new version, and a version somebody activated by hand stays active and keeps its own words. The running lead version therefore changes on next start only where nobody activated one by hand. One conversation spec that pinned the old wording of the weekly line was updated to the new capital letter.
+
+## Request 144 (1): a public signal that the anchor scenario is open
+
+**Done.** `GET /entry/anchor-available`, open to a visitor who is not signed in. It answers exactly one field and nothing else:
+
+```
+{ "available": true }
+```
+
+or `{ "available": false }`. It is `false` whenever the anchor switch (`release.anchorScenario`) is off, missing, or cannot be read, which is today's state. The answer is kept for 30 seconds on the server, so a busy landing page costs one read. It is limited to 60 reads a minute for each address. Nothing else is revealed: no organisation, no counts, no switch name.
+
+What the landing page does with it: when `available` is `false`, send the visitor to `/start` as it does now. Code: `entry/the-anchor-door.ts`, `entry/entry.controller.ts`.

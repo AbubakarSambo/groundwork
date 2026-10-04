@@ -69,6 +69,7 @@ import { PromptsService } from '../prompts';
 import { theAnchorGuidance, ANCHOR_ENTRY_SCENARIO } from '../conversation/the-anchor-lead-conversation';
 import { STARTED_FROM_THE_ANCHOR } from '../conversation/the-anchor-weekly-check-in';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
+import { TheAnchorDoor } from './the-anchor-door';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
@@ -620,6 +621,16 @@ export class EntryService {
     /* The stored version of the anchor conversation's words (anchor piece 5 to 7). Optional so that every other way of building this service is unchanged. */
     @Optional() private prompts?: PromptsService,
   ) {}
+
+  private anchorDoor?: TheAnchorDoor;
+  private get theAnchorDoor(): TheAnchorDoor {
+    return (this.anchorDoor ??= new TheAnchorDoor(this.prisma));
+  }
+
+  /** Request 144 (1): is the anchor's front door open. */
+  anchorAvailable() {
+    return this.theAnchorDoor.available();
+  }
 
   opener(scenario?: string): string {
     if (scenario && SCENARIO_OPENERS[scenario]) return SCENARIO_OPENERS[scenario];

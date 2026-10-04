@@ -443,6 +443,18 @@ export class EntryController {
   private readonly logger = new Logger(EntryController.name);
   constructor(private service: EntryService) {}
 
+  /**
+   * WHETHER THE ANCHOR SCENARIO'S FRONT DOOR IS OPEN, for a visitor who is not signed in (request 144).
+   * It answers `{ available }` and nothing else, and is kept for a short time so a busy landing page
+   * does not read the setting for every visitor.
+   */
+  @Public()
+  @Throttle({ global: { limit: 60, ttl: 60_000 } })
+  @Get('anchor-available')
+  async anchorAvailable() {
+    return this.service.anchorAvailable();
+  }
+
   /** Pre-auth update of the server-side entry draft, authorized by the bearer
    * draftToken issued at entry-save. Carries post-email edits (org name,
    * ground name, cadence, contributors) that previously lived only in
