@@ -5,6 +5,7 @@ import { theShortNameOf } from './a-title-is-not-a-first-name';
 import { theQuotesKept } from './a-quote-is-what-they-said';
 import { aPlainerWord } from './a-plainer-word';
 import { aNameSaidTwiceInARow, aNameSaidAgainInOneSentence } from './a-name-said-twice-in-a-row';
+import { aSurnameOrNothing } from './a-title-is-not-a-first-name';
 import { nobodyWaitsOnThemselvesInAStory } from './nobody-waits-on-themselves-in-a-story';
 import { peopleDisagreeInASentence } from './people-disagree-in-a-sentence';
 
@@ -232,7 +233,7 @@ export function displayName(p: LabelParty, theEmailIsFair = false): string | nul
   const forWhom = (p as any).organisationGiven?.trim();
   const withOrg = (n: string) => (forWhom ? `${n} (${forWhom})` : n);
   const first = p.user?.firstName?.trim();
-  const last = p.user?.lastName?.trim();
+  const last = aSurnameOrNothing(p.user?.lastName);
   if (first) return withOrg(last ? `${first} ${last}` : first);
   /* The name they gave at the end of an open link is theirs to be read by, the same as a sign-in's. */
   if (p.nameGiven?.trim()) return withOrg(p.nameGiven.trim());

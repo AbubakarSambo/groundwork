@@ -3974,3 +3974,9 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### A line that intends nothing is not typed as an intention (127 item 4, 129 item 5)
 
 **What changed (served, `whoOwnsWhat[].items[].type`, lead and participant).** A line typed INTENT is sent with `type: null` unless its words say something is intended (will, going to, want to, aim, plan, hope, intend, need to, should, next week, by a named day, and the like). So "I close refunds when I send the instruction, because the old rule said so.", "Zainab Suleiman, partnerships." and "I believed Zainab was driving this forward." no longer carry INTENT, and the screen must not say "This is something Aisha Wanjiku intends to do." when `type` is null (say nothing about its kind). The words themselves are not changed. The stored kind (what the conversation wrote) is not changed either; whether the conversation should have typed them so is open, because that is the record reader's work.
+
+### A surname field holding "Lead" (127 item 9)
+
+**What changed (served, every name on the board and in reports).** A last name that is only a role or placeholder word (Lead, Leader, Participant, Member, Admin, Administrator, User, Manager, Owner, Test, Tester, Demo, Staff, Team) is left off, so "Wanjiru Lead has not said it" reads "Wanjiru has not said it". Decided for Hafsah to confirm: this list is a guess at placeholder words; the fix for the account itself is to give Wanjiru her real surname.
+
+**Decided for Hafsah to confirm:** the list of placeholder surnames above.
