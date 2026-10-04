@@ -3928,3 +3928,7 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### "Different things about 1 thing" names the thing (129 item 7)
 
 **What changed (served, `whereThisIsHeading.signals[].says`, lead).** With one difference, the line names it from the topic of that difference: "People in this check-in said different things about the refund rule." Where the topic is empty or a whole sentence it reads "People in this check-in said different things about one thing." With several it still counts: "about 2 things."
+
+### The glance counts what the Blockers list holds (132 a and b, 129 item 2 in part)
+
+**What changed (served, `howItIsGoing.glance.inTheWay` on the board, lead and participant).** The one-line header was counted by its own rule, with a bar the Blockers list does not use. So the lead read "1 thing is in the way" over a list of 2, and the person waiting read "Nothing is in the way" over her own blocking wait. For the same reader, `inTheWay.count` is now the number of items in `blockers`, and `oldest` is the oldest one on it when the header had none. With no blockers the count is 0 and `oldest` and `sinceSays` are null. Screens: nothing to change if the header draws `count` and `oldest` as sent. Not covered: request 129 item 2 where `blockers` itself is empty although the board says someone is waiting for a macro Aisha is preparing; the wait is not stored as a wait, and that comes from the conversation, which is not changed here (open).

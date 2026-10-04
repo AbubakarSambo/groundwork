@@ -2492,6 +2492,26 @@ export class BoardService {
         reader,
       );
       if (blockers.length) out.blockers = blockers;
+      /*
+       * THE GLANCE COUNTS WHAT THE BLOCKERS LIST HOLDS (request 132 a and b, request 129 item 2). The glance was counted by
+       * its own rule, with a bar of substance the list does not use, so the lead read "1 thing is in the way" over a list of
+       * 2, and a participant read "Nothing is in the way" over her own blocking wait. For the same reader, the count is the
+       * list's, and the oldest is the oldest one on it.
+       */
+      if (out.howItIsGoing?.glance?.inTheWay && blockers.length !== out.howItIsGoing.glance.inTheWay.count) {
+        const theWay = out.howItIsGoing.glance.inTheWay;
+        const oldestListed = [...blockers].filter((b: any) => b.raised?.firstRaisedAt).sort((a: any, b: any) => String(a.raised.firstRaisedAt).localeCompare(String(b.raised.firstRaisedAt)))[0];
+        const oldestName = oldestListed ? String(oldestListed.name ?? '').trim().replace(/^["\u201c](.*)["\u201d]$/, '$1') : null;
+        out.howItIsGoing = {
+          ...out.howItIsGoing,
+          glance: {
+            ...out.howItIsGoing.glance,
+            inTheWay: blockers.length === 0
+              ? { ...theWay, count: 0, oldest: null, daysWaiting: null, since: null, sinceSays: null }
+              : { ...theWay, count: blockers.length, ...(theWay.oldest ? {} : { oldest: oldestName || null, since: oldestListed?.raised?.firstRaisedAt ?? null, sinceSays: oldestListed?.raised?.firstRaisedAt ? `since ${theDayItBegan(oldestListed.raised.firstRaisedAt, new Date(oldestListed.raised.firstRaisedAt))}` : null }) },
+          },
+        };
+      }
       const contradictions = theContradictions(mine.commitments, sessions, reader);
       if (contradictions.length) out.contradictions = contradictions;
       const questionsForTheLead = theQuestionsForTheLead(mine.commitments, handoffs, sessions, reader);
