@@ -91,7 +91,7 @@ const read = (n: number) => aNumberPeopleCanRead(n);
  * count of 45 against 40 would have been told as 5 over a limit. The word counts only where a number
  * follows it, written as figures or as a word.
  */
-const UNDER_A_NUMBER = String.raw`under\s+(?:about\s+|around\s+)?(?:[^\s\d]{0,4}\d|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a\s+hundred|a\s+thousand|a\s+million|half)\b)`;
+const UNDER_A_NUMBER = String.raw`(?:under|below|less\s+than)\s+(?:about\s+|around\s+)?(?:[^\s\d]{0,4}\d|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a\s+hundred|a\s+thousand|a\s+million|half)\b)`;
 const SAYS_IT_IS_A_LIMIT = new RegExp(String.raw`\b(?:(?:budgets?|limits?|ceilings?|caps?|capped|no more than|at most|maximum|within)\b|${UNDER_A_NUMBER})`, 'i');
 const SAYS_IT_IS_AN_AIM = /\b(?:aims?|aiming|targets?|goals?)\b/i;
 
