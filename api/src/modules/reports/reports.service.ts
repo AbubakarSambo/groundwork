@@ -3552,9 +3552,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
       orderBy: { createdAt: 'asc' },
       select: { type: true, text: true, participantId: true },
     });
+    /* A team target the lead set is what success looks like, said as a number (request 132 g): "No standard is set. You have not
+       said what success looks like" was read by a lead who had set 6,000. Only to the lead, who may read every target. */
+    const theTargetTheLeadSet = !(baseline?.successLooksLike ?? '').trim() && isInitiator
+      ? await Promise.resolve((this.prisma as any).groundObjective?.findFirst?.({
+        where: { groundId: (ground as any).id, ownerParticipantId: null, target: { not: null } },
+        orderBy: { sortOrder: 'asc' }, select: { name: true },
+      })).then((o: any) => (typeof o?.name === 'string' && o.name.trim() ? o.name.trim() : null)).catch(() => null)
+      : null;
     const againstSuccess = whereYouAreAgainstWhatYouNamed({
       counting: readableParticipantIds.length === ground.participants.length ? 'everyone' : 'only-yours',
-      stated: baseline?.successLooksLike ?? null,
+      stated: baseline?.successLooksLike ?? theTargetTheLeadSet ?? null,
       leadHasSaidIt: everyEntrySoFar.some(
         (e) => e.type === RecordEntryType.SUCCESS_DEFINITION
           && ground.participants.find((x) => x.id === e.participantId)?.userId === ground.initiatorId,

@@ -3940,3 +3940,7 @@ A name that is not on the check-in is said ("One name in it, Kemi, is not on thi
 ### The county is not counted as work in itself (132 d)
 
 **What changed (served, `byArea.areas[].says`, lead).** A county's own row is no longer counted as work in the county. "Kiambu County has 1 county on record." reads "Kiambu County is on record, and no piece of work in it is on record yet." Where there are projects, they are counted in their own word: "Kiambu County has 1 project on record." `records` is the count of work in the area, and is 0 for the first sentence.
+
+### "No standard is set" while the lead had set a target (132 g, first part)
+
+**What changed (served, `againstSuccess.saying`, lead only).** When the lead has set a team target and has not written down what success looks like, the target is read as the standard, so "No standard is set. You have not said what success looks like, so nobody is being measured against anything yet." is not sent. Nobody else's report changes (a hidden target is not read for anyone but the lead). Still open in 132 g: "Nobody on record has said who arranged the meetings" is fixed above; "nothing on record says anybody has chased it" said about two things ("them") has no change yet.
