@@ -147,6 +147,22 @@ function whatItIsAbout(sentence: string, k: TheKinds): 'reader' | 'several' | 'p
 }
 
 /**
+ * RUN-29, LOANS: A SENTENCE THAT IS THE READER'S IN ITS FIRST HALF AND OTHER BORROWERS' IN ITS SECOND. Sunday's guide read "Take
+ * seriously that your own problem was about timing, but for others, the problem is that they do not have the asset at all,
+ * either because it never arrived or because it was stolen." The word "your" kept the whole sentence, and the second half
+ * describes what happened to the other borrowers. Where a reader's sentence turns to the others, only the reader's half is kept.
+ */
+const A_TURN_TO_THE_OTHERS = /\s*[,;]?\s*(?:(?:but|while|whereas|and|yet)\s+)?(?:for|with|among|in the case of|as for)\s+(?:all\s+)?(?:the\s+)?(?:others|everyone else|everybody else|the rest|other\s+(?:people|persons|borrowers|participants|recipients|members|colleagues|teammates))\b/i;
+
+export function withoutTheTurnToTheOthers(sentence: string): string {
+  const m = A_TURN_TO_THE_OTHERS.exec(sentence);
+  if (!m || m.index === 0) return sentence;
+  const before = sentence.slice(0, m.index).replace(/[\s,;]+$/, '');
+  const trailing = /\s*$/.exec(sentence)![0];
+  return before ? `${before}.${trailing}` : sentence;
+}
+
+/**
  * The sentences of a piece of the shared picture that are the reader's, several people's, or the lead's aim and the
  * shared purpose. A sentence with nothing of its own to say who it is about keeps the paragraph's reader: a paragraph
  * that began with the reader's own sentence carries on being theirs.
@@ -162,7 +178,7 @@ function onlyWhatIsKept(text: string, k: TheKinds): string {
     const about = whatItIsAbout(s, k);
     if (atParagraphStart) paragraphIsTheReaders = about === 'reader';
     const keep = about !== null || (paragraphIsTheReaders && !atParagraphStart);
-    if (keep) out.push(s);
+    if (keep) out.push(about === 'reader' || (about === null && paragraphIsTheReaders) ? withoutTheTurnToTheOthers(s) : s);
     atParagraphStart = /\n\s*$/.test(s);
   }
   return out.join('').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();

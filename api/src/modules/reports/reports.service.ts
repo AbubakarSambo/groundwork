@@ -7172,7 +7172,12 @@ happened, and what is in the way.`;
           .catch(() => 0),
         (ground.report as any)?.builtFromAnswers ?? null,
       ),
-      postReportGuide: quotesChecked(postReportGuide, 'the guide to the next conversation'),
+      /* The guide goes through the same door as the shared picture, so a sentence in it about what happened to the other people
+         is left out of it too (decision 75, item 14; run-29, loans: "for others, the problem is that they do not have the asset"). */
+      postReportGuide: quotesChecked(
+        postReportGuide ? ((this.asItWasShared({ ...(ground as any), report: { postReportGuide } }, participant?.id ?? null, isInitiator || isOrgAdmin) as any).postReportGuide ?? null) : postReportGuide,
+        'the guide to the next conversation',
+      ),
       coaching: this.readAsItWillBeRead(coaching, groundId, 'the coaching note', quotable),
       /* Only a discovery session has one; everything else gets null and renders nothing. */
       theDirection: await this.theDirectionFrom(
