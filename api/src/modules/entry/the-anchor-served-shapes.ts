@@ -19,3 +19,151 @@ export type TheSevenThingsTheLeadHasSaid = {
 export const THE_SEVEN_THINGS_KEYS: (keyof TheSevenThingsTheLeadHasSaid)[] = [
   'responsibleFor', 'tryingToMove', 'howItContributes', 'seeingToday', 'whyItBothersYou', 'whatTheyDontUnderstand', 'whatTheyWouldDoDifferently',
 ];
+
+/* ------------------------------------------------------------------------------------------------
+ * PIECE 8. THE LEAD'S REVEAL (section 11 and 12). SHAPE ONLY: NOT SERVED YET.
+ * "What you're carrying" and "What you're seeing today" stay the lead's alone, and "What you need the
+ * team to understand" reaches the team only once the lead says so (decision 96, item 8). For anybody
+ * who may not read a part, the field is `null`; it is never filled and hidden on the screen.
+ * ---------------------------------------------------------------------------------------------- */
+export type TheWayGroundworkWillHelp = { key: 'understand' | 'connect' | 'encourage' | 'challenge' | 'act' | 'followThrough' | 'crossReference' | 'surfacePatterns'; heading: string; sentence: string };
+
+/** Section 12, word for word. Fixed words: the same for every lead. */
+export const HOW_I_WILL_WORK_WITH_YOUR_TEAM: readonly TheWayGroundworkWillHelp[] = [
+  { key: 'understand', heading: 'Understand', sentence: 'Learn how each person currently sees their work and the wider outcome.' },
+  { key: 'connect', heading: 'Connect', sentence: 'Help them connect their actual work to customers, colleagues, money, delivery and the wider objective.' },
+  { key: 'encourage', heading: 'Encourage', sentence: 'Recognise good thinking, initiative, contribution and ownership.' },
+  { key: 'challenge', heading: 'Challenge', sentence: 'Gently probe assumptions and "I did my part" thinking.' },
+  { key: 'act', heading: 'Act', sentence: 'Help people identify what they themselves can do.' },
+  { key: 'followThrough', heading: 'Follow through', sentence: 'Remember commitments and return to them.' },
+  { key: 'crossReference', heading: 'Cross-reference', sentence: "Understand where different people's perspectives align or diverge." },
+  { key: 'surfacePatterns', heading: 'Surface patterns', sentence: "Show the lead what's happening across the group without turning private check-ins into employee surveillance." },
+];
+
+export type TheLeadsReveal = {
+  title: 'Help my team understand';
+  subtitle: 'One-month Groundwork';
+  /** The lead's alone. `null` for anybody else. */
+  carrying: string | null;
+  /** `null` for the team until the lead has shared it (`sharedWithTheTeam`). */
+  whatTheTeamNeedsToUnderstand: string | null;
+  sharedWithTheTeam: boolean;
+  whoYouAreTryingToMove: string;
+  /** The lead's alone. `null` for anybody else. */
+  seeingToday: string | null;
+  /** Observable behaviours, in the lead's own words, one sentence each. */
+  whatMeaningfulChangeWouldLookLike: string[];
+  /** What Groundwork needs to understand from the other side, one sentence each. */
+  whatGroundworkWillExplore: string[];
+  howIWillWorkWithYourTeam: TheWayGroundworkWillHelp[];
+};
+
+/* ------------------------------------------------------------------------------------------------
+ * PIECE 10. UP TO 20 PEOPLE, AND THE INVITATION (section 13 and 14; decision 96, items 1, 3 and 8).
+ * PARTLY SERVED: the people step already sends and accepts `contributors` on commit (ContributorDto
+ * in entry.controller.ts); the limit of 20 and the invitation's words are SHAPES ONLY.
+ * ---------------------------------------------------------------------------------------------- */
+export type OnePersonTheLeadAdds = {
+  /** Required unless `colleagueId` is given. */
+  email?: string;
+  colleagueId?: string;
+  /** "What do they do / why are they part of this?" Optional. The lead's own note: never shown to the person. */
+  context?: string;
+  note?: string;
+};
+export type ThePeopleStepSends = { contributors: OnePersonTheLeadAdds[] };
+
+/** 20 includes the lead: the lead plus 19 (decision 96, item 3). */
+export type ThePeopleStepRules = {
+  limit: 20;
+  theLeadCounts: true;
+  mayAdd: 19;
+  heading: string;
+  intro: string;
+  contextLabel: string;
+  button: string;
+  /** Said when the lead tries to add a twentieth other person. */
+  limitSentence: string;
+};
+
+export type TheAnchorInvitation = {
+  subject: string;
+  heading: string;
+  /** Plain sentences, in order. The fourth is one of two, by `leadHasSharedWhatTheyAreSeeing`. */
+  lines: string[];
+  leadHasSharedWhatTheyAreSeeing: boolean;
+  button: string;
+};
+
+/* ------------------------------------------------------------------------------------------------
+ * PIECES 12 AND 13. THE MONTH BOARD (section 24). SHAPE ONLY: NOT SERVED YET.
+ * The four lenses are plain sentences, never scores (decisions 11 and 94). In weeks one and two,
+ * patterns are not shown: "what's still getting in the way" uses blockers and differences from the
+ * record; patterns appear from week three (decision 96, item 14).
+ * ---------------------------------------------------------------------------------------------- */
+export type TheLens = { key: 'understanding' | 'ownership' | 'contribution' | 'action'; heading: string; question: string; reading: string };
+export type APersonHelpingThingsMove = { name: string; sentence: string };
+export type TheMonthBoard = {
+  question: 'Are we moving together?';
+  weekOfTheMonth: 1 | 2 | 3 | 4;
+  lenses: TheLens[];
+  whatIsMoving: string[];
+  whatTheTeamIsContributing: string[];
+  peopleHelpingThingsMove: APersonHelpingThingsMove[];
+  wherePerspectivesDiffer: string[];
+  whatIsStillGettingInTheWay: string[];
+  whatGroundworkIsWorkingOnNext: string[];
+};
+
+/* ------------------------------------------------------------------------------------------------
+ * PIECE 30. THE "ACTIVE" LINE (section 26). SHAPE ONLY: NOT SERVED YET.
+ * ---------------------------------------------------------------------------------------------- */
+export type TheActiveLine = {
+  /** People who have checked in within the cadence. */
+  active: number;
+  /** People in the check-in, the lead included, never more than 20. */
+  total: number;
+  /** People Groundwork has nudged and who are not yet active. */
+  nudged: number;
+  /** A full sentence for the board: "18 of 20 people are active. Groundwork has nudged the remaining 2." */
+  line: string;
+};
+
+/* ------------------------------------------------------------------------------------------------
+ * PIECE 32. THE END-OF-MONTH READ (sections 28 and 29). SHAPE ONLY: NOT SERVED YET.
+ * Built once from the record; opening it never rebuilds it.
+ * ---------------------------------------------------------------------------------------------- */
+export type TheRevealCounts = {
+  projectsThatCouldHaveTheirOwnGround: number;
+  sharedObjectivesWorthTracking: number;
+  workingRelationshipsNeedingAlignment: number;
+  activeCommitments: number;
+  teamGeneratedIdeas: number;
+  suitesRelevantToWorkAlreadyBeingDone: number;
+};
+export type TheContinueOption = { key: 'keepThisGroundRunning' | 'startRecommendedGrounds' | 'turnOnRelevantSuites' | 'continueGroundworkForTheTeam'; label: string };
+export type TheEndOfMonthRead = {
+  /** "You wanted your team to understand..." followed by the lead's own words, quoted. */
+  yourOwnWords: string;
+  whatWeFound: string[];
+  whatTheyNowUnderstandDifferently: string[];
+  whatTheyAreDoingDifferently: string[];
+  whatYourTeamContributed: string[];
+  peopleWhoHelpedMoveTheThinking: APersonHelpingThingsMove[];
+  whatYouChangedAsALead: string[];
+  whatIsStillStuck: string[];
+  whatShouldHappenNext: string[];
+  reveal: TheRevealCounts;
+  continueOptions: TheContinueOption[];
+};
+
+/** For the spec: the keys each shape holds, so a later builder cannot rename one quietly. */
+export const THE_SHAPES_KEYS = {
+  reveal: ['title', 'subtitle', 'carrying', 'whatTheTeamNeedsToUnderstand', 'sharedWithTheTeam', 'whoYouAreTryingToMove', 'seeingToday', 'whatMeaningfulChangeWouldLookLike', 'whatGroundworkWillExplore', 'howIWillWorkWithYourTeam'],
+  peopleStepRules: ['limit', 'theLeadCounts', 'mayAdd', 'heading', 'intro', 'contextLabel', 'button', 'limitSentence'],
+  invitation: ['subject', 'heading', 'lines', 'leadHasSharedWhatTheyAreSeeing', 'button'],
+  monthBoard: ['question', 'weekOfTheMonth', 'lenses', 'whatIsMoving', 'whatTheTeamIsContributing', 'peopleHelpingThingsMove', 'wherePerspectivesDiffer', 'whatIsStillGettingInTheWay', 'whatGroundworkIsWorkingOnNext'],
+  activeLine: ['active', 'total', 'nudged', 'line'],
+  endOfMonth: ['yourOwnWords', 'whatWeFound', 'whatTheyNowUnderstandDifferently', 'whatTheyAreDoingDifferently', 'whatYourTeamContributed', 'peopleWhoHelpedMoveTheThinking', 'whatYouChangedAsALead', 'whatIsStillStuck', 'whatShouldHappenNext', 'reveal', 'continueOptions'],
+  revealCounts: ['projectsThatCouldHaveTheirOwnGround', 'sharedObjectivesWorthTracking', 'workingRelationshipsNeedingAlignment', 'activeCommitments', 'teamGeneratedIdeas', 'suitesRelevantToWorkAlreadyBeingDone'],
+} as const;
