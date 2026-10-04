@@ -986,7 +986,7 @@ export class ReportsService {
     const after = this.synthesisQueue.get(groundId) ?? Promise.resolve();
     const mine = after.then(() => {
       this.synthesisWaiting.delete(groundId);
-      return this.synthesizeNow(groundId);
+      return this.synthesizeUntilItHoldsEveryoneWhoFinished(groundId);
     });
     if (this.synthesisQueue.has(groundId)) this.synthesisWaiting.set(groundId, mine);
     const tail = mine.catch(() => undefined);
@@ -996,6 +996,27 @@ export class ReportsService {
     } finally {
       if (this.synthesisQueue.get(groundId) === tail) this.synthesisQueue.delete(groundId);
     }
+  }
+
+  /**
+   * A REPORT TAKES MINUTES TO WRITE, AND SOMEBODY CAN FINISH WHILE IT IS BEING WRITTEN. What it counts
+   * and who it says has contributed is read from the record as it stood when the run began, so the last
+   * person to finish could be left out of the report that was stored after they finished. If the number
+   * of people who have finished is different when the run ends from when it began, it is written again,
+   * from the record as it stands, up to three times.
+   */
+  private async synthesizeUntilItHoldsEveryoneWhoFinished(groundId: string) {
+    const howManyFinished = async () => {
+      const rows = await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED, isSetup: false }, select: { participantId: true, sessionNumber: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+      return new Set((rows as any[]).map((r) => `${r.participantId}:${r.sessionNumber}`)).size;
+    };
+    let written: any;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const before = await howManyFinished();
+      written = await this.synthesizeNow(groundId);
+      if ((await howManyFinished()) === before) break;
+    }
+    return written;
   }
 
   private async synthesizeNow(groundId: string) {
@@ -1189,7 +1210,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
        is the safe default - it says "nothing earlier to compare against", which is true of any
        round the product cannot place. */
     const roundNow = await (this.prisma.checkIn?.aggregate?.({
-      where: { participant: { groundId }, isSetup: false },
+      /* The round is the highest session somebody has FINISHED. A next session that is waiting, not started,
+         is not a round anybody has answered (the journeys: all three finished and the count read "two of three"). */
+      where: { participant: { groundId }, isSetup: false, status: CheckInStatus.COMPLETED },
       _max: { sessionNumber: true },
     }) ?? Promise.resolve(null))
       .then((r: any) => r?._max?.sessionNumber ?? 1)
