@@ -4,6 +4,10 @@ Written on 2 October 2026, in the evening, because the weekly allowance is nearl
 
 The branch is `wip/prototype-ui`. The last commit before this file is `f828693b`, and everything up to it is pushed to `mine`.
 
+## Asset loans board: done (4 October)
+
+"Asset loans, cohort 3, test" (4e89d79c), lead and participant, in loans.txt's order with "Where the cohort stands" and "Support given, and whether it helped" drawn, after one review and its fixes (b5f1a789..0b5efc00), checked live (scratchpad `pictures/loans-A/`). The engine's part is request 133.
+
 ## Government programme board: done (4 October)
 
 "Extension Access Programme, test" (ee96f03c), lead and participant, in gov.txt's order with its own three sections ("What each level understood", "What the visit log shows", "The counties"), after one review and its fixes (88572f42, 701444ff), checked live (scratchpad `pictures/gov-A/`). The engine's part is request 132. Two decisions for Hafsah are recorded: the question block is drawn as gov.txt shows it, and patterns and coaching stay open. Its button count is still over the prototype's (a known gap in the button test).
