@@ -869,15 +869,22 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 /* ── THE OTHER BOARDS YOU ARE IN (board review, 30 September) ─────────────────────────────── */
 .gwui-boards-switcher { position: relative; }
 .gwui-boards-trigger {
-  display: flex; align-items: center; gap: 8px; max-width: 220px;
+  display: flex; align-items: center; gap: 8px;
   background: white; border: 1px solid var(--gw-border); color: var(--gw-text);
   border-radius: 8px; padding: 6px 10px; font-size: 14.5px; font-weight: 600;
   cursor: pointer; font-family: inherit;
 }
-.gwui-boards-trigger-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/*
+ * PHONE CHECK, ITEM 2: the board's own name used to be cut with an ellipsis at a fixed 220px, and
+ * the menu below it was anchored `right: 0` - off a 375px screen's left edge once the trigger sat
+ * near the left of a narrow header. The label now wraps instead of truncating, and the menu anchors
+ * `left: 0` with a width that always fits the viewport, on every screen width, not only the phone.
+ */
+.gwui-boards-trigger-label { white-space: normal; word-break: break-word; }
 .gwui-boards-trigger-caret { color: var(--gw-sub); }
 .gwui-boards-menu {
-  position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; min-width: 260px; max-width: 360px;
+  position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: auto;
+  min-width: 260px; max-width: min(360px, calc(100vw - 36px));
   background: white; border: 1px solid var(--gw-border); border-radius: 10px; padding: 6px;
   box-shadow: 0 10px 30px rgba(20, 24, 40, .18); max-height: 320px; overflow-y: auto;
 }
