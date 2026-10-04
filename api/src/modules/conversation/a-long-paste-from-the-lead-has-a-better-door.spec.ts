@@ -22,7 +22,7 @@ describe('a long paste from the lead in their own check-in', () => {
   });
 
   it('is said in the turn the person reads, before the reply, on every route', () => {
-    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     expect(src).toContain('const ourOwnWords = [contextNotSaid, tookTheNumbers, whereToTakeIt]');
     expect(src).toContain('reply: [contextNotSaid, tookTheNumbers, whereToTakeIt, withRoomLeft]');
   });
