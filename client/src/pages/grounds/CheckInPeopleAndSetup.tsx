@@ -151,6 +151,8 @@ export function CheckInPeopleAndSetup(props: {
   settingsChangeCount: number
   startsAtDraft: string; setStartsAtDraft: (v: string) => void
   startsAtOnRecord: string
+  /** The check-in's created date: the server measures the timeline from startsAt, else createdAt, never "today" (when-the-clock-starts.ts). */
+  createdAtOnRecord?: string | null
   canOfferStartDate: boolean
   timelineDaysDraft: number; setTimelineDaysDraft: (n: number) => void
   cadenceDraft: GroundCadence; setCadenceDraft: (c: GroundCadence) => void
@@ -353,12 +355,12 @@ export function CheckInPeopleAndSetup(props: {
               id="ends-on"
               type="date"
               value={(() => {
-                const from = props.startsAtOnRecord ? new Date(props.startsAtOnRecord) : new Date()
+                const from = props.startsAtOnRecord ? new Date(props.startsAtOnRecord) : props.createdAtOnRecord ? new Date(props.createdAtOnRecord) : new Date()
                 const end = new Date(from.getTime() + props.timelineDaysDraft * 86_400_000)
                 return Number.isFinite(end.getTime()) ? end.toISOString().slice(0, 10) : ''
               })()}
               onChange={(e) => {
-                const from = props.startsAtOnRecord ? new Date(props.startsAtOnRecord) : new Date()
+                const from = props.startsAtOnRecord ? new Date(props.startsAtOnRecord) : props.createdAtOnRecord ? new Date(props.createdAtOnRecord) : new Date()
                 const days = Math.round((new Date(e.target.value).getTime() - from.getTime()) / 86_400_000)
                 if (Number.isFinite(days) && days >= 1) props.setTimelineDaysDraft(days)
               }}

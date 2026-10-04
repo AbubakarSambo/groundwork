@@ -34,11 +34,23 @@ export function WhoIsStillOut({ groundId, sessionNumber, myUserId }: { groundId:
 
   /* The lead's own list: two people with no name are "one colleague" and "another colleague". */
   const labels = peopleLabels(people, { forTheLead: true })
+  /* From staging (live main line): whether THIS person answered this round comes from sessionProgress
+     (the round everyone is actually being counted against), not from matching a local session number
+     against their check-in rows - completing a round spawns everyone's next-round row immediately, so
+     a raw row match can miss someone who already answered. */
+  const progress = (ground as any)?.sessionProgress as
+    | { sessionNumber: number; missingParticipantIds: string[]; declinedParticipantIds: string[] }
+    | null
+    | undefined
+  const round = progress?.sessionNumber ?? sessionNumber
+  const missing = new Set(progress?.missingParticipantIds ?? [])
+  const declined = new Set(progress?.declinedParticipantIds ?? [])
   const rows = people.map((p) => {
     const theirs = (((ground as any)?.checkIns ?? []) as any[]).filter(
-      (c) => c.participantId === p.id && c.sessionNumber === sessionNumber,
+      (c) => c.participantId === p.id && c.sessionNumber === round,
     )
-    const done = theirs.some((c) => c.status === 'COMPLETED')
+    const done = !progress ? theirs.some((c) => c.status === 'COMPLETED') : !missing.has(p.id) && !declined.has(p.id)
+    const isDeclined = progress ? declined.has(p.id) : theirs.some((c) => c.status === 'DECLINED')
     const going = theirs.some((c) => c.status === 'IN_PROGRESS')
     const open = theirs.find((c) => c.status !== 'COMPLETED')
     const isSelf = !!myUserId && p.userId === myUserId
@@ -49,7 +61,9 @@ export function WhoIsStillOut({ groundId, sessionNumber, myUserId }: { groundId:
     const have = isSelf ? 'have' : 'has'
     const state = done
       ? `${name} ${have} answered.`
-      : going
+      : isDeclined
+        ? `${name} ${have} said no to this round.`
+        : going
         ? `${name} ${isSelf ? 'are' : 'is'} part way through.`
         : !p.userId
           ? `${name} ${have} not joined yet.`
@@ -61,11 +75,11 @@ export function WhoIsStillOut({ groundId, sessionNumber, myUserId }: { groundId:
       joined: !!p.userId,
       done,
       state,
-      remindable: !done && !!p.userId && !!open?.id ? (open.id as string) : null,
+      remindable: !done && !isDeclined && !!p.userId && !!open?.id ? (open.id as string) : null,
     }
   })
 
-  const stillToAnswer = rows.filter((r) => !r.done && !r.isSelf).map((r) => r.name)
+  const stillToAnswer = rows.filter((r) => !r.done && !r.isSelf && !declined.has(r.id)).map((r) => r.name)
 
   /* "Baraka and Neema still have to answer.", "Baraka still has to answer.", or nothing left to
      say when everyone (the reader included) has answered - said as one sentence, not a count next
