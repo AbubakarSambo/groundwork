@@ -4398,3 +4398,13 @@ Everyone else reads exactly what they read before, and a person who is not held 
 **What changed for a reader.** In a person's own session report, the lines under "Progress and priorities", "Commitments", "Risks and concerns", "Asks" and "What success looks like" carried their own name as the one who said them (for Yusuf, `"who": "Yusuf Garba"` beside "Sometimes the roads are bad. And the weather."). They now carry `"You"`, so the line under the quote reads "You said this." Other people's lines are unchanged, and the lead reads a participant's lines under the participant's name, as before.
 
 **Tests.** `the-reader-is-you-on-their-own-lines.spec.ts`. The cohort fixture used by the first fix's tests moved to `reports/__fixtures__/a-cohort-for-the-session-report.ts` so the two specs share it.
+
+### 6. Ask Groundwork tells a member with no department that they have no team
+
+**What changed for a reader.** A member with no department in the staff directory, asking "Who is off next week?", read "You are not on approved leave next week. I can only tell you about other people’s leave if you are an admin or a lead." That is wrong for a member (members read their team's leave, decision 93 row 25); there is simply no team to read from. They now read:
+
+> You are not on approved leave next week. You are not in a department yet, so you have no team, and there is no one else’s leave for me to show you.
+
+If they are off themselves, the same sentence follows their own dates. In an organisation that has switched leave off, a member reads what a lead reads ("Leave requests are not switched on in your organisation, so there are no leave days to count."). A guest still reads the old sentence, because a guest is only ever told their own leave (decision 75 item 28).
+
+**Tests.** `your-own-requests-through-ask-groundwork.spec.ts`; the old test of the member with no team pinned the old sentence (a choice, not a decision), so it now pins the new one.
