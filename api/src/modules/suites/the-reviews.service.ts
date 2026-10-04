@@ -17,7 +17,7 @@ import { PATTERNS_NOTE, theBriefingsHeading, theCountsSaid, theEarlierReviews, t
 import type { ForTheLead } from '../suggestions/a-suggestion-told-like-a-signal';
 import { AReviewToldOnWhatsApp } from './a-review-told-on-whatsapp.service';
 import {
-  recogniseForThePerson, recogniseForTheWriter, theRecordForRecognising, theWriterMayReadIt,
+  recogniseForAnotherReader, recogniseForThePerson, recogniseForTheWriter, theRecordForRecognising, theWriterMayReadIt,
   type RecogniseForThePerson, type RecogniseForTheWriter,
 } from './a-review-may-suggest-recognising';
 
@@ -129,9 +129,9 @@ export interface ForTheWriter {
    */
   suggestion: ForTheLead | null;
   /**
-   * "Groundwork suggests recognising Aisha’s work", for the writer alone, with no number behind it, once
-   * Aisha has had her turn (a-review-may-suggest-recognising.ts). Null for a lead or an admin who does
-   * not write it, while the setting is off, and when the record does not reach the line.
+   * "Groundwork suggests recognising Aisha’s work", with the count behind it, once Aisha has had her turn
+   * (a-review-may-suggest-recognising.ts). Read by the writer, an admin, and a lead of the team who does not
+   * write it (decision 93, row 16). Null while the setting is off, and when the record does not reach the line.
    */
   recognise: RecogniseForTheWriter | null;
   /**
@@ -380,7 +380,10 @@ export class ReviewsService {
       dueOn, noticed: this.noticedOf(row.noticed, writes),
       record,
       managersWords: row.managersWords ?? null, theirView: row.theirView ?? null, decision, mayWrite: writes, suggestion,
-      recognise: writes && recognising && theWriterMayReadIt({ theirView: row.theirView ?? null, startedAt: (row as any).startedAt }) ? recogniseForTheWriter(this.firstOf(person), recognising) : null,
+      /* The writer reads it as "you"; an admin and a lead of the team who does not write it read it too, with the writer named (decision 93, row 16). */
+      recognise: recognising && theWriterMayReadIt({ theirView: row.theirView ?? null, startedAt: (row as any).startedAt })
+        ? (writes ? recogniseForTheWriter(this.firstOf(person), recognising) : recogniseForAnotherReader(this.firstOf(person), recognising, startedByFirst))
+        : null,
       briefing,
     };
   }
