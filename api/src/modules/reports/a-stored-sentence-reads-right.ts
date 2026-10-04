@@ -48,6 +48,8 @@ const OLD_WORDING: Array<[RegExp, string | ((...m: string[]) => string)]> = [
   [/Asked, and the record shows no escalation\./g, 'It was asked for, and nothing on record shows it was taken any further.'],
   [/Escalated (\d+) of (\d+)\. The (other was|others were) asked for and not escalated\./g, (_m, a, b, were) => `${a} of ${b} ${a === '1' ? 'was' : 'were'} taken above the person ${a === '1' ? 'it was' : 'they were'} with. The ${were} asked for, and nothing more is on record.`],
   [/Escalated all (\d+)\./g, (_m, n) => `All ${n} were taken above the person they were with.`],
+  /* A question that says a call "has been open a while" on a check-in answered once, joined by a dash (requests 135, 136). */
+  [/That call has been open a while\s*(?:[-\u2013\u2014]|\.)\s*what is the decision, and when\?/gi, 'What is the decision, and when will it be made?'],
   [/Escalated it\./g, 'It was taken above the person it was with.'],
 ];
 

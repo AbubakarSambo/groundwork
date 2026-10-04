@@ -339,7 +339,7 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     neutralProbes: [
       'What did you do this period that only you could have done?',
       'Did they author that, or did you hand it to them?',
-      'That call has been open a while. What is the decision, and when?',
+      'What is the decision, and when will it be made?',
       'Whose was that miss?',
     ],
     protectAgainst:
