@@ -626,6 +626,19 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
 
+**5 October: the anchor scenario, Needs Hafsah 1, 3, 4, 8 and 14, all as the plan recommends.**
+- **1:** "one to one", not "privately".
+- **3:** 20 includes the lead, and the landing page may say "for a month", with the anchor trial behind its own setting, off.
+- **4:** the end-of-month page offers four continue options to the existing plan choice, in Stripe test mode, behind the switch.
+- **8:** "What you're carrying" and "What you're seeing today" stay the lead's. "What you need the team to understand" reaches the team only once the lead says so.
+- **14:** patterns keep the three-period rule.
+
+These were also sent to the engine as request 143. The same day, Hafsah confirmed four earlier decisions:
+- the operations heading;
+- the government question block as gov.txt shows it;
+- patterns and coaching open on every board;
+- MarketView Q4 waiting for a real test check-in.
+
 **3 October: no privacy restriction beyond Hafsah's decisions or the prototype.** Never add a privacy restriction that is not in her own decisions or the prototype. When unsure, follow the prototype. If the prototype does not say, ask her instead of restricting. The old rule, "when unsure, choose the more private option", is withdrawn and must not be acted on again. The engine is reversing several restrictions: patterns reach the lead after the person, suggestions show counts, and admins see the figures. The screen draws whatever the engine sends. Every helper's brief says this. Existing privacy tests are still never deleted or weakened; where one pins a restriction that is not in her decisions or the prototype, it goes to her as a question.
 
 **2 October, late evening: the client's order.** Hafsah's client needs three boards first, in this order, each matched against its prototype example and reviewed: the sales team, onboarding, and project. Project means both "Get a new project off to a good start" and "Get a project back on track". Then the three suites the client uses, each matched against the prototype: leave, finance requests and performance reviews. "Performance management" means the reviews suite. Then the Company page with the company-wide picture, then the Ask Groundwork chat, then the other eight boards. The existing back office stays as it is for Groundwork's staff, and its rebuild comes last. `docs/screens-handover.md` is kept up to date after every finished piece.
