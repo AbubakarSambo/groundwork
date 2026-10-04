@@ -13,6 +13,7 @@ import { aLeaveRequestAsTheApproverReadsIt } from './a-leave-request-as-the-appr
 import { LEAVE_QUESTION_KIND, QUESTION_REFUSED, aQuestionSaid, aReasonSaid, wordsGiven, type AQuestion } from './a-question-about-a-request';
 import { hereSince, inASentence, readLeaveRules, theKindOf, theRulesThatApply, type ALeaveKind, type LeaveRules } from './the-leave-rules';
 import { readDuties } from './who-holds-each-duty';
+import { daysOfLeaveLeftSaid } from '../assistant/your-own-requests-asked-about';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const LEAVE_REFUSED = {
@@ -110,6 +111,8 @@ export interface MyLeave {
   daysLeft: number | null;
   /** Each kind of leave the admin set, with this person's days a year and days left; empty when none are set. */
   kinds: { key: string; name: string; perYear: number | null; daysLeft: number | null }[];
+  /** The days left, in a full sentence for this reader ("You have 17 days of leave left this year, out of 20."), the same one Ask Groundwork says. */
+  daysLeftSaid: string;
   requests: {
     id: string; startsOn: Day; endsOn: Day; days: number; status: 'waiting' | 'approved' | 'declined'; standIn: string | null;
     /** The kind of leave ("Annual leave"), or null when the organisation has set no kinds. */
@@ -330,7 +333,10 @@ export class LeaveBoardService {
       key: k.key, name: k.name, perYear: k.days,
       daysLeft: this.daysLeftOf(answers, k, rows.filter((r) => r.status === 'approved'), today.getUTCFullYear()),
     }));
+    const perYear = kinds.length ? kinds[0].perYear : answers.perYear;
+    const daysLeft = kinds.length ? kinds[0].daysLeft : this.daysLeft(answers.perYear, rows.filter((r) => r.status === 'approved'), today.getUTCFullYear());
     return {
+      daysLeftSaid: daysOfLeaveLeftSaid({ perYear, daysLeft, kinds }),
       /* With kinds set, the first kind's (the one taken when somebody does not say); otherwise as before. */
       perYear: kinds.length ? kinds[0].perYear : answers.perYear,
       daysLeft: kinds.length ? kinds[0].daysLeft : this.daysLeft(answers.perYear, rows.filter((r) => r.status === 'approved'), today.getUTCFullYear()),

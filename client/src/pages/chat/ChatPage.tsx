@@ -452,7 +452,7 @@ export function ChatPage() {
         setMsgs(v => [...v, {
           id: `ai-cannot-finish-yet-${Date.now()}`,
           role: 'AI',
-          content: 'Groundwork needs one or two more answers before this can finish. Say a little more and then finish again.',
+          content: 'I need a little more from you before this check-in can close. Please answer one or two more questions, then finish again.',
         }])
         requestAnimationFrame(() => taRef.current?.focus())
         return

@@ -99,6 +99,9 @@ export function SuitesPage() {
       {data?.reader === 'admin' && <ForAnAdmin page={data} />}
       {data?.reader === 'lead' && <ForALead page={data} />}
       {data?.reader === 'duty' && <ForADutyHolder page={data} />}
+
+      {/* Every reader has requests of their own, including a member, whom this page otherwise refuses. */}
+      <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>
     </Page>
   )
 }

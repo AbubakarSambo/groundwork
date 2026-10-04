@@ -93,6 +93,8 @@ describe('Kamau, who asked to spend', () => {
     expect(kamau).toContain('Fatuma asked you a question about your request to spend KES 12,000 for tyres for the van.');
     expect(kamau).toContain('Fatuma asked, “Is this for the Kisumu van or the Nairobi one?” Your request is still waiting.');
     expect(JSON.stringify(await today.forReader('u-miriam', 'miriam@baridi.example', ORG, 'MEMBER'))).not.toContain('Kisumu van');
+    const needs = (await today.forReader('u-kamau', 'kamau@baridi.example', ORG, 'MEMBER')).needs;
+    expect(needs.find((n: any) => /^spend-question-/.test(n.key))?.action).toEqual({ label: 'Answer it', to: '/suite/mine' });
   });
 
   it('answers in Ask Groundwork: said back, and sent only on his yes', async () => {

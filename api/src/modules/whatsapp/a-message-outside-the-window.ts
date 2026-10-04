@@ -52,6 +52,13 @@ export const FIRST_MESSAGES: ReadonlySet<string> = new Set([
 ]);
 /** The messages that mark a day a check-in opens or closes, when two may go. */
 export const OPENING_OR_CLOSING: ReadonlySet<string> = new Set(['checkin-open', 'opens-soon', 'closes-soon']);
+/**
+ * THE MESSAGES THAT WENT BEFORE THIS RELEASE: the report after a session closes. Every other message
+ * Groundwork starts is new, and goes to an organisation only once it has turned WhatsApp on (decisions
+ * 78 and 88), or when it already had a number of its own connected.
+ */
+export const WENT_BEFORE_THIS_RELEASE: ReadonlySet<string> = new Set(['report', 'report-retry']);
+export const NOT_TURNED_ON_QUIETLY = 'This organisation has not turned on WhatsApp; not sent';
 export const NOT_TODAY = 'Groundwork has already written first to this person as often as it may today; not sent';
 export const THEY_SAID_NOT_NOW = 'This person replied "Not now" today; not sent';
 

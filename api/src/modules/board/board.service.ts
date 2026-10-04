@@ -125,6 +125,7 @@ import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, readsHowTheLeadingIsLanding } from '../patterns/who-reads-a-pattern';
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { everyStoredSentenceReadsRight } from '../reports/a-stored-sentence-reads-right';
+import { aBoardWithNoEmptyLine } from './a-board-has-no-empty-line';
 import { patternQuestionsToSettleFirst } from './pattern-questions-to-settle-first';
 import { everyDivergenceReadable } from '../reports/a-field-name-is-not-a-heading';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
@@ -1350,7 +1351,10 @@ export class BoardService {
           stillToAnswer: Math.max(0, (out.howItIsGoing?.glance?.progress?.ofPeople ?? 0) - (out.howItIsGoing?.glance?.progress?.answeredThisRound ?? 0)),
           peopleExpected: out.howItIsGoing?.glance?.progress?.ofPeople ?? (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
         }),
-        centralQuestion: sessionShape?.theConversationWorthHaving ?? reportSafe.centralQuestion ?? null,
+        /* The report's own central question comes first, so the board and the report ask the same one (run-29, loans: the board asked
+           "That call has been open a while", a role-map probe, while the report asked about the first repayment). The drafted
+           question is only for a report that has none yet. */
+        centralQuestion: (typeof reportSafe.centralQuestion === 'string' && reportSafe.centralQuestion.trim() ? reportSafe.centralQuestion : null) ?? sessionShape?.theConversationWorthHaving ?? null,
         settled: sessionShape?.whereThingsStand?.settled ?? [],
         stillOpen: sessionShape?.whereThingsStand?.open ?? [],
         ...(sessionShape?.whereThingsStand?.settledMarks ? { settledMarks: sessionShape.whereThingsStand.settledMarks } : {}),
@@ -2824,7 +2828,7 @@ export class BoardService {
       /* And what is left on the reader's own rows is said to them, as "you" (item 18). After the said-once pass, which
          already says "you" for the reader where a sentence is true of several people (request 118, part 2). */
       /* And a sentence stored before the wording rules reads right as it is served (decision 91). */
-      return everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null)));
+      return aBoardWithNoEmptyLine(everyStoredSentenceReadsRight(withNoRatingNumber(yourOwnRowsSayYou(eachRepeatedSentenceSaidOnce(walled), me?.id ?? null))));
     }
   }
 

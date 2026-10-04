@@ -123,3 +123,6 @@ docs/audit/
 # They are reference for building, not part of the product, and git history is the wrong
 # place for a folder of images that will be replaced wholesale each time it is redrawn.
 docs/prototype/
+
+# The made-up people the browser user journeys share while they run (e2e/user-journeys-world.ts).
+e2e/.user-journeys-world.json

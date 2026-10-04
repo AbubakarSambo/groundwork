@@ -1,0 +1,22 @@
+import { anInboundHarness } from './a-whatsapp-inbound-harness';
+
+/**
+ * "finish" before there was enough to close the check-in was answered with the app's wording: "A few
+ * more exchanges are needed before this check-in can close - the record is still thin. Answer one or two
+ * more questions, then complete." Found by driving a full check-in through the signed webhook. On
+ * WhatsApp the word is "finish", and the sentence has no dash and no "record".
+ */
+describe('"finish" too early, on WhatsApp', () => {
+  it('says what is needed in plain sentences, using the word to write', async () => {
+    const h = anInboundHarness({ open: [{ id: 'ci-1', label: 'Sales team, Q4' }], thread: { checkInId: 'ci-1' } });
+    h.conversation.complete.mockRejectedValue({ response: { message: 'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.', canContinue: true } });
+    await h.service.handle('org-1', h.message('finish'), 'ours');
+    expect(h.said).toEqual(['I need a little more from you before this check-in can close. Please answer one or two more questions, then write "finish" again.']);
+  });
+  it('another refusal is still said in its own words', async () => {
+    const h = anInboundHarness({ open: [{ id: 'ci-1', label: 'Sales team, Q4' }], thread: { checkInId: 'ci-1' } });
+    h.conversation.complete.mockRejectedValue({ response: { message: 'This check-in has already been completed.' } });
+    await h.service.handle('org-1', h.message('finish'), 'ours');
+    expect(h.said).toEqual(['This check-in has already been completed.']);
+  });
+});

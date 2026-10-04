@@ -49,8 +49,18 @@ export function pickedOne(said: string, open: AnOpenCheckIn[]): AnOpenCheckIn | 
   return null;
 }
 
+/**
+ * WHAT A FILE IS CALLED IN THE SENTENCE THAT SAYS IT ARRIVED. A document keeps the name its sender
+ * gave it. A photo has none, so it was stored under a name made from WhatsApp's message number
+ * ("image-wamid.HBgM...png") and the person was told that name. They are told "Your photo" instead.
+ */
+export function whatTheFileIsCalled(arrived: { fileName: string; named?: boolean; what?: string }): string {
+  if (arrived.named) return `"${arrived.fileName}"`;
+  return `Your ${arrived.what ?? 'file'}`;
+}
+
 /** The kind of thing that arrived, from Meta's message shape. */
-export function whatArrived(message: any): { kind: 'text'; text: string } | { kind: 'pick'; id: string } | { kind: 'media'; mediaId: string; mimeType: string; fileName: string; caption: string } | { kind: 'other' } {
+export function whatArrived(message: any): { kind: 'text'; text: string } | { kind: 'pick'; id: string } | { kind: 'media'; mediaId: string; mimeType: string; fileName: string; caption: string; /** The sender gave the file a name. A photo has none, and is named here only so it can be stored. */ named?: boolean; /** What it is, for a sentence: photo, document, recording or video. */ what?: 'photo' | 'document' | 'recording' | 'video' } | { kind: 'other' } {
   if (!message) return { kind: 'other' };
   if (message.type === 'text') return { kind: 'text', text: (message.text?.body ?? '').trim() };
   /* A template's quick-reply button ("Start", "Not now") arrives as its own type, with the words on it. */
@@ -64,7 +74,7 @@ export function whatArrived(message: any): { kind: 'text'; text: string } | { ki
       const m = message[t];
       const mime: string = m.mime_type ?? 'application/octet-stream';
       const ext = mime.split('/')[1]?.split(';')[0] ?? 'bin';
-      return { kind: 'media', mediaId: m.id, mimeType: mime, fileName: m.filename ?? `${t}-${message.id ?? Date.now()}.${ext}`, caption: (m.caption ?? '').trim() };
+      return { kind: 'media', mediaId: m.id, mimeType: mime, fileName: m.filename ?? `${t}-${message.id ?? Date.now()}.${ext}`, caption: (m.caption ?? '').trim(), named: !!m.filename, what: t === 'image' ? 'photo' : t === 'audio' ? 'recording' : t === 'video' ? 'video' : 'document' };
     }
   }
   return { kind: 'other' };
@@ -78,8 +88,12 @@ export function reportAsText(report: any, label: string): string {
   const lines: string[] = [`Your report for ${label} is ready.`];
   if (report?.whereThingsStand?.saying) lines.push(report.whereThingsStand.saying);
   const glance = (report?.atAGlance ?? []) as { label: string; value: string; sub?: string }[];
-  if (glance.length) lines.push(glance.map((g) => `${g.label}: ${g.value}${g.sub ? ` (${g.sub})` : ''}`).join('\n'));
-  if (report?.theConversationWorthHaving) lines.push(`Worth having: ${report.theConversationWorthHaving}`);
+  /* Each read is its own sentence, not "Label: value (note)". The note is already a sentence; without one, the label and value make one. */
+  const sentence = (t: string) => { const x = t.trim().replace(/\s+/g, ' '); return `${x.charAt(0).toUpperCase()}${x.slice(1)}${/[.!?]$/.test(x) ? '' : '.'}`; };
+  const lower = (t: string) => `${t.charAt(0).toLowerCase()}${t.slice(1)}`;
+  const reads = glance.map((g) => (g.sub?.trim() ? sentence(g.sub) : g.value?.trim() ? sentence(`${g.label} is ${lower(g.value.trim())}`) : '')).filter(Boolean);
+  if (reads.length) lines.push(reads.join(' '));
+  if (report?.theConversationWorthHaving) lines.push(`Here is a conversation worth having. ${report.theConversationWorthHaving}`);
   const whole = lines.join('\n\n');
   /* Where the whole report would not fit in one WhatsApp message, one short line, and the app for the rest. */
   return whole.length <= A_TEXT_MESSAGE_LIMIT ? whole : `${reportAsOneLine(report, label)} Open Groundwork to read it.`;
@@ -149,6 +163,9 @@ export const A_GREETING_ALONE = /^\s*((hi|hello|hey|hiya|yo)(\s+there)?|good\s+(
 /** "Not now" (the quick reply on checkin_open, or typed): nothing more is written first today (decision 83). */
 export const A_NOT_NOW = /^\s*(not\s+now|later|not\s+today)\s*[.!]?\s*$/i;
 export const NOT_NOW_SAYING = 'All right. I will not write to you first again today. Your check-in is still open, and you can answer here whenever you are ready.';
+
+/** What the person reads when they write "finish" and there is not enough yet to close the check-in. */
+export const NOT_ENOUGH_YET_TO_FINISH = 'I need a little more from you before this check-in can close. Please answer one or two more questions, then write "finish" again.';
 
 /** The words that close a session. Matched before the status is looked at, so "finish" on a session not yet opened gets an honest answer. */
 export const A_FINISH_WORD = /^\s*(finish|complete|done|close)\s*[.!]?\s*$/i;

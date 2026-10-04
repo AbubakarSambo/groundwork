@@ -172,6 +172,8 @@ export const whatsappConfig = registerAs("whatsapp", () => ({
    * Connections page says "Groundwork's WhatsApp number" without a number.
    */
   displayNumber: process.env.WHATSAPP_DISPLAY_NUMBER,
+  /** Meta's Graph API address. Unset it is Meta's own; only a test sets it, to a recorder on this machine. */
+  graphBaseUrl: process.env.WHATSAPP_GRAPH_BASE_URL,
 }));
 
 // Stripe, USD. Subscription billing: ten free grounds per org with unlimited

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { todayApi, type Need } from '@/api/today'
 import { useAuthStore } from '@/stores/auth'
 import { Page, Stack, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp } from '@/components/gw/ui'
@@ -101,6 +101,7 @@ export function TodayPage() {
                 ))}
               </EdgeList>
             )}
+            <p className="gwui-panel-text"><Link className="gwui-plain-link" to="/suite/mine">Your own leave and spending requests</Link></p>
           </Section>
         </Stack>
 

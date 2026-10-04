@@ -3,6 +3,8 @@ import { NOTHING_FLAGGED } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { contextIsInAskGroundwork } from '../admin/what-is-hidden-at-release';
 import { DependencyStatus } from '@prisma/client';
+import { aQuestionAskedAboutARequest, aQuestionSaidBack, aQuestionSent, aQuestionNotSent, WHICH_REQUEST_TO_ASK_ABOUT, NOTHING_TO_ASK_ABOUT, HOURS_TAKE_NO_QUESTION } from '../suites/an-approver-asks-by-saying-so';
+import { whatYouCanAskSaid } from './what-you-can-ask-here';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
 import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
 import { ReportsService } from '../reports/reports.service';
@@ -156,6 +158,7 @@ const ROUNDS_RECALLED = 3;
  * (inventory item 2). All four are setup-side administration of a check-in a lead runs, in the same
  * spirit as `add_context` itself, which decision 50 already settled this way - see `respond`.
  */
+const LONGEST_QUESTION = 1000;
 const SETUP_LANES = new Set<string>(['add_context', 'context_line', 'lead_note', 'questions_for_people', 'ask_for_leave', 'log_hours', 'ask_to_spend', 'decide_a_request', 'set_up_a_suite'] satisfies Lane[]);
 
 /**
@@ -378,6 +381,20 @@ export class AssistantService {
     }
 
     /*
+     * AN APPROVER ASKS A QUESTION ABOUT A REQUEST BY SAYING SO ("question for Amina about her leave: who
+     * will cover?"), on WhatsApp or here. Said back word for word and sent only on a yes, through the
+     * same `askAQuestion` the app's box uses. Only two exact shapes, and only for a request that waits
+     * for this reader, so a question to somebody in a check-in is never read as this.
+     */
+    if (who && userId) {
+      const asked = aQuestionAskedAboutARequest(message);
+      if (asked) {
+        const proposed = await this.proposeAQuestionAboutARequest(organizationId, who, userId, asked);
+        if (proposed) return proposed;
+      }
+    }
+
+    /*
      * LEAVE DATES GO TO THE LEAVE SUITE (week 20), said back and sent only on a yes. Read by rules,
      * before any lane, so a day is never guessed and nothing about it reaches a record.
      */
@@ -514,6 +531,8 @@ export class AssistantService {
         return this.compose(await this.whatIsStuck(organizationId, who, message));
       case 'how_am_i_doing':
         return this.compose(await this.howAmIDoing(organizationId, who));
+      case 'what_can_you_do':
+        return this.whatYouCanAsk(organizationId, personId, userId ?? null);
       case 'your_requests':
         return this.aboutYourRequests(organizationId, userId ?? null, message);
       case 'who_approves':
@@ -2161,6 +2180,9 @@ export class AssistantService {
     if (parked.kind === 'request_decision') {
       return this.resolveParkedDecision(organizationId, who, parked, decision);
     }
+    if (parked.kind === 'request_question') {
+      return this.resolveParkedRequestQuestion(organizationId, who, parked, decision);
+    }
     if (parked.kind === LEAVE_ANSWER_KIND) {
       return this.resolveParkedLeaveAnswer(organizationId, who, parked, decision);
     }
@@ -3490,6 +3512,36 @@ export class AssistantService {
    * nothing here decides who may know what, and nothing about anybody else is read. Said in plain
    * sentences, to this reader only. Nothing is written.
    */
+  /**
+   * "WHAT CAN YOU HELP ME WITH?": the check-ins this reader is in or runs, the suites switched on for
+   * them and what waits for them to approve, said in plain sentences. Reads only this reader's own.
+   */
+  private async whatYouCanAsk(organizationId: string, personId: string, userId: string | null): Promise<Reply> {
+    const me = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { email: true } }).catch(() => null);
+    const email = me?.email?.toLowerCase() ?? null;
+    const links: any[] = (userId || email)
+      ? await Promise.resolve().then(() => (this.prisma as any).groundParticipant.findMany({
+          where: {
+            OR: [...(userId ? [{ userId }] : []), ...(email ? [{ email: { equals: email, mode: 'insensitive' } }] : [])],
+            ground: { organizationId, status: { in: ['OPEN', 'AWAITING_PARTIES', 'REPORT_READY', 'ACTIVE'] } },
+          },
+          select: { groundId: true, partyType: true },
+        })).catch(() => [])
+      : [];
+    const grounds = new Set(links.map((l) => l.groundId));
+    const run = new Set(links.filter((l) => l.partyType === 'INITIATOR').map((l) => l.groundId));
+    const on = async (probe: (() => Promise<unknown>) | null) => (probe && userId ? probe().then(() => true).catch(() => false) : false);
+    const [leaveIsOn, spendingIsOn, hoursAreOn, waiting] = await Promise.all([
+      on(this.leave ? () => this.leave!.mine({ userId: userId!, organizationId }) : null),
+      on(this.spending ? () => this.spending!.mine({ userId: userId!, organizationId }) : null),
+      on(this.timeSheets ? () => (this.timeSheets as any).forChat(organizationId, userId!) : null),
+      userId ? this.waitingForYouToDecide(organizationId, userId).catch(() => []) : Promise.resolve([]),
+    ]);
+    return rules('what_can_you_do', text(whatYouCanAskSaid({
+      checkInsYouAreIn: grounds.size, checkInsYouRun: run.size, leaveIsOn, spendingIsOn, hoursAreOn, waitingForYou: waiting.length,
+    })));
+  }
+
   private async aboutYourRequests(organizationId: string, userId: string | null, message: string): Promise<Reply> {
     const lane = 'your_requests';
     if (!userId) return rules(lane, text(NO_SIGN_IN_FOR_YOUR_QUESTION));
@@ -3684,6 +3736,49 @@ export class AssistantService {
       select: { id: true },
     });
     return { lane: 'decide_a_request', composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
+  }
+
+  /** The approver's question about a request, said back before it goes. Null when what was written is not about a request waiting for them. */
+  private async proposeAQuestionAboutARequest(organizationId: string, who: string, userId: string, asked: { name: string | null; kind: 'leave' | 'spend' | 'hours' | null; question: string }): Promise<Reply | null> {
+    const lane = 'decide_a_request';
+    const all = await this.waitingForYouToDecide(organizationId, userId);
+    if (!all.length) return asked.name || asked.kind ? rules(lane, text(NOTHING_TO_ASK_ABOUT)) : null;
+    const byName = asked.name ? all.filter((r) => r.firstName?.toLowerCase() === asked.name!.toLowerCase()) : all;
+    if (asked.name && !byName.length) return null;
+    const byKind = asked.kind ? byName.filter((r) => r.kind === asked.kind) : byName;
+    const left = byKind.length ? byKind : byName;
+    if (left.length > 1) return rules(lane, text(WHICH_REQUEST_TO_ASK_ABOUT(left)));
+    const r = left[0];
+    if (r.kind === 'hours') return rules(lane, text(HOURS_TAKE_NO_QUESTION(r.firstName)));
+    if (asked.question.length > LONGEST_QUESTION) return rules(lane, text(QUESTION_REFUSED.tooLong));
+    const say = aQuestionSaidBack(r, asked.question);
+    const row = await this.prisma.assistantProposal.create({
+      data: { organizationId, personExternalId: who, kind: 'request_question', summary: say, payload: { request: r, question: asked.question } as never },
+      select: { id: true },
+    });
+    return { lane, composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
+  }
+
+  /** The yes: the question goes through the boards' own `askAQuestion`, which checks again that this reader decides it, and tells the person. */
+  private async resolveParkedRequestQuestion(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    const { request, question } = (parked.payload ?? {}) as { request: AWaitingRequest; question: string };
+    if (decision === 'decline' || !request?.ref) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('decide_a_request', text(request?.ref ? aQuestionNotSent(request) : NOTHING_TO_ASK_ABOUT));
+    }
+    const me = await this.theSignInOf(organizationId, who);
+    let reply: string;
+    try {
+      const asking = request.kind === 'spend' ? this.spending : this.leave;
+      if (!me.linkedUserId || !asking) throw new Error(NOTHING_TO_ASK_ABOUT);
+      await asking.askAQuestion({ userId: me.linkedUserId, organizationId }, request.ref, question);
+      reply = aQuestionSent(request);
+    } catch (err: any) {
+      const why = typeof err?.message === 'string' && err.message ? err.message : NOTHING_TO_ASK_ABOUT;
+      reply = why === NOTHING_TO_ASK_ABOUT ? why : `I could not send it. ${why}`;
+    }
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    return rules('decide_a_request', text(reply));
   }
 
   /**

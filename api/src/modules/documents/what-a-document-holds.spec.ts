@@ -148,6 +148,13 @@ describe('who a name in a document is', () => {
     expect(whoThisNameIs('Dayo Adebayo', twoDayos)?.id).toBe('p1');
   });
 
+  it('matches the first name of a person added by name who has not opened the invitation yet', () => {
+    const amani = { id: 'p5', email: 'amani.wekesa@x.test', nameGiven: 'Amani Wekesa', user: null };
+    expect(whoThisNameIs('Amani', [dayo, amani])?.id).toBe('p5');
+    /* and still not when two people share it */
+    expect(whoThisNameIs('Amani', [amani, { id: 'p6', email: 'a.k@x.test', nameGiven: 'Amani Kalu', user: null }])).toBeNull();
+  });
+
   it('names somebody back by their own name, the one they gave, else their address', () => {
     expect(theNameWeUseFor(dayo)).toBe('Dayo Adebayo');
     expect(theNameWeUseFor(openLink)).toBe('Sade Ogunleye');

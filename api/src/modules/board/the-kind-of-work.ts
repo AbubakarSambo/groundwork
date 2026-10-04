@@ -188,7 +188,7 @@ export interface AServedRecord {
 }
 
 export type AServedSection =
-  | { section: string; holds: string; state: 'not-known'; why: string }
+  | { section: string; holds?: string; state: 'not-known'; why: string }
   | { section: string; holds: string; state: 'none-yet' | 'filled'; stages?: string[]; rows: AServedRecord[] };
 
 /** Only plain string pairs survive in `fields`: a record's details are words, never nested data. */
@@ -217,7 +217,7 @@ export function stagesFor(section: ARecordSection, leadsOwn: unknown): string[] 
  */
 export function theRecordSections(kind: KindOfWork | null, leadsStages: unknown, rows: AServedRecord[]): AServedSection[] {
   if (!kind) {
-    return RECORD_SECTIONS.map((section) => ({ section, holds: '', state: 'not-known' as const, why: NOT_KNOWN_KIND }));
+    return RECORD_SECTIONS.map((section) => ({ section, state: 'not-known' as const, why: NOT_KNOWN_KIND }));
   }
   return RECORDS_FOR_EACH_KIND[kind].map((s) => {
     if (!s.itemKinds.length) return { section: s.section, holds: s.holds, state: 'not-known' as const, why: s.whyNotKnown ?? FROM_ANOTHER_SYSTEM };

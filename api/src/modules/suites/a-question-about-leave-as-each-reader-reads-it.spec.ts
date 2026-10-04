@@ -158,6 +158,14 @@ describe('Aisha, who asked for the leave', () => {
     expect(JSON.stringify(aisha)).toContain('Wairimu asked, “Who will cover the Project X milestone?” Your request is still waiting.');
     const miriam = await today.forReader('u-miriam', 'miriam@baridi.example', ORG, 'MEMBER');
     expect(JSON.stringify(miriam)).not.toContain('Project X');
+    /* "Answer it" opens her own requests page, which a member can open; the leave board refuses a member. */
+    expect(aisha.needs.find((n: any) => n.key === 'leave-question-r-aisha')?.action).toEqual({ label: 'Answer it', to: '/suite/mine' });
+  });
+
+  it('her own requests say the days left in a full sentence, the one Ask Groundwork says', async () => {
+    const { svc, as } = setup();
+    const mine = await svc.mine(as('u-aisha'));
+    expect(mine.daysLeftSaid).toMatch(/^You have \d+ days? of leave left this year, out of \d+\.$/);
   });
 
   it('answers it; the request keeps waiting, and her answer reads back to her', async () => {

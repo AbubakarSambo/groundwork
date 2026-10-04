@@ -165,7 +165,7 @@ describe('with no leave rules set, every reader reads exactly what they read bef
 
     it(`${label}: Aisha's own leave reads as before, with no kinds`, async () => {
       const { leave, as } = setup({ rules });
-      expect(await leave.mine(as('u-aisha'), TODAY)).toEqual({ perYear: 21, daysLeft: 21, kinds: [], requests: [] });
+      expect(await leave.mine(as('u-aisha'), TODAY)).toEqual({ perYear: 21, daysLeft: 21, daysLeftSaid: 'You have 21 days of leave left this year, out of 21.', kinds: [], requests: [] });
     });
   }
 });

@@ -13,6 +13,7 @@ import { AN_ANSWER } from './an-answer-includes-a-refusal';
 import { recordRoundCompletion } from './round-completion';
 import { awayUntilOn, leaveOfThePeopleOn, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { everyRowAPageAtATime } from '../whatsapp/every-row-a-page-at-a-time';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
@@ -721,7 +722,7 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendWhatsAppRemindersInner(now: Date = new Date()): Promise<{ sent: number }> {
-    const waiting: any[] = await this.prisma.checkIn.findMany({
+    const waiting: any[] = await everyRowAPageAtATime((page) => this.prisma.checkIn.findMany({
       where: {
         status: CheckInStatus.NOT_STARTED,
         OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
@@ -732,8 +733,8 @@ export class GroundsCron implements OnApplicationBootstrap {
         ground: { select: { label: true, scenario: true, organizationId: true, overWhatsApp: true, cadence: true, chaseAfterDays: true, chasingStopped: true, tellTheLead: true, initiator: { select: { firstName: true } } } },
         participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
-      take: 500,
-    });
+      ...page,
+    }));
     const turnedOn = await organisationsThatTurnedWhatsAppOn(this.prisma, this.whatsapp, waiting.map((c) => c.ground.organizationId));
     const leave = await leaveOfThePeopleOn(this.prisma, [...new Set(waiting.map((c) => c.groundId))]);
     const hoursSince = (d: Date | null | undefined) => (d ? (now.getTime() - new Date(d).getTime()) / 3_600_000 : null);
@@ -748,7 +749,13 @@ export class GroundsCron implements OnApplicationBootstrap {
         const user = ci.participant.user;
         if (user && (user.isActive === false || user.deletedAt)) continue;
         const before: { kind: string | null; createdAt: Date }[] = await this.prisma.whatsAppSend.findMany({
-          where: { checkInId: ci.id, kind: { in: MORNING_KINDS } },
+          /*
+           * ONLY WHAT WENT, OR WAS HELD BY THE ADD-ON OR THE LIMIT. A message refused because the person had
+           * said STOP, or because its template was not approved yet, reached nobody, and was written down
+           * all the same. Counted as "had", it stopped the overdue and the due-tomorrow message for good:
+           * after START, or once Meta approved the template, the person never read them.
+           */
+          where: { checkInId: ci.id, kind: { in: MORNING_KINDS }, OR: [{ sentAt: { not: null } }, { kind: { endsWith: ':held' } }] },
           orderBy: { createdAt: 'desc' },
           select: { kind: true, createdAt: true },
         });
@@ -837,7 +844,7 @@ export class GroundsCron implements OnApplicationBootstrap {
   }
 
   async sendWhatsAppOpensSoonInner(now: Date = new Date()): Promise<{ sent: number }> {
-    const soon: any[] = await this.prisma.checkIn.findMany({
+    const soon: any[] = await everyRowAPageAtATime((page) => this.prisma.checkIn.findMany({
       where: {
         status: CheckInStatus.NOT_STARTED,
         availableFrom: { gt: new Date(now.getTime() + 45 * 60_000), lte: new Date(now.getTime() + 60 * 60_000) },
@@ -848,8 +855,8 @@ export class GroundsCron implements OnApplicationBootstrap {
         ground: { select: { label: true, organizationId: true, overWhatsApp: true } },
         participant: { select: { id: true, email: true, userId: true, user: { select: { firstName: true, email: true, phoneNumber: true, isActive: true, deletedAt: true } } } },
       },
-      take: 200,
-    });
+      ...page,
+    }), 200);
     const turnedOn = await organisationsThatTurnedWhatsAppOn(this.prisma, this.whatsapp, soon.map((c) => c.ground.organizationId));
     const leave = await leaveOfThePeopleOn(this.prisma, [...new Set(soon.map((c) => c.groundId))]);
     let sent = 0;

@@ -88,7 +88,7 @@ export class WhatNeedsYouService {
       kind: 'decide' as const,
       title: aQuestionOnToday(r.questionWaiting!.askedBy, leaveInWords(r.startsOn, r.endsOn)),
       detail: `${r.questionWaiting!.askedBy} asked, ${inQuotes(r.questionWaiting!.question)} Your request is still waiting.`,
-      action: { label: 'Answer it', to: '/suite/leave' },
+      action: { label: 'Answer it', to: '/suite/mine' },
       groundId: '',
       organizationId,
     }));
@@ -107,7 +107,7 @@ export class WhatNeedsYouService {
       kind: 'decide' as const,
       title: aQuestionOnToday(r.questionWaiting!.askedBy, `request to spend ${spendInWords(r.amount, mine?.currency ?? null, r.what)}`),
       detail: `${r.questionWaiting!.askedBy} asked, ${inQuotes(r.questionWaiting!.question)} Your request is still waiting.`,
-      action: { label: 'Answer it', to: '/suite/spend' },
+      action: { label: 'Answer it', to: '/suite/mine' },
       groundId: '',
       organizationId,
     }));

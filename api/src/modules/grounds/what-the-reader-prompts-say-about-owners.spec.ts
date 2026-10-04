@@ -10,7 +10,7 @@ import { A_PLAN_PROMPT } from './a-plan-is-many-proposals';
  */
 describe('the reading prompts tell the model whose a number is', () => {
   it('the dump reader gives a priority owner its numbers, and none to the whole team as well', () => {
-    expect(A_DUMP_PROMPT).toContain('gives the numbers in it to that owner');
+    expect(A_DUMP_PROMPT).toContain('The numbers in that priority belong to that owner');
     expect(A_DUMP_PROMPT).toContain('never also in the numbers for the whole team');
     expect(A_DUMP_PROMPT).toContain('never the label that names the owner');
   });

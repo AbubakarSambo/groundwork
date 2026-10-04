@@ -17,9 +17,10 @@ import { plainToInstance } from 'class-transformer';
 import { ACheckInACustomerCanRunService } from './a-check-in-a-customer-can-run.service';
 import { asATextMessage } from './a-reply-reads-as-a-text-message';
 import { aDecisionIn } from '../suites/a-request-in-words';
+import { aQuestionAskedAboutARequest } from '../suites/an-approver-asks-by-saying-so';
 import { BACK_TO_THE_CHECK_IN, YES_OR_NO_TO_AN_ANSWER, isThisYourAnswer, type AQuestionWaiting } from '../suites/a-question-about-a-request';
-import { AnOpenCheckIn, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
-  AN_ASK_WORD, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
+import { AnOpenCheckIn, whatTheFileIsCalled, sessionHeader, whichOneRows, whichOneAsText, pickedOne, pickedFromText, whatArrived, reportAsText, reportAsTemplateBlanks, LANGUAGES_WE_CONVERSE_IN, A_FINISH_WORD, A_GREETING_ALONE, A_NOT_NOW, NOT_NOW_SAYING,
+  NOT_ENOUGH_YET_TO_FINISH, AN_ASK_WORD, A_BACK_WORD, A_SWITCH_WORD, A_YES, A_NO, THE_WORDS, NOW_ASKING, ASKING_NEEDS_A_ROSTER_ENTRY, ASK_READS_WORDS,
   ONLY_ONE_OPEN, NONE_OPEN, BACK_IN, BACK_TO_NOTHING, ASKING, isAsking, wasIn, namedCheckIn, looksLikeARequest, shallITreatThisAs, YES_OR_NO, HELD_WORDS_PUT_IN, heldWordsNotPut, type ARequest,
 } from './a-whatsapp-message-is-routed';
 import { A_STOP_WORD, A_START_WORD, STOPPED_SAYING, RESUMED_SAYING } from '../whatsapp/a-message-outside-the-window';
@@ -277,6 +278,8 @@ export class WhatsAppForAnOrganisationService {
 
     /* Nothing open: an invitation waiting, or the assistant. */
     if (!open.length) {
+      /* "back" with nothing to go back to is not a question for Ask Groundwork ("I cannot answer that one yet. Here is what I can do with "back"."). */
+      if (arrived.kind === 'text' && A_BACK_WORD.test(said)) { await say(BACK_TO_NOTHING); return; }
       const waiting = await this.invitationWaitingFor(organizationId, who.personId);
       if (waiting) { await say(`You are invited to "${waiting}" and the invitation has not been accepted yet. Open the email, accept it, then reply here and your answers go straight in.`); return; }
       if (arrived.kind === 'media') { await say('There is no check-in open to put that on. I will message you here when the next one opens; send it again then.'); return; }
@@ -319,7 +322,7 @@ export class WhatsAppForAnOrganisationService {
       const ground = await this.prisma.checkIn.findUnique({ where: { id: current.id }, select: { groundId: true } });
       try {
         const doc: any = await this.documents.upload(ground!.groundId, userId!, { originalname: arrived.fileName, mimetype: fetched.mimeType, buffer: fetched.buffer, size: fetched.buffer.length } as any, false, arrived.caption || undefined);
-        await say(`"${arrived.fileName}" is on your check-in${arrived.caption ? ` with your note: ${arrived.caption}` : ''}. ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'} Anything it backs up is read against what you said.`);
+        await say(`${whatTheFileIsCalled(arrived)} is on your check-in${arrived.caption ? ` with your note: ${arrived.caption}` : ''}. ${doc?.whoCanSeeIt ?? 'Only you can see it until you say otherwise.'} Anything it backs up is read against what you said.`);
       } catch (err: any) {
         await say(err?.message ?? 'That file could not be read. A PDF, an image, or a text document works.');
       }
@@ -372,10 +375,10 @@ export class WhatsAppForAnOrganisationService {
         await say(YES_OR_NO(pending.kind as ARequest));
         return;
       }
-    } else if (who.personId && aDecisionIn(text) && (await this.aDecisionWaitsFor(organizationId, who.personId))) {
+    } else if (who.personId && (aDecisionIn(text) || aQuestionAskedAboutARequest(text)) && (await this.aDecisionWaitsFor(organizationId, who.personId))) {
       /*
-       * AN APPROVER'S "APPROVE" OR "DECLINE" DURING A CHECK-IN (decision 82, item 1) is not an answer
-       * in it. It goes to Ask Groundwork, which says back what they are deciding and acts only on a
+       * AN APPROVER'S "APPROVE" OR "DECLINE", OR A QUESTION ABOUT A REQUEST ("question for Amina about her
+       * leave: ...") DURING A CHECK-IN (decision 82, item 1) is not an answer in it. It goes to Ask Groundwork, which says back what they are deciding and acts only on a
        * yes; the conversation stays there for that yes, until "back".
        */
       await this.rememberAsking(organizationId, from, current.id);
@@ -423,7 +426,8 @@ export class WhatsAppForAnOrganisationService {
            was another answer. Acknowledge, and let the listener send. */
         await say('Your check-in is complete and on record. Your report follows in a moment.');
       } catch (e: any) {
-        await say(e?.response?.message ?? e?.message ?? 'That could not be completed yet.');
+        /* "Not enough yet" asks for something the person can give, so it is said in the words of this door ("finish"), not the app's ("complete", "the record is still thin"). */
+        await say(e?.response?.canContinue ? NOT_ENOUGH_YET_TO_FINISH : (e?.response?.message ?? e?.message ?? 'That could not be completed yet.'));
       }
       return;
     }

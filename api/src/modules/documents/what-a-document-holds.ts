@@ -298,6 +298,10 @@ export function whoThisNameIs(name: string, people: SomebodyOnTheCheckIn[]): Som
     [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').toLowerCase().trim(),
     (p.nameGiven ?? '').toLowerCase().trim(),
     (p.user?.firstName ?? '').toLowerCase().trim(),
+    /* The first name of the name they gave, for somebody added by a colleague pick who has not opened the invitation:
+       "Amani, have you sent the proposal?" is Amani Wekesa. Found walking the user journeys, where the lead's plan named
+       "Amani" and the check-in said she was not on it. Two people sharing a first name still match neither. */
+    (p.nameGiven ?? '').toLowerCase().trim().split(/\s+/)[0],
     (p.email ?? '').split('@')[0].toLowerCase().replace(/[._]/g, ' '),
     (p.roleAsDescribed ?? '').toLowerCase().trim(),
   ].filter(Boolean);

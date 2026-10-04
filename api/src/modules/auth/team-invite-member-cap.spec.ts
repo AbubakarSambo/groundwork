@@ -19,6 +19,8 @@ import { AuthService } from './auth.service';
 function makeService(canInviteResult: { allowed: boolean; reason?: string }, existingUser: any = null) {
   const prisma: any = {
     user: { findUnique: jest.fn(async () => existingUser) },
+    /* The inviting organisation's own name, which the invitation now reads from the record. */
+    organization: { findUnique: jest.fn(async () => ({ name: 'Kito Foods' })) },
     /* No membership yet, unless a test says otherwise. */
     organizationMembership: {
       findUnique: jest.fn(async () => existingUser?.membership ?? null),
@@ -34,7 +36,7 @@ function makeService(canInviteResult: { allowed: boolean; reason?: string }, exi
   const emailService: any = { sendUserInvite: jest.fn(async () => undefined), sendMagicLinkEmail: jest.fn(async () => undefined) };
   const billing: any = { canInviteMember: jest.fn(async () => canInviteResult) };
   const service = new AuthService(prisma, {} as any, {} as any, emailService, {} as any, billing, { emit: () => undefined } as any);
-  return { service, billing, prisma };
+  return { service, billing, prisma, emailService };
 }
 
 describe('#5b teamInvite respects the per-plan member cap', () => {
@@ -87,5 +89,15 @@ describe('#5b teamInvite respects the per-plan member cap', () => {
     await service.teamInvite('Acme', 'existing@test.com', 'org-1');
     expect(prisma.organizationMembership.create).not.toHaveBeenCalled();
     expect(billing.canInviteMember).not.toHaveBeenCalled();
+  });
+});
+
+describe('the invitation names the organisation that sent it', () => {
+  it('reads the name from the record, so a caller that only knows "Groundwork" still sends "Kito Foods"', async () => {
+    /* Found walking the user journeys: the controller passed a name the signed-in user does not carry, so every
+       invitation read "You've been added to Groundwork on Groundwork" and said nothing about who asked. */
+    const { service, emailService } = makeService({ allowed: true });
+    await service.teamInvite('Groundwork', 'newperson@test.com', 'org-1');
+    expect(emailService.sendUserInvite).toHaveBeenCalledWith('newperson@test.com', expect.any(String), expect.any(String), 'Kito Foods');
   });
 });

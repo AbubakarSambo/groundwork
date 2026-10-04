@@ -72,6 +72,15 @@ export function aNameSaidAgainInOneSentence(text: string, names: Iterable<string
   return text.split(/(?<=[.!?])(\s+)/).map((sentence) => {
     for (const full of people) {
       const forms = formsOf(full);
+      /* "Tobi says that Tobi does not know ..." and "Hauwa Ibrahim says Hauwa told ..." are "... says that they do not know ...", wherever in the
+         sentence they stand, with or without "that": no he or she is guessed (run-29: 27 of them, in six scenarios). */
+      sentence = sentence.replace(
+        new RegExp(`(?<![\\p{L}])((?:${forms})\\s+${REPORTING_VERBS}(?:\\s+that)?\\s+)(?:${forms})\\s+(\\p{Ll}[\\p{L}'’]*)`, 'gu'),
+        (_m: string, start: string, verb: string) => `${start}they ${forTheyAfterAName(verb)}`,
+      );
+    }
+    for (const full of people) {
+      const forms = formsOf(full);
       const opens = new RegExp(`^\\s*(?:${forms})(?=\\s+\\p{Ll})`, 'u').exec(sentence);
       if (!opens) continue;
       const others = people.filter((p) => p !== full).flatMap((p) => [p, theShortNameOf(p)]).filter((n) => n && n.length > 1);
@@ -79,11 +88,6 @@ export function aNameSaidAgainInOneSentence(text: string, names: Iterable<string
       let out = sentence.replace(
         new RegExp(`(,?\\s+(?:and|but)\\s+)(?:${forms})\\s+(?=\\p{Ll})`, 'gu'),
         (m: string, joint: string, offset: number) => (offset > opens[0].length && !somebodyElseBefore(offset) ? joint : m),
-      );
-      /* "Tobi says that Tobi does not know ..." is "Tobi says that they do not know ...": no he or she is guessed. */
-      out = out.replace(
-        new RegExp(`^(\\s*(?:${forms})\\s+${REPORTING_VERBS}\\s+that\\s+)(?:${forms})\\s+(\\p{Ll}[\\p{L}'’]*)`, 'u'),
-        (_m: string, start: string, verb: string) => `${start}they ${forTheyAfterAName(verb)}`,
       );
       let owned = 0;
       out = out.replace(
