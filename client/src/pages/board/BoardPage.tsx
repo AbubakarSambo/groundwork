@@ -1523,25 +1523,30 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const restOfWorkRecordSectionsToShow = restOfWorkRecordSections.filter((s) =>
     s.state !== 'not-known' || !switchboardHeadingsAlreadyShown.has(sectionHeading((b as any).kindOfWork ?? null, s)))
   /*
-   * PROJECT BOARD REVIEW 1, FIX 3: SAID ONCE, WITH NO HEADING, ON THESE TWO BOARDS ONLY. A
-   * check-in with no kind of work chosen at all (the DRIFT fixture, "The partnerships work has
-   * gone quiet", dac969d3) sends every `workRecords` section back as not-known, with the same
-   * stock sentence - repeated once per section, under the raw switchboard names ("Deal grid",
-   * "Forecast", "Themes", "Work plan") for four of them. Said once instead, with no heading.
+   * PROJECT BOARD REVIEW 1, FIX 3; WIDENED, PHONE CHECK ITEM 8: SAID ONCE, WITH NO HEADING,
+   * WHENEVER EVERY RECORD IS NOT-KNOWN. A check-in with no kind of work chosen at all (the DRIFT
+   * fixture, "The partnerships work has gone quiet", dac969d3) sends every `workRecords` section
+   * back as not-known, with the same stock sentence - repeated once per section, under the raw
+   * switchboard names ("Deal grid", "Forecast", "Themes", "Work plan") for four of them. Said once
+   * instead, with no heading.
    *
-   * SCOPED TO `isProjectBoard`, NOT GUESSED FROM `switchboardHeadingsAlreadyShown`. An onboarding
-   * board (ONBOARDING family, scenario NEW_HIRE) also sends every `workRecords` entry as
-   * not-known with `kindOfWork: null` - and NEW_HIRE's own switchboard row (the-switchboard-g2-
-   * table.ts) does not turn "Timeline" on at all, so `shown.timeline` reads false whether or not
-   * `b.timeline` itself has rows, the same way a test with no filled "Work plan" of its own leaves
-   * `switchboardHeadingsAlreadyShown` empty too - an emptiness this fix used to read as "nothing
-   * else on the board", collapsing the onboarding board's own not-known "Work plan" away with it.
-   * `isProjectBoard` is the one fact that actually distinguishes the two: true only for the two
-   * project scenarios this fix is about, so onboarding is never touched, whatever is filled in.
+   * THIS USED TO BE SCOPED TO `isProjectBoard` ONLY, LEAVING THE ONBOARDING BOARD WITH THE SAME
+   * FIVE-HEADINGS BUG (phone check, item 8: "Deal grid", "Forecast", "Themes", "Every deadline",
+   * "The parties", each reading "Groundwork does not know what kind of work..."). The comment this
+   * replaced worried that collapsing by emptiness would wrongly fold away an onboarding board's own
+   * REAL "Work plan" - but that worry was about a different, now-gone heuristic
+   * (`switchboardHeadingsAlreadyShown` read as "nothing else on the board"). This check reads
+   * `b.workRecords` itself: the moment any one of its own entries is `'filled'` or `'none-yet'`
+   * rather than `'not-known'`, `allWorkRecords.every(...)` is already false and nothing here
+   * collapses - proven by the existing "keeps a work-record section with real rows exactly where it
+   * was" test, which sends a filled "Work plan" among `workRecords` and still finds it outside the
+   * fold. Onboarding's real work plan, shown separately as `WorkPlanSection`, never passes through
+   * `b.workRecords` at all, so this collapsing a genuinely all-not-known `workRecords` list cannot
+   * reach it either way.
    */
   const allWorkRecords = b.workRecords ?? []
   const workRecordsAllNotKnownSameWhy =
-    isProjectBoard &&
+    (isProjectBoard || isOnboarding) &&
     allWorkRecords.length > 1 &&
     allWorkRecords.every((s) => s.state === 'not-known') &&
     new Set(allWorkRecords.map((s) => (s as { why: string }).why)).size === 1
