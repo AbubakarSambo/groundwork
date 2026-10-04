@@ -26,6 +26,20 @@ export interface InvitePreview {
   yourNumberIsSeenBy?: 'you-and-lead' | 'everybody' | null
   /** An expired invitation carries only this and the lead's first name. */
   expired?: false
+  /**
+   * ANCHOR PIECE 11, THE INVITATION (plan section 5 row 5; docs/answers-from-engine.md, "Request
+   * 147", `TheAnchorInvitation` - shape only, not served yet). Present only for an invitation to an
+   * anchor Ground. The copy of the engine's shape the screens workspace keeps for itself - never
+   * imported from `api/`, since the client builds alone on staging.
+   */
+  anchorInvitation?: {
+    subject: string
+    heading: string
+    /** Plain sentences, in order. The fourth is one of two, by `leadHasSharedWhatTheyAreSeeing`. */
+    lines: string[]
+    leadHasSharedWhatTheyAreSeeing: boolean
+    button: string
+  }
 }
 
 /** What an expired invitation's preview is: nothing but the lead's first name. */
