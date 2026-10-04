@@ -9,7 +9,7 @@ import {
   whatToSayAfterAsking,
   whyThisDidNotWork,
 } from './a-join-link-is-not-a-password';
-import { Injectable, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import { Injectable, Optional, Logger, BadRequestException, ForbiddenException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { GroundScenario, GroundMoment, TurnRole, CheckInStatus, PartyType, Cadence, TokenType, UsageEventType } from '@prisma/client';
 import { namesWithoutPossessives } from './a-name-is-not-a-possessive';
@@ -65,6 +65,9 @@ import { whatIsSettledAndWhatIsNot, type WhatSetupHasSoFar } from './what-setup-
 import { whatTheyAlreadyHave, ENOUGH_TO_RECOGNISE_THEM } from './setup-is-not-a-stranger-to-somebody-who-is-signed-in';
 import { theSetupHasStoppedAsking } from './a-gate-that-can-never-open-is-shut';
 import { onboardingIsReady as theGate, whatSetupNeverGot, anAimIsOwedHere } from './a-check-in-with-no-aim-has-nothing-to-read-against';
+import { PromptsService } from '../prompts';
+import { theAnchorGuidance } from '../conversation/the-anchor-lead-conversation';
+import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { theClassifierPrompt, readTheClassification } from './which-situation-this-is';
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
@@ -605,6 +608,8 @@ export class EntryService {
     private email: EmailService,
     private conversation: ConversationService,
     private events: EventEmitter2,
+    /* The stored version of the anchor conversation's words (anchor piece 5 to 7). Optional so that every other way of building this service is unchanged. */
+    @Optional() private prompts?: PromptsService,
   ) {}
 
   opener(scenario?: string): string {
@@ -1333,7 +1338,7 @@ from finishing at all.`;
    * this singleton and read by the controller after an await, so two visitors finishing in the same
    * tick could decide each other's close. It travels with the reply now.
    */
-  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void, peopleNamed?: string[], alreadySaid?: string[]): Promise<{ reply: string; closed: boolean }> {
+  async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void, peopleNamed?: string[], alreadySaid?: string[]): Promise<{ reply: string; closed: boolean; promptVersionId?: string | null }> {
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
     messages = withoutBankDetailsAnywhere(messages);
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
@@ -1360,14 +1365,20 @@ from finishing at all.`;
      */
     const mapped = resolveScenario(scenario);
     const theirLast = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
-    const entrySystem = `${buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed)}\n\n---\n\n${theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast))}`;
-    return this.guardedReplyWithClose(
+    /*
+     * THE ANCHOR LEAD'S GUIDANCE, ONLY WHEN THE SWITCH IS ON AND THIS IS THE ANCHOR CONVERSATION.
+     * Otherwise it is null and the text below is exactly what it always was.
+     */
+    const anchor = await theAnchorGuidance(() => theAnchorScenarioIsOn(this.prisma), this.prompts, scenario);
+    const entrySystem = `${buildEntrySystemPrompt(mapped, groundLabel || scenario || '', PartyType.INITIATOR, undefined, peopleNamed)}${anchor ? `\n\n---\n\n${anchor.text}` : ''}\n\n---\n\n${theThingsThatCannotBeMissed(theirLast, theyPushedBackOnTheQuestions(theirLast))}`;
+    const out = await this.guardedReplyWithClose(
       entrySystem,
       messages,
       onDelta,
       /* Theirs: the people they named, what they called it, and everything they typed in setup. */
       [...(peopleNamed ?? []), groundLabel ?? '', ...(alreadySaid ?? [])],
     );
+    return anchor ? { ...out, promptVersionId: anchor.promptVersionId } : out;
   }
 
 
