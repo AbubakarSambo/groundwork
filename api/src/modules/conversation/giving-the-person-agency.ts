@@ -25,7 +25,7 @@ When what they say is something they could do themselves, you may offer to write
 
 Nothing is written down until they say yes. If they say no, or change it, take that as it is, and do not offer it again. Offer at most once in a conversation, and never on the first answer they give. Never offer something that is not theirs: not what their lead wants, not what a colleague should do, not an idea you had.
 
-When they say yes, you will be told that it has been written down. Say so in one plain sentence, in their words. Say what happened, and do not call it good.`;
+When they say yes, the product writes it down and tells them so itself, in the words just before yours. You then ask one question that helps them act on it. Say what happened, and do not call it good.`;
 
 /** How the model offers it. Read loosely on purpose: a missed offer is only a yes that writes nothing, and the model is told so. */
 const AN_OFFER = /\bwould you like me to (?:write|note|put|record|keep|capture|add)\b/i;
@@ -73,13 +73,42 @@ export function whatTheAnswerAgreedTo(newestFirst: Turn[], answer: string): { ki
   if (!theirIdea) return null;
   const quoted = A_QUOTE.exec(offer)?.[1]?.trim();
   const wordForWord = quoted && theirIdea.toLowerCase().includes(quoted.toLowerCase());
-  const text = (wordForWord ? theirIdea.slice(theirIdea.toLowerCase().indexOf(quoted!.toLowerCase())).slice(0, quoted!.length) : theirIdea).trim();
+  const text = (wordForWord ? theirIdea.slice(theirIdea.toLowerCase().indexOf(quoted!.toLowerCase())).slice(0, quoted!.length) : theTurnTheOfferIsAbout(theirIdea, offer)).trim();
   return text ? { kind: 'yes', text: text.slice(0, 400) } : null;
+}
+
+/**
+ * WHEN THE OFFER DID NOT QUOTE THEM, THE SENTENCE OF THEIRS IT IS ABOUT. A person's turn can hold several things ("those are finished, and I could
+ * also ask Tunde to forward me the photos"), and only one of them is what was offered. That one sentence is kept, exactly as they typed it, when
+ * the offer shares at least half of its words; otherwise everything they said just before it is kept, because guessing which part is worse.
+ */
+function theTurnTheOfferIsAbout(theirIdea: string, offer: string): string {
+  const sentences = theirIdea.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
+  if (sentences.length < 2) return theirIdea;
+  const offered = new Set((offer.toLowerCase().match(/[a-z][a-z'-]{2,}/g) ?? []));
+  let best: { sentence: string; score: number } | null = null;
+  for (const sentence of sentences) {
+    const words = sentence.toLowerCase().match(/[a-z][a-z'-]{2,}/g) ?? [];
+    if (words.length < 4) continue;
+    const score = words.filter((w) => offered.has(w)).length / words.length;
+    if (!best || score > best.score) best = { sentence, score };
+  }
+  return best && best.score >= 0.5 ? best.sentence : theirIdea;
 }
 
 /** Whether Groundwork has already offered, anywhere in this conversation, so it is offered once. */
 export function hasAlreadyOffered(newestFirst: Turn[]): boolean {
   return newestFirst.some((t) => t.role !== 'PERSON' && t.role !== 'user' && isAnOfferToWriteItDown(t.content ?? ''));
+}
+
+/**
+ * WHAT THE PRODUCT ITSELF SAYS ABOUT THE OFFER, BEFORE THE MODEL SPEAKS. Whether something was written down is a fact about the record, so the
+ * product states it, not the model, and it is never stated unless the record shows it. The model then asks the one question that follows.
+ */
+export function weSayAboutTheOffer(agreed: { kind: 'yes'; text: string } | { kind: 'no' } | null, written: boolean | 'already'): string {
+  if (!agreed || agreed.kind === 'no') return '';
+  if (written === 'already') return 'You already had that written down as something you will do.';
+  return written ? 'I have written that down as something you will do.' : 'I could not write that down just now.';
 }
 
 /** What the model is told on the turn after the person answered an offer. Only what the record shows happened. */
@@ -89,13 +118,79 @@ export function whatHappenedToTheOffer(agreed: { kind: 'yes'; text: string } | {
     return '# They said no to having it written down\n\nNothing was written down. Take it as it is, do not offer it again, and ask one question about something else.';
   }
   if (written === 'already') {
-    return `# They said yes, and it was already written down\n\nThey already had this written down as something they will do: "${agreed.text}". Tell them so in one plain sentence, in their words, and ask one question that helps them act on it. Do not call it good.`;
+    return '# They said yes, and it was already written down\n\nThey have just been told, in the words before yours, that they already had this written down as something they will do. Do not say it again and do not repeat their words. Ask one question that helps them act on it, such as when they will do it or what would make it easier.';
   }
   if (!written) {
-    return '# They said yes, but it could not be written down just now\n\nTell them so plainly in one sentence, and do not say it was written down. Ask one question about what is taking most of their attention.';
+    return '# They said yes, but it could not be written down just now\n\nThey have just been told so, in the words before yours. Do not say it again and do not say it was written down. Ask one question about what is taking most of their attention.';
   }
-  return `# They said yes, and it has been written down\n\nYou have written down, as something they will do: "${agreed.text}". Say so in one plain sentence, in their words. Say what happened and do not call it good. Then ask one question that helps them act on it, such as when they will do it or what would make it easier.`;
+  return '# They said yes, and it has been written down\n\nThey have just been told, in the words before yours, that it is written down as something they will do. Do not say it again, do not repeat their words, and do not call it good. Ask one question that helps them act on it, such as when they will do it or what would make it easier.';
 }
 
 /** The line that tells the model it has already made its one offer. */
 export const YOU_HAVE_ALREADY_OFFERED = '# You have already offered\n\nYou have already offered to write something down in this conversation. Do not offer again.';
+
+/**
+ * WHETHER THE QUESTION THAT GIVES THEM THE LEAD HAS BEEN ASKED YET, read from Groundwork's own earlier turns in this check-in. The engine's
+ * own questions about what a person will do, and by when, come naturally after every answer and win over a line that merely asks to go
+ * first, so the record is read and the model is told plainly that this one is still owed. It is context handed to the model: it does not
+ * choose the words.
+ */
+const THE_AGENCY_QUESTION = [
+  /what do you think (?:could|might|will|should) (?:happen|change|be done)/i,
+  /what (?:could|might) happen next/i,
+  /if you could change one thing/i,
+  /what would you (?:do|change|try) (?:if|about)/i,
+];
+
+export function hasAskedWhatTheyThinkCouldHappen(newestFirst: Turn[]): boolean {
+  return newestFirst.some((t) => t.role !== 'PERSON' && t.role !== 'user' && THE_AGENCY_QUESTION.some((r) => r.test(t.content ?? '')));
+}
+
+/** Owed from their second answer on, and until it has been asked or an offer has been made. */
+export function whatIsStillOwedToThem(newestFirst: Turn[]): string {
+  const theirAnswers = newestFirst.filter((t) => t.role === 'PERSON' || t.role === 'user').length + 1;
+  if (theirAnswers < 2) return '';
+  if (hasAskedWhatTheyThinkCouldHappen(newestFirst) || hasAlreadyOffered(newestFirst)) return '';
+  return '# Still owed to them in this check-in\n\nYou have not yet asked what THEY think could happen next. Ask that now, in your own words, as the only question this turn, and do not ask what they will do, by when, or what happens if it goes wrong until they have answered it.';
+}
+
+/**
+ * THE PRODUCT HAS ALREADY SAID IT WAS WRITTEN DOWN, SO THE MODEL'S OWN TELLING OF IT IS TAKEN OUT. The model is asked not to say it again and
+ * sometimes does, which reads as the same sentence twice. Only sentences that say something was written, noted or recorded are removed, and
+ * never the question; if nothing would be left, the reply is kept as it is.
+ */
+const SAYS_IT_WAS_WRITTEN = /\b(?:written|wrote|noted|recorded|saved|captured)\b[^.?!]{0,30}\b(?:down|it|that|this)\b|\b(?:have|has|had|'ve) (?:written|noted|recorded|saved|captured)\b/i;
+
+const wordsOf = (s: string): string[] => (s.toLowerCase().match(/[a-z][a-z'-]{2,}/g) ?? []);
+
+/** A statement that gives most of their words back, which is a second telling of what the product has just said, and may not be word for word. */
+function echoesTheirWords(sentence: string, theirWords: string): boolean {
+  const ours = new Set(wordsOf(sentence));
+  const theirs = wordsOf(theirWords);
+  if (ours.size < 5 || theirs.length < 5) return false;
+  const shared = theirs.filter((w) => ours.has(w)).length;
+  return shared / theirs.length >= 0.6;
+}
+
+export function withoutTheSecondTellingOfIt(reply: string, theirWords = ''): string {
+  const parts = (reply ?? '').split(/(?<=[.!?])\s+/);
+  const kept = parts.filter((p) => {
+    if (p.trim().endsWith('?')) return true;
+    return !(SAYS_IT_WAS_WRITTEN.test(p) || (theirWords && echoesTheirWords(p, theirWords)));
+  });
+  const out = kept.join(' ').trim();
+  return out && out.includes('?') ? out : reply;
+}
+
+/**
+ * WHAT THEY JUST SAID LOOKS LIKE SOMETHING THEY COULD DO THEMSELVES, read from their own words with the plainest of tests: "I will", "I could",
+ * "I would", "I am going to", "the quickest thing is". It never decides anything. It tells the model that the offer may be due, and the model
+ * judges whether it really is theirs to do. Not once an offer has been made in this conversation.
+ */
+const SOUNDS_LIKE_THEIR_OWN_STEP = /\b(?:i|we)\s*(?:will|'ll|would|could|can|am going to|'m going to|plan to|intend to|might)\b(?!\s*not\b)(?!n't)|\bi'd\b|\bi think the (?:quickest|best|simplest|easiest|first) thing is\b/i;
+
+export function whatTheyJustSaidMayBeTheirOwnStep(newestFirst: Turn[], answer: string): string {
+  const a = (answer ?? '').trim();
+  if (!a || hasAlreadyOffered(newestFirst) || !SOUNDS_LIKE_THEIR_OWN_STEP.test(a)) return '';
+  return '# What they just said may be something they could do themselves\n\nIf it is theirs to do, and not what their lead wants or what a colleague should do, your question this turn is the offer to write it down as something they will do, with their own words in quotation marks. If it is not, ask your next question as you would.';
+}

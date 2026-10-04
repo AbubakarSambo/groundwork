@@ -74,8 +74,8 @@ export { CLOSED_BY_THE_CLOCK };
 /** `CheckIn.closedReason` when the person declined to take part. */
 export const DECLINED_TO_TAKE_PART = 'declined';
 import { mirrorCommitment } from '../assistant/a-commitment-carries-past-the-ground';
-import { theAnchorParticipantGuidance, whatTheyToldYouBefore } from './the-anchor-weekly-check-in';
-import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
+import { theAnchorParticipantGuidance, whatTheyToldYouBefore, withoutAnAnnouncedAngle } from './the-anchor-weekly-check-in';
+import { whatTheAnswerAgreedTo, hasAlreadyOffered, whatHappenedToTheOffer, weSayAboutTheOffer, whatIsStillOwedToThem, withoutTheSecondTellingOfIt, isAnOfferToWriteItDown, whatTheyJustSaidMayBeTheirOwnStep, YOU_HAVE_ALREADY_OFFERED } from './giving-the-person-agency';
 import { theAnchorScenarioIsOn } from '../admin/what-is-hidden-at-release';
 import { DocumentsService } from '../documents/documents.service';
 import { BillingService } from '../billing/billing.service';
@@ -1268,9 +1268,11 @@ export class ConversationService {
      */
     /* An opener written for an earlier respondent has already been through every guard below; it
        is not rewritten, and above all it is not rewritten DIFFERENTLY for each person. */
+    /* The anchor's weekly opening never announces a new angle ("Today we are going to..."): see withoutAnAnnouncedAngle. */
+    const theOpening = this.anchorWeekForThisTurn.get(checkIn.id) && !alreadyWritten ? withoutAnAnnouncedAngle(forHumans(reply)) : forHumans(reply);
     const held = alreadyWritten
       ? forHumans(reply)
-      : await this.theOpenerIsHeldToTheSameBar(checkIn.id, openerSystem, beginMessage, forHumans(reply));
+      : await this.theOpenerIsHeldToTheSameBar(checkIn.id, openerSystem, beginMessage, theOpening);
     /* Before this person has typed a word in any session, nothing can be "you said". See the module. */
     const saidSoFar = await (this.prisma.conversationTurn?.count?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: checkIn.participantId } } }) ?? Promise.resolve(1)).catch(() => 1);
     /* Named, because "the person who set this up" is a label and this is the first sentence
@@ -1745,8 +1747,9 @@ export class ConversationService {
 
     const composedBefore = await this.composeSystemPrompt(checkIn, message);
     const anchored = this.theAnchorWeekWords(checkIn.id);
-    const whatTheyAgreedTo = await this.theirYesBecomesACommitment(checkIn);
-    const composed = [composedBefore, ...anchored.before, whatTheyAgreedTo].filter(Boolean).join('\n\n');
+    const offerAnswered = await this.theirYesBecomesACommitment(checkIn);
+    const whatTheyAgreedTo = offerAnswered.forTheModel;
+    const composed = [composedBefore, ...anchored.before].filter(Boolean).join('\n\n');
     /*
      * AND WHAT TO DO ABOUT THE DEADLINE THEY JUST GAVE, WHICH NOTHING WAS DOING.
      *
@@ -1801,7 +1804,9 @@ export class ConversationService {
       .filter(Boolean)
       .join('\n\n')
       /* The anchor's short reminder, when it is in play, is read after everything else. */
-      + (anchored.last ? `\n\n${anchored.last}` : '');
+      + (anchored.last ? `\n\n${anchored.last}` : '')
+      /* What happened to the offer they just answered is about this turn alone, so it is the very last thing read. */
+      + (whatTheyAgreedTo ? `\n\n${whatTheyAgreedTo}` : '');
     this.setThePromptForThisTurn(checkIn.id, fullSystem);
 
     // Persist the person's turn.
@@ -2205,7 +2210,9 @@ export class ConversationService {
        * "repeat and going around in circles": nothing was wrong with any single reply, and half of
        * every one of them was the person's own last message. See asked-twice-and-told-no-twice.
        */
-      if (opensByRepeatingThem(message, screened.text)) {
+      /* An offer to write their words down quotes those words on purpose: that is the offer, so it is not "saying it back". Only in the anchor's weekly check-in. */
+      const anOfferIsBeingMade = !!this.anchorWeekForThisTurn.get(checkIn.id) && isAnOfferToWriteItDown(screened.text);
+      if (!anOfferIsBeingMade && opensByRepeatingThem(message, screened.text)) {
         this.logger.warn(`Check-in ${checkIn.id}: the reply opened by repeating them; asking again.`);
         /* The offending sentence goes back with the instruction. Asking for "no restatement" in the
            abstract lost 58 times out of 75 across nineteen live check-ins. */
@@ -2842,6 +2849,11 @@ export class ConversationService {
       const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web');
       if (closed !== (aiTurn.content ?? '')) aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: closed } });
     }
+    /* The product has already said it was written down; the model's own telling of it is taken out, so it is not said twice. */
+    if (offerAnswered.weSay) {
+      const once = withoutTheSecondTellingOfIt(aiTurn.content ?? '', (this.anchorWeekForThisTurn.get(checkIn.id)?.agreed as any)?.text ?? '');
+      if (once !== (aiTurn.content ?? '')) aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: once } });
+    }
     const room = sessionComplete ? null : howMuchRoomIsLeft(personTurnCount + 1);
     const withRoomLeft = room ? `${aiTurn.content}\n\n${room}` : aiTurn.content;
 
@@ -2870,7 +2882,7 @@ export class ConversationService {
      * streamed route always did this ("nine targets were written and the screen said only 'Right.
      * The Q4 targets are clear.'"); since both routes are one, this is where it happens for both.
      */
-    const ourOwnWords = [contextNotSaid, tookTheNumbers, whereToTakeIt].filter(Boolean).join('\n\n');
+    const ourOwnWords = [contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay].filter(Boolean).join('\n\n');
     if (ourOwnWords) {
       aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: `${ourOwnWords}\n\n${aiTurn.content}` } });
     }
@@ -2895,7 +2907,7 @@ export class ConversationService {
      */
     if (sessionComplete) this.startTheEndCard(checkIn as any, aiTurn.id);
     return {
-      reply: [contextNotSaid, tookTheNumbers, whereToTakeIt, withRoomLeft].filter(Boolean).join('\n\n'),
+      reply: [contextNotSaid, tookTheNumbers, whereToTakeIt, offerAnswered.weSay, withRoomLeft].filter(Boolean).join('\n\n'),
       sessionComplete,
       ...(suggestedAnswers.length ? { suggestedAnswers } : {}),
       ...(this.anchorVersionForThisTurn.get(checkIn.id) ? { promptVersionId: this.anchorVersionForThisTurn.get(checkIn.id) } : {}),
@@ -5368,9 +5380,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       orderBy: { createdAt: 'asc' },
       take: 5,
     }) ?? Promise.resolve([])).catch(() => [] as { text: string; whenSaid: string | null }[]);
-    const aims = this.theTargetsThisPersonMaySee(ground, { participantId: checkIn.participantId, participant: checkIn.participant }, untoldHere)
-      .map((o: any) => String(o.name ?? '').trim())
-      .filter(Boolean)
+    /* What this person has been told the check-in is for (what a participant is told about it, never the lead's own brief), then the aims they may see. */
+    const toldAboutIt = this.briefFor(ground, { participantId: checkIn.participantId, isLead: false }, untoldHere)?.says?.trim() || null;
+    const aims = [
+      toldAboutIt,
+      ...this.theTargetsThisPersonMaySee(ground, { participantId: checkIn.participantId, participant: checkIn.participant }, untoldHere).map((o: any) => String(o.name ?? '').trim()),
+    ]
+      .filter((a): a is string => !!a)
       .slice(0, 6);
     const block = whatTheyToldYouBefore({
       lastSession: lastCheckIn?.completedAt ? { finishedAt: lastCheckIn.completedAt, said: entries.map((e) => e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')) } : null,
@@ -5386,7 +5402,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }) ?? Promise.resolve([])).catch(() => [] as { role: string; content: string | null }[]);
     const agreed = whatTheAnswerAgreedTo(sofar as any[], latestMessage);
     const offered = hasAlreadyOffered(sofar as any[]);
-    return { text: guidance.text, block: [block, offered ? YOU_HAVE_ALREADY_OFFERED : ''].filter(Boolean).join('\n\n'), last: guidance.last, promptVersionId: guidance.promptVersionId, agreed };
+    /* Owed to them, read from the record: asked after the reminder, so it is the last thing read about what to ask. Not while an offer is being answered. */
+    const owed = agreed ? '' : [whatTheyJustSaidMayBeTheirOwnStep(sofar as any[], latestMessage), whatIsStillOwedToThem(sofar as any[])].filter(Boolean).join('\n\n');
+    return { text: guidance.text, block, last: [guidance.last, owed, offered ? YOU_HAVE_ALREADY_OFFERED : ''].filter(Boolean).join('\n\n'), promptVersionId: guidance.promptVersionId, agreed };
   }
 
   /**
@@ -5395,10 +5413,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * written down the way every other thing a person says they will do is written, and the model is told what happened. Nothing is
    * written for a no, for anything else, or when the anchor is not in play.
    */
-  private async theirYesBecomesACommitment(checkIn: { id: string; groundId: string; participantId: string; sessionNumber: number }): Promise<string> {
+  private async theirYesBecomesACommitment(checkIn: { id: string; groundId: string; participantId: string; sessionNumber: number }): Promise<{ forTheModel: string; weSay: string }> {
     const agreed = this.anchorWeekForThisTurn.get(checkIn.id)?.agreed ?? null;
-    if (!agreed) return '';
-    if (agreed.kind === 'no') return whatHappenedToTheOffer(agreed, false);
+    if (!agreed) return { forTheModel: '', weSay: '' };
+    if (agreed.kind === 'no') return { forTheModel: whatHappenedToTheOffer(agreed, false), weSay: '' };
     let written: boolean | 'already' = false;
     try {
       const theirs = await this.prisma.groundCommitment.findMany({
@@ -5428,7 +5446,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     } catch (err: any) {
       this.logger.warn(`Could not write the commitment they said yes to on ${checkIn.id}: ${err?.message}`);
     }
-    return whatHappenedToTheOffer(agreed, written);
+    return { forTheModel: whatHappenedToTheOffer(agreed, written), weSay: weSayAboutTheOffer(agreed, written) };
   }
 
   /**

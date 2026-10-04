@@ -29,7 +29,7 @@ describe('the order the guards run in', () => {
   const deadEnd = () => at('if (isADeadEnd(screened.text');
   const askedTwice = () => at('if (alreadyAskedTwice(screened.text');
   const verdict = () => at('if (isAVerdictAboutSomebodyElse(message, screened.text))');
-  const restating = () => at('if (opensByRepeatingThem(message, screened.text))');
+  const restating = () => at('if (!anOfferIsBeingMade && opensByRepeatingThem(message, screened.text))');
   const essay = () => at('if (isAnEssay(screened.text');
   const bans = () => at('const notOurWords = wordsWeDoNotUse(screened.text');
   const ships = () => at('reply = screened.text || (isAnAcknowledgement(message) ?');
@@ -60,7 +60,7 @@ describe('the order the guards run in', () => {
       'if (isADeadEnd(screened.text',
       'if (alreadyAskedTwice(screened.text',
       'if (isAVerdictAboutSomebodyElse(message, screened.text))',
-      'if (opensByRepeatingThem(message, screened.text))',
+      'if (!anOfferIsBeingMade && opensByRepeatingThem(message, screened.text))',
       'if (isAnEssay(screened.text',
       'const notOurWords = wordsWeDoNotUse(screened.text',
     ]) {
