@@ -49,12 +49,19 @@ import { Button, Callout, Note, TextField, TextArea, Bubble, Composer, PhaseStep
  * Everybody typed by hand is still their address.
  */
 const A_COLLEAGUE = 'colleague:'
-function asSomeoneToInvite(entry: string): { email?: string; colleagueId?: string; context?: string } {
+/**
+ * THE NAME ASKED BESIDE EACH EMAIL, FOR AN ANCHOR DRAFT (section 13, "Name + email"; request 166's
+ * `displayName`). Kept apart from `entry` rather than folded into its "email - context" string: an
+ * entry is an address first, and the name is looked up by it here, from the map the people step
+ * builds as names are typed.
+ */
+function asSomeoneToInvite(entry: string, displayNames?: Record<string, string>): { email?: string; colleagueId?: string; context?: string; displayName?: string } {
   const dash = entry.indexOf(' - ')
   const head = dash === -1 ? entry : entry.slice(0, dash)
   const context = dash === -1 ? undefined : entry.slice(dash + 3)
   const who = head.startsWith(A_COLLEAGUE) ? { colleagueId: head.slice(A_COLLEAGUE.length) } : { email: head }
-  return context === undefined ? who : { ...who, context }
+  const name = !head.startsWith(A_COLLEAGUE) ? displayNames?.[head.trim().toLowerCase()] : undefined
+  return { ...who, ...(context !== undefined ? { context } : {}), ...(name ? { displayName: name } : {}) }
 }
 
 /** What a person may say in one message. The API's cap on every door; the same number here so a turn is never refused. */
@@ -1501,6 +1508,14 @@ export function EntryChatPage() {
   /* The honeypot the API has always accepted and no form has ever rendered. */
   const trap = useTheTrap()
   const [inviteEmail, setInviteEmail] = useState('')
+  /**
+   * "Name + email" (section 13), anchor draft only. Asked first, beside the email, in the one row
+   * that adds a person by hand - optional, kept by email address until that person is actually
+   * added, then sent on commit as `displayName`.
+   */
+  const [inviteDisplayName, setInviteDisplayName] = useState('')
+  const [pendingDisplayName, setPendingDisplayName] = useState('')
+  const [displayNames, setDisplayNames] = useState<Record<string, string>>({})
   const [inviteNote, setInviteNote] = useState('')
   const [inviteAdded, setInviteAdded] = useState<string[]>([])
   const [inviteContextFor, setInviteContextFor] = useState<string | null>(null)
@@ -1903,7 +1918,9 @@ export function EntryChatPage() {
     setGeneratingReport(true)
     setReportTurnsForRetry(turns)
     try {
-      const res = await entryApi.report(turns, scenario || undefined, groundName || undefined, onboardingSelections.peopleNamed)
+      /* The anchor's seven items go with the report too (request 166), so the lead's reveal says
+         what she said rather than "not written down yet". Every other draft sends nothing here. */
+      const res = await entryApi.report(turns, scenario || undefined, groundName || undefined, onboardingSelections.peopleNamed, isAnchorDraft() ? onboardingSelections.anchorItems : undefined)
       setSessionReport(res.report)
       setReportTurnsForRetry(null)
       persistCheckin(turns, true, res.report ? JSON.stringify(res.report) : '')
@@ -2416,7 +2433,7 @@ export function EntryChatPage() {
         // Each contributor gets its own token - the server generates one per participant.
         // Do NOT pass a shared inviteToken here; it would cause unique constraint failures
         // on the second contributor and silently drop them.
-        contributors: inviteAdded.map(asSomeoneToInvite),
+        contributors: inviteAdded.map(e => asSomeoneToInvite(e, displayNames)),
         /**
          * THE DOCUMENT SURVIVES AS A DOCUMENT, not just as words in the chat.
          *
@@ -2696,7 +2713,7 @@ export function EntryChatPage() {
         checkInBy: checkInBy.trim() || undefined,
         lastCheckInBy: lastCheckInBy.trim() || undefined,
         inviteNote: inviteNote.trim() || undefined,
-        contributors: inviteAdded.map(asSomeoneToInvite),
+        contributors: inviteAdded.map(e => asSomeoneToInvite(e, displayNames)),
       }
       entryApi.patchDraft(draftToken, patch).catch(() => { /* best-effort: localStorage still mirrors this */ })
       // Keep the local commit body (gw_commit_payload) in sync with these
@@ -2719,7 +2736,7 @@ export function EntryChatPage() {
       } catch { /* */ }
     }, 800)
     return () => clearTimeout(t)
-  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, workingDays, checkInBy, lastCheckInBy, inviteNote, inviteAdded])
+  }, [emailSent, draftToken, groundName, orgName, cadence, cadenceAnchorDay, workingDays, checkInBy, lastCheckInBy, inviteNote, inviteAdded, displayNames])
 
   async function copyInviteLink() {
     const link = `${window.location.origin}/invite?token=${inviteToken}`
@@ -2735,8 +2752,19 @@ export function EntryChatPage() {
     const e = inviteEmail.trim()
     if (!looksLikeAnAddress(e)) return
     setInviteEmail('')
+    /* The name typed beside this email (anchor draft only) travels with it into the context step,
+       so it is still there to keep once the person is actually added - Skip included. */
+    setPendingDisplayName(inviteDisplayName.trim())
+    setInviteDisplayName('')
     setInviteContextFor(e)
     setInviteContext('')
+  }
+
+  /** Keeps `pendingDisplayName` against this email, once the person is actually added. A no-op off the anchor path (nothing was ever typed there). */
+  function keepPendingDisplayName(email: string) {
+    const name = pendingDisplayName.trim()
+    if (name) setDisplayNames(prev => ({ ...prev, [email.trim().toLowerCase()]: name }))
+    setPendingDisplayName('')
   }
 
   // Queues a recommended addition / mentioned person straight into the
@@ -2774,6 +2802,12 @@ export function EntryChatPage() {
     const entry = inviteContextFor + (inviteContext.trim() ? ` - ${inviteContext.trim()}` : '')
     const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, entry]
     setInviteAdded(newAdded)
+    /* Built synchronously, not read back from state: `setDisplayNames` below has not re-rendered
+       yet when the localStorage sync just underneath needs the name that was just typed. */
+    const name = pendingDisplayName.trim()
+    const newNames = name ? { ...displayNames, [inviteContextFor.trim().toLowerCase()]: name } : displayNames
+    if (name) setDisplayNames(newNames)
+    setPendingDisplayName('')
     setInviteContext('')
     // Drain bulk queue: advance to next email if one is waiting
     const [next, ...rest] = bulkQueue
@@ -2788,11 +2822,7 @@ export function EntryChatPage() {
       const raw = localStorage.getItem('gw_commit_payload')
       if (raw) {
         const payload = JSON.parse(raw)
-        payload.contributors = newAdded.map(e => {
-          const dashIdx = e.indexOf(' - ')
-          if (dashIdx === -1) return { email: e }
-          return { email: e.slice(0, dashIdx), context: e.slice(dashIdx + 3) }
-        })
+        payload.contributors = newAdded.map(e => asSomeoneToInvite(e, newNames))
         localStorage.setItem('gw_commit_payload', JSON.stringify(payload))
       }
     } catch { /* */ }
@@ -3055,6 +3085,9 @@ export function EntryChatPage() {
               if (inviteAdded.includes(inviteContextFor) || mayAddOneMorePerson()) {
                 const newAdded = inviteAdded.includes(inviteContextFor) ? inviteAdded : [...inviteAdded, inviteContextFor]
                 setInviteAdded(newAdded)
+                keepPendingDisplayName(inviteContextFor)
+              } else {
+                setPendingDisplayName('')
               }
               setInviteContext('')
               const [next, ...rest] = bulkQueue
@@ -3101,6 +3134,17 @@ export function EntryChatPage() {
         </div>
       ) : (
         <>
+          {/*
+            "Name + email" (section 13), anchor draft only: the name is asked first, beside the
+            email, before the optional "What do they do" context that follows once Add is pressed.
+            Every other situation's add row is unchanged - just the email and the Add button.
+          */}
+          {isAnchor && (
+            <TextField type="text" aria-label="Name" placeholder="Name" value={inviteDisplayName}
+              onChange={e => setInviteDisplayName(e.target.value)}
+              className="gwui-ec-savecard-field"
+            />
+          )}
           <div className="gwui-ec-savecard-invite-add-row">
             <TextField type="email" placeholder="name@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addInviteEmail()}
