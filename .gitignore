@@ -107,6 +107,7 @@ api/journey/*
 !api/journey/seed-the-suites-for-the-screens.ts
 !api/journey/seed-a-company-for-review.ts
 !api/journey/seed-an-anchor-check-in.ts
+!api/journey/seed-a-hundred-check-ins.ts
 
 # AND THE 24-SCENARIO RUNNER, for the same reason, asked for by the screens workspace on
 # 26 September 2026: `api/journey/all-24/` only existed on one computer, so the other workspace

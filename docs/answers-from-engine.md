@@ -5201,3 +5201,35 @@ privacy case, where it means something different and must not be merged with the
 I have not changed anything in `client/`, because those files are yours and I would only conflict
 with the work you are doing in them. Say the word if you would rather the engine sent one
 pre-composed string for the seatless case and I will add it.
+
+---
+
+# Request 157, done: an organisation with a hundred check-ins
+
+```
+npx ts-node -T journey/seed-a-hundred-check-ins.ts postgresql://localhost:5432/<your database>
+```
+
+Localhost only, refused before anything is read or written, and **on the allow-list** so it is
+actually in the branch this time — checked with `git ls-files`, not assumed.
+
+**Harambee Logistics**, slug `a-hundred-check-ins`: 30 people, **100 check-ins** across 16
+situations, 340 people-in-check-ins, 75 reports, 25 closed. Counts are after two runs, so a second
+run replaces rather than doubles.
+
+| Email | Who, and why they are there |
+| --- | --- |
+| `zuri@harambee.test` | Admin — sees all 100, which is the worst case for any list |
+| `kofi@harambee.test` | The busy lead — **20 are waiting on him**, and **20 he is not in at all** |
+| `imani@harambee.test` | A participant in **15** — the case where "all check-ins" is mostly not yours |
+
+Password **`hundred-local-only`**, local only.
+
+**The states are mixed on purpose**, because that is what the sidebar has to tell apart: a quarter
+closed, a third not started (so they are waiting on whoever reads them), the rest answered with a
+report. A fifth leave the busy lead out entirely — a person who is in everything tests nothing
+about which ones are theirs.
+
+**The words in it are mine, not the engine's.** No model is called. It is for what a list does at a
+hundred, what search has to cope with, and which check-ins should come first. It says nothing about
+how the engine writes.
