@@ -155,7 +155,10 @@ describe('the nudge on WhatsApp, as the morning job sends it', () => {
     expect(aPromiseForABlank('send the deck\n\tto the client.')).toBe('send the deck to the client');
     const long = aPromiseForABlank('call every one of the forty shops in Westlands and Kilimani about the new price list and the delivery days that start next month for each of them');
     expect(long.length).toBeLessThanOrEqual(120);
-    expect(long).not.toMatch(/\s$|[.,]$/);
+    /* Review: a promise that was cut says so. */
+    expect(long.endsWith('…')).toBe(true);
+    expect(long).not.toMatch(/\s…$|[.,]…$/);
+    expect(aPromiseForABlank('send the deck to the client')).toBe('send the deck to the client');
     expect(itFollowsUpTheirPromise({ firstName: 'Rukia', label: 'x' }, 'a\nb').params[1]).toBe('a b');
   });
 });

@@ -35,13 +35,14 @@ export const theTeamIsAlmostIn = (w: WhoAndWhat, answered: number, ofHowMany: nu
 /**
  * THE ANCHOR'S NUDGE ON WHATSAPP (piece 30; decision 105 item 3): the person's own last open promise, to them only.
  * The promise is made safe for a template blank: no new line, no tab, no run of more than four spaces, and cut at a
- * word to 120 characters with no trailing stop, so the sentence around it still reads.
+ * word to 120 characters with no trailing stop, so the sentence around it still reads. A promise that was cut ends
+ * with "…", so the person can see it was shortened (review); the blank never starts or ends the body, so Meta allows it.
  */
 export function aPromiseForABlank(promise: string): string {
   const flat = String(promise ?? '').replace(/[\r\n\t]+/g, ' ').replace(/ {5,}/g, '    ').replace(/\s+/g, ' ').trim().replace(/[.!?]+$/, '');
   if (flat.length <= 120) return flat;
-  const cut = flat.slice(0, 120);
-  return cut.slice(0, Math.max(cut.lastIndexOf(' '), 60)).replace(/[,;:\s]+$/, '');
+  const cut = flat.slice(0, 119);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 60)).replace(/[,;:\s]+$/, '')}…`;
 }
 export const itFollowsUpTheirPromise = (w: WhoAndWhat, theirOwnPromise: string) => notice('anchor-follow-up', [first(w), aPromiseForABlank(theirOwnPromise), w.label]);
 
