@@ -1,4 +1,4 @@
-import { meetingsOnRecordFor, overTimeAsServed, overTimeForThisReader } from './what-the-record-shows-over-time';
+import { aMeetingIsOnRecord, meetingsOnRecordFor, overTimeAsServed, overTimeForThisReader } from './what-the-record-shows-over-time';
 
 /**
  * Requests 127, 129, 130, 131, 132, 134, 135 and 136: a report stored before the rule that a meetings sentence needs
@@ -43,4 +43,14 @@ describe('the meetings sentence, as each reader reads it', () => {
     expect(await meetingsOnRecordFor({ recordEntry: { findMany: async () => { throw new Error('down'); } } }, 'g')).toBeUndefined();
     expect(overTimeAsServed(STORED, { meetingsOnRecord: undefined })!.toSettleFirst).toHaveLength(2);
   });
+});
+
+/* Release round, 5 October 2026: "met" and "meet" alone are not a meeting. */
+describe('a target that was met is not a meeting', () => {
+  it.each([
+    ['We met the target for March.'], ['I need to meet the deadline on Friday.'], ['Working on how users get introduced to the product.'], ['I am not able to visit people in the field.'],
+  ])('"%s" is not a meeting', (text) => expect(aMeetingIsOnRecord([{ text }])).toBe(false));
+  it.each([
+    ['We met the Permanent Secretary on Tuesday.'], ['I met with the buyer.'], ['Amina introduced me to the head of procurement.'], ['We had two meetings with Dangote.'], ['I visited six shops.'],
+  ])('"%s" is a meeting', (text) => expect(aMeetingIsOnRecord([{ text }])).toBe(true));
 });

@@ -753,7 +753,12 @@ export function gapsOverTime(people: APersonsRecord[]): AGapOverTime[] {
 
 /** Whether any line speaks of a meeting, a visit or an introduction: only then is who arranged it a question. */
 export function aMeetingIsOnRecord(lines: { text: string }[]): boolean {
-  return lines.some((l) => /\b(?:meetings?|met|meet|introduc\w*|visit(?:s|ed)?|appointments?)\b/i.test(String(l.text ?? '')));
+  /* "met" and "meet" alone are not a meeting (release round, 5 October 2026): "met the target" and "meet the deadline" put
+     the meetings line on five check-ins where nobody spoke of a meeting. Only "met with", "meet with" or "met up" is one. Nor is
+     "introduced to the product" or "not able to visit": a person introduced to a person, or a visit that happened, is. */
+  /* "met the Permanent Secretary", "meet Amina": met or meet before a name or a title, which is written with a capital. */
+  const METS_A_PERSON = /\b(?:[Mm]et|[Mm]eet) (?:the |with |up with )?\p{Lu}/u;
+  return lines.some((l) => /\b(?:meetings?|(?:met|meet|meeting) (?:with|up)|introduced (?:me|us|him|her|them)|introductions?|visited|appointments?)\b/i.test(String(l.text ?? '')) || METS_A_PERSON.test(String(l.text ?? '')));
 }
 
 /**
