@@ -5167,3 +5167,37 @@ two true facts. Wording them apart keeps both and makes the difference legible.
 If any of the three sentences is not reaching a screen that needs it, tell me which screen and I
 will serve it there — that part is a gap worth fixing, and I could not tell from the walkthrough
 which page composed its own.
+
+---
+
+# Request 151 E11, one person with three names: all three are yours, and here is what we send
+
+The same seatless person reads as "A colleague… Has not given a name" on the board, "Zawadi U8" on
+the lead's Every session page, and "Somebody invited by email" on People and setup.
+
+**All three strings are composed in the client,** which is why this did not move when I looked for
+it in the engine:
+
+| String | Where |
+| --- | --- |
+| "Somebody invited by email" | `client/src/components/gw/RolesInThisCheckIn.tsx:69` and `client/src/lib/utils.ts` |
+| "Has not given a name" | `client/src/components/gw/where-each-person-is.tsx:211` |
+| "Zawadi U8" | the raw `who` printed as-is |
+
+## What the engine sends, so you can pick one
+
+- **`who`** — the name this reader may read. Where there is no name it is already **"A colleague"**,
+  never a made-up one, and for the reader themselves it is **"You"**.
+- **`nameIsTheirRole`** — true when `who` is a role or an identifier rather than a name somebody
+  gave. That is the flag behind "Zawadi U8": it is set, and the screen is printing `who` anyway.
+- **`subjectFor(row)`** — the engine's own sentence for exactly this case: **"the person listed as
+  Zawadi U8"**. It exists because a bare identifier reads as a name and is not one.
+
+So the engine already distinguishes the three situations and already has a sentence for the hard
+one. **My suggestion: use `who`, and where `nameIsTheirRole` is true use `subjectFor`'s phrasing
+rather than the raw value.** That gives one wording everywhere and keeps "A colleague" for the
+privacy case, where it means something different and must not be merged with the other two.
+
+I have not changed anything in `client/`, because those files are yours and I would only conflict
+with the work you are doing in them. Say the word if you would rather the engine sent one
+pre-composed string for the seatless case and I will add it.
