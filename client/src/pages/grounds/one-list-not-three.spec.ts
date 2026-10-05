@@ -31,7 +31,10 @@ describe('one list, not three', () => {
 
   it('but the signal itself is untouched, so nothing stops raising its hand', () => {
     const row = readFileSync(join(__dirname, 'how-a-row-reads.ts'), 'utf8')
-    expect(row).toMatch(/g\.reportWaitingForMe \|\| g\.status === 'REPORT_READY'/)
+    /* Live walk, 6 October: the legacy status now reads "Your" only to somebody in the check-in, so
+       the two signals are separate lines; both still raise the row. */
+    expect(row).toMatch(/g\.reportWaitingForMe\) needs = /)
+    expect(row).toMatch(/g\.status === 'REPORT_READY'\) needs = /)
     expect(row).toMatch(/a\.kind === 'yours' \|\| a\.kind === 'overdue'/)
   })
 })

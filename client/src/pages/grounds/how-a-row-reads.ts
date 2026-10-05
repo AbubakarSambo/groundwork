@@ -174,7 +174,10 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   /* Waiting for an admin: to the admin, it is theirs to approve (U.5 review); to anyone else, it is waiting. */
   if (g.status === 'AWAITING_APPROVAL') needs = reader.isAdmin ? { text: 'Yours to approve', tone: 'action' } : { text: 'Waiting for an admin', tone: 'plain' }
   /* REPORT_READY is a legacy status nothing writes now; rows written before the release change carry it. */
-  else if (g.reportWaitingForMe || g.status === 'REPORT_READY') needs = { text: 'Your report is ready', tone: 'proven' }
+  else if (g.reportWaitingForMe) needs = { text: 'Your report is ready', tone: 'proven' }
+  /* The legacy status says a report exists, not that one is this reader's: an admin who is not in
+     the check-in read "Your report is ready" (live walk, 6 October). */
+  else if (g.status === 'REPORT_READY') needs = ((g.participants ?? []).some(p => !!me && p.userId === me) || iRunIt) ? { text: 'Your report is ready', tone: 'proven' } : { text: 'The report is ready', tone: 'plain' }
   else if (hasStalled(g.status) || out.state === 'out') needs = { text: 'Out of time', tone: 'attention' }
   else if (out.state === 'soon') needs = { text: out.daysLeft === 1 ? 'Runs out tomorrow' : `Runs out in ${out.daysLeft} days`, tone: 'attention' }
   else if (a.kind === 'yours' || a.kind === 'overdue') needs = { text: 'Your turn', tone: 'action' }

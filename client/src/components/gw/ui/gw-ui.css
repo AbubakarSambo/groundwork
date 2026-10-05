@@ -332,7 +332,9 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 }
 .gwui-person-help-look { background: var(--gw-amber-bg); color: var(--gw-amber-t); }
 .gwui-person-help-concern { background: var(--gw-red-bg); color: var(--gw-red-t); }
-@media (max-width: 900px) {
+/* The heading goes where the rows stack (1180px, below), not only on a phone: at 1024 the rows were
+   cards under a heading that still named five columns, the last cut off (live walk, 6 October). */
+@media (max-width: 1180px) {
   .gwui-people-head { display: none; }
 }
 /*
@@ -502,7 +504,9 @@ a.gwui-person-row:hover { background: var(--gw-page); }
  * what that split actually needs before its own narrower rules (below) take over; two of those no
  * longer fit side by side until the page is wide enough to give each one real room.
  */
-.gwui-two-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 20px; }
+/* Live walk at 375 (People, "Help your team get started"): a 460px floor is wider than a phone, so
+   the two panels ran off the page. Never wider than the space there is. */
+.gwui-two-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(460px, 100%), 1fr)); gap: 20px; }
 /*
  * GROUP 1'S THIRD REVIEW: pinning each caption to the bottom of a card stretched to match its
  * taller neighbour (the previous fix, for the gap that used to sit AFTER the shorter caption)
