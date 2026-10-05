@@ -2,6 +2,22 @@
 
 Newest first. One short entry per item. Written as the work happens, unattended.
 
+## Everything heavy stopped, on Hafsah's word (5 October)
+
+The computer was very slow. I stopped the whole scenario run `run-oct5` - the shell
+that drove it and its three shards, six processes - and killed any jest or vitest
+left over. It had reached 8 of 24 and will have to start again; nothing it had
+written was scored, so nothing is lost but the time.
+
+What is still running is one thing: the local API on 127.0.0.1:3000, one copy, no
+client and no watcher. Load average was 4.45 at the moment I stopped them.
+
+The decimal repair in `a-stored-sentence-reads-right.ts` is committed and pushed
+(25c53e82). The title repair is not in it, and the file says why.
+
+From here: one helper at a time, never two, and never more than one heavy task.
+
+
 ## 5 October, 14:45 - four more findings from run 32, and two of my fixes were caught by old tests
 
 **Finding 5**, a Groundwork housekeeping question served as the next session's focus
