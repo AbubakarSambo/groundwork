@@ -1,6 +1,8 @@
 import { BLOCKER_TRACE_PROMPT, BLOCKER_TRACE_PROMPT_KEY } from './where-the-blocker-started';
 import { ANCHOR_LEAD_PROMPT, ANCHOR_LEAD_PROMPT_KEY } from './the-anchor-lead-conversation';
 import { ANCHOR_PARTICIPANT_PROMPT, ANCHOR_PARTICIPANT_PROMPT_KEY } from './the-anchor-weekly-check-in';
+import { ANCHOR_BASELINE_PROMPT, ANCHOR_BASELINE_PROMPT_KEY } from './the-anchor-baseline';
+import { IDEA_SPOTTING_KEY, THE_IDEA_SPOTTING_PROMPT } from './ideas-from-the-team';
 import { THE_BRIEF_IS_CONTEXT_ONLY } from './the-leads-brief-is-never-quoted-to-them';
 import { COMPANY_PICTURE_PROMPT, COMPANY_PICTURE_PROMPT_KEY } from '../grounds/the-company-picture';
 import { CUSTOMER_STANDING_PROMPT, CUSTOMER_STANDING_PROMPT_KEY } from '../suites/the-customer-standing';
@@ -5115,6 +5117,9 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: ANCHOR_LEAD_PROMPT_KEY, content: ANCHOR_LEAD_PROMPT },
   /* The weekly check-in of somebody on the anchor lead's team (anchor piece 15): the version stored here is the one that runs. */
   { key: ANCHOR_PARTICIPANT_PROMPT_KEY, content: ANCHOR_PARTICIPANT_PROMPT },
+  /* The first conversation of somebody on the lead's team (anchor piece 14), and the reading that spots an idea (anchor piece 19): seeded so that a clean install stores them, and the version stored is the one that runs. */
+  { key: ANCHOR_BASELINE_PROMPT_KEY, content: ANCHOR_BASELINE_PROMPT },
+  { key: IDEA_SPOTTING_KEY, content: THE_IDEA_SPOTTING_PROMPT },
   ...buildPartySeeds(),
 ];
 

@@ -116,6 +116,12 @@ export async function afterTheirTurn(
   }
 }
 
+/** The idea as a title: its own words, with a capital letter to start. The stored words are never changed. */
+export const aTitle = (t: string): string => {
+  const x = (t ?? '').trim();
+  return x ? x[0].toUpperCase() + x.slice(1) : x;
+};
+
 /**
  * "Ideas from your team", for a reader in that check-in (decision 96 item 10): every captured idea, "Raised by <name>",
  * and "Raised by you." for the reader's own. `nameOf` is the board's own naming for this reader.
@@ -129,7 +135,7 @@ export function theIdeasFromYourTeam(
     heading: 'Ideas from your team',
     ideas: ideas.map((i) => {
       const who = i.ownerParticipantId && i.ownerParticipantId === readerParticipantId ? 'you' : (i.ownerParticipantId ? nameOf(i.ownerParticipantId) : null) ?? 'a colleague';
-      return { id: i.id, title: i.name, raisedBy: `Raised by ${who}.`, similarNeedsSentence: null };
+      return { id: i.id, title: aTitle(i.name), raisedBy: `Raised by ${who}.`, similarNeedsSentence: null };
     }),
     whenThereAreNone: NO_IDEA_CAPTURED_YET,
   };

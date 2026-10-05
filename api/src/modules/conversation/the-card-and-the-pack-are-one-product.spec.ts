@@ -38,7 +38,8 @@ describe('the card and the pack are one product', () => {
     )
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '');
-    for (const s of scenarios) {
+    /* The anchor's situation has no card to click: its door is the shared link, so there is no card for its name to differ from. */
+    for (const s of scenarios.filter((x) => x !== GroundScenario.HELP_TEAM_UNDERSTAND)) {
       const row = THE_SCENARIO_TABLE[s]!;
       expect(catalogue).toContain(`${s}: '${row.name.replace(/'/g, "\\'")}'`);
     }
