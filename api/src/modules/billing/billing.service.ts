@@ -6,6 +6,7 @@ import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
 import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT, freePlanApplies, WHATSAPP_ADD_ON_KIND } from './pricing.service';
 import { WhatsAppAddOnService } from './whatsapp-add-on.service';
+import { claimTheSlot, theDay } from '../prisma/once-across-copies';
 
 /**
  * WHAT SOMEBODY READS WHEN THEY RUN OUT OF SEATS.
@@ -39,6 +40,12 @@ export function theSizeItStartedWith(org: { name?: string | null; teamSizeSaid?:
     : `When ${who} was set up, it had fewer than ${line} people.`;
   return { said, line, says };
 }
+
+/* "Remind them" (upgrade.txt, "Anyone else, once it has paused"): what the person reads back. */
+export const THE_ADMINS_ARE_REMINDED = 'We have reminded your admins that you are waiting. You can remind them again tomorrow.';
+export const REMINDED_TODAY_ALREADY = 'You already reminded your admins today. You can remind them again tomorrow.';
+export const NOTHING_IS_PAUSED = 'This check-in is not paused, so there is nobody to remind.';
+export const NO_ADMIN_TO_REMIND = 'Your organisation has no admin to remind yet. Tell the person who runs this check-in.';
 
 export const PAUSED_UNTIL_THEY_SUBSCRIBE = 'This check-in is paused until your team subscribes. Only an admin can do that, and your answers so far are kept.';
 
@@ -1061,6 +1068,26 @@ export class BillingService {
         : undefined,
       startedWith: includeUsage ? theSizeItStartedWith(org as any) : undefined,
     };
+  }
+
+  /**
+   * "REMIND THEM" (upgrade.txt): somebody whose check-in is paused until the team subscribes asks Groundwork to remind
+   * the organisation's admins. At most once a day for each person, counted by the UTC day, and only while that check-in
+   * is really paused. The admins get the same email the refusal itself sends them (sendPaymentRequestEmail). Never says
+   * it reminded anybody it did not.
+   */
+  async remindTheAdmins(organizationId: string, userId: string, groundId: string, now: Date = new Date()): Promise<{ reminded: boolean; says: string }> {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true, organization: { select: { name: true } } } });
+    if (!ground || ground.organizationId !== organizationId) throw new NotFoundException('That check-in is not in your organisation.');
+    const gate = await this.canStartSession(groundId);
+    if (gate.allowed) return { reminded: false, says: NOTHING_IS_PAUSED };
+    const admins = await this.prisma.user.findMany({ where: { organizationId, role: UserRole.ADMIN, deletedAt: null }, select: { email: true } });
+    if (!admins.length) return { reminded: false, says: NO_ADMIN_TO_REMIND };
+    if (!(await claimTheSlot(this.prisma, `remind-the-admins.${userId}`, theDay(now)))) return { reminded: false, says: REMINDED_TODAY_ALREADY };
+    for (const a of admins) {
+      await this.email.sendPaymentRequestEmail(a.email, ground.organization?.name ?? 'your organisation', groundId).catch(() => undefined);
+    }
+    return { reminded: true, says: THE_ADMINS_ARE_REMINDED };
   }
 
   /**

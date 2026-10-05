@@ -28,6 +28,8 @@ const STAFF_ONLY = ['generateContributorCode', 'sendContributorCodeToEmail', 'pl
 const ANYBODY_SIGNED_IN = ['status', 'canCreateGround', 'whatsapp'];
 /* Before there is an account, or from Stripe itself (checked by Stripe's own signature). */
 const PUBLIC = ['onTheHouse', 'getPricing', 'webhook'];
+/* Anybody in the organisation, never a guest from outside: "Remind them" on a paused check-in (upgrade.txt). */
+const IN_THE_ORGANISATION = ['remindTheAdmins'];
 
 function contextFor(handler: string, role: string) {
   return {
@@ -41,7 +43,7 @@ describe('every billing route is sorted into who may use it', () => {
   it('and none is left out, so a new route has to be placed on purpose', () => {
     const routes = Object.getOwnPropertyNames(BillingController.prototype)
       .filter((n) => n !== 'constructor' && Reflect.getMetadata('path', (BillingController.prototype as any)[n]) !== undefined);
-    expect([...routes].sort()).toEqual([...ADMIN_ONLY, ...STAFF_ONLY, ...ANYBODY_SIGNED_IN, ...PUBLIC].sort());
+    expect([...routes].sort()).toEqual([...ADMIN_ONLY, ...STAFF_ONLY, ...ANYBODY_SIGNED_IN, ...PUBLIC, ...IN_THE_ORGANISATION].sort());
   });
 });
 
@@ -157,5 +159,44 @@ describe('the size the team started with (settings-billing.txt, "Free trial")', 
     const full: any = { subscription: { plan: 'GROWTH', status: 'active' }, people: { count: 27, cap: 100 }, onTheHouse: null, startedWith };
     expect((theStatusAsTheyMayReadIt(full, 'ADMIN') as any).startedWith).toEqual(startedWith);
     for (const role of ['LEAD', 'MEMBER', 'GUEST']) expect(JSON.stringify(theStatusAsTheyMayReadIt(full, role))).not.toContain('set up');
+  });
+});
+
+describe('"Remind them", when a check-in is paused until the team subscribes (upgrade.txt)', () => {
+  const guard = new RolesGuard(new Reflector());
+  it('Grace, Wairimu and Miriam may press it; Tomas, a guest from outside, may not', () => {
+    for (const role of ['ADMIN', 'LEAD', 'MEMBER']) expect(guard.canActivate(contextFor('remindTheAdmins', role))).toBe(true);
+    expect(() => guard.canActivate(contextFor('remindTheAdmins', 'GUEST'))).toThrow(ForbiddenException);
+  });
+
+  function world(o: { allowed?: boolean; admins?: string[]; slot?: number[] } = {}) {
+    const sent: string[] = [];
+    const slots = [...(o.slot ?? [1])];
+    const prisma: any = {
+      ground: { findUnique: async () => ({ organizationId: 'org-baridi', organization: { name: 'Baridi Appliances' } }) },
+      user: { findMany: async () => (o.admins ?? ['grace@baridi.test']).map((email) => ({ email })) },
+      $executeRaw: jest.fn(async () => slots.shift() ?? 0),
+    };
+    const email: any = { sendPaymentRequestEmail: jest.fn(async (to: string) => { sent.push(to); }) };
+    const { BillingService } = require('./billing.service');
+    const svc = new BillingService(prisma, { stripe: {} } as any, {} as any, {} as any, email, {} as any);
+    svc.canStartSession = async () => ({ allowed: o.allowed ?? false, sessionsBalance: 0 });
+    return { svc, sent };
+  }
+
+  it('Miriam reminds the admins once, and reads that she can do it again tomorrow', async () => {
+    const { svc, sent } = world({ slot: [1, 0] });
+    expect(await svc.remindTheAdmins('org-baridi', 'u-miriam', 'g-1')).toEqual({ reminded: true, says: 'We have reminded your admins that you are waiting. You can remind them again tomorrow.' });
+    expect(sent).toEqual(['grace@baridi.test']);
+    expect(await svc.remindTheAdmins('org-baridi', 'u-miriam', 'g-1')).toEqual({ reminded: false, says: 'You already reminded your admins today. You can remind them again tomorrow.' });
+    expect(sent).toEqual(['grace@baridi.test']);
+  });
+
+  it('nobody is reminded when the check-in is not paused, or when there is no admin', async () => {
+    const open = world({ allowed: true });
+    expect(await open.svc.remindTheAdmins('org-baridi', 'u-miriam', 'g-1')).toEqual({ reminded: false, says: 'This check-in is not paused, so there is nobody to remind.' });
+    expect(open.sent).toEqual([]);
+    const none = world({ admins: [] });
+    expect((await none.svc.remindTheAdmins('org-baridi', 'u-miriam', 'g-1')).says).toBe('Your organisation has no admin to remind yet. Tell the person who runs this check-in.');
   });
 });
