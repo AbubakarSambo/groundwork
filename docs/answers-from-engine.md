@@ -95,17 +95,42 @@ the thing to read: it is written as the reader, not as the function.
 | 132 (f) the thing and the person run into one another | Fixed | "…who can provide the fuel allowance for October **that** Aisha Wanjiku is waiting for". Two expectations in `lead-actions-on-the-board-as-each-reader-reads-them.spec.ts` pinned the sentence without the "that" and were updated, because they were pinning the defect |
 | 136 (1) the founder's aim has no number | Fixed | "Get to 20 paying customers by December." now aims at 20: `AIMS_AT_BY_GOING_TO` in `an-aim-said-twice-is-one-aim.ts`, kept narrow, with the refusals ("Get to 12 percent", "Grow to 5 million in revenue") tested as refusals |
 
-### Not confirmed fixed
+### Still open: fourteen items, checked properly this time
 
-I checked each of these and could not find a fix, so they are the ones to look at. Read the list as
-"I did not find one", not as "there is none": five items I first had here turned out to be done
-already when I looked properly — 123 (3), 123 (4), 123 (10), 129 (2), 131 (5) and 132 (b) — and the
-honest position is that I am reading code for these, not serving your boards.
+My first list was guesswork — I read it off whether a test file was named after the request, which
+is not the same thing, and six items I called open had fixes. This list is made the other way
+round: every item of 121 to 140 against what the code cites, then each remaining one read in the
+file that would hold it.
 
-123 (5) (8) (12) · 127 (4) (6) (7) · 128 (2) · 130 (b) (d) (f) · 131 (6) · 133 (1) ·
-134 (4) (5) (7) · 135 (3) · 136 (7) · 139 (the goal drawn as a bare line).
+| Still open | What it is |
+| --- | --- |
+| 123 (2) | `kindOfWork` null on the new hire's board, so every `workRecords` entry is "not known" while the coaching talks about sales |
+| 123 (7) | the lead's judgement mixes "you", "they" and "she" for one person |
+| 123 (8) | a label on the new hire ("not yet equipped to…"), and the outcome when somebody leaves — see below |
+| 123 (12) | one rule for the lead's words: drop the sentence saying they are hidden, rather than hiding the quotes |
+| 127 (5) | "their" for the reader, outside the shapes the rule covers |
+| 127 (6) | "session 1 of 4 of founder or CEO work" where no kind of work is set |
+| 127 (7) | "13 worries are on record" with no worry shown anywhere |
+| 130 (b) | `whoOwnsWhat` empty for Aisha, who said "42 drops, missed 9" and committed to the photo |
+| 130 (d) | the operations board is not sent Themes, sites for `byArea`, or stages for incidents |
+| 131 (6) | the programme's headline question, the "Women" share target and the county for each group |
+| 133 (1) | a sales question on a loans check-in — see below |
+| 134 (4) (5) | the judgement's two sentences about the open commitments, and who is asked to find an owner |
+| 135 (3) | the judgement miscounts: "four different activities in two locations" for two crops in two places |
+| 136 (7) | the judgement contradicts itself about her own commitments |
 
-Two of those are decisions rather than defects, and I have not made them on my own:
+Seven of those fourteen are the judgement, which is the model's own writing rather than a sentence
+assembled from rows. The repairs at the read (`the-judgement-reads-right.ts`) can only fix shapes,
+not a miscount, so these want the prompt and the test to go together. That is the next piece of
+engine work I would do, and I have not started it.
+
+On 127 (5): the rule that puts a sentence about the reader into "you" covers she, he, her, his, and
+the two shapes "they said they would" and "and their own". "most of their time" and "at their own
+request" are neither, so they come through. I can widen it, but only where the sentence is already
+known to be about the reader alone, and I would rather see the line it came from than guess at the
+shape.
+
+Two of the fourteen are decisions rather than defects, and I have not made them on my own:
 
 - **123 (8), the outcome "The new person leaves the role."** (`resolution/end-states.ts`). You ask
   for his name; the prototype says "Part ways". Those are two different answers, and the words a
@@ -115,10 +140,9 @@ Two of those are decisions rather than defects, and I have not made them on my o
   already tells the lead separately to find out who can provide it. Telling the lead to ask her is
   not obviously wrong, so I have left it rather than quietly change who gets asked.
 
-133 (1) is the one I want to flag rather than fix quietly: the sales probe reaches a loans check-in
-because the person was mapped to the sales role, so the question is the role map's, not the loans
-board's. That is the model's own reading of a role, not a sentence I can rewrite, and the fix
-belongs in how a kind of work picks its role map. I have not started it.
+And one that was on my first list and is not open: **130 (f)**, the outcomes. `END_STATES` for this
+kind already reads "The team is on course.", "The team can reach it, with a change in how the work
+is done." and "The target needs to change." — the prototype's three, said as full sentences.
 
 ## The meetings line is out of the stored row, not only out of what is served (127, 129–136, and 140 item 1)
 
