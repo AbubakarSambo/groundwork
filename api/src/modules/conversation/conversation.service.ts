@@ -5455,7 +5455,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       /* Their lead, by first name, so the question about what the lead is most concerned about uses a name and not "your lead". */
       const leadsFirstName = await this.prisma.ground.findUnique({ where: { id: checkIn.groundId }, select: { initiator: { select: { firstName: true, lastName: true } } } } as any)
         .then((g: any) => theFirstNameFrom(g?.initiator?.firstName, g?.initiator?.lastName)).catch(() => null);
-      const theBaselineParts = [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, [theirFirstName ? `The person you are talking with is ${theirFirstName}.` : '', leadsFirstName ? `Their lead is ${leadsFirstName}, and the person you are talking with knows that.` : ''].filter(Boolean).join(' '), docContext, docPromptHint, cannotBeMissed, askedLastTurn];
+      const theBaselineParts = [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, [theirFirstName ? `The person you are talking with is ${theirFirstName}.` : '', leadsFirstName ? `Their lead is ${leadsFirstName}, and the person you are talking with knows that.` : ''].filter(Boolean).join(' '), docContext, cannotBeMissed, askedLastTurn];
       return theBaselineParts.filter(Boolean).join('\n\n');
     })();
     if (theBaselinePrompt) return theBaselinePrompt;

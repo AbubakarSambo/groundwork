@@ -225,6 +225,8 @@ describe('the team baseline is read on its own words, not under the situation\'s
     expect(prompt).not.toContain('Must establish');
     expect(prompt).not.toContain('What did you understand the brief to be');
     expect(prompt).not.toContain('Amina will review everyone in March');
+    /* No nudge to attach a document, which is the engine's way of asking for proof. */
+    expect(prompt).not.toContain('DOC_PROMPT_HINT');
     expect(prompt).toContain('How to open: greet them by their first name');
     expect(prompt).toContain('The person you are talking with is Tunde.');
     /* And the nine are still there, with the reminder read last. */
