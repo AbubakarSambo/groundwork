@@ -15,6 +15,27 @@ export interface AskPage {
   about: { id: string; label: string }[]
   /** Your own earlier questions and answers, oldest first. */
   turns: AskTurn[]
+  /**
+   * ASK IS NAMED FOR THE ORGANISATION (decision 100, 5 October). The whole string, printed as it
+   * arrives ("Ask Baridi"), never "Ask Groundwork" plus a name stitched on. "Ask Groundwork" only
+   * where there is no organisation yet (docs/answers-from-engine.md, "Request 153: the name").
+   */
+  askName: string
+  /** The caption under the name, and the composer's own placeholder: served, fixed. */
+  caption: string
+  /** The one line under the caption, about adding context or documents to a check-in. */
+  addLine: string
+  /**
+   * What Ask says the first time somebody opens it - served once; `null` once they have asked
+   * their first question (docs/answers-from-engine.md, "Request 153, part two").
+   */
+  welcome: string | null
+  /**
+   * The starter questions under the opening line, general rather than one set per situation
+   * (decision 101). Six when there is a check-in to ask about; two - "What are the company's
+   * priorities right now?" and "Ask for leave, or to spend money." - when there is none.
+   */
+  starters: string[]
 }
 
 export type TextBlock = { type: 'text'; body: string }
