@@ -22,6 +22,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
+import { checkInHeaderTabs } from '@/pages/grounds/ground-tabs'
 import { Page, Button, Panel, Callout, Section, SubHeading, Note, Tag, Stack } from '@/components/gw/ui'
 
 /**
@@ -197,6 +198,7 @@ export default function SessionReportPage() {
   })
 
   const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
+  const contextEnabled = (ground as any)?.contextEnabled === true
 
   /**
    * A PARTICIPANT ID, SAID AS A NAME, THE WAY THIS READER MAY READ IT.
@@ -233,14 +235,7 @@ export default function SessionReportPage() {
           canRunThisCheckIn={amTheInitiator}
           isAParty
           active="report"
-          tabs={[
-            { key: 'board', label: 'Board', to: `/grounds/${data.groundId}/board` },
-            { key: 'chat', label: 'Check-in', to: `/grounds/${data.groundId}` },
-            { key: 'context', label: 'Context and resources', to: `/grounds/${data.groundId}?tab=context` },
-            { key: amTheInitiator ? 'sessions' : 'record', label: 'My work', to: `/grounds/${data.groundId}?tab=${amTheInitiator ? 'sessions' : 'record'}` },
-            { key: 'settings', label: 'People and setup', to: `/grounds/${data.groundId}?tab=settings` },
-            { key: 'report', label: 'Report', to: `/grounds/${data.groundId}?tab=report` },
-          ]}
+          tabs={checkInHeaderTabs({ id: data.groundId as string, contextEnabled, canRunThisCheckIn: amTheInitiator, isAParty: true })}
         />
       ) : (
         <button type="button" onClick={() => navigate(-1)} className="gwui-plain-link">

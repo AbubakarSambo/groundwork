@@ -107,3 +107,30 @@ export function groundTabs({ contextEnabled, canRunThisCheckIn, isAParty }: TabC
 
 /** The tab a ground opens on. The work, not a summary of the work. */
 export const FIRST_TAB: GroundTabKey = 'chat'
+
+/**
+ * THE CHECK-IN HEADER'S OWN TABS, FOR A PAGE THAT NAVIGATES RATHER THAN SWITCHING LOCAL STATE.
+ *
+ * RELEASE WALKTHROUGH A, FIX 3: RoundReportPage.tsx and SessionReportPage.tsx each hard-coded one
+ * six-entry tab list, drawn the same for every reader - so an org admin who neither runs a check-in
+ * nor is a party to it (exactly who RoundReportPage itself exists to serve) still saw "Check-in"
+ * and "My work", open to a conversation and a record that are not theirs. GroundAdminPage.tsx and
+ * GroundParticipantPage.tsx already gate those two tabs this way for the prototype's read-only view
+ * (read-only-view.txt: Board, Context, People and setup only) - this mirrors the same rule from one
+ * place, rather than a third copy of it, so a role that should not see a tab on the check-in page
+ * does not see it here either. "Report" is not one of the prototype's five tabs (see
+ * TheCheckInHeader.tsx's own note); kept reachable as a sixth, unconditionally.
+ */
+export function checkInHeaderTabs({
+  id, contextEnabled, canRunThisCheckIn, isAParty,
+}: { id: string } & TabContext): { key: string; label: string; to: string }[] {
+  const myWorkTab = canRunThisCheckIn ? 'sessions' : 'record'
+  return [
+    { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
+    ...(canRunThisCheckIn || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),
+    { key: 'context', label: contextEnabled ? 'Context and resources' : 'Documents', to: `/grounds/${id}?tab=context` },
+    ...(canRunThisCheckIn || isAParty ? [{ key: myWorkTab, label: 'My work', to: `/grounds/${id}?tab=${myWorkTab}` }] : []),
+    { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
+    { key: 'report', label: 'Report', to: `/grounds/${id}?tab=report` },
+  ]
+}
