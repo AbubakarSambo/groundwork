@@ -56,7 +56,7 @@ function Tab0({ onNext, mayStart }: { onNext: () => void; mayStart: boolean }) {
             * "Nobody sees anybody else's answers, including you" was not true: the report shows
             * everybody's answers, word for word, to everybody in that check-in once it is ready.
             */}
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Each person gets a link and a conversation of their own, and answers in private. What you say can be shown, word for word, to the other people in your check-in once the report is ready.</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65 }}>Each person gets a link and answers Groundwork one to one. What you say may be quoted word for word to the other people in your check-in, in its report.</div>
         </div>
         <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: 16, borderLeft: '3px solid var(--gw-amber-b)' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>{mayStart ? '3. ' : ''}Read the report together</div>

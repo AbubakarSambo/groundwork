@@ -32,7 +32,9 @@ describe('the help window matches what the product actually does with your answe
   it('never claims nobody sees anybody else\'s answers', () => {
     mount({ id: 'u1', role: 'LEAD', mayOpenCheckIns: true })
     expect(screen.queryByText(/Nobody sees anybody else's answers/)).not.toBeInTheDocument()
-    expect(screen.getByText(/What you say can be shown, word for word, to the other people in your check-in/)).toBeInTheDocument()
+    /* Hafsah, 6 October: "one to one", as on the front door, and the words may be quoted in the report. */
+    expect(screen.getByText(/answers Groundwork one to one\. What you say may be quoted word for word to the other people in your check-in, in its report\./)).toBeInTheDocument()
+    expect(screen.queryByText(/in private|privately/)).not.toBeInTheDocument()
   })
 
   it('offers "Start a check-in" to somebody who may start one', () => {
