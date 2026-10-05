@@ -96,14 +96,14 @@ export function sourceLineOn(day: string): string {
 }
 
 /** The one question the lead answers. Their words are between quotation marks and are never reworded. */
-export function shallIKeep(k: Keepable): string {
-  return `Shall I keep "${k.text.replace(/[.!?]+$/, '')}" as ${AS_A[k.kind]} for the whole organisation, so later check-ins and Ask Groundwork can use it?`;
+export function shallIKeep(k: Keepable, ask: string = 'Ask Groundwork'): string {
+  return `Shall I keep "${k.text.replace(/[.!?]+$/, '')}" as ${AS_A[k.kind]} for the whole organisation, so later check-ins and ${ask} can use it?`;
 }
 
 /** After the yes. */
-export function iHaveKept(k: { kind: string; text: string }): string {
+export function iHaveKept(k: { kind: string; text: string }, ask: string = 'Ask Groundwork'): string {
   const as = AS_A[(k.kind as MemoryKind)] ?? 'something to remember';
-  return `I have kept "${k.text.replace(/[.!?]+$/, '')}" as ${as} for the whole organisation. Later check-ins and Ask Groundwork can now use it. You can see it on the Company page.`;
+  return `I have kept "${k.text.replace(/[.!?]+$/, '')}" as ${as} for the whole organisation. Later check-ins and ${ask} can now use it. You can see it on the Company page.`;
 }
 
 /** After the no. Nothing was kept, and it is said. */

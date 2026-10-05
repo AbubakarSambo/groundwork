@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { askNameOf } from '../assistant/ask-name';
 import { theirRosterEntry, withTheirSignIns } from './a-roster-entry-and-its-sign-in';
 import { inTheLeadsTeam } from './a-leads-team';
 import { couldBeNamed, decidesIt, everyStepFor, passWhatTheyAlreadyApproved, theStepsFor, whoComesNext, whoDecidesNow, type DecidesNow } from './who-may-decide';
@@ -154,6 +155,7 @@ export class SpendingService {
   ) {}
 
   async board(reader: Reader, today = new Date()): Promise<SpendBoard> {
+    const ask = await askNameOf(this.prisma, reader.organizationId);
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
     /*
@@ -211,7 +213,7 @@ export class SpendingService {
         where: whereItIsOnTheBoard(await this.whereItStands(r, now, decides, reader.userId)),
         category: r.category ?? null,
         needs: this.needsSaid(r, answers),
-        questions: questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, askers, reader.userId)),
+        questions: questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, askers, reader.userId, ask)),
       });
     }
 
@@ -367,6 +369,7 @@ export class SpendingService {
 
   /** The person's own requests to spend, each with where it is. Nobody else's. */
   async mine(reader: Reader): Promise<MySpending> {
+    const ask = await askNameOf(this.prisma, reader.organizationId);
     const answers = await this.suiteAnswers(reader.organizationId);
     const role = await this.roleOf(reader);
     if (!role || role === 'GUEST') throw new ForbiddenException(SPEND_REFUSED.notInIt);
@@ -385,7 +388,7 @@ export class SpendingService {
       requests.push({
         id: r.id, amount: n(r.amount), what: r.what, status: r.status as 'waiting' | 'approved' | 'declined', askedOn: r.createdAt.toISOString().slice(0, 10),
         category: r.category ?? null,
-        questions: questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, firsts, reader.userId)),
+        questions: questions.filter((q) => q.ref === r.id).flatMap((q) => aQuestionSaid(q, firsts, reader.userId, ask)),
         questionWaiting: (() => {
           const q = r.status === 'waiting' ? questions.filter((x) => x.ref === r.id && x.answer == null && x.toUserId === reader.userId).pop() : undefined;
           return q ? { id: q.id, question: q.question, askedBy: firsts.get(q.askedById) || 'The person who decides it' } : null;

@@ -5,14 +5,27 @@ import { whatChangedSinceLastTime } from './what-changed-since-last-time';
  * not on a fresh read."
  */
 describe('what changed since last time', () => {
-  it('says what is still open, what has gone, and what is new', () => {
+  it('says what is still open, what has gone, and what is new, each topic as a full sentence of its own', () => {
     const out = whatChangedSinceLastTime(
-      { topics: ['Reaching the 10,000 unit objective', 'Ownership of the supermarket chain'], answered: 3 },
-      { topics: ['Reaching the 10,000 unit objective', 'The deadline'], answered: 3 },
+      {
+        topics: ['The main obstacle to signing new shops is seen differently.', 'There are different descriptions of the allocation.'],
+        answered: 3,
+      },
+      { topics: ['The main obstacle to signing new shops is seen differently.', 'People disagree about the deadline.'], answered: 3 },
     )!;
-    expect(out).toMatch(/Reaching the 10,000 unit objective is still open from last time/);
-    expect(out).toMatch(/The deadline is no longer showing as a difference/);
-    expect(out).toMatch(/Ownership of the supermarket chain is new this round/);
+    expect(out).toBe(
+      'This is what changed since the last round. The main obstacle to signing new shops is seen differently. This is still open from last time. '
+      + 'People disagree about the deadline. That was a difference last time, and it is no longer showing as one. '
+      + 'There are different descriptions of the allocation. This is new this round.',
+    );
+    /* Request 151, E1: a sentence is never the subject of another, and a full stop never opens a clause. */
+    expect(out).not.toMatch(/\.\s+(is|are) /);
+    expect(out).not.toMatch(/\.\./);
+  });
+
+  it('adds a full stop to a topic that has none, and says "these" for several', () => {
+    const out = whatChangedSinceLastTime({ topics: ['a', 'b'], answered: 3 }, { topics: [], answered: 2 })!;
+    expect(out).toContain('A. B. These are new this round.');
   });
 
   it('counts who answered when that changed', () => {

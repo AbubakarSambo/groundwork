@@ -92,6 +92,7 @@ const KOFI_NEXT = new Date(Date.now() + 3 * 24 * 3600 * 1000);
 
 function fixture(opts: { leakyReport?: boolean } = {}) {
   const db: Record<string, any[]> = {
+    organization: [{ id: ORG, name: 'Baridi' }],
     person: [
       { id: 'pe-wairimu', organizationId: ORG, externalId: 'x-wairimu', email: 'wairimu@baridi.test', linkedUserId: 'u-wairimu', active: true },
       { id: 'pe-miriam', organizationId: ORG, externalId: 'x-miriam', email: 'miriam@baridi.test', linkedUserId: 'u-miriam', active: true },
@@ -254,6 +255,14 @@ function fixture(opts: { leakyReport?: boolean } = {}) {
   return { db, ask, controller, asUser, prisma, reports, grounds };
 }
 
+/* Ask is named for the organisation (decision 100): what every reader of the Baridi organisation is served beside the questions. */
+const BARIDI_ASK = {
+  askName: 'Ask Baridi',
+  caption: 'Ask about the company, your work or your check-ins.',
+  addLine: 'You can also add context or documents to your check-ins here.',
+};
+const BARIDI_WELCOME = 'This is Ask Baridi. You can ask me about the company, your work or your check-ins, at any time. You can also add context or a document to one of your check-ins, and ask for leave or to spend money. What you ask here stays private. If you add something to a check-in, I will say it back to you first, and it only goes in once you say yes.';
+
 const everything = (x: unknown) => JSON.stringify(x);
 
 describe('the person who asked reads their own questions and answers', () => {
@@ -320,7 +329,7 @@ describe('somebody signed in who is on no list yet', () => {
   it('can ask, and opening the panel writes nothing', async () => {
     const { controller, asUser, prisma } = fixture();
     const tom = await controller.mine(asUser(readers.tom));
-    expect(tom).toEqual({ canAsk: true, about: [], turns: [] });
+    expect(tom).toEqual({ canAsk: true, about: [], turns: [], ...BARIDI_ASK, welcome: BARIDI_WELCOME });
     expect(prisma.person.create).not.toHaveBeenCalled();
     expect(prisma.person.updateMany).not.toHaveBeenCalled();
   });
@@ -386,8 +395,8 @@ describe('an entry with their address that nobody has claimed', () => {
 
   it('is never claimed with an address nobody confirmed, and nothing is made instead', async () => {
     const { controller, asUser, db, prisma } = fixture();
-    expect(await controller.mine(asUser(readers.uma))).toEqual({ canAsk: false, why: CONFIRM_YOUR_EMAIL, about: [], turns: [] });
-    await expect(controller.question(asUser(readers.uma), { message: REQUEST })).rejects.toThrow(new ForbiddenException(CONFIRM_YOUR_EMAIL));
+    expect(await controller.mine(asUser(readers.uma))).toEqual({ canAsk: false, why: CONFIRM_YOUR_EMAIL('Ask Baridi'), about: [], turns: [], ...BARIDI_ASK, welcome: null });
+    await expect(controller.question(asUser(readers.uma), { message: REQUEST })).rejects.toThrow(new ForbiddenException(CONFIRM_YOUR_EMAIL('Ask Baridi')));
     expect(db.person.find((p) => p.id === 'pe-uma')!.linkedUserId).toBeNull();
     expect(prisma.person.create).not.toHaveBeenCalled();
     expect(prisma.person.updateMany).not.toHaveBeenCalled();
@@ -410,10 +419,10 @@ describe('somebody the directory switched off', () => {
   for (const [who, how] of [['sid', 'whose entry is linked to them'], ['sue', 'whose address is on it']] as const) {
     it(`${who}, ${how}, is refused and nothing is written`, async () => {
       const { controller, asUser, db, prisma } = fixture();
-      expect(await controller.mine(asUser(readers[who]))).toEqual({ canAsk: false, why: SWITCHED_OFF, about: [], turns: [] });
-      await expect(controller.question(asUser(readers[who]), { message: REQUEST })).rejects.toThrow(new ForbiddenException(SWITCHED_OFF));
+      expect(await controller.mine(asUser(readers[who]))).toEqual({ canAsk: false, why: SWITCHED_OFF('Ask Baridi'), about: [], turns: [], ...BARIDI_ASK, welcome: null });
+      await expect(controller.question(asUser(readers[who]), { message: REQUEST })).rejects.toThrow(new ForbiddenException(SWITCHED_OFF('Ask Baridi')));
       await expect(controller.answer(asUser(readers[who]), { proposalId: '00000000-0000-4000-8000-000000000999', answer: 'yes' }))
-        .rejects.toThrow(new ForbiddenException(SWITCHED_OFF));
+        .rejects.toThrow(new ForbiddenException(SWITCHED_OFF('Ask Baridi')));
       expect(prisma.person.create).not.toHaveBeenCalled();
       expect(prisma.person.updateMany).not.toHaveBeenCalled();
       expect(db.assistantTurn.filter((t) => t.personExternalId === `u-${who}` || t.personExternalId === `x-${who}`)).toEqual([]);
@@ -521,8 +530,10 @@ describe('a guest from another organisation', () => {
 
   it('can ask, about his own check-in and nothing else', async () => {
     const { controller, asUser } = fixture();
+    /* A guest reads the host organisation's name too: he is a guest in Baridi's Groundwork, and
+       the sentence he is already given says "so Ask Baridi can only answer...". (Decision 100.) */
     expect(await controller.mine(asUser(readers.kofi))).toEqual({
-      canAsk: true, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [],
+      canAsk: true, about: [{ id: 'g-sales', label: 'Sales team, Q3' }], turns: [], ...BARIDI_ASK, welcome: BARIDI_WELCOME,
     });
   });
 
@@ -580,7 +591,7 @@ describe('a guest from another organisation', () => {
   it('is told plainly that he cannot ask about the organisation, its people or its other check-ins', async () => {
     const f = fixture();
     for (const q of ['Who works here?', 'What are the other check-ins about?', 'Show me the list of people', 'What is the company working on?']) {
-      expect(await kofiAsks(f, q)).toBe(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN);
+      expect(await kofiAsks(f, q)).toBe(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN('Ask Baridi'));
     }
     expect(f.reports.get).not.toHaveBeenCalled();
     expect(f.prisma.subject.findMany).not.toHaveBeenCalled();
@@ -589,7 +600,7 @@ describe('a guest from another organisation', () => {
   it('cannot make anything happen on the host: no to-do, no request waiting for a yes, no objective', async () => {
     const f = fixture();
     for (const q of ['remind me to call Kariuki about the deposit', 'Add a to-do for my next check-in', 'Create an objective for Q4', 'Invite my colleague Ama']) {
-      expect(await kofiAsks(f, q, 'g-sales')).toBe(A_GUEST_CANNOT_ASK_FOR_THINGS);
+      expect(await kofiAsks(f, q, 'g-sales')).toBe(A_GUEST_CANNOT_ASK_FOR_THINGS('Ask Baridi'));
     }
     await expect(f.controller.answer(f.asUser(readers.kofi), { proposalId: '00000000-0000-4000-8000-000000000999', answer: 'yes' }))
       .rejects.toThrow(new ConflictException(NOTHING_WAITING));
@@ -703,7 +714,7 @@ describe('a guest asks about their own work in their own check-in (week 24)', ()
       const said = await kofiAsks(f, 'Who reads what I say?');
       expect(said).toBe(
         'The people in Sales team, Q3, including the person who runs it, can see what you say in it. Admins of the organisation that runs this check-in can read every check-in. '
-        + 'Your own report and your questions to Ask Groundwork stay private. '
+        + 'Your own report and your questions to Ask Baridi stay private. '
         + 'What you say is used to build the shared picture for this check-in and nothing else, and it does not train a model. '
         + 'Your answers are stored on our servers, and they are processed by Google\'s models to build the record.',
       );
@@ -718,7 +729,7 @@ describe('a guest asks about their own work in their own check-in (week 24)', ()
     it('does not turn "does the organisation read it" into a refusal, and still refuses "who are the other people here"', async () => {
       const f = fixture();
       expect(await kofiAsks(f, 'Does the organisation see what I say?')).toContain('can see what you say in it');
-      expect(await kofiAsks(f, 'Who else can see the other check-ins?')).toBe(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN);
+      expect(await kofiAsks(f, 'Who else can see the other check-ins?')).toBe(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN('Ask Baridi'));
     });
   });
 
@@ -832,20 +843,20 @@ describe('a guest asks about their own work in their own check-in (week 24)', ()
       const f = fixture();
       for (const q of ['Who works here?', 'What are the other check-ins about?', 'Show me the list of people', 'What is the company working on?', 'What did Miriam say?', 'What does the organisation remember about Westgate?']) {
         const said = await kofiAsks(f, q);
-        expect(said === A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN || said === whatAGuestCanAsk('Sales team, Q3')).toBe(true);
+        expect(said === A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN('Ask Baridi') || said === whatAGuestCanAsk('Sales team, Q3')).toBe(true);
         expect(said).not.toMatch(LEAKS);
       }
-      expect(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN).toContain('what you said');
-      expect(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN).toContain('who reads what you say');
-      expect(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN.split(/(?<=[.!?])\s/)).toHaveLength(1);
+      expect(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN('Ask Baridi')).toContain('what you said');
+      expect(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN('Ask Baridi')).toContain('who reads what you say');
+      expect(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN('Ask Baridi').split(/(?<=[.!?])\s/)).toHaveLength(1);
     });
 
     it('refuses to add things or change targets, and says what he can do instead', async () => {
       const f = fixture();
       for (const q of ['Add a to-do for my next check-in', 'Create an objective for Q4', 'Change the target to 30']) {
-        expect(await kofiAsks(f, q, 'g-sales')).toBe(A_GUEST_CANNOT_ASK_FOR_THINGS);
+        expect(await kofiAsks(f, q, 'g-sales')).toBe(A_GUEST_CANNOT_ASK_FOR_THINGS('Ask Baridi'));
       }
-      expect(A_GUEST_CANNOT_ASK_FOR_THINGS).toContain('mark one of your own commitments as done or move its day');
+      expect(A_GUEST_CANNOT_ASK_FOR_THINGS('Ask Baridi')).toContain('mark one of your own commitments as done or move its day');
       expect(f.db.todo).toEqual([]);
       expect(f.db.assistantProposal).toEqual([]);
     });
@@ -944,5 +955,48 @@ describe('the detectors', () => {
     const src = strip(readFileSync(join(__dirname, '..', 'detectors', 'detectors.service.ts'), 'utf8'));
     const read = src.match(/assistantTurn\.findMany\(\{[\s\S]*?where:\s*\{([^}]*\}[^}]*\}[^}]*)\}/);
     expect(read?.[1]).toMatch(/NOT:\s*\{\s*personExternalId:\s*\{\s*startsWith:\s*A_GUESTS_KEY_BEGINS\s*\}/);
+  });
+});
+
+
+describe('Ask is named for the organisation, and tells a person what it can do the first time (decision 100)', () => {
+  it('a member with no questions yet reads the name, the caption, the one line and the welcome', async () => {
+    const { controller, asUser } = fixture();
+    const tom: any = await controller.mine(asUser(readers.tom));
+    expect(tom.askName).toBe('Ask Baridi');
+    expect(tom.caption).toBe('Ask about the company, your work or your check-ins.');
+    expect(tom.addLine).toBe('You can also add context or documents to your check-ins here.');
+    expect(tom.welcome).toBe(BARIDI_WELCOME);
+  });
+
+  it('a member who has already asked is not welcomed again, and still reads the name', async () => {
+    const { controller, asUser } = fixture();
+    const miriam: any = await controller.mine(asUser(readers.miriam));
+    expect(miriam.askName).toBe('Ask Baridi');
+    expect(miriam.welcome).toBeNull();
+  });
+
+  it('an admin with no questions yet is welcomed in the same words', async () => {
+    const { controller, asUser } = fixture();
+    const grace: any = await controller.mine(asUser(readers.grace));
+    expect(grace.askName).toBe('Ask Baridi');
+    expect(grace.welcome).toBe(BARIDI_WELCOME);
+  });
+
+  it('a guest reads the host organisation\'s Ask name, and what a guest is refused reads it too', async () => {
+    const { controller, asUser } = fixture();
+    const kofi: any = await controller.mine(asUser(readers.kofi));
+    expect(kofi.askName).toBe('Ask Baridi');
+    const said: any = await controller.question(asUser(readers.kofi), { message: 'Who works here?' });
+    expect(JSON.stringify(said)).toContain('Ask Baridi can only answer questions about your own check-in');
+    expect(JSON.stringify(said)).not.toContain('Ask Groundwork');
+  });
+
+  it('a person whose organisation has no name yet reads Ask Groundwork', async () => {
+    const { controller, asUser, db } = fixture();
+    db.organization[0].name = '   ';
+    const tom: any = await controller.mine(asUser(readers.tom));
+    expect(tom.askName).toBe('Ask Groundwork');
+    expect(tom.welcome).toBe(BARIDI_WELCOME.replace('Ask Baridi', 'Ask Groundwork'));
   });
 });

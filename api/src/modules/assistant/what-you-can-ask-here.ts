@@ -32,6 +32,9 @@ export interface WhatYouCanAskFacts {
   waitingForYou: number;
 }
 
+/** Adding to a check-in through Ask is said back first (docs/ask-definition.md, decision 100). */
+export const CONTEXT_FOR_A_CHECK_IN = 'You can also add context or a document to one of your check-ins. I will say it back to you first, and it only goes in once you say yes. Once it is in, the people in that check-in can read it.';
+
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function whatYouCanAskSaid(f: WhatYouCanAskFacts): string {
@@ -58,6 +61,7 @@ export function whatYouCanAskSaid(f: WhatYouCanAskFacts): string {
   }
 
   out.push('You can also ask me what is due, who is off next week, and how we do things here, and you can tell me to add something to your to-do list.');
+  out.push(CONTEXT_FOR_A_CHECK_IN);
   out.push('Whatever you ask me stays between you and me.');
   return out.join('\n\n');
 }

@@ -282,7 +282,7 @@ describe('"Start" and "Not now", typed or tapped', () => {
     await h.service.handle('org-1', tapped('Start'), 'ours');
     expect(h.conversation.open).toHaveBeenCalledWith('ci-1', 'u-1');
     expect(h.conversation.sendMessage).not.toHaveBeenCalled();
-    expect(h.said[0]).toBe('the sales team, session 1. You can write "ask" at any time to ask Groundwork something, "back" to come back to your check-in, and "switch" to choose another check-in.\n\nWhat moved since last time?');
+    expect(h.said[0]).toBe('the sales team, session 1. You can write "ask" at any time to talk to Ask Groundwork, "back" to come back to your check-in, and "switch" to choose another check-in.\n\nWhat moved since last time?');
   });
 
   it('"Not now" stops Groundwork writing first today, and the person is told so plainly', async () => {

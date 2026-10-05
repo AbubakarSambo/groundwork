@@ -1,3 +1,4 @@
+import { askName, askNameOf, askFirstWelcome, ASK_CAPTION, ASK_ADD_LINE } from '../assistant/ask-name';
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AssistantService } from '../assistant/assistant.service';
@@ -50,13 +51,13 @@ import {
 export const ONLY_YOURS = 'Only the person who asked these questions can read them.';
 export const NOT_IN_IT = 'You are not part of this check-in.';
 export const NOTHING_WAITING = 'There is nothing waiting for your yes. Ask again if you still want it done.';
-export const SWITCHED_OFF =
-  'Your organisation has switched off your place on its list of people, so Ask Groundwork cannot answer you. Ask an admin in your organisation to switch it back on.';
+export const SWITCHED_OFF = (ask: string = askName(null)) =>
+  `Your organisation has switched off your place on its list of people, so ${ask} cannot answer you. Ask an admin in your organisation to switch it back on.`;
 /* Only ever thrown now if the member path is reached by a guest, which the guest path stops first. */
-export const A_GUEST_ASKS_IN_THEIR_CHECK_IN =
-  'You are a guest here from another organisation, so Ask Groundwork answers you only about your own check-in.';
-export const CONFIRM_YOUR_EMAIL =
-  'Confirm your email address first, and then Ask Groundwork can answer you. Groundwork sent you a link to confirm it when you signed up.';
+export const A_GUEST_ASKS_IN_THEIR_CHECK_IN = (ask: string = askName(null)) =>
+  `You are a guest here from another organisation, so ${ask} answers you only about your own check-in.`;
+export const CONFIRM_YOUR_EMAIL = (ask: string = askName(null)) =>
+  `Confirm your email address first, and then ${ask} can answer you. Groundwork sent you a link to confirm it when you signed up.`;
 
 /** The source a Person made here is filed under, beside the directory's and the panel's. */
 export const MADE_BY_GROUNDWORK = 'groundwork';
@@ -168,9 +169,9 @@ export class AskService {
   private async whoIsAsking(asker: Asker): Promise<{ id: string; externalId: string }> {
     const standing = await this.standingOf(asker);
     if (standing.is === 'linked') return standing.person;
-    if (standing.is === 'guest') throw new ForbiddenException(A_GUEST_ASKS_IN_THEIR_CHECK_IN);
-    if (standing.is === 'switchedOff') throw new ForbiddenException(SWITCHED_OFF);
-    if (standing.is === 'unconfirmed') throw new ForbiddenException(CONFIRM_YOUR_EMAIL);
+    if (standing.is === 'guest') throw new ForbiddenException(A_GUEST_ASKS_IN_THEIR_CHECK_IN(await askNameOf(this.prisma, asker.organizationId)));
+    if (standing.is === 'switchedOff') throw new ForbiddenException(SWITCHED_OFF(await askNameOf(this.prisma, asker.organizationId)));
+    if (standing.is === 'unconfirmed') throw new ForbiddenException(CONFIRM_YOUR_EMAIL(await askNameOf(this.prisma, asker.organizationId)));
 
     const nowLinked = () => this.prisma.person.findFirst({
       where: { organizationId: asker.organizationId, active: true, linkedUserId: asker.userId },
@@ -242,14 +243,26 @@ export class AskService {
    * their own earlier questions and answers. Only ever the asker's.
    */
   async forReader(asker: Asker, askedFor: string | null) {
+    const shown = await this.forReaderBare(asker, askedFor);
+    /* Ask is named for the organisation (decision 100). The first time somebody opens it, with no
+       questions kept yet, it says what it can do; once they have asked, it does not say it again. */
+    let organisationName: string | null = null;
+    try { organisationName = (await this.prisma.organization.findUnique({ where: { id: asker.organizationId }, select: { name: true } }))?.name ?? null; } catch { organisationName = null; }
+    const name = askName(organisationName);
+    const welcome = shown.canAsk && shown.turns.length === 0 ? askFirstWelcome(organisationName) : null;
+    return { ...shown, askName: name, caption: ASK_CAPTION, addLine: ASK_ADD_LINE, welcome };
+  }
+
+  private async forReaderBare(asker: Asker, askedFor: string | null) {
     this.refuseAnybodyElse(asker, askedFor);
     const [about, standing] = await Promise.all([this.whatItMayBeAbout(asker), this.standingOf(asker)]);
+    const ask = await askNameOf(this.prisma, asker.organizationId);
     /* Opening the panel writes nothing. A person with no entry yet can ask, and the entry is made on
        the first question; somebody who could not get one is told why, now, before they type. */
     /* A guest asks, about their own check-ins only, and reads back their own questions only. */
     if (standing.is === 'guest') return { canAsk: true as const, about, turns: await this.turnsKeptUnder(asker.organizationId, aGuestsOwnKey(asker.userId)) };
-    if (standing.is === 'switchedOff') return { canAsk: false as const, why: SWITCHED_OFF, about, turns: [] as AskTurn[] };
-    if (standing.is === 'unconfirmed') return { canAsk: false as const, why: CONFIRM_YOUR_EMAIL, about, turns: [] as AskTurn[] };
+    if (standing.is === 'switchedOff') return { canAsk: false as const, why: SWITCHED_OFF(ask), about, turns: [] as AskTurn[] };
+    if (standing.is === 'unconfirmed') return { canAsk: false as const, why: CONFIRM_YOUR_EMAIL(ask), about, turns: [] as AskTurn[] };
     if (!('person' in standing)) return { canAsk: true as const, about, turns: [] as AskTurn[] };
     const me = standing.person;
     /* An entry whose external id is a guest's key reads nothing under it. See a-guests-questions-are-kept-apart. */
@@ -304,13 +317,13 @@ export class AskService {
 
     let reply: any;
     if (!ground) {
-      reply = { blocks: [{ type: 'text' as const, body: theirs.length ? A_GUEST_IN_MORE_THAN_ONE : A_GUEST_WITH_NO_CHECK_IN }], composedBy: 'rules' as const, lane: 'guest_which_check_in' };
+      reply = { blocks: [{ type: 'text' as const, body: theirs.length ? A_GUEST_IN_MORE_THAN_ONE : A_GUEST_WITH_NO_CHECK_IN(await askNameOf(this.prisma, asker.organizationId)) }], composedBy: 'rules' as const, lane: 'guest_which_check_in' };
     } else if (['said', 'purpose', 'who_reads', 'next_step', 'done', 'move'].includes(question)) {
       reply = await this.answerWithinTheirOwnWork(asker, ground, question, message);
     } else if (question === 'next') {
       const mine = await this.grounds.getMyCheckinStatus(ground.id, asker.userId).catch(() => null);
       if (!mine) throw new ForbiddenException(NOT_IN_IT);
-      reply = answerAGuest(question, ground.label, { checkIns: mine.checkIns as any[] });
+      reply = answerAGuest(question, ground.label, { checkIns: mine.checkIns as any[] }, new Date(), await askNameOf(this.prisma, asker.organizationId));
     } else if (NEEDS_THE_REPORT[question]) {
       const mine = await this.grounds.getMyCheckinStatus(ground.id, asker.userId).catch(() => null);
       if (!mine) throw new ForbiddenException(NOT_IN_IT);
@@ -322,9 +335,9 @@ export class AskService {
         if (err instanceof ForbiddenException) throw new ForbiddenException(NOT_IN_IT);
         if (!(err instanceof NotFoundException)) throw err;
       }
-      reply = answerAGuest(question, ground.label, { report });
+      reply = answerAGuest(question, ground.label, { report }, new Date(), await askNameOf(this.prisma, asker.organizationId));
     } else {
-      reply = answerAGuest(question, ground.label, {});
+      reply = answerAGuest(question, ground.label, {}, new Date(), await askNameOf(this.prisma, asker.organizationId));
     }
 
     const said = (reply.blocks as any[]).find((b: any) => b.type === 'text') as { body?: string } | undefined;
@@ -369,7 +382,7 @@ export class AskService {
 
     if (question === 'purpose' || question === 'who_reads') {
       const g: any = await this.prisma.ground.findUnique({ where: { id: ground.id }, select: { brief: true, toldToParticipants: true, scenario: true } });
-      if (question === 'who_reads') return whoReadsWhatTheySay(ground.label, g?.scenario ?? null);
+      if (question === 'who_reads') return whoReadsWhatTheySay(ground.label, g?.scenario ?? null, await askNameOf(this.prisma, asker.organizationId));
       return whatTheCheckInIsFor(ground.label, whatAParticipantIsToldAboutThis(g?.brief ?? null, [], { told: g?.toldToParticipants ?? null, readerParticipantId: participantId, scenario: g?.scenario ?? null }));
     }
 

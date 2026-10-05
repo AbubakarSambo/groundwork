@@ -1,3 +1,4 @@
+import { askName } from '../assistant/ask-name';
 import { saidAsADate } from './a-request-is-recorded';
 
 /**
@@ -54,16 +55,16 @@ export interface AQuestion {
  *   Wairimu, who asked: "You asked Aisha on 5 October, “Who will cover the Project X milestone?”"
  *                       "Aisha answered on 6 October, “Brian will cover it.”" or "Aisha has not answered yet."
  *   Aisha:              "Wairimu asked you on 5 October, “...”" and "You answered on 6 October, “...”", or
- *                       "You have not answered yet. You can answer it here or in Ask Groundwork."
+ *                       "You have not answered yet. You can answer it here or in Ask Coamana." (the organisation's own Ask name)
  *   Anybody else:       "Wairimu asked Aisha on 5 October, “...”" and "Aisha answered on 6 October, “...”"
  */
-export function aQuestionSaid(q: AQuestion, names: Map<string, string>, readerUserId: string): string[] {
+export function aQuestionSaid(q: AQuestion, names: Map<string, string>, readerUserId: string, ask: string = askName(null)): string[] {
   const who = (id: string) => (id === readerUserId ? 'you' : names.get(id) || 'somebody');
   const by = who(q.askedById);
   const to = who(q.toUserId);
   const out = [`${capital(by)} asked ${to} on ${saidAsADate(q.askedAt)}, ${inQuotes(q.question)}`];
   if (q.answer != null && q.answeredAt) out.push(`${capital(to)} answered on ${saidAsADate(q.answeredAt)}, ${inQuotes(q.answer)}`);
-  else out.push(to === 'you' ? 'You have not answered yet. You can answer it here or in Ask Groundwork.' : `${capital(to)} has not answered yet.`);
+  else out.push(to === 'you' ? `You have not answered yet. You can answer it here or in ${ask}.` : `${capital(to)} has not answered yet.`);
   return out;
 }
 

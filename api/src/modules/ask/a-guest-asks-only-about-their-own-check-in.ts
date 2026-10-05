@@ -1,3 +1,4 @@
+import { askName } from '../assistant/ask-name';
 import { rules, text, Reply } from '../assistant/a-reply-is-a-payload-not-a-string';
 import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
@@ -107,12 +108,12 @@ export const NEEDS_THE_REPORT: Record<AGuestsQuestion, boolean> = {
  * What a guest reads. Plain sentences, the check-in named, the reader is "you".
  * ---------------------------------------------------------------------------------------------- */
 
-export const A_GUEST_CANNOT_ASK_FOR_THINGS =
-  'You are a guest here from another organisation, so Ask Groundwork cannot do things for you here, such as adding a to-do or changing a target. It can answer questions about your own check-in, and it can mark one of your own commitments as done or move its day, once you say yes.';
-export const A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN =
-  'You are a guest here from another organisation, so Ask Groundwork can only answer questions about your own check-in, such as what you said, what you said you would do, what the check-in is for, who reads what you say, and when your next check-in is.';
-export const A_GUEST_WITH_NO_CHECK_IN =
-  'You are not part of any open check-in here, so there is nothing Ask Groundwork can answer for you.';
+export const A_GUEST_CANNOT_ASK_FOR_THINGS = (ask: string = askName(null)) =>
+  `You are a guest here from another organisation, so ${ask} cannot do things for you here, such as adding a to-do or changing a target. It can answer questions about your own check-in, and it can mark one of your own commitments as done or move its day, once you say yes.`;
+export const A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN = (ask: string = askName(null)) =>
+  `You are a guest here from another organisation, so ${ask} can only answer questions about your own check-in, such as what you said, what you said you would do, what the check-in is for, who reads what you say, and when your next check-in is.`;
+export const A_GUEST_WITH_NO_CHECK_IN = (ask: string = askName(null)) =>
+  `You are not part of any open check-in here, so there is nothing ${ask} can answer for you.`;
 export const A_GUEST_IN_MORE_THAN_ONE =
   'You take part in more than one check-in here. Choose the one you are asking about under About, and then ask again.';
 
@@ -183,10 +184,11 @@ export function answerAGuest(
   label: string,
   reads: { report?: TheReportAsServed | null; checkIns?: { sessionNumber: number; status: string; availableFrom: Date | string | null }[] },
   now: Date = new Date(),
+  ask: string = askName(null),
 ): Reply {
   const lane = `guest_${question}`;
-  if (question === 'a_request') return rules(lane, text(A_GUEST_CANNOT_ASK_FOR_THINGS));
-  if (question === 'outside') return rules(lane, text(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN));
+  if (question === 'a_request') return rules(lane, text(A_GUEST_CANNOT_ASK_FOR_THINGS(ask)));
+  if (question === 'outside') return rules(lane, text(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN(ask)));
   if (question === 'help') return rules(lane, text(whatAGuestCanAsk(label)));
 
   if (question === 'next') {
@@ -259,12 +261,12 @@ export function whatTheCheckInIsFor(label: string, told: string | null): Reply {
  * this kind of check-in, and left out where the kind is not known, which is the more private reading.
  * Nothing here is looked up about the host organisation: only the kind of check-in is read.
  */
-export function whoReadsWhatTheySay(label: string, scenario: GroundScenario | null | undefined): Reply {
+export function whoReadsWhatTheySay(label: string, scenario: GroundScenario | null | undefined, ask: string = askName(null)): Reply {
   const admins = !scenario || isEvaluationCheckIn(scenario)
     ? ''
     : ' Admins of the organisation that runs this check-in can read every check-in.';
   return rules('guest_who_reads', text(
-    `The people in ${label}, including the person who runs it, can see what you say in it.${admins} Your own report and your questions to Ask Groundwork stay private. `
+    `The people in ${label}, including the person who runs it, can see what you say in it.${admins} Your own report and your questions to ${ask} stay private. `
     + 'What you say is used to build the shared picture for this check-in and nothing else, and it does not train a model. '
     + 'Your answers are stored on our servers, and they are processed by Google\'s models to build the record.',
   ));
