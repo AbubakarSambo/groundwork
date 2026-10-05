@@ -1470,6 +1470,18 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-record-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .gwui-record-table, .gwui-record-table tbody, .gwui-record-table tr, .gwui-record-table th, .gwui-record-table td { display: block; width: auto; }
 }
+/*
+ * A STACKED CELL'S OWN LABEL (fault 7 of the live walk of the suites, ReviewsBoardPage at 375):
+ * once the table stacks, a value with no column beside it to say what it is reads as a bare name -
+ * "Daniel Park", with nothing to say whether that is the person or who wrote the review with them.
+ * `aria-hidden`, because the real `<th scope="col">` headers stay in the page for a screen reader
+ * (only visually hidden above, by `clip`), so this is a second, visible-only label for the width a
+ * person actually sees the table stacked at - never read twice.
+ */
+.gwui-record-table-label { display: none; }
+@media (max-width: 860px) {
+  .gwui-record-table-label { display: block; font-size: 13px; font-weight: 600; color: var(--gw-sub); margin-bottom: 2px; }
+}
 /* ── PROOF MARK (ProofMark.tsx; prototype: .mk/.mk-proven etc., app.css) - carried over unchanged
    from kit.tsx's gw-mk-*. ───────────────────────────────────────────────────────────────────── */
 .gwui-mk { width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex: none; vertical-align: -2px; }

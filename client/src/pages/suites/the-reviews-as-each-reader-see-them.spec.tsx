@@ -101,10 +101,18 @@ describe('the board of the next reviews', () => {
     const region = await screen.findByRole('region', { name: 'The next reviews' })
     expect(within(region).getByText('March 2027')).toBeInTheDocument()
     const rows = [...region.querySelectorAll('tr')].map(tr => [...tr.children].map(c => c.textContent))
+    /*
+     * Fault 7 of the live walk: at 375 wide, the table stacks with no column beside each cell any
+     * more, so a bare name read as "Daniel Park" with nothing to say whether that was the person or
+     * who wrote the review with them. Each of the first two cells now carries its own visible label
+     * too ("Person", "Written with"), on top of the real, visually-hidden `<th scope="col">` a
+     * screen reader always had - so the two labels show up in a plain `textContent` read here even
+     * though the table is not actually stacked at this test's own (unset) width.
+     */
     expect(rows).toEqual([
       ['Person', 'Written with', 'Where it stands', 'What you can do'],
-      ['Aisha Otieno', 'Wairimu Kamau', 'Started on 2 October. Aisha can read it and add a view of her own.', 'Open it'],
-      ['Miriam Wanjiku', 'Wairimu Kamau', 'Ready to start.', 'Start it'],
+      ['PersonAisha Otieno', 'Written withWairimu Kamau', 'Started on 2 October. Aisha can read it and add a view of her own.', 'Open it'],
+      ['PersonMiriam Wanjiku', 'Written withWairimu Kamau', 'Ready to start.', 'Start it'],
     ])
     expect(within(region).getByRole('link', { name: 'Open Aisha Otieno’s review' })).toHaveAttribute('href', '/suite/reviews/r-a')
   })
@@ -114,9 +122,23 @@ describe('the board of the next reviews', () => {
     open(WAIRIMU, '/suite/reviews')
     const region = await screen.findByRole('region', { name: 'The next reviews' })
     const kwame = [...region.querySelectorAll('tr')].find(tr => tr.textContent?.includes('Kwame'))!
-    expect([...kwame.children].map(c => c.textContent)).toEqual(['Kwame Boateng', 'Wairimu Kamau', 'After “Kwame, first 90 days” is decided.', 'Not yet'])
+    expect([...kwame.children].map(c => c.textContent)).toEqual(['PersonKwame Boateng', 'Written withWairimu Kamau', 'After “Kwame, first 90 days” is decided.', 'Not yet'])
     expect(within(kwame as HTMLElement).queryByRole('button')).toBeNull()
     expect(text()).not.toContain('Decided.')
+  })
+
+  /*
+   * Fault 7 of the live walk: aria-hidden on these labels, because the stacked width is where they
+   * are needed and a screen reader already has the real column headers (visually hidden, not
+   * removed) at every width.
+   */
+  it('each stacked value carries its own visible label, marked aria-hidden since a screen reader already has the real column headers', async () => {
+    ;(reviewsApi.board as any).mockResolvedValue(BOARD)
+    open(WAIRIMU, '/suite/reviews')
+    const region = await screen.findByRole('region', { name: 'The next reviews' })
+    const labels = [...region.querySelectorAll('.gwui-record-table-label')]
+    expect(labels.map(l => l.textContent)).toEqual(['Person', 'Written with', 'Person', 'Written with'])
+    expect(labels.every(l => l.getAttribute('aria-hidden') === 'true')).toBe(true)
   })
 
   it('a review Groundwork proposed says why under where it stands, and that nothing reaches the person until a yes', async () => {
