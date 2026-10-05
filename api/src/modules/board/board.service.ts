@@ -131,6 +131,7 @@ import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFir
 import { overTimeAsServed, meetingsOnRecordFor, inOurVoice, looksLikeATimeOrADate } from '../reports/what-the-record-shows-over-time';
 import { everyStoredSentenceReadsRight } from '../reports/a-stored-sentence-reads-right';
 import { aBoardWithNoEmptyLine } from './a-board-has-no-empty-line';
+import { theStoredPatternLinesFor } from '../patterns/stored-pattern-lines-through-the-wall';
 import { patternQuestionsToSettleFirst } from './pattern-questions-to-settle-first';
 import { everyDivergenceReadable } from '../reports/a-field-name-is-not-a-heading';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
@@ -904,7 +905,8 @@ export class BoardService {
           sessionsSoFar: Math.max(0, ...checkIns.filter((c: any) => !c.isSetup && c.status === CheckInStatus.COMPLETED).map((c: any) => c.sessionNumber ?? 0)),
           meetingsOnRecord: await meetingsOnRecordFor(this.prisma, groundId),
         });
-        return served && patternQuestions.length ? { ...served, toSettleFirst: [...(served.toSettleFirst ?? []), ...patternQuestions] } : served;
+        const withLines = await theStoredPatternLinesFor(this.prisma, groundId, served, { participantId: me?.id ?? null, runsIt: runsItForAPattern(ground as any, requestingUserId) });
+        return withLines && patternQuestions.length ? { ...withLines, toSettleFirst: [...(withLines.toSettleFirst ?? []), ...patternQuestions] } : withLines;
       })() : null,
       myParticipantId: me?.id ?? null,
       // Whether the caller may set the frame (targets, the poll question). The

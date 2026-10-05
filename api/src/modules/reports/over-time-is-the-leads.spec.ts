@@ -73,7 +73,7 @@ describe('the longitudinal read belongs to the lead', () => {
     const src = fs.readFileSync(path.join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     /* Two in get(), the forming and the released branch, and a third in the check before a report is
        kept, which renders each participant's copy the way get() serves it (everyLineReadAsItWillBe). */
-    expect(src.match(/overTime: overTimeForThisReader\(/g) ?? []).toHaveLength(3);
+    expect(src.match(/overTime: (?:await theStoredPatternLinesFor\([^\n]*?)?overTimeForThisReader\(/g) ?? []).toHaveLength(3);
     const check = src.slice(src.indexOf('private async everyLineReadAsItWillBe'), src.indexOf('private applyNames'));
     expect(check).toMatch(/overTime: overTimeForThisReader\(/);
   });

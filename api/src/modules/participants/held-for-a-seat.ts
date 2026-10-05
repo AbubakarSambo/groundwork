@@ -14,15 +14,35 @@ export const HELD_FOR_A_SEAT = 'This check-in cannot start for you yet, because 
  * A lookup that fails refuses too: the more private answer when the fact cannot be read.
  */
 export async function refuseSomeoneHeldForASeat(
-  prisma: { groundParticipant?: { findFirst?: (args: any) => unknown } } | null | undefined,
+  prisma: { groundParticipant?: { findFirst?: (args: any) => unknown }; checkIn?: { findFirst?: (args: any) => unknown } } | null | undefined,
   groundId: string | null | undefined,
   userId: string | null | undefined,
 ): Promise<void> {
   const find = prisma?.groundParticipant?.findFirst;
   if (!find || !groundId || !userId) return;
-  const row: any = await Promise.resolve(find.call(prisma!.groundParticipant, { where: { groundId, userId }, select: { awaitingSeat: true } }))
+  const row: any = await Promise.resolve(find.call(prisma!.groundParticipant, { where: { groundId, userId }, select: { id: true, awaitingSeat: true } }))
     .catch(() => ({ awaitingSeat: true }));
-  if (row?.awaitingSeat === true) throw new ForbiddenException(HELD_FOR_A_SEAT);
+  if (row?.awaitingSeat !== true) return;
+  /* Held, but already answered: keeps reading what they earned (6 October 2026, Finding 7; Hafsah to confirm). */
+  if (row?.id && (await hasAlreadyAnswered(prisma, [row.id])).size) return;
+  throw new ForbiddenException(HELD_FOR_A_SEAT);
+}
+
+/**
+ * WHO, OF THESE HELD PARTICIPANTS, HAS ALREADY COMPLETED A SESSION (6 October 2026, Finding 7; Hafsah to confirm).
+ *
+ * The hold stops new sessions, reminders and invitations. It does not take back what somebody already earned by answering: on the
+ * live line they read the board, the report and the check-in page, and 41 people on 20 check-ins did before the hold was enforced
+ * on reads. Somebody held who never answered stays refused. The more private answer when the lookup fails: nobody is let through.
+ */
+async function hasAlreadyAnswered(prisma: { checkIn?: { findMany?: (args: any) => unknown; findFirst?: (args: any) => unknown } } | null | undefined, participantIds: string[]): Promise<Set<string>> {
+  if (!participantIds.length) return new Set();
+  const findMany = prisma?.checkIn?.findMany;
+  if (!findMany) return new Set();
+  const rows: any[] = await Promise.resolve(findMany.call(prisma!.checkIn, { where: { participantId: { in: participantIds }, status: 'COMPLETED' }, select: { participantId: true } }))
+    .then((r) => (Array.isArray(r) ? r : []))
+    .catch(() => []);
+  return new Set(rows.map((r) => r?.participantId).filter(Boolean));
 }
 
 /**
@@ -53,7 +73,7 @@ export async function refuseSomeoneAwaitingTheOrganisation(
  * holds every one of them back, the more private answer.
  */
 export async function theCheckInsHeldForASeat(
-  prisma: { groundParticipant?: { findMany?: (args: any) => unknown }; user?: { findUnique?: (args: any) => unknown } } | null | undefined,
+  prisma: { groundParticipant?: { findMany?: (args: any) => unknown }; checkIn?: { findMany?: (args: any) => unknown }; user?: { findUnique?: (args: any) => unknown } } | null | undefined,
   groundIds: string[],
   userId: string | null | undefined,
 ): Promise<Set<string>> {
@@ -65,10 +85,13 @@ export async function theCheckInsHeldForASeat(
     const me: any = await Promise.resolve(findUser.call(prisma!.user, { where: { id: userId }, select: { awaitingOrgApproval: true } })).catch(() => ({ awaitingOrgApproval: true }));
     if (me?.awaitingOrgApproval === true) return new Set(groundIds);
   }
-  const rows: any[] = await Promise.resolve(find.call(prisma!.groundParticipant, { where: { userId, awaitingSeat: true, groundId: { in: groundIds } }, select: { groundId: true, awaitingSeat: true } }))
+  const rows: any[] = await Promise.resolve(find.call(prisma!.groundParticipant, { where: { userId, awaitingSeat: true, groundId: { in: groundIds } }, select: { id: true, groundId: true, awaitingSeat: true } }))
     .then((r) => (Array.isArray(r) ? r : []))
     .catch(() => groundIds.map((groundId) => ({ groundId, awaitingSeat: true })));
-  return new Set(rows.filter((r) => r?.awaitingSeat !== false && groundIds.includes(r?.groundId)).map((r) => r.groundId));
+  const held = rows.filter((r) => r?.awaitingSeat !== false && groundIds.includes(r?.groundId));
+  /* Held, but already answered in that check-in: still reads it (Finding 7). */
+  const answered = await hasAlreadyAnswered(prisma as any, held.map((r) => r.id).filter(Boolean));
+  return new Set(held.filter((r) => !(r.id && answered.has(r.id))).map((r) => r.groundId));
 }
 
 /**
