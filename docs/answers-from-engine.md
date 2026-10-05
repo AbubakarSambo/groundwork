@@ -227,8 +227,11 @@ taken out.
 - **A number is one a block holds, on the thing the block puts it on.** It is never combined, and it is never moved to another thing. The run's crisis example is in the text: the alert nobody answered fired at 02:14, so it is never "the 7 AM alerts".
 
 The snapshot run's sentence "your account does not show that they know it" is the example in the
-pronoun rule. The rules only reach a new judgement once this is active as a stored version and the
-three scenarios are run again.
+pronoun rule. The new text is now stored and active in the local database `gw_pw9_1786222102`, and
+its content matches the code text byte for byte. The room version is `the_judgement_room` version 1, id
+`ae0c6fa4-76e5-4f20-a0cc-fd6fadb78217`. The population version is `the_judgement_population` version 1,
+id `53aad9c9-077e-4d14-9082-5d8f83e0cab9`. It reaches a judgement once the API is rebuilt and the three
+scenarios are run again, and each new judgement's `promptVersionId` will show the room id.
 
 ## The full API suite on this computer (140, item 3): green, 16,609 tests, no memory trouble
 
