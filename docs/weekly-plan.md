@@ -9,6 +9,9 @@
 - Admins are emailed every time a paused check-in is opened. That should be at most once a day for each person, as "Remind them" already is.
 - A team that subscribes during its free trial pays from that day, and the rest of its free month is lost. Hafsah decides whether Stripe should be given the trial's end date.
 - The anchor baseline prompt (version 2) is stored only in the local database. It is not yet proven in a live run that the model asks all nine things before it closes.
+- WhatsApp answers Meta only after the work is done. The first "START" took 42 to 108 seconds in the local runs, and Meta sends a message again when it does not get a quick answer. A repeated message is answered only once, so nothing is doubled, but the person waits. The fix, not started, is to answer Meta first and then do the work.
+- On WhatsApp, onboarding, project and anchor check-ins open with "are you the person this check-in is about, or somebody working alongside them?", even when the person is the only one in the check-in. This was seen in the runs and has not been looked into.
+- The end-to-end WhatsApp script cannot yet read the emails sent by its own in-process jobs (the clock's close), because those go only to a log it does not keep. It reads the API's emails from the API's log.
 
 **Suites at scale for 100-person organisations.**
 1. Seed: run the 100-check-in seed (`api/journey/seed-a-hundred-check-ins.ts`) on a fresh local database, for one organisation of 100 people with leads, departments and a full year of leave, spending and reviews.
