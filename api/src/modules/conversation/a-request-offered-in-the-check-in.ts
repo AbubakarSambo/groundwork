@@ -42,7 +42,30 @@ export function thePrefillFromTheirWords(kind: 'leave' | 'spending', message: st
   const read = readSpending(message, null);
   if (read.kind === 'ok') return { amount: read.said.amount, what: read.said.what, ...(read.said.currency ? { currency: read.said.currency } : {}) };
   if (read.kind === 'ask' && read.purpose) return { amount: read.purpose.amount, ...(read.purpose.currency ? { currency: read.purpose.currency } : {}) };
-  return {};
+  /* "I need 15,000 shillings approved for fuel for the van this week" is offered, and is not said with the word spend: its sum and its reason are read here. */
+  return theSumAskedFor(message);
+}
+
+const CODES: Record<string, string> = { kes: 'KES', ksh: 'KES', usd: 'USD', ngn: 'NGN', ghs: 'GHS', gbp: 'GBP', eur: 'EUR', zar: 'ZAR', '$': 'USD', '£': 'GBP', '€': 'EUR', '₦': 'NGN' };
+/**
+ * A SUM ASKED FOR WITHOUT THE WORD "SPEND": one amount, and what it is for when "for" follows it. Only what is there: no amount, or more than one,
+ * gives nothing; a reason is read only after "for"; and a currency is kept only when the person wrote its code or sign, never from "shillings" alone,
+ * because shillings are three countries'.
+ */
+export function theSumAskedFor(message: string): ThePrefill {
+  const t = (message ?? '').trim();
+  const money = [...t.matchAll(/(?:(KES|KSh|Ksh|USD|NGN|GHS|GBP|EUR|ZAR|\$|£|€|₦)\s?)?(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|million|m)?\b(?:\s*(shillings?|bob|naira|dollars?|pounds?|euros?|cedis?|rand|KES|KSh|USD|NGN|GHS))?/gi)]
+    .filter((m) => m[1] || m[3] || m[4] || /\d{4,}|\d,\d{3}/.test(m[2]));
+  if (money.length !== 1) return {};
+  const m = money[0];
+  const base = Number(m[2].replace(/,/g, ''));
+  const unit = (m[3] ?? '').toLowerCase();
+  const amount = base * (unit === 'k' || unit === 'thousand' ? 1_000 : unit === 'm' || unit === 'million' ? 1_000_000 : 1);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 1e12) return {};
+  const code = CODES[(m[1] ?? m[4] ?? '').toLowerCase()];
+  const after = t.slice((m.index ?? 0) + m[0].length);
+  const reason = /\b(?:approved\s+)?for\s+([^.?!]+)/i.exec(after)?.[1]?.trim().replace(/\s+/g, ' ');
+  return { amount, ...(reason ? { what: reason } : {}), ...(code ? { currency: code } : {}) };
 }
 
 const YES = 'Yes';

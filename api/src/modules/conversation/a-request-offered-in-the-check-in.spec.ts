@@ -142,3 +142,24 @@ describe('a day off said the way people say it is offered, and a day nobody aske
     expect((await world({ spendOn: true }).turn('I need $4,000 approved for the workshop.')).requestOffer?.kind).toBe('spending');
   });
 });
+
+describe('what the payment form is filled in with when the sum is asked for without the word spend (6 October)', () => {
+  it('reads the amount and the reason, and no currency from "shillings" alone', async () => {
+    const w = world({ spendOn: true });
+    await w.turn('I need 15,000 shillings approved for fuel for the van this week.');
+    expect((await w.turn('Yes')).openTheRequest?.prefill).toEqual({ amount: 15000, what: 'fuel for the van this week' });
+  });
+
+  it('keeps a currency the person wrote, and reads a thousand', async () => {
+    const { theSumAskedFor } = await import('./a-request-offered-in-the-check-in');
+    expect(theSumAskedFor('I need KES 4k approved for the workshop.')).toEqual({ amount: 4000, what: 'the workshop', currency: 'KES' });
+    expect(theSumAskedFor('I need $4,000 approved')).toEqual({ amount: 4000, currency: 'USD' });
+  });
+
+  it('reads nothing where it would have to guess: two sums, or no sum', async () => {
+    const { theSumAskedFor } = await import('./a-request-offered-in-the-check-in');
+    expect(theSumAskedFor('I need 5,000 or maybe 8,000 approved for fuel.')).toEqual({});
+    expect(theSumAskedFor('I need money approved for fuel.')).toEqual({});
+    expect(theSumAskedFor('I need 12 chairs for the office.')).toEqual({});
+  });
+});
