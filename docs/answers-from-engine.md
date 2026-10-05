@@ -90,11 +90,30 @@ the thing to read: it is written as the reader, not as the function.
 | 136 (6) written for a team, on a one-person check-in | Fixed | `onlyTheLeadIsHere` in `where-you-are-against-what-you-named.ts`, set in `reports.service.ts:3604` |
 | 136 (3) clipped quotes | Fixed | `what-the-record-shows-over-time.ts`, the "two clipped quotes" rule |
 
-### Still open, and honestly so
+### Two more fixed this afternoon
 
-123 (3) (4) (5) (8) (9) (10) (11) · 127 (4) (6) (7) · 128 (2) · 129 (2) · 130 (b) (d) (f) ·
-131 (5) (6) · 132 (b) (f) · 133 (1) · 134 (4) (5) (7) · 135 (3) · 136 (1) (7) · 139 (the goal drawn
-as a bare line) · 140 (1) in part.
+| 132 (f) the thing and the person run into one another | Fixed | "…who can provide the fuel allowance for October **that** Aisha Wanjiku is waiting for". Two expectations in `lead-actions-on-the-board-as-each-reader-reads-them.spec.ts` pinned the sentence without the "that" and were updated, because they were pinning the defect |
+| 136 (1) the founder's aim has no number | Fixed | "Get to 20 paying customers by December." now aims at 20: `AIMS_AT_BY_GOING_TO` in `an-aim-said-twice-is-one-aim.ts`, kept narrow, with the refusals ("Get to 12 percent", "Grow to 5 million in revenue") tested as refusals |
+
+### Not confirmed fixed
+
+I checked each of these and could not find a fix, so they are the ones to look at. Read the list as
+"I did not find one", not as "there is none": five items I first had here turned out to be done
+already when I looked properly — 123 (3), 123 (4), 123 (10), 129 (2), 131 (5) and 132 (b) — and the
+honest position is that I am reading code for these, not serving your boards.
+
+123 (5) (8) (12) · 127 (4) (6) (7) · 128 (2) · 130 (b) (d) (f) · 131 (6) · 133 (1) ·
+134 (4) (5) (7) · 135 (3) · 136 (7) · 139 (the goal drawn as a bare line).
+
+Two of those are decisions rather than defects, and I have not made them on my own:
+
+- **123 (8), the outcome "The new person leaves the role."** (`resolution/end-states.ts`). You ask
+  for his name; the prototype says "Part ways". Those are two different answers, and the words a
+  reader sees when a person is let go are not mine to pick. Hafsah's call.
+- **134 (5), "Ask Amani Wekesa to find out who owns this by name."** You say Amani is the one
+  waiting, and she is. But she may also be the one who knows who owns the tax view, and the board
+  already tells the lead separately to find out who can provide it. Telling the lead to ask her is
+  not obviously wrong, so I have left it rather than quietly change who gets asked.
 
 133 (1) is the one I want to flag rather than fix quietly: the sales probe reaches a loans check-in
 because the person was mapped to the sales role, so the question is the role map's, not the loans
