@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Safety rules that always run before Claude Code acts. Exit code 2 blocks the action, and the message goes back to Claude.
+"""Version 3. Safety rules that always run before Claude Code acts. Exit code 2 blocks the action, and the message goes back to Claude.
 
 Version 2 (3 October 2026): rules now block ACTIONS, not WORDS. A commit message, a document being written,
 or a read-only command may mention any word (a person's name, a branch name, a provider's name) without being
@@ -43,6 +43,38 @@ def is_doc_write(c):
 if kind == "bash":
     cmd = inp.get("command", "")
     one = cmd.strip()
+
+    # Version 3 (6 October 2026, Hafsah): the computers may push their own branches to Abubakar's repository
+    # ("origin") and open or update pull requests there. They may NEVER push straight into staging, main,
+    # master, production or develop, never force-push or delete a branch, and never merge a pull request:
+    # merging stays Abubakar's decision. Only a single command, with nothing chained onto it.
+    def unchained(c):
+        q = None
+        i = 0
+        while i < len(c):
+            ch = c[i]
+            if q:
+                if ch == q: q = None
+                elif ch == "\\" and q == '"': i += 1
+            elif ch in "'\"": q = ch
+            elif ch in ";|&`\n" or c[i:i+2] == "$(": return False
+            i += 1
+        return q is None
+    PROTECTED_BRANCHES = r"(staging|main|master|production|prod|develop)"
+    pm = re.fullmatch(r"git\s+push\s+(?:(?:-u|--set-upstream)\s+)?origin\s+(?:([\w./-]+):)?(?:refs/heads/)?([\w./-]+)", one)
+    if pm:
+        if re.search(r"(--force|\s-f\b|\+|--delete|\s-d\b|--mirror|--all|--tags)", one):
+            block("Pushing to Abubakar's repository may never force, delete, or push everything at once.")
+        if re.fullmatch(PROTECTED_BRANCHES, pm.group(2), re.I):
+            block("Nobody pushes straight into staging, main or production. Push a branch and open a pull request; Abubakar merges.")
+        sys.exit(0)
+    if re.match(r"gh\s+pr\s+merge\b", one) or re.match(r"gh\s+pr\s+(close|reopen)\b", one):
+        block("Merging or closing pull requests is Abubakar's decision.")
+    if re.match(r"gh\s+pr\s+(create|view|ready|edit|comment|list|status|checks|diff)\b", one) and unchained(one) \
+            and re.search(r"--repo\s+AbubakarSambo/groundwork\b", one):
+        if re.search(r"--base\s+(main|master|production|prod)\b", one):
+            block("Pull requests go into staging, not main or production.")
+        sys.exit(0)
     is_commit = re.match(r"\s*git\s+commit\b", cmd) is not None and not re.search(r"(;|&&|\|\|)", cmd.split("\n")[0])
     word_safe = is_commit or is_read_only(one) or is_doc_write(cmd)
 
